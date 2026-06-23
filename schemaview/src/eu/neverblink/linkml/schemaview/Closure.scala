@@ -2,8 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import scala.collection.mutable
 
-private[schemaview] object Closure {
-
+object Closure {
   def apply[T](
       start: T,
       function: T => Iterable[T],
