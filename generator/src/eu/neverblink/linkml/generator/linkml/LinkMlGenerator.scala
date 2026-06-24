@@ -109,7 +109,10 @@ class LinkMlGenerator(using sv: SchemaView) {
     def doIncludeElement(element: Element): Boolean =
       pruningMode match {
         case PruningMode.treeRoot(_) =>
-          elementsFromTreeRoot.forall(_.contains(ElementTypeTag(element) -> element))
+          elementsFromTreeRoot match {
+            case Some(value) => value.contains(ElementTypeTag(element) -> element)
+            case None => elementsFromSchemaRoot.contains(ElementTypeTag(element) -> element)
+          }
         case PruningMode.schemaRoot =>
           elementsFromSchemaRoot.contains(ElementTypeTag(element) -> element)
         case PruningMode.skip => true

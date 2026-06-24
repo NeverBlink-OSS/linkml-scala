@@ -185,6 +185,29 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "prune using schema mode if requested schema tree_root mode but no tree root" in {
+      val sv = ModelCatalogue.treeRootless.model
+      val schema =
+        LinkMlGenerator(using sv).generate(pruningMode = treeRoot(None))
+      schema.classes.keys should contain theSameElementsAs Seq(
+        "SomeClass",
+        "SomeOtherClass"
+      )
+      schema.types.keys should contain theSameElementsAs Seq(
+        "string",
+        "integer"
+      )
+    }
+
+    "prune using tree_root override if no schema tree root" in {
+      val sv = ModelCatalogue.treeRootless.model
+      val schema =
+        LinkMlGenerator(using sv).generate(pruningMode = treeRoot(Some("SomeClass")))
+      schema.classes.keys should contain theSameElementsAs Seq(
+        "SomeClass",
+      )
+    }
+
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
       SchemaView.single(
