@@ -44,7 +44,7 @@ class LinkMlGenerator(using sv: SchemaView) {
     * @return
     *   A set of elements reachable from [[rootClass]] and their [[ElementTypeTag]]s
     */
-  def reachableFrom(
+  private def reachableFrom(
       fromClasses: Seq[ClassDefinition],
       skipClassDerivation: Boolean,
   ): Set[(ElementTypeTag, Element)] =
@@ -77,10 +77,8 @@ class LinkMlGenerator(using sv: SchemaView) {
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]]. Merges imports,
     * runs class derivation and if a `tree_root` class is present, prunes the schema to only include
     * the reachable elements.
-    * @param treeRootOverride
-    *   If defined, override the schema `tree_root` class with the one provided
-    * @param skipPruning
-    *   If true, will not perform pruning of unreachable classes.
+    * @param pruningMode
+    *   Method to use for schema definition pruning
     * @param skipClassDerivation
     *   If true, will not derive classes and instead copy them as-is.
     * @return
@@ -178,10 +176,8 @@ class LinkMlGenerator(using sv: SchemaView) {
     *
     * Merges imports, runs class derivation and if a `tree_root` class is present, prunes the schema
     * to only include the reachable elements.
-    * @param treeRootOverride
-    *   If defined, override the schema `tree_root` class with the one provided
-    * @param skipPruning
-    *   If true, will not perform pruning of unreachable classes.
+    * @param pruningMode
+    *   Method to use for schema definition pruning
     * @param skipClassDerivation
     *   If true, will not derive classes and instead copy them as-is.
     * @param asJson
@@ -208,9 +204,9 @@ object LinkMlGenerator {
   extension (slotDef: SlotDefinition) private def impl: SlotDefinitionImpl = slotDef.asInstanceOf
   extension (enumDef: EnumDefinition) private def impl: EnumDefinitionImpl = enumDef.asInstanceOf
 
-  enum ElementTypeTag:
+  private enum ElementTypeTag:
     case classDef, typeDef, slotDef, enumDef, other
-  object ElementTypeTag:
+  private object ElementTypeTag:
     def apply(el: Element): ElementTypeTag = el match {
       case _: ClassDefinition => classDef
       case _: TypeDefinition => typeDef
@@ -219,8 +215,22 @@ object LinkMlGenerator {
       case _ => other
     }
 
+  /** The method to use for schema definition pruning: tree root-based, schema root based and no
+    * pruning
+    */
   enum PruningMode:
-    case treeRoot(val `override`: Option[String])
+    /** Prune all elements that are unreachable from the schema-level tree root class Falls back to
+      * root-schema based pruning if no schema-level tree_root class is present and no override is
+      * provided.
+      * @param `override`
+      *   If defined, will use the class with the provided name instead of the schema-level
+      *   tree_root.
+      */
+    case treeRoot(`override`: Option[String])
+
+    /** Prune all elements that are unreachable from all the classes defined in the root schema. */
     case schemaRoot
+
+    /** Don't prune anything */
     case skip
 }

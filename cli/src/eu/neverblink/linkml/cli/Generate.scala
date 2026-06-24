@@ -9,6 +9,9 @@ final case class GenerateOptions(
     )
     to: Option[String] = None,
 )
+object GenerateOptions:
+  given Parser[GenerateOptions] = Parser.derive
+  given Help[GenerateOptions] = Help.derive
 
 trait HasGenerateOptions:
   @Recurse
