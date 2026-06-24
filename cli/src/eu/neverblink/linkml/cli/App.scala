@@ -10,4 +10,5 @@ object App extends CommandsEntryPoint:
     Shacl,
     JsonSchema,
     Scala,
+    Rdfs,
   )

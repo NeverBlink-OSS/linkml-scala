@@ -3,6 +3,7 @@ package eu.neverblink.linkml.cli
 import caseapp.*
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -66,5 +67,25 @@ object Shacl extends Generate[ShaclOptions] {
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
       ("", RdfUtils.toTurtle(ShaclGenerator().generate())),
+    )
+}
+
+// RDFS
+
+@HelpMessage("Generate RDF schema from a LinkML model")
+@ArgsName("<input-file>")
+final case class RdfsOptions(
+    @Recurse
+    common: GenerateOptions,
+) extends HasGenerateOptions
+
+object Rdfs extends Generate[RdfsOptions] {
+  override protected def generatorName: String = "rdfs"
+
+  override protected def generate(
+      options: RdfsOptions,
+  )(using SchemaView): Iterable[(String, String)] =
+    Seq(
+      ("", RdfUtils.toTurtle(RdfsGenerator().generate())),
     )
 }
