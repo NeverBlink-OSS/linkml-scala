@@ -50,19 +50,19 @@ final case class SchemaView(schemas: Seq[SchemaDefinition])
       case _ => compiletime.error("SchemaView can't dereference " + compiletime.codeOf(ref))
     }).asInstanceOf[Option[T]]
 
-  /** All types defined in the loaded schemas, in tuples (definingSchema, typeDefinition).
+  /** All types defined in the loaded schemas, as views.
     */
   lazy val types: Map[String, TypeView] =
     schemas.map(schema => schema.types.map((k, v) => (k, TypeView(v, schema)))).reduce(_ ++ _)
 
-  /** All slots defined in the loaded schemas, in tuples (definingSchema, slotDefinition).
+  /** All slots defined in the loaded schemas, as views.
     */
   lazy val slotDefinitions: Map[String, SlotView] =
     schemas.map(schema => schema.slotDefinitions.map((k, v) => (k, SlotView(v, schema)))).reduce(
       _ ++ _,
     )
 
-  /** All classes defined in the loaded schemas, in tuples (definingSchema, classDefinition).
+  /** All classes defined in the loaded schemas, as views.
     */
   lazy val classes: Map[String, ClassView] =
     schemas.map(schema => schema.classes.map((k, v) => (k, ClassView(v, schema)))).reduce(_ ++ _)
@@ -103,12 +103,12 @@ final case class SchemaView(schemas: Seq[SchemaDefinition])
             }
     found.toMap
 
-  /** All enums defined in the loaded schemas, in tuples (definingSchema, enumDefinition).
+  /** All enums defined in the loaded schemas, as views.
     */
   lazy val enums: Map[String, EnumView] =
     schemas.map(schema => schema.enums.map((k, v) => (k, EnumView(v, schema)))).reduce(_ ++ _)
 
-  /** All subsets defined in the loaded schemas, in tuples (definingSchema, subsetDefinition).
+  /** All subsets defined in the loaded schemas, as views.
     */
   lazy val subsets: Map[String, SubsetView] =
     schemas.map(schema => schema.subsets.map((k, v) => (k, SubsetView(v, schema)))).reduce(_ ++ _)

@@ -15,6 +15,10 @@ classes:
   Metadata:
     class_uri: https://neverblink.eu/linkml/tests/Metadata
     attributes:
-      derivedEquals:
+      derived_equals:
         range: string
         description: This model's derived tree_root class should be equivalent to the value of this
+
+      opt_in:
+        range: Boolean
+        description: Whether this schema should be omitted in the 'all' collection of the model catalogue

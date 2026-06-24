@@ -1,0 +1,25 @@
+id: https://neverblink.eu/linkml/tests/pruning/
+name: pruning
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+  - imported
+
+classes:
+  NotTreeRootClass:
+    slots:
+      - some_slot
+
+  SomeClass:
+    tree_root: true
+    is_a: SomeOtherClass
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    range: string

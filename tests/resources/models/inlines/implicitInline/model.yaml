@@ -9,7 +9,7 @@ default_curi_maps:
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata
 extensions:
-  derivedEquals: inlines/explicitInline
+  derived_equals: inlines/explicitInline
 
 imports:
   - linkml:types

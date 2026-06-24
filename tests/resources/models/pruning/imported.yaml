@@ -1,0 +1,23 @@
+id: https://neverblink.eu/linkml/tests/imported/
+name: imported
+prefixes:
+  linkml: https://w3id.org/linkml/
+
+default_curi_maps:
+  - semweb_context
+
+imports:
+  - linkml:types
+classes:
+  SomeOtherClass:
+    slots:
+      - some_other_slot
+  UnusedClass:
+    slots:
+      - unused_slot
+slots:
+  unused_slot:
+    range: uri
+  some_other_slot:
+    range: integer
+    required: true

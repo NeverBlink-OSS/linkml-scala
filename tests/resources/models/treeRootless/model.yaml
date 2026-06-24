@@ -1,5 +1,7 @@
-id: https://neverblink.eu/linkml/tests/mixin/
-name: mixin
+id: https://neverblink.eu/linkml/tests/treeRootless/
+name: treeRootless
+comments:
+  - This model does not have a tree_root class defined, so it can be used for testing tree_root overrides
 prefixes:
   linkml: https://w3id.org/linkml/
 
@@ -9,23 +11,19 @@ default_curi_maps:
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata
 extensions:
-  derived_equals: basic
+  opt_in: true
 
 imports:
   - linkml:types
 
 classes:
   SomeOtherClass:
-    mixin: true
-    slots:
-      - some_other_slot
-  SomeClass:
-    tree_root: true
-    mixins:
-      - SomeOtherClass
     slots:
       - some_slot
-
+  SomeClass:
+    slots:
+      - some_slot
+      - some_other_slot
 slots:
   some_slot:
     range: string

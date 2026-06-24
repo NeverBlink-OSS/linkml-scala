@@ -97,7 +97,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   `ancestors(x) = x.mixins, x.isA, ancestors(x.isA), ancestors(x.mixins)`
     */
   def ancestors(reflexive: Boolean): Iterable[ClassView] =
-    Closure(this, getParents, reflexive)
+    Closure.get(this, getParents, reflexive)
 
   /** Get the slots that are directly defined in this class.
     */
@@ -260,7 +260,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *   `ancestors(x) = x.mixins, x.isA, ancestors(x.isA), ancestors(x.mixins)`
     */
   def ancestors(reflexive: Boolean): Iterable[SlotDefinition] =
-    Closure(slot, getParents, reflexive)
+    Closure.get(slot, getParents, reflexive)
 
   /** Test whether this slot is declared as inlined, or is implicitly inlined as its range is a
     * class without an identifier

@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.tests
 
-import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.schemaview.{SchemaView, yamlAs, yaml}
 
 import scala.jdk.CollectionConverters.*
 
@@ -77,10 +77,19 @@ object ModelCatalogue {
       )
     }
 
-  lazy val all: Seq[Entry] = Resources.map.keySet().asScala.toSeq
+  /** All model catalogue entries, including those with the opt_in flag set */
+  lazy val allOptIn: Seq[Entry] = Resources.map.keySet().asScala.toSeq
     .filter(_.endsWith("model.yaml"))
     .map(_.stripSuffix("model.yaml"))
     .map(Entry(_))
+
+  /** All model catalogue entries that do not have the `opt_in` flag set. */
+  lazy val all: Seq[Entry] = allOptIn
+    .filter(
+      !_.model.root.extensions.get("opt_in").flatMap(
+        _.extensionValue.yamlAs[Boolean].toOption,
+      ).contains(true),
+    )
 
   // TODO: generate this automatically maybe
   val `abstract`: Entry = Entry("/models/abstract/")
@@ -90,13 +99,16 @@ object ModelCatalogue {
   val basic: Entry = Entry("/models/basic/")
   val basic2: Entry = Entry("/models/basic2/")
   val curie: Entry = Entry("/models/curie/")
+  val pruning: Entry = Entry("/models/pruning/")
   val mixin: Entry = Entry("/models/mixin/")
   val reference: Entry = Entry("/models/reference/")
+  val treeRootless: Entry = Entry("/models/treeRootless/")
   val inheritance: Entry = Entry("/models/inheritance/")
   val uri: Entry = Entry("/models/uri/")
   val uriOrCurie: Entry = Entry("/models/uriOrCurie/")
 
   object inlines {
+    val explicitInline: Entry = Entry("/models/inlines/explicitInline/")
     val implicitInlineAsCompactDict: Entry = Entry(
       "/models/inlines/implicitInlineAsCompactDict/",
     )
