@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
 import eu.neverblink.linkml.schemaview.{ClassView, Closure, SchemaView}
 import io.circe.Json

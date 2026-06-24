@@ -171,7 +171,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         LinkMlGenerator(using sv).generate()
       schema.classes.keys should contain theSameElementsAs Seq(
         "SomeClass",
-        "SomeOtherClass"
+        "SomeOtherClass",
       )
     }
 
@@ -181,7 +181,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         LinkMlGenerator(using sv).generate()
       schema.classes.keys should contain theSameElementsAs Seq(
         "SomeClass",
-        "SomeOtherClass"
+        "SomeOtherClass",
       )
     }
 
@@ -191,11 +191,11 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         LinkMlGenerator(using sv).generate(pruningMode = treeRoot(None))
       schema.classes.keys should contain theSameElementsAs Seq(
         "SomeClass",
-        "SomeOtherClass"
+        "SomeOtherClass",
       )
       schema.types.keys should contain theSameElementsAs Seq(
         "string",
-        "integer"
+        "integer",
       )
     }
 

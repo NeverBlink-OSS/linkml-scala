@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.tests
 
-import eu.neverblink.linkml.schemaview.{SchemaView, yamlAs, yaml}
+import eu.neverblink.linkml.schemaview.{SchemaView, yamlAs}
 
 import scala.jdk.CollectionConverters.*
 

@@ -15,7 +15,7 @@ class ClosureSpec extends AnyWordSpec, Matchers {
         Seq(), // 5
         Seq(), // 6
       )
-      Closure(0, ids.apply) shouldBe Seq(0, 1, 3, 2, 5) // linkml-py's "Depth-first" order
+      Closure.reflexive(0, ids.apply) shouldBe Seq(0, 1, 3, 2, 5) // linkml-py's "Depth-first" order
     }
     "work irreflexively" in {
       val ids: Seq[Seq[Int]] = Seq(
@@ -27,7 +27,7 @@ class ClosureSpec extends AnyWordSpec, Matchers {
         Seq(), // 5
         Seq(), // 6
       )
-      Closure(0, ids.apply, reflexive = false) shouldBe Seq(
+      Closure.irreflexive(0, ids.apply) shouldBe Seq(
         1,
         3,
         2,
@@ -40,7 +40,7 @@ class ClosureSpec extends AnyWordSpec, Matchers {
         Seq(0), // 1
         Seq(), // 2
       )
-      Closure(0, ids.apply) shouldBe Seq(0, 1)
+      Closure.reflexive(0, ids.apply) shouldBe Seq(0, 1)
     }
     "work if there's long loops" in {
       val ids: Seq[Seq[Int]] = Seq(
@@ -51,7 +51,7 @@ class ClosureSpec extends AnyWordSpec, Matchers {
         Seq(0), // 4
         Seq(), // 5
       )
-      Closure(0, ids.apply) shouldBe Seq(0, 1, 2, 3, 4)
+      Closure.reflexive(0, ids.apply) shouldBe Seq(0, 1, 2, 3, 4)
     }
   }
 }
