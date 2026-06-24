@@ -73,14 +73,23 @@ final class SchemaValidator(using sv: SchemaView) {
     * identifier/key slots
     */
   private lazy val identifierAndKey: Seq[SchemaProblem.Error] = {
-    sv.classes.values.flatMap(derivedCls => {
+    val errors = Seq.newBuilder[SchemaProblem.Error]
+    sv.classes.values.foreach { derivedCls =>
       val keyOrId = derivedCls.derivedAttributes.values
-        .map(_.slot)
-        .filter(slot => slot.identifier || slot.key)
-      if keyOrId.size > 1 then
-        Seq(SchemaProblem.MultipleKeyOrIdSlots(derivedCls.cls, keyOrId.toSeq))
-      else Seq.empty
-    }).toSeq
+        .collect { case s if s.slot.identifier || s.slot.key => s.slot }
+      if (keyOrId.size > 1) {
+        errors.addOne(SchemaProblem.MultipleKeyOrIdSlots(derivedCls.cls, keyOrId.toSeq))
+      } else if (keyOrId.size == 1) {
+        keyOrId.head.range.flatMap(sv.resolve).orElse(sv.schemas.collectFirst {
+          case s if s.defaultRange.isDefined => s.defaultRange.flatMap(sv.resolve)
+        }.flatten).orNull match {
+          case _: TypeDefinition | null =>
+          case elem =>
+            errors.addOne(SchemaProblem.InvalidKeyOrIdSlotType(derivedCls.cls, elem.name))
+        }
+      }
+    }
+    errors.result()
   }
 
   /** Errors for classes, types, and enums that have non-unique names

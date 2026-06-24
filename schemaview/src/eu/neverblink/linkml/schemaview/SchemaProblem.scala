@@ -109,6 +109,12 @@ object SchemaProblem {
       s"Multiple key / identifier slots in class '${inClass.name}': $slotsFormatted"
     lazy val description: String = verbose
 
+  final case class InvalidKeyOrIdSlotType(inClass: ClassDefinition, elemName: String) extends Error:
+    lazy val verbose: String =
+      s"Invalid type of key / identifier slot in class '${inClass.name}': '$elemName'. " +
+        "Expected a basic, scalar data type (e.g., string, integer, float, uri)."
+    lazy val description: String = verbose
+
   final case class NonUniqueName(name: String, forElements: String) extends Error:
     lazy val verbose: String = s"Non-unique name '$name' used for $forElements"
 
