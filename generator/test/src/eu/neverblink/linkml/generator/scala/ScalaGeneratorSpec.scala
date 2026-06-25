@@ -726,6 +726,23 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate an emit_prefixes object" in {
+      val files = ScalaGenerator(using ModelCatalogue.emitPrefixes.model)
+        .generate(testPkg).toMap
+      files.keys should contain theSameElementsAs Seq(
+        "SomeClass.scala",
+        "Prefixes.scala",
+      )
+      val code = files("Prefixes.scala")
+      Seq(
+        "\"linkml\" -> \"https://w3id.org/linkml/\",",
+        "\"ex\" -> \"http://example.org/\",",
+        "\"nb\" -> \"https://neverblink.eu/example#\",",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+    }
+
     "generate the metamodel" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv

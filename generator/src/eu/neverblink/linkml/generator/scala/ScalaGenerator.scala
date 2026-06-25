@@ -16,8 +16,9 @@ final class ScalaGenerator(using sv: SchemaView) {
     * @return
     *   Tuples of form (file name, file content) for all elements in the LinkML model
     */
-  def generate(pkg: String): Iterable[(String, String)] =
+  def generate(pkg: String, emitEmitPrefixes: Boolean = true): Iterable[(String, String)] =
     generateClasses(pkg) ++ generateEnums(pkg) // TODO: add types
+      ++ (if emitEmitPrefixes then generateEmitPrefixes(pkg) else None)
 
   /** Generate Scala counterparts of LinkML classes: case classe implementations for instantiable
     * classes, abstract class interfaces for non-mixin classes, traits for mixins, with LinkML
@@ -85,6 +86,29 @@ final class ScalaGenerator(using sv: SchemaView) {
         Some(enumName + ".scala" -> enumInfo)
       }
     }
+
+  private def generateEmitPrefixes(pkg: String): Option[(String, String)] = {
+    if sv.root.emitPrefixes.isEmpty then return None
+
+    val prefixes = sv.root.emitPrefixes.map(prefix =>
+      sv.resolvePrefix(prefix).map(uri => s"""    "$prefix" -> "$uri",\n""").get,
+    ).mkString.strip()
+    Some(
+      "Prefixes.scala" ->
+        s"""package $pkg
+           |
+           |// GENERATED FROM LINKML
+           |
+           |/** Prefixes emitted from the `emit_prefixes` schema slot.
+           |  */
+           |object Prefixes {
+           |  val map: Map[String, String] = Map(
+           |    $prefixes
+           |  )
+           |}
+           |""".stripMargin,
+    )
+  }
 
   /** Generate a stub file for classes with the linkml:Any class URI, aliasing them to the runtime
     * [[Anything]] class.

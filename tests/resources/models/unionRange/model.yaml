@@ -4,11 +4,6 @@ imports:
   - linkml:types
   - linkml:extended_types
 
-prefixes:
-  linkml: https://w3id.org/linkml/
-
-default_curi_maps:
-  - semweb_context
 
 classes:
   Union:

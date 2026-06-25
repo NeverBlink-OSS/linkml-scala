@@ -1,9 +1,6 @@
 id: https://neverblink.eu/linkml/tests/multivaluedReference/
 name: multivaluedReference
-prefixes:
-  linkml: https://w3id.org/linkml/
-default_curi_maps:
-    - semweb_context
+
 imports:
   - linkml:types
 

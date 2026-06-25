@@ -1,14 +1,10 @@
 id: https://neverblink.eu/linkml/tests/curie/
 name: curie
 prefixes:
-  linkml: https://w3id.org/linkml/
   ex: http://example.org/
 
 emit_prefixes:
   - ex
-
-default_curi_maps:
-  - semweb_context
 
 imports:
   - linkml:types
