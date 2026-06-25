@@ -2,11 +2,6 @@ id: https://neverblink.eu/linkml/tests/basic2/
 name: basic2
 comments:
   - The two classes here are not linked with each other
-prefixes:
-  linkml: https://w3id.org/linkml/
-
-default_curi_maps:
-  - semweb_context
 
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata

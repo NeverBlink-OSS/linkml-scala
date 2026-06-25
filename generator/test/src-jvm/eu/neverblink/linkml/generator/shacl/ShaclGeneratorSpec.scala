@@ -16,10 +16,6 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     val schemaShared =
       """id: https://neverblink.eu/linkml/shacl/test/
         |name: test
-        |default_curi_maps:
-        |  - semweb_context
-        |prefixes:
-        |  linkml: https://w3id.org/linkml/
         |imports:
         |  - linkml:types"""
 

@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.schemaview.SchemaView.*
 
 import scala.annotation.unused
 import scala.collection.mutable
@@ -175,35 +176,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition])
       @unused v2: Reference[Element],
   ): Reference[Element] = v1
 
-  private val underlyingPrefixResolver: BasicPrefixResolver = new BasicPrefixResolver
+  private val underlyingPrefixResolver: BasicPrefixResolver = createPrefixResolver(root)
   private val validator = SchemaValidator()
 
-  if (schemas.exists(_.defaultCuriMaps.contains("semweb_context"))) {
-    Array(
-      ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-      ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
-      ("owl", "http://www.w3.org/2002/07/owl#"),
-      ("xsd", "http://www.w3.org/2001/XMLSchema#"),
-      ("dc", "http://purl.org/dc/terms/"),
-      ("dcterms", "http://purl.org/dc/terms/"),
-      ("faldo", "http://biohackathon.org/resource/faldo#"),
-      ("foaf", "http://xmlns.com/foaf/0.1/"),
-      ("oa", "http://www.w3.org/ns/oa#"),
-      ("idot", "http://identifiers.org/"),
-      ("void", "http://rdfs.org/ns/void#"),
-      ("prov", "http://www.w3.org/ns/prov#"),
-      ("dcat", "http://www.w3.org/ns/dcat#"),
-    ).foreach { case (prefix, uri) =>
-      underlyingPrefixResolver.add(prefix, uri)
-    }
-  }
-  for schema <- schemas do
-    schema.prefixes.values.foreach(prefix =>
-      prefix.prefixReference match {
-        case Uri(original) => underlyingPrefixResolver.add(prefix.prefixPrefix, original)
-        case Curie(original) =>
-      },
-    )
   {
     val problems = validator.fatalProblems
     if (problems.nonEmpty) {
@@ -216,6 +191,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition])
       sys.error(s"Fatal validation problems:\n$formatted")
     }
   }
+
+  override def resolvePrefix(prefix: String): Option[String] =
+    underlyingPrefixResolver.resolvePrefix(prefix)
 
   override def expand(curie: String): String = underlyingPrefixResolver.expand(curie)
 
@@ -389,16 +367,48 @@ object SchemaView {
       importer: Importer,
       visited: mutable.Set[String],
   ): Seq[SchemaDefinition] = {
-    given PrefixResolver = new BasicPrefixResolver {
-      schema.prefixes.foreach { case (prefix, prefixRef) =>
-        add(prefix, prefixRef.prefixReference.original)
-      }
-    }
+    given PrefixResolver = createPrefixResolver(schema)
     schema.imports.flatMap { uoc =>
       var sUri = uoc.uri
       if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
         sUri = baseUri + PlatformSpecificUtils.separator + sUri
       loadSchemasInternal(sUri, true, importer, visited)
     }
+  }
+
+  /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
+    * resolves "semweb_context" curi map and loads user defined prefixes.
+    */
+  private def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
+    val prefixResolver = new BasicPrefixResolver
+    Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
+    if (forSchema.defaultCuriMaps.contains("semweb_context")) {
+      Array(
+        ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+        ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
+        ("owl", "http://www.w3.org/2002/07/owl#"),
+        ("xsd", "http://www.w3.org/2001/XMLSchema#"),
+        ("dc", "http://purl.org/dc/terms/"),
+        ("dcterms", "http://purl.org/dc/terms/"),
+        ("faldo", "http://biohackathon.org/resource/faldo#"),
+        ("foaf", "http://xmlns.com/foaf/0.1/"),
+        ("oa", "http://www.w3.org/ns/oa#"),
+        ("idot", "http://identifiers.org/"),
+        ("void", "http://rdfs.org/ns/void#"),
+        ("prov", "http://www.w3.org/ns/prov#"),
+        ("dcat", "http://www.w3.org/ns/dcat#"),
+      ).foreach { case (prefix, uri) =>
+        prefixResolver.add(prefix, uri)
+      }
+    }
+
+    forSchema.prefixes.values.foreach(prefix =>
+      prefix.prefixReference match {
+        case Uri(original) => prefixResolver.add(prefix.prefixPrefix, original)
+        case Curie(original) =>
+      },
+    )
+
+    prefixResolver
   }
 }
