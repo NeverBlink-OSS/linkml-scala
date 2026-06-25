@@ -234,6 +234,26 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
           )
       },
     ).getOrElse(InlineType.plain)
+
+  /** Materialize this [[ClassView]] into a derived [[ClassDefinition]]. This inlines all slots as
+    * attributes, and clears any inheritance slots. Additionally, sets the class uri using
+    * [[SchemaView]] logic.
+    */
+  def materialize: ClassDefinitionImpl = {
+    inner.asInstanceOf[ClassDefinitionImpl].copy(
+      classUri = Some(uriOrCurie),
+      isA = None,
+      mixins = Seq.empty,
+      attributes = derivedAttributes.map((slotKey, slot) =>
+        slotKey -> slot.inner.asInstanceOf[SlotDefinitionImpl].copy(
+          isA = None,
+          mixins = Seq.empty,
+        ),
+      ),
+      slots = Seq.empty,
+      slotUsage = Map.empty,
+    )
+  }
 }
 
 final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition)(using

@@ -8,7 +8,7 @@ import scala.util.control.NonFatal
 trait BaseCommand {
   this: Command[?] =>
 
-  protected final def err(message: String): Unit = {
+  protected final def err(message: String): Nothing = {
     printLine(message, toStderr = true)
     exit(1)
   }

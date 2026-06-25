@@ -1,77 +1,14 @@
 package eu.neverblink.linkml.generator.linkml
 
+import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.OutputFormat.{json, yaml}
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
-import eu.neverblink.linkml.schemaview.{ClassView, Closure, SchemaView}
-import io.circe.Json
-import org.virtuslab.yaml.{Node, NodeOps}
+import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.schemaview.SchemaView.{ElementTypeTag, defaultRangeResolved}
+import org.virtuslab.yaml.NodeOps
 
 class LinkMlGenerator(using sv: SchemaView) {
   import LinkMlGenerator.*
-
-  /** Materialize the provided [[ClassView]] into a derived [[ClassDefinition]]. This inlines all
-    * slots as attributes, and clears any inheritance slots. Additionally, sets the class uri using
-    * [[SchemaView]] logic.
-    */
-  def materializeClass(classView: ClassView): ClassDefinitionImpl = {
-    classView.inner.impl.copy(
-      classUri = Some(classView.uriOrCurie),
-      isA = None,
-      mixins = Seq.empty,
-      attributes = classView.derivedAttributes.map((slotKey, slot) =>
-        slotKey -> slot.inner.impl.copy(
-          isA = None,
-          mixins = Seq.empty,
-        ),
-      ),
-      slots = Seq.empty,
-      slotUsage = Map.empty,
-    )
-  }
-
-  /** Find all [[Element]]s that are reachable from the [[rootClass]] class.
-    *
-    * @param fromClasses
-    *   Class definition(s) to start the reachability query from.
-    * @param skipClassDerivation
-    *   If false, will only consider `derivedAttributes` for class derivation. This is in-line with
-    *   what [[materializeClass]] will clear. If true, will instead mark inheritance-related slots
-    *   as reachable.
-    * @todo
-    *   Make this search more robust (LNK-110). Currently, this will prune things incorrectly if
-    *   there are any boolean slots (like `any_of`)
-    * @return
-    *   A set of elements reachable from [[rootClass]] and their [[ElementTypeTag]]s
-    */
-  private def reachableFrom(
-      fromClasses: Seq[ClassDefinition],
-      skipClassDerivation: Boolean,
-  ): Set[(ElementTypeTag, Element)] =
-    Closure.reflexive[(ElementTypeTag, Element)](
-      fromClasses.map(ElementTypeTag.classDef -> _),
-      el => {
-        val elements: Iterable[Element] = el._2 match {
-          case cls: ClassDefinition =>
-            if !skipClassDerivation then sv.classes(cls.name).derivedAttributes.map(_._2.slot)
-            else
-              (cls.slots ++ cls.isA ++ cls.mixins).flatMap(_.resolve)
-                ++ cls.attributes.values ++ cls.slotUsage.values
-          case typeDefinition: TypeDefinition =>
-            (typeDefinition.typeof ++ typeDefinition.unionOf).flatMap(_.resolve)
-          case enumDefinition: EnumDefinition =>
-            enumDefinition.inherits.flatMap(_.resolve)
-          case slotDefinition: SlotDefinition =>
-            val inherited = slotDefinition.isA ++ slotDefinition.mixins
-            (slotDefinition.range ++ slotDefinition.domain ++ (
-              if skipClassDerivation then inherited
-              else Seq.empty
-            )).flatMap(_.resolve)
-          case _ => Seq.empty
-        }
-
-        elements.map(el => ElementTypeTag(el) -> el)
-      },
-    ).toSet
 
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]]. Merges imports,
     * runs class derivation and if a `tree_root` class is present, prunes the schema to only include
@@ -96,12 +33,12 @@ class LinkMlGenerator(using sv: SchemaView) {
 
     lazy val elementsFromTreeRoot: Option[Set[(ElementTypeTag, Element)]] = maybeTreeRoot
       .map(root =>
-        reachableFrom(Seq(root.inner), skipClassDerivation)
+        sv.reachableFrom(Seq(root.inner), skipClassDerivation)
           .incl((ElementTypeTag.typeDef, defaultRange)),
       )
 
     lazy val elementsFromSchemaRoot: Set[(ElementTypeTag, Element)] =
-      reachableFrom(sv.root.classes.values.toSeq, skipClassDerivation)
+      sv.reachableFrom(sv.root.classes.values.toSeq, skipClassDerivation)
 
     def doIncludeElement(element: Element): Boolean =
       pruningMode match {
@@ -121,53 +58,27 @@ class LinkMlGenerator(using sv: SchemaView) {
         val toInclude = sv.classes.filter((_, v) => doIncludeElement(v.inner))
         if skipClassDerivation then
           toInclude.map((k, v) => k -> v.cls.impl.copy(classUri = Some(v.uriOrCurie)))
-        else toInclude.map((k, v) => k -> materializeClass(v))
+        else toInclude.map((k, v) => k -> v.materialize)
       },
       types = sv.types
-        .filter((_, v) => doIncludeElement(v.inner))
-        .map((k, v) => k -> v.inner.impl.copy(typeUri = Some(v.uriOrCurie))),
+        .collect {
+          case (k, v) if doIncludeElement(v.inner) =>
+            k -> v.inner.impl.copy(typeUri = Some(v.uriOrCurie))
+        },
       enums = sv.enums
-        .filter((_, v) => doIncludeElement(v.inner))
-        .map((k, v) => k -> v.inner.impl.copy(enumUri = Some(v.uriOrCurie))),
+        .collect {
+          case (k, v) if doIncludeElement(v.inner) =>
+            k -> v.inner.impl.copy(enumUri = Some(v.uriOrCurie))
+        },
       slotDefinitions =
         if skipClassDerivation then
           sv.slotDefinitions
-            .filter((_, v) => doIncludeElement(v.inner))
-            .map((k, v) => k -> v.inner.impl.copy(slotUri = Some(v.uriOrCurie)))
+            .collect {
+              case (k, v) if doIncludeElement(v.inner) =>
+                k -> v.inner.impl.copy(slotUri = Some(v.uriOrCurie))
+            }
         else Map.empty,
     )
-  }
-
-  /** Convert scala-yaml [[Node]] to a circe [[Json]] AST.
-    */
-  def yamlToJson(yaml: Node): Json = yaml match {
-    case Node.MappingNode(entries, _) =>
-      val fields = Array.newBuilder[(String, Json)]
-      entries.foreach { kv =>
-        val value = yamlToJson(kv._2)
-        if (value != Json.False) { // skip default false values
-          fields.addOne((kv._1.asYaml.trim, value))
-        }
-      }
-      Json.obj(fields.result()*)
-    case Node.SequenceNode(elements, _) =>
-      Json.arr(elements.map(yamlToJson)*)
-    case Node.ScalarNode(value, _) =>
-      value match {
-        case "true" | "True" | "TRUE" => Json.True
-        case "false" | "False" | "FALSE" => Json.False
-        case "null" | "~" | "Null" | "NULL" => Json.Null
-        case s if s.nonEmpty && {
-              val ch = s.charAt(0)
-              Character.isDigit(ch) || ch == '-'
-            } =>
-          yaml.as[BigDecimal] match {
-            case Right(v) => Json.fromBigDecimal(v)
-            case _ => Json.fromString(value)
-          }
-        case _ => Json.fromString(value)
-      }
-    case _ => Json.Null
   }
 
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]] and serialize it
@@ -179,18 +90,18 @@ class LinkMlGenerator(using sv: SchemaView) {
     *   Method to use for schema definition pruning
     * @param skipClassDerivation
     *   If true, will not derive classes and instead copy them as-is.
-    * @param asJson
-    *   If true, will instead serialize the derived schema as JSON instead of YAML
+    * @param outputFormat
+    *   Output serialization format to use
     * @return
     *   The derived [[SchemaDefinition]]
     */
   def serialize(
       pruningMode: PruningMode = PruningMode.treeRoot(None),
       skipClassDerivation: Boolean = false,
-      asJson: Boolean = false,
+      outputFormat: OutputFormat = yaml,
   ): String = {
     val node = Codec.codec.encode(generate(pruningMode, skipClassDerivation))
-    if asJson then yamlToJson(node).spaces2
+    if outputFormat == json then JsonUtil.yamlToJson(node).spaces2
     else node.asYaml
   }
 }
@@ -203,22 +114,11 @@ object LinkMlGenerator {
   extension (slotDef: SlotDefinition) private def impl: SlotDefinitionImpl = slotDef.asInstanceOf
   extension (enumDef: EnumDefinition) private def impl: EnumDefinitionImpl = enumDef.asInstanceOf
 
-  private enum ElementTypeTag:
-    case classDef, typeDef, slotDef, enumDef, other
-  private object ElementTypeTag:
-    def apply(el: Element): ElementTypeTag = el match {
-      case _: ClassDefinition => classDef
-      case _: TypeDefinition => typeDef
-      case _: SlotDefinition => slotDef
-      case _: EnumDefinition => enumDef
-      case _ => other
-    }
-
   /** The method to use for schema definition pruning: tree root-based, schema root based and no
     * pruning
     */
   enum PruningMode:
-    /** Prune all elements that are unreachable from the schema-level tree root class Falls back to
+    /** Prune all elements that are unreachable from the schema-level tree root class. Falls back to
       * root-schema based pruning if no schema-level tree_root class is present and no override is
       * provided.
       * @param `override`
@@ -232,4 +132,9 @@ object LinkMlGenerator {
 
     /** Don't prune anything */
     case skip
+
+  /** Serialization format for LinkML models
+    */
+  enum OutputFormat:
+    case yaml, json
 }
