@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.RdfUtils
 import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -272,6 +273,13 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should not include "linkml:Extension a rdfs:Class"
       turtle should not include "linkml:Extensible a rdfs:Class"
       "rdfs:Class".r.findAllMatchIn(turtle).size shouldBe 2
+    }
+
+    "generate all catalogue models without errors" when {
+      for entry <- ModelCatalogue.all do
+        s"model '${entry.model.root.name}'" in {
+          RdfsGenerator(using entry.model).generate()._2 should not be empty
+        }
     }
   }
 }
