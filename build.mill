@@ -17,12 +17,10 @@ import mill.scalalib.scalafmt.ScalafmtModule
 import mill.scalajslib.*
 import mill.scalajslib.api.ModuleKind
 import scalalib.*
-import scalanativelib.*
 import io.github.alexarchambault.millnativeimage.NativeImage
 
 val scala = "3.8.3"
 val scalaJS = "1.22.0"
-val scalaNative = "0.5.12"
 
 object runtime extends Module {
   object jvm extends CommonModule {
@@ -31,10 +29,6 @@ object runtime extends Module {
 
   object js extends CommonModule, NoBspModule, CommonScalaJSModule {
     object test extends ScalaJSTests, CommonTestModule
-  }
-
-  object native extends CommonModule, NoBspModule, CommonScalaNativeModule {
-    object test extends ScalaNativeTests, CommonTestModule
   }
 }
 
@@ -53,14 +47,6 @@ object yaml extends Module {
     )
 
     object test extends ScalaJSTests, CommonTestModule
-  }
-
-  object native extends YamlModule, NoBspModule, CommonScalaNativeModule {
-    def moduleDeps = Seq(
-      build.runtime.native,
-    )
-
-    object test extends ScalaNativeTests, CommonTestModule
   }
 
   trait YamlModule extends CommonModule {
@@ -94,18 +80,6 @@ object metamodel extends Module {
       )
     }
   }
-
-  object native extends NoBspModule, CommonScalaNativeModule, ResourcesAsStrings("metamodel") {
-    def moduleDeps = Seq(
-      build.yaml.native,
-    )
-
-    object test extends ScalaNativeTests, CommonTestModule {
-      override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.15",
-      )
-    }
-  }
 }
 
 object schemaview extends Module {
@@ -122,14 +96,6 @@ object schemaview extends Module {
     )
 
     object test extends ScalaJSTests, CommonTestModule
-  }
-
-  object native extends NoBspModule, CommonScalaNativeModule {
-    def moduleDeps = Seq(
-      build.metamodel.native,
-    )
-
-    object test extends ScalaNativeTests, CommonTestModule
   }
 }
 
@@ -162,16 +128,6 @@ object generator extends Module {
 
     object test extends ScalaJSTests, CommonTestModule {
       override def moduleDeps = super.moduleDeps :+ build.tests.js
-    }
-  }
-
-  object native extends NoBspModule, CommonScalaNativeModule, GeneratorDeps {
-    def moduleDeps = Seq(
-      build.schemaview.native,
-    )
-
-    object test extends ScalaNativeTests, CommonTestModule {
-      override def moduleDeps = super.moduleDeps :+ build.tests.native
     }
   }
 
@@ -236,17 +192,6 @@ object tests extends Module {
         CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.js,
-    )
-  }
-
-  object native
-      extends NoBspModule,
-        ResourcesAsStrings("tests"),
-        CommonScalaNativeModule,
-        TestScalaNativeModule,
-        CommonTestModule {
-    def moduleDeps = Seq(
-      build.schemaview.native,
     )
   }
 }
@@ -318,10 +263,6 @@ trait CommonScalaJSModule extends ScalaJSModule, CommonPublishModule {
   def scalaJSVersion = scalaJS
 
   def moduleKind = Task { ModuleKind.ESModule }
-}
-
-trait CommonScalaNativeModule extends ScalaNativeModule, CommonPublishModule {
-  def scalaNativeVersion = scalaNative
 }
 
 trait CommonPublishModule extends ScalaModule, PublishModule {

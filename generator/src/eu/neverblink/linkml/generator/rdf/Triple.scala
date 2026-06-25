@@ -36,6 +36,7 @@ object XmlSchema {
 }
 
 object Rdf {
+  val Property: Iri = Iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#Property")
   val first: Iri = Iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#first")
   val nil: Iri = Iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#nil")
   val rest: Iri = Iri("http://www.w3.org/1999/02/22-rdf-syntax-ns#rest")

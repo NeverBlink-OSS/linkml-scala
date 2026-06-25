@@ -353,6 +353,41 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "fail on key / identifier with invalid types" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |prefixes:
+           |  linkml: https://w3id.org/linkml/
+           |imports:
+           |  linkml:meta
+           |classes:
+           |  some_class:
+           |    slots:
+           |    - id1
+           |  some_another_class:
+           |    slots:
+           |    - id2
+           |slots:
+           |  id1:
+           |    identifier: true
+           |    range: UnitOfMeasure
+           |  id2:
+           |    key: true
+           |    range: pv_formula_options
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      val msg = SchemaValidator(using sv).validate().failed.get.getMessage
+
+      Seq(
+        """Schema validation failed:
+          |Invalid type of key / identifier slot in class 'some_class': 'UnitOfMeasure'. Expected a basic, scalar data type (e.g., string, integer, float, uri).
+          |Invalid type of key / identifier slot in class 'some_another_class': 'pv_formula_options'. Expected a basic, scalar data type (e.g., string, integer, float, uri).""".stripMargin,
+      ) foreach { part =>
+        msg should include(part)
+      }
+    }
+
     "provide a linkml:types hint for invalid string ranges" in {
       val schemaYaml =
         s"""$schemaShared

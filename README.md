@@ -92,7 +92,16 @@ Parameters:
 
 Generate SHACL (Shapes Constraint Language) graphs for RDF validation:
 ```shell
-./linkml-scala generate scala --to <output-path> <input-file>
+./linkml-scala generate shacl --to <output-path> <input-file>
+```
+Parameters:
+- `<output-path>` - destination file or directory, _if not specified, output will be written to stdout_
+
+#### Generation of RDF schema
+
+Generate RDF schema:
+```shell
+./linkml-scala generate rdfs --to <output-path> <input-file>
 ```
 Parameters:
 - `<output-path>` - destination file or directory, _if not specified, output will be written to stdout_
