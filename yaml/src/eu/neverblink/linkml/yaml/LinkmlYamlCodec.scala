@@ -5,6 +5,7 @@ import org.virtuslab.yaml.*
 import scala.annotation.nowarn
 import scala.collection.mutable
 import scala.quoted.*
+import scala.util.control.NoStackTrace
 
 abstract class LinkmlYamlCodec[T] {
   def decode(node: Node, id: Option[Any] = None): T
@@ -13,6 +14,12 @@ abstract class LinkmlYamlCodec[T] {
 }
 
 object LinkmlYamlCodec {
+  def decodeError(msg: String, node: Node): Nothing = throw new DecodeError(node.pos match {
+    case Some(pos) =>
+      s"Expected $msg at ${pos.start.line}:${pos.start.column} but got:\n${pos.errorMsg}"
+    case _ => msg
+  })
+
   implicit val anythingCodec: LinkmlYamlCodec[Anything] = new LinkmlYamlCodec[Anything] {
     override def decode(node: Node, id: Option[Any]): Anything = Anything.apply(node.asYaml)
 
@@ -30,7 +37,7 @@ object LinkmlYamlCodec {
   implicit val uriOrCurieCodec: LinkmlYamlCodec[UriOrCurie] = new LinkmlYamlCodec[UriOrCurie] {
     override def decode(node: Node, id: Option[Any]): UriOrCurie = node match {
       case n: Node.ScalarNode if Tag.str eq n.tag => UriOrCurie(n.value)
-      case _ => sys.error(s"Cannot decode ${classOf[UriOrCurie].getName} from: ${node.asYaml}")
+      case n => decodeError("URI or CURIE string value", n)
     }
 
     override def encode(x: UriOrCurie, skipId: Boolean): Node = Node.ScalarNode(x.original)
@@ -110,31 +117,38 @@ private class LinkmlYamlCodecImpl(using Quotes) {
       node: Expr[Node],
       id: Expr[Option[Any]],
   )(using Quotes): Expr[T] = {
-    lazy val tpeName = Expr(tpe.show)
     val implCodec = findImplicitCodec(tpe)
     if (implCodec.isDefined) {
       '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.decode($node, $id) }
     } else if (tpe =:= stringTpe) withDecoderFor(tpe, node, id) { (node, _) =>
       '{
         $node match {
-          case n: Node.ScalarNode if Tag.str eq n.tag => n.value
-          case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+          case n: Node.ScalarNode
+              if (Tag.str eq n.tag) || (Tag.int eq n.tag) || (Tag.float eq n.tag) || (Tag.boolean eq n.tag) =>
+            n.value
+          case n => LinkmlYamlCodec.decodeError("string value", n)
         }
       }
     }
     else if (tpe =:= intTpe) withDecoderFor(tpe, node, id) { (node, _) =>
       '{
         $node match {
-          case n: Node.ScalarNode if Tag.int eq n.tag => n.value.toInt
-          case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+          case n: Node.ScalarNode if Tag.int eq n.tag =>
+            try java.lang.Integer.parseInt(n.value)
+            catch {
+              case _: NumberFormatException =>
+                LinkmlYamlCodec.decodeError("32-bit signed integer number value", n)
+            }
+          case n => LinkmlYamlCodec.decodeError("32-bit signed integer number value", n)
         }
       }
     }
     else if (tpe =:= booleanTpe) withDecoderFor(tpe, node, id) { (node, _) =>
       '{
         $node match {
-          case n: Node.ScalarNode if Tag.boolean eq n.tag => n.value.toBoolean
-          case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+          case n: Node.ScalarNode if Tag.boolean eq n.tag =>
+            java.lang.Boolean.parseBoolean(n.value)
+          case n => LinkmlYamlCodec.decodeError("boolean value", n)
         }
       }
     }
@@ -159,7 +173,7 @@ private class LinkmlYamlCodecImpl(using Quotes) {
               case n: Node.ScalarNode =>
                 if (Tag.nullTag eq n.tag) Seq.empty
                 else Seq(${ genDecode[t1](tpe1, node, id) })
-              case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+              case n => LinkmlYamlCodec.decodeError("sequence or null value", n)
             }
           }
       }
@@ -177,7 +191,7 @@ private class LinkmlYamlCodecImpl(using Quotes) {
                   (vId, ${ genDecode[t2](tpe2, 'v, '{ new Some(vId) }) })
                 }
               case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty
-              case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+              case n => LinkmlYamlCodec.decodeError("map or null value", n)
             }
           }
       }
@@ -189,8 +203,8 @@ private class LinkmlYamlCodecImpl(using Quotes) {
           case n: Node.ScalarNode if Tag.str eq n.tag =>
             val v = $m.get(n.value)
             if (v != null) v
-            else sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
-          case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+            else LinkmlYamlCodec.decodeError("enumeration string value", n)
+          case n => LinkmlYamlCodec.decodeError("enumeration string value", n)
         }
       }
     }
@@ -279,9 +293,10 @@ private class LinkmlYamlCodecImpl(using Quotes) {
                 '{
                   $id match {
                     case Some(s: ft) => s
-                    case Some(s) =>
-                      sys.error(
-                        s"Cannot use value of type ${s.getClass.getName} as ${$ftName}: $s",
+                    case Some(_) =>
+                      LinkmlYamlCodec.decodeError(
+                        s"value of type '${$ftName}' for id field '${$mappedName}'",
+                        $node,
                       )
                     case _ => ${ defaultVal.asExpr }
                   }
@@ -302,15 +317,17 @@ private class LinkmlYamlCodecImpl(using Quotes) {
                       if (fieldInfo.kind == FieldKind.Id) {
                         '{
                           if ($id.isEmpty) {
-                            sys.error(
-                              s"Missing required field '${$mappedName}' of ${$tpeName} in:\n${$node.asYaml}",
+                            LinkmlYamlCodec.decodeError(
+                              s"required field '${$mappedName}' of '${$tpeName}'",
+                              $node,
                             )
                           }
                         }
                       } else {
                         '{
-                          sys.error(
-                            s"Missing required field '${$mappedName}' of ${$tpeName} in:\n${$node.asYaml}",
+                          LinkmlYamlCodec.decodeError(
+                            s"required field '${$mappedName}' of '${$tpeName}'",
+                            $node,
                           )
                         }
                       }
@@ -361,7 +378,8 @@ private class LinkmlYamlCodecImpl(using Quotes) {
                           index += 1
                           params.addOne(
                             if (index == idFieldInfoIndex) {
-                              val kTpe = fields(idFieldInfoIndex).resolvedTpe
+                              val field = fields(idFieldInfoIndex)
+                              val kTpe = field.resolvedTpe
                               (kTpe.asType match {
                                 case '[UriOrCurie] => '{ UriOrCurie(s.toString) }
                                 case '[kt] =>
@@ -369,8 +387,9 @@ private class LinkmlYamlCodecImpl(using Quotes) {
                                     s match {
                                       case value: kt => value
                                       case _ =>
-                                        sys.error(
-                                          s"Cannot decode id field for ${$tpeName} from map key value: ${String.valueOf(s)}",
+                                        LinkmlYamlCodec.decodeError(
+                                          s"value of type '${$tpeName}' for id field",
+                                          $node,
                                         )
                                     }
                                   }
@@ -386,7 +405,7 @@ private class LinkmlYamlCodecImpl(using Quotes) {
                   val kvs = $node match {
                     case n: Node.MappingNode => LinkmlYamlCodec.getFields(n)
                     case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty[String, Node]
-                    case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+                    case n => LinkmlYamlCodec.decodeError("map or null value", n)
                   }
                   ${ genDecodeFields('kvs) }
               }
@@ -397,7 +416,7 @@ private class LinkmlYamlCodecImpl(using Quotes) {
           val kvs = $node match {
             case n: Node.MappingNode => LinkmlYamlCodec.getFields(n)
             case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty[String, Node]
-            case _ => sys.error(s"Cannot decode ${$tpeName} from: ${$node.asYaml}")
+            case n => LinkmlYamlCodec.decodeError("map or null value", n)
           }
           ${ genDecodeFields('kvs) }
         }
@@ -952,3 +971,5 @@ private class LinkmlYamlCodecImpl(using Quotes) {
 private enum FieldKind {
   case Regular, Id, Value, SimpleDict, CompactDict, ExpandedDict
 }
+
+class DecodeError(msg: String) extends RuntimeException(msg), NoStackTrace

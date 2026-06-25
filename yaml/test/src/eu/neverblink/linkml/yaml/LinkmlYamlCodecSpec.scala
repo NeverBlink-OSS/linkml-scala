@@ -15,56 +15,159 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
     "decode and encode strings" in {
       implicit val codec: LinkmlYamlCodec[String] = LinkmlYamlCodec.derived
       roundTrip("abc", "abc\n")
+      roundTrip("true", "true\n")
+      roundTrip("false", "false\n")
+      roundTrip("123", "123\n")
+      roundTrip("123.456", "123.456\n")
       roundTrip("Привіт", "Привіт\n")
       roundTrip("★🎸🎧⋆｡°⋆", "★🎸🎧⋆｡°⋆\n")
-      decodeError[String]("true\n", "Cannot decode java.lang.String from: true")
-      decodeError[String]("a: abc\n", "Cannot decode java.lang.String from: a: abc")
-      decodeError[String]("- abc\n", "Cannot decode java.lang.String from: - abc")
-      decodeError[String]("!!null\n", "Cannot decode java.lang.String from: !!null")
+      decodeError[String](
+        "a: abc\n",
+        """Expected string value at 0:0 but got:
+          |a: abc
+          |^""".stripMargin,
+      )
+      decodeError[String](
+        "- abc\n",
+        """Expected string value at 0:2 but got:
+          |- abc
+          |  ^""".stripMargin,
+      )
+      decodeError[String](
+        "!!null\n",
+        """Expected string value at 1:0 but got:
+          |
+          |^""".stripMargin,
+      )
     }
     "decode and encode ints" in {
       implicit val codec: LinkmlYamlCodec[Int] = LinkmlYamlCodec.derived
       forAll(arbitrary[Int])(x => roundTrip(x, s"$x\n"))
-      decodeError[Int]("1.23\n", "Cannot decode scala.Int from: 1.23")
-      decodeError[Int]("a: 123\n", "Cannot decode scala.Int from: a: 123")
-      decodeError[Int]("- 123\n", "Cannot decode scala.Int from: - 123")
-      decodeError[Int]("Null\n", "Cannot decode scala.Int from: !!null")
+      decodeError[Int](
+        "9876543210\n",
+        """Expected 32-bit signed integer number value at 0:0 but got:
+          |9876543210
+          |^""".stripMargin,
+      )
+      decodeError[Int](
+        "1.23\n",
+        """Expected 32-bit signed integer number value at 0:0 but got:
+          |1.23
+          |^""".stripMargin,
+      )
+      decodeError[Int](
+        "a: 123\n",
+        """Expected 32-bit signed integer number value at 0:0 but got:
+          |a: 123
+          |^""".stripMargin,
+      )
+      decodeError[Int](
+        "- 123\n",
+        """Expected 32-bit signed integer number value at 0:2 but got:
+          |- 123
+          |  ^""".stripMargin,
+      )
+      decodeError[Int](
+        "Null\n",
+        """Expected 32-bit signed integer number value at 0:0 but got:
+          |Null
+          |^""".stripMargin,
+      )
     }
     "decode and encode booleans" in {
       implicit val codec: LinkmlYamlCodec[Boolean] = LinkmlYamlCodec.derived
       forAll(arbitrary[Boolean])(x => roundTrip(x, s"$x\n"))
-      decodeError[Boolean]("123\n", "Cannot decode scala.Boolean from: 123")
-      decodeError[Boolean]("tRUE\n", "Cannot decode scala.Boolean from: tRUE")
-      decodeError[Boolean]("a: true\n", "Cannot decode scala.Boolean from: a: true")
-      decodeError[Boolean]("- true\n", "Cannot decode scala.Boolean from: - true")
-      decodeError[Boolean]("~\n", "Cannot decode scala.Boolean from: !!null")
+      decodeError[Boolean](
+        "123\n",
+        """Expected boolean value at 0:0 but got:
+          |123
+          |^""".stripMargin,
+      )
+      decodeError[Boolean](
+        "tRUE\n",
+        """Expected boolean value at 0:0 but got:
+          |tRUE
+          |^""".stripMargin,
+      )
+      decodeError[Boolean](
+        "a: true\n",
+        """Expected boolean value at 0:0 but got:
+          |a: true
+          |^""".stripMargin,
+      )
+      decodeError[Boolean](
+        "- true\n",
+        """Expected boolean value at 0:2 but got:
+          |- true
+          |  ^""".stripMargin,
+      )
+      decodeError[Boolean](
+        "~\n",
+        """Expected boolean value at 0:0 but got:
+          |~
+          |^""".stripMargin,
+      )
     }
     "decode and encode options of booleans" in {
       implicit val codec: LinkmlYamlCodec[Option[Boolean]] = LinkmlYamlCodec.derived
       roundTrip[Option[Boolean]](Some(true), "true\n")
       roundTrip[Option[Boolean]](Some(false), "false\n")
       roundTrip[Option[Boolean]](None, "!!null\n")
-      decodeError[Option[Boolean]]("123\n", "Cannot decode scala.Boolean from: 123")
-      decodeError[Option[Boolean]]("a: NULL\n", "Cannot decode scala.Boolean from: a: !!null")
-      decodeError[Option[Boolean]]("- null\n", "Cannot decode scala.Boolean from: - !!null")
+      decodeError[Option[Boolean]](
+        "123\n",
+        """Expected boolean value at 0:0 but got:
+          |123
+          |^""".stripMargin,
+      )
+      decodeError[Option[Boolean]](
+        "a: NULL\n",
+        """Expected boolean value at 0:0 but got:
+          |a: NULL
+          |^""".stripMargin,
+      )
+      decodeError[Option[Boolean]](
+        "- null\n",
+        """Expected boolean value at 0:2 but got:
+          |- null
+          |  ^""".stripMargin,
+      )
     }
     "decode and encode sequences of booleans" in {
       implicit val codec: LinkmlYamlCodec[Seq[Boolean]] = LinkmlYamlCodec.derived
       roundTrip(Seq(true, false), "- true\n- false\n")
-      decodeError[Seq[Boolean]]("123\n", "Cannot decode scala.Boolean from: 123")
-      decodeError[Seq[Boolean]]("- ~\n", "Cannot decode scala.Boolean from: !!null")
+      decodeError[Seq[Boolean]](
+        "123\n",
+        """Expected boolean value at 0:0 but got:
+          |123
+          |^""".stripMargin,
+      )
+      decodeError[Seq[Boolean]](
+        "- ~\n",
+        """Expected boolean value at 0:2 but got:
+          |- ~
+          |  ^""".stripMargin,
+      )
       decodeError[Seq[Boolean]](
         "a: true\n",
-        "Cannot decode scala.collection.immutable.Seq[scala.Boolean] from: a: true",
+        """Expected sequence or null value at 0:0 but got:
+          |a: true
+          |^""".stripMargin,
       )
     }
     "decode and encode sequences of option of booleans" in {
       implicit val codec: LinkmlYamlCodec[Seq[Option[Boolean]]] = LinkmlYamlCodec.derived
       roundTrip(Seq(Some(true), Some(false), None), "- true\n- false\n- !!null\n")
-      decodeError[Seq[Option[Boolean]]]("123\n", "Cannot decode scala.Boolean from: 123")
+      decodeError[Seq[Option[Boolean]]](
+        "123\n",
+        """Expected boolean value at 0:0 but got:
+          |123
+          |^""".stripMargin,
+      )
       decodeError[Seq[Option[Boolean]]](
         "a: null\n",
-        "Cannot decode scala.collection.immutable.Seq[scala.Option[scala.Boolean]] from: a: !!null",
+        """Expected sequence or null value at 0:0 but got:
+          |a: null
+          |^""".stripMargin,
       )
     }
     "decode and encode maps of strings to booleans" in {
@@ -72,13 +175,22 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(Map("abc" -> true), "abc: true\n")
       decodeError[Map[String, Boolean]](
         "123\n",
-        "Cannot decode scala.collection.immutable.Map[scala.Predef.String, scala.Boolean] from: 123",
+        """Expected map or null value at 0:0 but got:
+          |123
+          |^""".stripMargin,
       )
       decodeError[Map[String, Boolean]](
         "null: true\n",
-        "Cannot decode java.lang.String from: !!null",
+        """Expected string value at 0:0 but got:
+          |null: true
+          |^""".stripMargin,
       )
-      decodeError[Map[String, Boolean]]("abc: ~\n", "Cannot decode scala.Boolean from: !!null")
+      decodeError[Map[String, Boolean]](
+        "abc: ~\n",
+        """Expected boolean value at 0:5 but got:
+          |abc: ~
+          |     ^""".stripMargin,
+      )
     }
     "decode and encode non-abstract classes" in {
       class MyClass(val a: String, val b: Int, val c: Boolean) derives LinkmlYamlCodec {
@@ -93,10 +205,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(new MyClass("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
       decodeError[MyClass](
         "a: ABC\nb: 123\n",
-        """Missing required field 'c' of MyClass in:
-          |a: ABC
+        """Expected required field 'c' of 'MyClass' at 1:0 but got:
           |b: 123
-          |""".stripMargin,
+          |^""".stripMargin,
       )
     }
     "decode and encode case classes" in {
@@ -105,10 +216,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(MyClass("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
       decodeError[MyClass](
         "b: 123\nc: true\n",
-        """Missing required field 'a' of MyClass in:
-          |b: 123
+        """Expected required field 'a' of 'MyClass' at 1:0 but got:
           |c: true
-          |""".stripMargin,
+          |^""".stripMargin,
       )
     }
     "decode and encode case classes with private constructor" in {
@@ -121,8 +231,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(MyClass.make("ABC", 123, true), "a: ABC\nb: 123\nc: true\n")
       decodeError[MyClass](
         "null",
-        """Missing required field 'a' of MyClass in:
-          |!!null""".stripMargin,
+        """Expected required field 'a' of 'MyClass' at 0:0 but got:
+          |null
+          |^""".stripMargin,
       )
     }
     "decode and encode case classes with renamed fields" in {
@@ -132,11 +243,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(MyClass("ABC", 123, true), "x: ABC\ny: 123\nz: true\n")
       decodeError[MyClass](
         "a: ABC\nb: 123\nc: true\n",
-        """Missing required field 'x' of MyClass in:
-          |a: ABC
-          |b: 123
+        """Expected required field 'x' of 'MyClass' at 2:0 but got:
           |c: true
-          |""".stripMargin,
+          |^""".stripMargin,
       )
     }
     "decode and encode case classes with default values" in {
@@ -154,7 +263,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(MyClass(Some("ABC")), "a: ABC\n")
       decodeError[MyClass](
         "c: true\n",
-        "Cannot decode scala.collection.immutable.Map[scala.Predef.String, scala.Boolean] from: true",
+        """Expected map or null value at 0:3 but got:
+          |c: true
+          |   ^""".stripMargin,
       )
     }
     "decode and encode recursive case classes" in {
@@ -166,9 +277,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
       decodeError[MyClass](
         "v: 1\nn: \n  v: 2\n  n: \n    x: 3\n",
-        """Missing required field 'v' of MyClass in:
-          |x: 3
-          |""".stripMargin,
+        """Expected required field 'v' of 'MyClass' at 4:4 but got:
+          |    x: 3
+          |    ^""".stripMargin,
       )
     }
     "decode and encode case classes with simple dictionaries" in {
@@ -192,11 +303,15 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
       decodeError[MyClass](
         "d: \n  a: 1\n  b: 2\n  null: 3\n",
-        "Cannot decode java.lang.String from: !!null",
+        """Expected string value at 3:2 but got:
+          |  null: 3
+          |  ^""".stripMargin,
       )
       decodeError[MyClass](
         "d: \n  a: 1\n  b: 2\n  c:\n",
-        "Cannot decode scala.Int from: !!null",
+        """Expected 32-bit signed integer number value at 4:0 but got:
+          |
+          |^""".stripMargin,
       )
     }
     "decode and encode case classes with compact dictionaries" in {
@@ -217,8 +332,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
       decodeError[MyClass](
         "d: \n  a: \n    e: true\n",
-        """Missing required field 'v' of DictEntry in:
-          |e: true""".stripMargin,
+        """Expected required field 'v' of 'DictEntry' at 2:4 but got:
+          |    e: true
+          |    ^""".stripMargin,
       )
     }
     "decode and encode case classes with expanded dictionaries" in {
@@ -242,8 +358,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
       decodeError[MyClass](
         "d: \n  a: \n    e: true\n",
-        """Missing required field 'v' of DictEntry in:
-          |e: true""".stripMargin,
+        """Expected required field 'v' of 'DictEntry' at 2:4 but got:
+          |    e: true
+          |    ^""".stripMargin,
       )
     }
 
@@ -261,7 +378,12 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(ADT.Case1: ADT, "Case1\n")
       roundTrip(ADT.Case2: ADT, "Case2\n")
       roundTrip(ADT.Case3: ADT, "Case3\n")
-      decodeError[ADT]("Case4\n", "Cannot decode ADT from: Case4")
+      decodeError[ADT](
+        "Case4\n",
+        """Expected enumeration string value at 0:0 but got:
+          |Case4
+          |^""".stripMargin,
+      )
     }
 
     "decode and encode Scala 3 enums" in {
@@ -274,7 +396,12 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(Enum.Case1: Enum, "Case1\n")
       roundTrip(Enum.Case2: Enum, "Case2\n")
       roundTrip(Enum.Case3: Enum, "Case3\n")
-      decodeError[Enum]("Case4\n", "Cannot decode Enum from: Case4")
+      decodeError[Enum](
+        "Case4\n",
+        """Expected enumeration string value at 0:0 but got:
+          |Case4
+          |^""".stripMargin,
+      )
     }
 
     "decode and encode case classes with a custom codec for booleans" in {
@@ -298,9 +425,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(MyClass("ABC", 123, false), "a: ABC\nb: 123\nc: 0\n")
       decodeError[MyClass](
         "a: ABC\nb: 123\n",
-        """Missing required field 'c' of MyClass in:
-          |a: ABC
-          |b: 123""".stripMargin,
+        """Expected required field 'c' of 'MyClass' at 1:0 but got:
+          |b: 123
+          |^""".stripMargin,
       )
     }
     "decode and encode generic case classes with one field as scalar nodes" in {
@@ -308,8 +435,18 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
 
       implicit val codec: LinkmlYamlCodec[MyClass[Int]] = LinkmlYamlCodec.derived
       roundTrip(MyClass(1), "1\n")
-      decodeError[MyClass[Int]]("true\n", "Cannot decode scala.Int from: true")
-      decodeError[MyClass[Int]]("v: 1\n", "Cannot decode scala.Int from: v: 1")
+      decodeError[MyClass[Int]](
+        "true\n",
+        """Expected 32-bit signed integer number value at 0:0 but got:
+          |true
+          |^""".stripMargin,
+      )
+      decodeError[MyClass[Int]](
+        "v: 1\n",
+        """Expected 32-bit signed integer number value at 0:0 but got:
+          |v: 1
+          |^""".stripMargin,
+      )
     }
     "decode and encode case classes generic case classes using implicit values for types used in fields" in {
       case class MyClass[A, B, C](a: A, b: B, c: C) derives LinkmlYamlCodec
@@ -323,7 +460,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip(MyClass("ABC", "DEF", "GHI"), "a: ABC\nb: DEF\nc: GHI\n")
       decodeError[MyClass[Int, Int, Int]](
         "a: ~\nb: ~\nc: ~\n",
-        "Cannot decode scala.Int from: !!null",
+        """Expected 32-bit signed integer number value at 0:3 but got:
+          |a: ~
+          |   ^""".stripMargin,
       )
     }
     "don't generate codecs for classes with private fields in the primary constructor" in {
