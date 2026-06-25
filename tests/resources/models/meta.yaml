@@ -5,9 +5,6 @@ name: test_meta
 prefixes:
   linkml: https://w3id.org/linkml/
 
-default_curi_maps:
-  - semweb_context
-
 imports:
   - linkml:types
 

@@ -95,6 +95,7 @@ object ModelCatalogue {
   val inheritance: Entry = Entry("/models/inheritance/")
   val uri: Entry = Entry("/models/uri/")
   val uriOrCurie: Entry = Entry("/models/uriOrCurie/")
+  val emitPrefixes: Entry = Entry("/models/emitPrefixes/")
 
   object inlines {
     val implicitInlineAsCompactDict: Entry = Entry(

@@ -1,0 +1,18 @@
+id: https://neverblink.eu/linkml/tests/emitPrefixes/
+name: emitPrefixes
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ex: http://example.org/
+  nb: https://neverblink.eu/example#
+
+imports:
+  - linkml:types
+
+emit_prefixes:
+  - linkml
+  - ex
+  - nb
+
+classes:
+  SomeClass:
+    tree_root: true

@@ -91,11 +91,6 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         s"""$schemaShared
            |id: https://neverblink.eu/linkml/tests/basic2/
            |name: basic2
-           |prefixes:
-           |  linkml: https://w3id.org/linkml/
-           |
-           |default_curi_maps:
-           |  - semweb_context
            |
            |imports:
            |  - linkml:types

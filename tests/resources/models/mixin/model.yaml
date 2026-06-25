@@ -3,9 +3,6 @@ name: mixin
 prefixes:
   linkml: https://w3id.org/linkml/
 
-default_curi_maps:
-  - semweb_context
-
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata
 extensions:

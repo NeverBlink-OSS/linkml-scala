@@ -19,6 +19,10 @@ final case class ScalaOptions(
       "Package name for generated Scala classes. Default value: eu.neverblink.linkml.metamodel",
     )
     `package`: String = "eu.neverblink.linkml.metamodel",
+    @HelpMessage(
+      "Whether to generate a 'Prefixes' object with the model's emit_prefixes inside. Default value: true",
+    )
+    generateEmitPrefixes: Boolean = true,
 ) extends HasGenerateOptions
 
 object Scala extends Generate[ScalaOptions] {
@@ -27,7 +31,7 @@ object Scala extends Generate[ScalaOptions] {
   override protected def generate(
       options: ScalaOptions,
   )(using SchemaView): Iterable[(String, String)] =
-    ScalaGenerator().generate(options.`package`)
+    ScalaGenerator().generate(options.`package`, options.generateEmitPrefixes)
 }
 
 // JSON Schema

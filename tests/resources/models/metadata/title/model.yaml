@@ -5,9 +5,6 @@ description: "This schema is used to test the title and description metadata fie
 prefixes:
   linkml: https://w3id.org/linkml/
 
-default_curi_maps:
-  - semweb_context
-
 imports:
   - linkml:types
 

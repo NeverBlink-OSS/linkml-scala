@@ -7,9 +7,6 @@ imports:
 prefixes:
   linkml: https://w3id.org/linkml/
 
-default_curi_maps:
-  - semweb_context
-
 classes:
   Union:
     tree_root: true

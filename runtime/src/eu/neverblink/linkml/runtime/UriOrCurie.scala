@@ -35,9 +35,24 @@ case class Curie(original: String) extends UriOrCurie {
 }
 
 trait PrefixResolver {
+
+  /** Expand a CURIE into a URI using prefixes defined in this resolver.
+    * @throws java.lang.RuntimeException
+    *   If this prefix resolver can't expand the CURIE
+    */
   def expand(curie: String): String
 
+  /** Compact a URI into a CURIE using prefixes defined in this resolver.
+    * @throws java.lang.RuntimeException
+    *   If this prefix resolver can't compact the URI
+    */
   def compact(uri: String): String
+
+  /** Get the expansion of a prefix from this resolver.
+    * @return
+    *   The URI [[prefix]] maps to, or None if the prefix isn't found.
+    */
+  def resolvePrefix(prefix: String): Option[String]
 }
 
 class BasicPrefixResolver extends PrefixResolver {
@@ -53,6 +68,10 @@ class BasicPrefixResolver extends PrefixResolver {
     prefixToUri.put(prefix, normalizedUri)
     uriToPrefix.put(normalizedUri, prefix)
   }
+
+  override def resolvePrefix(prefix: String): Option[String] =
+    if prefixToUri.containsKey(prefix) then Option(prefixToUri.get(prefix))
+    else None
 
   override def expand(curie: String): String = {
     val parts = curie.split(':')
