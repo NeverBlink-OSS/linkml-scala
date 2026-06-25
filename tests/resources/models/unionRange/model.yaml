@@ -4,8 +4,6 @@ imports:
   - linkml:types
   - linkml:extended_types
 
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 classes:
   Union:

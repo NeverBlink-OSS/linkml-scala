@@ -2,8 +2,6 @@ id: https://neverblink.eu/linkml/tests/typeDesignator/
 name: typeDesignator
 imports:
   - linkml:types
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 classes:
   Thing:

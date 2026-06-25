@@ -2,8 +2,6 @@ id: https://neverblink.eu/linkml/tests/metadata/title/
 name: title
 title: "Schema for testing"
 description: "This schema is used to test the title and description metadata fields."
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 imports:
   - linkml:types

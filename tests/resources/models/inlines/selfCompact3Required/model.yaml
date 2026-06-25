@@ -2,8 +2,6 @@ id: https://neverblink.eu/linkml/tests/selfCompact3Required/
 name: selfCompact3Required
 comments:
   - Some generators provide annotations to the class itself describing how it should be inlined
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 imports:
   - linkml:types

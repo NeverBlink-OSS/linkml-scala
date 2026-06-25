@@ -1,7 +1,6 @@
 id: https://neverblink.eu/linkml/tests/aliases/
 name: aliases
 prefixes:
-  linkml: https://w3id.org/linkml/
   aliases: https://neverblink.eu/linkml/tests/aliases/
 
 imports:

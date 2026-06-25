@@ -1,7 +1,5 @@
 id: https://neverblink.eu/linkml/tests/explicitInlineImplicitlyAsCompactDict/
 name: explicitInlineImplicitlyAsCompactDict
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 imports:
   - linkml:types

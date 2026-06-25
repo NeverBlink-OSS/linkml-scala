@@ -1,7 +1,5 @@
 id: https://neverblink.eu/linkml/tests/mixin/
 name: mixin
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata

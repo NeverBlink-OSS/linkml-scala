@@ -1,7 +1,5 @@
 id: https://neverblink.eu/linkml/tests/implicitInline/
 name: implicitInline
-prefixes:
-  linkml: https://w3id.org/linkml/
 
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata

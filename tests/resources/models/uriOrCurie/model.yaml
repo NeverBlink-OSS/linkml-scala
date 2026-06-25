@@ -1,7 +1,6 @@
 id: https://neverblink.eu/linkml/tests/uriOrCurie/
 name: uriOrCurie
 prefixes:
-  linkml: https://w3id.org/linkml/
   ex: http://example.org/
 
 emit_prefixes:
