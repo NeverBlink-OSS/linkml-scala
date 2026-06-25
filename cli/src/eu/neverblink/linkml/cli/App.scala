@@ -11,4 +11,5 @@ object App extends CommandsEntryPoint:
     JsonSchema,
     Scala,
     Rdfs,
+    LinkMl,
   )
