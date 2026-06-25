@@ -23,7 +23,7 @@ case class AnonymousClassExpressionImpl(
     @named("all_of")
     allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
     aliases: Seq[String] = Seq(),
-    @named("alt_descriptions")
+    @named("alt_descriptions_test")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
     @simpleDict
