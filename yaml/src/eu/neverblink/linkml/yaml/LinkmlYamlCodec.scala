@@ -17,7 +17,7 @@ object LinkmlYamlCodec {
   def decodeError(msg: String, node: Node): Nothing = throw new DecodeError(node.pos match {
     case Some(pos) =>
       s"Expected $msg at ${pos.start.line}:${pos.start.column} but got:\n${pos.errorMsg}"
-    case _ => msg
+    case _ => s"Expected $msg but got:\n$node"
   })
 
   implicit val anythingCodec: LinkmlYamlCodec[Anything] = new LinkmlYamlCodec[Anything] {
