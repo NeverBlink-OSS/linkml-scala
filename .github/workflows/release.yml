@@ -10,7 +10,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-14, ubuntu-22.04, ubuntu-22.04-arm]
+        os: [macos-14, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
@@ -26,12 +26,22 @@ jobs:
           jvm: temurin:17 # The minimal JDK version for Scala Next
           apps: mill
 
+      - name: Setup MSVC (Windows only)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
+
       - name: Build Native Executable with Mill
         run: ./mill cli.jvm.nativeImage # Now Mill will find 'cs' automatically, fetch GraalVM, and compile
 
       - name: Smoke Tests for Executable
+        shell: bash # Force bash to ensure uniform scripting across OS runners
         run: |
-          OUTPUT=$(./out/cli/jvm/nativeImage.dest/linkml-scala validate metamodel/resources/meta.yaml)
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            BIN_PATH="./out/cli/jvm/nativeImage.dest/linkml-scala.exe"
+          else
+            BIN_PATH="./out/cli/jvm/nativeImage.dest/linkml-scala"
+          fi
+          OUTPUT=$($BIN_PATH validate metamodel/resources/meta.yaml)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -q "Schema is valid."; then
             echo "Error: Expected success message not found."
@@ -102,6 +112,7 @@ jobs:
           mv bin/linkml-scala-macos-14/linkml-scala linkml-scala-mac-arm64
           mv bin/linkml-scala-ubuntu-22.04/linkml-scala linkml-scala-linux-x86_64
           mv bin/linkml-scala-ubuntu-22.04-arm/linkml-scala linkml-scala-linux-arm64
+          mv bin/linkml-scala-windows-latest/linkml-scala.exe linkml-scala-windows-x86_64.exe
           chmod +x linkml-scala-mac-arm64
           chmod +x linkml-scala-linux-x86_64
           chmod +x linkml-scala-linux-arm64
@@ -111,6 +122,7 @@ jobs:
           gzip -9 -k linkml-scala-mac-arm64 &
           gzip -9 -k linkml-scala-linux-x86_64 &
           gzip -9 -k linkml-scala-linux-arm64 &
+          gzip -9 -k linkml-scala-windows-x86_64.exe &
           wait
 
       - name: Upload Binaries
@@ -119,6 +131,5 @@ jobs:
           tag: "${{ github.ref_name }}"
           name: "${{ github.ref_name }}"
           artifacts: linkml-scala*
-          generateReleaseNotes: false
           allowUpdates: true
           replacesArtifacts: true
