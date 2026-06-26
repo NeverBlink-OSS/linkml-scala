@@ -353,9 +353,9 @@ object ScalaGenerator {
       val sb = lang.StringBuilder()
 
       val header =
-        s"""// GENERATED FROM LINKML
+        s"""package $pkg
            |
-           |package $pkg
+           |// GENERATED FROM LINKML
            |
            |import eu.neverblink.linkml.runtime.*
            |""".stripMargin
@@ -371,7 +371,7 @@ object ScalaGenerator {
             |    ${fields.map(_.generateCaseClassField).mkString("\n")}
             |) extends $name
             |""".stripMargin
-        val body =
+        val caseClassBody =
           if !generateSlotCombining then ""
           else {
             val combineRange =
@@ -399,10 +399,11 @@ object ScalaGenerator {
               |  *   Injected range combination function to resolve a circular dependency between metamodel and
               |  *   schema view
               |  */
-              |
               |def combineInherited(other: ${name}Impl, $combineRange): ${name}Impl =
               |  copy(
-              |    ${fields.map(_.generateCombiningFunctionPart).mkString(",\n")}
+              |    ${fields.filter(_.inherited).map(_.generateCombiningFunctionPart).mkString(
+                  ",\n",
+                )}
               |  )
               |""".stripMargin
             indent"""
@@ -412,23 +413,23 @@ object ScalaGenerator {
             |""".stripMargin
           }
 
-        sb.append(indent"$caseClassConstructor $body\n")
+        sb.append(indent"$caseClassConstructor $caseClassBody\n\n")
       }
-      sb.append(docs.generate())
-      if traitInterface then sb.append("trait ")
-      else sb.append("abstract class ")
-      sb.append(name)
-      if inheritsFrom.nonEmpty then {
-        sb.append(" extends ")
-        sb.append(inheritsFrom.mkString(", "))
-      }
-      sb.append(" {\n")
-      sb.append(Indent(2) { sb =>
-        for field <- fields if interfaceFields.contains(field.name) do {
-          sb.append(field.generateInterfaceField)
-        }
-      })
-      sb.append("}\n").toString
+      val interfaceDef =
+        if traitInterface then "trait"
+        else "abstract class"
+      val inheritanceList = if inheritsFrom.nonEmpty then {
+        " extends " + inheritsFrom.mkString(", ")
+      } else ""
+      val interfaceBody = fields
+        .filter(x => interfaceFields.contains(x.name))
+        .map(_.generateInterfaceField).mkString("\n")
+      sb.append(indent"""$docs
+                |$interfaceDef $name $inheritanceList {
+                |  $interfaceBody
+                |}
+                |""".stripMargin)
+      sb.toString
     }
 
   /** Contains all information necessary for generating a Scala enum file analogous to a LinkML
@@ -463,7 +464,7 @@ object ScalaGenerator {
       sb.append("\n\n")
       sb.append("// GENERATED FROM LINKML\n\n")
       sb.append("import eu.neverblink.linkml.runtime.*\n\n")
-      sb.append(docs.generate())
+      sb.append(docs.print)
       val extensibleKind =
         if (sealedInterface) "sealed "
         else ""
@@ -496,14 +497,14 @@ object ScalaGenerator {
       notes: Iterable[String],
       todos: Iterable[String],
       examples: Iterable[String],
-  ):
+  ) extends Printable:
     private def formatTag(sb: lang.StringBuilder, tag: String, content: String): Unit = {
       sb.append(s"  * @$tag\n")
       sb.append(s"  *   $content\n")
     }
 
     /** Generates code for the Scaladoc */
-    def generate(): String = {
+    def print: String = {
       val sb = lang.StringBuilder()
       val hasAddition = see.nonEmpty || notes.nonEmpty || todos.nonEmpty || examples.nonEmpty
       if (main.nonEmpty || hasAddition) {
@@ -573,8 +574,8 @@ object ScalaGenerator {
     /** Generate code for a case class field string with annotations and default values */
     def generateCaseClassField: String = {
       val field = default match {
-        case Some(defaultValue) => s"\n$name: $typeName = $defaultValue,\n"
-        case _ => s"\n$name: $typeName,\n"
+        case Some(defaultValue) => s"$name: $typeName = $defaultValue,"
+        case _ => s"$name: $typeName,"
       }
       s"""${annotations.mkString("\n")}
          |$field
@@ -583,7 +584,7 @@ object ScalaGenerator {
 
     /** Generate code for an interface getter for the field with documentation */
     def generateInterfaceField: String =
-      s"${doc.generate()}def $name: $typeName\n\n"
+      s"${doc.print}def $name: $typeName\n\n"
 
     /** Generate code for a combining function part.
       */
@@ -609,8 +610,8 @@ object ScalaGenerator {
   ):
     /** Generate code for an enum case */
     def generateCase: String =
-      if (caseName == objectName) s"${doc.generate()}case object $objectName extends $enumName\n"
-      else s"""${doc.generate()}@named("$caseName") case object $objectName extends $enumName\n"""
+      if (caseName == objectName) s"${doc.print}case object $objectName extends $enumName\n"
+      else s"""${doc.print}@named("$caseName") case object $objectName extends $enumName\n"""
 
   /** Enum containing information about runtime-provided functions which facilitate the slot
     * combining algorithm.
