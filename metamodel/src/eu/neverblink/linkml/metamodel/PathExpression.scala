@@ -133,5 +133,4 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
   /** The slot to traverse
     */
   def traverse: Option[Reference[SlotDefinition]]
-
 }

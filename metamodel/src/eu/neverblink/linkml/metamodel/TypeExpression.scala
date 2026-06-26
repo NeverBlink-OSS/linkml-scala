@@ -87,5 +87,4 @@ trait TypeExpression extends Expression {
   /** An encoding of a unit
     */
   def unit: Option[UnitOfMeasureImpl]
-
 }

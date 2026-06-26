@@ -28,5 +28,4 @@ abstract class LocalName {
   /** A name assigned to an element in a given ontology
     */
   def localNameValue: String
-
 }

@@ -7,6 +7,7 @@ import eu.neverblink.linkml.runtime.*
 /** Enumeration of roles a slot on a relationship class can play
   */
 sealed abstract class RelationalRoleEnum
+
 object RelationalRoleEnum {
 
   /** A slot with this role connects a relationship to its subject/source node

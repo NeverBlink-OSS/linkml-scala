@@ -29,5 +29,4 @@ abstract class Prefix {
   /** The namespace to which a prefix expands to.
     */
   def prefixReference: UriOrCurie
-
 }

@@ -7,6 +7,7 @@ import eu.neverblink.linkml.runtime.*
 /** The formula used to generate the set of permissible values from the code_set values
   */
 sealed abstract class PvFormulaOptions
+
 object PvFormulaOptions {
 
   /** The permissible values are the set of possible codes in the code set

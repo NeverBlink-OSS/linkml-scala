@@ -102,5 +102,4 @@ abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
     *   https://github.com/linkml/issues/128
     */
   def stringSerialization: Option[String]
-
 }

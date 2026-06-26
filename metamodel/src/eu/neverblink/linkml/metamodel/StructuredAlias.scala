@@ -102,5 +102,4 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
     *   Aliases: alias_name, string_value
     */
   def literalForm: String
-
 }

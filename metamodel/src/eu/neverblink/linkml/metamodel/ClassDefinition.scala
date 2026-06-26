@@ -312,5 +312,4 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   https://linkml.io/linkml/schemas/constraints.html#unique-key
     */
   def uniqueKeys: Map[String, UniqueKeyImpl]
-
 }

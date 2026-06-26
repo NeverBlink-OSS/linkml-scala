@@ -9,5 +9,4 @@ trait Extensible {
   /** A tag/text tuple attached to an arbitrary element
     */
   def extensions: Map[String, ExtensionImpl]
-
 }

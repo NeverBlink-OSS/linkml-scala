@@ -90,5 +90,4 @@ abstract class AnonymousClassExpression extends AnonymousExpression, ClassExpres
     * a and mixins are recursively unfolded
     */
   def isA: Option[Reference[Definition]]
-
 }

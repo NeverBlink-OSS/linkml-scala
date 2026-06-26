@@ -87,5 +87,4 @@ abstract class PatternExpression extends Extensible, Annotatable, CommonMetadata
     * May be interpolated.
     */
   def syntax: Option[String]
-
 }

@@ -36,5 +36,4 @@ abstract class MatchQuery {
     *   For obo ontologies we recommend CURIEs of the form obo:cl, obo:envo, etc
     */
   def sourceOntology: Option[UriOrCurie]
-
 }

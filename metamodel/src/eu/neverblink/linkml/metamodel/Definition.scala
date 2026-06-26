@@ -81,5 +81,4 @@ abstract class Definition extends Element {
     * possible values in every serialization of the model.
     */
   def valuesFrom: Seq[UriOrCurie]
-
 }

@@ -110,5 +110,4 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
     *   Minimum_cardinality cannot be greater than maximum_cardinality
     */
   def minimumCardinality: Option[Int]
-
 }

@@ -7,6 +7,7 @@ import eu.neverblink.linkml.runtime.*
 /** Permissible values for the relationship between an element and an alias
   */
 sealed abstract class AliasPredicateEnum
+
 object AliasPredicateEnum {
   @named("EXACT_SYNONYM") case object ExactSynonym extends AliasPredicateEnum
   @named("RELATED_SYNONYM") case object RelatedSynonym extends AliasPredicateEnum

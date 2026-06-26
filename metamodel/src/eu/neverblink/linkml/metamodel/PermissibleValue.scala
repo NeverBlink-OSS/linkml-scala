@@ -147,5 +147,4 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
   /** An encoding of a unit
     */
   def unit: Option[UnitOfMeasureImpl]
-
 }

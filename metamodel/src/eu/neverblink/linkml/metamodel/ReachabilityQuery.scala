@@ -73,5 +73,4 @@ abstract class ReachabilityQuery {
     *   Aliases: ancestors
     */
   def traverseUp: Boolean
-
 }

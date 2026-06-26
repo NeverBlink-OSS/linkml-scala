@@ -31,5 +31,4 @@ abstract class Example {
   /** Direct object representation of the example
     */
   def valueObject: Option[Anything]
-
 }

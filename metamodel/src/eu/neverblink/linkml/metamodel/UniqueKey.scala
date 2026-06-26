@@ -93,5 +93,4 @@ abstract class UniqueKey extends Extensible, Annotatable, CommonMetadata {
     * always False.
     */
   def considerNullsInequal: Boolean
-
 }

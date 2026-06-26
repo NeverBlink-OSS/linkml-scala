@@ -82,5 +82,4 @@ abstract class ImportExpression extends Extensible, Annotatable, CommonMetadata 
   def importFrom: UriOrCurie
 
   def importMap: Map[String, SettingImpl]
-
 }

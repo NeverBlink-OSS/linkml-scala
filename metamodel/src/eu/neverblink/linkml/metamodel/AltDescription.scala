@@ -31,5 +31,4 @@ abstract class AltDescription {
   /** Text of an attributed description
     */
   def altDescriptionText: String
-
 }
