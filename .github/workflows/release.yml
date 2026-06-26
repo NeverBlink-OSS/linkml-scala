@@ -24,18 +24,22 @@ jobs:
         uses: coursier/setup-action@v3
         with:
           jvm: temurin:17 # The minimal JDK version for Scala Next
-          apps: mill
 
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
 
       - name: Build Native Executable with Mill
-        shell: bash # Force bash to ensure uniform scripting across OS runners
-        run: mill cli.jvm.nativeImage # Now Mill will find 'cs' automatically, fetch GraalVM, and compile
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            .\mill.bat cli.jvm.nativeImage
+          else
+            ./mill cli.jvm.nativeImage
+          fi
 
       - name: Smoke Tests for Executable
-        shell: bash # Force bash to ensure uniform scripting across OS runners
+        shell: bash
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
             BIN_PATH="./out/cli/jvm/nativeImage.dest/linkml-scala.exe"
