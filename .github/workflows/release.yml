@@ -24,7 +24,7 @@ jobs:
         uses: coursier/setup-action@v3
         with:
           jvm: temurin:17 # The minimal JDK version for Scala Next
-          apps: mill:1.1.6
+          apps: mill
 
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
