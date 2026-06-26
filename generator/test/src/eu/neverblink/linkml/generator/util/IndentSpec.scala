@@ -130,6 +130,10 @@ class IndentSpec extends AnyWordSpec, Matchers {
           |b
           |""".stripMargin
     }
+
+    "translate Unit to empty string" in {
+      indent"a ${()} b".stripMargin shouldBe "a  b"
+    }
   }
 }
 

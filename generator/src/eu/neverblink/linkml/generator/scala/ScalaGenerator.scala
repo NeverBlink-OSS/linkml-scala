@@ -91,11 +91,13 @@ final class ScalaGenerator(using sv: SchemaView) {
     if sv.root.emitPrefixes.isEmpty then return None
 
     val prefixes = sv.root.emitPrefixes.map(prefix =>
-      sv.resolvePrefix(prefix).map(uri => s"""    "$prefix" -> "$uri",\n""").get,
-    ).mkString.strip()
+      sv.resolvePrefix(prefix)
+        .map(uri => s""""$prefix" -> "$uri",\n""")
+        .getOrElse(sys.error(s"Unknown prefix to emit: $prefix")),
+    ).mkString
     Some(
       "Prefixes.scala" ->
-        s"""package $pkg
+        indent"""package $pkg
            |
            |// GENERATED FROM LINKML
            |
@@ -401,9 +403,10 @@ object ScalaGenerator {
               |  */
               |def combineInherited(other: ${name}Impl, $combineRange): ${name}Impl =
               |  copy(
-              |    ${fields.filter(_.inherited).map(_.generateCombiningFunctionPart).mkString(
-                  ",\n",
-                )}
+              |    ${fields
+                  .filter(_.inherited)
+                  .map(_.generateCombiningFunctionPart)
+                  .mkString(",\n")}
               |  )
               |""".stripMargin
             indent"""
@@ -458,25 +461,29 @@ object ScalaGenerator {
       *   Generated Scala code
       */
     def generate(): String = {
-      val sb = lang.StringBuilder()
-      sb.append("package ")
-      sb.append(pkg)
-      sb.append("\n\n")
-      sb.append("// GENERATED FROM LINKML\n\n")
-      sb.append("import eu.neverblink.linkml.runtime.*\n\n")
-      sb.append(docs.print)
+
       val extensibleKind =
         if (sealedInterface) "sealed "
         else ""
       val baseKind =
         if (traitInterface) "trait"
         else "abstract class"
-      sb.append(extensibleKind).append(baseKind).append(' ').append(name).append('\n')
-      sb.append("object ").append(name).append(" {\n")
-      sb.append(Indent(2) { sb =>
-        cases.foreach(c => sb.append(c.generateCase))
-      })
-      sb.append("}\n").toString
+
+      val kind = extensibleKind + baseKind
+
+      indent"""package $pkg
+         |
+         |// GENERATED FROM LINKML
+         |
+         |import eu.neverblink.linkml.runtime.*
+         |
+         |$docs
+         |$kind $name
+         |
+         |object $name {
+         |  ${cases.map(_.generateCase).mkString("\n")}
+         |}
+         |""".stripMargin
     }
 
   /** Contains elements to include when generating a Scaladoc for a Scala field
@@ -610,8 +617,8 @@ object ScalaGenerator {
   ):
     /** Generate code for an enum case */
     def generateCase: String =
-      if (caseName == objectName) s"${doc.print}case object $objectName extends $enumName\n"
-      else s"""${doc.print}@named("$caseName") case object $objectName extends $enumName\n"""
+      if (caseName == objectName) s"${doc.print}case object $objectName extends $enumName"
+      else s"""${doc.print}@named("$caseName") case object $objectName extends $enumName"""
 
   /** Enum containing information about runtime-provided functions which facilitate the slot
     * combining algorithm.

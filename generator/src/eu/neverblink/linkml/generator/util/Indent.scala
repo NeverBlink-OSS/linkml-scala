@@ -26,6 +26,7 @@ object Printable {
     def print: String = lp match {
       case p: Printable => p.print
       case s: String => s
+      case _: Unit => ""
       case anyVal: AnyVal => anyVal.toString
     }
   extension (seq: Seq[PrintableOrSimple]) def lines: String = seq.map(_.print).mkString("\n")
