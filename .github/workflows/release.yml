@@ -43,7 +43,7 @@ jobs:
           fi
           OUTPUT=$($BIN_PATH validate metamodel/resources/meta.yaml)
           echo "$OUTPUT"
-          if ! echo "$OUTPUT" | grep -q "Schema is valid."; then
+          if ! echo "$OUTPUT" | grep -Fq "Schema is valid."; then
             echo "Error: Expected success message not found."
             exit 1 # Forces the GitHub Action step to fail
           fi
