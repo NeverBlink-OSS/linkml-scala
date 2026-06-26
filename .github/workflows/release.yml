@@ -29,6 +29,15 @@ jobs:
       - name: Build Native Executable with Mill
         run: ./mill cli.jvm.nativeImage # Now Mill will find 'cs' automatically, fetch GraalVM, and compile
 
+      - name: Smoke Tests for Executable
+        run: |
+          OUTPUT=$(./out/cli/jvm/nativeImage.dest/linkml-scala validate metamodel/resources/meta.yaml)
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -q "Schema is valid."; then
+            echo "Error: Expected success message not found."
+            exit 1 # Forces the GitHub Action step to fail
+          fi
+
       - name: Upload Binary
         uses: actions/upload-artifact@v7
         with:
