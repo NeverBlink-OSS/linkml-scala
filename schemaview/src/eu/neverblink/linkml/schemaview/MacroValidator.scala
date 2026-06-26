@@ -9,7 +9,6 @@ import eu.neverblink.linkml.metamodel.{
   TypeDefinition,
 }
 import eu.neverblink.linkml.runtime.*
-
 import scala.annotation.nowarn
 import scala.collection.mutable
 import scala.quoted.*
@@ -150,7 +149,7 @@ private object ReferenceValidatorImpl {
     new ReferenceValidatorImpl().make[T]
 }
 
-private class ReferenceValidatorImpl(using Quotes) {
+private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
   import quotes.reflect.*
 
   def make[T: Type]: Expr[MacroValidator[T]] = {
@@ -174,54 +173,13 @@ private class ReferenceValidatorImpl(using Quotes) {
     validator
   }
 
-  private case class ClassInfo(
-      tpe: TypeRepr,
-      tpeTypeArgs: List[TypeRepr],
-      primaryConstructor: Symbol,
-      paramLists: List[List[FieldInfo]],
-  ) {
-    val fields: List[FieldInfo] = paramLists.flatten
-    {
-      val collisions = duplicated(fields.map(_.mappedName))
-      if (collisions.nonEmpty) {
-        val formattedCollisions = collisions.mkString("'", "', '", "'")
-        fail(
-          s"Duplicated yaml key(s) defined for '${tpe.show}': $formattedCollisions. Keys are derived from " +
-            s"field names of the class and can be overridden by '${TypeRepr.of[named].show}' annotation(s).",
-        )
-      }
-      if (fields.count(_.kind == FieldKind.Id) > 1) {
-        fail(s"More than one field is defined with '@id' annotation in '${tpe.show}'.")
-      }
-      if (fields.count(_.kind == FieldKind.Value) > 1) {
-        fail(s"More than one field is defined with '@value' annotation in '${tpe.show}'.")
-      }
-    }
-
-    def genNew(argss: List[List[Term]]): Term =
-      val constructorNoTypes = Select(New(Inferred(tpe)), primaryConstructor)
-      val constructor =
-        if (tpeTypeArgs eq Nil) constructorNoTypes
-        else TypeApply(constructorNoTypes, tpeTypeArgs.map(Inferred(_)))
-      argss.tail.foldLeft(Apply(constructor, argss.head))(Apply(_, _))
-  }
-
-  private case class FieldInfo(
-      symbol: Symbol,
-      mappedName: String,
-      getterOrField: Symbol,
-      defaultValue: Option[Term],
-      resolvedTpe: TypeRepr,
-      kind: FieldKind,
-  )
-
   private def genValidator[T: Type](
       tpe: TypeRepr,
       x: Expr[T],
       sv: Expr[SchemaView],
       vc: Expr[ValidatorContext],
   )(using Quotes): Expr[ValidatorResult] = {
-    val implCodec = findImplicitCodec(tpe)
+    val implCodec = findImplicitValidator(tpe)
     if (implCodec.isDefined) {
       '{
         ${ implCodec.get.asInstanceOf[Expr[MacroValidator[T]]] }.validate($x)(using $sv, $vc)
@@ -313,101 +271,6 @@ private class ReferenceValidatorImpl(using Quotes) {
     }
   }
 
-  private def getClassInfo(tpe: TypeRepr): ClassInfo = classInfos.getOrElseUpdate(
-    tpe, {
-      val tpeTypeArgs = typeArgs(tpe)
-      val tpeClassSym = tpe.classSymbol.get
-      val primaryConstructor = tpeClassSym.primaryConstructor
-      val caseFields = tpeClassSym.caseFields
-      var fieldMembers: List[Symbol] = null
-      var companionRefAndClass: (Ref, Symbol) = null
-
-      def createFieldInfos(params: List[Symbol], typeParams: List[Symbol]): List[FieldInfo] =
-        params.map {
-          var i = 0
-          symbol =>
-            i += 1
-            val name = symbol.name
-            var fieldTpe = tpe.memberType(symbol).dealias
-            if (tpeTypeArgs ne Nil) fieldTpe = fieldTpe.substituteTypes(typeParams, tpeTypeArgs)
-            fieldTpe match
-              case _: TypeLambda =>
-                fail(
-                  s"Type lambdas are not supported for type '${tpe.show}' with field type for $name '${fieldTpe.show}'",
-                )
-              case _: TypeBounds =>
-                fail(
-                  s"Type bounds are not supported for type '${tpe.show}' with field type for $name '${fieldTpe.show}'",
-                )
-              case _ =>
-            val defaultValue = if (symbol.flags.is(Flags.HasDefault)) new Some({
-              if (companionRefAndClass eq null) {
-                val typeSymbol = tpe.typeSymbol
-                companionRefAndClass = (Ref(typeSymbol.companionModule), typeSymbol.companionClass)
-              }
-              val methodSymbol =
-                companionRefAndClass._2.declaredMethod("$lessinit$greater$default$" + i).head
-              val dvSelectNoTypes = Select(companionRefAndClass._1, methodSymbol)
-              methodSymbol.paramSymss match
-                case Nil => dvSelectNoTypes
-                case List(params) if params.exists(_.isTypeParam) =>
-                  TypeApply(dvSelectNoTypes, tpeTypeArgs.map(Inferred(_)))
-                case paramss =>
-                  fail(
-                    s"Default method for $name of class ${tpe.show} have a complex parameter list: $paramss",
-                  )
-            })
-            else None
-            val getterOrField = caseFields.find(_.name == name) match
-              case Some(caseField) => caseField
-              case _ =>
-                if (fieldMembers eq null) fieldMembers = tpeClassSym.fieldMembers
-                fieldMembers.find(_.name == name) match
-                  case Some(fieldMember) => fieldMember
-                  case _ => Symbol.noSymbol
-            if (!getterOrField.exists || getterOrField.flags.is(Flags.PrivateLocal)) {
-              fail(
-                s"Getter or field '$name' of '${tpe.show}' is private. It should be defined as 'val' or 'var' in the primary constructor.",
-              )
-            }
-            var named: Option[Term] = None
-            var kind: FieldKind = FieldKind.Regular
-            getterOrField.annotations.foreach { annotation =>
-              val aTpe = annotation.tpe
-              if (aTpe =:= namedTpe) {
-                if (named eq None) named = new Some(annotation)
-                else fail(s"Duplicated '${namedTpe.show}' defined for '$name' of '${tpe.show}'.")
-              } else {
-                if (kind != FieldKind.Regular) {
-                  fail(
-                    s"Expected only one of annotation: '@id', '@value', '@simpleDict', '@compactDict', or '@expandedDict' for '$name' of '${tpe.show}'.",
-                  )
-                }
-                if (aTpe =:= idTpe) kind = FieldKind.Id
-                else if (aTpe =:= valueTpe) kind = FieldKind.Value
-                else if (aTpe =:= simpleDictTpe) kind = FieldKind.SimpleDict
-                else if (aTpe =:= compactDictTpe) kind = FieldKind.CompactDict
-                else if (aTpe =:= expandedDictTpe) kind = FieldKind.ExpandedDict
-              }
-            }
-            val mappedName = namedValueOpt(named, tpe) match
-              case Some(name1) => name1
-              case _ => name
-            new FieldInfo(symbol, mappedName, getterOrField, defaultValue, fieldTpe, kind)
-        }
-
-      new ClassInfo(
-        tpe,
-        tpeTypeArgs,
-        primaryConstructor,
-        primaryConstructor.paramSymss match {
-          case tps :: pss if tps.exists(_.isTypeParam) => pss.map(ps => createFieldInfos(ps, tps))
-          case pss => pss.map(ps => createFieldInfos(ps, Nil))
-        },
-      )
-    },
-  )
-
   private def withValidatorFor[T: Type](
       tpe: TypeRepr,
       x: Expr[T],
@@ -450,7 +313,7 @@ private class ReferenceValidatorImpl(using Quotes) {
       List(x.asTerm, sv.asTerm, vc.asTerm),
     ).asExpr.asInstanceOf[Expr[ValidatorResult]]
 
-  private def findImplicitCodec(tpe: TypeRepr): Option[Expr[MacroValidator[?]]] =
+  private def findImplicitValidator(tpe: TypeRepr): Option[Expr[MacroValidator[?]]] =
     inferredValidators.getOrElseUpdate(
       tpe, {
         Implicits.search(referenceValidatorTpe.appliedTo(tpe)) match
@@ -460,41 +323,6 @@ private class ReferenceValidatorImpl(using Quotes) {
       },
     )
 
-  private def isNonAbstractClass(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
-    val flags = symbol.flags
-    !(flags.is(Flags.Abstract) || flags.is(Flags.JavaDefined) || flags.is(Flags.Trait))
-  }
-
-  private def namedValueOpt(namedAnnotation: Option[Term], tpe: TypeRepr): Option[String] =
-    namedAnnotation.map { case Apply(_, List(param)) =>
-      param match
-        case Literal(StringConstant(s)) => s
-        case _ =>
-          fail(
-            s"Cannot evaluate a parameter of the '@named' annotation in type '${tpe.show}': $param.",
-          )
-    }
-
-  private def duplicated[A](xs: collection.Seq[A]): collection.Seq[A] = xs.filter {
-    val seen = new mutable.HashSet[A]
-    x => !seen.add(x)
-  }
-
-  private def typeArgs(tpe: TypeRepr): List[TypeRepr] = tpe match
-    case AppliedType(_, typeArgs) => typeArgs.map(_.dealias)
-    case _ => Nil
-
-  private def typeArg1(tpe: TypeRepr): TypeRepr = tpe match
-    case AppliedType(_, typeArg1 :: _) => typeArg1.dealias
-    case _ => fail(s"Cannot get 1st type argument in '${tpe.show}'")
-
-  private def typeArg2(tpe: TypeRepr): TypeRepr = tpe match
-    case AppliedType(_, _ :: typeArg2 :: _) => typeArg2.dealias
-    case _ => fail(s"Cannot get 2nd type argument in '${tpe.show}'")
-
-  private def fail(msg: String): Nothing = report.errorAndAbort(msg, Position.ofMacroExpansion)
-
-  private val classInfos = new mutable.HashMap[TypeRepr, ClassInfo]
   private val inferredValidators =
     new mutable.HashMap[TypeRepr, Option[Expr[MacroValidator[?]]]]
   private val validateRefs = new mutable.HashMap[TypeRepr, Ref]
@@ -504,7 +332,6 @@ private class ReferenceValidatorImpl(using Quotes) {
   private val stringTpe = defn.StringClass.typeRef
   private val anyTpe = defn.AnyClass.typeRef
   private val wildcardBounds = TypeBounds(defn.NothingClass.typeRef, anyTpe)
-  defn.OptionClass.typeRef.appliedTo(anyTpe)
   private val optionOfWildcardTpe = defn.OptionClass.typeRef.appliedTo(wildcardBounds)
   private val referenceValidatorTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.MacroValidator").typeRef
@@ -513,24 +340,10 @@ private class ReferenceValidatorImpl(using Quotes) {
   private val mapOfWildcardsTpe = Symbol.requiredClass(
     "scala.collection.immutable.Map",
   ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
-  private val namedTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.named").typeRef
-  private val idTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.id").typeRef
-  private val valueTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.value").typeRef
-  private val simpleDictTpe =
-    Symbol.requiredClass("eu.neverblink.linkml.runtime.simpleDict").typeRef
-  private val compactDictTpe =
-    Symbol.requiredClass("eu.neverblink.linkml.runtime.compactDict").typeRef
-  private val expandedDictTpe =
-    Symbol.requiredClass("eu.neverblink.linkml.runtime.expandedDict").typeRef
-
   private val schemaViewTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.SchemaView").typeRef
   private val validatorContextTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.ValidatorContext").typeRef
   private val validatorResultTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.ValidatorResult").typeRef
-}
-
-private enum FieldKind {
-  case Regular, Id, Value, SimpleDict, CompactDict, ExpandedDict
 }
