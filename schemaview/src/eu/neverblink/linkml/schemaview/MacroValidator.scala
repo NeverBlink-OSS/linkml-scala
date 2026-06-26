@@ -179,10 +179,10 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
       sv: Expr[SchemaView],
       vc: Expr[ValidatorContext],
   )(using Quotes): Expr[ValidatorResult] = {
-    val implCodec = findImplicitValidator(tpe)
-    if (implCodec.isDefined) {
+    val implValidator = findImplicitValidator(tpe)
+    if (implValidator.isDefined) {
       '{
-        ${ implCodec.get.asInstanceOf[Expr[MacroValidator[T]]] }.validate($x)(using $sv, $vc)
+        ${ implValidator.get.asInstanceOf[Expr[MacroValidator[T]]] }.validate($x)(using $sv, $vc)
       }
     } else if (tpe =:= stringTpe || tpe =:= intTpe || tpe =:= booleanTpe) {
       '{ ValidatorResult.ok }
