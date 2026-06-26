@@ -45,7 +45,7 @@ extension (sc: StringContext)
     val sb = lang.StringBuilder()
     var first = true
     for (part, arg) <- sc.parts.zip(args) do {
-      sb.append(part)
+      sb.append(part.translateEscapes())
       var i = part.length - 1
       while i >= 0 && part(i) == ' ' do i -= 1
       if first && i == -1 then sb.append(arg.print.indent(part.length).strip())
@@ -54,6 +54,6 @@ extension (sc: StringContext)
       else sb.append(arg.print.strip())
       first = false
     }
-    sb.append(sc.parts.last)
+    sb.append(sc.parts.last.translateEscapes())
     sb.toString
   }

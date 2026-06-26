@@ -120,6 +120,16 @@ class IndentSpec extends AnyWordSpec, Matchers {
           |}
           |""".stripMargin
     }
+
+    "allow escapes" in {
+      indent"""
+              |a\nb
+              |""".stripMargin shouldBe
+        """
+          |a
+          |b
+          |""".stripMargin
+    }
   }
 }
 
