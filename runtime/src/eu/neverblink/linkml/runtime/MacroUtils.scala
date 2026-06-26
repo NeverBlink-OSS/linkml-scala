@@ -53,16 +53,20 @@ trait MacroUtils(using val quotes: Quotes) {
     case Regular, Id, Value, SimpleDict, CompactDict, ExpandedDict
   }
 
-  private val classInfos = new mutable.HashMap[TypeRepr, ClassInfo]
-  private val namedTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.named").typeRef
-  private val idTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.id").typeRef
-  private val valueTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.value").typeRef
-  private val simpleDictTpe =
-    Symbol.requiredClass("eu.neverblink.linkml.runtime.simpleDict").typeRef
-  private val compactDictTpe =
-    Symbol.requiredClass("eu.neverblink.linkml.runtime.compactDict").typeRef
-  private val expandedDictTpe =
-    Symbol.requiredClass("eu.neverblink.linkml.runtime.expandedDict").typeRef
+  protected val intTpe: TypeRef = defn.IntClass.typeRef
+  protected val booleanTpe: TypeRef = defn.BooleanClass.typeRef
+  protected val stringTpe: TypeRef = defn.StringClass.typeRef
+  protected val anyTpe: TypeRef = defn.AnyClass.typeRef
+  protected val wildcardBounds: TypeBounds = TypeBounds(defn.NothingClass.typeRef, anyTpe)
+  protected val optionOfAnyTpe: TypeRepr = defn.OptionClass.typeRef.appliedTo(anyTpe)
+  protected val optionOfWildcardTpe: TypeRepr = defn.OptionClass.typeRef.appliedTo(wildcardBounds)
+  protected val referenceValidatorTpe: TypeRef =
+    Symbol.requiredClass("eu.neverblink.linkml.schemaview.MacroValidator").typeRef
+  protected val seqOfWildcardTpe: TypeRepr =
+    Symbol.requiredClass("scala.collection.immutable.Seq").typeRef.appliedTo(wildcardBounds)
+  protected val mapOfWildcardsTpe: TypeRepr = Symbol.requiredClass(
+    "scala.collection.immutable.Map",
+  ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
 
   protected def fail(msg: String): Nothing = report.errorAndAbort(msg, Position.ofMacroExpansion)
 
@@ -354,4 +358,15 @@ trait MacroUtils(using val quotes: Quotes) {
       if (symbol.flags.is(Flags.Module)) name.substring(0, name.length - 1)
       else name
     }
+
+  private val classInfos = new mutable.HashMap[TypeRepr, ClassInfo]
+  private val namedTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.named").typeRef
+  private val idTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.id").typeRef
+  private val valueTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.value").typeRef
+  private val simpleDictTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.simpleDict").typeRef
+  private val compactDictTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.compactDict").typeRef
+  private val expandedDictTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.expandedDict").typeRef
 }

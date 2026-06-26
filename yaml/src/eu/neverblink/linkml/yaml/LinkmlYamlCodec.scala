@@ -617,21 +617,9 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
   private val defs = new mutable.ListBuffer[Definition]
   private val enumMaps = new mutable.HashMap[TypeRepr, Ref]
   private val reverseEnumMaps = new mutable.HashMap[TypeRepr, Ref]
-  private val intTpe = defn.IntClass.typeRef
-  private val booleanTpe = defn.BooleanClass.typeRef
-  private val stringTpe = defn.StringClass.typeRef
-  private val anyTpe = defn.AnyClass.typeRef
-  private val wildcardBounds = TypeBounds(defn.NothingClass.typeRef, anyTpe)
-  private val optionOfAnyTpe = defn.OptionClass.typeRef.appliedTo(anyTpe)
-  private val optionOfWildcardTpe = defn.OptionClass.typeRef.appliedTo(wildcardBounds)
   private val nodeTpe = Symbol.requiredClass("org.virtuslab.yaml.Node").typeRef
   private val linkmlYamlCodecTpe =
     Symbol.requiredClass("eu.neverblink.linkml.yaml.LinkmlYamlCodec").typeRef
-  private val seqOfWildcardTpe =
-    Symbol.requiredClass("scala.collection.immutable.Seq").typeRef.appliedTo(wildcardBounds)
-  private val mapOfWildcardsTpe = Symbol.requiredClass(
-    "scala.collection.immutable.Map",
-  ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
 }
 
 class DecodeError(msg: String) extends RuntimeException(msg), NoStackTrace

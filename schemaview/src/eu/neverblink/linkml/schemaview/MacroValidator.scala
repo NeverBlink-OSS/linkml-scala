@@ -327,19 +327,8 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
     new mutable.HashMap[TypeRepr, Option[Expr[MacroValidator[?]]]]
   private val validateRefs = new mutable.HashMap[TypeRepr, Ref]
   private val defs = new mutable.ListBuffer[Definition]
-  private val intTpe = defn.IntClass.typeRef
-  private val booleanTpe = defn.BooleanClass.typeRef
-  private val stringTpe = defn.StringClass.typeRef
-  private val anyTpe = defn.AnyClass.typeRef
-  private val wildcardBounds = TypeBounds(defn.NothingClass.typeRef, anyTpe)
-  private val optionOfWildcardTpe = defn.OptionClass.typeRef.appliedTo(wildcardBounds)
   private val referenceValidatorTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.MacroValidator").typeRef
-  private val seqOfWildcardTpe =
-    Symbol.requiredClass("scala.collection.immutable.Seq").typeRef.appliedTo(wildcardBounds)
-  private val mapOfWildcardsTpe = Symbol.requiredClass(
-    "scala.collection.immutable.Map",
-  ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
   private val schemaViewTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.SchemaView").typeRef
   private val validatorContextTpe =
