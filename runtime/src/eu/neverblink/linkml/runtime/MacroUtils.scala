@@ -8,7 +8,7 @@ import scala.quoted.*
 trait MacroUtils(using val quotes: Quotes) {
   import quotes.reflect.*
 
-  protected class ClassInfo(
+  class ClassInfo(
       val tpe: TypeRepr,
       val tpeTypeArgs: List[TypeRepr],
       val primaryConstructor: Symbol,
@@ -40,7 +40,7 @@ trait MacroUtils(using val quotes: Quotes) {
       argss.tail.foldLeft(Apply(constructor, argss.head))(Apply(_, _))
   }
 
-  protected class FieldInfo(
+  class FieldInfo(
       val symbol: Symbol,
       val mappedName: String,
       val getterOrField: Symbol,
@@ -53,44 +53,44 @@ trait MacroUtils(using val quotes: Quotes) {
     case Regular, Id, Value, SimpleDict, CompactDict, ExpandedDict
   }
 
-  protected val intTpe: TypeRef = defn.IntClass.typeRef
-  protected val booleanTpe: TypeRef = defn.BooleanClass.typeRef
-  protected val stringTpe: TypeRef = defn.StringClass.typeRef
-  protected val anyTpe: TypeRef = defn.AnyClass.typeRef
-  protected val wildcardBounds: TypeBounds = TypeBounds(defn.NothingClass.typeRef, anyTpe)
-  protected val optionOfAnyTpe: TypeRepr = defn.OptionClass.typeRef.appliedTo(anyTpe)
-  protected val optionOfWildcardTpe: TypeRepr = defn.OptionClass.typeRef.appliedTo(wildcardBounds)
-  protected val referenceValidatorTpe: TypeRef =
+  val intTpe: TypeRef = defn.IntClass.typeRef
+  val booleanTpe: TypeRef = defn.BooleanClass.typeRef
+  val stringTpe: TypeRef = defn.StringClass.typeRef
+  val anyTpe: TypeRef = defn.AnyClass.typeRef
+  val wildcardBounds: TypeBounds = TypeBounds(defn.NothingClass.typeRef, anyTpe)
+  val optionOfAnyTpe: TypeRepr = defn.OptionClass.typeRef.appliedTo(anyTpe)
+  val optionOfWildcardTpe: TypeRepr = defn.OptionClass.typeRef.appliedTo(wildcardBounds)
+  val referenceValidatorTpe: TypeRef =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.MacroValidator").typeRef
-  protected val seqOfWildcardTpe: TypeRepr =
+  val seqOfWildcardTpe: TypeRepr =
     Symbol.requiredClass("scala.collection.immutable.Seq").typeRef.appliedTo(wildcardBounds)
-  protected val mapOfWildcardsTpe: TypeRepr = Symbol.requiredClass(
+  val mapOfWildcardsTpe: TypeRepr = Symbol.requiredClass(
     "scala.collection.immutable.Map",
   ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
 
-  protected def fail(msg: String): Nothing = report.errorAndAbort(msg, Position.ofMacroExpansion)
+  def fail(msg: String): Nothing = report.errorAndAbort(msg, Position.ofMacroExpansion)
 
-  protected def typeArgs(tpe: TypeRepr): List[TypeRepr] = tpe match {
+  def typeArgs(tpe: TypeRepr): List[TypeRepr] = tpe match {
     case AppliedType(_, typeArgs) => typeArgs.map(_.dealias)
     case _ => Nil
   }
 
-  protected def typeArg1(tpe: TypeRepr): TypeRepr = tpe match {
+  def typeArg1(tpe: TypeRepr): TypeRepr = tpe match {
     case AppliedType(_, typeArg1 :: _) => typeArg1.dealias
     case _ => fail(s"Cannot get 1st type argument in '${tpe.show}'")
   }
 
-  protected def typeArg2(tpe: TypeRepr): TypeRepr = tpe match {
+  def typeArg2(tpe: TypeRepr): TypeRepr = tpe match {
     case AppliedType(_, _ :: typeArg2 :: _) => typeArg2.dealias
     case _ => fail(s"Cannot get 2nd type argument in '${tpe.show}'")
   }
 
-  protected def duplicated[A](xs: collection.Seq[A]): collection.Seq[A] = xs.filter {
+  def duplicated[A](xs: collection.Seq[A]): collection.Seq[A] = xs.filter {
     val seen = new mutable.HashSet[A]
     x => !seen.add(x)
   }
 
-  protected def namedValueOpt(namedAnnotation: Option[Term], tpe: TypeRepr): Option[String] =
+  def namedValueOpt(namedAnnotation: Option[Term], tpe: TypeRepr): Option[String] =
     namedAnnotation.map { case Apply(_, List(param)) =>
       param match
         case Literal(StringConstant(s)) => s
@@ -100,31 +100,30 @@ trait MacroUtils(using val quotes: Quotes) {
           )
     }
 
-  protected def isNonAbstractClass(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
+  def isNonAbstractClass(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
     val flags = symbol.flags
     !(flags.is(Flags.Abstract) || flags.is(Flags.JavaDefined) || flags.is(Flags.Trait))
   }
 
-  protected def isAbstractClassOrTraitOrEnum(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) {
-    symbol =>
-      val flags = symbol.flags
-      flags.is(Flags.Abstract) || flags.is(Flags.Trait) || flags.is(Flags.Enum)
+  def isAbstractClassOrTraitOrEnum(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
+    val flags = symbol.flags
+    flags.is(Flags.Abstract) || flags.is(Flags.Trait) || flags.is(Flags.Enum)
   }
 
-  protected def isEnumValue(tpe: TypeRepr): Boolean = tpe.termSymbol.flags.is(Flags.Enum)
+  def isEnumValue(tpe: TypeRepr): Boolean = tpe.termSymbol.flags.is(Flags.Enum)
 
-  protected def isEnumOrModuleValue(tpe: TypeRepr): Boolean =
+  def isEnumOrModuleValue(tpe: TypeRepr): Boolean =
     isEnumValue(tpe) || tpe.typeSymbol.flags.is(Flags.Module)
 
-  protected def enumOrModuleValueRef(tpe: TypeRepr): Term = Ref {
+  def enumOrModuleValueRef(tpe: TypeRepr): Term = Ref {
     if (isEnumValue(tpe)) tpe.termSymbol
     else tpe.typeSymbol.companionModule
   }
 
-  protected def symbol(name: String, tpe: TypeRepr, flags: Flags = Flags.EmptyFlags): Symbol =
+  def symbol(name: String, tpe: TypeRepr, flags: Flags = Flags.EmptyFlags): Symbol =
     Symbol.newVal(Symbol.spliceOwner, name, tpe, flags, Symbol.noSymbol)
 
-  protected def getClassInfo(tpe: TypeRepr): ClassInfo = classInfos.getOrElseUpdate(
+  def getClassInfo(tpe: TypeRepr): ClassInfo = classInfos.getOrElseUpdate(
     tpe, {
       val tpeTypeArgs = typeArgs(tpe)
       val tpeClassSym = tpe.classSymbol.get
@@ -219,7 +218,7 @@ trait MacroUtils(using val quotes: Quotes) {
     },
   )
 
-  protected def adtLeafObjects(adtBaseTpe: TypeRepr): Seq[TypeRepr] = {
+  def adtLeafObjects(adtBaseTpe: TypeRepr): Seq[TypeRepr] = {
     val seen = new mutable.HashSet[TypeRepr]
     val subTypes = new mutable.ListBuffer[TypeRepr]
 
@@ -248,7 +247,7 @@ trait MacroUtils(using val quotes: Quotes) {
     subTypes.toList
   }
 
-  protected def adtChildren(tpe: TypeRepr): Seq[TypeRepr] = {
+  def adtChildren(tpe: TypeRepr): Seq[TypeRepr] = {
     def resolveParentTypeArg(
         child: Symbol,
         fromNudeChildTarg: TypeRepr,
@@ -344,7 +343,7 @@ trait MacroUtils(using val quotes: Quotes) {
     }
   }
 
-  protected def enumValueName(tpe: TypeRepr): String =
+  def enumValueName(tpe: TypeRepr): String =
     val isEnumVal = isEnumValue(tpe)
     val symbol =
       if (isEnumVal) tpe.termSymbol
