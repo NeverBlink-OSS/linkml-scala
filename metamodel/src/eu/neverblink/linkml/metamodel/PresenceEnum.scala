@@ -7,6 +7,7 @@ import eu.neverblink.linkml.runtime.*
 /** Enumeration of conditions by which a slot value should be set
   */
 sealed abstract class PresenceEnum
+
 object PresenceEnum {
   @named("UNCOMMITTED") case object Uncommitted extends PresenceEnum
   @named("PRESENT") case object Present extends PresenceEnum

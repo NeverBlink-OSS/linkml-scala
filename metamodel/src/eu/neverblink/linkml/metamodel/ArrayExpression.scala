@@ -109,5 +109,4 @@ abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
     *   Minimum_cardinality cannot be greater than maximum_cardinality
     */
   def minimumNumberDimensions: Option[Int]
-
 }

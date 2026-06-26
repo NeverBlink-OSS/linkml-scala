@@ -1,0 +1,5 @@
+#!/usr/bin/bash
+
+./mill cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta \
+ && ./mill metamodel.jvm.fix \
+ && ./mill metamodel.jvm.reformat

@@ -233,5 +233,4 @@ trait SlotExpression extends Expression {
     *   a value to be present
     */
   def valuePresence: Option[Reference[PresenceEnum]]
-
 }

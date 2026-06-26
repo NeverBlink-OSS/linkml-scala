@@ -724,5 +724,4 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   /** The name of the slot referenced in the slot_usage
     */
   def usageSlotName: Option[String]
-
 }

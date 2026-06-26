@@ -108,5 +108,4 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     *   To use a URI or CURIE as the range, create a class with the URI or curie as the class_uri
     */
   def range: Option[Reference[EnumDefinition]]
-
 }

@@ -133,5 +133,4 @@ abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, Common
     * inference engine to add these
     */
   def openWorld: Boolean
-
 }

@@ -28,5 +28,4 @@ abstract class Setting {
   /** The value assigned for a setting
     */
   def settingValue: String
-
 }

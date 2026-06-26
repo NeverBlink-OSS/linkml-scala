@@ -55,7 +55,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             shouldBeTrait,
             isSlotDefinitionClass,
             ScalaDoc(cls),
-          ).generate()
+          ).print
       )
     }
   }
@@ -91,11 +91,13 @@ final class ScalaGenerator(using sv: SchemaView) {
     if sv.root.emitPrefixes.isEmpty then return None
 
     val prefixes = sv.root.emitPrefixes.map(prefix =>
-      sv.resolvePrefix(prefix).map(uri => s"""    "$prefix" -> "$uri",\n""").get,
-    ).mkString.strip()
+      sv.resolvePrefix(prefix)
+        .map(uri => s""""$prefix" -> "$uri",\n""")
+        .getOrElse(sys.error(s"Unknown prefix to emit: $prefix")),
+    ).mkString
     Some(
       "Prefixes.scala" ->
-        s"""package $pkg
+        indent"""package $pkg
            |
            |// GENERATED FROM LINKML
            |
@@ -344,96 +346,93 @@ object ScalaGenerator {
       traitInterface: Boolean,
       generateSlotCombining: Boolean,
       docs: ScalaDoc,
-  ):
+  ) extends Printable:
     /** Builds the Scala representation of a LinkML [[ClassDefinition]]
       * @return
       *   Generated Scala code
       */
-    def generate(): String = {
+    def print: String = {
       val sb = lang.StringBuilder()
-      sb.append("package ")
-      sb.append(pkg)
-      sb.append("\n\n")
-      sb.append("// GENERATED FROM LINKML\n\n")
-      sb.append("import eu.neverblink.linkml.runtime.*\n\n")
+
+      val header =
+        s"""package $pkg
+           |
+           |// GENERATED FROM LINKML
+           |
+           |import eu.neverblink.linkml.runtime.*
+           |""".stripMargin
+      sb.append(header)
       if !skipImpl then {
-        sb.append(s"/** Base implementation of the [[$name]] LinkML class\n")
-        sb.append("  * \n")
-        sb.append("  * @inheritdoc\n")
-        sb.append("  */\n")
-        sb.append(s"case class ${name}Impl(\n")
-        sb.append(Indent(4) { sb =>
-          for field <- fields do {
-            sb.append(field.generateCaseClassField)
+        val caseClassConstructor =
+          indent"""
+            |/** Base implementation of the [[$name]] LinkML class
+            |  * 
+            |  * @inheritdoc
+            |  */
+            |case class ${name}Impl(
+            |    ${fields.map(_.generateCaseClassField).mkString("\n")}
+            |) extends $name
+            |""".stripMargin
+        val caseClassBody =
+          if !generateSlotCombining then ""
+          else {
+            val combineRange =
+              "combineRange: (Reference[Element], Reference[Element]) => Reference[Element]"
+            val combiningFunctions =
+              indent"""
+              |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
+              |  * merges ALL SlotDefinition slots.
+              |  * @see
+              |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
+              |  * @param combineRange
+              |  *   Injected range combination function to resolve a circular dependency between metamodel and
+              |  *   schema view
+              |  */
+              |def combineWith(other: ${name}Impl, $combineRange): ${name}Impl =
+              |  copy(
+              |    ${fields.map(_.generateCombiningFunctionPart).mkString(",\n")}
+              |  )
+              |
+              |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
+              |  * merges INHERITED SlotDefinition slots only.
+              |  * @see
+              |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
+              |  * @param combineRange
+              |  *   Injected range combination function to resolve a circular dependency between metamodel and
+              |  *   schema view
+              |  */
+              |def combineInherited(other: ${name}Impl, $combineRange): ${name}Impl =
+              |  copy(
+              |    ${fields
+                  .filter(_.inherited)
+                  .map(_.generateCombiningFunctionPart)
+                  .mkString(",\n")}
+              |  )
+              |""".stripMargin
+            indent"""
+            |{
+            |  $combiningFunctions
+            |}
+            |""".stripMargin
           }
-        })
-        sb.append(") extends ")
-        sb.append(name)
-        if !generateSlotCombining then {
-          sb.append("\n\n")
-        } else {
-          val combineRange =
-            "combineRange: (Reference[Element], Reference[Element]) => Reference[Element]"
-          sb.append(" {\n")
-          sb.append(Indent(2) { sb =>
-            sb.append(
-              """/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
-                |  * merges ALL SlotDefinition slots.
-                |  * @see
-                |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
-                |  * @param combineRange
-                |  *   Injected range combination function to resolve a circular dependency between metamodel and
-                |  *   schema view
-                |  */
-                |""".stripMargin,
-            )
-            sb.append(s"def combineWith(other: ${name}Impl, $combineRange): ${name}Impl = \n")
-            sb.append(Indent(2) { sb =>
-              sb.append("copy(\n")
-              sb.append(Indent(2) { sb =>
-                for field <- fields do sb.append(field.generateCombiningFunctionPart)
-              })
-              sb.append(")\n\n")
-            })
-            sb.append(
-              """/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
-                |  * merges INHERITED SlotDefinition slots only.
-                |  * @see
-                |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
-                |  * @param combineRange
-                |  *   Injected range combination function to resolve a circular dependency between metamodel and
-                |  *   schema view
-                |  */
-                |""".stripMargin,
-            )
-            sb.append(s"def combineInherited(other: ${name}Impl, $combineRange): ${name}Impl = \n")
-            sb.append(Indent(2) { sb =>
-              sb.append("copy(\n")
-              sb.append(Indent(2) { sb =>
-                for field <- fields if field.inherited do
-                  sb.append(field.generateCombiningFunctionPart)
-              })
-              sb.append(")\n")
-            })
-          })
-          sb.append("}\n\n")
-        }
+
+        sb.append(indent"$caseClassConstructor $caseClassBody\n\n")
       }
-      sb.append(docs.generate())
-      if traitInterface then sb.append("trait ")
-      else sb.append("abstract class ")
-      sb.append(name)
-      if inheritsFrom.nonEmpty then {
-        sb.append(" extends ")
-        sb.append(inheritsFrom.mkString(", "))
-      }
-      sb.append(" {\n")
-      sb.append(Indent(2) { sb =>
-        for field <- fields if interfaceFields.contains(field.name) do {
-          sb.append(field.generateInterfaceField)
-        }
-      })
-      sb.append("}\n").toString
+      val interfaceDef =
+        if traitInterface then "trait"
+        else "abstract class"
+      val inheritanceList = if inheritsFrom.nonEmpty then {
+        " extends " + inheritsFrom.mkString(", ")
+      } else ""
+      val interfaceBody = fields
+        .filter(x => interfaceFields.contains(x.name))
+        .map(_.generateInterfaceField).mkString("\n")
+      sb.append(indent"""$docs
+                |$interfaceDef $name $inheritanceList {
+                |  $interfaceBody
+                |}
+                |""".stripMargin)
+      sb.toString
     }
 
   /** Contains all information necessary for generating a Scala enum file analogous to a LinkML
@@ -462,25 +461,29 @@ object ScalaGenerator {
       *   Generated Scala code
       */
     def generate(): String = {
-      val sb = lang.StringBuilder()
-      sb.append("package ")
-      sb.append(pkg)
-      sb.append("\n\n")
-      sb.append("// GENERATED FROM LINKML\n\n")
-      sb.append("import eu.neverblink.linkml.runtime.*\n\n")
-      sb.append(docs.generate())
+
       val extensibleKind =
         if (sealedInterface) "sealed "
         else ""
       val baseKind =
         if (traitInterface) "trait"
         else "abstract class"
-      sb.append(extensibleKind).append(baseKind).append(' ').append(name).append('\n')
-      sb.append("object ").append(name).append(" {\n")
-      sb.append(Indent(2) { sb =>
-        cases.foreach(c => sb.append(c.generateCase))
-      })
-      sb.append("}\n").toString
+
+      val kind = extensibleKind + baseKind
+
+      indent"""package $pkg
+         |
+         |// GENERATED FROM LINKML
+         |
+         |import eu.neverblink.linkml.runtime.*
+         |
+         |$docs
+         |$kind $name
+         |
+         |object $name {
+         |  ${cases.map(_.generateCase).mkString("\n")}
+         |}
+         |""".stripMargin
     }
 
   /** Contains elements to include when generating a Scaladoc for a Scala field
@@ -501,14 +504,14 @@ object ScalaGenerator {
       notes: Iterable[String],
       todos: Iterable[String],
       examples: Iterable[String],
-  ):
+  ) extends Printable:
     private def formatTag(sb: lang.StringBuilder, tag: String, content: String): Unit = {
       sb.append(s"  * @$tag\n")
       sb.append(s"  *   $content\n")
     }
 
     /** Generates code for the Scaladoc */
-    def generate(): String = {
+    def print: String = {
       val sb = lang.StringBuilder()
       val hasAddition = see.nonEmpty || notes.nonEmpty || todos.nonEmpty || examples.nonEmpty
       if (main.nonEmpty || hasAddition) {
@@ -578,20 +581,22 @@ object ScalaGenerator {
     /** Generate code for a case class field string with annotations and default values */
     def generateCaseClassField: String = {
       val field = default match {
-        case Some(defaultValue) => s"\n$name: $typeName = $defaultValue,\n"
-        case _ => s"\n$name: $typeName,\n"
+        case Some(defaultValue) => s"$name: $typeName = $defaultValue,"
+        case _ => s"$name: $typeName,"
       }
-      annotations.mkString("", "\n", field)
+      s"""${annotations.mkString("\n")}
+         |$field
+         |""".stripMargin
     }
 
     /** Generate code for an interface getter for the field with documentation */
     def generateInterfaceField: String =
-      s"${doc.generate()}def $name: $typeName\n\n"
+      s"${doc.print}def $name: $typeName\n\n"
 
     /** Generate code for a combining function part.
       */
     def generateCombiningFunctionPart: String =
-      s"""$name = ${combineFunc.generate(name, "this", "other")},\n"""
+      s"""$name = ${combineFunc.generate(name, "this", "other")}"""
 
   /** Contains all information necessary for generating a Scala enum cases.
     *
@@ -612,8 +617,8 @@ object ScalaGenerator {
   ):
     /** Generate code for an enum case */
     def generateCase: String =
-      if (caseName == objectName) s"${doc.generate()}case object $objectName extends $enumName\n"
-      else s"""${doc.generate()}@named("$caseName") case object $objectName extends $enumName\n"""
+      if (caseName == objectName) s"${doc.print}case object $objectName extends $enumName"
+      else s"""${doc.print}@named("$caseName") case object $objectName extends $enumName"""
 
   /** Enum containing information about runtime-provided functions which facilitate the slot
     * combining algorithm.

@@ -249,5 +249,4 @@ abstract class SchemaDefinition extends Element {
   /** Particular version of schema
     */
   def version: Option[String]
-
 }

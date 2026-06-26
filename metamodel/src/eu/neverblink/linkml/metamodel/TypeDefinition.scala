@@ -158,5 +158,4 @@ abstract class TypeDefinition extends Element, TypeExpression {
     *   This only applies in the OWL generation
     */
   def unionOf: Seq[Reference[TypeDefinition]]
-
 }

@@ -129,5 +129,4 @@ abstract class EnumDefinition extends Definition, EnumExpression {
     *   Aliases: public ID
     */
   def enumUri: Option[UriOrCurie]
-
 }

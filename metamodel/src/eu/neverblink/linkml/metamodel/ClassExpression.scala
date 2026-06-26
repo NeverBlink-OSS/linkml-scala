@@ -37,5 +37,4 @@ trait ClassExpression {
   /** Expresses constraints on a group of slots for a class expression
     */
   def slotConditions: Map[String, SlotDefinitionImpl]
-
 }

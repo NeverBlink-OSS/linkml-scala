@@ -28,5 +28,4 @@ abstract class Annotation extends Extension, Annotatable {
   /** A collection of tag/text tuples with the semantics of OWL Annotation
     */
   def annotations: Map[String, AnnotationImpl]
-
 }

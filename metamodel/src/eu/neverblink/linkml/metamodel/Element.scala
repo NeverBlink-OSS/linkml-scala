@@ -79,5 +79,4 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
   def instantiates: Seq[UriOrCurie]
 
   def localNames: Map[String, LocalNameImpl]
-
 }

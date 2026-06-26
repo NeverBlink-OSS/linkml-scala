@@ -7,6 +7,7 @@ import eu.neverblink.linkml.runtime.*
 /** The level of obligation or recommendation strength for a metadata element
   */
 sealed abstract class ObligationLevelEnum
+
 object ObligationLevelEnum {
 
   /** The metadata element is required to be present in the model

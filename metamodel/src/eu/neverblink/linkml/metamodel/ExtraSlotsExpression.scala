@@ -30,5 +30,4 @@ abstract class ExtraSlotsExpression extends Expression {
     *   combine two enums
     */
   def rangeExpression: Option[AnonymousSlotExpressionImpl]
-
 }

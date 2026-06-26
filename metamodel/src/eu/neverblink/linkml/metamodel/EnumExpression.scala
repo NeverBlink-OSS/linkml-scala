@@ -96,5 +96,4 @@ trait EnumExpression extends Expression {
   /** Specifies a query for obtaining a list of permissible values based on graph reachability
     */
   def reachableFrom: Option[ReachabilityQueryImpl]
-
 }

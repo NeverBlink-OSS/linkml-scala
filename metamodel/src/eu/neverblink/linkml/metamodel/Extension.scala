@@ -34,5 +34,4 @@ abstract class Extension {
   /** A tag/text tuple attached to an arbitrary element
     */
   def extensions: Map[String, ExtensionImpl]
-
 }

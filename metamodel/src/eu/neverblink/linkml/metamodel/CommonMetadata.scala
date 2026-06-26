@@ -200,5 +200,4 @@ trait CommonMetadata {
   /** Outstanding issues that needs resolution
     */
   def todos: Seq[String]
-
 }

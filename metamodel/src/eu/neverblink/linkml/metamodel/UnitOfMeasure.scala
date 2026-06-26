@@ -67,5 +67,4 @@ abstract class UnitOfMeasure {
   /** Associates a QUDT unit with its UCUM code (case-sensitive).
     */
   def ucumCode: Option[String]
-
 }
