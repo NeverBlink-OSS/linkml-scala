@@ -534,7 +534,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         "optionSlot = combineOption(this.optionSlot, other.optionSlot, combineFallback)",
         "fallbackSlot = combineFallback(this.fallbackSlot, other.fallbackSlot)",
         "minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)",
-        "def combineInherited(other: MySlotDefImpl, combineRange: (Reference[Element], Reference[Element]) => Reference[Element]): MySlotDefImpl =\n    copy(\n      inheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)\n    )"
+        "def combineInherited(other: MySlotDefImpl, combineRange: (Reference[Element], Reference[Element]) => Reference[Element]): MySlotDefImpl =\n    copy(\n      inheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)\n    )",
       ).foreach { snippet =>
         code should include(snippet)
       }
