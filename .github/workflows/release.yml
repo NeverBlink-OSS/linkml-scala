@@ -31,7 +31,6 @@ jobs:
         uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
 
       - name: Build Native Executable with Mill
-        shell: bash # Force bash to ensure uniform scripting across OS runners
         run: ./mill cli.jvm.nativeImage # Now Mill will find 'cs' automatically, fetch GraalVM, and compile
 
       - name: Smoke Tests for Executable
