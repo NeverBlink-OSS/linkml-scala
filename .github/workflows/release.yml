@@ -32,7 +32,7 @@ jobs:
 
       - name: Build Native Executable with Mill
         shell: bash # Force bash to ensure uniform scripting across OS runners
-        run: mill cli.jvm.nativeImage # Now Mill will find 'cs' automatically, fetch GraalVM, and compile
+        run: ./mill cli.jvm.nativeImage # Now Mill will find 'cs' automatically, fetch GraalVM, and compile
 
       - name: Smoke Tests for Executable
         shell: bash # Force bash to ensure uniform scripting across OS runners
