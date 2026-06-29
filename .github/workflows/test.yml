@@ -45,6 +45,16 @@ jobs:
         with:
           node-version: 22
 
+      - name: Setup uv/python
+        uses: astral-sh/setup-uv@v8.2.0
+        with:
+          activate-environment: true
+
+      - name: Install LinkML-py and generate cross-test models
+        run: |
+          uv pip install linkml
+          python cross_test.py 
+
       - name: Build and test
         run: |
           ./mill --no-server -j 0 __.test

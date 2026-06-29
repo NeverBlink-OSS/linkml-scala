@@ -51,6 +51,7 @@ object ModelCatalogue {
     *   Invalid instances of the `tree_root` class of the model in different formats
     */
   case class Entry private (
+      path: String,
       model: SchemaView,
       validInstances: Seq[InstanceInFormats],
       invalidInstances: Seq[InstanceInFormats],
@@ -67,6 +68,7 @@ object ModelCatalogue {
       val invalidInstancePaths = instancePaths.filter(_.startsWith(path + "invalid/"))
 
       new Entry(
+        path,
         SchemaView.loadSchemaViewFromUri(path + "model.yaml", importer = CatalogueImporter),
         validInstancePaths.map(instance =>
           InstanceInFormats(instance, instance.stripPrefix(path + "valid/")),
