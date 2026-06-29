@@ -9,8 +9,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import os.Path
 
 class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers {
-  val generatedModelsDir: Path = os.pwd / ".generated" / "tests" / "resources"
-  val enabled: Boolean = System.getenv("CI") != null || os.exists(generatedModelsDir)
+  val pwd: Path = Option(System.getenv("MILL_WORKSPACE_ROOT"))
+    .map(Path(_))
+    .getOrElse(os.pwd)
+  val generatedModelsDir: Path = pwd / ".generated" / "tests" / "resources"
+  val enabled: Boolean = (System.getenv("CI") != null) || os.exists(generatedModelsDir)
   val skipModelsShaclPy: Seq[String] = Seq(
     // Metamodel extended_types.yaml is not bundled
     "anything",
@@ -22,17 +25,16 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers {
     "curie",
   )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
-  "Python LinkMl Shacl generator" should {
+  "LinkMl Python Shacl generator" should {
     for entry <- ModelCatalogue.all do
-      s"generated for model '${entry.model.root.name}'" when {
+      s"generate Json Schema for model '${entry.model.root.name}'" when {
         lazy val path = Path(entry.path).segments.toSeq
         lazy val ttl = os.read(generatedModelsDir / path / "shacl.ttl")
         lazy val validator = ShaclValidator.builder().withShapes(ttl, RDFFormat.TURTLE).build()
 
         for valid <- entry.validInstances.filter(_.turtle.isDefined).distinct do
           s"valid instance '${valid.name}'" in {
-            assume(enabled, "No generated dir detected, skipping cross tests")
-            assume(!skipModelsShaclPy.contains(entry.model.root.name))
+            assume(enabled && !skipModelsShaclPy.contains(entry.model.root.name))
             val res =
               validator.validate(valid.turtle.get + valid.context.getOrElse(""), RDFFormat.TURTLE)
             withClue(res.getValidationResult) {
@@ -41,8 +43,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers {
           }
         for invalid <- entry.invalidInstances.filter(_.turtle.isDefined).distinct do
           s"invalid data '${invalid.name}'" in {
-            assume(enabled, "No generated dir detected, skipping cross tests")
-            assume(!skipModelsShaclPy.contains(entry.model.root.name))
+            assume(enabled && !skipModelsShaclPy.contains(entry.model.root.name))
             val res = validator.validate(invalid.turtle.get, RDFFormat.TURTLE)
             res.conforms() shouldBe false
           }

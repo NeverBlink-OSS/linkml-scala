@@ -9,7 +9,10 @@ import os.Path
 
 class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers {
   val sr: SchemaRegistry = SchemaRegistry.withDialect(Dialects.getDraft201909)
-  val generatedModelsDir: Path = os.pwd / ".generated" / "tests" / "resources"
+  val pwd: Path = Option(System.getenv("MILL_WORKSPACE_ROOT"))
+    .map(Path(_))
+    .getOrElse(os.pwd)
+  val generatedModelsDir: Path = pwd / ".generated" / "tests" / "resources"
   val enabled: Boolean = System.getenv("CI") != null || os.exists(generatedModelsDir)
   val skipModels: Seq[String] = Seq(
     // Metamodel extended_types.yaml is not bundled
@@ -42,14 +45,12 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers {
 
         for valid <- entry.validInstances.filter(_.json.isDefined).distinct do
           s"valid instance '${valid.name}'" in {
-            assume(!skipModels.contains(entry.model.root.name))
-            assume(enabled)
+            assume(enabled && (!skipModels.contains(entry.model.root.name)))
             sr.getSchema(jsonSchema).validate(valid.json.get, InputFormat.JSON) shouldBe empty
           }
         for invalid <- entry.invalidInstances.filter(_.json.isDefined).distinct do
           s"invalid data '${invalid.name}'" in {
-            assume(!skipModels.contains(entry.model.root.name))
-            assume(enabled)
+            assume(enabled && (!skipModels.contains(entry.model.root.name)))
             sr.getSchema(jsonSchema).validate(
               invalid.json.get,
               InputFormat.JSON,
