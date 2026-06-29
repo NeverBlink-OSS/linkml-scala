@@ -26,5 +26,8 @@ target/
 # mill
 /out/
 
+# Generated files
+.generated
+
 # Environment variables
 .env
