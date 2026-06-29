@@ -10,6 +10,7 @@ imports:
 
 classes:
   SomeClass:
+    tree_root: true
     class_uri: base:Class
     slots:
       - some_slot
