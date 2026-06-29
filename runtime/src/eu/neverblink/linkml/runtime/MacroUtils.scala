@@ -5,16 +5,36 @@ import eu.neverblink.linkml.runtime.*
 import scala.collection.mutable
 import scala.quoted.*
 
+/** A collection of utility methods and classes to facilitate Scala 3 metaprogramming (macros) for
+  * the LinkML runtime. * Provides extraction, caching, and evaluation of type structures, algebraic
+  * data types (ADTs), and LinkML-specific annotations (e.g., `@named`, `@id`, `@value`).
+  */
 trait MacroUtils(using val quotes: Quotes) {
   import quotes.reflect.*
 
+  /** Represents structural information about a class type during macro expansion.
+    *
+    * @param tpe
+    *   The type representation (`TypeRepr`) of the class.
+    * @param tpeTypeArgs
+    *   A list of type arguments applied to this class type.
+    * @param primaryConstructor
+    *   The symbol representing the primary constructor of the class.
+    * @param paramLists
+    *   A nested list of `FieldInfo` corresponding to the parameter lists of the primary
+    *   constructor.
+    */
   class ClassInfo(
       val tpe: TypeRepr,
       val tpeTypeArgs: List[TypeRepr],
       val primaryConstructor: Symbol,
       val paramLists: List[List[FieldInfo]],
   ) {
+
+    /** A flattened list of all fields defined in the primary constructor parameter lists. */
     val fields: List[FieldInfo] = paramLists.flatten
+
+    // Initialization block to validate fields for LinkML serialization rules.
     {
       val collisions = duplicated(fields.map(_.mappedName))
       if (collisions.nonEmpty) {
@@ -32,6 +52,14 @@ trait MacroUtils(using val quotes: Quotes) {
       }
     }
 
+    /** Generates an Abstract Syntax Tree (AST) `Term` that instantiates this class using the
+      * provided arguments.
+      *
+      * @param argss
+      *   The lists of arguments to pass to the primary constructor.
+      * @return
+      *   A `Term` representing the `new Class(...)` expression.
+      */
     def genNew(argss: List[List[Term]]): Term =
       val constructorNoTypes = Select(New(Inferred(tpe)), primaryConstructor)
       val constructor =
@@ -40,6 +68,21 @@ trait MacroUtils(using val quotes: Quotes) {
       argss.tail.foldLeft(Apply(constructor, argss.head))(Apply(_, _))
   }
 
+  /** Represents macro-level information about a specific field within a class.
+    *
+    * @param symbol
+    *   The symbol of the field.
+    * @param mappedName
+    *   The name of the field to be used during serialization (potentially overridden by `@named`).
+    * @param getterOrField
+    *   The symbol for the getter method or the field itself.
+    * @param defaultValue
+    *   An optional AST `Term` representing the field's default value, if defined.
+    * @param resolvedTpe
+    *   The fully resolved type representation (`TypeRepr`) of the field.
+    * @param kind
+    *   The structural role of this field in LinkML mappings (e.g., ID, Value, Dictionary).
+    */
   class FieldInfo(
       val symbol: Symbol,
       val mappedName: String,
@@ -49,10 +92,30 @@ trait MacroUtils(using val quotes: Quotes) {
       val kind: FieldKind,
   )
 
+  /** Defines the specific mapping behavior or structural role a field has within a LinkML schema.
+    */
   enum FieldKind {
-    case Regular, Id, Value, SimpleDict, CompactDict, ExpandedDict
+
+    /** A standard field mapped directly to its key/value. */
+    case Regular
+
+    /** A field acting as the unique identifier (`@id`). */
+    case Id
+
+    /** A field acting as the primary value carrier (`@value`). */
+    case Value
+
+    /** A field mapped as a simple dictionary (`@simpleDict`). */
+    case SimpleDict
+
+    /** A field mapped as a compact dictionary (`@compactDict`). */
+    case CompactDict
+
+    /** A field mapped as an expanded dictionary (`@expandedDict`). */
+    case ExpandedDict
   }
 
+  // --- Common cached TypeRefs and TypeReprs for faster macro expansion ---
   val intTpe: TypeRef = defn.IntClass.typeRef
   val booleanTpe: TypeRef = defn.BooleanClass.typeRef
   val stringTpe: TypeRef = defn.StringClass.typeRef
@@ -68,28 +131,65 @@ trait MacroUtils(using val quotes: Quotes) {
     "scala.collection.immutable.Map",
   ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
 
+  /** Reports an error during macro expansion and immediately aborts the compilation.
+    *
+    * @param msg
+    *   The error message to display to the developer.
+    * @return
+    *   `Nothing` as it throws an exception to stop compilation.
+    */
   def fail(msg: String): Nothing = report.errorAndAbort(msg, Position.ofMacroExpansion)
 
+  /** Extracts the type arguments from an applied type.
+    *
+    * @param tpe
+    *   The type representation to analyze.
+    * @return
+    *   A list of type representations representing the type arguments, or an empty list if none
+    *   exist.
+    */
   def typeArgs(tpe: TypeRepr): List[TypeRepr] = tpe match {
     case AppliedType(_, typeArgs) => typeArgs.map(_.dealias)
     case _ => Nil
   }
 
+  /** Extracts the first type argument from an applied type. Aborts compilation if it cannot be
+    * found.
+    */
   def typeArg1(tpe: TypeRepr): TypeRepr = tpe match {
     case AppliedType(_, typeArg1 :: _) => typeArg1.dealias
     case _ => fail(s"Cannot get 1st type argument in '${tpe.show}'")
   }
 
+  /** Extracts the second type argument from an applied type. Aborts compilation if it cannot be
+    * found.
+    */
   def typeArg2(tpe: TypeRepr): TypeRepr = tpe match {
     case AppliedType(_, _ :: typeArg2 :: _) => typeArg2.dealias
     case _ => fail(s"Cannot get 2nd type argument in '${tpe.show}'")
   }
 
+  /** Filters a sequence to return only the elements that appear more than once.
+    *
+    * @param xs
+    *   The sequence to evaluate.
+    * @return
+    *   A sequence of duplicated elements.
+    */
   def duplicated[A](xs: collection.Seq[A]): collection.Seq[A] = xs.filter {
     val seen = new mutable.HashSet[A]
     x => !seen.add(x)
   }
 
+  /** Extracts the string value from a `@named("value")` annotation.
+    *
+    * @param namedAnnotation
+    *   An optional AST `Term` representing the annotation.
+    * @param tpe
+    *   The context type where this annotation resides (used for error reporting).
+    * @return
+    *   An `Option` containing the extracted string, if present and valid.
+    */
   def namedValueOpt(namedAnnotation: Option[Term], tpe: TypeRepr): Option[String] =
     namedAnnotation.map { case Apply(_, List(param)) =>
       param match
@@ -100,29 +200,63 @@ trait MacroUtils(using val quotes: Quotes) {
           )
     }
 
+  /** Checks if a given type representation points to a concrete (non-abstract) class.
+    */
   def isNonAbstractClass(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
     val flags = symbol.flags
     !(flags.is(Flags.Abstract) || flags.is(Flags.JavaDefined) || flags.is(Flags.Trait))
   }
 
+  /** Checks if a given type representation points to an abstract class, a trait, or an enum.
+    */
   def isAbstractClassOrTraitOrEnum(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
     val flags = symbol.flags
     flags.is(Flags.Abstract) || flags.is(Flags.Trait) || flags.is(Flags.Enum)
   }
 
+  /** Checks if a given type representation points specifically to an enum value.
+    */
   def isEnumValue(tpe: TypeRepr): Boolean = tpe.termSymbol.flags.is(Flags.Enum)
 
+  /** Checks if a given type representation points to an enum value or a module (singleton object).
+    */
   def isEnumOrModuleValue(tpe: TypeRepr): Boolean =
     isEnumValue(tpe) || tpe.typeSymbol.flags.is(Flags.Module)
 
+  /** Returns a reference (`Term`) to an enum value or a companion module/object.
+    *
+    * @param tpe
+    *   The type representation of the enum value or module.
+    * @return
+    *   A `Ref` pointing to the term or companion module.
+    */
   def enumOrModuleValueRef(tpe: TypeRepr): Term = Ref {
     if (isEnumValue(tpe)) tpe.termSymbol
     else tpe.typeSymbol.companionModule
   }
 
+  /** Creates a new symbol representing a value (`val`).
+    *
+    * @param name
+    *   The name of the symbol.
+    * @param tpe
+    *   The type of the symbol.
+    * @param flags
+    *   The flags applicable to the symbol (defaults to EmptyFlags).
+    * @return
+    *   A newly created `Symbol`.
+    */
   def symbol(name: String, tpe: TypeRepr, flags: Flags = Flags.EmptyFlags): Symbol =
     Symbol.newVal(Symbol.spliceOwner, name, tpe, flags, Symbol.noSymbol)
 
+  /** Analyzes a class type to construct a `ClassInfo` object containing its parsed fields,
+    * constructors, and applied type boundaries. Results are cached to optimize macro performance.
+    *
+    * @param tpe
+    *   The class type representation to analyze.
+    * @return
+    *   The constructed (or cached) `ClassInfo`.
+    */
   def getClassInfo(tpe: TypeRepr): ClassInfo = classInfos.getOrElseUpdate(
     tpe, {
       val tpeTypeArgs = typeArgs(tpe)
@@ -218,6 +352,14 @@ trait MacroUtils(using val quotes: Quotes) {
     },
   )
 
+  /** Recursively finds all "leaf" objects (singleton modules or enum values) within an Algebraic
+    * Data Type (ADT) hierarchy.
+    *
+    * @param adtBaseTpe
+    *   The base type representation (e.g., a sealed trait) of the ADT.
+    * @return
+    *   A sequence of type representations for all concrete leaf objects.
+    */
   def adtLeafObjects(adtBaseTpe: TypeRepr): Seq[TypeRepr] = {
     val seen = new mutable.HashSet[TypeRepr]
     val subTypes = new mutable.ListBuffer[TypeRepr]
@@ -247,6 +389,14 @@ trait MacroUtils(using val quotes: Quotes) {
     subTypes.toList
   }
 
+  /** Finds the immediate child types extending a given sealed type representation, resolving type
+    * arguments along the way.
+    *
+    * @param tpe
+    *   The parent type representation.
+    * @return
+    *   A sequence of child type representations.
+    */
   def adtChildren(tpe: TypeRepr): Seq[TypeRepr] = {
     def resolveParentTypeArg(
         child: Symbol,
@@ -343,6 +493,14 @@ trait MacroUtils(using val quotes: Quotes) {
     }
   }
 
+  /** Resolves the string name representing an enum or module value, accounting for `@named`
+    * annotations or standard symbol names.
+    *
+    * @param tpe
+    *   The type representation of the enum value.
+    * @return
+    *   The extracted string name to be used for serialization.
+    */
   def enumValueName(tpe: TypeRepr): String =
     val isEnumVal = isEnumValue(tpe)
     val symbol =
