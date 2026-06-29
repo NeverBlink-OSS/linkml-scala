@@ -91,7 +91,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     if sv.root.emitPrefixes.isEmpty then return None
 
     val prefixes = sv.root.emitPrefixes.map(prefix =>
-      sv.resolvePrefix(prefix)
+      sv.rootPrefixResolver.resolvePrefix(prefix)
         .map(uri => s""""$prefix" -> "$uri",\n""")
         .getOrElse(sys.error(s"Unknown prefix to emit: $prefix")),
     ).mkString
@@ -529,7 +529,9 @@ object ScalaGenerator {
     }
 
   object ScalaDoc {
-    def apply(metadata: CommonMetadata)(using SchemaView): ScalaDoc = {
+    def apply(metadata: CommonMetadata)(using sv: SchemaView): ScalaDoc = {
+      // TODO LNK-115: We should use `metadata`'s prefixes here, not root's
+      given PrefixResolver = sv.rootPrefixResolver
       new ScalaDoc(
         metadata.description.map(_.capitalize).getOrElse(""),
         metadata.seeAlso.map(_.uri) ++

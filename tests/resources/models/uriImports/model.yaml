@@ -1,0 +1,19 @@
+id: https://neverblink.eu/linkml/tests/uriImports/
+name: uriImports
+prefixes:
+  base: https://neverblink.eu/linkml/tests/uriImports/
+  linkml: https://w3id.org/linkml/
+
+imports:
+  - linkml:types
+  - imported
+
+classes:
+  SomeClass:
+    class_uri: base:Class
+    slots:
+      - some_slot
+slots:
+  some_slot:
+    slot_uri: base:slot
+    range: string

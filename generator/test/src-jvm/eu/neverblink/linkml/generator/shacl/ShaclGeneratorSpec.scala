@@ -610,6 +610,20 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle.isEmpty shouldBe false
     }
 
+    "work with imported prefixes" in {
+      val sv = ModelCatalogue.uriImports.model
+      val rules = ShaclGenerator(using sv).generate()
+      val ttl = RdfUtils.toTurtle(rules)
+      Seq(
+        "https://neverblink.eu/linkml/tests/uriImports/Class",
+        "https://neverblink.eu/linkml/tests/uriImports/slot",
+        "https://neverblink.eu/linkml/tests/uriImports/imported/Class",
+        "https://neverblink.eu/linkml/tests/uriImports/imported/slot",
+      ).foreach { snippet =>
+        ttl should include(snippet)
+      }
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {

@@ -124,7 +124,7 @@ class ShaclGenerator(using sv: SchemaView) {
                 val listNode = blankNode()
                 pv.meaning match {
                   case Some(m) =>
-                    addTriple(listNode, Rdf.first, Iri(m.uri))
+                    addTriple(listNode, Rdf.first, Iri(m.uri(using enumView.definingPrefixResolver)))
                     addTriple(listNode, Rdf.rest, acc)
                   case _ =>
                 }

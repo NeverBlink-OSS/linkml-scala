@@ -162,7 +162,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     }
     baseSchema.copy(
       $schema = Some("https://json-schema.org/draft/2020-12/schema"),
-      $id = Some(sv.root.id.uri),
+      $id = Some(sv.root.id.uri(using sv.rootPrefixResolver)),
       title = Some(sv.root.title.getOrElse(sv.root.name)),
       description = sv.root.description,
       $defs = Some((defs ++ defsKeyless ++ defsValues).to(immutable.ListMap)),

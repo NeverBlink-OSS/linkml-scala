@@ -17,9 +17,7 @@ import scala.util.control.NonFatal
   *   The schema definitions to be used. The first schema in the sequence is considered the "main"
   *   schema. Schemas earlier in the list shadow definitions from later schemas.
   */
-final case class SchemaView(schemas: Seq[SchemaDefinition])
-    extends ReferenceResolver,
-      PrefixResolver {
+final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceResolver {
   given SchemaView = this
 
   if schemas.isEmpty then
@@ -227,7 +225,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition])
       @unused v2: Reference[Element],
   ): Reference[Element] = v1
 
-  private val underlyingPrefixResolver: BasicPrefixResolver = createPrefixResolver(root)
+  val rootPrefixResolver: BasicPrefixResolver = createPrefixResolver(root)
   private val validator = SchemaValidator()
 
   {
@@ -242,13 +240,6 @@ final case class SchemaView(schemas: Seq[SchemaDefinition])
       sys.error(s"Fatal validation problems:\n$formatted")
     }
   }
-
-  override def resolvePrefix(prefix: String): Option[String] =
-    underlyingPrefixResolver.resolvePrefix(prefix)
-
-  override def expand(curie: String): String = underlyingPrefixResolver.expand(curie)
-
-  override def compact(uri: String): String = underlyingPrefixResolver.compact(uri)
 
   /** Whether the merged schema is valid */
   lazy val isValid: Boolean = validator.validate().isSuccess
@@ -442,7 +433,7 @@ object SchemaView {
   /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
     * resolves "semweb_context" curi map and loads user defined prefixes.
     */
-  private def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
+  def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
     val prefixResolver = new BasicPrefixResolver
     Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
     if (forSchema.defaultCuriMaps.contains("semweb_context")) {
