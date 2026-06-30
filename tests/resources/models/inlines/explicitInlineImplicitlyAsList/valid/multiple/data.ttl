@@ -7,6 +7,4 @@ _:b a :SomeClass;
   ], [
     a :SomeOtherClass;
     :other_slot "2"
-  ], [
-    a :SomeOtherClass
-  ] .
+  ] . # todo add a semantic null test case

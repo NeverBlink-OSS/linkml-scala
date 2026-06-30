@@ -1,4 +1,4 @@
-@prefix : <https://neverblink.eu/linkml/tests/unionRange> .
+@prefix : <https://neverblink.eu/linkml/tests/unionRange/> .
 
 _:b a :Union;
   :string_or_int_slot 1.23 .

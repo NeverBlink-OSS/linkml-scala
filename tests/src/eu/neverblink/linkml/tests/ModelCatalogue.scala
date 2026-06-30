@@ -43,6 +43,8 @@ object ModelCatalogue {
     }
 
   /** Model catalogue entry
+    * @param path
+    *   Path to the directory the model is located
     * @param model
     *   Parsed SchemaView representing the model
     * @param validInstances
