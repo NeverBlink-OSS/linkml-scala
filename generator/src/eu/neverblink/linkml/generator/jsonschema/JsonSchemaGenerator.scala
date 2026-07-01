@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.jsonschema
 
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview.*
-import sttp.apispec.{AnySchema, Schema, SchemaType}
+import sttp.apispec.{AnySchema, Pattern, Schema, SchemaType}
 import sttp.apispec.circe.encoderSchema
 
 import java.lang
@@ -89,6 +89,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       description = slot.slot.description,
       minimum = toBigDecimalOpt(slot.slot.minimumValue),
       maximum = toBigDecimalOpt(slot.slot.maximumValue),
+      pattern = slot.slot.pattern.map(Pattern(_)),
     )
   }
 

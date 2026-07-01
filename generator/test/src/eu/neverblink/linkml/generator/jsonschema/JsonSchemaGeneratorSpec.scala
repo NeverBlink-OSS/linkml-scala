@@ -6,7 +6,7 @@ import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
-import sttp.apispec.{Schema, SchemaType}
+import sttp.apispec.{Pattern, Schema, SchemaType}
 
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
@@ -484,21 +484,28 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "include minimum and maximum values for numbers" in {
-      given SchemaView = ModelCatalogue.minMaxValues.model
+      given SchemaView = ModelCatalogue.constraints.model
 
       val schema = JsonSchemaGenerator().generate()
       val typedClass = schema.$defs.get("Typed").asInstanceOf[Schema]
 
-      typedClass.properties.keys should contain theSameElementsAs Seq("intSlot", "floatSlot")
+      typedClass.properties.keys should contain theSameElementsAs Seq(
+        "intSlot",
+        "floatSlot",
+        "stringSlot",
+      )
 
       val intSlot = typedClass.properties("intSlot").asInstanceOf[Schema]
+      intSlot.`type` shouldBe Some(List(SchemaType.Integer))
       intSlot.minimum shouldBe Some(BigDecimal(-1))
       intSlot.maximum shouldBe Some(BigDecimal(1))
-      intSlot.`type` shouldBe Some(List(SchemaType.Integer))
       val floatSlot = typedClass.properties("floatSlot").asInstanceOf[Schema]
+      floatSlot.`type` shouldBe Some(List(SchemaType.Number))
       floatSlot.minimum shouldBe Some(BigDecimal(-2))
       floatSlot.maximum shouldBe Some(BigDecimal(2))
-      floatSlot.`type` shouldBe Some(List(SchemaType.Number))
+      val stringSlot = typedClass.properties("stringSlot").asInstanceOf[Schema]
+      stringSlot.`type` shouldBe Some(List(SchemaType.String))
+      stringSlot.pattern shouldBe Some(Pattern("""^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$"""))
     }
 
     "generate the metamodel without errors" in {

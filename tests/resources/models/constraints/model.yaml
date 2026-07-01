@@ -1,5 +1,5 @@
-id: https://neverblink.eu/linkml/tests/minmax/
-name: minmax
+id: https://neverblink.eu/linkml/tests/constraints/
+name: constraints
 imports:
   - linkml:types
 
@@ -9,6 +9,7 @@ classes:
     slots:
       - intSlot
       - floatSlot
+      - stringSlot
 
 slots:
   intSlot:
@@ -19,3 +20,6 @@ slots:
     range: float
     minimum_value: -2.0
     maximum_value: 2.0
+  stringSlot:
+    range: string
+    pattern: "^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$"
