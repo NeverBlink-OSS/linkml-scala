@@ -505,7 +505,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       floatSlot.maximum shouldBe Some(BigDecimal(2))
       val stringSlot = typedClass.properties("stringSlot").asInstanceOf[Schema]
       stringSlot.`type` shouldBe Some(List(SchemaType.String))
-      stringSlot.pattern shouldBe Some(Pattern("""^(\\([0-9]{3}\\))?[0-9]{3}-[0-9]{4}$"""))
+      stringSlot.pattern shouldBe Some(Pattern("""^(\([0-9]{3}\))?[0-9]{3}-[0-9]{4}$"""))
     }
 
     "generate the metamodel without errors" in {
