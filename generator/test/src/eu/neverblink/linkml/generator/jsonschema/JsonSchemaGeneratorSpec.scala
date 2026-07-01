@@ -483,7 +483,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       schema.$defs.get.keys should contain theSameElementsAs Seq("SomeClass")
     }
 
-    "include minimum and maximum values for numbers" in {
+    "include constraints for numeric and string values" in {
       given SchemaView = ModelCatalogue.constraints.model
 
       val schema = JsonSchemaGenerator().generate()
