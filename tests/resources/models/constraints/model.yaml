@@ -22,4 +22,4 @@ slots:
     maximum_value: 2.0
   stringSlot:
     range: string
-    pattern: "^(\([0-9]{3}\))?[0-9]{3}-[0-9]{4}$"
+    pattern: "^([0-9]{3})?[0-9]{3}-[0-9]{4}$"
