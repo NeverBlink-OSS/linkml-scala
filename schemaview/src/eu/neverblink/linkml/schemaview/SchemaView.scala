@@ -372,7 +372,8 @@ object SchemaView {
         } else {
           try importer.readSchema(normalizedUri)
           catch {
-            case ex if NonFatal(ex) => sys.error(s"Cannot import schema '$normalizedUri'")
+            case ex if NonFatal(ex) =>
+              sys.error(s"Cannot import schema '$normalizedUri'\n" + ex.getMessage)
           }
         }
       if (doImportLoading) {

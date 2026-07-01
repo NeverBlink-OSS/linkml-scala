@@ -483,6 +483,22 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       schema.$defs.get.keys should contain theSameElementsAs Seq("SomeClass")
     }
 
+    "include minimum and maximum values for numbers" in {
+      given SchemaView = ModelCatalogue.minMaxValues.model
+
+      val schema = JsonSchemaGenerator().generate()
+      val typedClass = schema.$defs.get("Typed").asInstanceOf[Schema]
+
+      typedClass.properties.keys should contain theSameElementsAs Seq("intSlot", "floatSlot")
+
+      val intSlot = typedClass.properties("intSlot").asInstanceOf[Schema]
+      intSlot.minimum shouldBe Some(BigDecimal(-1))
+      intSlot.maximum shouldBe Some(BigDecimal(1))
+      val floatSlot = typedClass.properties("floatSlot").asInstanceOf[Schema]
+      floatSlot.minimum shouldBe Some(BigDecimal(-2))
+      floatSlot.maximum shouldBe Some(BigDecimal(2))
+    }
+
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv

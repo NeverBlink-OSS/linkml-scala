@@ -1,0 +1,21 @@
+id: https://neverblink.eu/linkml/tests/minmax/
+name: minmax
+imports:
+  - linkml:types
+
+classes:
+  Typed:
+    tree_root: true
+    slots:
+      - intSlot
+      - floatSlot
+
+slots:
+  intSlot:
+    range: integer
+    minimum_value: -1
+    maximum_value: 1
+  floatSlot:
+    range: float
+    minimum_value: -2.0
+    maximum_value: 2.0

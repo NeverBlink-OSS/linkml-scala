@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.jsonschema
 
+import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview.*
 import sttp.apispec.{AnySchema, Schema, SchemaType}
 import sttp.apispec.circe.encoderSchema
@@ -7,6 +8,7 @@ import sttp.apispec.circe.encoderSchema
 import java.lang
 import scala.collection.immutable
 import scala.collection.mutable
+import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 class JsonSchemaGenerator(using sv: SchemaView) {
@@ -76,17 +78,27 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case typeView: TypeView =>
         typeMap.get(typeView._type.name) match {
           case Some(value) => if slot.slot.multivalued then Schema(value).arrayOf else Schema(value)
-          case None => throw RuntimeException(s"Couldn't map type $range")
+          case None => throw RuntimeException(s"Couldn't map type '${range.inner.name}'")
         }
       // TODO LNK-32: True enums
       case _: EnumView => Schema(SchemaType.String)
-      case _ => throw RuntimeException(s"Couldn't map range $range")
+      case _ => throw RuntimeException(s"Couldn't map range '${range.inner.name}'")
     }
-
     slotName(slot) -> slotSchema.copy(
       title = slot.slot.title,
       description = slot.slot.description,
+      minimum = toBigDecimalOpt(slot.slot.minimumValue),
+      maximum = toBigDecimalOpt(slot.slot.maximumValue),
     )
+  }
+
+  private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] = x match {
+    case Some(v) =>
+      try new Some(BigDecimal(v.value.trim))
+      catch {
+        case ex if NonFatal(ex) => None
+      }
+    case _ => None
   }
 
   /** Generate the JSON Schema, but keep it in the [[Schema]] model

@@ -104,6 +104,7 @@ object ModelCatalogue {
   val basic2: Entry = Entry("/models/basic2/")
   val curie: Entry = Entry("/models/curie/")
   val pruning: Entry = Entry("/models/pruning/")
+  val minMaxValues: Entry = Entry("/models/minMaxValues/")
   val mixin: Entry = Entry("/models/mixin/")
   val reference: Entry = Entry("/models/reference/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
