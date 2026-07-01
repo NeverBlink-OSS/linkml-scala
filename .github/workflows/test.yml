@@ -62,7 +62,5 @@ jobs:
       - name: Re-generate the metamodel and check if it's unchanged
         run: |
           cp -r metamodel/ metamodel_prev/
-          ./mill cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta
-          ./mill metamodel.jvm.fix
-          ./mill metamodel.jvm.reformat
+          ./mill metamodel.regenerate
           diff -r metamodel metamodel_prev

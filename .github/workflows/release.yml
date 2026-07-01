@@ -5,6 +5,49 @@ on:
       - 'v*' # Triggers on tags starting with 'v', like v1.0.0 or v2.1.3-rc1
 
 jobs:
+  jar-assemble:
+    # Separate workflow to speed up library publishing
+    name: Assemble and upload library/cli JARs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required so Mill can see the full Git history and tags
+          submodules: recursive
+
+      - name: Cache Dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:17 # The minimal JDK version for Scala Next
+          apps: mill
+
+      - name: Publish Artifacts to GCP
+        env:
+          GCP_MAVEN_REPO: ${{ secrets.GCP_MAVEN_REPO }}
+          GCP_MAVEN_RW: ${{ secrets.GCP_MAVEN_RW }}
+        run: |
+          export MILL_MAVEN_USERNAME="_json_key_base64"
+          export MILL_MAVEN_PASSWORD="$GCP_MAVEN_RW"          
+          ./mill mill.javalib.MavenPublishModule/publishAll \
+            --publishArtifacts __.publishArtifacts \
+            --releaseUri "$GCP_MAVEN_REPO" \
+            --snapshotUri "$GCP_MAVEN_REPO" \
+
+      - name: Assembly Uber-JAR
+        run: |
+          ./mill cli.jvm.assembly
+          mv out/cli/jvm/assembly.dest/*.jar linkml-scala.jar
+
+      - name: Upload Uber-JAR
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-scala-assembly
+          path: linkml-scala.jar
+
   aot-compile:
     name: AOT compile on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -72,38 +115,6 @@ jobs:
         with:
           fetch-depth: 0 # Required so Mill can see the full Git history and tags
           submodules: recursive
-
-      - name: Cache Dependencies
-        uses: coursier/cache-action@v8
-
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
-        with:
-          jvm: temurin:17 # The minimal JDK version for Scala Next
-          apps: mill
-
-      - name: Publish Artifacts to GCP
-        env:
-          GCP_MAVEN_REPO: ${{ secrets.GCP_MAVEN_REPO }}
-          GCP_MAVEN_RW: ${{ secrets.GCP_MAVEN_RW }}
-        run: |
-          export MILL_MAVEN_USERNAME="_json_key_base64"
-          export MILL_MAVEN_PASSWORD="$GCP_MAVEN_RW"          
-          ./mill mill.javalib.MavenPublishModule/publishAll \
-            --publishArtifacts __.publishArtifacts \
-            --releaseUri "$GCP_MAVEN_REPO" \
-            --snapshotUri "$GCP_MAVEN_REPO" \
-
-      - name: Assembly Uber-JAR
-        run: |
-          ./mill cli.jvm.assembly
-          mv out/cli/jvm/assembly.dest/*.jar linkml-scala.jar
-
-      - name: Upload Uber-JAR
-        uses: actions/upload-artifact@v7
-        with:
-          name: linkml-scala-assembly
-          path: linkml-scala.jar
 
       - name: Download Binaries
         uses: actions/download-artifact@v8

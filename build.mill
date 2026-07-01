@@ -4,6 +4,7 @@
 //| - ch.epfl.scala:scalafix-interfaces:0.14.6
 //| - io.github.alexarchambault.mill::mill-native-image::0.2.5
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
+//| - com.carlosedp::mill-aliases::1.1.0
 //| bspScriptIgnore: [".idea/**"]
 //| mill-jvm-opts: ["-Xss256m", "-Xmx10G"]
 
@@ -18,9 +19,31 @@ import mill.scalajslib.*
 import mill.scalajslib.api.ModuleKind
 import scalalib.*
 import io.github.alexarchambault.millnativeimage.NativeImage
+import com.carlosedp.aliases.*
+import mill.api.Evaluator
+import mill.javalib.api.CompilationResult
 
 val scala = "3.8.3"
 val scalaJS = "1.22.0"
+
+object LinkMlAliases extends Aliases {
+  def lint: Seq[String] = alias(
+    "__.jvm.fix",
+    "__.jvm.reformat",
+    "__.js.fix",
+    "__.js.reformat",
+  )
+
+  def regenerateMetamodel: Seq[String] = alias(
+    "cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta",
+    "metamodel.jvm.fix",
+    "metamodel.jvm.reformat",
+  )
+}
+
+def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
+  AliasesModule.run(ev, "lint")
+}
 
 object runtime extends Module {
   object jvm extends CommonModule {
@@ -57,10 +80,25 @@ object yaml extends Module {
 }
 
 object metamodel extends Module {
+  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
+    Task.Command(exclusive = true) {
+      AliasesModule.run(ev, "regenerateMetamodel")
+    }
+
+  def ensureMetamodel = Task {
+    if !os.exists(moduleDir / "resources" / "meta.yaml") then
+      sys.error("Missing metamodel definition: make sure you have git submodules initialized")
+  }
+
   object jvm extends CommonModule, ResourcesAsStrings("metamodel") {
     def moduleDeps = Seq(
       build.yaml.jvm,
     )
+
+    override def compile = Task {
+      ensureMetamodel()
+      super.compile()
+    }
 
     object test extends ScalaTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
@@ -73,6 +111,11 @@ object metamodel extends Module {
     def moduleDeps = Seq(
       build.yaml.js,
     )
+
+    override def compile = Task {
+      ensureMetamodel()
+      super.compile()
+    }
 
     object test extends ScalaJSTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
@@ -87,6 +130,7 @@ object schemaview extends Module {
     def moduleDeps = Seq(
       build.metamodel.jvm,
     )
+
     object test extends ScalaTests, CommonTestModule
   }
 
@@ -114,6 +158,7 @@ object generator extends Module {
 
     object test extends ScalaTests, CommonTestModule {
       override def moduleDeps = super.moduleDeps :+ build.tests.jvm
+
       override def mvnDeps = super.mvnDeps() ++ Seq(
         mvn"org.eclipse.rdf4j:rdf4j-shacl:5.3.0",
         mvn"com.networknt:json-schema-validator:3.0.4",
@@ -262,7 +307,9 @@ trait CommonTestModule extends ScalaModule, TestModule.ScalaTest, ScalafixModule
 trait CommonScalaJSModule extends ScalaJSModule, CommonPublishModule {
   def scalaJSVersion = scalaJS
 
-  def moduleKind = Task { ModuleKind.ESModule }
+  def moduleKind = Task {
+    ModuleKind.ESModule
+  }
 }
 
 trait CommonPublishModule extends ScalaModule, PublishModule {
