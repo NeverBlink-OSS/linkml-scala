@@ -43,7 +43,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       c.required should not contain "some_slot"
 
       val someOtherSlot = c.properties("some_other_slot").asInstanceOf[Schema]
-      someOtherSlot.`type` shouldBe Some(List(SchemaType.Number))
+      someOtherSlot.`type` shouldBe Some(List(SchemaType.Integer))
       c.required should contain("some_other_slot")
     }
 
@@ -81,7 +81,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someClass.required should not contain "some_slot"
 
       val someOtherSlot = someClass.properties("some_other_slot").asInstanceOf[Schema]
-      someOtherSlot.`type` shouldBe Some(List(SchemaType.Number))
+      someOtherSlot.`type` shouldBe Some(List(SchemaType.Integer))
       someClass.required should contain("some_other_slot")
     }
 
@@ -124,7 +124,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someClass.required should not contain "some_slot"
 
       val someOtherSlot = someClass.properties("some_other_slot").asInstanceOf[Schema]
-      someOtherSlot.`type` shouldBe Some(List(SchemaType.Number))
+      someOtherSlot.`type` shouldBe Some(List(SchemaType.Integer))
       someClass.required should contain("some_other_slot")
 
       val someOtherClass = schema.$defs.get("SomeOtherClass").asInstanceOf[Schema]
@@ -494,9 +494,11 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val intSlot = typedClass.properties("intSlot").asInstanceOf[Schema]
       intSlot.minimum shouldBe Some(BigDecimal(-1))
       intSlot.maximum shouldBe Some(BigDecimal(1))
+      intSlot.`type` shouldBe Some(List(SchemaType.Integer))
       val floatSlot = typedClass.properties("floatSlot").asInstanceOf[Schema]
       floatSlot.minimum shouldBe Some(BigDecimal(-2))
       floatSlot.maximum shouldBe Some(BigDecimal(2))
+      floatSlot.`type` shouldBe Some(List(SchemaType.Number))
     }
 
     "generate the metamodel without errors" in {

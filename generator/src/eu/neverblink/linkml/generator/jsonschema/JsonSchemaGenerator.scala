@@ -199,7 +199,7 @@ object JsonSchemaGenerator {
   private val typeMap: Map[String, SchemaType] = Map(
     "string" -> SchemaType.String,
     "ncname" -> SchemaType.String,
-    "integer" -> SchemaType.Number,
+    "integer" -> SchemaType.Integer,
     "float" -> SchemaType.Number,
     "double" -> SchemaType.Number,
     "boolean" -> SchemaType.Boolean,
