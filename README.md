@@ -116,8 +116,6 @@ python3 -m http.server
 ## Contributing
 
 LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap script is included with this repo (`./mill`), so no additional setup is required for CLI usage. In IntelliJ, [you have to import the project as BSP](https://mill-build.org/mill/cli/installation-ide.html#_intellij) and you are good to go.
- 
-The project also uses [git submodules](https://git-scm.com/book/en/v2/Git-Tools-Submodules), make sure you use the `--recurse-submodules` flag of `git clone`.
 
 Common tasks with mill:
 
@@ -127,6 +125,7 @@ Common tasks with mill:
 - Run all tests: `./mill __.test` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`)
 - Lint the project `./mill lint` (scalafix + scalafmt)
 - Re-generate the metamodel classes `./mill metamodel.regenerate`
+- Fetch the metamodel definitions from [linkml/linkml-model](https://github.com/linkml/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
 - Build native binary: `./mill cli.jvm.nativeImage` (requires Coursier (cs) to be installed)

@@ -14,7 +14,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Required so Mill can see the full Git history and tags
-          submodules: recursive
 
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
@@ -57,8 +56,6 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
-        with:
-          submodules: recursive
 
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
@@ -114,7 +111,6 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0 # Required so Mill can see the full Git history and tags
-          submodules: recursive
 
       - name: Download Binaries
         uses: actions/download-artifact@v8
