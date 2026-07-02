@@ -29,7 +29,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact, child.compact),
         ),
@@ -60,7 +60,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact, child.compact),
         ),
@@ -91,7 +91,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(child.compact),
         ),
@@ -135,7 +135,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           classes = Map(base.compact, mixin.compact, child.compact),
         ),
       )
@@ -171,7 +171,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           classes = Map(base.compact, child.compact),
         ),
       )
@@ -207,7 +207,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact, child.compact),
         ),
@@ -244,7 +244,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact, child.compact),
         ),
@@ -256,9 +256,15 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
     "merge Map slots" in {
       val ann1 =
-        AnnotationImpl(extensionTag = UriOrCurie("ann1"), extensionValue = AnyValue("annotation 1"))
+        AnnotationImpl(
+          extensionTag = UriOrCurie("ann1"),
+          extensionValue = LinkMlAny("annotation 1"),
+        )
       val ann2 =
-        AnnotationImpl(extensionTag = UriOrCurie("ann2"), extensionValue = AnyValue("annotation 2"))
+        AnnotationImpl(
+          extensionTag = UriOrCurie("ann2"),
+          extensionValue = LinkMlAny("annotation 2"),
+        )
 
       val slot = SlotDefinitionImpl(
         name = "slot1",
@@ -286,7 +292,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact, child.compact),
         ),
@@ -299,7 +305,10 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
     "not duplicate Map slots if the contents are identical" in {
       val ann1 =
-        AnnotationImpl(extensionTag = UriOrCurie("ann1"), extensionValue = AnyValue("annotation 1"))
+        AnnotationImpl(
+          extensionTag = UriOrCurie("ann1"),
+          extensionValue = LinkMlAny("annotation 1"),
+        )
 
       val slot = SlotDefinitionImpl(
         name = "slot1",
@@ -327,7 +336,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact, child.compact),
         ),
@@ -360,7 +369,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(child.compact),
         ),
@@ -391,7 +400,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slotChild.compact, slotParent.compact),
           classes = Map(base.compact),
         ),
@@ -422,7 +431,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slotChild.compact, slotParent.compact),
           classes = Map(base.compact),
         ),
@@ -465,7 +474,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact, slot2.compact),
           classes = Map(child.compact),
         ),
@@ -496,7 +505,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test"),
+          id = Uri("https://neverblink.eu/test"),
           slotDefinitions = Map(slot.compact),
           classes = Map(child.compact),
         ),

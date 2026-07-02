@@ -172,7 +172,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     }
 
     "use fallback default prefix (schema uri already terminated with #)" in {
-      val schemaWithHash = schemaFallbackful.copy(id = UriOrCurie("http://schema2#"))
+      val schemaWithHash = schemaFallbackful.copy(id = Uri("http://schema2#"))
       val sv2 = SchemaView.single(schemaWithHash)
       val cls = sv2.classes("class1")
       cls.defaultPrefixUri shouldBe "http://schema2#"
@@ -180,7 +180,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     }
 
     "use fallback default prefix (schema uri already terminated with /)" in {
-      val schemaWithSlash = schemaFallbackful.copy(id = UriOrCurie("http://schema2/"))
+      val schemaWithSlash = schemaFallbackful.copy(id = Uri("http://schema2/"))
       val sv2 = SchemaView.single(schemaWithSlash)
       val cls = sv2.classes("class1")
       cls.defaultPrefixUri shouldBe "http://schema2/"
@@ -200,7 +200,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     "load schema with diamond imports and relative references" in {
       val schemaAStr =
         """
-          |id: a
+          |id: urn:a
           |name: a
           |imports:
           |  - level1/b
@@ -208,21 +208,21 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           |""".stripMargin
       val schemaBStr =
         """
-          |id: b
+          |id: urn:b
           |name: b
           |imports:
           |  - level2/d
           |""".stripMargin
       val schemaCStr =
         """
-          |id: c
+          |id: urn:c
           |name: c
           |imports:
           |  - level2/d
           |""".stripMargin
       val schemaDStr =
         """
-          |id: d
+          |id: urn:d
           |name: d
           |""".stripMargin
       val schemaD = parse(schemaDStr)
@@ -274,10 +274,10 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
 
       SchemaView.loadSchemaViewFromUri(
         s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
-      ).schemas should contain (linkmlTypes)
+      ).schemas should contain(linkmlTypes)
       SchemaView.loadSchemaViewFromUri(
         s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
-      ).schemas should contain (linkmlTypes)
+      ).schemas should contain(linkmlTypes)
     }
     "resolve default uris and ranges of classes, slots, types, enums in imported schemas" in {
       val sv =
@@ -330,7 +330,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     "not relativize URLs and URNs in imports" in {
       val schemaStr =
         """
-          |id: a
+          |id: urn:a
           |name: a
           |imports:
           |  - relative
@@ -342,7 +342,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           |""".stripMargin
 
       val emptySchemaStr =
-        """id: empty
+        """id: urn:empty
           |name: empty
           |""".stripMargin
 
@@ -401,11 +401,11 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     }
     "not find the tree root if it's in the imports" in {
       val schemaMain =
-        """id: main
+        """id: urn:main
            |name: main
            |""".stripMargin
       val schemaImported =
-        """id: imported
+        """id: urn:imported
            |name: imported
            |classes:
            |  someRoot:
@@ -716,10 +716,10 @@ object SchemaViewSpec:
   )
 
   val schema: SchemaDefinitionImpl = SchemaDefinitionImpl(
-    id = UriOrCurie("schema1"),
+    id = Uri("urn:schema1"),
     name = "Schema of id schema1",
     prefixes = Map(
-      "default" -> PrefixImpl("default", UriOrCurie("https://neverblink.eu/example#")),
+      "default" -> PrefixImpl("default", Uri("https://neverblink.eu/example#")),
     ),
     defaultPrefix = Some("default"),
     defaultRange = Some(Reference("type1")),
@@ -731,7 +731,7 @@ object SchemaViewSpec:
   )
 
   val schemaFallbackful: SchemaDefinitionImpl = SchemaDefinitionImpl(
-    id = UriOrCurie("http://schema2"),
+    id = Uri("http://schema2"),
     name = "Schema of id schema2",
     classes = classes,
     slotDefinitions = slots,
@@ -741,7 +741,7 @@ object SchemaViewSpec:
   )
 
   val schemaInvalid: SchemaDefinitionImpl = SchemaDefinitionImpl(
-    id = UriOrCurie("schema3"),
+    id = Uri("urn:schema3"),
     name = "Schema of id schema3",
     classes = classes,
     slotDefinitions = slots,

@@ -76,9 +76,9 @@ class JsonSchemaGenerator(using sv: SchemaView) {
           }
         }
       case typeView: TypeView =>
-        typeMap.get(typeView._type.name) match {
+        typeToRuntime(typeView) match {
           case Some(value) => if slot.slot.multivalued then Schema(value).arrayOf else Schema(value)
-          case None => throw RuntimeException(s"Couldn't map type '${range.inner.name}'")
+          case None => Schema.Empty
         }
       // TODO LNK-32: True enums
       case _: EnumView => Schema(SchemaType.String)
@@ -196,22 +196,19 @@ class JsonSchemaGenerator(using sv: SchemaView) {
 }
 
 object JsonSchemaGenerator {
-  // TODO LNK-33: Create generic type mappings
-  private val typeMap: Map[String, SchemaType] = Map(
-    "string" -> SchemaType.String,
-    "ncname" -> SchemaType.String,
-    "integer" -> SchemaType.Integer,
-    "float" -> SchemaType.Number,
-    "double" -> SchemaType.Number,
-    "boolean" -> SchemaType.Boolean,
-    "datetime" -> SchemaType.String,
-    "date" -> SchemaType.String,
-    "time" -> SchemaType.String,
-    "curie" -> SchemaType.String,
-    "uriorcurie" -> SchemaType.String,
-    "uri" -> SchemaType.String,
-    "decimal" -> SchemaType.Number,
-  )
+  /**
+   * @param tv
+   * @return
+   */
+  def typeToRuntime(tv: TypeView): Option[SchemaType] = tv.coreType match {
+    case StringType => Some(SchemaType.String)
+    case IntegerType => Some(SchemaType.Integer)
+    case FloatType => Some(SchemaType.Number)
+    case DoubleType => Some(SchemaType.Number)
+    case BooleanType => Some(SchemaType.Boolean)
+    case DecimalType => Some(SchemaType.Number)
+    case AnyType => None
+  }
 
   type MappedClassName = String
   type MappedSlotName = String

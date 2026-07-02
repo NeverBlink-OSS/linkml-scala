@@ -11,13 +11,7 @@ import sttp.apispec.{Pattern, Schema, SchemaType}
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
   def load(schemaYaml: String): SchemaView = {
-    val schema = Codec.codec.decode(
-      parseYaml(schemaYaml) match {
-        case Left(e) => fail(e)
-        case Right(value) => value
-      },
-    )
-    SchemaView.single(schema)
+    SchemaView.loadSchemaViewFromString(schemaYaml)
   }
 
   "JsonSchemaGenerator" should {
@@ -528,6 +522,5 @@ object JsonSchemaGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "typeDesignator" -> "Not yet implemented: LNK-101",
     "unionRange" -> "Not yet implemented: LNK-100",
-    "typed" -> "Not yet implemented: LNK-33",
   )
 }

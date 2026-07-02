@@ -131,6 +131,12 @@ class ShaclGenerator(using sv: SchemaView) {
                     )
                     addTriple(listNode, Rdf.rest, acc)
                   case _ =>
+                    addTriple(
+                      listNode,
+                      Rdf.first,
+                      Literal(pv.text),
+                    )
+                    addTriple(listNode, Rdf.rest, acc)
                 }
                 listNode
               }

@@ -638,6 +638,5 @@ object ShaclGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "typeDesignator" -> "Not yet implemented: LNK-102",
     "unionRange" -> "Not yet implemented: LNK-103",
-    "typed" -> "Not yet implemented: LNK-33",
   )
 }

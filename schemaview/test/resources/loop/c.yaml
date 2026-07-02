@@ -1,4 +1,4 @@
-id: c
+id: urn:c
 name: c
 imports:
   - a
