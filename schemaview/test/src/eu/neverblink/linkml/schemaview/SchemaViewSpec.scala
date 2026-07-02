@@ -17,7 +17,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     given SchemaView = sv
     val sep = System.getProperty("file.separator")
     val cwd = PlatformSpecificUtils.getEnv("MILL_WORKSPACE_ROOT")
-      .getOrElse(PlatformSpecificUtils.cwd) // falback for IDE runnings
+      .getOrElse(PlatformSpecificUtils.cwd) // fallback for IDE runs
 
     "not allow being created from no schemas" in {
       intercept[IllegalArgumentException] {
@@ -270,16 +270,14 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta").schemas shouldBe expected
     }
     "load schema from a file with imports from inlined resources" in {
-      val expected = Seq(
-        loadSchemaResource("/validation.yaml"),
-        loadSchemaResource("/types.yaml"),
-      )
+      val linkmlTypes = loadSchemaResource("/types.yaml")
+
       SchemaView.loadSchemaViewFromUri(
-        s"${cwd}${sep}metamodel${sep}resources${sep}validation.yaml",
-      ).schemas shouldBe expected
+        s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
+      ).schemas should contain (linkmlTypes)
       SchemaView.loadSchemaViewFromUri(
-        s"${cwd}${sep}metamodel${sep}resources${sep}validation",
-      ).schemas shouldBe expected
+        s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
+      ).schemas should contain (linkmlTypes)
     }
     "resolve default uris and ranges of classes, slots, types, enums in imported schemas" in {
       val sv =

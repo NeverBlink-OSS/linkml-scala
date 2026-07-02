@@ -370,10 +370,7 @@ object SchemaView {
         } else if (normalizedUri.startsWith("linkml:")) {
           importer.parseSchema(Resources.read("/" + normalizedUri.stripPrefix("linkml:")))
         } else {
-          try importer.readSchema(normalizedUri)
-          catch {
-            case ex if NonFatal(ex) => sys.error(s"Cannot import schema '$normalizedUri'")
-          }
+          importer.readSchema(normalizedUri)
         }
       if (doImportLoading) {
         var baseUri = ""

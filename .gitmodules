@@ -1,3 +1,0 @@
-[submodule "submodules/linkml-model"]
-	path = submodules/linkml-model
-	url = https://github.com/linkml/linkml-model.git

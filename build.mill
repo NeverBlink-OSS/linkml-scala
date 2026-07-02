@@ -85,9 +85,17 @@ object metamodel extends Module {
       AliasesModule.run(ev, "regenerateMetamodel")
     }
 
-  def ensureMetamodel = Task {
-    if !os.exists(moduleDir / "resources" / "meta.yaml") then
-      sys.error("Missing metamodel definition: make sure you have git submodules initialized")
+  def definitions = Task(persistent = true) {
+    if Task.offline then Task.fail("Can't fetch linkml-model offline")
+    val cloneDir = os.temp.dir()
+    val cloneResult = os.call(
+      ("git", "clone", "--depth=1", "https://github.com/linkml/linkml-model"),
+      cwd = cloneDir,
+    )
+    os.list(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema").foreach(
+      os.copy.into(_, Task.dest),
+    )
+    PathRef(Task.dest)
   }
 
   object jvm extends CommonModule, ResourcesAsStrings("metamodel") {
@@ -95,9 +103,8 @@ object metamodel extends Module {
       build.yaml.jvm,
     )
 
-    override def compile = Task {
-      ensureMetamodel()
-      super.compile()
+    override def resources: T[Seq[PathRef]] = {
+      super.resources() :+ definitions()
     }
 
     object test extends ScalaTests, CommonTestModule {
@@ -112,9 +119,8 @@ object metamodel extends Module {
       build.yaml.js,
     )
 
-    override def compile = Task {
-      ensureMetamodel()
-      super.compile()
+    override def resources: T[Seq[PathRef]] = {
+      super.resources() :+ definitions()
     }
 
     object test extends ScalaJSTests, CommonTestModule {
@@ -341,9 +347,10 @@ trait NoBspModule extends CommonModule {
 
 trait ResourcesAsStrings(module: String) extends JavaModule {
   override def generatedSources = Task {
-    val resourcesPath = resources().headOption.map(_.path).getOrElse(moduleDir / "resources")
+
     val maxStrConstLen = 64 * 1000
     val sb = new java.lang.StringBuilder
+
     sb.append("package eu.neverblink.linkml.").append(module).append("\n")
     sb.append("\n")
     sb.append("object Resources {\n")
@@ -353,26 +360,28 @@ trait ResourcesAsStrings(module: String) extends JavaModule {
     )
     sb.append("\n")
     sb.append("  val map = new java.util.HashMap[String, String]()\n")
-    os.walk(resourcesPath, followLinks = true).sorted.foreach { path =>
-      if (os.isFile(path)) {
-        val relPath = "/" + path.relativeTo(resourcesPath).segments.mkString("/")
-        sb.append("  map.put(\"").append(relPath).append("\", ")
-        val encodedContent =
-          java.util.Base64.getEncoder.encodeToString(os.read.bytes(path))
-        val encodedContentLen = encodedContent.length
-        if (encodedContentLen < maxStrConstLen)
-          sb.append("decodeBase64(\"").append(encodedContent).append("\")")
-        else {
-          sb.append("decodeBase64(new java.lang.StringBuilder()")
-          var offset = 0
-          while (offset < encodedContentLen) {
-            val len = Math.min(offset + maxStrConstLen, encodedContentLen)
-            sb.append(".append(\"").append(encodedContent, offset, len).append("\")")
-            offset += maxStrConstLen
+    resources().filter(ref => os.exists(ref.path)).foreach { pathRef =>
+      os.walk(pathRef.path, followLinks = true).sorted.foreach { path =>
+        if (os.isFile(path)) {
+          val relPath = "/" + path.relativeTo(pathRef.path).segments.mkString("/")
+          sb.append("  map.put(\"").append(relPath).append("\", ")
+          val encodedContent =
+            java.util.Base64.getEncoder.encodeToString(os.read.bytes(path))
+          val encodedContentLen = encodedContent.length
+          if (encodedContentLen < maxStrConstLen)
+            sb.append("decodeBase64(\"").append(encodedContent).append("\")")
+          else {
+            sb.append("decodeBase64(new java.lang.StringBuilder()")
+            var offset = 0
+            while (offset < encodedContentLen) {
+              val len = Math.min(offset + maxStrConstLen, encodedContentLen)
+              sb.append(".append(\"").append(encodedContent, offset, len).append("\")")
+              offset += maxStrConstLen
+            }
+            sb.append(".toString)")
           }
-          sb.append(".toString)")
+          sb.append(")\n")
         }
-        sb.append(")\n")
       }
     }
     sb.append("\n")
@@ -380,6 +389,7 @@ trait ResourcesAsStrings(module: String) extends JavaModule {
       "  def read(path: String): String = Option(map.get(path)).getOrElse(throw new NoSuchElementException(\"Resource not found: \" + path))\n",
     )
     sb.append("}\n")
+
     val dest = Task.dest / "eu" / "neverblink" / "linkml" / module / "Resources.scala"
     os.write.over(dest, sb.toString, createFolders = true)
     super.generatedSources() :+ PathRef(dest)

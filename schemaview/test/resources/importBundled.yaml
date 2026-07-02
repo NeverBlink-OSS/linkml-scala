@@ -1,0 +1,11 @@
+id: urn:importBundled
+name: importBundled
+
+imports:
+  - linkml:types
+
+classes:
+  C:
+    attributes:
+      s:
+        range: integer
