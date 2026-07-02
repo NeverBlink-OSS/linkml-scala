@@ -2,11 +2,6 @@ id: https://neverblink.eu/linkml/tests/treeRootless/
 name: treeRootless
 comments:
   - This model does not have a tree_root class defined, so it can be used for testing tree_root overrides
-prefixes:
-  linkml: https://w3id.org/linkml/
-
-default_curi_maps:
-  - semweb_context
 
 instantiates:
   - https://neverblink.eu/linkml/tests/Metadata

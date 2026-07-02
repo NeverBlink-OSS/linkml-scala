@@ -43,6 +43,8 @@ object ModelCatalogue {
     }
 
   /** Model catalogue entry
+    * @param path
+    *   Path to the directory the model is located
     * @param model
     *   Parsed SchemaView representing the model
     * @param validInstances
@@ -97,12 +99,13 @@ object ModelCatalogue {
   val `abstract`: Entry = Entry("/models/abstract/")
   val aliases: Entry = Entry("/models/aliases/")
   val anything: Entry = Entry("/models/anything/")
-  val multivaluedReference: Entry = Entry("/models/multivaluedReference/")
   val basic: Entry = Entry("/models/basic/")
   val basic2: Entry = Entry("/models/basic2/")
+  val constraints: Entry = Entry("/models/constraints/")
   val curie: Entry = Entry("/models/curie/")
   val pruning: Entry = Entry("/models/pruning/")
   val mixin: Entry = Entry("/models/mixin/")
+  val multivaluedReference: Entry = Entry("/models/multivaluedReference/")
   val reference: Entry = Entry("/models/reference/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val inheritance: Entry = Entry("/models/inheritance/")
