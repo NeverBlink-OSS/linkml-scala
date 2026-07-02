@@ -127,9 +127,9 @@ final class ScalaGenerator(using sv: SchemaView) {
        |
        |// GENERATED FROM LINKML
        |
-       |import eu.neverblink.linkml.runtime
+       |import eu.neverblink.linkml.runtime.LinkMlAny
        |
-       |type $anyName = runtime.Anything
+       |type $anyName = LinkMlAny
        |""".stripMargin
   }
 
@@ -151,22 +151,26 @@ final class ScalaGenerator(using sv: SchemaView) {
       "this throw trait try type val var while with yield inline derives end extension using as"
   ).split(' ').toSet
 
-  // TODO LNK-33: Create generic type mappings
-  private val typeMap: Map[String, String] = Map(
-    "string" -> "String",
-    "ncname" -> "String",
-    "integer" -> "Int",
-    "float" -> "Float",
-    "double" -> "Double",
-    "boolean" -> "Boolean",
-    "datetime" -> "ZonedDateTime",
-    "date" -> "LocalDate",
-    "time" -> "LocalTime",
-    "curie" -> "Curie",
-    "uriorcurie" -> "UriOrCurie",
-    "uri" -> "UriOrCurie",
-    "decimal" -> "BigDecimal",
-  )
+  def typeToRuntime(tv: TypeView): String = tv.runtimeType match {
+    case StringType => "String"
+    case IntegerType => "Int"
+    case FloatType => "Float"
+    case DoubleType => "Double"
+    case BooleanType => "Boolean"
+    case DecimalType => "BigDecimal"
+    case AnyType => "LinkMlAny"
+
+    case DateOrDateTimeType => "ZonedDateTime"
+    case DateType => "ZonedDateTime"
+    case DateTimeType => "ZonedDateTime"
+    case TimeType => "ZonedDateTime"
+
+    case UriOrCurieType => "UriOrCurie"
+    case UriType => "Uri"
+    case CurieType => "Curie"
+    case NcNameType => "NcName"
+    case UnknownType => "Unknown"
+  }
 
   /** Translates a LinkML range value to the appropriate Scala type.
     *
@@ -189,10 +193,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         else if (isInlined) s"${className}Impl"
         else s"Reference[$className]"
       case typeView: TypeView =>
-        typeMap.getOrElse(
-          typeView._type.name,
-          throw RuntimeException(s"Couldn't map type ${typeView._type.name}"),
-        )
+        typeToRuntime(typeView)
       // True enum support would require working around the dynamic "enums" of LinkML, which I'm sure
       // were a really convenient idea for the biologists, but it adds a lot of complexity for us
       case enumView: EnumView =>

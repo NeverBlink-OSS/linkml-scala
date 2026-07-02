@@ -101,13 +101,8 @@ object ValidatorContext:
     new ValidatorContext(defaultRangeAllowed, false)
 
 private object MacroValidator {
-  given MacroValidator[Anything] = new MacroValidator[Anything] {
-    def validate(t: Anything)(using SchemaView, ValidatorContext): ValidatorResult =
-      ValidatorResult.ok
-  }
-
-  given MacroValidator[AnyValue] = new MacroValidator[AnyValue] {
-    def validate(t: AnyValue)(using SchemaView, ValidatorContext): ValidatorResult =
+  given MacroValidator[LinkMlAny] = new MacroValidator[LinkMlAny] {
+    def validate(t: LinkMlAny)(using SchemaView, ValidatorContext): ValidatorResult =
       ValidatorResult.ok
   }
 

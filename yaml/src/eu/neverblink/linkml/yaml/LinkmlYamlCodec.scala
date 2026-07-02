@@ -20,17 +20,10 @@ object LinkmlYamlCodec {
     case _ => s"Expected $msg but got:\n$node"
   })
 
-  implicit val anythingCodec: LinkmlYamlCodec[Anything] = new LinkmlYamlCodec[Anything] {
-    override def decode(node: Node, id: Option[Any]): Anything = Anything.apply(node.asYaml)
+  implicit val anythingCodec: LinkmlYamlCodec[LinkMlAny] = new LinkmlYamlCodec[LinkMlAny] {
+    override def decode(node: Node, id: Option[Any]): LinkMlAny = LinkMlAny.apply(node.asYaml)
 
-    override def encode(x: Anything, skipId: Boolean): Node =
-      parseYaml(x.toString).getOrElse(Node.ScalarNode(null))
-  }
-
-  implicit val anyValueCodec: LinkmlYamlCodec[AnyValue] = new LinkmlYamlCodec[AnyValue] {
-    override def decode(node: Node, id: Option[Any]): AnyValue = AnyValue.apply(node.asYaml)
-
-    override def encode(x: AnyValue, skipId: Boolean): Node =
+    override def encode(x: LinkMlAny, skipId: Boolean): Node =
       parseYaml(x.toString).getOrElse(Node.ScalarNode(null))
   }
 

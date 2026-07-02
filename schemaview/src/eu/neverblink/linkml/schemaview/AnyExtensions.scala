@@ -1,9 +1,9 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.runtime.AnyValue
+import eu.neverblink.linkml.runtime.LinkMlAny
 import org.virtuslab.yaml.{Node, YamlDecoder, YamlError, parseYaml}
 
-extension (any: AnyValue)
+extension (any: LinkMlAny)
   /** Interpret the value of linkml:Any as YAML and return it.
     */
   def yaml: Either[YamlError, Node] = parseYaml(any.value)

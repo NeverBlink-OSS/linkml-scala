@@ -4,4 +4,4 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime
 
-type Anything = runtime.Anything
+type Anything = runtime.LinkMlAny

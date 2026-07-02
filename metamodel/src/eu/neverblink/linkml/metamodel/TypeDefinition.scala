@@ -9,108 +9,108 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 case class TypeDefinitionImpl(
-    @id
+                               @id
     name: String,
-    @named("uri")
+                               @named("uri")
     typeUri: Option[UriOrCurie] = None,
-    title: Option[String] = None,
-    description: Option[String] = None,
-    typeof: Option[Reference[TypeDefinition]] = None,
-    base: Option[String] = None,
-    repr: Option[String] = None,
-    pattern: Option[String] = None,
-    rank: Option[Int] = None,
-    @named("any_of")
+                               title: Option[String] = None,
+                               description: Option[String] = None,
+                               typeof: Option[Reference[TypeDefinition]] = None,
+                               base: Option[String] = None,
+                               repr: Option[String] = None,
+                               pattern: Option[String] = None,
+                               rank: Option[Int] = None,
+                               @named("any_of")
     anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("exactly_one_of")
+                               @named("exactly_one_of")
     exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("none_of")
+                               @named("none_of")
     noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("all_of")
+                               @named("all_of")
     allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    aliases: Seq[String] = Seq(),
-    @named("alt_descriptions")
+                               aliases: Seq[String] = Seq(),
+                               @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
+                               @simpleDict
     annotations: Map[String, AnnotationImpl] = Map(),
-    @named("broad_mappings")
+                               @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
-    categories: Seq[UriOrCurie] = Seq(),
-    @named("close_mappings")
+                               categories: Seq[UriOrCurie] = Seq(),
+                               @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-    comments: Seq[String] = Seq(),
-    @named("conforms_to")
+                               comments: Seq[String] = Seq(),
+                               @named("conforms_to")
     conformsTo: Option[String] = None,
-    contributors: Seq[UriOrCurie] = Seq(),
-    @named("created_by")
+                               contributors: Seq[UriOrCurie] = Seq(),
+                               @named("created_by")
     createdBy: Option[UriOrCurie] = None,
-    @named("created_on")
+                               @named("created_on")
     createdOn: Option[ZonedDateTime] = None,
-    @named("definition_uri")
+                               @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
-    deprecated: Option[String] = None,
-    @named("deprecated_element_has_exact_replacement")
+                               deprecated: Option[String] = None,
+                               @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
-    @named("deprecated_element_has_possible_replacement")
+                               @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("equals_number")
+                               @named("equals_number")
     equalsNumber: Option[Int] = None,
-    @named("equals_string")
+                               @named("equals_string")
     equalsString: Option[String] = None,
-    @named("equals_string_in")
+                               @named("equals_string_in")
     equalsStringIn: Seq[String] = Seq(),
-    @named("exact_mappings")
+                               @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
+                               examples: Seq[ExampleImpl] = Seq(),
+                               @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
-    @named("from_schema")
+                               @named("from_schema")
     fromSchema: Option[UriOrCurie] = None,
-    @named("id_prefixes")
+                               @named("id_prefixes")
     idPrefixes: Seq[String] = Seq(),
-    @named("id_prefixes_are_closed")
+                               @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
-    implements: Seq[UriOrCurie] = Seq(),
-    @named("implicit_prefix")
+                               implements: Seq[UriOrCurie] = Seq(),
+                               @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
-    @named("imported_from")
+                               @named("imported_from")
     importedFrom: Option[String] = None,
-    @named("in_language")
+                               @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
+                               @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    instantiates: Seq[UriOrCurie] = Seq(),
-    keywords: Seq[String] = Seq(),
-    @named("last_updated_on")
+                               instantiates: Seq[UriOrCurie] = Seq(),
+                               keywords: Seq[String] = Seq(),
+                               @named("last_updated_on")
     lastUpdatedOn: Option[ZonedDateTime] = None,
-    @named("local_names")
+                               @named("local_names")
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
-    mappings: Seq[UriOrCurie] = Seq(),
-    @named("maximum_value")
-    maximumValue: Option[Anything] = None,
-    @named("minimum_value")
-    minimumValue: Option[Anything] = None,
-    @named("modified_by")
+                               mappings: Seq[UriOrCurie] = Seq(),
+                               @named("maximum_value")
+    maximumValue: Option[LinkMlAny] = None,
+                               @named("minimum_value")
+    minimumValue: Option[LinkMlAny] = None,
+                               @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
-    @named("narrow_mappings")
+                               @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
-    @named("related_mappings")
+                               notes: Seq[String] = Seq(),
+                               @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
-    @named("see_also")
+                               @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
-    source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
-    @named("structured_aliases")
+                               source: Option[UriOrCurie] = None,
+                               status: Option[UriOrCurie] = None,
+                               @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
-    @named("structured_pattern")
+                               @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
-    todos: Seq[String] = Seq(),
-    @named("union_of")
+                               todos: Seq[String] = Seq(),
+                               @named("union_of")
     unionOf: Seq[Reference[TypeDefinition]] = Seq(),
-    unit: Option[UnitOfMeasureImpl] = None,
+                               unit: Option[UnitOfMeasureImpl] = None,
 ) extends TypeDefinition
 
 /** An element that whose instances are atomic scalar values that can be mapped to primitive types

@@ -349,6 +349,30 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case _ => SubjectType.base
   }
 
+  def runtimeType: RuntimeType = inner.base match {
+    case Some(value) =>
+      value match {
+        case "str" => StringType
+        case "int" => IntegerType
+        case "Bool" => BooleanType
+        // thanks, python
+        case "float" if inner.typeUri.contains("xsd:double") => DoubleType
+        case "float" => FloatType
+        case "Decimal" => DecimalType
+
+        case "URI" => UriType
+        case "Curie" => CurieType
+        case "URIorCURIE" => UriOrCurieType
+
+        case "XSDDateTime" => DateTimeType
+        case "XSDDate" => DateType
+        case "XSDTime" => TimeType
+      }
+    case None => UnknownType
+  }
+
+  def coreType: CoreType = runtimeType.repr
+
   def uriOrCurie: UriOrCurie =
     _type.typeUri.getOrElse(Uri(defaultPrefixUri + _type.name))
 }

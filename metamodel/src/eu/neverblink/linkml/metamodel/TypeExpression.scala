@@ -65,7 +65,7 @@ trait TypeExpression extends Expression {
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
     */
-  def maximumValue: Option[Anything]
+  def maximumValue: Option[LinkMlAny]
 
   /** For ordinal ranges, the value must be equal to or higher than this
     *
@@ -75,7 +75,7 @@ trait TypeExpression extends Expression {
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
     */
-  def minimumValue: Option[Anything]
+  def minimumValue: Option[LinkMlAny]
 
   /** The string value of the slot must conform to the regular expression in the pattern expression
     *
