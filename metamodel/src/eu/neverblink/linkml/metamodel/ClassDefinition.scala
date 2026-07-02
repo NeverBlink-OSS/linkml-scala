@@ -306,10 +306,22 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     */
   def unionOf: Seq[Reference[ClassDefinition]]
 
-  /** A collection of named unique keys for this class. Unique keys may be singular or compound.
+  /** A collection of named unique keys for this class. Such unique keys may be spread over several
+    * slots, which is why there are also called "compound keys". A unique key uniquely identifies
+    * instances of the class within a given container, meaning there cannot be two (or more)
+    * instances of the class with the same values for all the slots that make up the unique key.
     *
     * @see
-    *   https://linkml.io/linkml/schemas/constraints.html#unique-key
+    *   https://linkml.io/linkml/schemas/constraints.html#unique-keys
+    * @see
+    *   https://w3id.org/linkml/key
+    * @see
+    *   https://w3id.org/linkml/identifier
+    * @note
+    *   Not to be confused with a "singular unique key", which is defined by means of the `key`
+    *   slot, or with an "identifier", which is defined by means of the "identifier" slot. Compound
+    *   keys, singular unique keys, and identifiers all create a unicity constraint, but singular
+    *   unique keys and identifiers have additional effects that compound keys do not have.\n
     */
   def uniqueKeys: Map[String, UniqueKeyImpl]
 }

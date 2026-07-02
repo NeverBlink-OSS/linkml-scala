@@ -432,23 +432,35 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def slotUri: Option[UriOrCurie]
 
-  /** True means that the key slot(s) uniquely identifies the elements. There can be at most one
-    * identifier or key per container
+  /** True means that the slot is the identifier slot of its class. Such a slot uniquely identifies
+    * instances of the class throughout an entire document, meaning there cannot be two (or more)
+    * instances of the class (or instances of any of its descendants) with the same value for the
+    * identifier slot anywhere in the document.
     *
     * @see
     *   https://en.wikipedia.org/wiki/Identifier
     * @see
+    *   https://linkml.io/linkml/schemas/constraints.html#unique-keys
+    * @see
+    *   https://linkml.io/linkml/schemas/inlining.html
+    * @see
     *   https://w3id.org/linkml/unique_keys
+    * @see
+    *   https://w3id.org/linkml/key
     * @see
     *   Aliases: primary key, ID, UID, code
     * @note
-    *   Identifier is inherited
+    *   The identifier slot is inherited.
     * @note
-    *   A key slot is automatically required. Identifiers cannot be optional
+    *   A domain can have at most one identifier slot OR a key slot. However a domain can have both
+    *   an identifier slot and any number of compound keys.
     * @note
-    *   A given domain can have at most one identifier
+    *   An identifier slot is automatically required. Identifiers cannot be optional.
     * @note
-    *   Identifiers and keys are mutually exclusive. A given domain cannot have both
+    *   The presence of an identifier slot makes a class eligible for inlining as a dictionary.
+    * @note
+    *   The presence of an identifier slot makes a class eligible for being referenced rather than
+    *   inlined.
     */
   def identifier: Boolean
 
@@ -566,18 +578,28 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def isUsageSlot: Boolean
 
-  /** True means that the key slot(s) uniquely identify the elements within a single container
+  /** True means that the slot is the "singular unique key" (also known more simply as the "key
+    * slot") of its class. Such a slot uniquely identifies instances of the class within a single
+    * container, meaning there cannot be two (or more) instances of the class (or instances of any
+    * of its descendants) with the same value for the key slot within the container.
     *
     * @see
+    *   https://linkml.io/linkml/schemas/constraints.html#singular-unique-keys
+    * @see
+    *   https://linkml.io/linkml/schemas/inlining.html
+    * @see
     *   https://w3id.org/linkml/unique_keys
+    * @see
+    *   https://w3id.org/linkml/identifier
     * @note
-    *   Key is inherited
+    *   The key slot is inherited.
     * @note
-    *   A given domain can have at most one key slot (restriction to be removed in the future)
+    *   A domain can have at most one key slot OR one identifier slot. However a domain can have
+    *   both a key slot and any number of compound keys.
     * @note
-    *   Identifiers and keys are mutually exclusive. A given domain cannot have both
+    *   A key slot is automatically required. Singular unique keys cannot be optional.
     * @note
-    *   A key slot is automatically required. Keys cannot be optional
+    *   The presence of a key slot makes a class eligible for inlining as a dictionary.
     */
   def key: Boolean
 
