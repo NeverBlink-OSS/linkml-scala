@@ -34,7 +34,7 @@ case class Curie(original: String) extends UriOrCurie {
   def curie(implicit resolver: PrefixResolver): String = original
 }
 
-case class NcName(value: String)
+type NcName = String
 
 trait PrefixResolver {
 

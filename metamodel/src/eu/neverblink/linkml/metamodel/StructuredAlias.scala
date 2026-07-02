@@ -13,7 +13,7 @@ case class StructuredAliasImpl(
     description: Option[String] = None,
     rank: Option[Int] = None,
     @named("contexts")
-    aliasContexts: Seq[UriOrCurie] = Seq(),
+    aliasContexts: Seq[Uri] = Seq(),
     @named("predicate")
     aliasPredicate: Option[Reference[AliasPredicateEnum]] = None,
     aliases: Seq[String] = Seq(),
@@ -44,7 +44,7 @@ case class StructuredAliasImpl(
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
@@ -80,7 +80,7 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
 
   /** The context in which an alias should be applied
     */
-  def aliasContexts: Seq[UriOrCurie]
+  def aliasContexts: Seq[Uri]
 
   /** The relationship between an element and its alias.
     */

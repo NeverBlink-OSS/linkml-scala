@@ -9,30 +9,30 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 case class AnonymousTypeExpressionImpl(
-                                        pattern: Option[String] = None,
-                                        @named("any_of")
+    pattern: Option[String] = None,
+    @named("any_of")
     anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-                                        @named("exactly_one_of")
+    @named("exactly_one_of")
     exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-                                        @named("none_of")
+    @named("none_of")
     noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-                                        @named("all_of")
+    @named("all_of")
     allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-                                        @named("equals_number")
+    @named("equals_number")
     equalsNumber: Option[Int] = None,
-                                        @named("equals_string")
+    @named("equals_string")
     equalsString: Option[String] = None,
-                                        @named("equals_string_in")
+    @named("equals_string_in")
     equalsStringIn: Seq[String] = Seq(),
-                                        @named("implicit_prefix")
+    @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
-                                        @named("maximum_value")
-    maximumValue: Option[LinkMlAny] = None,
-                                        @named("minimum_value")
-    minimumValue: Option[LinkMlAny] = None,
-                                        @named("structured_pattern")
+    @named("maximum_value")
+    maximumValue: Option[Anything] = None,
+    @named("minimum_value")
+    minimumValue: Option[Anything] = None,
+    @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
-                                        unit: Option[UnitOfMeasureImpl] = None,
+    unit: Option[UnitOfMeasureImpl] = None,
 ) extends AnonymousTypeExpression
 
 /** A type expression that is not a top-level named type definition. Used for nesting.

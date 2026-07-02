@@ -82,9 +82,9 @@ case class ClassDefinitionImpl(
     @named("extra_slots")
     extraSlots: Option[ExtraSlotsExpressionImpl] = None,
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("id_prefixes")
-    idPrefixes: Seq[String] = Seq(),
+    idPrefixes: Seq[NcName] = Seq(),
     @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),

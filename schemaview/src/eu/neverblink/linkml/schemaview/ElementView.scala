@@ -342,10 +342,10 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
     * the RDF representations.
     */
-  def subjectType: SubjectType = inner.base match {
-    case Some("URI") => SubjectType.uri
-    case Some("Curie") => SubjectType.curie
-    case Some("URIorCURIE") => SubjectType.uriOrCurie
+  def subjectType: SubjectType = runtimeType match {
+    case UriType => SubjectType.uri
+    case CurieType => SubjectType.curie
+    case UriOrCurieType => SubjectType.uriOrCurie
     case _ => SubjectType.base
   }
 
@@ -363,10 +363,13 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
         case "URI" => UriType
         case "Curie" => CurieType
         case "URIorCURIE" => UriOrCurieType
+        case "NCName" => NcNameType
 
         case "XSDDateTime" => DateTimeType
         case "XSDDate" => DateType
         case "XSDTime" => TimeType
+
+        case _ => UnknownType
       }
     case None => UnknownType
   }

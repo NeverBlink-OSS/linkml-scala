@@ -46,7 +46,7 @@ case class PermissibleValueImpl(
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     implements: Seq[UriOrCurie] = Seq(),
     @named("imported_from")
     importedFrom: Option[String] = None,

@@ -43,7 +43,7 @@ case class DimensionExpressionImpl(
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")

@@ -9,11 +9,11 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 case class ExampleImpl(
-                        value: Option[String] = None,
-                        @named("description")
+    value: Option[String] = None,
+    @named("description")
     valueDescription: Option[String] = None,
-                        @named("object")
-    valueObject: Option[LinkMlAny] = None,
+    @named("object")
+    valueObject: Option[Anything] = None,
 ) extends Example
 
 /** Usage example and description
@@ -30,5 +30,5 @@ abstract class Example {
 
   /** Direct object representation of the example
     */
-  def valueObject: Option[LinkMlAny]
+  def valueObject: Option[Anything]
 }

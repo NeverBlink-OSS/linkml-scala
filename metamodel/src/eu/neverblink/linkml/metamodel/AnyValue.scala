@@ -2,6 +2,6 @@ package eu.neverblink.linkml.metamodel
 
 // GENERATED FROM LINKML
 
-import eu.neverblink.linkml.runtime
+import eu.neverblink.linkml.runtime.LinkMlAny
 
-type AnyValue = runtime.LinkMlAny
+type AnyValue = LinkMlAny

@@ -9,198 +9,198 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 case class SlotDefinitionImpl(
-                               @id
+    @id
     name: String,
-                               @named("slot_uri")
+    @named("slot_uri")
     slotUri: Option[UriOrCurie] = None,
-                               title: Option[String] = None,
-                               description: Option[String] = None,
-                               identifier: Boolean = false,
-                               alias: Option[String] = None,
-                               multivalued: Boolean = false,
-                               required: Boolean = false,
-                               recommended: Boolean = false,
-                               @named("is_a")
+    title: Option[String] = None,
+    description: Option[String] = None,
+    identifier: Boolean = false,
+    alias: Option[String] = None,
+    multivalued: Boolean = false,
+    required: Boolean = false,
+    recommended: Boolean = false,
+    @named("is_a")
     isA: Option[Reference[SlotDefinition]] = None,
-                               mixins: Seq[Reference[SlotDefinition]] = Seq(),
-                               inlined: Boolean = false,
-                               @named("inlined_as_list")
+    mixins: Seq[Reference[SlotDefinition]] = Seq(),
+    inlined: Boolean = false,
+    @named("inlined_as_list")
     inlinedAsList: Boolean = false,
-                               pattern: Option[String] = None,
-                               rank: Option[Int] = None,
-                               @named("any_of")
+    pattern: Option[String] = None,
+    rank: Option[Int] = None,
+    @named("any_of")
     anyOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-                               @named("exactly_one_of")
+    @named("exactly_one_of")
     exactlyOneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-                               @named("none_of")
+    @named("none_of")
     noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-                               @named("all_of")
+    @named("all_of")
     allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-                               @named("abstract")
+    @named("abstract")
     `abstract`: Boolean = false,
-                               aliases: Seq[String] = Seq(),
-                               @named("all_members")
+    aliases: Seq[String] = Seq(),
+    @named("all_members")
     allMembers: Option[AnonymousSlotExpressionImpl] = None,
-                               @named("alt_descriptions")
+    @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-                               @simpleDict
+    @simpleDict
     annotations: Map[String, AnnotationImpl] = Map(),
-                               @named("apply_to")
+    @named("apply_to")
     applyTo: Seq[Reference[SlotDefinition]] = Seq(),
-                               array: Option[ArrayExpressionImpl] = None,
-                               asymmetric: Boolean = false,
-                               bindings: Seq[EnumBindingImpl] = Seq(),
-                               @named("broad_mappings")
+    array: Option[ArrayExpressionImpl] = None,
+    asymmetric: Boolean = false,
+    bindings: Seq[EnumBindingImpl] = Seq(),
+    @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
-                               categories: Seq[UriOrCurie] = Seq(),
-                               @named("children_are_mutually_disjoint")
+    categories: Seq[UriOrCurie] = Seq(),
+    @named("children_are_mutually_disjoint")
     childrenAreMutuallyDisjoint: Boolean = false,
-                               @named("close_mappings")
+    @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-                               comments: Seq[String] = Seq(),
-                               @named("conforms_to")
+    comments: Seq[String] = Seq(),
+    @named("conforms_to")
     conformsTo: Option[String] = None,
-                               contributors: Seq[UriOrCurie] = Seq(),
-                               @named("created_by")
+    contributors: Seq[UriOrCurie] = Seq(),
+    @named("created_by")
     createdBy: Option[UriOrCurie] = None,
-                               @named("created_on")
+    @named("created_on")
     createdOn: Option[ZonedDateTime] = None,
-                               @named("definition_uri")
+    @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
-                               deprecated: Option[String] = None,
-                               @named("deprecated_element_has_exact_replacement")
+    deprecated: Option[String] = None,
+    @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
-                               @named("deprecated_element_has_possible_replacement")
+    @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-                               @named("designates_type")
+    @named("designates_type")
     designatesType: Boolean = false,
-                               @named("disjoint_with")
+    @named("disjoint_with")
     disjointWith: Seq[Reference[SlotDefinition]] = Seq(),
-                               domain: Option[Reference[ClassDefinition]] = None,
-                               @named("domain_of")
+    domain: Option[Reference[ClassDefinition]] = None,
+    @named("domain_of")
     domainOf: Seq[Reference[ClassDefinition]] = Seq(),
-                               @named("enum_range")
+    @named("enum_range")
     enumRange: Option[EnumExpressionImpl] = None,
-                               @named("equals_expression")
+    @named("equals_expression")
     equalsExpression: Option[String] = None,
-                               @named("equals_number")
+    @named("equals_number")
     equalsNumber: Option[Int] = None,
-                               @named("equals_string")
+    @named("equals_string")
     equalsString: Option[String] = None,
-                               @named("equals_string_in")
+    @named("equals_string_in")
     equalsStringIn: Seq[String] = Seq(),
-                               @named("exact_cardinality")
+    @named("exact_cardinality")
     exactCardinality: Option[Int] = None,
-                               @named("exact_mappings")
+    @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-                               examples: Seq[ExampleImpl] = Seq(),
-                               @simpleDict
+    examples: Seq[ExampleImpl] = Seq(),
+    @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
-                               @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
-                               @named("has_member")
+    @named("from_schema")
+    fromSchema: Option[Uri] = None,
+    @named("has_member")
     hasMember: Option[AnonymousSlotExpressionImpl] = None,
-                               @named("id_prefixes")
-    idPrefixes: Seq[String] = Seq(),
-                               @named("id_prefixes_are_closed")
+    @named("id_prefixes")
+    idPrefixes: Seq[NcName] = Seq(),
+    @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
-                               ifabsent: Option[String] = None,
-                               implements: Seq[UriOrCurie] = Seq(),
-                               @named("implicit_prefix")
+    ifabsent: Option[String] = None,
+    implements: Seq[UriOrCurie] = Seq(),
+    @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
-                               @named("imported_from")
+    @named("imported_from")
     importedFrom: Option[String] = None,
-                               @named("in_language")
+    @named("in_language")
     inLanguage: Option[String] = None,
-                               @named("in_subset")
+    @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-                               inherited: Boolean = false,
-                               instantiates: Seq[UriOrCurie] = Seq(),
-                               inverse: Option[Reference[SlotDefinition]] = None,
-                               irreflexive: Boolean = false,
-                               @named("is_class_field")
+    inherited: Boolean = false,
+    instantiates: Seq[UriOrCurie] = Seq(),
+    inverse: Option[Reference[SlotDefinition]] = None,
+    irreflexive: Boolean = false,
+    @named("is_class_field")
     isClassField: Boolean = false,
-                               @named("is_grouping_slot")
+    @named("is_grouping_slot")
     isGroupingSlot: Boolean = false,
-                               @named("is_usage_slot")
+    @named("is_usage_slot")
     isUsageSlot: Boolean = false,
-                               key: Boolean = false,
-                               keywords: Seq[String] = Seq(),
-                               @named("last_updated_on")
+    key: Boolean = false,
+    keywords: Seq[String] = Seq(),
+    @named("last_updated_on")
     lastUpdatedOn: Option[ZonedDateTime] = None,
-                               @named("list_elements_ordered")
+    @named("list_elements_ordered")
     listElementsOrdered: Boolean = false,
-                               @named("list_elements_unique")
+    @named("list_elements_unique")
     listElementsUnique: Boolean = false,
-                               @named("local_names")
+    @named("local_names")
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
-                               @named("locally_reflexive")
+    @named("locally_reflexive")
     locallyReflexive: Boolean = false,
-                               mappings: Seq[UriOrCurie] = Seq(),
-                               @named("maximum_cardinality")
+    mappings: Seq[UriOrCurie] = Seq(),
+    @named("maximum_cardinality")
     maximumCardinality: Option[Int] = None,
-                               @named("maximum_value")
-    maximumValue: Option[LinkMlAny] = None,
-                               @named("minimum_cardinality")
+    @named("maximum_value")
+    maximumValue: Option[Anything] = None,
+    @named("minimum_cardinality")
     minimumCardinality: Option[Int] = None,
-                               @named("minimum_value")
-    minimumValue: Option[LinkMlAny] = None,
-                               mixin: Boolean = false,
-                               @named("modified_by")
+    @named("minimum_value")
+    minimumValue: Option[Anything] = None,
+    mixin: Boolean = false,
+    @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
-                               @named("narrow_mappings")
+    @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-                               notes: Seq[String] = Seq(),
-                               owner: Option[Reference[Definition]] = None,
-                               @named("path_rule")
+    notes: Seq[String] = Seq(),
+    owner: Option[Reference[Definition]] = None,
+    @named("path_rule")
     pathRule: Option[PathExpressionImpl] = None,
-                               range: Option[Reference[Element]] = None,
-                               @named("range_expression")
+    range: Option[Reference[Element]] = None,
+    @named("range_expression")
     rangeExpression: Option[AnonymousClassExpressionImpl] = None,
-                               readonly: Option[String] = None,
-                               reflexive: Boolean = false,
-                               @named("reflexive_transitive_form_of")
+    readonly: Option[String] = None,
+    reflexive: Boolean = false,
+    @named("reflexive_transitive_form_of")
     reflexiveTransitiveFormOf: Option[Reference[SlotDefinition]] = None,
-                               @named("related_mappings")
+    @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
-                               @named("relational_role")
+    @named("relational_role")
     relationalRole: Option[Reference[RelationalRoleEnum]] = None,
-                               role: Option[String] = None,
-                               @named("see_also")
+    role: Option[String] = None,
+    @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
-                               shared: Boolean = false,
-                               @named("singular_name")
+    shared: Boolean = false,
+    @named("singular_name")
     singularName: Option[String] = None,
-                               @named("slot_group")
+    @named("slot_group")
     slotGroup: Option[Reference[SlotDefinition]] = None,
-                               source: Option[UriOrCurie] = None,
-                               status: Option[UriOrCurie] = None,
-                               @named("string_serialization")
+    source: Option[UriOrCurie] = None,
+    status: Option[UriOrCurie] = None,
+    @named("string_serialization")
     stringSerialization: Option[String] = None,
-                               @named("structured_aliases")
+    @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
-                               @named("structured_pattern")
+    @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
-                               @named("subproperty_of")
+    @named("subproperty_of")
     subpropertyOf: Option[Reference[SlotDefinition]] = None,
-                               symmetric: Boolean = false,
-                               todos: Seq[String] = Seq(),
-                               transitive: Boolean = false,
-                               @named("transitive_form_of")
+    symmetric: Boolean = false,
+    todos: Seq[String] = Seq(),
+    transitive: Boolean = false,
+    @named("transitive_form_of")
     transitiveFormOf: Option[Reference[SlotDefinition]] = None,
-                               @named("type_mappings")
+    @named("type_mappings")
     @compactDict
     typeMappings: Map[String, TypeMappingImpl] = Map(),
-                               @named("union_of")
+    @named("union_of")
     unionOf: Seq[Reference[SlotDefinition]] = Seq(),
-                               unit: Option[UnitOfMeasureImpl] = None,
-                               @named("usage_slot_name")
+    unit: Option[UnitOfMeasureImpl] = None,
+    @named("usage_slot_name")
     usageSlotName: Option[String] = None,
-                               @named("value_presence")
+    @named("value_presence")
     valuePresence: Option[Reference[PresenceEnum]] = None,
-                               @named("values_from")
+    @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
 ) extends SlotDefinition {
 

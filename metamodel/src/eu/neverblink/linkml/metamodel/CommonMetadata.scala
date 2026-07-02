@@ -110,7 +110,7 @@ trait CommonMetadata {
     * @note
     *   A stronger model would be range schema_definition, but this doesn't address the import model
     */
-  def fromSchema: Option[UriOrCurie]
+  def fromSchema: Option[Uri]
 
   /** The imports entry that this element was derived from. Empty means primary source
     */

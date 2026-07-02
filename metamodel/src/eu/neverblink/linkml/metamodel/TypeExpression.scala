@@ -2,8 +2,6 @@ package eu.neverblink.linkml.metamodel
 
 // GENERATED FROM LINKML
 
-import eu.neverblink.linkml.runtime.*
-
 /** An abstract class grouping named types and anonymous type expressions
   */
 trait TypeExpression extends Expression {
@@ -65,7 +63,7 @@ trait TypeExpression extends Expression {
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
     */
-  def maximumValue: Option[LinkMlAny]
+  def maximumValue: Option[Anything]
 
   /** For ordinal ranges, the value must be equal to or higher than this
     *
@@ -75,7 +73,7 @@ trait TypeExpression extends Expression {
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
     */
-  def minimumValue: Option[LinkMlAny]
+  def minimumValue: Option[Anything]
 
   /** The string value of the slot must conform to the regular expression in the pattern expression
     *
