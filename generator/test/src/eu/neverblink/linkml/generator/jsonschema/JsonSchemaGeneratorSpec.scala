@@ -6,7 +6,7 @@ import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
-import sttp.apispec.{Schema, SchemaType}
+import sttp.apispec.{Pattern, Schema, SchemaType}
 
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
@@ -43,7 +43,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       c.required should not contain "some_slot"
 
       val someOtherSlot = c.properties("some_other_slot").asInstanceOf[Schema]
-      someOtherSlot.`type` shouldBe Some(List(SchemaType.Number))
+      someOtherSlot.`type` shouldBe Some(List(SchemaType.Integer))
       c.required should contain("some_other_slot")
     }
 
@@ -81,7 +81,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someClass.required should not contain "some_slot"
 
       val someOtherSlot = someClass.properties("some_other_slot").asInstanceOf[Schema]
-      someOtherSlot.`type` shouldBe Some(List(SchemaType.Number))
+      someOtherSlot.`type` shouldBe Some(List(SchemaType.Integer))
       someClass.required should contain("some_other_slot")
     }
 
@@ -124,7 +124,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someClass.required should not contain "some_slot"
 
       val someOtherSlot = someClass.properties("some_other_slot").asInstanceOf[Schema]
-      someOtherSlot.`type` shouldBe Some(List(SchemaType.Number))
+      someOtherSlot.`type` shouldBe Some(List(SchemaType.Integer))
       someClass.required should contain("some_other_slot")
 
       val someOtherClass = schema.$defs.get("SomeOtherClass").asInstanceOf[Schema]
@@ -481,6 +481,31 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.reference.model
       val schema = JsonSchemaGenerator().generate()
       schema.$defs.get.keys should contain theSameElementsAs Seq("SomeClass")
+    }
+
+    "include constraints for numeric and string values" in {
+      given SchemaView = ModelCatalogue.constraints.model
+
+      val schema = JsonSchemaGenerator().generate()
+      val typedClass = schema.$defs.get("Typed").asInstanceOf[Schema]
+
+      typedClass.properties.keys should contain theSameElementsAs Seq(
+        "intSlot",
+        "floatSlot",
+        "stringSlot",
+      )
+
+      val intSlot = typedClass.properties("intSlot").asInstanceOf[Schema]
+      intSlot.`type` shouldBe Some(List(SchemaType.Integer))
+      intSlot.minimum shouldBe Some(BigDecimal(-1))
+      intSlot.maximum shouldBe Some(BigDecimal(1))
+      val floatSlot = typedClass.properties("floatSlot").asInstanceOf[Schema]
+      floatSlot.`type` shouldBe Some(List(SchemaType.Number))
+      floatSlot.minimum shouldBe Some(BigDecimal(-2))
+      floatSlot.maximum shouldBe Some(BigDecimal(2))
+      val stringSlot = typedClass.properties("stringSlot").asInstanceOf[Schema]
+      stringSlot.`type` shouldBe Some(List(SchemaType.String))
+      stringSlot.pattern shouldBe Some(Pattern("""^([0-9]{3})?[0-9]{3}-[0-9]{4}$"""))
     }
 
     "generate the metamodel without errors" in {

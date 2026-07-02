@@ -106,6 +106,17 @@ Generate RDF schema:
 Parameters:
 - `<output-path>` - destination file or directory, _if not specified, output will be written to stdout_
 
+#### LinkML schema derivation and pruning 
+
+Generate a LinkML model that:
+- Has all imports resolved
+- Has all class slots materialized into attributes (opt out by passing `--skip-derivation`)
+- Has all unused elements removed (controlled by `--pruning-mode`)
+
+```shell
+./linkml-scala generate linkml --to <output-path> <input-file>
+```
+
 ## Browser mini interface
 
 ```

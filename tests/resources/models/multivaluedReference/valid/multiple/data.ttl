@@ -1,4 +1,5 @@
 @prefix : <https://neverblink.eu/linkml/tests/multivaluedReference/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
 
 _:b a :SomeClass;
-  :some_slot :some_reference, :some_other_reference . # TODO LNK-59
+  :some_slot <some_reference>, <some_other_reference> . # TODO LNK-59

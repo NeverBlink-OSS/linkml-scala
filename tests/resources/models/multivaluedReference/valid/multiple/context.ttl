@@ -1,7 +1,8 @@
 @prefix : <https://neverblink.eu/linkml/tests/multivaluedReference/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
 
-:some_reference a :SomeOtherClass;
+<some_reference> a :SomeOtherClass;
   :id "some_reference" .
 
-:some_other_reference a :SomeOtherClass;
+<some_other_reference> a :SomeOtherClass;
   :id "some_other_reference" .

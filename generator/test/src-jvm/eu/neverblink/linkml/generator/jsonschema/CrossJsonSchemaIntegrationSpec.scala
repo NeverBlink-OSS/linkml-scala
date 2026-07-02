@@ -18,6 +18,7 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers {
     // Metamodel extended_types.yaml is not bundled
     "anything",
     "typeDesignator",
+    "constraints",
     "unionRange",
     // LinkML-py outputs an "accept all" for references
     "reference",

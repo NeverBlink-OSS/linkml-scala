@@ -1,7 +1,7 @@
 @prefix : <https://neverblink.eu/linkml/tests/typed/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-:typed_001 a :Typed;
+_:b a :Typed;
     :stringSlot "001 stringy";
     :booleanSlot true;
     :intSlot 100;
