@@ -760,6 +760,21 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "generate an external type reference if unknown base is used" in {
+      given SchemaView = ModelCatalogue.externalType.model
+
+      val files = ScalaGenerator().generate(testPkg).toMap
+      files.keys should contain theSameElementsAs Seq(
+        "SomeClass.scala",
+        "ExtType.scala",
+        "UnknownType.scala",
+      )
+      files("SomeClass.scala") should include("someSlot: ExtType")
+      files("SomeClass.scala") should include("someOtherSlot: UnknownType")
+      files("ExtType.scala") should include("type ExtType = SomeExternalType")
+      files("UnknownType.scala") should include("type UnknownType = Unknown")
+    }
+
     "generate the metamodel" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv
