@@ -78,8 +78,6 @@ case class ImportExpressionImpl(
   */
 abstract class ImportExpression extends Extensible, Annotatable, CommonMetadata {
   def importAs: Option[NcName]
-
   def importFrom: UriOrCurie
-
   def importMap: Map[String, SettingImpl]
 }

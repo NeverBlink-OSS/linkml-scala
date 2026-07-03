@@ -57,7 +57,6 @@ abstract class UnitOfMeasure {
     *   Potential ontologies include but are not limited to PATO, NCIT, OBOE, qudt.quantityKind
     */
   def hasQuantityKind: Option[UriOrCurie]
-
   def iec61360code: Option[String]
 
   /** Name of the unit encoded as a symbol

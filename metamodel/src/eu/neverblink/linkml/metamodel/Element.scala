@@ -77,6 +77,5 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
   /** An element in another schema which this element instantiates.
     */
   def instantiates: Seq[UriOrCurie]
-
   def localNames: Map[String, LocalNameImpl]
 }
