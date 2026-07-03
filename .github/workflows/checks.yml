@@ -38,3 +38,17 @@ jobs:
 
       - name: Run scalafix
         run: ./mill --no-server __.jvm.fix --check
+
+  git-lint:
+    name: Git lint
+    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Ensure correct branch name and search for todos
+        run: |
+          ID=$(echo $GITHUB_HEAD_REF | cut -f 1 -d "/")
+          echo $ID | grep -E "^([A-Z]+-[0-9]+)|([a-z]+)$" \
+            || (echo "Bad branch name: $ID"; false) \
+            && ! grep -r --exclude-dir ".*" --exclude-dir out $ID
