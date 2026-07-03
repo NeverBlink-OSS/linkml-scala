@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{Reference, UriOrCurie}
+import eu.neverblink.linkml.runtime.{Reference, UriOrCurie, Uri}
 import eu.neverblink.linkml.schemaview.SchemaViewSpec.{compact, reference}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -23,7 +23,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(child.compact),
         ),
@@ -55,7 +55,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(child.compact, base.compact),
         ),
@@ -94,7 +94,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(child.compact, base.compact),
         ),
@@ -128,7 +128,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test/"),
+          id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
           classes = Map(base.compact),
         ),
@@ -148,7 +148,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       val sv = SchemaView.single(
         SchemaDefinitionImpl(
           name = "",
-          id = UriOrCurie("https://neverblink.eu/test"),
+          id = Uri("https://neverblink.eu/test"),
           classes = Map(base.compact),
         ),
       )

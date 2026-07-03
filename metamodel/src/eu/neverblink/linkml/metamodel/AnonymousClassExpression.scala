@@ -38,7 +38,7 @@ case class AnonymousClassExpressionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     deprecated: Option[String] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
@@ -50,7 +50,7 @@ case class AnonymousClassExpressionImpl(
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
@@ -59,7 +59,7 @@ case class AnonymousClassExpressionImpl(
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,

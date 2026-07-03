@@ -244,7 +244,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |    tree_root: true
            |""".stripMargin
       val schemaImported =
-        """id: imported
+        """id: urn:imported
            |name: imported
            |classes:
            |  imported_class:

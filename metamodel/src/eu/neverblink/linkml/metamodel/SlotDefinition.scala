@@ -65,7 +65,7 @@ case class SlotDefinitionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
     deprecated: Option[String] = None,
@@ -98,11 +98,11 @@ case class SlotDefinitionImpl(
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("has_member")
     hasMember: Option[AnonymousSlotExpressionImpl] = None,
     @named("id_prefixes")
-    idPrefixes: Seq[String] = Seq(),
+    idPrefixes: Seq[NcName] = Seq(),
     @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
     ifabsent: Option[String] = None,
@@ -128,7 +128,7 @@ case class SlotDefinitionImpl(
     key: Boolean = false,
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("list_elements_ordered")
     listElementsOrdered: Boolean = false,
     @named("list_elements_unique")

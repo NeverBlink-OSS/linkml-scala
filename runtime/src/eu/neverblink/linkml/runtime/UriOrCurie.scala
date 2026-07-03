@@ -34,6 +34,8 @@ case class Curie(original: String) extends UriOrCurie {
   def curie(implicit resolver: PrefixResolver): String = original
 }
 
+type NcName = String
+
 trait PrefixResolver {
 
   /** Expand a CURIE into a URI using prefixes defined in this resolver.

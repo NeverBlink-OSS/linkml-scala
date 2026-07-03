@@ -12,15 +12,7 @@ classes:
       - intSlot
       - floatSlot
       - dateSlot
-      - enumSlot
       - customSlot
-
-enums:
-  SomeEnum:
-    permissible_values:
-      SOME_ENUM_VALUE:
-      SOME_OTHER_ENUM_VALUE:
-      THE_THIRD_MYSTERIOUS_OPTION:
 
 types:
   custom:
@@ -43,9 +35,6 @@ slots:
     required: true
   dateSlot:
     range: date
-    required: true
-  enumSlot:
-    range: SomeEnum
     required: true
   customSlot:
     range: custom

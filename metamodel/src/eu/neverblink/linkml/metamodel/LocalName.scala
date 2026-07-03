@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.*
 case class LocalNameImpl(
     @id
     @named("local_name_source")
-    localNameSource: String,
+    localNameSource: NcName,
     @value
     @named("local_name_value")
     localNameValue: String,
@@ -23,7 +23,7 @@ abstract class LocalName {
 
   /** The ncname of the source of the name
     */
-  def localNameSource: String
+  def localNameSource: NcName
 
   /** A name assigned to an element in a given ontology
     */

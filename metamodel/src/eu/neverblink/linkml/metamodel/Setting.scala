@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.*
 case class SettingImpl(
     @id
     @named("setting_key")
-    settingKey: String,
+    settingKey: NcName,
     @value
     @named("setting_value")
     settingValue: String,
@@ -23,7 +23,7 @@ abstract class Setting {
 
   /** The variable name for a setting
     */
-  def settingKey: String
+  def settingKey: NcName
 
   /** The value assigned for a setting
     */

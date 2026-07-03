@@ -8,23 +8,16 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
 
 class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
-  def decode(schemaYaml: String): SchemaView = {
-    val schema = Codec.codec.decode(
-      parseYaml(schemaYaml)
-        .getOrElse(throw RuntimeException("Couldn't load schema")),
-    )
-    SchemaView.single(schema)
-  }
+  def decode(schemaYaml: String): SchemaView =
+    SchemaView.loadSchemaViewFromString(schemaYaml)
 
   "Scala generator" should {
     // Shared part of the schema
     val schemaShared =
       """id: https://neverblink.eu/linkml/scala/test
         |name: test
-        |types:
-        |  string:
-        |  integer:
-        |  boolean:
+        |imports:
+        | - linkml:types
         |"""
 
     val testPkg = "eu.neverblink.linkml.generator.scala.test"
@@ -475,7 +468,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       files("SomeClass.scala") should include("def someSlot: MyAny")
       files("SomeClass.scala") should include("someSlot: MyAny,")
-      files("MyAny.scala") should include("type MyAny = runtime.Anything")
+      files("MyAny.scala") should include("type MyAny = LinkmlAny")
     }
 
     "generate a slot combining function for linkml:SlotDefinition" in {
@@ -743,6 +736,45 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate Linkml Date and/or Time for dates" in {
+      given SchemaView = ModelCatalogue.typed.model
+
+      val code = ScalaGenerator().generate(testPkg).toMap.apply("Typed.scala")
+      code should include("dateSlot: LinkmlDate")
+    }
+
+    "generate type aliases" in {
+      given SchemaView = ModelCatalogue.typed.model
+
+      val files = ScalaGenerator().generate(testPkg).toMap
+      files("Typed.scala") should include("customSlot: Custom")
+      files("Custom.scala") should include("type Custom = String")
+    }
+
+    "not generate aliases for primitive types" in {
+      given SchemaView = ModelCatalogue.basic.model
+
+      val files = ScalaGenerator().generate(testPkg).toMap
+      files.keys should contain theSameElementsAs Seq(
+        "SomeClass.scala",
+      )
+    }
+
+    "generate an external type reference if unknown base is used" in {
+      given SchemaView = ModelCatalogue.externalType.model
+
+      val files = ScalaGenerator().generate(testPkg).toMap
+      files.keys should contain theSameElementsAs Seq(
+        "SomeClass.scala",
+        "ExtType.scala",
+        "UnknownType.scala",
+      )
+      files("SomeClass.scala") should include("someSlot: ExtType")
+      files("SomeClass.scala") should include("someOtherSlot: UnknownType")
+      files("ExtType.scala") should include("type ExtType = SomeExternalType")
+      files("UnknownType.scala") should include("type UnknownType = Unknown")
+    }
+
     "generate the metamodel" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv
@@ -753,7 +785,6 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
-          assume(entry.model.root.name != "typed", "Not yet implemented: LNK-33")
           val files = ScalaGenerator(using entry.model).generate("eu.neverblink.linkml.scala.test")
           files should not be empty
           for (_, content) <- files do content should not be ""

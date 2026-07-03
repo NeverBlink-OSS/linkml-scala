@@ -10,9 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 case class SchemaDefinitionImpl(
     @id
-    name: String,
+    name: NcName,
     @value
-    id: UriOrCurie,
+    id: Uri,
     @compactDict
     classes: Map[String, ClassDefinitionImpl] = Map(),
     title: Option[String] = None,
@@ -56,7 +56,7 @@ case class SchemaDefinitionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     @named("default_curi_maps")
     defaultCuriMaps: Seq[String] = Seq(),
     @named("definition_uri")
@@ -67,18 +67,18 @@ case class SchemaDefinitionImpl(
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
     @named("emit_prefixes")
-    emitPrefixes: Seq[String] = Seq(),
+    emitPrefixes: Seq[NcName] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("generation_date")
-    generationDate: Option[ZonedDateTime] = None,
+    generationDate: Option[LinkmlDateTime] = None,
     @named("id_prefixes")
-    idPrefixes: Seq[String] = Seq(),
+    idPrefixes: Seq[NcName] = Seq(),
     @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),
@@ -91,7 +91,7 @@ case class SchemaDefinitionImpl(
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
@@ -113,7 +113,7 @@ case class SchemaDefinitionImpl(
     @named("source_file")
     sourceFile: Option[String] = None,
     @named("source_file_date")
-    sourceFileDate: Option[ZonedDateTime] = None,
+    sourceFileDate: Option[LinkmlDateTime] = None,
     @named("source_file_size")
     sourceFileSize: Option[Int] = None,
     status: Option[UriOrCurie] = None,
@@ -142,11 +142,11 @@ abstract class SchemaDefinition extends Element {
     * @see
     *   Aliases: short name, unique name
     */
-  def name: String
+  def name: NcName
 
   /** The official schema URI
     */
-  def id: UriOrCurie
+  def id: Uri
 
   /** An index to the collection of all class definitions in the schema
     */
@@ -220,11 +220,11 @@ abstract class SchemaDefinition extends Element {
   /** A list of Curie prefixes that are used in the representation of instances of the model. All
     * prefixes in this list are added to the prefix sections of the target models.
     */
-  def emitPrefixes: Seq[String]
+  def emitPrefixes: Seq[NcName]
 
   /** Date and time that the schema was loaded/generated
     */
-  def generationDate: Option[ZonedDateTime]
+  def generationDate: Option[LinkmlDateTime]
 
   /** Version of the metamodel used to load the schema
     */
@@ -240,7 +240,7 @@ abstract class SchemaDefinition extends Element {
 
   /** Modification date of the source of the schema
     */
-  def sourceFileDate: Option[ZonedDateTime]
+  def sourceFileDate: Option[LinkmlDateTime]
 
   /** Size in bytes of the source of the schema
     */

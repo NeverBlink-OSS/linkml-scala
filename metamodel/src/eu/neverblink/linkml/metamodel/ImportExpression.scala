@@ -28,7 +28,7 @@ case class ImportExpressionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     deprecated: Option[String] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
@@ -40,9 +40,9 @@ case class ImportExpressionImpl(
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("import_as")
-    importAs: Option[String] = None,
+    importAs: Option[NcName] = None,
     @named("import_from")
     importFrom: UriOrCurie,
     @named("import_map")
@@ -56,7 +56,7 @@ case class ImportExpressionImpl(
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
@@ -77,9 +77,7 @@ case class ImportExpressionImpl(
 /** An expression describing an import
   */
 abstract class ImportExpression extends Extensible, Annotatable, CommonMetadata {
-  def importAs: Option[String]
-
+  def importAs: Option[NcName]
   def importFrom: UriOrCurie
-
   def importMap: Map[String, SettingImpl]
 }

@@ -7,5 +7,4 @@ _:b a :Typed;
     :intSlot 100;
     :floatSlot "one hundredth";
     :dateSlot "2020-01-31"^^xsd:date;
-    :enumSlot "SOME_ENUM_VALUE";
     :customSlot "001 custom"^^:Custom .

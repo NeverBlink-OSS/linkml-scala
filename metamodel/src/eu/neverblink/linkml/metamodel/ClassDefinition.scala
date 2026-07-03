@@ -62,7 +62,7 @@ case class ClassDefinitionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     @named("defining_slots")
     definingSlots: Seq[Reference[SlotDefinition]] = Seq(),
     @named("definition_uri")
@@ -82,9 +82,9 @@ case class ClassDefinitionImpl(
     @named("extra_slots")
     extraSlots: Option[ExtraSlotsExpressionImpl] = None,
     @named("from_schema")
-    fromSchema: Option[UriOrCurie] = None,
+    fromSchema: Option[Uri] = None,
     @named("id_prefixes")
-    idPrefixes: Seq[String] = Seq(),
+    idPrefixes: Seq[NcName] = Seq(),
     @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),
@@ -97,7 +97,7 @@ case class ClassDefinitionImpl(
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),

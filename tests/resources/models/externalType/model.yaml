@@ -1,0 +1,33 @@
+id: https://neverblink.eu/linkml/tests/externalType/
+name: externalType
+imports:
+  - linkml:types
+
+description: |
+  This model uses a type which has an unknown and empty 'base'. 
+  Code generators should generate as if 'base' is provided, or fall back to a runtime Any. 
+
+instantiates:
+  - https://neverblink.eu/linkml/tests/Metadata
+extensions:
+  opt_in: true
+
+classes:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+      - some_other_slot
+
+types:
+  ext_type:
+    base: SomeExternalType
+  unknown_type:
+
+slots:
+  some_slot:
+    range: ext_type
+    required: true
+  some_other_slot:
+    range: unknown_type
+    required: true

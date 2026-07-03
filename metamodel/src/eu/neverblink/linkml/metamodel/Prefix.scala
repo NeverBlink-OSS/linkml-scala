@@ -11,10 +11,10 @@ import eu.neverblink.linkml.runtime.*
 case class PrefixImpl(
     @id
     @named("prefix_prefix")
-    prefixPrefix: String,
+    prefixPrefix: NcName,
     @value
     @named("prefix_reference")
-    prefixReference: UriOrCurie,
+    prefixReference: Uri,
 ) extends Prefix
 
 /** Prefix URI tuple
@@ -24,9 +24,9 @@ abstract class Prefix {
   /** The prefix components of a prefix expansions. This is the part that appears before the colon
     * in a CURIE.
     */
-  def prefixPrefix: String
+  def prefixPrefix: NcName
 
   /** The namespace to which a prefix expands to.
     */
-  def prefixReference: UriOrCurie
+  def prefixReference: Uri
 }

@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.jsonschema
 
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview.*
-import sttp.apispec.{AnySchema, Pattern, Schema, SchemaType}
+import sttp.apispec.{AnySchema, Pattern, Schema, SchemaFormat, SchemaType}
 import sttp.apispec.circe.encoderSchema
 
 import java.lang
@@ -76,10 +76,8 @@ class JsonSchemaGenerator(using sv: SchemaView) {
           }
         }
       case typeView: TypeView =>
-        typeMap.get(typeView._type.name) match {
-          case Some(value) => if slot.slot.multivalued then Schema(value).arrayOf else Schema(value)
-          case None => throw RuntimeException(s"Couldn't map type '${range.inner.name}'")
-        }
+        if slot.slot.multivalued then typeToRuntime(typeView).arrayOf
+        else typeToRuntime(typeView)
       // TODO LNK-32: True enums
       case _: EnumView => Schema(SchemaType.String)
       case _ => throw RuntimeException(s"Couldn't map range '${range.inner.name}'")
@@ -196,22 +194,33 @@ class JsonSchemaGenerator(using sv: SchemaView) {
 }
 
 object JsonSchemaGenerator {
-  // TODO LNK-33: Create generic type mappings
-  private val typeMap: Map[String, SchemaType] = Map(
-    "string" -> SchemaType.String,
-    "ncname" -> SchemaType.String,
-    "integer" -> SchemaType.Integer,
-    "float" -> SchemaType.Number,
-    "double" -> SchemaType.Number,
-    "boolean" -> SchemaType.Boolean,
-    "datetime" -> SchemaType.String,
-    "date" -> SchemaType.String,
-    "time" -> SchemaType.String,
-    "curie" -> SchemaType.String,
-    "uriorcurie" -> SchemaType.String,
-    "uri" -> SchemaType.String,
-    "decimal" -> SchemaType.Number,
-  )
+
+  /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
+    * Provides formats for date-times and URI/CURIE.
+    */
+  def typeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
+    case StringType => Schema(SchemaType.String)
+    case IntegerType => Schema(SchemaType.Integer)
+    case FloatType => Schema(SchemaType.Number)
+    case DoubleType => Schema(SchemaType.Number)
+    case BooleanType => Schema(SchemaType.Boolean)
+    case DecimalType => Schema(SchemaType.Number)
+    case AnyType => Schema.Empty
+    case DateType => Schema(SchemaType.String).copy(format = Some(SchemaFormat.Date))
+    case DateTimeType => Schema(SchemaType.String).copy(format = Some(SchemaFormat.DateTime))
+    case TimeType => Schema(SchemaType.String).copy(format = Some("time"))
+    case UriOrCurieType =>
+      Schema.Empty.copy(anyOf =
+        List(
+          Schema(SchemaType.String).copy(format = Some("uri")),
+          Schema(SchemaType.String).copy(format = Some("curie")),
+        ),
+      )
+    case UriType => Schema(SchemaType.String).copy(format = Some("uri"))
+    case CurieType => Schema(SchemaType.String).copy(format = Some("curie"))
+    case NcNameType => Schema(SchemaType.String).copy(format = Some("ncname"))
+    case UnknownType => Schema.Empty
+  }
 
   type MappedClassName = String
   type MappedSlotName = String

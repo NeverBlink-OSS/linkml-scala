@@ -11,13 +11,7 @@ import sttp.apispec.{Pattern, Schema, SchemaType}
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
   def load(schemaYaml: String): SchemaView = {
-    val schema = Codec.codec.decode(
-      parseYaml(schemaYaml) match {
-        case Left(e) => fail(e)
-        case Right(value) => value
-      },
-    )
-    SchemaView.single(schema)
+    SchemaView.loadSchemaViewFromString(schemaYaml)
   }
 
   "JsonSchemaGenerator" should {
@@ -508,6 +502,50 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       stringSlot.pattern shouldBe Some(Pattern("""^([0-9]{3})?[0-9]{3}-[0-9]{4}$"""))
     }
 
+    "add format for URIs" in {
+      given SchemaView = ModelCatalogue.uri.model
+      val json = JsonSchemaGenerator().generate()
+      val someClass = json.$defs.get("SomeClass").asInstanceOf[Schema]
+      someClass.properties("some_slot").asInstanceOf[Schema].format shouldBe Some("uri")
+    }
+
+    "add format for CURIEs" in {
+      given SchemaView = ModelCatalogue.curie.model
+      val json = JsonSchemaGenerator().generate()
+      val someClass = json.$defs.get("SomeClass").asInstanceOf[Schema]
+      someClass.properties("some_slot").asInstanceOf[Schema].format shouldBe Some("curie")
+    }
+
+    "add format for URIs or CURIEs" in {
+      given SchemaView = ModelCatalogue.uriOrCurie.model
+
+      val json = JsonSchemaGenerator().generate()
+      val someClass = json.$defs.get("SomeClass").asInstanceOf[Schema]
+      someClass.properties("some_slot").asInstanceOf[Schema]
+        .anyOf.collect { case schema: Schema =>
+          schema.format
+        } should contain theSameElementsAs Seq(Some("uri"), Some("curie"))
+    }
+
+    "add format for dates" in {
+      given SchemaView = ModelCatalogue.typed.model
+
+      val json = JsonSchemaGenerator().generate()
+      val someClass = json.$defs.get("Typed").asInstanceOf[Schema]
+      val dateSlot = someClass.properties("dateSlot").asInstanceOf[Schema]
+      dateSlot.`type` shouldBe Some(List(SchemaType.String))
+      dateSlot.format shouldBe Some("date")
+    }
+
+    "use base type" in {
+      given SchemaView = ModelCatalogue.typed.model
+
+      val json = JsonSchemaGenerator().generate()
+      val someClass = json.$defs.get("Typed").asInstanceOf[Schema]
+      val customSlot = someClass.properties("customSlot").asInstanceOf[Schema]
+      customSlot.`type` shouldBe Some(List(SchemaType.String))
+    }
+
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv
@@ -526,8 +564,8 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
 object JsonSchemaGeneratorSpec {
   val skipModels: Map[String, String] = Map(
+    "enum" -> "Not yet implemented: LNK-78",
     "typeDesignator" -> "Not yet implemented: LNK-101",
     "unionRange" -> "Not yet implemented: LNK-100",
-    "typed" -> "Not yet implemented: LNK-33",
   )
 }

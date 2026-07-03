@@ -58,7 +58,7 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *   If identifiers are treated as URIs, then the URI string must start with the expanded for of
     *   the prefix (_should_ start if the list is open)
     */
-  def idPrefixes: Seq[String]
+  def idPrefixes: Seq[NcName]
 
   /** If true, then the id_prefixes slot is treated as being closed, and any use of an id that does
     * not have this prefix is considered a violation.
@@ -77,6 +77,5 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
   /** An element in another schema which this element instantiates.
     */
   def instantiates: Seq[UriOrCurie]
-
   def localNames: Map[String, LocalNameImpl]
 }

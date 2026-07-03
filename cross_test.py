@@ -6,7 +6,8 @@ from linkml.generators.jsonschemagen import JsonSchemaGenerator
 skips = [
     # Python doesn't ship with extended types???
     "unionRange",
-    "anything"
+    "anything",
+    "externalType"
 ]
 
 if __name__ == "__main__":

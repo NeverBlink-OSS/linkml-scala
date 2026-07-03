@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.jsonschema
 
-import com.networknt.schema.{InputFormat, SchemaRegistry}
+import com.networknt.schema.{ExecutionConfig, ExecutionContext, InputFormat, SchemaRegistry}
 import com.networknt.schema.dialect.Dialects
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -27,6 +27,10 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers {
             sr.getSchema(jsonSchema).validate(
               invalid.json.get,
               InputFormat.JSON,
+              (ec: ExecutionContext) =>
+                ec.setExecutionConfig(
+                  ExecutionConfig.builder().formatAssertionsEnabled(true).build(),
+                ),
             ) should not be empty
           }
       }

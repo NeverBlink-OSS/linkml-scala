@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
 import eu.neverblink.linkml.generator.rdf.*
-import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SubjectType, TypeView}
+import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, TypeView}
 
 class ShaclGenerator(using sv: SchemaView) {
 
@@ -90,9 +90,7 @@ class ShaclGenerator(using sv: SchemaView) {
         addTriple(classNameIri, Shacl.property, property)
         s.derivedRangeView.resolve.foreach {
           case typeView: TypeView =>
-            val tuUri = typeView.uriStr
-            val isIri = typeView.subjectType != SubjectType.base
-            if (!isIri) addTriple(property, Shacl.datatype, Iri(tuUri))
+            if (!typeView.isIri) addTriple(property, Shacl.datatype, Iri(typeView.uriStr))
             s.slot.description match {
               case Some(d) => addTriple(property, Shacl.description, Literal(d, XmlSchema.string))
               case _ =>
@@ -100,7 +98,7 @@ class ShaclGenerator(using sv: SchemaView) {
             if (!s.slot.multivalued) addTriple(property, Shacl.maxCount, Literal.one)
             if (s.slot.required) addTriple(property, Shacl.minCount, Literal.one)
             val nodeKind =
-              if (isIri) Shacl.IRI
+              if (typeView.isIri) Shacl.IRI
               else Shacl.Literal
             addTriple(property, Shacl.nodeKind, nodeKind)
           case classView: ClassView =>
@@ -131,6 +129,12 @@ class ShaclGenerator(using sv: SchemaView) {
                     )
                     addTriple(listNode, Rdf.rest, acc)
                   case _ =>
+                    addTriple(
+                      listNode,
+                      Rdf.first,
+                      Literal(pv.text),
+                    )
+                    addTriple(listNode, Rdf.rest, acc)
                 }
                 listNode
               }

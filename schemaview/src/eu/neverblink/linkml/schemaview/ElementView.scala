@@ -79,17 +79,15 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   The subject type, or None if the class does not have an identifier
     */
   def subjectType: Option[SubjectType] = identifier.flatMap(slotView => {
-    slotView.derivedRangeView.resolve.collect {
-      // TODO LNK-106
-      case tv: TypeView =>
-        tv.subjectType
+    slotView.derivedRangeView.resolve.collect { case tv: TypeView =>
+      tv.subjectType
     }
   })
 
   private def getParents(view: ClassView): Iterable[ClassView] =
     (view.cls.mixins ++ view.cls.isA).flatMap { r =>
       sv.resolve(r.asInstanceOf[Reference[ClassView]])
-    } // TODO LNK-23: type refinements
+    }
 
   /** Get and dereference all the ancestors (transitive parents) of this class.
     *
@@ -342,12 +340,60 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
     * the RDF representations.
     */
-  def subjectType: SubjectType = inner.base match {
-    case Some("URI") => SubjectType.uri
-    case Some("Curie") => SubjectType.curie
-    case Some("URIorCURIE") => SubjectType.uriOrCurie
+  def subjectType: SubjectType = runtimeType match {
+    case UriType => SubjectType.uri
+    case CurieType => SubjectType.curie
+    case UriOrCurieType => SubjectType.uriOrCurie
     case _ => SubjectType.base
   }
+
+  /** @return
+    *   true if this type was defined as part of metamodel types (linkml:types)
+    */
+  def isPrimitive: Boolean = definingSchema.id.original.startsWith("https://w3id.org/linkml/types")
+
+  /** @return
+    *   true if this type should be represented as an RDF IRI
+    */
+  def isIri: Boolean = runtimeType match {
+    case UriOrCurieType => true
+    case UriType => true
+    case CurieType => true
+    case _ => false
+  }
+
+  /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
+    * names into the enum. Falls back to [[UnknownType]].
+    */
+  def runtimeType: RuntimeType = inner.base match {
+    case Some(value) =>
+      value match {
+        case "str" => StringType
+        case "int" => IntegerType
+        case "Bool" => BooleanType
+        // thanks, python
+        case "float" if inner.typeUri.contains("xsd:double") => DoubleType
+        case "double" => DoubleType
+        case "float" => FloatType
+        case "Decimal" => DecimalType
+
+        case "URI" => UriType
+        case "Curie" => CurieType
+        case "URIorCURIE" => UriOrCurieType
+        case "NCName" => NcNameType
+
+        case "XSDDateTime" => DateTimeType
+        case "XSDDate" => DateType
+        case "XSDTime" => TimeType
+
+        case _ => UnknownType
+      }
+    case None => UnknownType
+  }
+
+  /** The [[CoreType]] representation of this type.
+    */
+  def coreType: CoreType = runtimeType.repr
 
   def uriOrCurie: UriOrCurie =
     _type.typeUri.getOrElse(Uri(defaultPrefixUri + _type.name))

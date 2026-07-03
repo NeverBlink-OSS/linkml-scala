@@ -458,10 +458,7 @@ object SchemaView {
     }
 
     forSchema.prefixes.values.foreach(prefix =>
-      prefix.prefixReference match {
-        case Uri(original) => prefixResolver.add(prefix.prefixPrefix, original)
-        case Curie(original) =>
-      },
+      prefixResolver.add(prefix.prefixPrefix, prefix.prefixReference.original),
     )
 
     prefixResolver

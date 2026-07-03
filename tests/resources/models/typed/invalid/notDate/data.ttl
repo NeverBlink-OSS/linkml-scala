@@ -7,5 +7,4 @@ _:b a :Typed;
     :intSlot 100;
     :floatSlot 0.01;
     :dateSlot "last year";
-    :enumSlot "SOME_ENUM_VALUE";
     :customSlot "001 custom"^^:Custom .

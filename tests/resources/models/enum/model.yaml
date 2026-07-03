@@ -1,0 +1,19 @@
+id: https://neverblink.eu/linkml/tests/enum/
+name: enum
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: SomeEnum
+
+enums:
+  SomeEnum:
+    permissible_values:
+      SOME_OPTION:
+      SOME_OTHER_OPTION:
+      YET_ANOTHER_OPTION:

@@ -2,8 +2,6 @@ package eu.neverblink.linkml.metamodel
 
 // GENERATED FROM LINKML
 
-import eu.neverblink.linkml.runtime.*
-
 /** An abstract class grouping named types and anonymous type expressions
   */
 trait TypeExpression extends Expression {

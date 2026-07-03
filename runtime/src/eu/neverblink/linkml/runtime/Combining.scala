@@ -31,12 +31,12 @@ def combineMap[T](v1: Map[String, T], v2: Map[String, T]): Map[String, T] =
 /** Combine values for the `maximum_value` metaslot
   */
 // TODO COMPAT
-def combineMax(v1: Anything, @unused v2: Anything): Anything = v1
+def combineMax(v1: LinkmlAny, @unused v2: LinkmlAny): LinkmlAny = v1
 
 /** Combine values for the `minimum_value` metaslot
   */
 // TODO COMPAT
-def combineMin(v1: Anything, @unused v2: Anything): Anything = v1
+def combineMin(v1: LinkmlAny, @unused v2: LinkmlAny): LinkmlAny = v1
 
 /** Combine values for the `pattern` metaslot
   */
