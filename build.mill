@@ -92,9 +92,7 @@ object metamodel extends Module {
       ("git", "clone", "--depth=1", "https://github.com/linkml/linkml-model"),
       cwd = cloneDir,
     )
-    os.list(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema").foreach(
-      os.copy.into(_, Task.dest),
-    )
+    os.copy.over(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema", Task.dest)
     PathRef(Task.dest)
   }
 
