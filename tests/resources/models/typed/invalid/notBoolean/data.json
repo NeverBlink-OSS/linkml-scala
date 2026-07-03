@@ -4,6 +4,5 @@
   "intSlot": 100,
   "floatSlot": 0.01,
   "dateSlot": "2020-01-31",
-  "enumSlot": "SOME_ENUM_VALUE",
   "customSlot": "001 custom"
 }

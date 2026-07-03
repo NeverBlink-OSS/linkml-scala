@@ -17,7 +17,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     *   Tuples of form (file name, file content) for all elements in the LinkML model
     */
   def generate(pkg: String, emitEmitPrefixes: Boolean = true): Iterable[(String, String)] =
-    generateClasses(pkg) ++ generateEnums(pkg) // TODO: add types
+    generateClasses(pkg) ++ generateEnums(pkg) ++ generateTypeDefinitions(pkg)
       ++ (if emitEmitPrefixes then generateEmitPrefixes(pkg) else None)
 
   /** Generate Scala counterparts of LinkML classes: case classe implementations for instantiable
@@ -43,7 +43,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(slotName).toSet
       className + ".scala" -> (
         if classView.uriStr == "https://w3id.org/linkml/Any" then
-          anyStub(pkg, Case.PascalCase(cls.name))
+          typeDef(pkg, Case.PascalCase(cls.name), "LinkmlAny")
         else
           ScalaClassInfo(
             className,
@@ -112,24 +112,32 @@ final class ScalaGenerator(using sv: SchemaView) {
     )
   }
 
-  /** Generate a stub file for classes with the linkml:Any class URI, aliasing them to the runtime
-    * [[Anything]] class.
+  private def generateTypeDefinitions(pkg: String): Iterable[(String, String)] = {
+    sv.types.values.collect {
+      case tv if !tv.isPrimitive =>
+        val name = Case.PascalCase(tv._type.name)
+        s"$name.scala" -> typeDef(pkg, name, typeToRuntime(tv))
+    }
+  }
+
+  /** Generate a type alias for custom types and classes with the linkml:Any class URI, aliasing
+    * them to [[typeRange]].
     *
     * @param pkg
-    *   Package to generate the stub in
-    * @param anyName
-    *   Name of the class to generate an Anything stub for
-    * @return
-    *   The code for the linkml:Any stub
+    *   Package to generate file in
+    * @param typeName
+    *   Name of the type/class to alias
+    * @param typeRange
+    *   Name of the type/class to alias to
     */
-  private def anyStub(pkg: String, anyName: String): String = {
+  private def typeDef(pkg: String, typeName: String, typeRange: String): String = {
     s"""package $pkg
        |
        |// GENERATED FROM LINKML
        |
-       |import eu.neverblink.linkml.runtime.LinkMlAny
+       |import eu.neverblink.linkml.runtime.*
        |
-       |type $anyName = LinkMlAny
+       |type $typeName = $typeRange
        |""".stripMargin
   }
 
@@ -158,9 +166,8 @@ final class ScalaGenerator(using sv: SchemaView) {
     case DoubleType => "Double"
     case BooleanType => "Boolean"
     case DecimalType => "BigDecimal"
-    case AnyType => "LinkMlAny"
+    case AnyType => "LinkmlAny"
 
-    case DateOrDateTimeType => "ZonedDateTime"
     case DateType => "ZonedDateTime"
     case DateTimeType => "ZonedDateTime"
     case TimeType => "ZonedDateTime"
@@ -169,7 +176,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     case UriType => "Uri"
     case CurieType => "Curie"
     case NcNameType => "NcName"
-    case UnknownType => "Unknown"
+    case UnknownType => tv.inner.base.getOrElse("Unknown")
   }
 
   /** Translates a LinkML range value to the appropriate Scala type.
@@ -193,7 +200,8 @@ final class ScalaGenerator(using sv: SchemaView) {
         else if (isInlined) s"${className}Impl"
         else s"Reference[$className]"
       case typeView: TypeView =>
-        typeToRuntime(typeView)
+        if typeView.isPrimitive then typeToRuntime(typeView)
+        else Case.PascalCase(typeView._type.name)
       // True enum support would require working around the dynamic "enums" of LinkML, which I'm sure
       // were a really convenient idea for the biologists, but it adds a lot of complexity for us
       case enumView: EnumView =>
@@ -589,12 +597,12 @@ object ScalaGenerator {
       }
       s"""${annotations.mkString("\n")}
          |$field
-         |""".stripMargin
+         |""".stripMargin.strip()
     }
 
     /** Generate code for an interface getter for the field with documentation */
     def generateInterfaceField: String =
-      s"${doc.print}def $name: $typeName\n\n"
+      s"${doc.print}def $name: $typeName"
 
     /** Generate code for a combining function part.
       */

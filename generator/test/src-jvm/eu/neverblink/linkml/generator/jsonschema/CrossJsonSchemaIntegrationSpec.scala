@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.jsonschema
 
 import com.networknt.schema.dialect.Dialects
-import com.networknt.schema.{InputFormat, SchemaRegistry}
+import com.networknt.schema.{ExecutionConfig, ExecutionContext, InputFormat, SchemaRegistry}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -23,9 +23,6 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers {
     // LinkML-py outputs an "accept all" for references
     "reference",
     "multivaluedReference",
-    // LinkML-py outputs draft 202012 but declares 201909
-    // "format": "date" doesn't get validated in 201909
-    "typed",
     // LinkML-py outputs an "accept all" for an empty default_range
     // This is off-spec, which specifies this should be a "string":
     // https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata
@@ -55,6 +52,10 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers {
             sr.getSchema(jsonSchema).validate(
               invalid.json.get,
               InputFormat.JSON,
+              (ec: ExecutionContext) =>
+                ec.setExecutionConfig(
+                  ExecutionConfig.builder().formatAssertionsEnabled(true).build(),
+                ),
             ) should not be empty
           }
       }

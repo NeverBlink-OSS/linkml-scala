@@ -468,7 +468,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       files("SomeClass.scala") should include("def someSlot: MyAny")
       files("SomeClass.scala") should include("someSlot: MyAny,")
-      files("MyAny.scala") should include("type MyAny = LinkMlAny")
+      files("MyAny.scala") should include("type MyAny = LinkmlAny")
     }
 
     "generate a slot combining function for linkml:SlotDefinition" in {
@@ -734,6 +734,30 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       ).foreach { snippet =>
         code should include(snippet)
       }
+    }
+
+    "generate ZonedDateTime for dates" in {
+      given SchemaView = ModelCatalogue.typed.model
+
+      val code = ScalaGenerator().generate(testPkg).toMap.apply("Typed.scala")
+      code should include("dateSlot: ZonedDateTime")
+    }
+
+    "generate type aliases" in {
+      given SchemaView = ModelCatalogue.typed.model
+
+      val files = ScalaGenerator().generate(testPkg).toMap
+      files("Typed.scala") should include("customSlot: Custom")
+      files("Custom.scala") should include("type Custom = String")
+    }
+
+    "not generate aliases for primitive types" in {
+      given SchemaView = ModelCatalogue.basic.model
+
+      val files = ScalaGenerator().generate(testPkg).toMap
+      files.keys should contain theSameElementsAs Seq(
+        "SomeClass.scala",
+      )
     }
 
     "generate the metamodel" in {

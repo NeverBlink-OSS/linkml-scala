@@ -258,12 +258,12 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val ann1 =
         AnnotationImpl(
           extensionTag = UriOrCurie("ann1"),
-          extensionValue = LinkMlAny("annotation 1"),
+          extensionValue = LinkmlAny("annotation 1"),
         )
       val ann2 =
         AnnotationImpl(
           extensionTag = UriOrCurie("ann2"),
-          extensionValue = LinkMlAny("annotation 2"),
+          extensionValue = LinkmlAny("annotation 2"),
         )
 
       val slot = SlotDefinitionImpl(
@@ -307,7 +307,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val ann1 =
         AnnotationImpl(
           extensionTag = UriOrCurie("ann1"),
-          extensionValue = LinkMlAny("annotation 1"),
+          extensionValue = LinkmlAny("annotation 1"),
         )
 
       val slot = SlotDefinitionImpl(
