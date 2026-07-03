@@ -53,7 +53,7 @@ jobs:
       # This has to assume that the branch name is either the issue tag like `LNK-1/issue-slug`
       # Or a personal/hotfix branch like `kacper/some-fix` or `hotfix/for-parsing`
       # Also allows bare branch names like `LNK-1`.
-      - name: Ensure correct branch name and search for the
+      - name: Ensure correct branch name and search for the issue tag
         run: |
           ID=$(echo $GITHUB_HEAD_REF | cut -f 1 -d "/")
           echo $ID | grep -E "^([A-Z]+-[0-9]+)|([a-z0-9]+)$" \
