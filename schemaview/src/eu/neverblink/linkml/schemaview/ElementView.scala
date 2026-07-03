@@ -344,7 +344,17 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case UriType => SubjectType.uri
     case CurieType => SubjectType.curie
     case UriOrCurieType => SubjectType.uriOrCurie
-    case _ => SubjectType.base
+    case _ =>
+      inner.implicitPrefix match {
+        case Some(prefix) =>
+          val reference = Uri(
+            definingPrefixResolver.resolvePrefix(prefix).getOrElse(
+              sys.error(s"Unknown prefix: $prefix"),
+            ),
+          )
+          SubjectType.implicitPrefix(PrefixImpl(prefix, reference))
+        case None => SubjectType.base
+      }
   }
 
   /** @return

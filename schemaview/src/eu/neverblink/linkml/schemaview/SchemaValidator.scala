@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
 
 import java.util
 import scala.util.{Success, Try}
@@ -237,6 +237,58 @@ final class SchemaValidator(using sv: SchemaView) {
     perClass.flatten.toSeq
   }
 
+  private def slotImplicitPrefix(
+      slotDefinition: SlotDefinition,
+      prefixResolver: PrefixResolver,
+      locationPrefix: String,
+  ): Option[SchemaProblem.Error] = {
+    slotDefinition.implicitPrefix match {
+      case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
+        Some(
+          SchemaProblem.UndefinedPrefix(
+            prefix,
+            s"$locationPrefix/${slotDefinition.name}/implicit_prefix",
+          ),
+        )
+      case _ => None
+    }
+  }
+
+  private lazy val unknownPrefixes: Seq[SchemaProblem.Error] = {
+    sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
+      if sv.rootPrefixResolver.resolvePrefix(prefix).isEmpty
+      then Some(SchemaProblem.UndefinedPrefix(prefix, s"/emit_prefixes/$idx"))
+      else None,
+    ) ++
+      sv.types.values.flatMap(tv => {
+        tv._type.implicitPrefix match {
+          case Some(prefix) if tv.definingPrefixResolver.resolvePrefix(prefix).isEmpty =>
+            Some(SchemaProblem.UndefinedPrefix(prefix, s"/types/${tv._type.name}/implicit_prefix"))
+          case _ => None
+        }
+      }) ++
+      sv.slotDefinitions.values.flatMap(slotView =>
+        slotImplicitPrefix(slotView.inner, slotView.definingPrefixResolver, "/slots"),
+      )
+      ++
+      sv.classes.values.flatMap(classView =>
+        classView.cls.slotUsage.values.flatMap(
+          slotImplicitPrefix(
+            _,
+            classView.definingPrefixResolver,
+            s"/classes/${classView.cls.name}/slot_usage",
+          ),
+        ) ++
+          classView.cls.attributes.values.flatMap(
+            slotImplicitPrefix(
+              _,
+              classView.definingPrefixResolver,
+              s"/classes/${classView.cls.name}/attributes",
+            ),
+          ),
+      )
+  }
+
   /** Any fatal problems that block further processing / validation, if any. */
   lazy val fatalProblems: Seq[SchemaProblem.Fatal] =
     unknownReferences ++
@@ -247,7 +299,8 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val errors: Seq[SchemaProblem.Error] =
     identifierAndKey ++
       multipleTreeRoots ++
-      nonUniqueNames
+      nonUniqueNames ++
+      unknownPrefixes
 
   /** Any warnings found in the schema, if any. */
   private lazy val warnings: Seq[SchemaProblem.Warning] =
