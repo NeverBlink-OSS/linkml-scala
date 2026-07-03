@@ -65,7 +65,7 @@ case class SlotDefinitionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
     deprecated: Option[String] = None,
@@ -128,7 +128,7 @@ case class SlotDefinitionImpl(
     key: Boolean = false,
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("list_elements_ordered")
     listElementsOrdered: Boolean = false,
     @named("list_elements_unique")

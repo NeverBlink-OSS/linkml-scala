@@ -32,7 +32,7 @@ case class SubsetDefinitionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
     deprecated: Option[String] = None,
@@ -61,7 +61,7 @@ case class SubsetDefinitionImpl(
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),

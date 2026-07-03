@@ -32,7 +32,7 @@ case class StructuredAliasImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     deprecated: Option[String] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
@@ -53,7 +53,7 @@ case class StructuredAliasImpl(
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("literal_form")
     literalForm: String,
     mappings: Seq[UriOrCurie] = Seq(),

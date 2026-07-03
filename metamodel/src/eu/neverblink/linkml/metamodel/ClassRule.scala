@@ -32,7 +32,7 @@ case class ClassRuleImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     deactivated: Boolean = false,
     deprecated: Option[String] = None,
     @named("deprecated_element_has_exact_replacement")
@@ -54,7 +54,7 @@ case class ClassRuleImpl(
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,

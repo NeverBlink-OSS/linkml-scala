@@ -79,7 +79,7 @@ trait CommonMetadata {
 
   /** Time at which the element was created
     */
-  def createdOn: Option[ZonedDateTime]
+  def createdOn: Option[LinkmlDateTime]
 
   /** Description of why and when this element will no longer be used
     *
@@ -138,7 +138,7 @@ trait CommonMetadata {
 
   /** Time at which the element was last updated
     */
-  def lastUpdatedOn: Option[ZonedDateTime]
+  def lastUpdatedOn: Option[LinkmlDateTime]
 
   /** A list of terms from different schemas or terminology systems that have comparable meaning.
     * These may include terms that are precisely equivalent, broader or narrower in meaning, or

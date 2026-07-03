@@ -168,9 +168,9 @@ final class ScalaGenerator(using sv: SchemaView) {
     case DecimalType => "BigDecimal"
     case AnyType => "LinkmlAny"
 
-    case DateType => "ZonedDateTime"
-    case DateTimeType => "ZonedDateTime"
-    case TimeType => "ZonedDateTime"
+    case DateType => "LinkmlDate"
+    case DateTimeType => "LinkmlDateTime"
+    case TimeType => "LinkmlTime"
 
     case UriOrCurieType => "UriOrCurie"
     case UriType => "Uri"

@@ -736,11 +736,11 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "generate ZonedDateTime for dates" in {
+    "generate Linkml Date and/or Time for dates" in {
       given SchemaView = ModelCatalogue.typed.model
 
       val code = ScalaGenerator().generate(testPkg).toMap.apply("Typed.scala")
-      code should include("dateSlot: ZonedDateTime")
+      code should include("dateSlot: LinkmlDate")
     }
 
     "generate type aliases" in {

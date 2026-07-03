@@ -56,7 +56,7 @@ case class SchemaDefinitionImpl(
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
-    createdOn: Option[ZonedDateTime] = None,
+    createdOn: Option[LinkmlDateTime] = None,
     @named("default_curi_maps")
     defaultCuriMaps: Seq[String] = Seq(),
     @named("definition_uri")
@@ -76,7 +76,7 @@ case class SchemaDefinitionImpl(
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("generation_date")
-    generationDate: Option[ZonedDateTime] = None,
+    generationDate: Option[LinkmlDateTime] = None,
     @named("id_prefixes")
     idPrefixes: Seq[NcName] = Seq(),
     @named("id_prefixes_are_closed")
@@ -91,7 +91,7 @@ case class SchemaDefinitionImpl(
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[String] = Seq(),
     @named("last_updated_on")
-    lastUpdatedOn: Option[ZonedDateTime] = None,
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
@@ -113,7 +113,7 @@ case class SchemaDefinitionImpl(
     @named("source_file")
     sourceFile: Option[String] = None,
     @named("source_file_date")
-    sourceFileDate: Option[ZonedDateTime] = None,
+    sourceFileDate: Option[LinkmlDateTime] = None,
     @named("source_file_size")
     sourceFileSize: Option[Int] = None,
     status: Option[UriOrCurie] = None,
@@ -224,7 +224,7 @@ abstract class SchemaDefinition extends Element {
 
   /** Date and time that the schema was loaded/generated
     */
-  def generationDate: Option[ZonedDateTime]
+  def generationDate: Option[LinkmlDateTime]
 
   /** Version of the metamodel used to load the schema
     */
@@ -240,7 +240,7 @@ abstract class SchemaDefinition extends Element {
 
   /** Modification date of the source of the schema
     */
-  def sourceFileDate: Option[ZonedDateTime]
+  def sourceFileDate: Option[LinkmlDateTime]
 
   /** Size in bytes of the source of the schema
     */
