@@ -46,9 +46,16 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Ensure correct branch name and search for todos
+      # Searches the code for the issue tag, so we don't have stranded issue tags
+      # Given a branch name like `LNK-1/make-the-repo`, this job will fail
+      # if there is a `TODO LNK-1` somewhere in the code
+      #
+      # This has to assume that the branch name is either the issue tag like `LNK-1/issue-slug`
+      # Or a personal/hotfix branch like `kacper/some-fix` or `hotfix/for-parsing`
+      # Also allows bare branch names like `LNK-1`.
+      - name: Ensure correct branch name and search for the
         run: |
           ID=$(echo $GITHUB_HEAD_REF | cut -f 1 -d "/")
-          echo $ID | grep -E "^([A-Z]+-[0-9]+)|([a-z]+)$" \
+          echo $ID | grep -E "^([A-Z]+-[0-9]+)|([a-z0-9]+)$" \
             || (echo "Bad branch name: $ID"; false) \
-            && ! grep -r --exclude-dir ".*" --exclude-dir out $ID
+            && ! grep -r --exclude-dir ".*" --exclude-dir out "$ID"
