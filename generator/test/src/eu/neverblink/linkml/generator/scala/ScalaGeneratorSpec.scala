@@ -1,11 +1,9 @@
 package eu.neverblink.linkml.generator.scala
 
-import eu.neverblink.linkml.metamodel.Codec
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.virtuslab.yaml.parseYaml
 
 class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
   def decode(schemaYaml: String): SchemaView =

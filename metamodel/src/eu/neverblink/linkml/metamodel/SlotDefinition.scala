@@ -376,6 +376,7 @@ case class SlotDefinitionImpl(
       inlined = combineBoolean(this.inlined, other.inlined),
       inlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList),
       pattern = combineOption(this.pattern, other.pattern, combinePattern),
+      rank = combineOption(this.rank, other.rank, combineFallback),
       array = combineOption(this.array, other.array, combineFallback),
       designatesType = combineBoolean(this.designatesType, other.designatesType),
       domain = combineOption(this.domain, other.domain, combineFallback),

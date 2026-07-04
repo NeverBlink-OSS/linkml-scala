@@ -40,6 +40,22 @@ class MetamodelSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "metamodel patches" should {
+    // TODO LNK-124: remove when resolved in linkml-model
+    "make rank slot inherited" in {
+      val parent = SlotDefinitionImpl(
+        name = "parent",
+        rank = Some(123),
+      )
+      val child = SlotDefinitionImpl(
+        name = "child",
+      )
+      val combined = child.combineInherited(parent, null)
+      combined.rank shouldBe Some(123)
+      combined.name shouldBe "child"
+    }
+  }
+
   private def roundTrip(path: String): Unit = {
     val expected = parseYaml(Resources.read(path)).getOrElse(Node.ScalarNode(null))
     val result = codec.encode(codec.decode(expected))
