@@ -11,7 +11,7 @@ concurrency:
 jobs:
   scalafmt-lint:
     name: Scalafmt lint
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v6
@@ -25,7 +25,7 @@ jobs:
 
   scalafix-lint:
     name: Scalafix lint
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
@@ -41,7 +41,7 @@ jobs:
 
   git-lint:
     name: Git lint
-    runs-on: blacksmith-2vcpu-ubuntu-2404-arm
+    runs-on: ubuntu-slim
     defaults:
       run:
         shell: bash

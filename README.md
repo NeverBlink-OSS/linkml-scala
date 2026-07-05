@@ -149,3 +149,9 @@ Common tasks with mill:
 4. Press "Generate Release Notes" button
 5. Select "Pre-release" or "Release" list item
 6. Press "Publish Release" button
+
+## License and maintainers
+
+LinkML-Scala is licensed under the Apache License 2.0. See the LICENSE file for details.
+
+This project is being developed and maintained by [NeverBlink](https://neverblink.eu). For any inquiries, please reach out to us via [email](mailto:contact@neverblink.eu).
