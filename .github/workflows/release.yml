@@ -25,7 +25,7 @@ jobs:
           apps: mill
 
       - name: Publish Artifacts to GCP
-        if: github.event.created == true
+        if: github.event.created
         env:
           GCP_MAVEN_REPO: ${{ secrets.GCP_MAVEN_REPO }}
           GCP_MAVEN_RW: ${{ secrets.GCP_MAVEN_RW }}
