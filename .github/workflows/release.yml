@@ -86,7 +86,7 @@ jobs:
           else
             BIN_PATH="./out/cli/jvm/nativeImage.dest/linkml-scala"
           fi
-          OUTPUT=$($BIN_PATH validate metamodel/resources/meta.yaml)
+          OUTPUT=$($BIN_PATH validate tests/resources/models/basic/model.yaml)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -Fq "Schema is valid."; then
             echo "Error: Expected success message not found."
