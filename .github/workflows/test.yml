@@ -64,3 +64,11 @@ jobs:
           ./mill --no-server metamodel.jvm.fix
           ./mill --no-server metamodel.jvm.reformat
           diff -r metamodel metamodel_prev
+          
+      - name: Publish Snapshot to Sonatype Central
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        env:
+          MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+        run: |
+          ./mill mill.javalib.SonatypeCentralPublishModule/    

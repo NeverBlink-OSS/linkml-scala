@@ -24,18 +24,6 @@ jobs:
           jvm: temurin:17 # The minimal JDK version for Scala Next
           apps: mill
 
-      - name: Publish Artifacts to GCP
-        env:
-          GCP_MAVEN_REPO: ${{ secrets.GCP_MAVEN_REPO }}
-          GCP_MAVEN_RW: ${{ secrets.GCP_MAVEN_RW }}
-        run: |
-          export MILL_MAVEN_USERNAME="_json_key_base64"
-          export MILL_MAVEN_PASSWORD="$GCP_MAVEN_RW"          
-          ./mill mill.javalib.MavenPublishModule/publishAll \
-            --publishArtifacts __.publishArtifacts \
-            --releaseUri "$GCP_MAVEN_REPO" \
-            --snapshotUri "$GCP_MAVEN_REPO" \
-
       - name: Assembly Uber-JAR
         run: |
           ./mill cli.jvm.assembly
@@ -147,3 +135,12 @@ jobs:
           generateReleaseNotes: true
           allowUpdates: true
           replacesArtifacts: true
+
+      - name: Publish to Maven Central
+        env:
+          MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          MILL_PGP_SECRET_BASE64: ${{ secrets.MILL_PGP_SECRET_BASE64 }}
+          MILL_PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
+        run: ./mill mill.javalib.SonatypeCentralPublishModule/
+

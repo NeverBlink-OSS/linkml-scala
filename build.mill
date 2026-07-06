@@ -21,7 +21,6 @@ import scalalib.*
 import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
 import mill.api.Evaluator
-import mill.javalib.api.CompilationResult
 
 val scala = "3.8.3"
 val scalaJS = "1.22.0"
@@ -257,36 +256,36 @@ trait CommonModule
   final def scoverageVersion = "2.5.2"
 
   final def pomSettings = PomSettings(
-    "", // TODO: add description
-    "eu.neverblink.linkml",
-    "", // TODO: add homepage link
-    Seq(
-      // TODO: We are proprietary software for now
-      //      License(
-      //        "Apache-2.0",
-      //        "Apache-2.0",
-      //        "https://www.apache.org/licenses/LICENSE-2.0",
-      //        false,
-      //        false,
-      //        "repo"
-      //      )
-    ),
-    VersionControl(None, None, None, None),
+    description = "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
+    organization = "eu.neverblink.linkml",
+    url = "https://github.com/NeverBlink-OSS/linkml-scala",
+    licenses = Seq(License.`Apache-2.0`),
+    versionControl = VersionControl.github("NeverBlink-OSS", "NeverBlink-OSS"),
     Seq(
       Developer(
-        "NeverBlink",
-        "NeverBlink",
-        "https://neverblink.eu",
-        Some("NeverBlink"),
-        Some("https://neverblink.eu"),
+        id = "NeverBlink",
+        name = "NeverBlink",
+        url = "https://neverblink.eu",
+        organization = Some("NeverBlink"),
+        organizationUrl = Some("https://neverblink.eu"),
       ),
     ),
   )
 
   final def publishVersion = Task {
-    sys.env.get("GITHUB_REF") match {
-      case Some(ref) if ref.startsWith("refs/tags/v") => ref.stripPrefix("refs/tags/v")
-      case _ => "0.1.0-SNAPSHOT"
+    try {
+      val gitOutput = os.proc("git", "describe", "--tags", "--long", "--match", "v*")
+        .call(stderr = os.Pipe).out.trim()
+      val GitDescribeRegex = """v(.*)-(\d+)-g([0-9a-fA-F]+)""".r
+      gitOutput match {
+        case GitDescribeRegex(tag, commitCount, shortHash) =>
+          if (commitCount == "0") tag
+          else s"$tag-$commitCount-$shortHash-SNAPSHOT"
+        case other =>
+          s"$other-SNAPSHOT"
+      }
+    } catch {
+      case _: Exception => "0.1.0-SNAPSHOT"
     }
   }
 
