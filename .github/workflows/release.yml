@@ -105,6 +105,7 @@ jobs:
       contents: write
     needs:
       - aot-compile
+      - jar-assemble
 
     steps:
       - name: Checkout Repository
