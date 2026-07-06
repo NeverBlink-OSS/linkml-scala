@@ -1,7 +1,9 @@
 package eu.neverblink.linkml.schemaview
 
+import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
 
 import scala.collection.mutable
@@ -81,6 +83,14 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def subjectType: Option[SubjectType] = identifier.flatMap(slotView => {
     slotView.derivedRangeView.resolve.collect { case tv: TypeView =>
       tv.subjectType
+    }.map {
+      // Fallback if the type does not define the prefix but the slot does
+      case SubjectType.base =>
+        slotView.implicitPrefixReference match {
+          case Some(prefix) => SubjectType.implicitPrefix(prefix)
+          case None => SubjectType.base
+        }
+      case subject => subject
     }
   })
 
@@ -262,6 +272,11 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 ) extends ElementView[SlotDefinition] {
   def inner: SlotDefinition = slot
 
+  /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
+    */
+  def implicitPrefixReference: Option[String] =
+    slot.implicitPrefix.flatMap(definingPrefixResolver.resolvePrefix)
+
   /** Get and dereference the direct parents (mixins + inheritance) of this slot
     *
     * @return
@@ -270,7 +285,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   def parents: Iterable[SlotDefinition] = getParents(slot)
 
   private def getParents(slot: SlotDefinition): Iterable[SlotDefinition] =
-    (slot.mixins ++ slot.isA).flatMap(sv.resolve) // TODO LNK-23: type refinements
+    (slot.mixins ++ slot.isA).flatMap(sv.resolve)
 
   /** Get and dereference all the ancestors (transitive parents) of this slot.
     *
@@ -347,12 +362,11 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case _ =>
       inner.implicitPrefix match {
         case Some(prefix) =>
-          val reference = Uri(
+          val reference =
             definingPrefixResolver.resolvePrefix(prefix).getOrElse(
               sys.error(s"Unknown prefix: $prefix"),
-            ),
-          )
-          SubjectType.implicitPrefix(PrefixImpl(prefix, reference))
+            )
+          SubjectType.implicitPrefix(reference)
         case None => SubjectType.base
       }
   }
@@ -369,7 +383,11 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case UriOrCurieType => true
     case UriType => true
     case CurieType => true
-    case _ => false
+    case _ =>
+      subjectType match {
+        case SubjectType.implicitPrefix(_) => true
+        case _ => false
+      }
   }
 
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime

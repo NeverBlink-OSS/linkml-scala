@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/implicitPrefix/> .
+@prefix base: <https://neverblink.eu/linkml/tests/implicitPrefix/base/> .
+
+base:value a :SomeOtherClass .

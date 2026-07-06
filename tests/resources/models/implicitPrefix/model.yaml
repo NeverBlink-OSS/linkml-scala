@@ -1,0 +1,38 @@
+id: https://neverblink.eu/linkml/tests/implicitPrefix/
+name: implicitPrefix
+
+prefixes:
+  base: https://neverblink.eu/linkml/tests/implicitPrefix/base/
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: string
+        implicit_prefix: base
+      one_more_slot:
+        range: prefixed_id
+      some_other_slot:
+        range: SomeOtherClass
+      yet_another_slot:
+        range: YetAnotherClass
+  SomeOtherClass:
+    attributes:
+      id:
+        identifier: true
+        range: string
+        implicit_prefix: base
+  YetAnotherClass:
+    attributes:
+      id:
+        identifier: true
+        range: prefixed_id
+
+types:
+  prefixed_id:
+    base: str
+    implicit_prefix: base

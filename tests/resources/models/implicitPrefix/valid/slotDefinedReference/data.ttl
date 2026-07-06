@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/implicitPrefix/> .
+@prefix base: <https://neverblink.eu/linkml/tests/implicitPrefix/base/> .
+
+_:b a :SomeClass;
+  :some_other_slot base:value .

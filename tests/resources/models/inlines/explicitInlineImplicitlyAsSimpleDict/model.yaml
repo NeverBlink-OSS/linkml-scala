@@ -9,7 +9,9 @@ classes:
     attributes:
       id:
         identifier: true
+        range: string
       other_slot:
+        range: string
   SomeClass:
     tree_root: true
     slots:

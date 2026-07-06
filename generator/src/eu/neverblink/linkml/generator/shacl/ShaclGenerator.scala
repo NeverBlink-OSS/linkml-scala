@@ -90,7 +90,8 @@ class ShaclGenerator(using sv: SchemaView) {
         addTriple(classNameIri, Shacl.property, property)
         s.derivedRangeView.resolve.foreach {
           case typeView: TypeView =>
-            if (!typeView.isIri) addTriple(property, Shacl.datatype, Iri(typeView.uriStr))
+            val isIri = typeView.isIri || s.slot.implicitPrefix.isDefined
+            if (!isIri) addTriple(property, Shacl.datatype, Iri(typeView.uriStr))
             s.slot.description match {
               case Some(d) => addTriple(property, Shacl.description, Literal(d, XmlSchema.string))
               case _ =>
@@ -98,7 +99,7 @@ class ShaclGenerator(using sv: SchemaView) {
             if (!s.slot.multivalued) addTriple(property, Shacl.maxCount, Literal.one)
             if (s.slot.required) addTriple(property, Shacl.minCount, Literal.one)
             val nodeKind =
-              if (typeView.isIri) Shacl.IRI
+              if (isIri) Shacl.IRI
               else Shacl.Literal
             addTriple(property, Shacl.nodeKind, nodeKind)
           case classView: ClassView =>
