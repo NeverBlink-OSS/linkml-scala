@@ -134,6 +134,7 @@ object ModelCatalogue {
   val reference: Entry = Entry("/models/reference/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typed: Entry = Entry("/models/typed/")
+  val implicitPrefix: Entry = Entry("/models/implicitPrefix/")
   val inheritance: Entry = Entry("/models/inheritance/")
   val uri: Entry = Entry("/models/uri/")
   val uriOrCurie: Entry = Entry("/models/uriOrCurie/")
