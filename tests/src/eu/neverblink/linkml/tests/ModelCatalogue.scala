@@ -25,7 +25,30 @@ object ModelCatalogue {
       turtle: Option[String],
       csv: Option[String],
       context: Option[String],
-  )
+  ):
+    /** @return
+      *   the requested format if available, None otherwise
+      */
+    def inFormat(format: Format): Option[String] = format match {
+      case Format.turtle => turtle
+      case Format.turtleWithContext =>
+        for
+          t <- turtle
+          c <- context
+        yield t + c
+      case Format.json => json
+      case Format.csv => csv
+    }
+
+    /** @return
+      *   true if the format is available
+      */
+    def hasFormat(format: Format): Boolean = inFormat(format).isDefined
+
+  /** Enum for formats of an instance
+    */
+  enum Format:
+    case turtle, turtleWithContext, json, csv
 
   private object InstanceInFormats:
     def apply(path: String, name: String): InstanceInFormats = {
@@ -57,7 +80,8 @@ object ModelCatalogue {
       model: SchemaView,
       validInstances: Seq[InstanceInFormats],
       invalidInstances: Seq[InstanceInFormats],
-  )
+  ):
+    val name: String = model.root.name
 
   private object Entry:
     def apply(path: String): Entry = {
@@ -110,6 +134,7 @@ object ModelCatalogue {
   val reference: Entry = Entry("/models/reference/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typed: Entry = Entry("/models/typed/")
+  val implicitPrefix: Entry = Entry("/models/implicitPrefix/")
   val inheritance: Entry = Entry("/models/inheritance/")
   val uri: Entry = Entry("/models/uri/")
   val uriOrCurie: Entry = Entry("/models/uriOrCurie/")

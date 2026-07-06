@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.{ClassDefinition, SlotDefinition}
+import eu.neverblink.linkml.runtime.NcName
 
 import scala.util.Failure
 
@@ -155,4 +156,8 @@ object SchemaProblem {
       "schema 'default_range' is undefined, and the fallback 'string' type is not available. " +
       "Define the 'range' of the slot, add a 'default_range' to the schema, " +
       "import 'linkml:types', or define a 'string' type to fix."
+
+  final case class UndefinedPrefix(prefix: NcName, position: String) extends Error:
+    lazy val description: String = s"Undefined prefix $prefix at $position"
+    lazy val verbose: String = description
 }

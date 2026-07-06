@@ -595,6 +595,12 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should include("sh:nodeKind sh:IRI")
     }
 
+    "generate IRI nodeKind constraints for implicitly prefixed slots" in {
+      val result = ShaclGenerator(using ModelCatalogue.implicitPrefix.model).generate()
+      val turtle = RdfUtils.toTurtle(result)
+      turtle should include("sh:nodeKind sh:IRI")
+    }
+
     "ignore identifiers" in {
       val result = ShaclGenerator(using ModelCatalogue.reference.model).generate()
       val turtle = RdfUtils.toTurtle(result)

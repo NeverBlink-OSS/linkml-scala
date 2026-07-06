@@ -8,6 +8,7 @@ classes:
   SomeOtherClass:
     attributes:
       other_slot:
+        range: string
   SomeClass:
     tree_root: true
     slots:
