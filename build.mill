@@ -296,6 +296,7 @@ trait CommonModule
   final def scalaVersion = scala
 
   def scalacOptions = Seq(
+    "-release", "17",
     "-Wunused:all",
     "-Xcheck-macros",
     "-explain",
