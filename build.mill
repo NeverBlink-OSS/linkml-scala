@@ -281,7 +281,19 @@ trait CommonModule
     gitOutput match {
       case GitDescribeRegex(tag, commitCount, shortHash) =>
         if (commitCount == "0") tag
-        else s"$tag-$commitCount-$shortHash-SNAPSHOT"
+        else {
+          val targetCommit = os.proc("git", "rev-parse", s"HEAD~$commitCount")
+            .call(cwd = mill.api.BuildCtx.workspaceRoot).out.trim()
+          val tagsAtCommit = os.proc("git", "tag", "--points-at", targetCommit)
+            .call(cwd = mill.api.BuildCtx.workspaceRoot).out.trim().linesIterator.toList
+          val latestTag = tagsAtCommit
+            .filter(_.startsWith("v"))
+            .map(_.stripPrefix("v"))
+            .sorted(using Ordering.String.reverse)
+            .headOption
+            .getOrElse(tag)
+          s"$latestTag-$commitCount-$shortHash-SNAPSHOT"
+        }
       case other =>
         s"$other-SNAPSHOT"
     }
