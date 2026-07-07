@@ -29,6 +29,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          fetch-depth: 256 # limits number of snapshots between releases
           fetch-tags: true # forces GitHub to fetch tags even on a partial history
 
       - name: Cache dependencies
