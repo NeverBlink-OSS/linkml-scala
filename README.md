@@ -46,9 +46,10 @@ mv linkml-scala-<os>-<arch> linkml-scala
 ```
 
 *For Windows:*
-Simply run the downloaded executable:
+Simply rename the downloaded executable, and run it:
 
 ```shell
+ren linkml-scala-windows-x86_64.exe linkml-scala.exe
 linkml-scala.exe
 ```
 

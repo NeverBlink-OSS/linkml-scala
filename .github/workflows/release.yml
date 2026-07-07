@@ -110,17 +110,17 @@ jobs:
       - name: Rename Binaries
         run: |
           mv bin/linkml-scala-assembly/linkml-scala.jar linkml-scala.jar
-          mv bin/linkml-scala-macos-14/linkml-scala linkml-scala-mac-arm64
+          mv bin/linkml-scala-macos-14/linkml-scala linkml-scala-macos-arm64
           mv bin/linkml-scala-ubuntu-22.04/linkml-scala linkml-scala-linux-x86_64
           mv bin/linkml-scala-ubuntu-22.04-arm/linkml-scala linkml-scala-linux-arm64
           mv bin/linkml-scala-windows-latest/linkml-scala.exe linkml-scala-windows-x86_64.exe
-          chmod +x linkml-scala-mac-arm64
+          chmod +x linkml-scala-macos-arm64
           chmod +x linkml-scala-linux-x86_64
           chmod +x linkml-scala-linux-arm64
 
       - name: Create Gzipped Versions
         run: |
-          gzip -9 -k linkml-scala-mac-arm64 &
+          gzip -9 -k linkml-scala-macos-arm64 &
           gzip -9 -k linkml-scala-linux-x86_64 &
           gzip -9 -k linkml-scala-linux-arm64 &
           gzip -9 -k linkml-scala-windows-x86_64.exe &
