@@ -66,7 +66,7 @@ jobs:
           diff -r metamodel metamodel_prev
           
       - name: Publish Snapshot to Sonatype Central
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        if: matrix.java == 17 && github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:
           MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}

@@ -275,7 +275,9 @@ trait CommonModule
   final def publishVersion = Task {
     try {
       val gitOutput = os.proc("git", "describe", "--tags", "--long", "--match", "v*")
-        .call(stderr = os.Pipe).out.trim()
+        .call(cwd = mill.api.BuildCtx.workspaceRoot, stderr = os.Pipe)
+        .out
+        .trim()
       val GitDescribeRegex = """v(.*)-(\d+)-g([0-9a-fA-F]+)""".r
       gitOutput match {
         case GitDescribeRegex(tag, commitCount, shortHash) =>
@@ -285,7 +287,9 @@ trait CommonModule
           s"$other-SNAPSHOT"
       }
     } catch {
-      case _: Exception => "0.1.0-SNAPSHOT"
+      case e: Exception =>
+        Task.log.warn(s"Git version calculation failed: ${e.getMessage}")
+        "0.1.0-SNAPSHOT"
     }
   }
 
