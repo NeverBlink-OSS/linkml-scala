@@ -132,9 +132,10 @@ jobs:
           tag: "${{ github.ref_name }}"
           name: "${{ github.ref_name }}"
           artifacts: linkml-scala*
-          generateReleaseNotes: true
           allowUpdates: true
           replacesArtifacts: true
+          omitBodyDuringUpdate: true
+          omitNameDuringUpdate: true
 
       - name: Publish to Maven Central
         env:
