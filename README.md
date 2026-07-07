@@ -145,7 +145,7 @@ Common tasks with mill:
 
 1. Go to Releases -> Draft a new release
 2. Press "Select tag" list
-3. Enter the tag name in form `v0.2.0`
+3. Enter the tag name in form `v0.2.3`
 4. Press "Generate Release Notes" button
 5. Select "Pre-release" or "Release" list item
 6. Press "Publish Release" button
