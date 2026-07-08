@@ -22,13 +22,19 @@ is via our installation script:
 linkml-scala
 ```
 
-### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (Cross-Platform) 
+### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (Cross-Platform)
 
-You can install `linkml-scala` on any platform (including Windows) using [mise](https://mise.jdx.dev/getting-started.html) 
+You can install `linkml-scala` on any platform (including Windows) using [mise](https://mise.jdx.dev/getting-started.html)
 environment manager:
 
 ```shell
-mise use 'github:NeverBlink-OSS/linkml-scala[exe=linkml-scala]'
+mise use 'github:NeverBlink-OSS/linkml-scala'
+linkml-scala
+```
+
+Or install a specific version (useful if a new release is within mise's 7-day registry caching window)
+```shell
+mise use 'github:NeverBlink-OSS/linkml-scala@v0.8.6'
 linkml-scala
 ```
 
