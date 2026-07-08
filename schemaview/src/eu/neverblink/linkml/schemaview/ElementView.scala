@@ -345,6 +345,16 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def uriOrCurie: UriOrCurie =
     _enum.enumUri.getOrElse(Uri(defaultPrefixUri + Case.PascalCase(_enum.name)))
+
+  lazy val toMeaning: Map[String, UriOrCurie] =
+    _enum.permissibleValues.map((k, v) =>
+      (k, v.meaning.getOrElse(UriOrCurie(defaultPrefixUri + k))),
+    )
+
+  lazy val fromMeaning: Map[UriOrCurie, String] =
+    _enum.permissibleValues.map((k, v) =>
+      (v.meaning.getOrElse(UriOrCurie(defaultPrefixUri + k)), k),
+    )
 }
 
 final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinition)(using
