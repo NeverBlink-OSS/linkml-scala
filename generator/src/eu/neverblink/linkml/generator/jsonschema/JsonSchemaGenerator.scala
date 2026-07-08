@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.jsonschema
 
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview.*
-import sttp.apispec.{AnySchema, Pattern, Schema, SchemaFormat, SchemaType}
+import sttp.apispec.{AnySchema, ExampleSingleValue, Pattern, Schema, SchemaFormat, SchemaType}
 import sttp.apispec.circe.encoderSchema
 
 import java.lang
@@ -79,8 +79,10 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case typeView: TypeView =>
         if slot.slot.multivalued then typeToRuntime(typeView).arrayOf
         else typeToRuntime(typeView)
-      // TODO LNK-32: True enums
-      case _: EnumView => Schema(SchemaType.String)
+      case enumView: EnumView =>
+        val referenceSchema = Schema.referenceTo("#/$defs/", enumView._enum.name)
+        if (slot.slot.multivalued) referenceSchema.arrayOf
+        else referenceSchema
       case _ => throw RuntimeException(s"Couldn't map range '${range.inner.name}'")
     }
     slotName(slot) -> slotSchema.copy(
@@ -130,7 +132,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       .fold(sv.classes)(root =>
         sv.classesReachableFrom(root, includeAncestors = false, inlinedOnly = true),
       )
-    val defs = for cls <- classes.values yield {
+    val defsClasses = for cls <- classes.values yield {
       val slots = cls.derivedAttributes
       val properties = for slot <- slots.values yield {
         generateSlotSchema(slot, needKeyless, needValue)
@@ -146,7 +148,16 @@ class JsonSchemaGenerator(using sv: SchemaView) {
         description = cls.cls.description,
       )
     }
-    val defMap = defs.toMap
+    val defsEnums = for ev <- sv.enums.values yield {
+      val enum_ = ev._enum
+      enum_.name -> Schema(SchemaType.Object).copy(
+        `type` = Some(List(SchemaType.String)),
+        `enum` = Some(enum_.permissibleValues.keys.map(ExampleSingleValue(_)).toList),
+        title = enum_.title,
+        description = enum_.description,
+      )
+    }
+    val defMap = defsClasses.toMap
     val defsKeyless = for (className, idField) <- needKeyless yield {
       val classSchema = defMap(className)
       className + "__identifier_optional" -> classSchema.copy(required =
@@ -180,7 +191,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       $id = Some(sv.root.id.uri(using sv.rootPrefixResolver)),
       title = Some(sv.root.title.getOrElse(sv.root.name)),
       description = sv.root.description,
-      $defs = Some((defs ++ defsKeyless ++ defsValues).to(immutable.ListMap)),
+      $defs = Some((defsClasses ++ defsEnums ++ defsKeyless ++ defsValues).to(immutable.ListMap)),
     )
   }
 

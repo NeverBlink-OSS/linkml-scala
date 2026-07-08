@@ -4,7 +4,7 @@ import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import sttp.apispec.{Pattern, Schema, SchemaType}
+import sttp.apispec.{ExampleSingleValue, Pattern, Schema, SchemaType}
 
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
@@ -544,6 +544,23 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       customSlot.`type` shouldBe Some(List(SchemaType.String))
     }
 
+    "emit enums" in {
+      given SchemaView = ModelCatalogue.`enum`.model
+
+      val schema = JsonSchemaGenerator().generate()
+      schema.$ref shouldBe Some("#/$defs/SomeClass")
+      val c = schema.$defs.get("SomeClass").asInstanceOf[Schema]
+
+      val someSlot = c.properties("some_slot").asInstanceOf[Schema]
+      someSlot.$ref shouldBe Some("#/$defs/SomeEnum")
+      schema.$defs.get.keys.toSeq should contain("SomeEnum")
+      val someEnum = schema.$defs.get("SomeEnum").asInstanceOf[Schema]
+      someEnum.`type`.get should contain(SchemaType.String)
+      someEnum.`enum`.get should contain(ExampleSingleValue("SOME_OPTION"))
+      someEnum.`enum`.get should contain(ExampleSingleValue("SOME_OTHER_OPTION"))
+      someEnum.`enum`.get should contain(ExampleSingleValue("YET_ANOTHER_OPTION"))
+    }
+
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv
@@ -562,7 +579,6 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
 object JsonSchemaGeneratorSpec {
   val skipModels: Map[String, String] = Map(
-    "enum" -> "Not yet implemented: LNK-78",
     "typeDesignator" -> "Not yet implemented: LNK-101",
     "unionRange" -> "Not yet implemented: LNK-100",
   )
