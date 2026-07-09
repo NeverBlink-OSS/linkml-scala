@@ -49,26 +49,34 @@ class ShaclGenerator(using sv: SchemaView) {
     def addTriple(subj: Resource, pred: Iri, obj: Node): Unit =
       triples.addOne(Triple(subj, pred, obj))
 
+    /** Process a slot expression, including some support for boolean slot expressions.
+      * @param slotView
+      *   The defining slots' view, used for default range resolution
+      * @param slotExpression
+      *   The currently processed expression
+      * @param subject
+      *   The subject to generate triples for
+      */
     def processSlotExpr(
         slotView: SlotView,
         slotExpression: SlotExpression,
-        property: Resource,
+        subject: Resource,
     ): Unit = {
       slotExpression.range.getOrElse(slotView.definingSchema.defaultRangeResolved)
         .asInstanceOf[Reference[ElementView[?]]].resolve.foreach {
           case typeView: TypeView =>
             val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
-            if (!isIri) addTriple(property, Shacl.datatype, Iri(typeView.uriStr))
+            if (!isIri) addTriple(subject, Shacl.datatype, Iri(typeView.uriStr))
             val nodeKind =
               if (isIri) Shacl.IRI
               else Shacl.Literal
-            addTriple(property, Shacl.nodeKind, nodeKind)
+            addTriple(subject, Shacl.nodeKind, nodeKind)
           case classView: ClassView =>
             val cdUri = classView.uriStr
             val isLinkmlAny = cdUri == "https://w3id.org/linkml/Any"
             if (!isLinkmlAny) {
-              addTriple(property, Shacl.`class`, Iri(cdUri))
-              addTriple(property, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
+              addTriple(subject, Shacl.`class`, Iri(cdUri))
+              addTriple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
             }
           case enumView: EnumView =>
             val permissibleValues =
@@ -92,19 +100,29 @@ class ShaclGenerator(using sv: SchemaView) {
                 }
                 listNode
               }
-            addTriple(property, Shacl.in, permissibleValues)
+            addTriple(subject, Shacl.in, permissibleValues)
           case _ => throw RuntimeException(s"Couldn't map range ${slotExpression.range}")
         }
+      // TODO LNK-129: Implement the rest of the boolean slots
       val ors = slotExpression.anyOf.map(curSlotExpression => {
         val curNode = blankNode()
         processSlotExpr(slotView, curSlotExpression, curNode)
         curNode
       })
       val orListHeadMaybe = addShaclList(ors)
-      orListHeadMaybe.foreach(addTriple(property, Shacl.or, _))
+      orListHeadMaybe.foreach(addTriple(subject, Shacl.or, _))
     }
 
-    def processSlot(s: SlotView, order: Int, propertyDomain: Iri): Unit = {
+    /** Generate sh:property triples for a given slot. Produces triples of form
+      * `propertyDomain sh:property [ ... ] .`
+      * @param s
+      *   Slot to generate SHACL triples for.
+      * @param order
+      *   sh:order to use for the slot
+      * @param propertyDomain
+      *   The RDF subject to add this sh:property to.
+      */
+    def processSlot(s: SlotView, order: Int, propertyDomain: Resource): Unit = {
       val slot = s.slot
       val property = blankNode()
       addTriple(propertyDomain, Shacl.property, property)
@@ -112,6 +130,11 @@ class ShaclGenerator(using sv: SchemaView) {
         case Some(d) => addTriple(property, Shacl.description, Literal(d, XmlSchema.string))
         case _ =>
       }
+      // TODO LNK-129: N-arity has to be done on the top-level-only,
+      //  as SHACL boolean operators attached to a PropertyShape have to be NodeShapes
+      //  and NodeShapes don't allow max/min count. To do this properly we would have
+      //  to roll-down slots to the leaves of the boolean op tree and add make the
+      //  leaves PropertyShapes.
       if (!slot.multivalued) addTriple(property, Shacl.maxCount, Literal.one)
       if (slot.required) addTriple(property, Shacl.minCount, Literal.one)
       addTriple(property, Shacl.path, Iri(s.uriStr))
@@ -119,6 +142,12 @@ class ShaclGenerator(using sv: SchemaView) {
       addTriple(property, Shacl.order, Literal(order.toString, XmlSchema.integer))
     }
 
+    /** Create a SHACL list of the provided [[values]] and add it to the RDF graph.
+      * @param values
+      *   Values to include in the SHACL list
+      * @return
+      *   Head node of the list if [[values]] was non-empty, None otherwise
+      */
     def addShaclList(values: Seq[Node]): Option[BlankNode] = {
       if values.isEmpty then return None
       val start = blankNode()
