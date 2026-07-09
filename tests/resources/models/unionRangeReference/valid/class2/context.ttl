@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/unionRangeReference/> .
+
+:class1Instance a :BaseClass, :Child1Class .
+
+:class2Instance a :BaseClass, :Child2Class .
+
+:baseOnlyInstance a :BaseClass .

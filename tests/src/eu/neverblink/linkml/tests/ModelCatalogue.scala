@@ -86,8 +86,9 @@ object ModelCatalogue {
   private object Entry:
     def apply(path: String): Entry = {
       val instancePaths = Resources.map.keySet().asScala.toSeq
-        .filter(_.endsWith("/data.json"))
-        .map(_.stripSuffix("/data.json"))
+        .filter(x => x.endsWith("/data.json") || x.endsWith("/data.ttl"))
+        .map(_.stripSuffix("/data.json").stripSuffix("/data.ttl"))
+        .distinct
 
       val validInstancePaths = instancePaths.filter(_.startsWith(path + "valid/"))
 
@@ -138,6 +139,7 @@ object ModelCatalogue {
   val reference: Entry = Entry("/models/reference/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typed: Entry = Entry("/models/typed/")
+  val unionRange: Entry = Entry("/models/unionRange/")
   val uri: Entry = Entry("/models/uri/")
   val uriOrCurie: Entry = Entry("/models/uriOrCurie/")
   val uriImports: Entry = Entry("/models/uriImports/")
