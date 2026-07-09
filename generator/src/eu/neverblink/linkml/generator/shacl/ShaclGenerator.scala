@@ -15,9 +15,9 @@ import eu.neverblink.linkml.schemaview.{
 
 class ShaclGenerator(using sv: SchemaView) {
 
-  var blankNodeCounter = 0
+  private var blankNodeCounter = 0
 
-  def blankNode(): BlankNode = {
+  private def blankNode(): BlankNode = {
     blankNodeCounter += 1
     BlankNode(blankNodeCounter.toString)
   }
