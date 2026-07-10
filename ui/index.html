@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkML Scala &middot; Playground</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="app-header">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <circle cx="20" cy="8" r="4.5" stroke="var(--accent)" stroke-width="2.5"/>
+        <circle cx="8" cy="30" r="4.5" stroke="var(--accent)" stroke-width="2.5"/>
+        <circle cx="32" cy="30" r="4.5" stroke="var(--brand)" stroke-width="2.5" fill="var(--brand)"/>
+        <path d="M17 11.5 10.5 26M23 11.5 29.5 26M12.5 30h15" stroke="var(--border)" stroke-width="2"/>
+      </svg>
+      <div class="brand-text">
+        <span class="brand-title">LinkML Scala</span>
+        <span class="brand-sub">Schema Playground</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a class="header-link" href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91.5S18.73.15 16 2a13.38 13.38 0 0 0-7 0C6.27.15 5.09.5 5.09.5A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button id="themeToggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="themeIconMoon" class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="themeIconSun" class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66 4.93 19.07M19.07 4.93l-1.41 1.41"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <div class="toolbar">
+      <div class="target-tabs" id="targetTabs" role="tablist"></div>
+      <div class="toolbar-right">
+        <div class="options-row" id="optionsRow"></div>
+        <label class="auto-toggle">
+          <input type="checkbox" id="autoGenerate" checked>
+          <span>Auto</span>
+        </label>
+        <button id="generateBtn" class="btn btn-primary">
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 3 14h7l-1 8 10-12h-7z"/></svg>
+          Generate
+        </button>
+      </div>
+    </div>
+
+    <div class="split">
+      <section class="panel panel-input">
+        <div class="panel-head">
+          <span class="panel-title">Input <span class="panel-title-sub">LinkML YAML</span></span>
+          <div class="panel-actions">
+            <button id="loadExample" class="btn btn-secondary btn-sm">Load example</button>
+            <button id="clearInput" class="btn btn-secondary btn-sm">Clear</button>
+          </div>
+        </div>
+        <div class="editor">
+          <pre id="inputHighlight" class="code-area code-highlight" aria-hidden="true"><code></code></pre>
+          <textarea id="input" class="code-area code-input" spellcheck="false" placeholder="# paste or write a LinkML schema (YAML)&#10;id: https://example.org/my-schema&#10;name: my_schema&#10;..."></textarea>
+        </div>
+      </section>
+
+      <section class="panel panel-output">
+        <div class="panel-head">
+          <span class="panel-title">Output</span>
+          <div class="panel-actions">
+            <span id="statusPill" class="status-pill" hidden></span>
+            <button id="copyOutput" class="btn btn-secondary btn-sm">Copy</button>
+          </div>
+        </div>
+        <div id="fileTabs" class="file-tabs" hidden></div>
+        <pre id="output" class="code-area code-output"><span class="code-output-empty">Output will appear here.</span></pre>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Emulates a nodejs runtime - the generated JS bundle expects it.
+  const process = { cwd: () => "/" };
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>

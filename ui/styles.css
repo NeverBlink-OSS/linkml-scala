@@ -1,0 +1,416 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  color-scheme: dark;
+
+  --bg: #17233f;
+  --surface: #1c2c4c;
+  --surface-2: #24365a;
+  --surface-3: #121d36;
+
+  --text: #e5e4e4;
+  --text-secondary: #a9b3cc;
+  --text-muted: #7c88a8;
+  --text-on-accent: #13203a;
+
+  --border: #304368;
+  --border-subtle: #243254;
+
+  --accent: #bfcdea;
+  --accent-strong: #9db3dd;
+  --accent-soft: rgba(191, 205, 234, 0.14);
+  --accent-border: rgba(191, 205, 234, 0.4);
+
+  --danger: #e06c75;
+  --danger-soft: rgba(224, 108, 117, 0.14);
+  --danger-border: rgba(224, 108, 117, 0.4);
+  --success: #98c379;
+  --success-soft: rgba(152, 195, 121, 0.14);
+  --purple: #c678dd;
+  --cyan: #56b6c2;
+  --orange: #d19a66;
+  --blue: #61afef;
+
+  --brand: #9fc131;
+  --brand-strong: #8aab2a;
+  --brand-ink: #13203a;
+
+  --tag-bg: #28395e;
+  --tag-text: #c7cee0;
+
+  --radius: 8px;
+  --radius-sm: 5px;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --code-font: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, ui-monospace, monospace;
+
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f0f0ef;
+  --surface-3: #f5f5f4;
+
+  --text: #13203a;
+  --text-secondary: #4f5872;
+  --text-muted: #767e93;
+  --text-on-accent: #ffffff;
+
+  --border: #e1ded8;
+  --border-subtle: #ececea;
+
+  --accent: #3154a2;
+  --accent-strong: #24407f;
+  --accent-soft: rgba(49, 84, 162, 0.08);
+  --accent-border: rgba(49, 84, 162, 0.30);
+
+  --danger: #c0303a;
+  --danger-soft: rgba(228, 86, 73, 0.12);
+  --danger-border: rgba(192, 48, 58, 0.40);
+  --success: #357a27;
+  --success-soft: rgba(80, 161, 79, 0.16);
+  --purple: #8d3aa8;
+  --cyan: #0e7490;
+  --orange: #b15c1e;
+  --blue: #3367d6;
+
+  --brand: #b7e425;
+  --brand-strong: #a1c820;
+  --brand-ink: #13203a;
+
+  --tag-bg: #e8e6e2;
+  --tag-text: #4f5872;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+html, body { height: 100%; }
+body { background: var(--bg); }
+
+.ic { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+
+/* ── Layout ── */
+
+.app-shell { display: flex; flex-direction: column; height: 100vh; }
+
+.app-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand-mark { width: 30px; height: 30px; flex-shrink: 0; }
+.brand-text { display: flex; flex-direction: column; line-height: 1.2; }
+.brand-title { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
+.brand-sub { font-size: 11.5px; color: var(--text-muted); }
+
+.header-actions { display: flex; align-items: center; gap: 6px; }
+.header-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+.header-link:hover { background: var(--accent-soft); color: var(--text); }
+
+.icon-btn {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+}
+.icon-btn:hover { background: var(--accent-soft); color: var(--text); }
+
+.workspace {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 18px 24px 24px;
+  gap: 14px;
+}
+
+/* ── Toolbar ── */
+
+.toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 8px 10px;
+}
+
+.target-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
+.tab-btn {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 8px 13px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  transition: background 0.1s, color 0.1s;
+}
+.tab-btn:hover { color: var(--text); background: var(--accent-soft); }
+.tab-btn--active { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
+.tab-btn--active:hover { color: var(--text-on-accent); background: var(--accent); }
+
+.toolbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.options-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.opt-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; }
+.opt-field input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+.opt-field input[type="text"],
+.opt-field input[type="number"],
+.opt-field select {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+}
+.opt-field input[type="text"] { width: 168px; }
+.opt-field input[type="number"] { width: 56px; }
+.opt-field input:focus, .opt-field select:focus { border-color: var(--accent); }
+.opt-field label { cursor: pointer; }
+
+.auto-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 2px;
+}
+.auto-toggle input { accent-color: var(--brand); cursor: pointer; }
+
+/* ── Buttons ── */
+
+.btn {
+  appearance: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.1s, background 0.1s;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-sm { font-size: 12px; padding: 5px 11px; }
+
+.btn-primary { background: var(--brand); color: var(--brand-ink); }
+.btn-primary:hover:not(:disabled) { background: var(--brand-strong); }
+
+.btn-secondary { background: var(--tag-bg); color: var(--text); }
+.btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+
+.btn-secondary--done { color: var(--success); }
+
+/* ── Split panels ── */
+
+.split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panel-head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.panel-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: baseline; gap: 8px; }
+.panel-title-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.panel-actions { display: flex; align-items: center; gap: 8px; }
+
+.status-pill {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 100px;
+  background: var(--success-soft);
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+.status-pill--error { background: var(--danger-soft); color: var(--danger); }
+
+.code-area {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 16px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-family: var(--code-font);
+  font-size: 12.5px;
+  line-height: 1.6;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: auto;
+  white-space: pre;
+  tab-size: 2;
+}
+
+textarea.code-area { width: 100%; }
+
+.code-output { margin: 0; white-space: pre; }
+.code-output-empty { color: var(--text-muted); font-family: inherit; font-style: italic; }
+.code-output--error { color: var(--danger); white-space: pre-wrap; }
+
+/* ── Input editor: transparent textarea over a highlighted <pre> ──
+   The wrapper is the ONLY scroll owner. Both the <pre> and the textarea are
+   absolutely positioned at the same top-left origin and auto-sized to their
+   natural content height/width (no internal overflow of their own), so they
+   scroll together as one unit — no JS scroll-position syncing, and no risk of
+   the two drifting apart (which happened when each had its own independent
+   scrollTop/scrollHeight, kept in sync only by copying values on 'scroll'). */
+
+.editor {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface-3);
+}
+
+.code-highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  overflow: visible;
+  pointer-events: none;
+  color: var(--text);
+  background: none;
+  white-space: normal;
+}
+
+/* One block per source line, with an explicit height — see the comment on
+   highlightYaml() in app.js for why this can't just be a single text flow
+   with embedded newlines. */
+.hl-line {
+  height: 1.6em;
+  line-height: 1.6;
+  white-space: pre;
+}
+
+.code-input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  caret-color: var(--text);
+  z-index: 1;
+}
+.code-input::placeholder { color: var(--text-muted); }
+/* Some browsers render selected text with a fallback foreground color instead
+   of honoring `color: transparent` — pin it explicitly, else selecting text
+   shows a "ghost" of it on top of the highlighted <pre> underneath. */
+.code-input::selection { color: transparent; -webkit-text-fill-color: transparent; background: var(--accent-soft); }
+
+/* Color only — no font-weight/style here. Any change to glyph metrics (bold,
+   italic) desyncs this <pre> from the transparent textarea it sits under,
+   since the two must stay pixel-identical line by line. */
+.tok-key { color: var(--blue); }
+.tok-string { color: var(--success); }
+.tok-number { color: var(--orange); }
+.tok-const { color: var(--purple); }
+.tok-comment { color: var(--text-muted); }
+.tok-tag { color: var(--cyan); }
+.tok-punct { color: var(--text-muted); }
+
+.file-tabs {
+  flex-shrink: 0;
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 6px 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.file-tab {
+  appearance: none;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: var(--code-font);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.file-tab:hover { color: var(--text); }
+.file-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
+
+@media (max-width: 900px) {
+  .split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .toolbar-right { margin-left: 0; }
+}

@@ -20,7 +20,10 @@ import mill.scalajslib.api.ModuleKind
 import scalalib.*
 import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
+import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
+
+import java.net.InetSocketAddress
 
 val scala = "3.8.3"
 val scalaJS = "1.22.0"
@@ -42,6 +45,24 @@ object LinkMlAliases extends Aliases {
 
 def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
   AliasesModule.run(ev, "lint")
+}
+
+def ui(args: String*) = Task.Command() {
+  generator.js.fullLinkJS()
+  val server =
+    SimpleFileServer.createFileServer(
+      new InetSocketAddress(8000),
+      mill.api.BuildCtx.workspaceRoot.toNIO,
+      SimpleFileServer.OutputLevel.INFO,
+    )
+
+  try {
+    server.start()
+    println("\nBrowser UI up at http://localhost:8000/ui/\n")
+    Thread.sleep(Long.MaxValue)
+  } finally {
+    server.stop(0)
+  }
 }
 
 object runtime extends Module {
@@ -256,7 +277,8 @@ trait CommonModule
   final def scoverageVersion = "2.5.2"
 
   final def pomSettings = PomSettings(
-    description = "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
+    description =
+      "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
     organization = "eu.neverblink.linkml",
     url = "https://github.com/NeverBlink-OSS/linkml-scala",
     licenses = Seq(License.`Apache-2.0`),
@@ -302,7 +324,8 @@ trait CommonModule
   final def scalaVersion = scala
 
   def scalacOptions = Seq(
-    "-release", "17",
+    "-release",
+    "17",
     "-Wunused:all",
     "-Xcheck-macros",
     "-explain",
