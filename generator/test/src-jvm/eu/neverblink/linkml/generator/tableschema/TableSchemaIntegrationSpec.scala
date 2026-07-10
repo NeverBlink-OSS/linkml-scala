@@ -12,7 +12,7 @@ class TableSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
   val frictionless: Path = cwd / ".venv" / "bin" / "frictionless"
 
   override val globalEnable: Boolean =
-    os.call((frictionless, "--version")).exitCode == 0 || System.getenv("CI") != null
+    os.call((frictionless, "--version"), check = false).exitCode == 0 || System.getenv("CI") != null
 
   lazy val modelDir: os.Path = os.temp.dir()
   lazy val dataDir: os.Path = os.temp.dir()
