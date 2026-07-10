@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/unionRangeReference
+name: unionRangeReference
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+  BaseClass:
+    slots:
+      - id
+  Child1Class:
+    is_a: BaseClass
+  Child2Class:
+    is_a: BaseClass
+
+slots:
+  id:
+    range: uri
+    identifier: true
+  some_slot:
+    required: true
+    range: BaseClass
+    any_of:
+      - range: Child1Class
+      - range: Child2Class

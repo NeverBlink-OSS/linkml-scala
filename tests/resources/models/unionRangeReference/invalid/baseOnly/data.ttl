@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/unionRangeReference/> .
+
+_:b a :SomeClass;
+  :some_slot :baseOnlyInstance .

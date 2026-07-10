@@ -142,10 +142,13 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
             enumDefinition.inherits.flatMap(_.resolve)
           case slotDefinition: SlotDefinition =>
             val inherited = slotDefinition.isA ++ slotDefinition.mixins
-            (slotDefinition.range ++ slotDefinition.domain ++ (
+            (slotDefinition.anyOf.flatMap(
+              _.range,
+            ) ++ slotDefinition.range ++ slotDefinition.domain ++ (
               if derivedClasses then inherited
               else Seq.empty
             )).flatMap(_.resolve)
+
           case _ => Seq.empty
         }
 

@@ -3,11 +3,27 @@ package eu.neverblink.linkml.generator.shacl
 import eu.neverblink.linkml.generator.rdf.RdfUtils
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
+import org.eclipse.rdf4j.model.ValueFactory
+import org.eclipse.rdf4j.model.impl.SimpleValueFactory
+import org.eclipse.rdf4j.model.util.Models
+import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import java.io.StringReader
+
 class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
   import ShaclGeneratorSpec.skipModels
+  given vf: ValueFactory = SimpleValueFactory.getInstance()
+
+  def ttlIsomorphic(actual: String, expected: String): Unit = {
+    val ac = Rio.parse(StringReader(actual), RDFFormat.TURTLE)
+    val ex = Rio.parse(StringReader(expected), RDFFormat.TURTLE)
+    withClue(s"$actual\n\nis not isomorphic to the expected\n\n$expected") {
+      Models.isomorphic(ac, ex) shouldBe true
+    }
+  }
+
   "ShaclGenerator" should {
     def loadWithImports(schemaYaml: String): SchemaView =
       SchemaView.loadSchemaViewFromString(schemaYaml)
@@ -40,7 +56,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -69,6 +85,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "enforce open shapes" in {
@@ -86,7 +103,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate(enforceOpenShapes = true)
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -103,6 +120,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "all classes in $defs" in {
@@ -125,7 +143,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -160,6 +178,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "reference other classes" in {
@@ -180,7 +199,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -202,6 +221,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "handle required references" in {
@@ -227,7 +247,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -257,6 +277,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "work for recursive ADT" in {
@@ -277,7 +298,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -300,6 +321,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/Node> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "works for abstract classes" in {
@@ -321,7 +343,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
@@ -345,6 +367,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "works for enums" in {
@@ -407,7 +430,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix brick: <https://brickschema.org/schema/Brick#> .
           |@prefix nb: <https://neverblink.eu/example/> .
           |@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -448,6 +471,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |  sh:ignoredProperties (rdf:type);
           |  sh:targetClass brick:Equipment .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "include imported classes by default" in {
@@ -479,7 +503,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
       val rules = ShaclGenerator(using schemaView).generate()
       val turtle = RdfUtils.toTurtle(rules)
-      turtle shouldBe
+      val expected =
         """@prefix linkml: <https://w3id.org/linkml/> .
           |@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -575,6 +599,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ];
           |  sh:targetClass linkml:Extensible .
           |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "generate IRI nodeKind constraints for CURIE types" in {
@@ -606,6 +631,14 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val turtle = RdfUtils.toTurtle(result)
       turtle should include(
         "sh:ignoredProperties (rdf:type <https://neverblink.eu/linkml/tests/reference/id>)",
+      )
+    }
+
+    "generate sh:or for any_of" in {
+      val result = ShaclGenerator(using ModelCatalogue.unionRange.model).generate()
+      val turtle = RdfUtils.toTurtle(result)
+      turtle should include(
+        "sh:or ",
       )
     }
 
@@ -643,6 +676,5 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 object ShaclGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "typeDesignator" -> "Not yet implemented: LNK-102",
-    "unionRange" -> "Not yet implemented: LNK-103",
   )
 }
