@@ -8,6 +8,7 @@ import eu.neverblink.linkml.generator.rdf.RdfUtils
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
 import eu.neverblink.linkml.schemaview.{Case, SchemaView}
 
 // Scala
@@ -156,4 +157,26 @@ object LinkMl extends Generate[LinkMlOptions] {
       ),
     )
   }
+}
+
+// Table Schema
+
+@HelpMessage("Generate a Frictionless Table Schema from a LinkML model.")
+@ArgsName("<input-file>")
+final case class TableSchemaOptions(
+    @Recurse
+    common: GenerateOptions,
+    @HelpMessage("Tree root class name to use instead of the schema defined tree_root.")
+    treeRoot: Option[String] = None,
+) extends HasGenerateOptions
+
+object TableSchema extends Generate[TableSchemaOptions] {
+  override protected def generatorName: String = "table-schema"
+
+  override protected def generate(
+      options: TableSchemaOptions,
+  )(using SchemaView): Iterable[(String, String)] =
+    Seq(
+      ("", TableSchemaGenerator().serialize(options.treeRoot)),
+    )
 }
