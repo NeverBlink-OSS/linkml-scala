@@ -1,4 +1,6 @@
 # LinkML-Scala
+![Maven Central Version](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3) ![Maven metadata URL](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Feu%2Fneverblink%2Flinkml%2Fgenerator_3%2Fmaven-metadata.xml)
+
 
 LinkML-Scala is a robust, cross-platform library (JVM, Scala.JS, Scala Native) powered by Scala 3.8+.
 
