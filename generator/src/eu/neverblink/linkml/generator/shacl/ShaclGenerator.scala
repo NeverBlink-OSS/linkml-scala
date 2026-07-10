@@ -62,47 +62,49 @@ class ShaclGenerator(using sv: SchemaView) {
         slotExpression: SlotExpression,
         subject: Resource,
     ): Unit = {
-      slotExpression.range.getOrElse(slotView.definingSchema.defaultRangeResolved)
-        .asInstanceOf[Reference[ElementView[?]]].resolve.foreach {
-          case typeView: TypeView =>
-            val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
-            if (!isIri) addTriple(subject, Shacl.datatype, Iri(typeView.uriStr))
-            val nodeKind =
-              if (isIri) Shacl.IRI
-              else Shacl.Literal
-            addTriple(subject, Shacl.nodeKind, nodeKind)
-          case classView: ClassView =>
-            val cdUri = classView.uriStr
-            val isLinkmlAny = cdUri == "https://w3id.org/linkml/Any"
-            if (!isLinkmlAny) {
-              addTriple(subject, Shacl.`class`, Iri(cdUri))
-              addTriple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
-            }
-          case enumView: EnumView =>
-            val permissibleValues =
-              enumView._enum.permissibleValues.values.foldRight(Rdf.nil: Resource) { (pv, acc) =>
-                val listNode = blankNode()
-                pv.meaning match {
-                  case Some(m) =>
-                    addTriple(
-                      listNode,
-                      Rdf.first,
-                      Iri(m.uri(using enumView.definingPrefixResolver)),
-                    )
-                    addTriple(listNode, Rdf.rest, acc)
-                  case _ =>
-                    addTriple(
-                      listNode,
-                      Rdf.first,
-                      Literal(pv.text),
-                    )
-                    addTriple(listNode, Rdf.rest, acc)
-                }
-                listNode
+      // TODO LNK-129 HACK: Skip the main range if any boolean slot is defined.
+      if slotExpression.anyOf.isEmpty then
+        slotExpression.range.getOrElse(slotView.definingSchema.defaultRangeResolved)
+          .asInstanceOf[Reference[ElementView[?]]].resolve.foreach {
+            case typeView: TypeView =>
+              val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
+              if (!isIri) addTriple(subject, Shacl.datatype, Iri(typeView.uriStr))
+              val nodeKind =
+                if (isIri) Shacl.IRI
+                else Shacl.Literal
+              addTriple(subject, Shacl.nodeKind, nodeKind)
+            case classView: ClassView =>
+              val cdUri = classView.uriStr
+              val isLinkmlAny = cdUri == "https://w3id.org/linkml/Any"
+              if (!isLinkmlAny) {
+                addTriple(subject, Shacl.`class`, Iri(cdUri))
+                addTriple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
               }
-            addTriple(subject, Shacl.in, permissibleValues)
-          case _ => throw RuntimeException(s"Couldn't map range ${slotExpression.range}")
-        }
+            case enumView: EnumView =>
+              val permissibleValues =
+                enumView._enum.permissibleValues.values.foldRight(Rdf.nil: Resource) { (pv, acc) =>
+                  val listNode = blankNode()
+                  pv.meaning match {
+                    case Some(m) =>
+                      addTriple(
+                        listNode,
+                        Rdf.first,
+                        Iri(m.uri(using enumView.definingPrefixResolver)),
+                      )
+                      addTriple(listNode, Rdf.rest, acc)
+                    case _ =>
+                      addTriple(
+                        listNode,
+                        Rdf.first,
+                        Literal(pv.text),
+                      )
+                      addTriple(listNode, Rdf.rest, acc)
+                  }
+                  listNode
+                }
+              addTriple(subject, Shacl.in, permissibleValues)
+            case _ => throw RuntimeException(s"Couldn't map range ${slotExpression.range}")
+          }
       // TODO LNK-129: Implement the rest of the boolean slots
       val ors = slotExpression.anyOf.map(curSlotExpression => {
         val curNode = blankNode()

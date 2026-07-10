@@ -140,6 +140,7 @@ object ModelCatalogue {
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typed: Entry = Entry("/models/typed/")
   val unionRange: Entry = Entry("/models/unionRange/")
+  val unionRangeReference: Entry = Entry("/models/unionRangeReference/")
   val uri: Entry = Entry("/models/uri/")
   val uriOrCurie: Entry = Entry("/models/uriOrCurie/")
   val uriImports: Entry = Entry("/models/uriImports/")

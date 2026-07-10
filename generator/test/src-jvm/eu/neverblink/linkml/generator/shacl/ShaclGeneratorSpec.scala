@@ -637,9 +637,15 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     "generate sh:or for any_of" in {
       val result = ShaclGenerator(using ModelCatalogue.unionRange.model).generate()
       val turtle = RdfUtils.toTurtle(result)
-      turtle should include(
-        "sh:or ",
-      )
+      turtle should include("sh:or ")
+    }
+
+    "not generate the main range for any_of" in {
+      // TODO LNK-129: Get rid of this hack
+      val result = ShaclGenerator(using ModelCatalogue.unionRangeReference.model).generate()
+      val turtle = RdfUtils.toTurtle(result)
+      turtle should include("sh:or ")
+      turtle should not include "sh:class <https://neverblink.eu/linkml/tests/unionRangeReference/BaseClass>"
     }
 
     "works for the metamodel without runtime exceptions" in {
