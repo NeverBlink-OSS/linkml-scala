@@ -144,7 +144,26 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       stringConstraints.pattern shouldBe Some("^([0-9]{3})?[0-9]{3}-[0-9]{4}$")
     }
 
-    // constraints
+    "allow tree root overriding" in {
+      val td = TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(Some("SomeClass"))
+      td.fields should not be empty
+      td.fields.map(_.name) should contain theSameElementsAs Seq(
+        "some_slot",
+        "some_other_slot",
+      )
+      td.fields.map(_.`type`) should contain theSameElementsAs Seq(
+        "string",
+        "integer",
+      )
+      td.fields.flatMap(_.constraints.flatMap(_.required)) should contain theSameElementsAs Seq(
+        true,
+        false,
+      )
+
+      val td2 = TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(Some("SomeOtherClass"))
+      td2.fields.length shouldBe 1
+      td2.fields.head.name shouldBe "some_slot"
+    }
 
     "generate the model catalogue without throwing errors" when {
       val emptyMaterialized = TableDescriptor().asJson.deepDropNullValues.spaces2
