@@ -42,7 +42,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
     */
   def generate(treeRootOverride: Option[String] = None): TableDescriptor = {
     val root: ClassView = sv.treeRootWithOverride(treeRootOverride)
-      .get.getOrElse(throw RuntimeException("no tree root"))
+      .get.getOrElse(throw RuntimeException("No tree root - can't generate table schema"))
     val fields =
       for slotView <- root.derivedAttributes.values
       yield {
@@ -65,7 +65,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
                 case tv: TypeView =>
                   val (type_, format) = remapType(tv.runtimeType)
                   base.copy(`type` = type_, rdfType = Some(cls.uriStr), format = format)
-                case _ => throw RuntimeException("id not type")
+                case _ => throw RuntimeException("ID slot is not type")
               }
             } else
               InlineType(slotView) match {
@@ -111,7 +111,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
                 rdfType = Some(ev.uriStr),
                 // no multivalued enums in table schema...
               )
-          case _ => throw RuntimeException("bad")
+          case _ => throw RuntimeException(s"Couldn't map range ${slotView.derivedRange}")
         }
       }
     TableDescriptor(
