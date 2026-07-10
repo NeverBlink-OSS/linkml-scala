@@ -13,7 +13,7 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     .map(Path(_))
     .getOrElse(os.pwd)
   val generatedModelsDir: Path = pwd / ".generated" / "tests" / "resources"
-  val enabled: Boolean = System.getenv("CI") != null || os.exists(generatedModelsDir)
+  override val globalEnable: Boolean = os.exists(generatedModelsDir) || System.getenv("CI") != null
 
   override val skipModels: Map[String, String] = Map(
     "anything" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
@@ -36,13 +36,11 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
 
         for valid <- entry.validInstances.filter(_.json.isDefined).distinct do
           s"valid instance '${valid.name}'" in {
-            assume(enabled)
             processSkip(entry, valid)
             sr.getSchema(jsonSchema).validate(valid.json.get, InputFormat.JSON) shouldBe empty
           }
         for invalid <- entry.invalidInstances.filter(_.json.isDefined).distinct do
           s"invalid data '${invalid.name}'" in {
-            assume(enabled)
             processSkip(entry, invalid)
             sr.getSchema(jsonSchema).validate(
               invalid.json.get,

@@ -9,6 +9,8 @@ import org.scalatest.wordspec.AnyWordSpecLike
 trait ModelCatalogueSpec {
   this: AnyWordSpecLike =>
 
+  def globalEnable: Boolean = true
+
   /** Map of "model name" -> "disable reason". If a key is present, then [[processSkip]] will
     * indicate that tests for this model should be canceled.
     */
@@ -29,6 +31,7 @@ trait ModelCatalogueSpec {
     */
   final def processSkip(entry: Entry, instance: InstanceInFormats): Unit = {
     val name = entry.model.root.name
+    assume(globalEnable, "Globally disabled")
     assume(!skipModels.contains(name), skipModels.getOrElse(name, ""))
     assume(
       !skipInstances.contains((name, instance.name)),

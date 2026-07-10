@@ -1,0 +1,2 @@
+linkml==1.11.1
+frictionless==5.19.0
