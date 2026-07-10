@@ -51,9 +51,9 @@ jobs:
         with:
           activate-environment: true
 
-      - name: Install LinkML-py and generate cross-test models
+      - name: Install Python deps and generate cross-test models
         run: |
-          uv pip install linkml
+          uv pip install -r requirements.txt
           python cross_test.py 
 
       - name: Build and test

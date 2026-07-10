@@ -13,7 +13,9 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     .map(Path(_))
     .getOrElse(os.pwd)
   val generatedModelsDir: Path = pwd / ".generated" / "tests" / "resources"
-  val enabled: Boolean = (System.getenv("CI") != null) || os.exists(generatedModelsDir)
+
+  override val globalEnable: Boolean = os.exists(generatedModelsDir) || System.getenv("CI") != null
+
   override val skipModels: Map[String, String] = Map(
     "enum" -> "We went with a different approach to Linkml-py for enums",
     "anything" -> "Metamodel extended_types.yaml is not bundled",
@@ -35,7 +37,6 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
 
         for valid <- entry.validInstances.filter(_.turtle.isDefined) do
           s"valid instance '${valid.name}'" in {
-            assume(enabled)
             processSkip(entry, valid)
             val res = validator.validate(
               valid.turtle.get + valid.context.getOrElse(""),
@@ -47,7 +48,6 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
           }
         for invalid <- entry.invalidInstances.filter(_.turtle.isDefined) do
           s"invalid data '${invalid.name}'" in {
-            assume(enabled)
             processSkip(entry, invalid)
             val res = validator.validate(
               invalid.turtle.get + invalid.context.getOrElse(""),

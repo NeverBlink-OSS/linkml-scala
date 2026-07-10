@@ -12,4 +12,5 @@ object App extends CommandsEntryPoint:
     Scala,
     Rdfs,
     LinkMl,
+    TableSchema,
   )
