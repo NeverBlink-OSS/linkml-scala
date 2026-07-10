@@ -6,7 +6,10 @@ import org.scalatest.wordspec.AnyWordSpec
 import os.Path
 
 class TableSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
-  val frictionless: Path = os.pwd / ".venv" / "bin" / "frictionless"
+  val cwd: Path = Option(System.getenv("MILL_WORKSPACE_ROOT"))
+    .map(Path(_))
+    .getOrElse(os.pwd)
+  val frictionless: Path = cwd / ".venv" / "bin" / "frictionless"
 
   override val globalEnable: Boolean =
     os.call((frictionless, "--version")).exitCode == 0 || System.getenv("CI") != null
