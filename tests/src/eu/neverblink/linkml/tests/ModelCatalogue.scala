@@ -77,6 +77,7 @@ object ModelCatalogue {
     */
   case class Entry private (
       path: String,
+      id: String,
       model: SchemaView,
       validInstances: Seq[InstanceInFormats],
       invalidInstances: Seq[InstanceInFormats],
@@ -94,9 +95,12 @@ object ModelCatalogue {
 
       val invalidInstancePaths = instancePaths.filter(_.startsWith(path + "invalid/"))
 
+      val sv = SchemaView.loadSchemaViewFromUri(path + "model.yaml", importer = CatalogueImporter)
+
       new Entry(
         path,
-        SchemaView.loadSchemaViewFromUri(path + "model.yaml", importer = CatalogueImporter),
+        sv.root.id.original,
+        sv,
         validInstancePaths.map(instance =>
           InstanceInFormats(instance, instance.stripPrefix(path + "valid/")),
         ),

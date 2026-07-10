@@ -16,3 +16,6 @@ emit_prefixes:
 classes:
   SomeClass:
     tree_root: true
+
+extensions:
+  opt_in: true
