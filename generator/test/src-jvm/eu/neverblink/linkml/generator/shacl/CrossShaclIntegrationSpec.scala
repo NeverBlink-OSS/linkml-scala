@@ -15,6 +15,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
   val generatedModelsDir: Path = pwd / ".generated" / "tests" / "resources"
   val enabled: Boolean = (System.getenv("CI") != null) || os.exists(generatedModelsDir)
   override val skipModels: Map[String, String] = Map(
+    "enum" -> "We went with a different approach to Linkml-py for enums",
     "anything" -> "Metamodel extended_types.yaml is not bundled",
     "typeDesignator" -> "Metamodel extended_types.yaml is not bundled",
     "unionRange" -> "Metamodel extended_types.yaml is not bundled",
