@@ -1,4 +1,4 @@
 @prefix : <https://neverblink.eu/linkml/tests/enum/> .
 
 _:b a :SomeClass;
-  :some_slot "SOME_OTHER_OPTION" .
+  :some_slot :SOME_OTHER_OPTION .

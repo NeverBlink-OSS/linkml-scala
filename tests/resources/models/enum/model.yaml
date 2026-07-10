@@ -15,5 +15,6 @@ enums:
   SomeEnum:
     permissible_values:
       SOME_OPTION:
+        meaning: rdf:subject
       SOME_OTHER_OPTION:
       YET_ANOTHER_OPTION:

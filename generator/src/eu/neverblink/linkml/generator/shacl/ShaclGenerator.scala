@@ -84,22 +84,12 @@ class ShaclGenerator(using sv: SchemaView) {
               val permissibleValues =
                 enumView._enum.permissibleValues.values.foldRight(Rdf.nil: Resource) { (pv, acc) =>
                   val listNode = blankNode()
-                  pv.meaning match {
-                    case Some(m) =>
-                      addTriple(
-                        listNode,
-                        Rdf.first,
-                        Iri(m.uri(using enumView.definingPrefixResolver)),
-                      )
-                      addTriple(listNode, Rdf.rest, acc)
-                    case _ =>
-                      addTriple(
-                        listNode,
-                        Rdf.first,
-                        Literal(pv.text),
-                      )
-                      addTriple(listNode, Rdf.rest, acc)
+                  val meaning = pv.meaning match {
+                    case Some(m) => m.uri(using enumView.definingPrefixResolver)
+                    case _ => enumView.defaultPrefixUri + pv.text
                   }
+                  addTriple(listNode, Rdf.first, Iri(meaning))
+                  addTriple(listNode, Rdf.rest, acc)
                   listNode
                 }
               addTriple(subject, Shacl.in, permissibleValues)

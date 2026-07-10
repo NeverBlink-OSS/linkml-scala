@@ -1,4 +1,5 @@
 @prefix : <https://neverblink.eu/linkml/tests/enum/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 
 _:b a :SomeClass;
-  :some_slot "SOME_OPTION" .
+  :some_slot rdf:subject .
