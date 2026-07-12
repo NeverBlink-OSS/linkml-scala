@@ -5,6 +5,7 @@
 //| - io.github.alexarchambault.mill::mill-native-image::0.2.5
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
 //| - com.carlosedp::mill-aliases::1.1.0
+//| - org.scalameta::scalameta:4.13.4
 //| bspScriptIgnore: [".idea/**"]
 //| mill-jvm-opts: ["-Xss256m", "-Xmx10G"]
 
@@ -22,6 +23,7 @@ import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
+import millbuild.{NpmPackage, TsDefsGen}
 
 import java.net.InetSocketAddress
 
@@ -195,84 +197,47 @@ object generator extends Module {
       build.schemaview.js,
     )
 
-    /** Hand-maintained npm package metadata (TypeScript declarations, README). */
+    // README and the TS usage sample; the .d.ts itself is generated.
     def npmMetadata = Task.Source(mill.api.BuildCtx.workspaceRoot / "generator" / "npm")
 
-    /** Assemble an npm-publishable package for the `@neverblink/linkml` JS
-      * library: the linked ES module bundle plus a generated `package.json`,
-      * hand-maintained TypeScript declarations and a README. The result
-      * directory can be published directly with `npm publish`.
-      */
+    def jsApiSource = Task.Source(
+      mill.api.BuildCtx.workspaceRoot /
+        "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
+    )
+
+    def tsDefs = Task {
+      val out = Task.dest / "index.d.ts"
+      os.write(out, TsDefsGen(os.read(jsApiSource().path)))
+      PathRef(out)
+    }
+
+    /** Assemble the npm-publishable `@neverblink/linkml` package. */
     def npmPackage = Task {
       val report = fullLinkJS()
       val dest = Task.dest
       val mainFile = report.publicModules.head.jsFileName
 
-      // Copy the linked ES module bundle(s) and their source maps.
       os.list(report.dest.path)
         .filter(p => p.ext == "js" || p.ext == "map")
         .foreach(p => os.copy.into(p, dest))
-
-      // Copy the hand-maintained package metadata files.
-      val npmDir = npmMetadata().path
-      os.copy.into(npmDir / "index.d.ts", dest)
-      os.copy.into(npmDir / "README.md", dest)
-
+      os.copy.into(npmMetadata().path / "README.md", dest)
+      os.copy.into(tsDefs().path, dest)
       os.write(
         dest / "package.json",
-        s"""{
-           |  "name": "@neverblink/linkml",
-           |  "version": "${publishVersion()}",
-           |  "description": "${pomSettings().description}",
-           |  "type": "module",
-           |  "main": "$mainFile",
-           |  "module": "$mainFile",
-           |  "types": "index.d.ts",
-           |  "exports": {
-           |    ".": {
-           |      "types": "./index.d.ts",
-           |      "import": "./$mainFile"
-           |    }
-           |  },
-           |  "files": [
-           |    "$mainFile",
-           |    "$mainFile.map",
-           |    "index.d.ts",
-           |    "README.md"
-           |  ],
-           |  "license": "Apache-2.0",
-           |  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala",
-           |  "repository": {
-           |    "type": "git",
-           |    "url": "git+https://github.com/NeverBlink-OSS/linkml-scala.git"
-           |  },
-           |  "bugs": {
-           |    "url": "https://github.com/NeverBlink-OSS/linkml-scala/issues"
-           |  },
-           |  "author": "NeverBlink (https://neverblink.eu)",
-           |  "keywords": [
-           |    "linkml",
-           |    "json-schema",
-           |    "shacl",
-           |    "rdf",
-           |    "schema",
-           |    "code-generation"
-           |  ]
-           |}
-           |""".stripMargin,
+        NpmPackage.packageJson(publishVersion(), pomSettings().description, mainFile),
       )
       PathRef(dest)
     }
 
-    /** Verify that the JavaScript examples in the packaged npm README actually
-      * run against the built artifact (packed and installed as a consumer would
-      * see it). Requires Node.js and npm on the PATH.
+    /** Pack and install the package, then run the README examples and type-check
+      * the usage sample against it. Requires Node.js and npm on the PATH.
       */
-    def verifyReadme(args: String*) = Task.Command {
+    def verifyPackage(args: String*) = Task.Command {
       val pkg = npmPackage().path
-      val script = npmMetadata().path / "verify-readme.mjs"
+      val script = npmMetadata().path / "verify-package.mjs"
+      val usageSample = npmMetadata().path / "usage.test.ts"
       os.call(
-        ("node", script.toString, pkg.toString),
+        ("node", script.toString, pkg.toString, usageSample.toString),
         stdout = os.Inherit,
         stderr = os.Inherit,
       )

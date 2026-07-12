@@ -133,7 +133,7 @@ Try LinkML-Scala live in your browser at [linkml.neverblink.eu/playground](https
 ## JavaScript / TypeScript library
 
 The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml)
-— a single self-contained ES module (with TypeScript declarations) compiled from Scala via Scala.js,
+– a single self-contained ES module (with TypeScript declarations) compiled from Scala via Scala.js,
 with no runtime dependencies.
 
 ```shell
@@ -143,7 +143,7 @@ npm install @neverblink/linkml
 ```js
 import { LinkML } from "@neverblink/linkml";
 
-// The second argument is an import map (filename -> YAML) for `imports:`; {} if none.
+// The second argument is an import map (filename -> YAML) for `imports:`.
 const jsonSchema = LinkML.jsonSchema(mySchemaYaml, {});
 ```
 

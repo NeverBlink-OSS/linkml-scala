@@ -21,6 +21,8 @@ Common tasks with mill:
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
 - Build native binary: `./mill cli.jvm.nativeImage` (requires Coursier (cs) to be installed)
+- Assemble the npm package: `./mill generator.js.npmPackage` (TS declarations are generated from the Scala facade)
+- Verify the npm package (README examples run + types compile): `./mill generator.js.verifyPackage` (requires Node.js and npm)
 
 ## Releasing with GitHub UI
 

@@ -37,10 +37,7 @@ jobs:
 
   npm-publish:
     # Independent of the JVM/native jobs: publishes the Scala.js library to npm.
-    # Uses npm trusted publishing (OIDC) — no long-lived NPM_TOKEN. This also
-    # produces provenance attestations automatically. Requires a trusted
-    # publisher for @neverblink/linkml to be configured on npmjs.com pointing at
-    # this repo + workflow file (release.yml).
+    # Uses npm trusted publishing (OIDC).
     name: Publish JS library to npm
     runs-on: ubuntu-latest
     permissions:
@@ -58,7 +55,7 @@ jobs:
       - name: Setup JVM and Mill
         uses: coursier/setup-action@v3
         with:
-          jvm: temurin:17 # The minimal JDK version for Scala Next
+          jvm: temurin:25
           apps: mill
 
       - name: Setup Node.js
@@ -73,8 +70,8 @@ jobs:
       - name: Assemble npm package
         run: ./mill generator.js.npmPackage
 
-      - name: Verify README examples run
-        run: ./mill generator.js.verifyReadme
+      - name: Verify npm package (examples run + types compile)
+        run: ./mill generator.js.verifyPackage
 
       - name: Publish to npm
         working-directory: out/generator/js/npmPackage.dest
