@@ -344,6 +344,17 @@ trait CommonModule
   )
 
   final def publishVersion = Task {
+    // On a tag build, use the tag that triggered the release rather than
+    // `git describe`, which is ambiguous when several v* tags point at the same
+    // commit and can otherwise publish the wrong version.
+    val tagVersion =
+      if sys.env.get("GITHUB_REF_TYPE").contains("tag") then
+        sys.env.get("GITHUB_REF_NAME").filter(_.startsWith("v")).map(_.stripPrefix("v"))
+      else None
+    tagVersion.getOrElse(describeVersion())
+  }
+
+  private def describeVersion(): String = {
     val gitOutput = os.proc("git", "describe", "--tags", "--long", "--match", "v*")
       .call(cwd = mill.api.BuildCtx.workspaceRoot, stderr = os.Pipe)
       .out
