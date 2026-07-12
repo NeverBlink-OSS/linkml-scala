@@ -126,13 +126,6 @@ Generate a LinkML model that:
 ./linkml-scala generate linkml --to <output-path> <input-file>
 ```
 
-## Browser mini interface
-
-```
-./mill generator.js.fullLinkJS
-python3 -m http.server
-```
-
 ## Contributing
 
 LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap script is included with this repo (`./mill`), so no additional setup is required for CLI usage. In IntelliJ, [you have to import the project as BSP](https://mill-build.org/mill/cli/installation-ide.html#_intellij) and you are good to go.
@@ -140,6 +133,7 @@ LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap
 Common tasks with mill:
 
 - Run CLI directly: `./mill cli.jvm.run --help`
+- Start simple the browser UI: `./mill ui`
 - Scan the mill project structure: `./mill resolve _`
 - Compile all modules: `./mill __.compile`
 - Run all tests: `./mill __.test` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`)
