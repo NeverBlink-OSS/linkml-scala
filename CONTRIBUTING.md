@@ -11,7 +11,7 @@ LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap
 Common tasks with mill:
 
 - Run CLI directly: `./mill cli.jvm.run --help`
-- Start simple the browser UI: `./mill ui`
+- Start the browser UI: `./mill ui`
 - Scan the mill project structure: `./mill resolve _`
 - Compile all modules: `./mill __.compile`
 - Run all tests: `./mill __.test` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`)
