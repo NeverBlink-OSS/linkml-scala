@@ -38,6 +38,8 @@ jobs:
           mkdir -p site/playground site/out/generator/js
           cp ui/index.html ui/app.js ui/styles.css site/playground/
           cp -r out/generator/js/fullLinkJS.dest site/out/generator/js/fullLinkJS.dest
+          cp CNAME site/CNAME
+          cp pages/index.html site/index.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

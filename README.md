@@ -128,7 +128,7 @@ Generate a LinkML model that:
 
 ## Playground
 
-Try LinkML-Scala live in your browser at [neverblink-oss.github.io/linkml-scala/playground](https://neverblink-oss.github.io/linkml-scala/playground), or run it locally with `./mill ui`.
+Try LinkML-Scala live in your browser at [linkml.neverblink.eu/playground](https://linkml.neverblink.eu/playground), or run it locally with `./mill ui`.
 
 ## Contributing
 
