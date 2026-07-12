@@ -2,9 +2,8 @@ package millbuild
 
 import _root_.scala.meta.*
 
-/** Generates the npm package's TypeScript declarations from the Scala.js facade
-  * ([[LinkMlJsApi]]), so the types can never drift from the implementation.
-  * Syntactic parse only — no compiler needed.
+/** Generates the npm package's TypeScript declarations from the Scala.js facade ([[LinkMlJsApi]]),
+  * so the types can never drift from the implementation. Syntactic parse only — no compiler needed.
   */
 object TsDefsGen {
   private val exportedName = "LinkML"
@@ -147,7 +146,11 @@ object TsDefsGen {
         }
     }
     flushParam()
-    Doc(summary.toString.trim, params.result(), Option.when(retText.nonEmpty)(retText.toString.trim))
+    Doc(
+      summary.toString.trim,
+      params.result(),
+      Option.when(retText.nonEmpty)(retText.toString.trim),
+    )
   }
 
   private def renderTsDoc(doc: Doc): String = {
