@@ -129,7 +129,7 @@ object metamodel extends Module {
 
     object test extends ScalaTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.15",
+        mvn"io.circe::circe-core::0.14.16",
       )
     }
   }
@@ -145,7 +145,7 @@ object metamodel extends Module {
 
     object test extends ScalaJSTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.15",
+        mvn"io.circe::circe-core::0.14.16",
       )
     }
   }
@@ -229,8 +229,8 @@ object generator extends Module {
       PathRef(dest)
     }
 
-    /** Pack and install the package, then run the README examples and type-check
-      * the usage sample against it. Requires Node.js and npm on the PATH.
+    /** Pack and install the package, then run the README examples and type-check the usage sample
+      * against it. Requires Node.js and npm on the PATH.
       */
     def verifyPackage(args: String*) = Task.Command {
       val pkg = npmPackage().path
