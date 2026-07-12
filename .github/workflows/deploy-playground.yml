@@ -1,0 +1,59 @@
+name: Deploy playground
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:17
+          apps: mill
+
+      - name: Build browser UI
+        run: ./mill --no-server generator.js.fullLinkJS
+
+      - name: Assemble playground site
+        run: |
+          mkdir -p site/playground site/out/generator/js
+          cp ui/index.html ui/app.js ui/styles.css site/playground/
+          cp -r out/generator/js/fullLinkJS.dest site/out/generator/js/fullLinkJS.dest
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

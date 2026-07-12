@@ -126,6 +126,10 @@ Generate a LinkML model that:
 ./linkml-scala generate linkml --to <output-path> <input-file>
 ```
 
+## Playground
+
+Try LinkML-Scala live in your browser at [neverblink-oss.github.io/linkml-scala/playground](https://neverblink-oss.github.io/linkml-scala/playground), or run it locally with `./mill ui`.
+
 ## Contributing
 
 LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap script is included with this repo (`./mill`), so no additional setup is required for CLI usage. In IntelliJ, [you have to import the project as BSP](https://mill-build.org/mill/cli/installation-ide.html#_intellij) and you are good to go.
