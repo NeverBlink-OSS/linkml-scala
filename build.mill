@@ -96,7 +96,7 @@ object yaml extends Module {
 
   trait YamlModule extends CommonModule {
     def mvnDeps = Seq(
-      mvn"org.virtuslab::scala-yaml::0.3.1",
+      mvn"org.virtuslab::scala-yaml::0.3.2",
     )
   }
 }
@@ -229,8 +229,8 @@ object generator extends Module {
       PathRef(dest)
     }
 
-    /** Pack and install the package, then run the README examples and type-check
-      * the usage sample against it. Requires Node.js and npm on the PATH.
+    /** Pack and install the package, then run the README examples and type-check the usage sample
+      * against it. Requires Node.js and npm on the PATH.
       */
     def verifyPackage(args: String*) = Task.Command {
       val pkg = npmPackage().path
