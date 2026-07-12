@@ -173,7 +173,7 @@ object generator extends Module {
   object jvm extends CommonModule, GeneratorDeps {
     override def mvnDeps = super.mvnDeps() ++ Seq(
       mvn"com.lihaoyi::os-lib:0.11.6",
-      mvn"org.eclipse.rdf4j:rdf4j-model:5.3.0",
+      mvn"org.eclipse.rdf4j:rdf4j-model:5.3.2",
       mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:5.3.0",
       mvn"com.networknt:json-schema-validator:3.0.4",
     )
@@ -229,8 +229,8 @@ object generator extends Module {
       PathRef(dest)
     }
 
-    /** Pack and install the package, then run the README examples and type-check
-      * the usage sample against it. Requires Node.js and npm on the PATH.
+    /** Pack and install the package, then run the README examples and type-check the usage sample
+      * against it. Requires Node.js and npm on the PATH.
       */
     def verifyPackage(args: String*) = Task.Command {
       val pkg = npmPackage().path
