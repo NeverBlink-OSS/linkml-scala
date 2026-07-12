@@ -20,9 +20,14 @@ import { LinkML } from "@neverblink/linkml";
 const schema = `
 id: https://example.org/my-schema
 name: my-schema
+prefixes:
+  linkml: https://w3id.org/linkml/
+imports:
+  - linkml:types
 default_range: string
 classes:
   Person:
+    tree_root: true
     attributes:
       name:
       age:

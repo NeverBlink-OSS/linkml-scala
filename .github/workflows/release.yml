@@ -73,6 +73,9 @@ jobs:
       - name: Assemble npm package
         run: ./mill generator.js.npmPackage
 
+      - name: Verify README examples run
+        run: ./mill generator.js.verifyReadme
+
       - name: Publish to npm
         working-directory: out/generator/js/npmPackage.dest
         run: |

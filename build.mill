@@ -264,6 +264,21 @@ object generator extends Module {
       PathRef(dest)
     }
 
+    /** Verify that the JavaScript examples in the packaged npm README actually
+      * run against the built artifact (packed and installed as a consumer would
+      * see it). Requires Node.js and npm on the PATH.
+      */
+    def verifyReadme(args: String*) = Task.Command {
+      val pkg = npmPackage().path
+      val script = npmMetadata().path / "verify-readme.mjs"
+      os.call(
+        ("node", script.toString, pkg.toString),
+        stdout = os.Inherit,
+        stderr = os.Inherit,
+      )
+      ()
+    }
+
     object test extends ScalaJSTests, CommonTestModule {
       override def moduleDeps = super.moduleDeps :+ build.tests.js
     }
