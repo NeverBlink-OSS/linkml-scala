@@ -130,6 +130,26 @@ Generate a LinkML model that:
 
 Try LinkML-Scala live in your browser at [linkml.neverblink.eu/playground](https://linkml.neverblink.eu/playground), or run it locally with `./mill ui`.
 
+## JavaScript / TypeScript library
+
+The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml)
+– a single self-contained ES module (with TypeScript declarations) compiled from Scala via Scala.js,
+with no runtime dependencies.
+
+```shell
+npm install @neverblink/linkml
+```
+
+```js
+import { LinkML } from "@neverblink/linkml";
+
+// The second argument is an import map (filename -> YAML) for `imports:`.
+const jsonSchema = LinkML.jsonSchema(mySchemaYaml, {});
+```
+
+`LinkML` exposes `jsonSchema`, `shacl`, `rdfs`, `linkml`, `scala`, `tableSchema`, and `lint`.
+See [generator/npm/README.md](generator/npm/README.md) for details.
+
 ## Contributing
 
 This project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md), adapted from the Mozilla Community Participation Guidelines.

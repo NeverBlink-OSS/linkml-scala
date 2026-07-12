@@ -5,6 +5,7 @@
 //| - io.github.alexarchambault.mill::mill-native-image::0.2.5
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
 //| - com.carlosedp::mill-aliases::1.1.0
+//| - org.scalameta::scalameta:4.13.4
 //| bspScriptIgnore: [".idea/**"]
 //| mill-jvm-opts: ["-Xss256m", "-Xmx10G"]
 
@@ -22,6 +23,7 @@ import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
+import millbuild.{NpmPackage, TsDefsGen}
 
 import java.net.InetSocketAddress
 
@@ -194,6 +196,53 @@ object generator extends Module {
     def moduleDeps = Seq(
       build.schemaview.js,
     )
+
+    // README and the TS usage sample; the .d.ts itself is generated.
+    def npmMetadata = Task.Source(mill.api.BuildCtx.workspaceRoot / "generator" / "npm")
+
+    def jsApiSource = Task.Source(
+      mill.api.BuildCtx.workspaceRoot /
+        "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
+    )
+
+    def tsDefs = Task {
+      val out = Task.dest / "index.d.ts"
+      os.write(out, TsDefsGen(os.read(jsApiSource().path)))
+      PathRef(out)
+    }
+
+    /** Assemble the npm-publishable `@neverblink/linkml` package. */
+    def npmPackage = Task {
+      val report = fullLinkJS()
+      val dest = Task.dest
+      val mainFile = report.publicModules.head.jsFileName
+
+      os.list(report.dest.path)
+        .filter(p => p.ext == "js" || p.ext == "map")
+        .foreach(p => os.copy.into(p, dest))
+      os.copy.into(npmMetadata().path / "README.md", dest)
+      os.copy.into(tsDefs().path, dest)
+      os.write(
+        dest / "package.json",
+        NpmPackage.packageJson(publishVersion(), pomSettings().description, mainFile),
+      )
+      PathRef(dest)
+    }
+
+    /** Pack and install the package, then run the README examples and type-check
+      * the usage sample against it. Requires Node.js and npm on the PATH.
+      */
+    def verifyPackage(args: String*) = Task.Command {
+      val pkg = npmPackage().path
+      val script = npmMetadata().path / "verify-package.mjs"
+      val usageSample = npmMetadata().path / "usage.test.ts"
+      os.call(
+        ("node", script.toString, pkg.toString, usageSample.toString),
+        stdout = os.Inherit,
+        stderr = os.Inherit,
+      )
+      ()
+    }
 
     object test extends ScalaJSTests, CommonTestModule {
       override def moduleDeps = super.moduleDeps :+ build.tests.js

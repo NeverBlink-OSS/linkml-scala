@@ -60,6 +60,10 @@ jobs:
         run: |
           ./mill --no-server -j 0 __.test
 
+      - name: Verify npm package (examples run + types compile)
+        if: matrix.java == 17
+        run: ./mill --no-server generator.js.verifyPackage
+
       - name: Re-generate the metamodel and check if it's unchanged
         run: |
           cp -r metamodel/ metamodel_prev/
