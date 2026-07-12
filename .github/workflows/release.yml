@@ -35,6 +35,52 @@ jobs:
           name: linkml-scala-assembly
           path: linkml-scala.jar
 
+  npm-publish:
+    # Independent of the JVM/native jobs: publishes the Scala.js library to npm.
+    # Uses npm trusted publishing (OIDC) — no long-lived NPM_TOKEN. This also
+    # produces provenance attestations automatically. Requires a trusted
+    # publisher for @neverblink/linkml to be configured on npmjs.com pointing at
+    # this repo + workflow file (release.yml).
+    name: Publish JS library to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for npm trusted publishing (OIDC)
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0 # Required so Mill can derive the version from Git tags
+
+      - name: Cache Dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:17 # The minimal JDK version for Scala Next
+          apps: mill
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24 # >= 22.14.0 required by trusted publishing
+          registry-url: https://registry.npmjs.org
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest # Trusted publishing needs npm >= 11.5.1
+
+      - name: Assemble npm package
+        run: ./mill generator.js.npmPackage
+
+      - name: Publish to npm
+        working-directory: out/generator/js/npmPackage.dest
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *SNAPSHOT* ]]; then TAG=next; else TAG=latest; fi
+          echo "Publishing @neverblink/linkml@$VERSION under dist-tag $TAG"
+          npm publish --access public --tag "$TAG"
+
   aot-compile:
     name: AOT compile on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}

@@ -195,6 +195,75 @@ object generator extends Module {
       build.schemaview.js,
     )
 
+    /** Hand-maintained npm package metadata (TypeScript declarations, README). */
+    def npmMetadata = Task.Source(mill.api.BuildCtx.workspaceRoot / "generator" / "npm")
+
+    /** Assemble an npm-publishable package for the `@neverblink/linkml` JS
+      * library: the linked ES module bundle plus a generated `package.json`,
+      * hand-maintained TypeScript declarations and a README. The result
+      * directory can be published directly with `npm publish`.
+      */
+    def npmPackage = Task {
+      val report = fullLinkJS()
+      val dest = Task.dest
+      val mainFile = report.publicModules.head.jsFileName
+
+      // Copy the linked ES module bundle(s) and their source maps.
+      os.list(report.dest.path)
+        .filter(p => p.ext == "js" || p.ext == "map")
+        .foreach(p => os.copy.into(p, dest))
+
+      // Copy the hand-maintained package metadata files.
+      val npmDir = npmMetadata().path
+      os.copy.into(npmDir / "index.d.ts", dest)
+      os.copy.into(npmDir / "README.md", dest)
+
+      os.write(
+        dest / "package.json",
+        s"""{
+           |  "name": "@neverblink/linkml",
+           |  "version": "${publishVersion()}",
+           |  "description": "${pomSettings().description}",
+           |  "type": "module",
+           |  "main": "$mainFile",
+           |  "module": "$mainFile",
+           |  "types": "index.d.ts",
+           |  "exports": {
+           |    ".": {
+           |      "types": "./index.d.ts",
+           |      "import": "./$mainFile"
+           |    }
+           |  },
+           |  "files": [
+           |    "$mainFile",
+           |    "$mainFile.map",
+           |    "index.d.ts",
+           |    "README.md"
+           |  ],
+           |  "license": "Apache-2.0",
+           |  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala",
+           |  "repository": {
+           |    "type": "git",
+           |    "url": "git+https://github.com/NeverBlink-OSS/linkml-scala.git"
+           |  },
+           |  "bugs": {
+           |    "url": "https://github.com/NeverBlink-OSS/linkml-scala/issues"
+           |  },
+           |  "author": "NeverBlink (https://neverblink.eu)",
+           |  "keywords": [
+           |    "linkml",
+           |    "json-schema",
+           |    "shacl",
+           |    "rdf",
+           |    "schema",
+           |    "code-generation"
+           |  ]
+           |}
+           |""".stripMargin,
+      )
+      PathRef(dest)
+    }
+
     object test extends ScalaJSTests, CommonTestModule {
       override def moduleDeps = super.moduleDeps :+ build.tests.js
     }
