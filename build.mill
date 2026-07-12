@@ -186,7 +186,7 @@ object generator extends Module {
       override def moduleDeps = super.moduleDeps :+ build.tests.jvm
 
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"org.eclipse.rdf4j:rdf4j-shacl:5.3.0",
+        mvn"org.eclipse.rdf4j:rdf4j-shacl:5.3.2",
         mvn"com.networknt:json-schema-validator:3.0.4",
       )
     }
