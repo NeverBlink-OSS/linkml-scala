@@ -155,16 +155,58 @@ body { background: var(--bg); }
 }
 .icon-btn:hover { background: var(--accent-soft); color: var(--text); }
 
-/* Theme toggle — bordered so it reads as an actionable control, not flat text */
-.theme-toggle {
+/* Bordered square icon buttons (help + theme), matching the repo button height */
+.theme-toggle,
+.help-toggle {
   width: 40px;
-  height: 40px; /* square, matching the GitHub repo button's height */
+  height: 40px;
   border: 1px solid var(--border);
   background: var(--surface-2);
   color: var(--text);
 }
-.theme-toggle .ic { width: 20px; height: 20px; }
-.theme-toggle:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--text); }
+.theme-toggle .ic,
+.help-toggle .ic { width: 20px; height: 20px; }
+.theme-toggle:hover,
+.help-toggle:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--text); }
+
+/* ── Help / FAQ dialog ── */
+.faq-dialog {
+  /* `* { margin: 0 }` in the reset kills the UA margin:auto that centres a modal
+     dialog, pinning it top-left — restore it. */
+  margin: auto;
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(80vh, 720px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+.faq-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+.faq-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.faq-head h2 { font-size: 16px; font-weight: 700; }
+.faq-close { width: 32px; height: 32px; color: var(--text-secondary); }
+.faq-close:hover { background: var(--accent-soft); color: var(--text); }
+.faq-body { padding: 8px 20px 20px; overflow-y: auto; }
+.faq-body section { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+.faq-body h3 { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+.faq-body p { font-size: 13px; color: var(--text-secondary); margin-bottom: 6px; }
+.faq-body ul { margin: 4px 0 0; padding-left: 18px; }
+.faq-body li { font-size: 13px; color: var(--text-secondary); margin: 3px 0; }
+.faq-body a { color: var(--accent-strong); text-decoration: none; }
+.faq-body a:hover { text-decoration: underline; }
+.faq-body code { font-family: var(--code-font); font-size: 12px; }
+.faq-foot { padding-top: 12px; font-size: 12px; color: var(--text-muted); }
 
 .app-footer {
   flex-shrink: 0;
@@ -195,14 +237,21 @@ body { background: var(--bg); }
   mask: url("neverblink-logo.svg") left center / contain no-repeat;
 }
 .footer-links { display: flex; align-items: center; flex-wrap: wrap; }
-.footer-links a {
+.footer-links a,
+.footer-links button {
+  appearance: none;
+  background: none;
+  border: none;
+  font: inherit;
+  cursor: pointer;
   padding: 0 12px;
   color: var(--text-muted);
   text-decoration: none;
 }
-.footer-links a:first-child { padding-left: 0; }
-.footer-links a:not(:first-child) { border-left: 1px solid var(--border-subtle); }
-.footer-links a:hover { color: var(--text); }
+.footer-links :first-child { padding-left: 0; }
+.footer-links :not(:first-child) { border-left: 1px solid var(--border-subtle); }
+.footer-links a:hover,
+.footer-links button:hover { color: var(--text); }
 
 .workspace {
   flex: 1;

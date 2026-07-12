@@ -422,6 +422,18 @@ $themeToggle.addEventListener("click", () => {
   localStorage.setItem("linkml-ui-theme", next);
 });
 
+// ── Help / FAQ dialog ────────────────────────────────────────────────────
+
+const $faqDialog = $<HTMLDialogElement>("faqDialog");
+const openFaq = () => $faqDialog.showModal();
+$<HTMLButtonElement>("helpToggle").addEventListener("click", openFaq);
+$<HTMLButtonElement>("aboutLink").addEventListener("click", openFaq);
+$faqDialog.querySelector<HTMLButtonElement>(".faq-close")!.addEventListener("click", () => $faqDialog.close());
+// Click on the backdrop (the dialog element itself, since content fills it) closes it.
+$faqDialog.addEventListener("click", (e) => {
+  if (e.target === $faqDialog) $faqDialog.close();
+});
+
 // ── GitHub repo stats (mkdocs-material style) ────────────────────────────────
 
 const REPO_SLUG = "NeverBlink-OSS/linkml-scala";

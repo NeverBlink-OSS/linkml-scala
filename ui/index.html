@@ -37,6 +37,9 @@
           </span>
         </span>
       </a>
+      <button id="helpToggle" class="icon-btn help-toggle" title="Help &amp; FAQ" aria-label="Help and FAQ" aria-haspopup="dialog">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </button>
       <button id="themeToggle" class="icon-btn theme-toggle" title="Toggle theme" aria-label="Toggle theme">
         <svg id="themeIconMoon" class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         <svg id="themeIconSun" class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66 4.93 19.07M19.07 4.93l-1.41 1.41"/></svg>
@@ -96,9 +99,85 @@
       <a href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">GitHub</a>
       <a href="https://www.npmjs.com/package/@neverblink/linkml" target="_blank" rel="noopener">npm</a>
       <a href="https://central.sonatype.com/namespace/eu.neverblink.linkml" target="_blank" rel="noopener">Maven Central</a>
+      <button type="button" id="aboutLink">About</button>
     </nav>
   </footer>
 </div>
+
+<dialog id="faqDialog" class="faq-dialog" aria-labelledby="faqTitle">
+  <div class="faq-head">
+    <h2 id="faqTitle">Help &amp; FAQ</h2>
+    <button class="faq-close icon-btn" aria-label="Close help">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="faq-body">
+    <section>
+      <h3>What is this?</h3>
+      <p>The <strong>LinkML-Scala playground</strong> is an in-browser tool for working with
+        <a href="https://linkml.io/" target="_blank" rel="noopener">LinkML</a> schemas. Paste a LinkML
+        schema (YAML) and instantly generate
+        <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>,
+        <a href="https://www.w3.org/TR/shacl/" target="_blank" rel="noopener">SHACL</a>,
+        <a href="https://www.w3.org/TR/rdf-schema/" target="_blank" rel="noopener">RDFS</a>, a
+        <a href="https://specs.frictionlessdata.io/table-schema/" target="_blank" rel="noopener">Frictionless Table Schema</a>,
+        or Scala classes &ndash; or lint and derive/prune your schema. It is powered by
+        <a href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">LinkML-Scala</a>.</p>
+    </section>
+    <section>
+      <h3>How does it work?</h3>
+      <p>LinkML-Scala is written in <a href="https://www.scala-lang.org/" target="_blank" rel="noopener">Scala&nbsp;3</a>
+        and compiled to JavaScript with <a href="https://www.scala-js.org/" target="_blank" rel="noopener">Scala.js</a>,
+        so the whole generator runs <strong>in your browser</strong> &ndash; there is no backend. The
+        editors are powered by <a href="https://codemirror.net/" target="_blank" rel="noopener">CodeMirror</a>.
+        See the <a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">contributing guide</a>
+        for how it is built.</p>
+    </section>
+    <section>
+      <h3>Where is my data processed?</h3>
+      <p><strong>Entirely on your device.</strong> Your schema is never uploaded &ndash; all generation
+        happens locally in this browser tab. There is no server, no account, and no analytics.</p>
+    </section>
+    <section>
+      <h3>Where is the code?</h3>
+      <p>Everything is open source under the
+        <a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0 license</a>:</p>
+      <ul>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">Source on GitHub</a></li>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala/issues" target="_blank" rel="noopener">Report an issue or request a feature</a></li>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing guide</a></li>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala/releases" target="_blank" rel="noopener">Releases &amp; changelog</a></li>
+      </ul>
+    </section>
+    <section>
+      <h3>How can I use LinkML-Scala?</h3>
+      <p>Beyond this playground, LinkML-Scala ships three ways:</p>
+      <ul>
+        <li><strong>Command-line tool</strong> &ndash; grab it via the
+          <a href="https://github.com/NeverBlink-OSS/linkml-scala#-quick-start-installation" target="_blank" rel="noopener">install script</a>,
+          <a href="https://mise.jdx.dev/" target="_blank" rel="noopener">mise</a>, or a
+          <a href="https://github.com/NeverBlink-OSS/linkml-scala/releases" target="_blank" rel="noopener">prebuilt binary</a>. No Java or Python needed, this is a native binary.</li>
+        <li><strong>JVM / Scala library</strong> &ndash; on
+          <a href="https://central.sonatype.com/namespace/eu.neverblink.linkml" target="_blank" rel="noopener">Maven Central</a>.</li>
+        <li><strong>JavaScript / TypeScript library</strong> &ndash; on npm as
+          <a href="https://www.npmjs.com/package/@neverblink/linkml" target="_blank" rel="noopener"><code>@neverblink/linkml</code></a>.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Who maintains this?</h3>
+      <p><a href="https://neverblink.eu" target="_blank" rel="noopener">NeverBlink</a>. If you require commercial support,
+        please contact us at <a href="mailto:contact@neverblink.eu">contact@neverblink.eu</a></p>
+    </section>
+    <section>
+      <h3>Learn more about LinkML</h3>
+      <ul>
+        <li><a href="https://linkml.io/" target="_blank" rel="noopener">LinkML project homepage</a></li>
+        <li><a href="https://linkml.io/linkml/" target="_blank" rel="noopener">LinkML documentation</a></li>
+        <li><a href="https://github.com/linkml/linkml-model" target="_blank" rel="noopener">LinkML metamodel (linkml-model)</a></li>
+      </ul>
+    </section>
+  </div>
+</dialog>
 
 <script type="module" src="dist/app.js"></script>
 </body>
