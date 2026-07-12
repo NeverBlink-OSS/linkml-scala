@@ -94,6 +94,9 @@ html, body { height: 100%; }
 body { background: var(--bg); }
 
 .ic { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
+/* `.ic { display }` beats the UA `[hidden] { display:none }`, so toggled icons
+   (e.g. the theme moon/sun) would both render — hide them explicitly. */
+.ic[hidden] { display: none; }
 
 /* ── Layout ── */
 
@@ -115,18 +118,28 @@ body { background: var(--bg); }
 .brand-title { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
 .brand-sub { font-size: 11.5px; color: var(--text-muted); }
 
-.header-actions { display: flex; align-items: center; gap: 6px; }
-.header-link {
+.header-actions { display: flex; align-items: center; gap: 10px; }
+
+/* GitHub repo button (icon + name + star/fork counts), mkdocs-material style */
+.repo-link {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
+  gap: 9px;
+  padding: 5px 11px;
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  background: var(--surface-2);
   color: var(--text-secondary);
   text-decoration: none;
+  line-height: 1.15;
 }
-.header-link:hover { background: var(--accent-soft); color: var(--text); }
+.repo-link:hover { color: var(--text); border-color: var(--accent-border); }
+.repo-icon { width: 21px; height: 21px; flex-shrink: 0; }
+.repo-meta { display: flex; flex-direction: column; gap: 1px; }
+.repo-name { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.repo-stats { display: flex; gap: 11px; font-size: 11px; color: var(--text-muted); }
+.repo-stat { display: inline-flex; align-items: center; gap: 3px; }
+.repo-stat-ic { width: 12px; height: 12px; fill: currentColor; }
 
 .icon-btn {
   appearance: none;
@@ -141,6 +154,55 @@ body { background: var(--bg); }
   color: var(--text-secondary);
 }
 .icon-btn:hover { background: var(--accent-soft); color: var(--text); }
+
+/* Theme toggle — bordered so it reads as an actionable control, not flat text */
+.theme-toggle {
+  width: 40px;
+  height: 40px; /* square, matching the GitHub repo button's height */
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.theme-toggle .ic { width: 20px; height: 20px; }
+.theme-toggle:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--text); }
+
+.app-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 24px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.footer-logo {
+  display: block;
+  height: 15px;
+  width: 111px; /* preserves the 2322.4 x 314.3 aspect ratio */
+  background-color: var(--text);
+  -webkit-mask: url("neverblink-logo.svg") left center / contain no-repeat;
+  mask: url("neverblink-logo.svg") left center / contain no-repeat;
+}
+.footer-links { display: flex; align-items: center; flex-wrap: wrap; }
+.footer-links a {
+  padding: 0 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.footer-links a:first-child { padding-left: 0; }
+.footer-links a:not(:first-child) { border-left: 1px solid var(--border-subtle); }
+.footer-links a:hover { color: var(--text); }
 
 .workspace {
   flex: 1;
@@ -394,6 +456,9 @@ textarea.code-area { width: 100%; }
   padding: 6px 8px 0;
   border-bottom: 1px solid var(--border-subtle);
 }
+/* `hidden` alone loses to `.file-tabs { display: flex }`; hide it explicitly so
+   single-file / non-multifile output shows no empty tab bar. */
+.file-tabs[hidden] { display: none; }
 .file-tab {
   appearance: none;
   border: none;
@@ -413,4 +478,20 @@ textarea.code-area { width: 100%; }
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
   .toolbar-right { margin-left: 0; }
+}
+
+@media (max-width: 640px) {
+  /* Tighter everywhere; reclaim the horizontal margins for content width. */
+  .app-header { padding: 9px 12px; }
+  .app-footer { padding: 8px 12px; }
+  .workspace { padding: 8px 0 10px; gap: 8px; }
+  .toolbar { padding: 6px 8px; gap: 8px; border-radius: 0; }
+  .toolbar-right { gap: 8px; }
+  .split { gap: 8px; }
+  .panel { border-radius: 0; }
+
+  .brand-mark { display: none; }
+  .brand { gap: 8px; }
+  .header-actions { gap: 8px; }
+  .repo-link { padding: 4px 9px; }
 }

@@ -444,15 +444,13 @@ $copyOutput.addEventListener('click', async () => {
 // ── Theme ──────────────────────────────────────────────────────────────────
 
 function applyTheme(theme) {
-  if (theme === 'light') {
-    document.documentElement.setAttribute('data-theme', 'light');
-    $themeIconMoon.hidden = true;
-    $themeIconSun.hidden = false;
-  } else {
-    document.documentElement.removeAttribute('data-theme');
-    $themeIconMoon.hidden = false;
-    $themeIconSun.hidden = true;
-  }
+  const light = theme === 'light';
+  if (light) document.documentElement.setAttribute('data-theme', 'light');
+  else document.documentElement.removeAttribute('data-theme');
+  // `.hidden` is an HTMLElement property; these icons are SVGElements where it is
+  // a no-op, so toggle the attribute directly (see .ic[hidden] in styles.css).
+  $themeIconMoon.toggleAttribute('hidden', light);
+  $themeIconSun.toggleAttribute('hidden', !light);
 }
 
 const storedTheme = localStorage.getItem('linkml-ui-theme');
@@ -464,6 +462,42 @@ $themeToggle.addEventListener('click', () => {
   applyTheme(next);
   localStorage.setItem('linkml-ui-theme', next);
 });
+
+// ── GitHub repo stats (mkdocs-material style) ────────────────────────────────
+
+const REPO_SLUG = 'NeverBlink-OSS/linkml-scala';
+const REPO_STATS_KEY = 'linkml-ui-repo-stats';
+
+function formatCount(n) {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return (k >= 10 ? Math.round(k) : Number(k.toFixed(1))) + 'k';
+}
+
+function renderRepoStats(stars, forks) {
+  document.getElementById('repoStars').textContent = formatCount(stars);
+  document.getElementById('repoForks').textContent = formatCount(forks);
+  document.getElementById('repoStats').hidden = false;
+}
+
+(function loadRepoStats() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(REPO_STATS_KEY) || 'null');
+    if (cached) renderRepoStats(cached.stars, cached.forks);
+  } catch { /* ignore malformed cache */ }
+
+  fetch(`https://api.github.com/repos/${REPO_SLUG}`)
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => {
+      if (!d) return;
+      renderRepoStats(d.stargazers_count, d.forks_count);
+      localStorage.setItem(
+        REPO_STATS_KEY,
+        JSON.stringify({ stars: d.stargazers_count, forks: d.forks_count }),
+      );
+    })
+    .catch(() => { /* offline or rate-limited — keep cached value or stay hidden */ });
+})();
 
 // ── Init ───────────────────────────────────────────────────────────────────
 
