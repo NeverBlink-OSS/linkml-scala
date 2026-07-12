@@ -10,7 +10,7 @@
 
   --text: #e5e4e4;
   --text-secondary: #a9b3cc;
-  --text-muted: #7c88a8;
+  --text-muted: #909bb8;
   --text-on-accent: #13203a;
 
   --border: #304368;
@@ -21,7 +21,7 @@
   --accent-soft: rgba(191, 205, 234, 0.14);
   --accent-border: rgba(191, 205, 234, 0.4);
 
-  --danger: #e06c75;
+  --danger: #ec8891;
   --danger-soft: rgba(224, 108, 117, 0.14);
   --danger-border: rgba(224, 108, 117, 0.4);
   --success: #98c379;
@@ -59,7 +59,7 @@
 
   --text: #13203a;
   --text-secondary: #4f5872;
-  --text-muted: #767e93;
+  --text-muted: #666e83;
   --text-on-accent: #ffffff;
 
   --border: #e1ded8;
@@ -73,11 +73,11 @@
   --danger: #c0303a;
   --danger-soft: rgba(228, 86, 73, 0.12);
   --danger-border: rgba(192, 48, 58, 0.40);
-  --success: #357a27;
+  --success: #2f6f22;
   --success-soft: rgba(80, 161, 79, 0.16);
   --purple: #8d3aa8;
   --cyan: #0e7490;
-  --orange: #b15c1e;
+  --orange: #a15319;
   --blue: #3367d6;
 
   --brand: #b7e425;
@@ -107,7 +107,7 @@ body { background: var(--bg); }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 24px;
+  padding: 8px 24px;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
 }
@@ -209,7 +209,7 @@ body { background: var(--bg); }
   min-height: 0;
   display: flex;
   flex-direction: column;
-  padding: 18px 24px 24px;
+  padding: 14px 24px;
   gap: 14px;
 }
 
@@ -254,8 +254,18 @@ body { background: var(--bg); }
   gap: 10px;
 }
 
-.options-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.options-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
 .opt-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; }
+/* Divider after each option (incl. the last, to fence it off from the Auto
+   toggle) so adjacent controls don't read as one blur. */
+.opt-field::after {
+  content: "";
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  margin-left: 6px;
+  background: var(--border);
+}
 .opt-field input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
 .opt-field input[type="text"],
 .opt-field input[type="number"],
@@ -358,95 +368,16 @@ body { background: var(--bg); }
 }
 .status-pill--error { background: var(--danger-soft); color: var(--danger); }
 
-.code-area {
-  flex: 1;
-  min-height: 0;
-  padding: 14px 16px;
-  background: var(--surface-3);
-  color: var(--text);
-  font-family: var(--code-font);
-  font-size: 12.5px;
-  line-height: 1.6;
-  border: none;
-  outline: none;
-  resize: none;
-  overflow: auto;
-  white-space: pre;
-  tab-size: 2;
-}
-
-textarea.code-area { width: 100%; }
-
-.code-output { margin: 0; white-space: pre; }
-.code-output-empty { color: var(--text-muted); font-family: inherit; font-style: italic; }
-.code-output--error { color: var(--danger); white-space: pre-wrap; }
-
-/* ── Input editor: transparent textarea over a highlighted <pre> ──
-   The wrapper is the ONLY scroll owner. Both the <pre> and the textarea are
-   absolutely positioned at the same top-left origin and auto-sized to their
-   natural content height/width (no internal overflow of their own), so they
-   scroll together as one unit — no JS scroll-position syncing, and no risk of
-   the two drifting apart (which happened when each had its own independent
-   scrollTop/scrollHeight, kept in sync only by copying values on 'scroll'). */
-
+/* ── CodeMirror editor hosts (input + read-only output) ── */
 .editor {
-  position: relative;
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   background: var(--surface-3);
 }
-
-.code-highlight {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  margin: 0;
-  overflow: visible;
-  pointer-events: none;
-  color: var(--text);
-  background: none;
-  white-space: normal;
-}
-
-/* One block per source line, with an explicit height — see the comment on
-   highlightYaml() in app.js for why this can't just be a single text flow
-   with embedded newlines. */
-.hl-line {
-  height: 1.6em;
-  line-height: 1.6;
-  white-space: pre;
-}
-
-.code-input {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  background: transparent;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  caret-color: var(--text);
-  z-index: 1;
-}
-.code-input::placeholder { color: var(--text-muted); }
-/* Some browsers render selected text with a fallback foreground color instead
-   of honoring `color: transparent` — pin it explicitly, else selecting text
-   shows a "ghost" of it on top of the highlighted <pre> underneath. */
-.code-input::selection { color: transparent; -webkit-text-fill-color: transparent; background: var(--accent-soft); }
-
-/* Color only — no font-weight/style here. Any change to glyph metrics (bold,
-   italic) desyncs this <pre> from the transparent textarea it sits under,
-   since the two must stay pixel-identical line by line. */
-.tok-key { color: var(--blue); }
-.tok-string { color: var(--success); }
-.tok-number { color: var(--orange); }
-.tok-const { color: var(--purple); }
-.tok-comment { color: var(--text-muted); }
-.tok-tag { color: var(--cyan); }
-.tok-punct { color: var(--text-muted); }
+.editor .cm-editor { height: 100%; }
+.editor .cm-scroller { overflow: auto; }
+.cm-output--error .cm-content { color: var(--danger); }
 
 .file-tabs {
   flex-shrink: 0;
@@ -482,7 +413,7 @@ textarea.code-area { width: 100%; }
 
 @media (max-width: 640px) {
   /* Tighter everywhere; reclaim the horizontal margins for content width. */
-  .app-header { padding: 9px 12px; }
+  .app-header { padding: 8px 12px; }
   .app-footer { padding: 8px 12px; }
   .workspace { padding: 8px 0 10px; gap: 8px; }
   .toolbar { padding: 6px 8px; gap: 8px; border-radius: 0; }
@@ -494,4 +425,8 @@ textarea.code-area { width: 100%; }
   .brand { gap: 8px; }
   .header-actions { gap: 8px; }
   .repo-link { padding: 4px 9px; }
+
+  /* Footer: keep just the "Built by NeverBlink" mark; the link row is too much. */
+  .footer-links { display: none; }
+  .app-footer { justify-content: flex-start; }
 }

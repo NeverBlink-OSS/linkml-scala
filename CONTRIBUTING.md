@@ -24,6 +24,27 @@ Common tasks with mill:
 - Assemble the npm package: `./mill generator.js.npmPackage` (TS declarations are generated from the Scala facade)
 - Verify the npm package (README examples run + types compile): `./mill generator.js.verifyPackage` (requires Node.js and npm)
 
+### Playground UI
+
+The browser playground lives in [`ui/`](ui/) — a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
+
+- Serve it locally: `./mill ui` – builds the Scala.js bundle **and** the UI bundle, then serves at <http://localhost:8000/ui/>
+- Build the UI bundle only: `./mill uiBundle` → `ui/dist/app.js`
+- Type-check and bundle (what CI runs): `./mill uiCheck`
+- Regenerate the LinkML API types: `./mill uiTypes` – run after changing `generator/src-js/.../LinkMlJsApi.scala`
+
+`ui/linkml.d.ts` is generated from the Scala facade and **committed** (so editors resolve types without a build). CI regenerates it and fails if it's stale, so re-run `./mill uiTypes` and commit the result when the facade changes.
+
+You can also work in `ui/` directly with npm:
+
+```shell
+cd ui
+npm install       # first-time setup
+npm run watch     # esbuild, rebuilds on change
+npm run typecheck # tsc --noEmit
+npm run build     # one-off bundle
+```
+
 ## Releasing with GitHub UI
 
 1. Go to Releases -> Draft a new release

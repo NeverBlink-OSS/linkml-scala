@@ -49,8 +49,41 @@ def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
   AliasesModule.run(ev, "lint")
 }
 
+/** Bundle the TypeScript playground UI (app.ts + CodeMirror) into ui/dist via
+  * esbuild. Installs npm deps on first run. Requires Node.js and npm on the PATH.
+  */
+def buildUiBundle(): Unit = {
+  val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
+  if (!os.exists(uiDir / "node_modules"))
+    os.call(("npm", "ci"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+  os.call(("npm", "run", "build"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+}
+
+def uiBundle(args: String*) = Task.Command(exclusive = true) {
+  buildUiBundle()
+}
+
+/** Regenerate ui/linkml.d.ts (the LinkML API types the UI is checked against)
+  * from the Scala facade. Run after changing LinkMlJsApi.scala.
+  */
+def uiTypes(args: String*) = Task.Command(exclusive = true) {
+  os.copy.over(generator.js.tsDefs().path, mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts")
+}
+
+/** Type-check the UI against the LinkML types and confirm it bundles. Requires
+  * Node.js and npm on the PATH.
+  */
+def uiCheck(args: String*) = Task.Command(exclusive = true) {
+  val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
+  if (!os.exists(uiDir / "node_modules"))
+    os.call(("npm", "ci"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+  os.call(("npm", "run", "typecheck"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+  os.call(("npm", "run", "build"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+}
+
 def ui(args: String*) = Task.Command() {
   generator.js.fullLinkJS()
+  buildUiBundle()
   val server =
     SimpleFileServer.createFileServer(
       new InetSocketAddress(8000),

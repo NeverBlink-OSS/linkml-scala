@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LinkML-Scala playground</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#162037">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -65,10 +69,7 @@
             <button id="clearInput" class="btn btn-secondary btn-sm">Clear</button>
           </div>
         </div>
-        <div class="editor">
-          <pre id="inputHighlight" class="code-area code-highlight" aria-hidden="true"><code></code></pre>
-          <textarea id="input" class="code-area code-input" spellcheck="false" placeholder="# paste or write a LinkML schema (YAML)&#10;id: https://example.org/my-schema&#10;name: my_schema&#10;..."></textarea>
-        </div>
+        <div id="inputEditor" class="editor"></div>
       </section>
 
       <section class="panel panel-output">
@@ -80,7 +81,7 @@
           </div>
         </div>
         <div id="fileTabs" class="file-tabs" hidden></div>
-        <pre id="output" class="code-area code-output"><span class="code-output-empty">Output will appear here.</span></pre>
+        <div id="outputEditor" class="editor editor--output"></div>
       </section>
     </div>
   </main>
@@ -99,10 +100,6 @@
   </footer>
 </div>
 
-<script>
-  // Emulates a nodejs runtime - the generated JS bundle expects it.
-  const process = { cwd: () => "/" };
-</script>
-<script type="module" src="app.js"></script>
+<script type="module" src="dist/app.js"></script>
 </body>
 </html>
