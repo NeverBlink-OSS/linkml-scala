@@ -62,7 +62,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24 # >= 22.14.0 required by trusted publishing
-          registry-url: https://registry.npmjs.org
 
       - name: Ensure npm supports trusted publishing
         run: npm install -g npm@latest # Trusted publishing needs npm >= 11.5.1
@@ -79,7 +78,7 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           if [[ "$VERSION" == *SNAPSHOT* ]]; then TAG=next; else TAG=latest; fi
           echo "Publishing @neverblink/linkml@$VERSION under dist-tag $TAG"
-          npm publish --access public --tag "$TAG"
+          npm publish --tag "$TAG"
 
   aot-compile:
     name: AOT compile on ${{ matrix.os }}

@@ -35,6 +35,10 @@ object NpmPackage {
        |    "url": "https://github.com/NeverBlink-OSS/linkml-scala/issues"
        |  },
        |  "author": "NeverBlink (https://neverblink.eu)",
+       |  "publishConfig": {
+       |    "access": "public",
+       |    "registry": "https://registry.npmjs.org/"
+       |  },
        |  "keywords": [
        |    "linkml",
        |    "json-schema",
