@@ -30,13 +30,23 @@ jobs:
           jvm: temurin:17
           apps: mill
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
       - name: Build browser UI
-        run: ./mill --no-server generator.js.fullLinkJS
+        run: |
+          ./mill --no-server generator.js.fullLinkJS
+          ./mill --no-server uiBundle
 
       - name: Assemble playground site
         run: |
-          mkdir -p site/playground site/out/generator/js
-          cp ui/index.html ui/app.js ui/styles.css site/playground/
+          mkdir -p site/playground/dist site/out/generator/js
+          cp ui/index.html ui/styles.css ui/neverblink-logo.svg site/playground/
+          cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/playground/
+          cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/
+          cp ui/dist/app.js ui/dist/app.js.map site/playground/dist/
           cp -r out/generator/js/fullLinkJS.dest site/out/generator/js/fullLinkJS.dest
           cp CNAME site/CNAME
           cp pages/index.html site/index.html

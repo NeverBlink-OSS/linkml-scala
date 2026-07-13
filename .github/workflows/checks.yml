@@ -23,6 +23,39 @@ jobs:
         run: ./mill --no-server __.jvm.checkFormat
 
 
+  ui-check:
+    name: UI typecheck & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:17
+          apps: mill
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Regenerate UI LinkML types and check they are committed
+        run: |
+          ./mill --no-server uiTypes
+          git diff --exit-code -- ui/linkml.d.ts \
+            || (echo "ui/linkml.d.ts is stale — run ./mill uiTypes and commit the result"; exit 1)
+
+      - name: Type-check and bundle the UI
+        run: ./mill --no-server uiCheck
+
   scalafix-lint:
     name: Scalafix lint
     runs-on: ubuntu-latest

@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LinkML Scala &middot; Playground</title>
+<title>LinkML-Scala playground</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#162037">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -18,16 +22,25 @@
         <path d="M17 11.5 10.5 26M23 11.5 29.5 26M12.5 30h15" stroke="var(--border)" stroke-width="2"/>
       </svg>
       <div class="brand-text">
-        <span class="brand-title">LinkML Scala</span>
-        <span class="brand-sub">Schema Playground</span>
+        <span class="brand-title">LinkML-Scala</span>
+        <span class="brand-sub">In-browser schema playground</span>
       </div>
     </div>
     <div class="header-actions">
-      <a class="header-link" href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">
-        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91.5S18.73.15 16 2a13.38 13.38 0 0 0-7 0C6.27.15 5.09.5 5.09.5A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
-        <span>GitHub</span>
+      <a class="repo-link" href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener" aria-label="linkml-scala on GitHub">
+        <svg class="repo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91.5S18.73.15 16 2a13.38 13.38 0 0 0-7 0C6.27.15 5.09.5 5.09.5A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        <span class="repo-meta">
+          <span class="repo-name">linkml-scala</span>
+          <span class="repo-stats" id="repoStats" hidden>
+            <span class="repo-stat"><svg class="repo-stat-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"/></svg><span id="repoStars">–</span></span>
+            <span class="repo-stat"><svg class="repo-stat-ic" viewBox="0 0 16 16" aria-hidden="true"><path d="M5 5.372v.878c0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75v-.878a2.25 2.25 0 1 1 1.5 0v.878a2.25 2.25 0 0 1-2.25 2.25h-1.5v2.128a2.251 2.251 0 1 1-1.5 0V8.5h-1.5A2.25 2.25 0 0 1 3.5 6.25v-.878a2.25 2.25 0 1 1 1.5 0ZM5 3.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm6.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm-3 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Z"/></svg><span id="repoForks">–</span></span>
+          </span>
+        </span>
       </a>
-      <button id="themeToggle" class="icon-btn" title="Toggle theme" aria-label="Toggle theme">
+      <button id="helpToggle" class="icon-btn help-toggle" title="Help &amp; FAQ" aria-label="Help and FAQ" aria-haspopup="dialog">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+      </button>
+      <button id="themeToggle" class="icon-btn theme-toggle" title="Toggle theme" aria-label="Toggle theme">
         <svg id="themeIconMoon" class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
         <svg id="themeIconSun" class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" hidden><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66 4.93 19.07M19.07 4.93l-1.41 1.41"/></svg>
       </button>
@@ -59,10 +72,7 @@
             <button id="clearInput" class="btn btn-secondary btn-sm">Clear</button>
           </div>
         </div>
-        <div class="editor">
-          <pre id="inputHighlight" class="code-area code-highlight" aria-hidden="true"><code></code></pre>
-          <textarea id="input" class="code-area code-input" spellcheck="false" placeholder="# paste or write a LinkML schema (YAML)&#10;id: https://example.org/my-schema&#10;name: my_schema&#10;..."></textarea>
-        </div>
+        <div id="inputEditor" class="editor"></div>
       </section>
 
       <section class="panel panel-output">
@@ -74,16 +84,101 @@
           </div>
         </div>
         <div id="fileTabs" class="file-tabs" hidden></div>
-        <pre id="output" class="code-area code-output"><span class="code-output-empty">Output will appear here.</span></pre>
+        <div id="outputEditor" class="editor editor--output"></div>
       </section>
     </div>
   </main>
+
+  <footer class="app-footer">
+    <a class="footer-brand" href="https://neverblink.eu" target="_blank" rel="noopener" aria-label="Built by NeverBlink">
+      <span class="footer-built">Built by</span>
+      <span class="footer-logo" aria-hidden="true"></span>
+    </a>
+    <nav class="footer-links">
+      <a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0</a>
+      <a href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/@neverblink/linkml" target="_blank" rel="noopener">npm</a>
+      <a href="https://central.sonatype.com/namespace/eu.neverblink.linkml" target="_blank" rel="noopener">Maven Central</a>
+      <button type="button" id="aboutLink">About</button>
+    </nav>
+  </footer>
 </div>
 
-<script>
-  // Emulates a nodejs runtime - the generated JS bundle expects it.
-  const process = { cwd: () => "/" };
-</script>
-<script type="module" src="app.js"></script>
+<dialog id="faqDialog" class="faq-dialog" aria-labelledby="faqTitle">
+  <div class="faq-head">
+    <h2 id="faqTitle">Help &amp; FAQ</h2>
+    <button class="faq-close icon-btn" aria-label="Close help">
+      <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+  <div class="faq-body">
+    <section>
+      <h3>What is this?</h3>
+      <p>The <strong>LinkML-Scala playground</strong> is an in-browser tool for working with
+        <a href="https://linkml.io/" target="_blank" rel="noopener">LinkML</a> schemas. Paste a LinkML
+        schema (YAML) and instantly generate
+        <a href="https://json-schema.org/" target="_blank" rel="noopener">JSON Schema</a>,
+        <a href="https://www.w3.org/TR/shacl/" target="_blank" rel="noopener">SHACL</a>,
+        <a href="https://www.w3.org/TR/rdf-schema/" target="_blank" rel="noopener">RDFS</a>, a
+        <a href="https://specs.frictionlessdata.io/table-schema/" target="_blank" rel="noopener">Frictionless Table Schema</a>,
+        or Scala classes &ndash; or lint and derive/prune your schema. It is powered by
+        <a href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">LinkML-Scala</a>.</p>
+    </section>
+    <section>
+      <h3>How does it work?</h3>
+      <p>LinkML-Scala is written in <a href="https://www.scala-lang.org/" target="_blank" rel="noopener">Scala&nbsp;3</a>
+        and compiled to JavaScript with <a href="https://www.scala-js.org/" target="_blank" rel="noopener">Scala.js</a>,
+        so the whole generator runs <strong>in your browser</strong> &ndash; there is no backend. The
+        editors are powered by <a href="https://codemirror.net/" target="_blank" rel="noopener">CodeMirror</a>.
+        See the <a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">contributing guide</a>
+        for how it is built.</p>
+    </section>
+    <section>
+      <h3>Where is my data processed?</h3>
+      <p><strong>Entirely on your device.</strong> Your schema is never uploaded &ndash; all generation
+        happens locally in this browser tab. There is no server, no account, and no analytics.</p>
+    </section>
+    <section>
+      <h3>Where is the code?</h3>
+      <p>Everything is open source under the
+        <a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/LICENSE" target="_blank" rel="noopener">Apache-2.0 license</a>:</p>
+      <ul>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala" target="_blank" rel="noopener">Source on GitHub</a></li>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala/issues" target="_blank" rel="noopener">Report an issue or request a feature</a></li>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing guide</a></li>
+        <li><a href="https://github.com/NeverBlink-OSS/linkml-scala/releases" target="_blank" rel="noopener">Releases &amp; changelog</a></li>
+      </ul>
+    </section>
+    <section>
+      <h3>How can I use LinkML-Scala?</h3>
+      <p>Beyond this playground, LinkML-Scala ships three ways:</p>
+      <ul>
+        <li><strong>Command-line tool</strong> &ndash; grab it via the
+          <a href="https://github.com/NeverBlink-OSS/linkml-scala#-quick-start-installation" target="_blank" rel="noopener">install script</a>,
+          <a href="https://mise.jdx.dev/" target="_blank" rel="noopener">mise</a>, or a
+          <a href="https://github.com/NeverBlink-OSS/linkml-scala/releases" target="_blank" rel="noopener">prebuilt binary</a>. No Java or Python needed, this is a native binary.</li>
+        <li><strong>JVM / Scala library</strong> &ndash; on
+          <a href="https://central.sonatype.com/namespace/eu.neverblink.linkml" target="_blank" rel="noopener">Maven Central</a>.</li>
+        <li><strong>JavaScript / TypeScript library</strong> &ndash; on npm as
+          <a href="https://www.npmjs.com/package/@neverblink/linkml" target="_blank" rel="noopener"><code>@neverblink/linkml</code></a>.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>Who maintains this?</h3>
+      <p><a href="https://neverblink.eu" target="_blank" rel="noopener">NeverBlink</a>. If you require commercial support,
+        please contact us at <a href="mailto:contact@neverblink.eu">contact@neverblink.eu</a></p>
+    </section>
+    <section>
+      <h3>Learn more about LinkML</h3>
+      <ul>
+        <li><a href="https://linkml.io/" target="_blank" rel="noopener">LinkML project homepage</a></li>
+        <li><a href="https://linkml.io/linkml/" target="_blank" rel="noopener">LinkML documentation</a></li>
+        <li><a href="https://github.com/linkml/linkml-model" target="_blank" rel="noopener">LinkML metamodel (linkml-model)</a></li>
+      </ul>
+    </section>
+  </div>
+</dialog>
+
+<script type="module" src="dist/app.js"></script>
 </body>
 </html>

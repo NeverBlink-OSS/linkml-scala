@@ -1,0 +1,25 @@
+{
+  "name": "linkml-scala-playground",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@codemirror/commands": "^6.7.1",
+    "@codemirror/lang-json": "^6.0.1",
+    "@codemirror/lang-yaml": "^6.1.2",
+    "@codemirror/language": "^6.10.8",
+    "@codemirror/legacy-modes": "^6.4.2",
+    "@codemirror/state": "^6.5.1",
+    "@codemirror/view": "^6.36.2",
+    "@lezer/highlight": "^1.2.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2",
+    "typescript": "^5.7.3"
+  }
+}
