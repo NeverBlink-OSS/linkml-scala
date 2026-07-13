@@ -145,7 +145,8 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "allow tree root overriding" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(Some("SomeClass"))
+      val td =
+        TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(Some("SomeClass"))
       td.fields should not be empty
       td.fields.map(_.name) should contain theSameElementsAs Seq(
         "some_slot",
@@ -160,7 +161,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         false,
       )
 
-      val td2 = TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(Some("SomeOtherClass"))
+      val td2 = TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(
+        Some("SomeOtherClass"),
+      )
       td2.fields.length shouldBe 1
       td2.fields.head.name shouldBe "some_slot"
     }

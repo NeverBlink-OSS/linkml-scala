@@ -27,7 +27,7 @@ import millbuild.{NpmPackage, TsDefsGen}
 
 import java.net.InetSocketAddress
 
-val scala = "3.8.3"
+val scala = "3.8.4"
 val scalaJS = "1.22.0"
 
 object LinkMlAliases extends Aliases {
@@ -49,8 +49,41 @@ def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
   AliasesModule.run(ev, "lint")
 }
 
+/** Bundle the TypeScript playground UI (app.ts + CodeMirror) into ui/dist via
+  * esbuild. Installs npm deps on first run. Requires Node.js and npm on the PATH.
+  */
+def buildUiBundle(): Unit = {
+  val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
+  if (!os.exists(uiDir / "node_modules"))
+    os.call(("npm", "ci"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+  os.call(("npm", "run", "build"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+}
+
+def uiBundle(args: String*) = Task.Command(exclusive = true) {
+  buildUiBundle()
+}
+
+/** Regenerate ui/linkml.d.ts (the LinkML API types the UI is checked against)
+  * from the Scala facade. Run after changing LinkMlJsApi.scala.
+  */
+def uiTypes(args: String*) = Task.Command(exclusive = true) {
+  os.copy.over(generator.js.tsDefs().path, mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts")
+}
+
+/** Type-check the UI against the LinkML types and confirm it bundles. Requires
+  * Node.js and npm on the PATH.
+  */
+def uiCheck(args: String*) = Task.Command(exclusive = true) {
+  val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
+  if (!os.exists(uiDir / "node_modules"))
+    os.call(("npm", "ci"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+  os.call(("npm", "run", "typecheck"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+  os.call(("npm", "run", "build"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
+}
+
 def ui(args: String*) = Task.Command() {
   generator.js.fullLinkJS()
+  buildUiBundle()
   val server =
     SimpleFileServer.createFileServer(
       new InetSocketAddress(8000),
@@ -96,7 +129,7 @@ object yaml extends Module {
 
   trait YamlModule extends CommonModule {
     def mvnDeps = Seq(
-      mvn"org.virtuslab::scala-yaml::0.3.1",
+      mvn"org.virtuslab::scala-yaml::0.3.2",
     )
   }
 }
@@ -129,7 +162,7 @@ object metamodel extends Module {
 
     object test extends ScalaTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.15",
+        mvn"io.circe::circe-core::0.14.16",
       )
     }
   }
@@ -145,7 +178,7 @@ object metamodel extends Module {
 
     object test extends ScalaJSTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.15",
+        mvn"io.circe::circe-core::0.14.16",
       )
     }
   }
@@ -172,10 +205,10 @@ object schemaview extends Module {
 object generator extends Module {
   object jvm extends CommonModule, GeneratorDeps {
     override def mvnDeps = super.mvnDeps() ++ Seq(
-      mvn"com.lihaoyi::os-lib:0.11.6",
+      mvn"com.lihaoyi::os-lib:0.11.8",
       mvn"org.eclipse.rdf4j:rdf4j-model:5.3.2",
       mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:5.3.2",
-      mvn"com.networknt:json-schema-validator:3.0.4",
+      mvn"com.networknt:json-schema-validator:3.0.6",
     )
 
     def moduleDeps = Seq(
@@ -187,7 +220,7 @@ object generator extends Module {
 
       override def mvnDeps = super.mvnDeps() ++ Seq(
         mvn"org.eclipse.rdf4j:rdf4j-shacl:5.3.2",
-        mvn"com.networknt:json-schema-validator:3.0.4",
+        mvn"com.networknt:json-schema-validator:3.0.6",
       )
     }
   }
@@ -398,7 +431,7 @@ trait CommonTestModule extends ScalaModule, TestModule.ScalaTest, ScalafixModule
     mvn"org.scalatestplus::scalacheck-1-18::3.2.19.0",
   )
 
-  override def scalaTestVersion = Task("3.2.19")
+  override def scalaTestVersion = Task("3.2.20")
 }
 
 trait CommonScalaJSModule extends ScalaJSModule, CommonPublishModule {

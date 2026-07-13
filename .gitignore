@@ -31,3 +31,10 @@ target/
 
 # Environment variables
 .env
+
+# Node.js
+node_modules/
+ui/dist/
+
+# AI
+.claude/
