@@ -19,6 +19,8 @@ classes:
     tree_root: true
     attributes:
       some_slot:
+        rank: 1
         range: uriorcurie
       some_other_slot:
+        rank: 2
         range: SomeOtherClass

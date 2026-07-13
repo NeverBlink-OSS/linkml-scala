@@ -1,0 +1,2 @@
+one,atMostOne,atLeastOne,zeroOrMore
+string,set,"[""one"", ""two""]","[""zero"", ""or"", ""more""]"

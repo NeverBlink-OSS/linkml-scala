@@ -22,20 +22,26 @@ types:
 
 slots:
   stringSlot:
+    rank: 1
     range: string
     required: true
   booleanSlot:
+    rank: 2
     range: boolean
     required: true
   intSlot:
+    rank: 3
     range: integer
     required: true
   floatSlot:
+    rank: 4
     range: decimal
     required: true
   dateSlot:
+    rank: 5
     range: date
     required: true
   customSlot:
+    rank: 6
     range: custom
     required: true

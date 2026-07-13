@@ -11,8 +11,12 @@ classes:
     tree_root: true
     attributes:
       id:
+        rank: 1
         key: true
       some_slot:
+        rank: 2
         required: true
       some_other_slot:
+        rank: 3
       some_other_other_slot:
+        rank: 4

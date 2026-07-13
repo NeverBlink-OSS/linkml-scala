@@ -14,5 +14,6 @@ slots:
   unused_slot:
     range: uri
   some_other_slot:
+    rank: 2
     range: integer
     required: true

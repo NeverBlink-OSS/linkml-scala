@@ -13,6 +13,8 @@ classes:
     class_uri: aliases:UriClass
     attributes:
       some_slot:
+        rank: 1
         alias: aliased_slot
       some_other_slot:
+        rank: 2
         slot_uri: aliases:uri_slot

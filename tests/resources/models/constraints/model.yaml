@@ -13,13 +13,16 @@ classes:
 
 slots:
   intSlot:
+    rank: 1
     range: integer
     minimum_value: -1
     maximum_value: 1
   floatSlot:
+    rank: 2
     range: float
     minimum_value: -2.0
     maximum_value: 2.0
   stringSlot:
+    rank: 3
     range: string
     pattern: "^([0-9]{3})?[0-9]{3}-[0-9]{4}$"

@@ -20,7 +20,9 @@ classes:
       - some_slot
 slots:
   some_slot:
+    rank: 1
     range: string
   some_other_slot:
+    rank: 2
     range: integer
     required: true
