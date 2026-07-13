@@ -38,4 +38,22 @@ trait ModelCatalogueSpec {
       skipInstances.getOrElse((name, instance.name), ""),
     )
   }
+
+  /** Check whether this test should be run as per [[skipModels]] and [[skipInstances]]
+    *
+    * @param entryName
+    *   Name of the entry
+    * @param instanceName
+    *   Name of the instance
+    * @throws org.scalatest.exceptions.TestCanceledException
+    *   when the test should be cancelled
+    */
+  final def processSkip(entryName: String, instanceName: String): Unit = {
+    assume(globalEnable, "Globally disabled")
+    assume(!skipModels.contains(entryName), skipModels.getOrElse(entryName, ""))
+    assume(
+      !skipInstances.contains((entryName, instanceName)),
+      skipInstances.getOrElse((entryName, instanceName), ""),
+    )
+  }
 }
