@@ -24,6 +24,8 @@ classes:
 slots:
   some_slot:
     range: string
+    rank: 1
   some_other_slot:
+    rank: 2
     range: integer
     required: true

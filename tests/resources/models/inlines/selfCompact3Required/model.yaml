@@ -12,8 +12,12 @@ classes:
     attributes:
       id:
         key: true
+        rank: 1
       some_slot:
+        rank: 2
         required: true
       some_other_slot:
+        rank: 3
         required: true
       some_other_other_slot:
+        rank: 4

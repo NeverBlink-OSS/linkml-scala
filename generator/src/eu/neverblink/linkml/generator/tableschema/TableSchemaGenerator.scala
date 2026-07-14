@@ -44,7 +44,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
     val root: ClassView = sv.treeRootWithOverride(treeRootOverride)
       .get.getOrElse(throw RuntimeException("No tree root - can't generate table schema"))
     val fields =
-      for slotView <- root.derivedAttributes.values
+      for slotView <- root.derivedAttributes.values.toSeq.sortBy(s => (s.slot.rank, s.slot.name))
       yield {
         val base = FieldDescriptor(
           name = slotName(slotView),

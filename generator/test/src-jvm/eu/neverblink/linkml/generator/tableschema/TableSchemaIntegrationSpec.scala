@@ -29,20 +29,39 @@ class TableSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
         for valid <- entry.validInstances.filter(_.csv.isDefined) do {
           s"valid instance '${valid.name}'" in {
             processSkip(entry, valid)
-            val dataPath = dataDir / entry.name / valid.name / "data.csv"
+            val dataPath = dataDir / entry.name / "valid" / valid.name / "data.csv"
             os.write(dataPath, valid.csv.get, createFolders = true)
             os.call(
-              (frictionless, "validate", "--trusted", "--schema", tableSchemaPath, dataPath),
+              (
+                frictionless,
+                "validate",
+                "--trusted",
+                "--skip-errors",
+                "blank-row",
+                "--schema",
+                tableSchemaPath,
+                dataPath,
+              ),
             )
           }
         }
         for invalid <- entry.invalidInstances.filter(_.csv.isDefined) do {
           s"invalid instance '${invalid.name}'" in {
             processSkip(entry, invalid)
-            val dataPath = dataDir / entry.name / invalid.name / "data.csv"
+            val dataPath = dataDir / entry.name / "invalid" / invalid.name / "data.csv"
             os.write(dataPath, invalid.csv.get, createFolders = true)
             val result = os.call(
-              (frictionless, "validate", "--trusted", "--schema", tableSchemaPath, dataPath),
+              (
+                frictionless,
+                "validate",
+                "--trusted",
+                // Frictionless seems to override missing required field errors with blank-row errors
+                // We need to accept blank rows - they are meaningful in linkml semantics.
+                // "--skip-errors", "blank-row",
+                "--schema",
+                tableSchemaPath,
+                dataPath,
+              ),
               check = false,
             )
             result.exitCode should not be 0

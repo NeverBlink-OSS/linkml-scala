@@ -29,13 +29,24 @@ trait ModelCatalogueSpec {
     * @throws org.scalatest.exceptions.TestCanceledException
     *   when the test should be cancelled
     */
-  final def processSkip(entry: Entry, instance: InstanceInFormats): Unit = {
-    val name = entry.model.root.name
+  final def processSkip(entry: Entry, instance: InstanceInFormats): Unit =
+    processSkip(entry.name, instance.name)
+
+  /** Check whether this test should be run as per [[skipModels]] and [[skipInstances]]
+    *
+    * @param entryName
+    *   Name of the entry
+    * @param instanceName
+    *   Name of the instance
+    * @throws org.scalatest.exceptions.TestCanceledException
+    *   when the test should be cancelled
+    */
+  final def processSkip(entryName: String, instanceName: String): Unit = {
     assume(globalEnable, "Globally disabled")
-    assume(!skipModels.contains(name), skipModels.getOrElse(name, ""))
+    assume(!skipModels.contains(entryName), skipModels.getOrElse(entryName, ""))
     assume(
-      !skipInstances.contains((name, instance.name)),
-      skipInstances.getOrElse((name, instance.name), ""),
+      !skipInstances.contains((entryName, instanceName)),
+      skipInstances.getOrElse((entryName, instanceName), ""),
     )
   }
 }

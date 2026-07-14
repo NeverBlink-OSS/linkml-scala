@@ -17,18 +17,22 @@ classes:
 
 slots:
   one:
+    rank: 1
     range: string
     required: true
     multivalued: false
   atMostOne:
+    rank: 2
     range: string
     required: false
     multivalued: false
   atLeastOne:
+    rank: 3
     range: string
     required: true
     multivalued: true
   zeroOrMore:
+    rank: 4
     range: string
     required: false
     multivalued: true

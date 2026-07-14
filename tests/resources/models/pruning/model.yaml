@@ -17,4 +17,5 @@ classes:
       - some_slot
 slots:
   some_slot:
+    rank: 1
     range: string
