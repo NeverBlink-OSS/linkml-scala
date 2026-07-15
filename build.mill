@@ -398,7 +398,14 @@ trait CommonModule
     tagVersion.getOrElse(describeVersion())
   }
 
-  private def describeVersion(): String = {
+  private def describeVersion(): String =
+    try describeVersionUnsafe()
+    catch {
+      // No tags, shallow clone or not a git checkout
+      case _: os.SubprocessException => "0.0.0-SNAPSHOT"
+    }
+
+  private def describeVersionUnsafe(): String = {
     val gitOutput = os.proc("git", "describe", "--tags", "--long", "--match", "v*")
       .call(cwd = mill.api.BuildCtx.workspaceRoot, stderr = os.Pipe)
       .out
