@@ -465,6 +465,78 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |   ^""".stripMargin,
       )
     }
+
+    "decode simpleDict as a compactDict (fallback) " in {
+      case class Annotable(
+          @simpleDict
+          annotations: Map[String, Annotation],
+      )
+      case class Annotation(
+          @id
+          tag: String,
+          @value
+          value: String,
+          additionalValue: Option[String] = None,
+      )
+      val yaml =
+        """annotations:
+          |  someTag:
+          |    # compact dict with optional value set
+          |    value: someValue
+          |    additionalValue: someAdditionalValue
+          |  someOtherTag:
+          |    # expanded dict with optional value unset
+          |    tag: someOtherTag
+          |    value: someOtherValue
+          |""".stripMargin
+
+      val codec = LinkmlYamlCodec.derived[Annotable]
+
+      parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Annotable(
+        Map(
+          "someTag" -> Annotation("someTag", "someValue", Some("someAdditionalValue")),
+          "someOtherTag" -> Annotation("someOtherTag", "someOtherValue"),
+        ),
+      )
+    }
+
+    "decode nested mixed simple/compact Dicts" in {
+      case class Annotable(
+          @simpleDict
+          annotations: Map[String, Annotation],
+      )
+      case class Annotation(
+          @id
+          tag: String,
+          @value
+          value: String,
+          @simpleDict
+          annotations: Map[String, Annotation] = Map(),
+      )
+      val yaml =
+        """annotations:
+          |  tooltip:
+          |    tag: tooltip
+          |    value: tooltip value
+          |    annotations:
+          |      source: source value
+          |""".stripMargin
+
+      val codec = LinkmlYamlCodec.derived[Annotable]
+
+      parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(
+        Annotable(
+          Map(
+            "tooltip" -> Annotation(
+              "tooltip",
+              "tooltip value",
+              Map("source" -> Annotation("source", "source value")),
+            ),
+          ),
+        ),
+      )
+    }
+
     "don't generate codecs for classes with private fields in the primary constructor" in {
       assert(intercept[TestFailedException](assertCompiles {
         """class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
