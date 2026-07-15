@@ -1,4 +1,4 @@
-name: Publish Library to GCP
+name: Publish release
 on:
   push:
     tags:
@@ -34,51 +34,6 @@ jobs:
         with:
           name: linkml-scala-assembly
           path: linkml-scala.jar
-
-  npm-publish:
-    # Independent of the JVM/native jobs: publishes the Scala.js library to npm.
-    # Uses npm trusted publishing (OIDC).
-    name: Publish JS library to npm
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      id-token: write # Required for npm trusted publishing (OIDC)
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-        with:
-          fetch-depth: 0 # Required so Mill can derive the version from Git tags
-
-      - name: Cache Dependencies
-        uses: coursier/cache-action@v8
-
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
-        with:
-          jvm: temurin:25
-          apps: mill
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 24 # >= 22.14.0 required by trusted publishing
-
-      - name: Ensure npm supports trusted publishing
-        run: npm install -g npm@latest # Trusted publishing needs npm >= 11.5.1
-
-      - name: Assemble npm package
-        run: ./mill generator.js.npmPackage
-
-      - name: Verify npm package (examples run + types compile)
-        run: ./mill generator.js.verifyPackage
-
-      - name: Publish to npm
-        working-directory: out/generator/js/npmPackage.dest
-        run: |
-          VERSION=$(node -p "require('./package.json').version")
-          if [[ "$VERSION" == *SNAPSHOT* ]]; then TAG=next; else TAG=latest; fi
-          echo "Publishing @neverblink/linkml@$VERSION under dist-tag $TAG"
-          npm publish --tag "$TAG"
 
   aot-compile:
     name: AOT compile on ${{ matrix.os }}
@@ -133,6 +88,7 @@ jobs:
           path: out/cli/jvm/nativeImage.dest/*
 
   publish:
+    name: Publish to Maven and GitHub
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -190,3 +146,48 @@ jobs:
           MILL_PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: ./mill mill.javalib.SonatypeCentralPublishModule/
 
+  npm-publish:
+    # Independent of the JVM/native jobs: publishes the Scala.js library to npm.
+    # Uses npm trusted publishing (OIDC).
+    name: Publish JS library to npm
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for npm trusted publishing (OIDC)
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Required so Mill can derive the version from Git tags
+
+      - name: Cache Dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:25
+          apps: mill
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24 # >= 22.14.0 required by trusted publishing
+
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest # Trusted publishing needs npm >= 11.5.1
+
+      - name: Assemble npm package
+        run: ./mill generator.js.npmPackage
+
+      - name: Verify npm package (examples run + types compile)
+        run: ./mill generator.js.verifyPackage
+
+      - name: Publish to npm
+        working-directory: out/generator/js/npmPackage.dest
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if [[ "$VERSION" == *SNAPSHOT* ]]; then TAG=next; else TAG=latest; fi
+          echo "Publishing @neverblink/linkml@$VERSION under dist-tag $TAG"
+          npm publish --tag "$TAG"
