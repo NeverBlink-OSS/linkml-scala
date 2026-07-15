@@ -541,6 +541,44 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "decode nested mixed simple/compact Dicts with UriOrCurie key" in {
+      case class Annotable(
+          @simpleDict
+          annotations: Map[String, Annotation],
+          x: Option[String] = None,
+      )
+      case class Annotation(
+          @id
+          tag: UriOrCurie,
+          @value
+          value: String,
+          @simpleDict
+          annotations: Map[String, Annotation] = Map(),
+      )
+      val yaml =
+        """annotations:
+          |  tooltip:
+          |    tag: tooltip
+          |    value: tooltip value
+          |    annotations:
+          |      source: source value
+          |""".stripMargin
+
+      val codec = LinkmlYamlCodec.derived[Annotable]
+
+      parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(
+        Annotable(
+          Map(
+            "tooltip" -> Annotation(
+              Curie("tooltip"),
+              "tooltip value",
+              Map("source" -> Annotation(Curie("source"), "source value")),
+            ),
+          ),
+        ),
+      )
+    }
+
     "don't generate codecs for classes with private fields in the primary constructor" in {
       assert(intercept[TestFailedException](assertCompiles {
         """class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
