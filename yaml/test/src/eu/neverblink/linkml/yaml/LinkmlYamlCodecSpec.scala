@@ -503,7 +503,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
-    "decode nested mixed simple/compact Dicts" ignore {
+    "decode nested mixed simple/compact Dicts" in {
       case class Annotable(
           @simpleDict
           annotations: Map[String, Annotation],
