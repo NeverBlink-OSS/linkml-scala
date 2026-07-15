@@ -1,15 +1,48 @@
+<div align="center">
+
+[![Playground](https://img.shields.io/badge/playground-try_it_live-8A2BE2?style=flat-square&logo=scala&logoColor=white)](https://linkml.neverblink.eu/playground)
+[![Maven Central](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3?style=flat-square&logo=apachemaven&logoColor=white&label=maven%20central)](https://central.sonatype.com/namespace/eu.neverblink.linkml)
+[![npm](https://img.shields.io/npm/v/@neverblink/linkml?style=flat-square&logo=npm&logoColor=white&label=npm)](https://www.npmjs.com/package/@neverblink/linkml)
+[![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=CLI%20release&color=blue)](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest)
+
+[![Platforms](https://img.shields.io/badge/platforms-JVM_·_JS_·_native-4B8BBE?style=flat-square)](#-quick-start-installation)
+[![Scala 3](https://img.shields.io/badge/Scala-3.8-DC322F?style=flat-square&logo=scala&logoColor=white)](https://www.scala-lang.org)
+[![Scala.js](https://img.shields.io/badge/Scala.js-1.22-blue?style=flat-square&logo=scala&logoColor=white)](https://www.scala-js.org)
+[![JDK 17+](https://img.shields.io/badge/JDK-17+-f89820?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square&logo=apache&logoColor=white)](LICENSE)
+
+</div>
+
 # LinkML-Scala
-[![Maven Central Version](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3)](https://central.sonatype.com/namespace/eu.neverblink.linkml) [![Maven metadata URL](https://img.shields.io/maven-metadata/v?metadataUrl=https%3A%2F%2Fcentral.sonatype.com%2Frepository%2Fmaven-snapshots%2Feu%2Fneverblink%2Flinkml%2Fgenerator_3%2Fmaven-metadata.xml)](https://central.sonatype.com/repository/maven-snapshots/eu/neverblink/linkml/generator_3/maven-metadata.xml)
+
+**[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharding data.** You write your data model once in a simple YAML format, and LinkML generates code, schemas, and validation rules for multiple programming languages and data formats.
+
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the JVM, [in your browser](https://linkml.neverblink.eu/playground/) or Node.js (pure JavaScript!), and even compiles to native binaries. We have both a command-line interface (CLI) and a library for programmatic access.
+
+## Why LinkML-Scala?
+
+### 🚀 It's really fast!
+
+TODO
+
+### 🌐 Works in the browser and Node.js
+
+### ⚡ Natively compiled binaries for Linux, macOS, and Windows
+
+### 🧭 Actually useful error messages
+
+TODO
 
 
-LinkML-Scala is a robust, cross-platform library (JVM, Scala.JS, Scala Native) powered by Scala 3.8+.
+
+library (JVM, Scala.JS) powered by Scala 3.8+.
 
 Prerequisite Note: LinkML-Scala requires JDK 17 or higher. It will not run on older Java versions.
 
 While primarily a library, you can access its core features (like schema validation and code generation) 
 directly from your terminal using the `linkml-scala` Command-Line Interface (CLI) tool.
 
-## 🚀 Quick Start: Installation
+## Quick start: Installation
 
 Choose the installation method that best fits your operating system and workflow. Once installed, running `linkml-scala`
 without any options will print a helpful list of available commands.
