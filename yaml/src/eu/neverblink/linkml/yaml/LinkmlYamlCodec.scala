@@ -322,36 +322,43 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
             '{
               $id match {
                 case Some(s) =>
-                  ${
-                    var index = -1
-                    classInfo.genNew(
-                      classInfo.paramLists.map(_.foldLeft(new mutable.ListBuffer[Term]) {
-                        (params, _) =>
-                          index += 1
-                          params.addOne(
-                            if (index == idFieldInfoIndex) {
-                              val field = fields(idFieldInfoIndex)
-                              val kTpe = field.resolvedTpe
-                              (kTpe.asType match {
-                                case '[UriOrCurie] => '{ UriOrCurie(s.toString) }
-                                case '[kt] =>
-                                  '{
-                                    s match {
-                                      case value: kt => value
-                                      case _ =>
-                                        LinkmlYamlCodec.decodeError(
-                                          s"value of type '${$tpeName}' for id field",
-                                          $node,
-                                        )
-                                    }
-                                  }
-                              }).asTerm
-                            } else if (index == valFieldInfoIndex) {
-                              genDecode[vt](vTpe, node, '{ None }).asTerm
-                            } else fields(index).defaultValue.get,
-                          )
-                      }.toList),
-                    ).asExpr
+                  $node match {
+                    case n: Node.MappingNode =>
+                      val kvs = LinkmlYamlCodec.getFields(n)
+                      ${ genDecodeFields('kvs) }
+                    case _: Node.ScalarNode =>
+                      ${
+                        var index = -1
+                        classInfo.genNew(
+                          classInfo.paramLists.map(_.foldLeft(new mutable.ListBuffer[Term]) {
+                            (params, _) =>
+                              index += 1
+                              params.addOne(
+                                if (index == idFieldInfoIndex) {
+                                  val field = fields(idFieldInfoIndex)
+                                  val kTpe = field.resolvedTpe
+                                  (kTpe.asType match {
+                                    case '[UriOrCurie] => '{ UriOrCurie(s.toString) }
+                                    case '[kt] =>
+                                      '{
+                                        s match {
+                                          case value: kt => value
+                                          case _ =>
+                                            LinkmlYamlCodec.decodeError(
+                                              s"value of type '${$tpeName}' for id field",
+                                              $node,
+                                            )
+                                        }
+                                      }
+                                  }).asTerm
+                                } else if (index == valFieldInfoIndex) {
+                                  genDecode[vt](vTpe, node, '{ None }).asTerm
+                                } else fields(index).defaultValue.get,
+                              )
+                          }.toList),
+                        ).asExpr
+                      }
+                    case n => LinkmlYamlCodec.decodeError("map, string or null value", n)
                   }
                 case _ =>
                   val kvs = $node match {
