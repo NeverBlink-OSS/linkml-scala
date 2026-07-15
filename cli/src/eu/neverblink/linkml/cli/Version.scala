@@ -7,7 +7,7 @@ import java.time.Year
 @HelpMessage("Print the version of linkml-scala and its key components.")
 final case class VersionOptions()
 
-object Version extends Command[VersionOptions] {
+object Version extends BaseCommand[VersionOptions] {
   override def names: List[List[String]] = List(
     List("version"),
     List("v"),
@@ -15,15 +15,14 @@ object Version extends Command[VersionOptions] {
   )
 
   override def run(options: VersionOptions, remainingArgs: RemainingArgs): Unit = {
+    val jvm = System.getProperty("java.vm.name") + " " + System.getProperty("java.vm.version")
     printLine(
       s"""
          |linkml-scala   ${BuildInfo.version}
          |-------------------------------------------------------------
          |Scala          ${BuildInfo.scalaVersion}
          |RDF4J          ${BuildInfo.rdf4jVersion}
-         |JVM            ${System.getProperty("java.vm.name")} ${System.getProperty(
-          "java.vm.version",
-        )}
+         |JVM            $jvm
          |-------------------------------------------------------------""".stripMargin.trim,
     )
     printLine(

@@ -17,7 +17,7 @@ trait HasGenerateOptions:
   @Recurse
   val common: GenerateOptions
 
-abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends Command[T], BaseCommand {
+abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends BaseCommand[T] {
   protected def generatorName: String
 
   /** Returns an iterable of pairs of (filename, content) to be generated.
