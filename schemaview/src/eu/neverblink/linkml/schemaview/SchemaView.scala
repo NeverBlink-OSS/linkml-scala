@@ -415,7 +415,7 @@ object SchemaView {
   ): Seq[SchemaDefinition] = {
     given PrefixResolver = createPrefixResolver(schema)
     schema.imports.flatMap { uoc =>
-      var sUri = uoc.uri
+      var sUri = uoc.uri.stripPrefix("./")
       if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
         sUri = baseUri + PlatformSpecificUtils.separator + sUri
       loadSchemasInternal(sUri, true, importer, visited)
