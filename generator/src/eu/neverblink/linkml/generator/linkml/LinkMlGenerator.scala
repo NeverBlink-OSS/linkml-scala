@@ -57,25 +57,39 @@ class LinkMlGenerator(using sv: SchemaView) {
       classes = {
         val toInclude = sv.classes.filter((_, v) => doIncludeElement(v.inner))
         if skipClassDerivation then
-          toInclude.map((k, v) => k -> v.cls.impl.copy(classUri = Some(v.uriOrCurie)))
+          toInclude.map((k, v) =>
+            k -> v.cls.impl.copy(
+              classUri = Some(v.uriOrCurie),
+              fromSchema = Some(v.definingSchema.id),
+            ),
+          )
         else toInclude.map((k, v) => k -> v.materialize)
       },
       types = sv.types
         .collect {
           case (k, v) if doIncludeElement(v.inner) =>
-            k -> v.inner.impl.copy(typeUri = Some(v.uriOrCurie))
+            k -> v.inner.impl.copy(
+              typeUri = Some(v.uriOrCurie),
+              fromSchema = Some(v.definingSchema.id),
+            )
         },
       enums = sv.enums
         .collect {
           case (k, v) if doIncludeElement(v.inner) =>
-            k -> v.inner.impl.copy(enumUri = Some(v.uriOrCurie))
+            k -> v.inner.impl.copy(
+              enumUri = Some(v.uriOrCurie),
+              fromSchema = Some(v.definingSchema.id),
+            )
         },
       slotDefinitions =
         if skipClassDerivation then
           sv.slotDefinitions
             .collect {
               case (k, v) if doIncludeElement(v.inner) =>
-                k -> v.inner.impl.copy(slotUri = Some(v.uriOrCurie))
+                k -> v.inner.impl.copy(
+                  slotUri = Some(v.uriOrCurie),
+                  fromSchema = Some(v.definingSchema.id),
+                )
             }
         else Map.empty,
     )
