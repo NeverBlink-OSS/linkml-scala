@@ -242,17 +242,33 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
             val valVal =
               if (fieldInfo.kind == FieldKind.Id) {
                 val ftName = Expr(fTpe.show)
-                '{
-                  $id match {
-                    case Some(s: ft) => s
-                    case Some(_) =>
-                      LinkmlYamlCodec.decodeError(
-                        s"value of type '${$ftName}' for id field '${$mappedName}'",
-                        $node,
-                      )
-                    case _ => ${ defaultVal.asExpr }
-                  }
-                }.asTerm
+                val kTpe = fieldInfo.resolvedTpe
+                (kTpe.asType match {
+                  case '[UriOrCurie] =>
+                    '{
+                      $id match {
+                        case Some(s: String) => UriOrCurie(s)
+                        case None => ${ defaultVal.asExpr }
+                        case _ =>
+                          LinkmlYamlCodec.decodeError(
+                            s"value of type '${$ftName}' for id field '${$mappedName}'",
+                            $node,
+                          )
+                      }
+                    }
+                  case _ =>
+                    '{
+                      $id match {
+                        case Some(s: ft) => s
+                        case None => ${ defaultVal.asExpr }
+                        case _ =>
+                          LinkmlYamlCodec.decodeError(
+                            s"value of type '${$ftName}' for id field '${$mappedName}'",
+                            $node,
+                          )
+                      }
+                    }
+                }).asTerm
               } else defaultVal
             val valDef = ValDef(sym, new Some(valVal.changeOwner(sym)))
             valDefs.addOne(valDef)
@@ -336,6 +352,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                               params.addOne(
                                 if (index == idFieldInfoIndex) {
                                   val field = fields(idFieldInfoIndex)
+                                  val mappedName = Expr(field.mappedName)
                                   val kTpe = field.resolvedTpe
                                   (kTpe.asType match {
                                     case '[UriOrCurie] => '{ UriOrCurie(s.toString) }
@@ -345,7 +362,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                                           case value: kt => value
                                           case _ =>
                                             LinkmlYamlCodec.decodeError(
-                                              s"value of type '${$tpeName}' for id field",
+                                              s"value of type '${$tpeName}' for id field '${$mappedName}'",
                                               $node,
                                             )
                                         }
