@@ -4,6 +4,7 @@
 //| - ch.epfl.scala:scalafix-interfaces:0.14.6
 //| - io.github.alexarchambault.mill::mill-native-image::0.2.5
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
+//| - com.lihaoyi::mill-contrib-jmh:$MILL_VERSION
 //| - com.carlosedp::mill-aliases::1.1.0
 //| - org.scalameta::scalameta:4.13.4
 //| bspScriptIgnore: [".idea/**"]
@@ -13,6 +14,7 @@ package build
 
 import com.goyeau.mill.scalafix.ScalafixModule
 import mill.*
+import mill.contrib.jmh.JmhModule
 import mill.contrib.scoverage.*
 import mill.javalib.publish.*
 import mill.scalalib.scalafmt.ScalafmtModule
@@ -326,6 +328,28 @@ object cli extends Module {
       override def moduleDeps = super.moduleDeps :+ build.tests.jvm
     }
   }
+}
+
+/** JMH benchmarks for the code generators. JVM-only, not published. Run with:
+  * `./mill benchmark.runJmh`
+  */
+object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule {
+  def scalaVersion = scala
+
+  // JMH forks a JVM using this runtime; the CommonParams JVM flags require JDK 24+
+  // (e.g. -XX:+UseCompactObjectHeaders).
+  override def jvmVersion = "temurin:25"
+
+  def jmhCoreVersion = "1.37"
+
+  def moduleDeps = Seq(
+    build.generator.jvm,
+  )
+
+  def scalacOptions = Seq(
+    "-release",
+    "17",
+  )
 }
 
 object tests extends Module {

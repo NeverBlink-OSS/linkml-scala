@@ -15,6 +15,7 @@ Common tasks with mill:
 - Scan the mill project structure: `./mill resolve _`
 - Compile all modules: `./mill __.compile`
 - Run all tests: `./mill __.test` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`)
+- Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project `./mill lint` (scalafix + scalafmt)
 - Re-generate the metamodel classes `./mill metamodel.regenerate`
 - Fetch the metamodel definitions from [linkml/linkml-model](https://github.com/linkml/linkml-model) `./mill metamodel.definitions`
@@ -44,6 +45,14 @@ npm run watch     # esbuild, rebuilds on change
 npm run typecheck # tsc --noEmit
 npm run build     # one-off bundle
 ```
+
+## Benchmarks
+
+Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://github.com/openjdk/jmh) via the mill JMH plugin. The module is JVM-only and is never published.
+
+- Run all benchmarks: `./mill benchmark.runJmh`
+- Run a subset (regex over benchmark names): `./mill benchmark.runJmh ".*jsonSchema.*"`
+- List available benchmarks: `./mill benchmark.listJmhBenchmarks`
 
 ## Releasing with GitHub UI
 
