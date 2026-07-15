@@ -72,19 +72,31 @@ case class PatternExpressionImpl(
 ) extends PatternExpression
 
 /** A regular expression pattern used to evaluate conformance of a string
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class PatternExpression extends Extensible, Annotatable, CommonMetadata {
 
   /** If true then the pattern is first string interpolated
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def interpolated: Boolean
 
   /** If not true then the pattern must match the whole string, as if enclosed in ^...$
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def partialMatch: Boolean
 
   /** The string value of the slot must conform to this regular expression expressed in the string.
     * May be interpolated.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def syntax: Option[String]
 }

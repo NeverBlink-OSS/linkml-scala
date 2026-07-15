@@ -75,19 +75,30 @@ case class StructuredAliasImpl(
 
 /** Object that contains meta data about a synonym or alias including where it came from (source)
   * and its scope (narrow, broad, etc.)
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class StructuredAlias extends Expression, Extensible, Annotatable, CommonMetadata {
 
   /** The context in which an alias should be applied
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def aliasContexts: Seq[Uri]
 
   /** The relationship between an element and its alias.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def aliasPredicate: Option[Reference[AliasPredicateEnum]]
 
   /** The category or categories of an alias. This can be drawn from any relevant vocabulary
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   If you wish to use uncontrolled terms or terms that lack identifiers then use the keywords
     *   element
@@ -100,6 +111,8 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
     *
     * @see
     *   Aliases: alias_name, string_value
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def literalForm: String
 }

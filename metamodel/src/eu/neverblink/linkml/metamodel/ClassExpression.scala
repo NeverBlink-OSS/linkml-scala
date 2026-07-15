@@ -3,6 +3,9 @@ package eu.neverblink.linkml.metamodel
 // GENERATED FROM LINKML
 
 /** A boolean expression that can be used to dynamically determine membership of a class
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 trait ClassExpression {
 
@@ -10,6 +13,8 @@ trait ClassExpression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def anyOf: Seq[AnonymousClassExpressionImpl]
 
@@ -17,6 +22,8 @@ trait ClassExpression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def exactlyOneOf: Seq[AnonymousClassExpressionImpl]
 
@@ -24,6 +31,8 @@ trait ClassExpression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def noneOf: Seq[AnonymousClassExpressionImpl]
 
@@ -31,10 +40,15 @@ trait ClassExpression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def allOf: Seq[AnonymousClassExpressionImpl]
 
   /** Expresses constraints on a group of slots for a class expression
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def slotConditions: Map[String, SlotDefinitionImpl]
 }

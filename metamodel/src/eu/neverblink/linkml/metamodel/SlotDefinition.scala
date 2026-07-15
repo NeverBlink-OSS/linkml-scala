@@ -413,6 +413,8 @@ case class SlotDefinitionImpl(
   *
   * @see
   *   Aliases: slot, field, property, attribute, column, variable
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class SlotDefinition extends Definition, SlotExpression {
 
@@ -425,6 +427,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   https://linkml.io/linkml/schemas/uris-and-mappings.html
     * @see
     *   Aliases: public ID
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Assigning slot_uris can provide additional hooks for interoperation, indicating a common
     *   conceptual model
@@ -450,6 +454,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   https://w3id.org/linkml/key
     * @see
     *   Aliases: primary key, ID, UID, code
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The identifier slot is inherited.
     * @note
@@ -468,6 +474,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   /** The name used for a slot in the context of its owning class. If present, this is used instead
     * of the actual slot name.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
     * @note
@@ -477,6 +485,9 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   def alias: Option[String]
 
   /** A primary parent slot from which inheritable metaslots are propagated
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isA: Option[Reference[SlotDefinition]]
 
@@ -486,6 +497,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   https://en.wikipedia.org/wiki/Mixin
     * @see
     *   Aliases: traits
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Mixins act in the same way as parents (is_a). They allow a model to have a primary strict
     *   hierarchy, while keeping the benefits of multiple inheritance
@@ -497,17 +510,25 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     * where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
     * gene_my_organism, adding the slot to this class, and then adding an apply_to pointing to the
     * gene class. The new slot will be 'injected into' the gene class.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def applyTo: Seq[Reference[SlotDefinition]]
 
   /** If s is antisymmetric, and i.s=v where i is different from v, v.s cannot have value i
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Asymmetry is the combination of antisymmetry and irreflexivity
     */
   def asymmetric: Boolean
 
   /** If true then all direct is_a children are mutually disjoint and share no instances in common
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def childrenAreMutuallyDisjoint: Boolean
 
@@ -518,11 +539,16 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   https://linkml.io/linkml/schemas/type-designators.html
     * @see
     *   Aliases: type designator
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def designatesType: Boolean
 
   /** Two classes are disjoint if they have no instances in common, two slots are disjoint if they
     * can never hold between the same two instances
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def disjointWith: Seq[Reference[SlotDefinition]]
 
@@ -530,10 +556,16 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     * C1 range: C2 the declaration X: S1: Y
     *
     * implicitly asserts that X is an instance of C1
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def domain: Option[Reference[ClassDefinition]]
 
   /** The class(es) that reference the slot in a "slots" or "slot_usage" context
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def domainOf: Seq[Reference[ClassDefinition]]
 
@@ -546,11 +578,15 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *
     * @see
     *   https://w3id.org/linkml/equals_expression
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def ifabsent: Option[String]
 
   /** True means that the *value* of a slot is inherited by subclasses
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The slot is to be used for defining *metamodels* only
     * @note
@@ -559,23 +595,38 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   def inherited: Boolean
 
   /** Indicates that any instance of d s r implies that there is also an instance of r s' d
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def inverse: Option[Reference[SlotDefinition]]
 
   /** If s is irreflexive, then there exists no i such i.s=i
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def irreflexive: Boolean
 
   /** Indicates that for any instance, i, the domain of this slot will include an assertion of i s
     * range
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isClassField: Boolean
 
   /** True if this slot is a grouping slot
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isGroupingSlot: Boolean
 
   /** True means that this slot was defined in a slot_usage situation
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isUsageSlot: Boolean
 
@@ -592,6 +643,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   https://w3id.org/linkml/unique_keys
     * @see
     *   https://w3id.org/linkml/identifier
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The key slot is inherited.
     * @note
@@ -607,6 +660,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   /** If True, then the order of elements of a multivalued slot is guaranteed to be preserved. If
     * False, the order may still be preserved but this is not guaranteed
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Should only be used with multivalued slots
     */
@@ -614,6 +669,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
 
   /** If True, then there must be no duplicates in the elements of a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Should only be used with multivalued slots
     */
@@ -621,21 +678,32 @@ abstract class SlotDefinition extends Definition, SlotExpression {
 
   /** If s is locally_reflexive, then i.s=i for all instances i where s is a class slot for the type
     * of i
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def locallyReflexive: Boolean
 
   /** The "owner" of the slot. It is the class if it appears in the slots list, otherwise the
     * declaring slot
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def owner: Option[Reference[Definition]]
 
   /** A rule for inferring a slot assignment based on evaluating a path through a sequence of slot
     * assignments
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def pathRule: Option[PathExpressionImpl]
 
   /** If present, slot is read only. Text explains why
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The slot is to be used for defining *metamodels* only
     */
@@ -643,6 +711,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
 
   /** If s is reflexive, then i.s=i for all instances i
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   It is rare for a property to be reflexive, this characteristic is added for completeness,
     *   consider instead locally_reflexive
@@ -650,6 +720,9 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   def reflexive: Boolean
 
   /** Transitive_form_of including the reflexive case
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def reflexiveTransitiveFormOf: Option[Reference[SlotDefinition]]
 
@@ -658,6 +731,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *
     * @see
     *   Aliases: reification_role
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   This should only be used on slots that are applicable to class that represent relationships
     * @note
@@ -671,6 +746,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
 
   /** A textual descriptor that indicates the role played by the slot range
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The primary use case for this slot is to provide a textual descriptor of a generic slot name
     *   when used in the context of a more specific class
@@ -682,11 +759,15 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *
     * @see
     *   Aliases: inverse functional, many to one or many
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def shared: Boolean
 
   /** A name that is used in the singular form
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   This may be used in some schema translations where use of a singular form is idiomatic, for
     *   example RDF
@@ -695,6 +776,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
 
   /** Allows for grouping of related slots into a grouping slot that serves the role of a group
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Slot groups do not change the semantics of a model but are a useful way of visually grouping
     *   related slots
@@ -705,6 +788,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     * does not guarantee an expansion of the ontological hierarchy into an enumerated list of
     * possible values in every serialization of the model.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @example
     *   `RO:HOM0000001`: this is the RO term for "in homology relationship with", and used as a
     *   value of subproperty of this means that any ontological child (related to RO:HOM0000001 via
@@ -717,16 +802,24 @@ abstract class SlotDefinition extends Definition, SlotExpression {
   def subpropertyOf: Option[Reference[SlotDefinition]]
 
   /** If s is symmetric, and i.s=v, then v.s=i
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def symmetric: Boolean
 
   /** If s is transitive, and i.s=z, and s.s=j, then i.s=j
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def transitive: Boolean
 
   /** If s transitive_form_of d, then (1) s holds whenever d holds (2) s is transitive (3) d holds
     * whenever s holds and there are no intermediates, and s is not reflexive
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Example: ancestor_of is the transitive_form_of parent_of
     */
@@ -734,17 +827,25 @@ abstract class SlotDefinition extends Definition, SlotExpression {
 
   /** A collection of type mappings that specify how a slot's range should be mapped or serialized
     * in different frameworks
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def typeMappings: Map[String, TypeMappingImpl]
 
   /** Indicates that the domain element consists exactly of the members of the element in the range.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   This only applies in the OWL generation
     */
   def unionOf: Seq[Reference[SlotDefinition]]
 
   /** The name of the slot referenced in the slot_usage
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def usageSlotName: Option[String]
 }

@@ -16,15 +16,23 @@ case class ExtraSlotsExpressionImpl(
 
 /** An expression that defines how to handle additional data in an instance of class beyond the
   * slots/attributes defined for that class. See `extra_slots` for usage examples.
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class ExtraSlotsExpression extends Expression {
 
   /** Whether or not something is allowed. Usage defined by context.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def allowed: Boolean
 
   /** A range that is described as a boolean expression combining existing ranges
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   One use for this is being able to describe a range using any_of expressions, for example to
     *   combine two enums

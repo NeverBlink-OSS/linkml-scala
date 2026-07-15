@@ -26,6 +26,9 @@ case class ReachabilityQueryImpl(
 /** A query that is used on an enum expression to dynamically obtain a set of permissible values via
   * walking from a set of source nodes to a set of descendants or ancestors over a set of
   * relationship types.
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class ReachabilityQuery {
 
@@ -33,6 +36,8 @@ abstract class ReachabilityQuery {
     *
     * @see
     *   Aliases: reflexive
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def includeSelf: Boolean
 
@@ -41,6 +46,8 @@ abstract class ReachabilityQuery {
     *
     * @see
     *   Aliases: non-transitive
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isDirect: Boolean
 
@@ -48,10 +55,15 @@ abstract class ReachabilityQuery {
     *
     * @see
     *   Aliases: predicates, properties
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def relationshipTypes: Seq[UriOrCurie]
 
   /** A list of nodes that are used in the reachability query
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def sourceNodes: Seq[UriOrCurie]
 
@@ -60,6 +72,8 @@ abstract class ReachabilityQuery {
     *
     * @see
     *   Aliases: terminology, vocabulary
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Examples include schema.org, wikidata, or an OBO ontology
     * @note
@@ -71,6 +85,8 @@ abstract class ReachabilityQuery {
     *
     * @see
     *   Aliases: ancestors
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def traverseUp: Boolean
 }

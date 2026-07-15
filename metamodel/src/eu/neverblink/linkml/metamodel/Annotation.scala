@@ -22,10 +22,16 @@ case class AnnotationImpl(
 ) extends Annotation
 
 /** A tag/value pair with the semantics of OWL Annotation
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/annotations
   */
 abstract class Annotation extends Extension, Annotatable {
 
   /** A collection of tag/text tuples with the semantics of OWL Annotation
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/annotations
     */
   def annotations: Map[String, AnnotationImpl]
 }

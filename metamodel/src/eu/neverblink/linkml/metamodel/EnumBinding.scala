@@ -75,19 +75,30 @@ case class EnumBindingImpl(
 ) extends EnumBinding
 
 /** A binding of a slot or a class to a permissible value from an enumeration.
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
 
   /** A path to a slot that is being bound to a permissible value from an enumeration.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def bindsValueOf: Option[String]
 
   /** The level of obligation or recommendation strength for a metadata element
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def obligationLevel: Option[Reference[ObligationLevelEnum]]
 
   /** Defines the specific formula to be used to generate the permissible values.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   You cannot have BOTH the permissible_values and permissible_value_formula tag
     * @note
@@ -102,6 +113,8 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     *
     * @see
     *   Aliases: value domain
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Range is underspecified, as not all elements can appear as the range of a slot.
     * @note

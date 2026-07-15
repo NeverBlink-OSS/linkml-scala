@@ -10,6 +10,8 @@ import eu.neverblink.linkml.runtime.*
   *   https://en.wikipedia.org/wiki/Data_element
   * @see
   *   Aliases: data element, object
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class Element extends Extensible, Annotatable, CommonMetadata {
 
@@ -22,6 +24,8 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *   https://linkml.io/linkml/faq/modeling.html#why-are-my-class-names-translated-to-camelcase
     * @see
     *   Aliases: short name, unique name
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def name: String
 
@@ -29,6 +33,8 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *
     * @see
     *   https://w3id.org/linkml/implements
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def conformsTo: Option[String]
 
@@ -39,6 +45,8 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *   https://w3id.org/linkml/class_uri
     * @see
     *   https://w3id.org/linkml/slot_uri
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Formed by combining the default_prefix with the normalized element name
     */
@@ -49,6 +57,8 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *
     * @see
     *   https://github.com/linkml/linkml-model/issues/28
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Order of elements may be used to indicate priority order
     * @note
@@ -65,17 +75,29 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *
     * @see
     *   https://github.com/linkml/linkml/issues/194
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def idPrefixesAreClosed: Boolean
 
   /** An element in another schema which this element conforms to. The referenced element is not
     * imported into the schema for the implementing element. However, the referenced schema may be
     * used to check conformance of the implementing element.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def implements: Seq[UriOrCurie]
 
   /** An element in another schema which this element instantiates.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def instantiates: Seq[UriOrCurie]
+
+  /** @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
   def localNames: Map[String, LocalNameImpl]
 }

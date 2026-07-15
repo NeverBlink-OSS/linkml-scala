@@ -18,14 +18,23 @@ case class LocalNameImpl(
 ) extends LocalName
 
 /** An attributed label
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class LocalName {
 
   /** The ncname of the source of the name
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def localNameSource: NcName
 
   /** A name assigned to an element in a given ontology
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def localNameValue: String
 }

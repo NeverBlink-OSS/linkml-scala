@@ -83,5 +83,8 @@ case class SubsetDefinitionImpl(
 ) extends SubsetDefinition
 
 /** An element that can be used to group other metamodel elements
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class SubsetDefinition extends Element {}

@@ -80,6 +80,8 @@ case class PermissibleValueImpl(
   *
   * @see
   *   Aliases: PV
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata {
 
@@ -87,6 +89,8 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *
     * @see
     *   Aliases: value
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   There are no constraints on the text of the permissible value, but for many applications you
     *   may want to consider following idiomatic forms and using computer-friendly forms
@@ -97,6 +101,8 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *
     * @see
     *   Aliases: definition
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def description: Option[String]
 
@@ -106,6 +112,9 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     * When translating to a SI framework (e.g. java classes, python classes) then is a is used. When
     * translating a framework without polymorphism (e.g. json-schema, solr document schema) then is
     * a and mixins are recursively unfolded
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isA: Option[Reference[PermissibleValue]]
 
@@ -116,6 +125,8 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *   https://en.wikipedia.org/wiki/Mixin
     * @see
     *   Aliases: traits
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Mixins act in the same way as parents (is_a). They allow a model to have a primary strict
     *   hierarchy, while keeping the benefits of multiple inheritance
@@ -128,6 +139,8 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *   https://en.wikipedia.org/wiki/ISO/IEC_11179
     * @see
     *   Aliases: PV meaning
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   We may want to change the range of this (and other) elements in the model to an
     *   entitydescription type construct
@@ -137,14 +150,23 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
   /** An element in another schema which this element conforms to. The referenced element is not
     * imported into the schema for the implementing element. However, the referenced schema may be
     * used to check conformance of the implementing element.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def implements: Seq[UriOrCurie]
 
   /** An element in another schema which this element instantiates.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def instantiates: Seq[UriOrCurie]
 
   /** An encoding of a unit
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def unit: Option[UnitOfMeasureImpl]
 }

@@ -20,18 +20,30 @@ case class ExtensionImpl(
 ) extends Extension
 
 /** A tag/value pair used to add non-model information to an entry
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/extensions
   */
 abstract class Extension {
 
   /** A tag associated with an extension
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/extensions
     */
   def extensionTag: UriOrCurie
 
   /** The actual annotation
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/extensions
     */
   def extensionValue: AnyValue
 
   /** A tag/text tuple attached to an arbitrary element
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/extensions
     */
   def extensions: Map[String, ExtensionImpl]
 }

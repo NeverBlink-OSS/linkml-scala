@@ -114,11 +114,16 @@ case class TypeDefinitionImpl(
 ) extends TypeDefinition
 
 /** An element that whose instances are atomic scalar values that can be mapped to primitive types
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class TypeDefinition extends Element, TypeExpression {
 
   /** The uri that defines the possible values for the type definition
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Uri is typically drawn from the set of URI's defined in OWL
     *   (https://www.w3.org/TR/2012/REC-owl2-syntax-20121211/#Datatype_Maps)
@@ -129,6 +134,8 @@ abstract class TypeDefinition extends Element, TypeExpression {
 
   /** A parent type from which type properties are inherited
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The target type definition of the typeof slot is referred to as the "parent type"
     * @note
@@ -140,6 +147,8 @@ abstract class TypeDefinition extends Element, TypeExpression {
 
   /** Python base type in the LinkML runtime that implements this type definition
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Every root type must have a base
     * @note
@@ -149,11 +158,16 @@ abstract class TypeDefinition extends Element, TypeExpression {
   def base: Option[String]
 
   /** The name of the python object that implements this type definition
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def repr: Option[String]
 
   /** Indicates that the domain element consists exactly of the members of the element in the range.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   This only applies in the OWL generation
     */

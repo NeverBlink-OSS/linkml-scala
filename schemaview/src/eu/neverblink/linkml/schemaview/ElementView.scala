@@ -259,10 +259,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
         slotKey -> slot.inner.asInstanceOf[SlotDefinitionImpl].copy(
           isA = None,
           mixins = Seq.empty,
+          fromSchema = Some(slot.definingSchema.id),
         ),
       ),
       slots = Seq.empty,
       slotUsage = Map.empty,
+      fromSchema = Some(definingSchema.id),
     )
   }
 }

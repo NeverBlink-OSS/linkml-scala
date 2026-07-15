@@ -8,6 +8,8 @@ import eu.neverblink.linkml.runtime.*
   *
   * @see
   *   https://en.wikipedia.org/wiki/Data_element_definition
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class Definition extends Element {
 
@@ -17,6 +19,9 @@ abstract class Definition extends Element {
     * When translating to a SI framework (e.g. java classes, python classes) then is a is used. When
     * translating a framework without polymorphism (e.g. json-schema, solr document schema) then is
     * a and mixins are recursively unfolded
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isA: Option[Reference[Definition]]
 
@@ -27,6 +32,8 @@ abstract class Definition extends Element {
     *   https://en.wikipedia.org/wiki/Mixin
     * @see
     *   Aliases: traits
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Mixins act in the same way as parents (is_a). They allow a model to have a primary strict
     *   hierarchy, while keeping the benefits of multiple inheritance
@@ -35,6 +42,9 @@ abstract class Definition extends Element {
 
   /** Indicates the class or slot cannot be directly instantiated and is intended for grouping
     * purposes.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def `abstract`: Boolean
 
@@ -43,6 +53,9 @@ abstract class Definition extends Element {
     * where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
     * gene_my_organism, adding the slot to this class, and then adding an apply_to pointing to the
     * gene class. The new slot will be 'injected into' the gene class.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def applyTo: Seq[Reference[Definition]]
 
@@ -53,6 +66,8 @@ abstract class Definition extends Element {
     *   https://en.wikipedia.org/wiki/Mixin
     * @see
     *   Aliases: trait
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def mixin: Boolean
 
@@ -69,6 +84,8 @@ abstract class Definition extends Element {
     *
     * @see
     *   https://github.com/linkml/issues/128
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def stringSerialization: Option[String]
 
@@ -79,6 +96,9 @@ abstract class Definition extends Element {
     * of the enumeration are listed directly in the model itself. Setting this property on a slot
     * does not guarantee an expansion of the ontological hierarchy into an enumerated list of
     * possible values in every serialization of the model.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def valuesFrom: Seq[UriOrCurie]
 }

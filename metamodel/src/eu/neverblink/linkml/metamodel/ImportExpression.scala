@@ -75,9 +75,24 @@ case class ImportExpressionImpl(
 ) extends ImportExpression
 
 /** An expression describing an import
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class ImportExpression extends Extensible, Annotatable, CommonMetadata {
+
+  /** @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
   def importAs: Option[NcName]
+
+  /** @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
   def importFrom: UriOrCurie
+
+  /** @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
   def importMap: Map[String, SettingImpl]
 }

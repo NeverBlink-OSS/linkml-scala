@@ -21,14 +21,22 @@ case class AltDescriptionImpl(
   *
   * @see
   *   Aliases: structured description
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class AltDescription {
 
   /** The source of an attributed description
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def altDescriptionSource: String
 
   /** Text of an attributed description
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def altDescriptionText: String
 }

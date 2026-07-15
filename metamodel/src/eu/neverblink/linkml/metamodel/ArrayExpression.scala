@@ -75,6 +75,9 @@ case class ArrayExpressionImpl(
 ) extends ArrayExpression
 
 /** Defines the dimensions of an array
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
 
@@ -82,11 +85,15 @@ abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
     *
     * @see
     *   Aliases: axes
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def dimensions: Seq[DimensionExpressionImpl]
 
   /** Exact number of dimensions in the array
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   If exact_number_dimensions is set, then minimum_number_dimensions and
     *   maximum_number_dimensions must be unset or have the same value
@@ -98,6 +105,8 @@ abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
     * interpreted as a closed list and the maximum_number_dimensions is the length of the dimensions
     * list, unless this value is set to False
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Maximum_number_dimensions cannot be less than minimum_number_dimensions
     */
@@ -105,6 +114,8 @@ abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
 
   /** Minimum number of dimensions in the array
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Minimum_cardinality cannot be greater than maximum_cardinality
     */

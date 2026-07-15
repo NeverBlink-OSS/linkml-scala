@@ -5,15 +5,24 @@ package eu.neverblink.linkml.metamodel
 import eu.neverblink.linkml.runtime.*
 
 /** An expression that constrains the range of values a slot can take
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 trait SlotExpression extends Expression {
 
   /** True means that slot can have more than one value and should be represented using a list or
     * collection structure.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def multivalued: Boolean
 
   /** True means that the slot must be present in instances of the class definition
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def required: Boolean
 
@@ -22,6 +31,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   https://github.com/linkml/linkml/issues/177
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   This is to be used where not all data is expected to conform to having a required field
     * @note
@@ -38,6 +49,8 @@ trait SlotExpression extends Expression {
     *   https://w3id.org/linkml/docs/specification/06mapping/#collection-forms
     * @see
     *   https://linkml.io/linkml/schemas/inlining.html
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Classes without keys or identifiers are necessarily inlined as lists
     * @note
@@ -53,6 +66,8 @@ trait SlotExpression extends Expression {
     *   https://w3id.org/linkml/docs/specification/06mapping/#collection-forms
     * @see
     *   https://linkml.io/linkml/schemas/inlining.html
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The default loader will accept either list or dictionary form as input. This parameter
     *   controls internal representation and output.
@@ -64,6 +79,9 @@ trait SlotExpression extends Expression {
   def inlinedAsList: Boolean
 
   /** The string value of the slot must conform to this regular expression expressed in the string
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def pattern: Option[String]
 
@@ -71,6 +89,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def anyOf: Seq[AnonymousSlotExpressionImpl]
 
@@ -78,6 +98,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def exactlyOneOf: Seq[AnonymousSlotExpressionImpl]
 
@@ -85,6 +107,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def noneOf: Seq[AnonymousSlotExpressionImpl]
 
@@ -92,14 +116,22 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def allOf: Seq[AnonymousSlotExpressionImpl]
 
   /** The value of the slot is multivalued with all members satisfying the condition
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def allMembers: Option[AnonymousSlotExpressionImpl]
 
   /** Coerces the value of the slot into an array and defines the dimensions of that array
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def array: Option[ArrayExpressionImpl]
 
@@ -111,10 +143,16 @@ trait SlotExpression extends Expression {
     * a given context. For example, a HumanSample class may have a slot for representing sample
     * site, with a range of concept, but the values of that slot may be restricted to concepts from
     * a particular branch of an anatomy ontology.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def bindings: Seq[EnumBindingImpl]
 
   /** An inlined enumeration
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def enumRange: Option[EnumExpressionImpl]
 
@@ -124,26 +162,39 @@ trait SlotExpression extends Expression {
     *   https://linkml.io/linkml/developers/inference.html
     * @see
     *   https://linkml.io/linkml/schemas/advanced.html#equals-expression
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   For example, a 'length' slot may have an equals_expression with value '(end-start)+1'
     */
   def equalsExpression: Option[String]
 
   /** The slot must have range of a number and the value of the slot must equal the specified value
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def equalsNumber: Option[Int]
 
   /** The slot must have range string and the value of the slot must equal the specified value
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def equalsString: Option[String]
 
   /** The slot must have range string and the value of the slot must equal one of the specified
     * values
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def equalsStringIn: Seq[String]
 
   /** The exact number of entries for a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   If exact_cardinality is set, then minimum_cardinalty and maximum_cardinality must be unset
     *   or have the same value
@@ -151,15 +202,23 @@ trait SlotExpression extends Expression {
   def exactCardinality: Option[Int]
 
   /** The value of the slot is multivalued with at least one member satisfying the condition
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def hasMember: Option[AnonymousSlotExpressionImpl]
 
   /** Causes the slot value to be interpreted as a uriorcurie after prefixing with this string
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def implicitPrefix: Option[String]
 
   /** The maximum number of entries for a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Maximum_cardinality cannot be less than minimum_cardinality
     */
@@ -169,6 +228,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   Aliases: high value
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
@@ -177,6 +238,8 @@ trait SlotExpression extends Expression {
 
   /** The minimum number of entries for a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Minimum_cardinality cannot be greater than maximum_cardinality
     */
@@ -186,6 +249,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   Aliases: low value
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
@@ -199,6 +264,8 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   Aliases: value domain
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Range is underspecified, as not all elements can appear as the range of a slot.
     * @note
@@ -208,6 +275,8 @@ trait SlotExpression extends Expression {
 
   /** A range that is described as a boolean expression combining existing ranges
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   One use for this is being able to describe a range using any_of expressions, for example to
     *   combine two enums
@@ -218,16 +287,23 @@ trait SlotExpression extends Expression {
     *
     * @see
     *   https://linkml.io/linkml/schemas/constraints.html#structured-patterns
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def structuredPattern: Option[PatternExpressionImpl]
 
   /** An encoding of a unit
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def unit: Option[UnitOfMeasureImpl]
 
   /** If PRESENT then a value must be present (for lists there must be at least one value). If
     * ABSENT then a value must be absent (for lists, must be empty)
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   If set to true this has the same effect as required=true. In contrast, required=false allows
     *   a value to be present

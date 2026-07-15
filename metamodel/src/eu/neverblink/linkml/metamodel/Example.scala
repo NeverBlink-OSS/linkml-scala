@@ -17,18 +17,30 @@ case class ExampleImpl(
 ) extends Example
 
 /** Usage example and description
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class Example {
 
   /** Example value
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def value: Option[String]
 
   /** Description of what the value is doing
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def valueDescription: Option[String]
 
   /** Direct object representation of the example
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def valueObject: Option[Anything]
 }

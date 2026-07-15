@@ -36,5 +36,8 @@ case class AnonymousTypeExpressionImpl(
 ) extends AnonymousTypeExpression
 
 /** A type expression that is not a top-level named type definition. Used for nesting.
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class AnonymousTypeExpression extends TypeExpression {}
