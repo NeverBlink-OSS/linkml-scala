@@ -6,6 +6,7 @@
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
 //| - com.carlosedp::mill-aliases::1.1.0
 //| - org.scalameta::scalameta:4.13.4
+//| - com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION
 //| bspScriptIgnore: [".idea/**"]
 //| mill-jvm-opts: ["-Xss256m", "-Xmx10G"]
 
@@ -21,6 +22,7 @@ import mill.scalajslib.api.ModuleKind
 import scalalib.*
 import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
+import mill.contrib.buildinfo.BuildInfo
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
 import millbuild.{NpmPackage, TsDefsGen}
@@ -29,6 +31,7 @@ import java.net.InetSocketAddress
 
 val scala = "3.8.4"
 val scalaJS = "1.22.0"
+val rdf4j = "5.3.2"
 
 object LinkMlAliases extends Aliases {
   def lint: Seq[String] = alias(
@@ -206,8 +209,8 @@ object generator extends Module {
   object jvm extends CommonModule, GeneratorDeps {
     override def mvnDeps = super.mvnDeps() ++ Seq(
       mvn"com.lihaoyi::os-lib:0.11.8",
-      mvn"org.eclipse.rdf4j:rdf4j-model:5.3.2",
-      mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:5.3.2",
+      mvn"org.eclipse.rdf4j:rdf4j-model:$rdf4j",
+      mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:$rdf4j",
       mvn"com.networknt:json-schema-validator:3.0.6",
     )
 
@@ -219,7 +222,7 @@ object generator extends Module {
       override def moduleDeps = super.moduleDeps :+ build.tests.jvm
 
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"org.eclipse.rdf4j:rdf4j-shacl:5.3.2",
+        mvn"org.eclipse.rdf4j:rdf4j-shacl:$rdf4j",
         mvn"com.networknt:json-schema-validator:3.0.6",
       )
     }
@@ -291,7 +294,15 @@ object generator extends Module {
 }
 
 object cli extends Module {
-  object jvm extends CommonModule, NativeImage {
+  object jvm extends CommonModule, NativeImage, BuildInfo {
+    def buildInfoPackageName = "eu.neverblink.linkml.cli"
+
+    def buildInfoMembers = Seq(
+      BuildInfo.Value("version", publishVersion()),
+      BuildInfo.Value("scalaVersion", scalaVersion()),
+      BuildInfo.Value("rdf4jVersion", rdf4j),
+    )
+
     override def mainClass = Some(nativeImageMainClass())
 
     def nativeImageMainClass = "eu.neverblink.linkml.cli.App"

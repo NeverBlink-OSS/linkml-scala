@@ -13,4 +13,5 @@ object App extends CommandsEntryPoint:
     Rdfs,
     LinkMl,
     TableSchema,
+    Version,
   )
