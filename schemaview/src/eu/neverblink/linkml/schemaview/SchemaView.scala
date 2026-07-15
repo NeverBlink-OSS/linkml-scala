@@ -30,9 +30,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   inline def resolve[T](inline ref: Reference[T]): Option[T] =
     (inline erasedValue[T] match {
       case _: TypeDefinition => types.get(ref.value).map(_._type)
-      case _: SlotDefinition => slotDefinitions.get(ref.value).map(_.slot)
-      case _: ClassDefinition => classes.get(ref.value).map(_.cls) // TODO also by UriOrCurie ?
+      case _: ClassDefinition => classes.get(ref.value).map(_.cls)
       case _: EnumDefinition => enums.get(ref.value).map(_._enum)
+
       case _: SubsetDefinition => subsets.get(ref.value).map(_.subset)
       // `range` slot's `range` is underspecified as per the metamodel notes,
       // I think it should be ClassDef | TypeDef | EnumDef
@@ -41,9 +41,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       // You can cast the argument of this method to get a view instead of the raw definition.
       // I tried to make it nicer, but the Scala compiler said "no".
       case _: TypeView => types.get(ref.value)
-      case _: SlotView => slotDefinitions.get(ref.value)
-      case _: ClassView => classes.get(ref.value) // TODO also by UriOrCurie ?
+      case _: ClassView => classes.get(ref.value)
       case _: EnumView => enums.get(ref.value)
+      case _: SlotView => slotDefinitions.get(ref.value)
       case _: SubsetView => subsets.get(ref.value)
       case _: ElementView[?] => getElement(ref.value)
       case _ => compiletime.error("SchemaView can't dereference " + compiletime.codeOf(ref))
@@ -170,9 +170,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   def getElement(name: String): Option[ElementView[?]] =
     classes.get(name)
-      .orElse(slotDefinitions.get(name))
       .orElse(types.get(name))
       .orElse(enums.get(name))
+      .orElse(slotDefinitions.get(name))
       .orElse(subsets.get(name))
 
   /** Get the class defined as `tree_root: true` from the schema, if any is present
