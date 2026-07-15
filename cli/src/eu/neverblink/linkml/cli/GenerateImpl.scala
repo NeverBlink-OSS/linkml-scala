@@ -44,6 +44,12 @@ object Scala extends Generate[ScalaOptions] {
 final case class JsonSchemaOptions(
     @Recurse
     common: GenerateOptions,
+    @HelpMessage(
+      "Whether the generated JSON Schema should allow additionalProperties for classes. Default: false",
+    )
+    open: Boolean = false,
+    @HelpMessage("If provided, override the schema tree_root with this class")
+    treeRootOverride: Option[String] = None,
 ) extends HasGenerateOptions
 
 object JsonSchema extends Generate[JsonSchemaOptions] {
@@ -53,7 +59,7 @@ object JsonSchema extends Generate[JsonSchemaOptions] {
       options: JsonSchemaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", JsonSchemaGenerator().serialize()),
+      ("", JsonSchemaGenerator().serialize(options.open, options.treeRootOverride)),
     )
 }
 
@@ -64,6 +70,16 @@ object JsonSchema extends Generate[JsonSchemaOptions] {
 final case class ShaclOptions(
     @Recurse
     common: GenerateOptions,
+    @HelpMessage(
+      "Whether the generated SHACL should allow additional properties for classes. Default: false",
+    )
+    open: Boolean = false,
+    @HelpMessage(
+      "Whether to include only classes from the root schema. " +
+        "This is useful if you intend to generate SHACL shapes for each schema file separately, " +
+        "and you don't need the imported classes to be included in the generated SHACL shapes. Default: false",
+    )
+    onlyClassesFromRootSchema: Boolean = false,
 ) extends HasGenerateOptions
 
 object Shacl extends Generate[ShaclOptions] {
@@ -73,7 +89,12 @@ object Shacl extends Generate[ShaclOptions] {
       options: ShaclOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", RdfUtils.toTurtle(ShaclGenerator().generate())),
+      (
+        "",
+        RdfUtils.toTurtle(
+          ShaclGenerator().generate(options.open, options.onlyClassesFromRootSchema),
+        ),
+      ),
     )
 }
 
@@ -84,6 +105,12 @@ object Shacl extends Generate[ShaclOptions] {
 final case class RdfsOptions(
     @Recurse
     common: GenerateOptions,
+    @HelpMessage(
+      "Whether to include only classes from the root schema. " +
+        "This is useful if you intend to generate RDFS for each schema file separately, " +
+        "and you don't need the imported classes to be included in the RDFS. Default: false",
+    )
+    onlyClassesFromRootSchema: Boolean = false,
 ) extends HasGenerateOptions
 
 object Rdfs extends Generate[RdfsOptions] {
@@ -93,7 +120,7 @@ object Rdfs extends Generate[RdfsOptions] {
       options: RdfsOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", RdfUtils.toTurtle(RdfsGenerator().generate())),
+      ("", RdfUtils.toTurtle(RdfsGenerator().generate(options.onlyClassesFromRootSchema))),
     )
 }
 
