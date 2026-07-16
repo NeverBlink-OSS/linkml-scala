@@ -52,19 +52,26 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** All types defined in the loaded schemas, as views.
     */
   lazy val types: Map[String, TypeView] =
-    schemas.map(schema => schema.types.map((k, v) => (k, TypeView(v, schema)))).reduce(_ ++ _)
+    schemas.foldLeft(Map.newBuilder[String, TypeView]) { (acc, schema) =>
+      schema.types.foreach((k, v) => acc.addOne((k, TypeView(v, schema))))
+      acc
+    }.result()
 
   /** All slots defined in the loaded schemas, as views.
     */
   lazy val slotDefinitions: Map[String, SlotView] =
-    schemas.map(schema => schema.slotDefinitions.map((k, v) => (k, SlotView(v, schema)))).reduce(
-      _ ++ _,
-    )
+    schemas.foldLeft(Map.newBuilder[String, SlotView]) { (acc, schema) =>
+      schema.slotDefinitions.foreach((k, v) => acc.addOne((k, SlotView(v, schema))))
+      acc
+    }.result()
 
   /** All classes defined in the loaded schemas, as views.
     */
   lazy val classes: Map[String, ClassView] =
-    schemas.map(schema => schema.classes.map((k, v) => (k, ClassView(v, schema)))).reduce(_ ++ _)
+    schemas.foldLeft(Map.newBuilder[String, ClassView]) { (acc, schema) =>
+      schema.classes.foreach((k, v) => acc.addOne((k, ClassView(v, schema))))
+      acc
+    }.result()
 
   /** Get all classes reachable from a given class, following derived attributes and optionally
     * ancestors. The result is a map of class name to class view, including the starting class.

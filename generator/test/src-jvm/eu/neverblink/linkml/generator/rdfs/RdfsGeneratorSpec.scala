@@ -230,19 +230,19 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
           |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/MotorVehicle> a rdfs:Class .
-          |
           |<https://neverblink.eu/linkml/rdfs/test/PassengerVehicle> a rdfs:Class;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Van> a rdfs:Class;
-          |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
+          |<https://neverblink.eu/linkml/rdfs/test/MotorVehicle> a rdfs:Class .
           |
           |<https://neverblink.eu/linkml/rdfs/test/Truck> a rdfs:Class;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
           |
           |<https://neverblink.eu/linkml/rdfs/test/MiniVan> a rdfs:Class;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/PassengerVehicle>, <https://neverblink.eu/linkml/rdfs/test/Van> .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/Van> a rdfs:Class;
+          |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
           |""".stripMargin
     }
 
