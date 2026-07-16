@@ -20,11 +20,10 @@ class NTriplesWriterSpec extends AnyWordSpec, Matchers {
     "format a blank node with the _: prefix" in {
       NTriplesWriter.format(BlankNode("b0")) shouldBe "_:b0"
     }
-    "format a typed string literal with its datatype" in {
-      NTriplesWriter.format(Literal("hello")) shouldBe
-        "\"hello\"^^<http://www.w3.org/2001/XMLSchema#string>"
+    "format an xsd:string literal as a simple literal (no datatype, per RDF 1.1)" in {
+      NTriplesWriter.format(Literal("hello")) shouldBe "\"hello\""
     }
-    "format a typed integer literal" in {
+    "format a typed integer literal with its datatype" in {
       NTriplesWriter.format(Literal("42", XmlSchema.integer)) shouldBe
         "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer>"
     }
@@ -41,10 +40,15 @@ class NTriplesWriterSpec extends AnyWordSpec, Matchers {
         "_:b1 <http://example.org/predicate> _:b2 .\n"
     }
 
-    "write a literal object with its datatype" in {
+    "write an xsd:string literal object as a simple literal" in {
       NTriplesWriter.writeToString(Seq(Triple(s, p, Literal("v")))) shouldBe
+        "<http://example.org/subject> <http://example.org/predicate> \"v\" .\n"
+    }
+
+    "write a non-string literal object with its datatype" in {
+      NTriplesWriter.writeToString(Seq(Triple(s, p, Literal("42", XmlSchema.integer)))) shouldBe
         "<http://example.org/subject> <http://example.org/predicate> " +
-        "\"v\"^^<http://www.w3.org/2001/XMLSchema#string> .\n"
+        "\"42\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n"
     }
 
     "write one terminated line per triple" in {

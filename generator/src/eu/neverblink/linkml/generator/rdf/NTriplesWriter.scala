@@ -5,10 +5,11 @@ package eu.neverblink.linkml.generator.rdf
   * output sink so the JVM source set can plug in a buffered byte sink for speed while sharing all
   * of the formatting/escaping logic here.
   *
-  * The output conforms to the N-Triples grammar of the RDF Test Cases specification
-  * (https://www.w3.org/TR/rdf-testcases/#ntriples): angle-bracketed IRIs, `"lexical"^^<datatype>`
-  * typed literals, US-ASCII output with numeric escapes for everything else, and one
-  * `subject predicate object .` line per triple terminated by a line feed.
+  * The output is RDF 1.1 N-Triples: angle-bracketed IRIs, `"lexical"^^<datatype>` typed literals
+  * with `xsd:string` written as a bare simple literal (`"lexical"`, equivalent in RDF 1.1), and one
+  * `subject predicate object .` line per triple terminated by a line feed. Escaping follows the
+  * grammar of the RDF Test Cases spec (https://www.w3.org/TR/rdf-testcases/#ntriples): US-ASCII
+  * output with numeric escapes for everything else.
   */
 object NTriplesWriter {
 
@@ -54,9 +55,16 @@ object NTriplesWriter {
     case Literal(value, datatype) =>
       sink.append('"')
       NTriplesEscape.escapeString(sink, value)
-      sink.append("\"^^<")
-      NTriplesEscape.escapeIri(sink, datatype.value)
-      sink.append('>')
+      sink.append('"')
+      // RDF 1.1: `"x"^^xsd:string` is the same term as the simple literal `"x"`, so omit the
+      // datatype for strings. Reference equality against the shared constant keeps this a cheap
+      // pointer compare (the generators always use `XmlSchema.string`); any other datatype — or a
+      // differently-constructed equal IRI — is written explicitly.
+      if (!(datatype eq XmlSchema.string)) {
+        sink.append("^^<")
+        NTriplesEscape.escapeIri(sink, datatype.value)
+        sink.append('>')
+      }
   }
 }
 
