@@ -4,6 +4,7 @@ import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import sttp.apispec.circe.encoderSchema
 import sttp.apispec.{ExampleSingleValue, Pattern, Schema, SchemaType}
 
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
@@ -564,14 +565,20 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv
-      JsonSchemaGenerator().serialize() should not be ""
+      val generator = JsonSchemaGenerator()
+      val expected = encoderSchema(generator.generate(false, None)).noSpaces
+      val result = generator.serialize(indentationStep = 0)
+      result shouldBe expected
     }
 
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
           assume(!skipModels.contains(entry.model.root.name))
-          JsonSchemaGenerator(using entry.model).serialize() should not be ""
+          val generator = JsonSchemaGenerator(using entry.model)
+          val expected = encoderSchema(generator.generate(false, None)).noSpaces
+          val result = generator.serialize(indentationStep = 0)
+          result shouldBe expected
         }
     }
   }

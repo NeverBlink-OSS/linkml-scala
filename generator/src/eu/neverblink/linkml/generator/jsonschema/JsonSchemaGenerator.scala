@@ -1,9 +1,20 @@
 package eu.neverblink.linkml.generator.jsonschema
 
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview.*
-import sttp.apispec.{AnySchema, ExampleSingleValue, Pattern, Schema, SchemaFormat, SchemaType}
-import sttp.apispec.circe.encoderSchema
+import sttp.apispec.{
+  AnySchema,
+  ExampleMultipleValue,
+  ExampleSingleValue,
+  ExampleValue,
+  Pattern,
+  Schema,
+  SchemaFormat,
+  SchemaLike,
+  SchemaType,
+}
 
 import java.lang
 import scala.collection.immutable
@@ -201,11 +212,17 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     *   Whether the generated JSON Schema should allow `additionalProperties` for classes
     * @param treeRootOverride
     *   If defined, override the schema `tree_root` class with the one provided
+    * @param indentationStep
+    *   number of spaces in pretty print indentation of JSON Schema
     * @return
     *   Serialized JSON Schema
     */
-  final def serialize(open: Boolean = false, treeRootOverride: Option[String] = None): String =
-    encoderSchema(generate(open, treeRootOverride)).spaces2
+  final def serialize(
+      open: Boolean = false,
+      treeRootOverride: Option[String] = None,
+      indentationStep: Int = 2,
+  ): String =
+    writeToString(generate(open, treeRootOverride), WriterConfig.withIndentionStep(indentationStep))
 }
 
 object JsonSchemaGenerator {
@@ -243,4 +260,46 @@ object JsonSchemaGenerator {
   extension (schema: Schema)
     def arrayOf: Schema = Schema(SchemaType.Array).copy(items = Some(schema))
     def dictOf: Schema = Schema(SchemaType.Object).copy(additionalProperties = Some(schema))
+
+  private implicit lazy val codec: JsonValueCodec[Schema] = {
+    implicit val schemaLikeCodec: JsonValueCodec[SchemaLike] = new JsonValueCodec {
+      override def decodeValue(in: JsonReader, default: SchemaLike): SchemaLike = ???
+
+      override def encodeValue(x: SchemaLike, out: JsonWriter): Unit = x match {
+        case s: Schema => codec.encodeValue(s, out)
+        case AnySchema.Anything => out.writeVal(true)
+        case AnySchema.Nothing => out.writeVal(false)
+      }
+
+      override def nullValue: SchemaLike = ???
+    }
+    implicit val listOfSchemaTypeCodec: JsonValueCodec[List[SchemaType]] = new JsonValueCodec {
+      override def decodeValue(in: JsonReader, default: List[SchemaType]): List[SchemaType] = ???
+
+      override def encodeValue(xs: List[SchemaType], out: JsonWriter): Unit =
+        if (xs.size == 1) out.writeNonEscapedAsciiVal(xs.head.value)
+        else {
+          out.writeArrayStart()
+          xs.foreach(x => out.writeNonEscapedAsciiVal(x.value))
+          out.writeArrayEnd()
+        }
+
+      override def nullValue: List[SchemaType] = ???
+    }
+    implicit val exampleValueCodec: JsonValueCodec[ExampleValue] = new JsonValueCodec {
+      override def decodeValue(in: JsonReader, default: ExampleValue): ExampleValue = ???
+
+      override def encodeValue(x: ExampleValue, out: JsonWriter): Unit = x match {
+        case s: ExampleSingleValue => out.writeVal(s.value.toString)
+        case m: ExampleMultipleValue => m.values.foreach(a => out.writeVal(a.toString))
+      }
+
+      override def nullValue: ExampleValue = ???
+    }
+    JsonCodecMaker.make[Schema](
+      CodecMakerConfig.withDiscriminatorFieldName(None)
+        .withEncodingOnly(true)
+        .withInlineOneValueClasses(true),
+    )
+  }
 }
