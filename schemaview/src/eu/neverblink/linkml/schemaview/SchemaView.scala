@@ -32,7 +32,6 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: TypeDefinition => types.get(ref.value).map(_._type)
       case _: ClassDefinition => classes.get(ref.value).map(_.cls)
       case _: EnumDefinition => enums.get(ref.value).map(_._enum)
-
       case _: SubsetDefinition => subsets.get(ref.value).map(_.subset)
       // `range` slot's `range` is underspecified as per the metamodel notes,
       // I think it should be ClassDef | TypeDef | EnumDef
@@ -72,6 +71,25 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       schema.classes.foreach((k, v) => acc.addOne((k, ClassView(v, schema))))
       acc
     }.result()
+
+  /** All enums defined in the loaded schemas, as views.
+    */
+  lazy val enums: Map[String, EnumView] =
+    schemas.foldLeft(Map.newBuilder[String, EnumView]) { (acc, schema) =>
+      schema.enums.map((k, v) => acc.addOne((k, EnumView(v, schema))))
+      acc
+    }.result()
+
+  /** All subsets defined in the loaded schemas, as views.
+    */
+  lazy val subsets: Map[String, SubsetView] =
+    schemas.foldLeft(Map.newBuilder[String, SubsetView]) { (acc, schema) =>
+      schema.subsets.map((k, v) => acc.addOne((k, SubsetView(v, schema))))
+      acc
+    }.result()
+
+  lazy val elements: Map[String, ElementView[?]] =
+    subsets ++ slotDefinitions ++ enums ++ types ++ classes
 
   /** Get all classes reachable from a given class, following derived attributes and optionally
     * ancestors. The result is a map of class name to class view, including the starting class.
@@ -163,24 +181,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       },
     ).toSet
 
-  /** All enums defined in the loaded schemas, as views.
-    */
-  lazy val enums: Map[String, EnumView] =
-    schemas.map(schema => schema.enums.map((k, v) => (k, EnumView(v, schema)))).reduce(_ ++ _)
-
-  /** All subsets defined in the loaded schemas, as views.
-    */
-  lazy val subsets: Map[String, SubsetView] =
-    schemas.map(schema => schema.subsets.map((k, v) => (k, SubsetView(v, schema)))).reduce(_ ++ _)
-
   /** Get a schema element by its ID
     */
-  def getElement(name: String): Option[ElementView[?]] =
-    classes.get(name)
-      .orElse(types.get(name))
-      .orElse(enums.get(name))
-      .orElse(slotDefinitions.get(name))
-      .orElse(subsets.get(name))
+  def getElement(name: String): Option[ElementView[?]] = elements.get(name)
 
   /** Get the class defined as `tree_root: true` from the schema, if any is present
     */
@@ -261,8 +264,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * @return
     *   Unit if the schema is valid, an exception with formatted problems otherwise
     */
-  def validate(maxProblems: Int = 5): Try[Unit] =
-    validator.validate(maxProblems)
+  def validate(maxProblems: Int = 5): Try[Unit] = validator.validate(maxProblems)
 
   /** Produce validation report with all detected problems
     *
