@@ -348,14 +348,21 @@ object cli extends Module {
 object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule {
   def scalaVersion = scala
 
-  // JMH forks a JVM using this runtime; the CommonParams JVM flags require JDK 24+
-  // (e.g. -XX:+UseCompactObjectHeaders).
+  // JMH forks a JVM using this runtime
   override def jvmVersion = "temurin:25"
+  // override def javaHome = Some(PathRef(os.root / "usr" / "lib" / "jvm" / "java-25-openjdk-amd64"))
 
   def jmhCoreVersion = "1.37"
 
   def moduleDeps = Seq(
     build.generator.jvm,
+  )
+
+  // RDF4J Rio N-Triples (generator.jvm only brings rio-turtle) and Jena ARQ/RIOT,
+  // for the N-Triples streaming-serializer benchmark.
+  override def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:$rdf4j",
+    mvn"org.apache.jena:jena-arq:5.5.0",
   )
 
   def scalacOptions = Seq(

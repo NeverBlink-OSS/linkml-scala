@@ -5,6 +5,7 @@ import eu.neverblink.linkml.generator.rdf.RdfUtils
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
+import org.openjdk.jmh.infra.Blackhole
 
 import scala.compiletime.uninitialized
 import scala.io.Source
@@ -20,7 +21,7 @@ import scala.util.Using
   */
 class GeneratorBench extends CommonParams {
 
-  @Param(Array("dummy.yml", "cgmes-core.yml", "cgmes-dynamics.yml"))
+  @Param(Array(/*"dummy.yml", "cgmes-core.yml",*/ "cgmes-dynamics.yml"))
   var schema: String = uninitialized
 
   private var yaml: String = uninitialized
@@ -35,26 +36,26 @@ class GeneratorBench extends CommonParams {
   }
 
   @Benchmark
-  def jsonSchemaFromYaml: String = {
+  def jsonSchemaFromYaml(bh: Blackhole): Unit = {
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
-    JsonSchemaGenerator().serialize()
+    bh.consume(JsonSchemaGenerator().serialize())
   }
 
   @Benchmark
-  def jsonSchemaFromSchemaView: String = {
+  def jsonSchemaFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
-    JsonSchemaGenerator().serialize()
+    bh.consume(JsonSchemaGenerator().serialize())
   }
 
   @Benchmark
-  def shaclFromYaml: String = {
+  def shaclFromYaml(bh: Blackhole): Unit = {
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
-    RdfUtils.toTurtle(ShaclGenerator().generate())
+    bh.consume(RdfUtils.toTurtle(ShaclGenerator().generate()))
   }
 
   @Benchmark
-  def shaclFromSchemaView: String = {
+  def shaclFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
-    RdfUtils.toTurtle(ShaclGenerator().generate())
+    bh.consume(RdfUtils.toTurtle(ShaclGenerator().generate()))
   }
 }

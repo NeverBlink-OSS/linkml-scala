@@ -1,33 +1,23 @@
 package eu.neverblink.linkml.generator.rdf
 
-sealed trait Node:
-  /** @return
-    *   NTriples format representation
-    */
-  def nt: String
+/** An RDF term. Serialize with [[NTriplesWriter]]. */
+sealed trait Node
 
 sealed trait Resource extends Node
 
-case class Iri(value: String) extends Resource:
-  def nt: String = s"<$value>"
+final case class Iri(value: String) extends Resource
 
-case class BlankNode(id: String) extends Resource:
-  def nt: String = s"_:$id"
+final case class BlankNode(id: String) extends Resource
 
-case class Literal(value: String, datatype: Iri = XmlSchema.string) extends Node:
-  def nt: String = s"\"$value\"^^${datatype.nt}"
+final case class Literal(value: String, datatype: Iri = XmlSchema.string) extends Node
 
 object Literal {
   val one: Literal = Literal("1", XmlSchema.integer)
 }
 
-case class Triple(subj: Resource, pred: Iri, obj: Node):
-  /** @return
-    *   NTriples format representation
-    */
-  def nt: String = s"${subj.nt} ${pred.nt} ${obj.nt} ."
+final case class Triple(subj: Resource, pred: Iri, obj: Node)
 
-case class Namespace(prefix: String, name: String)
+final case class Namespace(prefix: String, name: String)
 
 object XmlSchema {
   val string: Iri = Iri("http://www.w3.org/2001/XMLSchema#string")
