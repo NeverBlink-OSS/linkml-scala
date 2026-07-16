@@ -438,7 +438,7 @@ object SchemaView {
     * resolves "semweb_context" curi map and loads user defined prefixes.
     */
   def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver
+    val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
     Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
     if (forSchema.defaultCuriMaps.contains("semweb_context")) {
       Array(

@@ -23,7 +23,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
   }
   "BasicPrefixResolver" should {
     "expand curie" in {
-      val resolver = new BasicPrefixResolver
+      val resolver = new BasicPrefixResolver("")
       resolver.add("IAO", "http://purl.obolibrary.org/obo/IAO_")
       resolver.add("OIO", "http://www.geneontology.org/formats/oboInOwl#")
       resolver.add("schema", "http://schema.org/")
@@ -36,7 +36,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       resolver.expand("skos:exactMatch") shouldBe "http://www.w3.org/2004/02/skos/core#exactMatch"
     }
     "compact uri" in {
-      val resolver = new BasicPrefixResolver
+      val resolver = new BasicPrefixResolver("")
       resolver.add("IAO", "http://purl.obolibrary.org/obo/IAO_")
       resolver.add("OIO", "http://www.geneontology.org/formats/oboInOwl#")
       resolver.add("schema", "http://schema.org/")

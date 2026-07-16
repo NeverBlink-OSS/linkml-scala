@@ -57,7 +57,7 @@ trait PrefixResolver {
   def resolvePrefix(prefix: String): Option[String]
 }
 
-class BasicPrefixResolver extends PrefixResolver {
+class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   private val prefixToUri = new java.util.HashMap[String, String]
   private val uriToPrefix = new java.util.HashMap[String, String]
 
@@ -81,7 +81,7 @@ class BasicPrefixResolver extends PrefixResolver {
       val prefix = parts(0)
       val baseUri = prefixToUri.get(prefix)
       if (baseUri != null) baseUri + parts(1)
-      else sys.error(s"Unknown prefix: $prefix")
+      else sys.error(s"Unknown prefix '$prefix' in schema $schemaId")
     } else curie // relative reference
   }
 
