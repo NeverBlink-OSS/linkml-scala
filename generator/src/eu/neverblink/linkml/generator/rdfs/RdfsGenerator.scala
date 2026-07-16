@@ -5,25 +5,16 @@ import eu.neverblink.linkml.schemaview.SchemaView
 
 class RdfsGenerator(using sv: SchemaView) {
 
-  /** Generates RDF Schema
+  /** Generates RDF Schema and pushes the namespaces and triples into the provided [[RdfSink]].
+    * @param sink
+    *   The sink that receives namespace declarations and triples.
     * @param onlyClassesFromRootSchema
     *   Whether to include only classes from the root schema (turned off by default).
-    * @return
-    *   a tuple of sequences of namespaces and triples
     */
   final def generate(
+      sink: RdfSink,
       onlyClassesFromRootSchema: Boolean = false,
-  ): (Seq[Namespace], Seq[Triple]) = {
-    val namespaces = Seq.newBuilder[Namespace]
-
-    def addNamespace(prefix: String, name: String): Unit =
-      namespaces.addOne(Namespace(prefix, name))
-
-    val triples = Seq.newBuilder[Triple]
-
-    def addTriple(subj: Resource, pred: Iri, obj: Node): Unit =
-      triples.addOne(Triple(subj, pred, obj))
-
+  ): Unit = {
     val isEmitted = sv.root.defaultPrefix.foldLeft(
       sv.root.emitPrefixes.toSet,
     )((acc, p) => acc + p)
@@ -42,40 +33,39 @@ class RdfsGenerator(using sv: SchemaView) {
           ("xsd", "http://www.w3.org/2001/XMLSchema#"),
         )
       }
-      .distinct.sorted.foreach(addNamespace)
+      .distinct.sorted.foreach(sink.namespace)
 
     classes.values.foreach { c =>
       val classNameIri = Iri(c.uriStr)
-      addTriple(classNameIri, Rdf.`type`, Rdfs.Class)
+      sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
       c.cls.title.foreach { t =>
-        addTriple(classNameIri, Rdfs.label, Literal(t, XmlSchema.string))
+        sink.triple(classNameIri, Rdfs.label, Literal(t, XmlSchema.string))
       }
       c.cls.description match {
-        case Some(d) => addTriple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
+        case Some(d) => sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
         case _ =>
       }
       (c.cls.isA.toList ++ c.cls.mixins).foreach { m =>
         sv.getElement(m.value).foreach { e =>
-          addTriple(classNameIri, Rdfs.subClassOf, Iri(e.uriStr))
+          sink.triple(classNameIri, Rdfs.subClassOf, Iri(e.uriStr))
         }
       }
       c.derivedAttributes.values.filter(!_.inner.identifier).foreach { s =>
         val propertyNameIri = Iri(s.uriStr)
-        addTriple(propertyNameIri, Rdf.`type`, Rdf.Property)
+        sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
         s.slot.title.foreach { t =>
-          addTriple(propertyNameIri, Rdfs.label, Literal(t, XmlSchema.string))
+          sink.triple(propertyNameIri, Rdfs.label, Literal(t, XmlSchema.string))
         }
         s.slot.description match {
-          case Some(d) => addTriple(propertyNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
+          case Some(d) => sink.triple(propertyNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
           case _ =>
         }
-        addTriple(propertyNameIri, Rdfs.domain, classNameIri)
+        sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
         s.derivedRangeView.resolve.foreach { e =>
-          addTriple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
+          sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
         }
       }
     }
-    (namespaces.result(), triples.result())
   }
 }
 

@@ -1,5 +1,7 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.util.CharSink
+
 import java.io.OutputStream
 
 /** JVM-optimized N-Triples output, similar to Apache Jena: characters are written into an
@@ -25,10 +27,12 @@ object NTriplesOutput {
   }
 }
 
-/** Unsynchronized, buffering [[NTriplesSink]] writing US-ASCII (with UTF-8 fallback) bytes to an
-  * [[OutputStream]]. Not thread-safe, matching Jena's `BufferingWriter`.
+/** Unsynchronized, buffering [[CharSink]] writing US-ASCII (with UTF-8 fallback) bytes to an
+  * [[OutputStream]].
+  *
+  * Assumes that supplementary characters are escaped to ASCII upstream by the caller.
   */
-final class BufferedByteSink(out: OutputStream, bufferSize: Int = 8 * 1024) extends NTriplesSink {
+final class BufferedByteSink(out: OutputStream, bufferSize: Int = 8 * 1024) extends CharSink {
   private val buffer = new Array[Byte](math.max(bufferSize, 16))
   private var idx = 0
 

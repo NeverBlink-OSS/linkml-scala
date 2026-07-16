@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.benchmark
 
+import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
@@ -50,12 +51,20 @@ class GeneratorBench extends CommonParams {
   @Benchmark
   def shaclFromYaml(bh: Blackhole): Unit = {
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
-    bh.consume(RdfUtils.toTurtle(ShaclGenerator().generate()))
+    writeShacl(bh)
   }
 
   @Benchmark
   def shaclFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
-    bh.consume(RdfUtils.toTurtle(ShaclGenerator().generate()))
+    writeShacl(bh)
+  }
+
+  /** Same setup for RDF sinks as in the CLI.
+    */
+  private def writeShacl(bh: Blackhole)(using SchemaView): Unit = {
+    val byteSink = new BufferedByteSink(new BlackholeOutputStream(bh))
+    ShaclGenerator().generate(NTriplesRdfSink(byteSink))
+    byteSink.flush()
   }
 }

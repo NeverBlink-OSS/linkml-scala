@@ -4,12 +4,14 @@ import caseapp.*
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink, RdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
 import eu.neverblink.linkml.schemaview.{Case, SchemaView}
+
+import java.io.OutputStream
 
 // Scala
 
@@ -28,10 +30,10 @@ final case class ScalaOptions(
     generateEmitPrefixes: Boolean = true,
 ) extends HasGenerateOptions
 
-object Scala extends Generate[ScalaOptions] {
+object Scala extends StringGenerate[ScalaOptions] {
   override protected def generatorName: String = "scala"
 
-  override protected def generate(
+  override protected[cli] def generate(
       options: ScalaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     ScalaGenerator().generate(options.`package`, options.generateEmitPrefixes)
@@ -52,10 +54,10 @@ final case class JsonSchemaOptions(
     treeRootOverride: Option[String] = None,
 ) extends HasGenerateOptions
 
-object JsonSchema extends Generate[JsonSchemaOptions] {
+object JsonSchema extends StringGenerate[JsonSchemaOptions] {
   override protected def generatorName: String = "json-schema"
 
-  override protected def generate(
+  override protected[cli] def generate(
       options: JsonSchemaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
@@ -80,22 +82,22 @@ final case class ShaclOptions(
         "and you don't need the imported classes to be included in the generated SHACL shapes. Default: false",
     )
     onlyClassesFromRootSchema: Boolean = false,
+    @HelpMessage(RdfOutput.formatHelp)
+    format: String = RdfOutput.defaultFormat,
 ) extends HasGenerateOptions
 
-object Shacl extends Generate[ShaclOptions] {
+object Shacl extends StreamGenerate[ShaclOptions] {
   override protected def generatorName: String = "shacl"
 
-  override protected def generate(
-      options: ShaclOptions,
-  )(using SchemaView): Iterable[(String, String)] =
-    Seq(
-      (
-        "",
-        RdfUtils.toTurtle(
-          ShaclGenerator().generate(options.open, options.onlyClassesFromRootSchema),
-        ),
-      ),
-    )
+  override protected[cli] def generate(options: ShaclOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    if !RdfOutput.write(
+        out,
+        options.format,
+        ShaclGenerator().generate(_, options.open, options.onlyClassesFromRootSchema),
+      )
+    then err(RdfOutput.unknownFormat(options.format))
 }
 
 // RDFS
@@ -111,17 +113,50 @@ final case class RdfsOptions(
         "and you don't need the imported classes to be included in the RDFS. Default: false",
     )
     onlyClassesFromRootSchema: Boolean = false,
+    @HelpMessage(RdfOutput.formatHelp)
+    format: String = RdfOutput.defaultFormat,
 ) extends HasGenerateOptions
 
-object Rdfs extends Generate[RdfsOptions] {
+object Rdfs extends StreamGenerate[RdfsOptions] {
   override protected def generatorName: String = "rdfs"
 
-  override protected def generate(
-      options: RdfsOptions,
-  )(using SchemaView): Iterable[(String, String)] =
-    Seq(
-      ("", RdfUtils.toTurtle(RdfsGenerator().generate(options.onlyClassesFromRootSchema))),
-    )
+  override protected[cli] def generate(options: RdfsOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    if !RdfOutput.write(
+        out,
+        options.format,
+        RdfsGenerator().generate(_, options.onlyClassesFromRootSchema),
+      )
+    then err(RdfOutput.unknownFormat(options.format))
+}
+
+/** Shared RDF serialization dispatch for the SHACL and RDFS generate commands. */
+private object RdfOutput {
+  val defaultFormat: String = "nt"
+
+  val formatHelp: String =
+    "RDF serialization format: 'nt' (N-Triples — fast, streamed, the default) or " +
+      "'ttl' (Turtle — slower, but prefixed and pretty-printed). Default: nt"
+
+  def unknownFormat(format: String): String =
+    s"Unknown RDF format '$format'. Supported formats: nt, ttl."
+
+  /** Stream the generator output (pushed via [[gen]]) to [[out]] in the requested format. Returns
+    * `false` if the format is not recognized (nothing is written).
+    */
+  def write(out: OutputStream, format: String, gen: RdfSink => Unit): Boolean =
+    format.toLowerCase match {
+      case "nt" | "ntriples" =>
+        val byteSink = new BufferedByteSink(out)
+        gen(NTriplesRdfSink(byteSink))
+        byteSink.flush()
+        true
+      case "ttl" | "turtle" =>
+        RdfUtils.streamTurtle(out, gen)
+        true
+      case _ => false
+    }
 }
 
 // LinkML -> LinkML
@@ -154,10 +189,10 @@ final case class LinkMlOptions(
     format: String = "yaml",
 ) extends HasGenerateOptions
 
-object LinkMl extends Generate[LinkMlOptions] {
+object LinkMl extends StringGenerate[LinkMlOptions] {
   override protected def generatorName: String = "linkml"
 
-  override protected def generate(
+  override protected[cli] def generate(
       options: LinkMlOptions,
   )(using SchemaView): Iterable[(String, String)] = {
     val pruningMode = Case.camelCase(options.pruningMode) match {
@@ -197,10 +232,10 @@ final case class TableSchemaOptions(
     treeRoot: Option[String] = None,
 ) extends HasGenerateOptions
 
-object TableSchema extends Generate[TableSchemaOptions] {
+object TableSchema extends StringGenerate[TableSchemaOptions] {
   override protected def generatorName: String = "table-schema"
 
-  override protected def generate(
+  override protected[cli] def generate(
       options: TableSchemaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(

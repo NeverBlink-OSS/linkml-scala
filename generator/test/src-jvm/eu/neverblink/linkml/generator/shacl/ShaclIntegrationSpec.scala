@@ -15,8 +15,7 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     for entry <- ModelCatalogue.all do
       s"generate SHACL for model '${entry.model.root.name}'" when {
 
-        lazy val shapes = ShaclGenerator(using entry.model).generate()
-        lazy val ttl = RdfUtils.toTurtle(shapes)
+        lazy val ttl = RdfUtils.toTurtle(ShaclGenerator(using entry.model).generate(_))
         lazy val validator = ShaclValidator.builder().withShapes(ttl, RDFFormat.TURTLE).build()
 
         for valid <- entry.validInstances.filter(_.turtle.isDefined).distinct do

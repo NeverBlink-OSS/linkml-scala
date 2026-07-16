@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.rdfs
 
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -37,8 +37,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: boolean
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rdfs = RdfsGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -83,8 +82,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: SomeAnotherClass
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rdfs = RdfsGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -138,8 +136,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: Person
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rdfs = RdfsGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -187,8 +184,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |        multivalued: true
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rdfs = RdfsGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -223,8 +219,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |      - Van
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rdfs = RdfsGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
@@ -248,8 +243,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
 
     "include imported classes by default" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
-      val rdfs = RdfsGenerator(using sv).generate()
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_))
       turtle should include("linkml:Annotatable a rdfs:Class")
       turtle should include("linkml:Annotation a rdfs:Class")
       // imported from linkml:extensions
@@ -261,8 +255,8 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
 
     "not include imported classes when onlyClassesFromRootSchema=true" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
-      val rdfs = RdfsGenerator(using sv).generate(onlyClassesFromRootSchema = true)
-      val turtle = RdfUtils.toTurtle(rdfs)
+      val turtle =
+        RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_, onlyClassesFromRootSchema = true))
       turtle should include("linkml:Annotatable a rdfs:Class")
       turtle should include("linkml:Annotation a rdfs:Class")
       turtle should not include "linkml:Any a rdfs:Class"
@@ -274,7 +268,9 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
-          RdfsGenerator(using entry.model).generate()._2 should not be empty
+          val sink = new CollectingRdfSink
+          RdfsGenerator(using entry.model).generate(sink)
+          sink.triples should not be empty
         }
     }
   }

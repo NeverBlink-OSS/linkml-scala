@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.shacl
 
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.eclipse.rdf4j.model.ValueFactory
@@ -54,8 +54,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: boolean
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -101,8 +100,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: string
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate(enforceOpenShapes = true)
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_, enforceOpenShapes = true))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -141,8 +140,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: float
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -197,8 +195,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: SomeOtherClass
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -245,8 +242,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    required: true
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -296,8 +292,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |        multivalued: true
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -341,8 +336,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    required: true
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -428,8 +422,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    description: The type of the incident.
            |""".stripMargin
       val schemaView = loadWithImports(input)
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix brick: <https://brickschema.org/schema/Brick#> .
           |@prefix nb: <https://neverblink.eu/example/> .
@@ -476,8 +469,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 
     "include imported classes by default" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
-      val shacl = ShaclGenerator(using sv).generate()
-      val turtle = RdfUtils.toTurtle(shacl)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_))
       turtle should include("linkml:Annotatable a sh:NodeShape")
       turtle should include("linkml:Annotation a sh:NodeShape")
       // imported from linkml:extensions
@@ -489,8 +481,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 
     "not include imported classes when onlyClassesFromRootSchema=true" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
-      val shacl = ShaclGenerator(using sv).generate(onlyClassesFromRootSchema = true)
-      val turtle = RdfUtils.toTurtle(shacl)
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_, onlyClassesFromRootSchema = true))
       turtle should include("linkml:Annotatable a sh:NodeShape")
       turtle should include("linkml:Annotation a sh:NodeShape")
       turtle should not include "linkml:Any a sh:NodeShape"
@@ -501,8 +493,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 
     "works for the metamodel annotations and extensions" in {
       val schemaView = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix linkml: <https://w3id.org/linkml/> .
           |@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -603,62 +594,53 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate IRI nodeKind constraints for CURIE types" in {
-      val result = ShaclGenerator(using ModelCatalogue.curie.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.curie.model).generate(_))
       turtle should include("sh:nodeKind sh:IRI")
     }
 
     "generate IRI nodeKind constraints for URI types" in {
-      val result = ShaclGenerator(using ModelCatalogue.uri.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.uri.model).generate(_))
       turtle should include("sh:nodeKind sh:IRI")
     }
 
     "generate IRI nodeKind constraints for URI or CURIE types" in {
-      val result = ShaclGenerator(using ModelCatalogue.uriOrCurie.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.uriOrCurie.model).generate(_))
       turtle should include("sh:nodeKind sh:IRI")
     }
 
     "generate IRI nodeKind constraints for implicitly prefixed slots" in {
-      val result = ShaclGenerator(using ModelCatalogue.implicitPrefix.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.implicitPrefix.model).generate(_))
       turtle should include("sh:nodeKind sh:IRI")
     }
 
     "ignore identifiers" in {
-      val result = ShaclGenerator(using ModelCatalogue.reference.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.reference.model).generate(_))
       turtle should include(
         "sh:ignoredProperties (rdf:type <https://neverblink.eu/linkml/tests/reference/id>)",
       )
     }
 
     "generate sh:or for any_of" in {
-      val result = ShaclGenerator(using ModelCatalogue.unionRange.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.unionRange.model).generate(_))
       turtle should include("sh:or ")
     }
 
     "not generate the main range for any_of" in {
       // TODO LNK-129: Get rid of this hack
-      val result = ShaclGenerator(using ModelCatalogue.unionRangeReference.model).generate()
-      val turtle = RdfUtils.toTurtle(result)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.unionRangeReference.model).generate(_))
       turtle should include("sh:or ")
       turtle should not include "sh:class <https://neverblink.eu/linkml/tests/unionRangeReference/BaseClass>"
     }
 
     "works for the metamodel without runtime exceptions" in {
       val schemaView = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
-      val rules = ShaclGenerator(using schemaView).generate()
-      val turtle = RdfUtils.toTurtle(rules)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       turtle.isEmpty shouldBe false
     }
 
     "work with imported prefixes" in {
       val sv = ModelCatalogue.uriImports.model
-      val rules = ShaclGenerator(using sv).generate()
-      val ttl = RdfUtils.toTurtle(rules)
+      val ttl = RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_))
       Seq(
         "https://neverblink.eu/linkml/tests/uriImports/Class",
         "https://neverblink.eu/linkml/tests/uriImports/slot",
@@ -673,7 +655,9 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
           assume(skipModels.isEmpty || !skipModels.contains(entry.model.root.name))
-          ShaclGenerator(using entry.model).generate()._2 should not be empty
+          val sink = new CollectingRdfSink
+          ShaclGenerator(using entry.model).generate(sink)
+          sink.triples should not be empty
         }
     }
   }

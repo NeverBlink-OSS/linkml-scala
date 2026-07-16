@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.util.StringSink
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -16,13 +17,13 @@ class NTriplesEscapeSpec extends AnyWordSpec, Matchers {
   private def cp(c: Int): String = new String(Character.toChars(c))
 
   private def escStr(s: String): String = {
-    val sink = new StringNTriplesSink
+    val sink = new StringSink
     NTriplesEscape.escapeString(sink, s)
     sink.result
   }
 
   private def escIri(s: String): String = {
-    val sink = new StringNTriplesSink
+    val sink = new StringSink
     NTriplesEscape.escapeIri(sink, s)
     sink.result
   }

@@ -2,14 +2,15 @@ package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.generator.rdf.{
   BlankNode,
+  CollectingRdfSink,
   Iri,
   Literal,
-  Namespace,
   Node,
   Resource,
   Triple,
 }
 import eu.neverblink.linkml.generator.rdf.NTriplesOutput
+import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.apache.jena.datatypes.TypeMapper
@@ -29,28 +30,15 @@ import org.eclipse.rdf4j.rio.{RDFFormat as Rdf4jFormat, Rio}
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
 import org.openjdk.jmh.infra.Blackhole
 
-import java.io.{BufferedWriter, OutputStream, OutputStreamWriter}
+import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
 import scala.compiletime.uninitialized
 import scala.io.Source
 import scala.util.Using
 
-/** Compares the N-Triples **streaming** serializers of Apache Jena (RIOT `StreamRDF`) and Eclipse
-  * RDF4J (Rio `RDFWriter`), serializing the same set of statements produced by the SHACL generator.
+/** Compares the N-Triples streaming serializers of Jena, RDF4J, and ours.
   *
-  * Both writers:
-  *   - consume a pre-materialized array of native statements built once in [[setup]] (Jena
-  *     `graph.Triple`, RDF4J `Statement`), converted element-wise from the exact same generator
-  *     triples so both serialize an identical statement list in identical order;
-  *   - write to a fresh [[BlackholeOutputStream]] that feeds every byte to the JMH [[Blackhole]] —
-  *     a sink with no I/O and no allocation growth, so the measurement is dominated by
-  *     serialization/escaping work while dead-code elimination is still prevented;
-  *   - are created and torn down inside the benchmark method, since both APIs are one-shot
-  *     (`start`/`finish`, `startRDF`/`endRDF`).
-  *
-  * The `jena` and `rdf4j` methods add no extra buffering: each relies on its own internal output
-  * path, which is part of what is being compared. `rdf4jBuffered` is a diagnostic variant that adds
-  * a `BufferedWriter` to show how much of the gap is RDF4J's missing output buffer.
+  * This is mostly useful for development, for baseline comparisons with other RDF libs.
   */
 class NTriplesSerializationBench extends CommonParams {
 
@@ -67,7 +55,9 @@ class NTriplesSerializationBench extends CommonParams {
       Source.fromInputStream(in, "UTF-8").mkString
     }
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
-    val (_, triples): (Seq[Namespace], Seq[Triple]) = ShaclGenerator().generate()
+    val collector = new CollectingRdfSink
+    ShaclGenerator().generate(collector)
+    val triples = collector.triples
 
     linkmlTriples = triples.toArray
     jenaTriples = triples.iterator.map(toJena).toArray
@@ -77,9 +67,6 @@ class NTriplesSerializationBench extends CommonParams {
     }
   }
 
-  /** Our own [[NTriplesOutput]] writer, serializing the [[Triple]] model directly — no conversion
-    * to a foreign statement type is needed, unlike the Jena and RDF4J variants.
-    */
   @Benchmark
   def linkml(bh: Blackhole): Unit =
     NTriplesOutput.writeTo(new BlackholeOutputStream(bh), linkmlTriples)
@@ -110,11 +97,6 @@ class NTriplesSerializationBench extends CommonParams {
     writer.endRDF()
   }
 
-  /** Diagnostic: RDF4J's `NTriplesWriter(OutputStream)` wraps the stream in a bare
-    * `OutputStreamWriter` (no buffering), so every per-character/per-token `append` hits the
-    * `StreamEncoder` — which is `synchronized` per call. Feeding it a `BufferedWriter` instead
-    * isolates how much of the Jena gap is purely the missing output buffer.
-    */
   @Benchmark
   def rdf4jBuffered(bh: Blackhole): Unit = {
     val out = new BlackholeOutputStream(bh)
@@ -129,7 +111,7 @@ class NTriplesSerializationBench extends CommonParams {
     writer.endRDF()
   }
 
-  // -- element-wise conversion of the generator's RDF model into each library's native types --
+  // element-wise conversion of the generator's RDF model into each library's native types
 
   private def toJena(t: Triple): JenaTriple =
     JenaTriple.create(toJenaNode(t.subj), toJenaNode(t.pred), toJenaNode(t.obj))
@@ -158,17 +140,4 @@ class NTriplesSerializationBench extends CommonParams {
   }
 
   private def toRdf4jIri(iri: Iri)(using vf: ValueFactory): Rdf4jIri = vf.createIRI(iri.value)
-}
-
-/** An [[OutputStream]] that feeds everything written to it into a JMH [[Blackhole]]: a free,
-  * allocation-stable sink that removes I/O from the measurement while still forcing the writer to
-  * produce every byte (the serialized bytes flow into the blackhole, so nothing can be elided).
-  */
-private final class BlackholeOutputStream(bh: Blackhole) extends OutputStream {
-  override def write(b: Int): Unit = bh.consume(b)
-  override def write(b: Array[Byte]): Unit = bh.consume(b)
-  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    bh.consume(len)
-    bh.consume(b)
-  }
 }

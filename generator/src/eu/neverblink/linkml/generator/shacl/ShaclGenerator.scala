@@ -22,32 +22,22 @@ class ShaclGenerator(using sv: SchemaView) {
     BlankNode(blankNodeCounter.toString)
   }
 
-  /** Generates SHACL rules as RDF model that is represented as a tuple of sequences of namespaces
-    * and triple
+  /** Generates SHACL shapes and pushes the namespaces and triples into the provided [[RdfSink]].
     *
+    * @param sink
+    *   The sink that receives namespace declarations and triples.
     * @param enforceOpenShapes
     *   A flag that enforces all shapes to be open (turned off by default)
     * @param onlyClassesFromRootSchema
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
-    *
-    * @return
-    *   a tuple of sequences of namespaces and triples
     */
   final def generate(
+      sink: RdfSink,
       enforceOpenShapes: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
-  ): (Seq[Namespace], Seq[Triple]) = {
-    val namespaces = Seq.newBuilder[Namespace]
-
-    def addNamespace(prefix: String, name: String): Unit =
-      namespaces.addOne(Namespace(prefix, name))
-
-    val triples = Seq.newBuilder[Triple]
-
-    def addTriple(subj: Resource, pred: Iri, obj: Node): Unit =
-      triples.addOne(Triple(subj, pred, obj))
+  ): Unit = {
 
     /** Process a slot expression, including some support for boolean slot expressions.
       * @param slotView
@@ -68,17 +58,17 @@ class ShaclGenerator(using sv: SchemaView) {
           .asInstanceOf[Reference[ElementView[?]]].resolve.foreach {
             case typeView: TypeView =>
               val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
-              if (!isIri) addTriple(subject, Shacl.datatype, Iri(typeView.uriStr))
+              if (!isIri) sink.triple(subject, Shacl.datatype, Iri(typeView.uriStr))
               val nodeKind =
                 if (isIri) Shacl.IRI
                 else Shacl.Literal
-              addTriple(subject, Shacl.nodeKind, nodeKind)
+              sink.triple(subject, Shacl.nodeKind, nodeKind)
             case classView: ClassView =>
               val cdUri = classView.uriStr
               val isLinkmlAny = cdUri == "https://w3id.org/linkml/Any"
               if (!isLinkmlAny) {
-                addTriple(subject, Shacl.`class`, Iri(cdUri))
-                addTriple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
+                sink.triple(subject, Shacl.`class`, Iri(cdUri))
+                sink.triple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
               }
             case enumView: EnumView =>
               val permissibleValues =
@@ -88,11 +78,11 @@ class ShaclGenerator(using sv: SchemaView) {
                     case Some(m) => m.uri(using enumView.definingPrefixResolver)
                     case _ => enumView.defaultPrefixUri + pv.text
                   }
-                  addTriple(listNode, Rdf.first, Iri(meaning))
-                  addTriple(listNode, Rdf.rest, acc)
+                  sink.triple(listNode, Rdf.first, Iri(meaning))
+                  sink.triple(listNode, Rdf.rest, acc)
                   listNode
                 }
-              addTriple(subject, Shacl.in, permissibleValues)
+              sink.triple(subject, Shacl.in, permissibleValues)
             case _ => throw RuntimeException(s"Couldn't map range ${slotExpression.range}")
           }
       // TODO LNK-129: Implement the rest of the boolean slots
@@ -102,7 +92,7 @@ class ShaclGenerator(using sv: SchemaView) {
         curNode
       })
       val orListHeadMaybe = addShaclList(ors)
-      orListHeadMaybe.foreach(addTriple(subject, Shacl.or, _))
+      orListHeadMaybe.foreach(sink.triple(subject, Shacl.or, _))
     }
 
     /** Generate sh:property triples for a given slot. Produces triples of form
@@ -117,9 +107,9 @@ class ShaclGenerator(using sv: SchemaView) {
     def processSlot(s: SlotView, order: Int, propertyDomain: Resource): Unit = {
       val slot = s.slot
       val property = blankNode()
-      addTriple(propertyDomain, Shacl.property, property)
+      sink.triple(propertyDomain, Shacl.property, property)
       slot.description match {
-        case Some(d) => addTriple(property, Shacl.description, Literal(d, XmlSchema.string))
+        case Some(d) => sink.triple(property, Shacl.description, Literal(d, XmlSchema.string))
         case _ =>
       }
       // TODO LNK-129: N-arity has to be done on the top-level-only,
@@ -127,11 +117,11 @@ class ShaclGenerator(using sv: SchemaView) {
       //  and NodeShapes don't allow max/min count. To do this properly we would have
       //  to roll-down slots to the leaves of the boolean op tree and add make the
       //  leaves PropertyShapes.
-      if (!slot.multivalued) addTriple(property, Shacl.maxCount, Literal.one)
-      if (slot.required) addTriple(property, Shacl.minCount, Literal.one)
-      addTriple(property, Shacl.path, Iri(s.uriStr))
+      if (!slot.multivalued) sink.triple(property, Shacl.maxCount, Literal.one)
+      if (slot.required) sink.triple(property, Shacl.minCount, Literal.one)
+      sink.triple(property, Shacl.path, Iri(s.uriStr))
       processSlotExpr(s, slot, property)
-      addTriple(property, Shacl.order, Literal(order.toString, XmlSchema.integer))
+      sink.triple(property, Shacl.order, Literal(order.toString, XmlSchema.integer))
     }
 
     /** Create a SHACL list of the provided [[values]] and add it to the RDF graph.
@@ -143,15 +133,15 @@ class ShaclGenerator(using sv: SchemaView) {
     def addShaclList(values: Seq[Node]): Option[BlankNode] = {
       if values.isEmpty then return None
       val start = blankNode()
-      addTriple(start, Rdf.first, values.head)
+      sink.triple(start, Rdf.first, values.head)
       var prev = start
       values.tail.foreach { value =>
         val cur = blankNode()
-        addTriple(prev, Rdf.rest, cur)
-        addTriple(cur, Rdf.first, value)
+        sink.triple(prev, Rdf.rest, cur)
+        sink.triple(cur, Rdf.first, value)
         prev = cur
       }
-      addTriple(prev, Rdf.rest, Rdf.nil)
+      sink.triple(prev, Rdf.rest, Rdf.nil)
       Some(start)
     }
 
@@ -182,33 +172,32 @@ class ShaclGenerator(using sv: SchemaView) {
           prefixes.appended(("rdfs", "http://www.w3.org/2000/01/rdf-schema#"))
         } else prefixes
       }
-      .distinct.sorted.foreach(addNamespace)
+      .distinct.sorted.foreach(sink.namespace)
 
     classes.values.foreach { c =>
       val classNameIri = Iri(c.uriStr)
-      addTriple(classNameIri, Rdf.`type`, Shacl.NodeShape)
+      sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description match {
-        case Some(d) => addTriple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
+        case Some(d) => sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
         case _ =>
       }
       val closed = !(enforceOpenShapes || c.cls.`abstract` || c.cls.mixin)
-      addTriple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
+      sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       val ignoredProperties = blankNode()
-      addTriple(classNameIri, Shacl.ignoredProperties, ignoredProperties)
-      addTriple(ignoredProperties, Rdf.first, Rdf.`type`)
+      sink.triple(classNameIri, Shacl.ignoredProperties, ignoredProperties)
+      sink.triple(ignoredProperties, Rdf.first, Rdf.`type`)
       if c.hasIdentifier then {
         val ignoredId = blankNode()
-        addTriple(ignoredProperties, Rdf.rest, ignoredId)
-        addTriple(ignoredId, Rdf.first, Iri(c.identifier.get.uriStr))
-        addTriple(ignoredId, Rdf.rest, Rdf.nil)
-      } else addTriple(ignoredProperties, Rdf.rest, Rdf.nil)
+        sink.triple(ignoredProperties, Rdf.rest, ignoredId)
+        sink.triple(ignoredId, Rdf.first, Iri(c.identifier.get.uriStr))
+        sink.triple(ignoredId, Rdf.rest, Rdf.nil)
+      } else sink.triple(ignoredProperties, Rdf.rest, Rdf.nil)
       var order = 0
       c.derivedAttributes.values.filter(!_.inner.identifier).foreach { x =>
         processSlot(x, order, classNameIri); order += 1
       }
-      addTriple(classNameIri, Shacl.targetClass, classNameIri)
+      sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }
-    (namespaces.result(), triples.result())
   }
 }
 
