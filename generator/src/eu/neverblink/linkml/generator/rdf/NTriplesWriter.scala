@@ -64,48 +64,69 @@ object NTriplesWriter {
   * outside the printable ASCII range (and the grammar's disallowed characters) are written as
   * `\\uXXXX` (BMP) or `\\UXXXXXXXX` (supplementary/astral, from surrogate pairs).
   *
-  * This mirrors Jena's `EscapeStr` (a per-character scan writing runs of safe characters straight
-  * to the sink), specialised to the always-ASCII case.
+  * Like Jena's `EscapeStr` this is a single-pass per-character scan writing straight to the sink,
+  * but the "does this character need escaping?" test is a single 128-entry table lookup rather than
+  * a chain of comparisons.
   */
 private object NTriplesEscape {
 
   private val Hex: Array[Char] = "0123456789ABCDEF".toCharArray
 
+  /** `Safe(c)` is true for the ASCII characters that may appear verbatim in a string literal's
+    * lexical form: printable ASCII (0x20..0x7E) except `"` and `\\`.
+    */
+  private val StringSafe: Array[Boolean] = {
+    val a = new Array[Boolean](0x80)
+    var c = 0x20
+    while (c <= 0x7e) { a(c) = true; c += 1 }
+    a('"') = false
+    a('\\') = false
+    a
+  }
+
+  /** `Safe(c)` is true for the ASCII characters that may appear verbatim in an IRIREF: printable
+    * ASCII above space (0x21..0x7E) except the delimiters `<>"{}|^`\\` and backtick.
+    */
+  private val IriSafe: Array[Boolean] = {
+    val a = new Array[Boolean](0x80)
+    var c = 0x21 // space (0x20) is not allowed in an IRIREF
+    while (c <= 0x7e) { a(c) = true; c += 1 }
+    "<>\"{}|^`\\".foreach(ch => a(ch) = false)
+    a
+  }
+
   /** Escape the lexical form of a string literal (the text between the quotes). */
   def escapeString(sink: NTriplesSink, s: String): Unit = {
+    val safe = StringSafe
     val len = s.length
     var i = 0
     while (i < len) {
       val c = s.charAt(i)
-      if (c == '\\') sink.append("\\\\")
-      else if (c == '"') sink.append("\\\"")
-      else if (c == '\n') sink.append("\\n")
-      else if (c == '\r') sink.append("\\r")
-      else if (c == '\t') sink.append("\\t")
-      else if (c >= ' ' && c <= '~') sink.append(c) // printable ASCII (0x20..0x7E)
-      else i = escapeHex(sink, s, i, c)
+      if (c < 0x80 && safe(c)) sink.append(c)
+      else
+        c match {
+          case '\\' => sink.append("\\\\")
+          case '"' => sink.append("\\\"")
+          case '\n' => sink.append("\\n")
+          case '\r' => sink.append("\\r")
+          case '\t' => sink.append("\\t")
+          case _ => i = escapeHex(sink, s, i, c)
+        }
       i += 1
     }
   }
 
   /** Escape the content of an IRI (the text between the angle brackets). */
   def escapeIri(sink: NTriplesSink, s: String): Unit = {
+    val safe = IriSafe
     val len = s.length
     var i = 0
     while (i < len) {
       val c = s.charAt(i)
-      if (isIriDisallowed(c)) i = escapeHex(sink, s, i, c)
-      else sink.append(c)
+      if (c < 0x80 && safe(c)) sink.append(c)
+      else i = escapeHex(sink, s, i, c)
       i += 1
     }
-  }
-
-  /** Characters not permitted in an N-Triples IRIREF: the delimiters plus anything at or below 0x20
-    * or above 0x7E (which must be numerically escaped for US-ASCII output).
-    */
-  private def isIriDisallowed(c: Char): Boolean = c match {
-    case '<' | '>' | '"' | '{' | '}' | '|' | '^' | '`' | '\\' => true
-    case _ => c <= ' ' || c > '~'
   }
 
   /** Write a `\\uXXXX` or `\\UXXXXXXXX` escape for the character at index [[i]]. If it is a high
