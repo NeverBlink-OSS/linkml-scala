@@ -91,6 +91,13 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   lazy val elements: Map[String, ElementView[?]] =
     subsets ++ slotDefinitions ++ enums ++ types ++ classes
 
+  /** Cached prefix resolvers for each schema in the view.
+    *
+    * These should be used in ElementView instead of creating a new prefix resolver every time.
+    */
+  lazy val prefixResolvers: Map[SchemaDefinition, BasicPrefixResolver] =
+    schemas.map(schema => schema -> createPrefixResolver(schema)).toMap
+
   /** Get all classes reachable from a given class, following derived attributes and optionally
     * ancestors. The result is a map of class name to class view, including the starting class.
     *

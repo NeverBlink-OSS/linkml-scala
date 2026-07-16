@@ -29,7 +29,7 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
   def inner: E
 
   /** The defining schema's prefix resolver */
-  given definingPrefixResolver: PrefixResolver = SchemaView.createPrefixResolver(definingSchema)
+  given definingPrefixResolver: PrefixResolver = sv.prefixResolvers(definingSchema)
 
   /** Get the URI of this element, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
