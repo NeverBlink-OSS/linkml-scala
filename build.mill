@@ -317,7 +317,7 @@ object cli extends Module {
     def nativeImageGraalVmJvmId = "graalvm-oracle:25"
 
     def nativeImageOptions = Seq(
-      "-O3", // Optimized for smaller binary size and faster startup
+      "-O3", // Optimized for throughput
       "--no-fallback",
       "--initialize-at-build-time",
       "-H:+UnlockExperimentalVMOptions",
