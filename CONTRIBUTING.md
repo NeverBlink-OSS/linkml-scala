@@ -48,10 +48,7 @@ npm run build     # one-off bundle
 
 ## Benchmarks
 
-Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://github.com/openjdk/jmh) via the mill JMH plugin. The module is JVM-only and is never published. It pins its runtime to JDK 25 because the shared JMH JVM flags in `CommonParams` use JDK 24+ options. Benchmarks are parametrized over the schema files under [`benchmark/resources/schemas/`](benchmark/resources/schemas/); add a case by dropping a file there and adding its name to the relevant `@Param` array.
-
-- `GeneratorBench` — JSON Schema and SHACL generation (parsing-included vs. pre-parsed `SchemaView`).
-- `NTriplesSerializationBench` — Jena RIOT vs. RDF4J Rio N-Triples streaming serializers, over the SHACL output.
+Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://github.com/openjdk/jmh) via the mill JMH plugin. The module is JVM-only and is never published.
 
 - Run all benchmarks: `./mill benchmark.runJmh`
 - Run a subset (regex over benchmark names): `./mill benchmark.runJmh ".*NTriples.*"`

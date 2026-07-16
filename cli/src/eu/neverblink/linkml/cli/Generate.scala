@@ -20,7 +20,7 @@ trait HasGenerateOptions:
   val common: GenerateOptions
 
 /** A `generate <name>` command. Concrete commands extend one of the two variants below depending on
-  * how they produce output; [[run]] dispatches on which one it is.
+  * how they produce output.
   */
 sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends BaseCommand[T] {
   protected def generatorName: String
@@ -51,7 +51,7 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
         try write(stream)
         finally stream.close()
       case None =>
-        // `out` is the command's stdout (redirected in tests); flush but never close it.
+        // `out` is the command's stdout (redirected in tests). Flush but never close it.
         write(out)
         out.flush()
     }

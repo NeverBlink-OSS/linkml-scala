@@ -1,14 +1,6 @@
 package eu.neverblink.linkml.benchmark
 
-import eu.neverblink.linkml.generator.rdf.{
-  BlankNode,
-  CollectingRdfSink,
-  Iri,
-  Literal,
-  Node,
-  Resource,
-  Triple,
-}
+import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.generator.rdf.NTriplesOutput
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator

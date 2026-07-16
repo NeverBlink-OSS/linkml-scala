@@ -136,8 +136,8 @@ private object RdfOutput {
   val defaultFormat: String = "nt"
 
   val formatHelp: String =
-    "RDF serialization format: 'nt' (N-Triples — fast, streamed, the default) or " +
-      "'ttl' (Turtle — slower, but prefixed and pretty-printed). Default: nt"
+    "RDF serialization format: 'nt' (N-Triples – fast, streamed, the default) or " +
+      "'ttl' (Turtle – slower, but prefixed and pretty-printed). Default: nt"
 
   def unknownFormat(format: String): String =
     s"Unknown RDF format '$format'. Supported formats: nt, ttl."
