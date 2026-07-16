@@ -18,15 +18,24 @@ case class PrefixImpl(
 ) extends Prefix
 
 /** Prefix URI tuple
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class Prefix {
 
   /** The prefix components of a prefix expansions. This is the part that appears before the colon
     * in a CURIE.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def prefixPrefix: NcName
 
   /** The namespace to which a prefix expands to.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def prefixReference: Uri
 }

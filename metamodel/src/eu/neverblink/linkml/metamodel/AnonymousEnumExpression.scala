@@ -30,5 +30,8 @@ case class AnonymousEnumExpressionImpl(
 ) extends AnonymousEnumExpression
 
 /** An enum_expression that is not named
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class AnonymousEnumExpression extends EnumExpression {}

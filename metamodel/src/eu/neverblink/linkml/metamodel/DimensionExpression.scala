@@ -75,12 +75,17 @@ case class DimensionExpressionImpl(
 ) extends DimensionExpression
 
 /** Defines one of the dimensions of an array
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class DimensionExpression extends Extensible, Annotatable, CommonMetadata {
 
   /** The name used for a slot in the context of its owning class. If present, this is used instead
     * of the actual slot name.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
     * @note
@@ -91,6 +96,8 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
 
   /** The exact number of entries for a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   If exact_cardinality is set, then minimum_cardinalty and maximum_cardinality must be unset
     *   or have the same value
@@ -99,6 +106,8 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
 
   /** The maximum number of entries for a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Maximum_cardinality cannot be less than minimum_cardinality
     */
@@ -106,6 +115,8 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
 
   /** The minimum number of entries for a multivalued slot
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Minimum_cardinality cannot be greater than maximum_cardinality
     */

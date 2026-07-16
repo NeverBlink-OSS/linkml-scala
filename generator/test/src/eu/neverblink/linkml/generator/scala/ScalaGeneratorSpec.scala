@@ -655,17 +655,29 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
           |import eu.neverblink.linkml.runtime.*
           |
           |/** Enum description.
+          |  *
+          |  * @see
+          |  *   From schema: https://neverblink.eu/linkml/scala/test
           |  */
           |sealed abstract class SomeEnum
           |
           |object SomeEnum {
           |  /** Value 1.
+          |    *
+          |    * @see
+          |    *   From schema: https://neverblink.eu/linkml/scala/test
           |    */
           |  @named("value1") case object Value1 extends SomeEnum
           |  /** Value 2.
+          |    *
+          |    * @see
+          |    *   From schema: https://neverblink.eu/linkml/scala/test
           |    */
           |  @named("value2") case object Value2 extends SomeEnum
           |  /** Value 3.
+          |    *
+          |    * @see
+          |    *   From schema: https://neverblink.eu/linkml/scala/test
           |    */
           |  @named("value3") case object Value3 extends SomeEnum
           |}

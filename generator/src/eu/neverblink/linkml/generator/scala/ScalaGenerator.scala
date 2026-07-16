@@ -30,6 +30,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     */
   private def generateClasses(pkg: String): Iterable[(String, String)] = {
     for classView <- sv.classes.values yield {
+      given PrefixResolver = classView.definingPrefixResolver
       val cls = classView.cls
       val slotMap = classView.derivedAttributes
       val inlineStyle = CollectionForm.of(slotMap)
@@ -43,7 +44,12 @@ final class ScalaGenerator(using sv: SchemaView) {
         (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(slotName).toSet
       className + ".scala" -> (
         if classView.uriStr == "https://w3id.org/linkml/Any" then
-          typeDef(pkg, Case.PascalCase(cls.name), "LinkmlAny")
+          typeDef(
+            pkg,
+            Case.PascalCase(cls.name),
+            "LinkmlAny",
+            ScalaDoc(cls, classView.definingSchema.id),
+          )
         else
           ScalaClassInfo(
             className,
@@ -54,7 +60,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             cls.`abstract` || cls.mixin,
             shouldBeTrait,
             isSlotDefinitionClass,
-            ScalaDoc(cls),
+            ScalaDoc(classView.materialize, classView.definingSchema.id),
           ).print
       )
     }
@@ -68,6 +74,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     */
   private def generateEnums(pkg: String): Iterable[(String, String)] =
     sv.enums.values.flatMap { ev =>
+      given PrefixResolver = ev.definingPrefixResolver
       val en = ev._enum
       if (en.permissibleValues.isEmpty) None
       else {
@@ -77,11 +84,18 @@ final class ScalaGenerator(using sv: SchemaView) {
             caseName = v.text,
             objectName = Case.PascalCase(v.text),
             enumName = enumName,
-            doc = ScalaDoc(v),
+            doc = ScalaDoc(v, ev.definingSchema.id),
           ),
         ).toSeq
         val enumInfo =
-          ScalaEnumInfo(enumName, pkg, enumCases, !en.`abstract`, en.mixin, ScalaDoc(en))
+          ScalaEnumInfo(
+            enumName,
+            pkg,
+            enumCases,
+            !en.`abstract`,
+            en.mixin,
+            ScalaDoc(en, ev.definingSchema.id),
+          )
             .generate()
         Some(enumName + ".scala" -> enumInfo)
       }
@@ -116,7 +130,13 @@ final class ScalaGenerator(using sv: SchemaView) {
     sv.types.values.collect {
       case tv if !tv.isPrimitive =>
         val name = Case.PascalCase(tv._type.name)
-        s"$name.scala" -> typeDef(pkg, name, typeToRuntime(tv))
+        given PrefixResolver = tv.definingPrefixResolver
+        s"$name.scala" -> typeDef(
+          pkg,
+          name,
+          typeToRuntime(tv),
+          ScalaDoc(tv._type, tv.definingSchema.id),
+        )
     }
   }
 
@@ -130,13 +150,13 @@ final class ScalaGenerator(using sv: SchemaView) {
     * @param typeRange
     *   Name of the type/class to alias to
     */
-  private def typeDef(pkg: String, typeName: String, typeRange: String): String = {
+  private def typeDef(pkg: String, typeName: String, typeRange: String, doc: ScalaDoc): String = {
     s"""package $pkg
        |
        |// GENERATED FROM LINKML
        |
        |import eu.neverblink.linkml.runtime.*
-       |
+       |${doc.print}
        |type $typeName = $typeRange
        |""".stripMargin
   }
@@ -316,7 +336,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       // TODO LNK-124: remove when resolved in linkml-model
       // Patch to allow for the slot rank to be inherited.
       slot.inherited || slot.name == "rank",
-      ScalaDoc(slot),
+      ScalaDoc(slot, v.definingSchema.id)(using sv, v.definingPrefixResolver),
     )
   }
 }
@@ -540,14 +560,15 @@ object ScalaGenerator {
     }
 
   object ScalaDoc {
-    def apply(metadata: CommonMetadata)(using sv: SchemaView): ScalaDoc = {
-      // TODO LNK-115: We should use `metadata`'s prefixes here, not root's
-      given PrefixResolver = sv.rootPrefixResolver
+    def apply(metadata: CommonMetadata, fromSchema: Uri)(using
+        sv: SchemaView,
+        pr: PrefixResolver,
+    ): ScalaDoc = {
       new ScalaDoc(
         metadata.description.map(_.capitalize).getOrElse(""),
         metadata.seeAlso.map(_.uri) ++
           metadata.aliases.reduceOption(_ + ", " + _).map("Aliases: " + _) ++
-          metadata.fromSchema.map("From schema: " + _.uri),
+          Seq("From schema: " + fromSchema.uri),
         metadata.notes.map(_.capitalize) ++
           metadata.comments.map(_.capitalize),
         metadata.todos.map(_.capitalize),

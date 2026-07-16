@@ -129,6 +129,8 @@ case class SchemaDefinitionImpl(
   *   https://en.wikipedia.org/wiki/Data_dictionary
   * @see
   *   Aliases: data dictionary, data model, information model, logical model, schema, model
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class SchemaDefinition extends Element {
 
@@ -141,19 +143,29 @@ abstract class SchemaDefinition extends Element {
     *   https://linkml.io/linkml/faq/modeling.html#why-are-my-class-names-translated-to-camelcase
     * @see
     *   Aliases: short name, unique name
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def name: NcName
 
   /** The official schema URI
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def id: Uri
 
   /** An index to the collection of all class definitions in the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def classes: Map[String, ClassDefinitionImpl]
 
   /** An index to the collection of all slot definitions in the schema
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Note the formal name of this element is slot_definitions, but it has alias slots, which is
     *   the canonical form used in yaml/json serializes of schemas.
@@ -161,26 +173,44 @@ abstract class SchemaDefinition extends Element {
   def slotDefinitions: Map[String, SlotDefinitionImpl]
 
   /** An index to the collection of all enum definitions in the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def enums: Map[String, EnumDefinitionImpl]
 
   /** An index to the collection of all type definitions in the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def types: Map[String, TypeDefinitionImpl]
 
   /** An index to the collection of all subset definitions in the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def subsets: Map[String, SubsetDefinitionImpl]
 
   /** A collection of prefix expansions that specify how CURIEs can be expanded to URIs
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def prefixes: Map[String, PrefixImpl]
 
   /** The prefix that is used for all elements within a schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def defaultPrefix: Option[String]
 
   /** Default slot range to be used if range element is omitted from a slot definition
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def defaultRange: Option[Reference[TypeDefinition]]
 
@@ -188,16 +218,24 @@ abstract class SchemaDefinition extends Element {
     *
     * @see
     *   Aliases: constants
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Global variables are used in string interpolation in structured patterns
     */
   def settings: Map[String, SettingImpl]
 
   /** A list of schemas that are to be included in this schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def imports: Seq[UriOrCurie]
 
   /** License for the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def license: Option[String]
 
@@ -209,44 +247,74 @@ abstract class SchemaDefinition extends Element {
     * a given context. For example, a HumanSample class may have a slot for representing sample
     * site, with a range of concept, but the values of that slot may be restricted to concepts from
     * a particular branch of an anatomy ontology.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def bindings: Seq[EnumBindingImpl]
 
   /** Ordered list of prefixcommon biocontexts to be fetched to resolve id prefixes and inline
     * prefix variables
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def defaultCuriMaps: Seq[String]
 
   /** A list of Curie prefixes that are used in the representation of instances of the model. All
     * prefixes in this list are added to the prefix sections of the target models.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def emitPrefixes: Seq[NcName]
 
   /** Date and time that the schema was loaded/generated
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def generationDate: Option[LinkmlDateTime]
 
   /** Version of the metamodel used to load the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def metamodelVersion: Option[String]
 
   /** If true then induced/mangled slot names are not created for class_usage and attributes
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def slotNamesUnique: Boolean
 
   /** Name, uri or description of the source of the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def sourceFile: Option[String]
 
   /** Modification date of the source of the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def sourceFileDate: Option[LinkmlDateTime]
 
   /** Size in bytes of the source of the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def sourceFileSize: Option[Int]
 
   /** Particular version of schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def version: Option[String]
 }

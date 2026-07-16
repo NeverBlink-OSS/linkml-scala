@@ -119,6 +119,8 @@ case class EnumDefinitionImpl(
   * @see
   *   Aliases: enum, enumeration, semantic enumeration, value set, term set, concept set, code set,
   *   Terminology Value Set, answer list, value domain
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class EnumDefinition extends Definition, EnumExpression {
 
@@ -127,6 +129,8 @@ abstract class EnumDefinition extends Definition, EnumExpression {
     *
     * @see
     *   Aliases: public ID
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def enumUri: Option[UriOrCurie]
 }

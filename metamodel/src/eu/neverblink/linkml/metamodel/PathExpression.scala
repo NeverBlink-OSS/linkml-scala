@@ -83,6 +83,9 @@ case class PathExpressionImpl(
 
 /** An expression that describes an abstract path from an object to another through a sequence of
   * slot lookups
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class PathExpression extends Expression, Extensible, Annotatable, CommonMetadata {
 
@@ -90,6 +93,8 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def anyOf: Seq[PathExpressionImpl]
 
@@ -97,6 +102,8 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def exactlyOneOf: Seq[PathExpressionImpl]
 
@@ -104,6 +111,8 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def noneOf: Seq[PathExpressionImpl]
 
@@ -111,15 +120,22 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *
     * @see
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def allOf: Seq[PathExpressionImpl]
 
   /** In a sequential list, this indicates the next member
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def followedBy: Option[PathExpressionImpl]
 
   /** A range that is described as a boolean expression combining existing ranges
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   One use for this is being able to describe a range using any_of expressions, for example to
     *   combine two enums
@@ -127,10 +143,16 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
   def rangeExpression: Option[AnonymousClassExpressionImpl]
 
   /** True if the slot is to be inversed
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def reversed: Boolean
 
   /** The slot to traverse
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def traverse: Option[Reference[SlotDefinition]]
 }

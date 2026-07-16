@@ -78,6 +78,8 @@ case class ClassRuleImpl(
   *
   * @see
   *   Aliases: if rule
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, CommonMetadata {
 
@@ -85,6 +87,8 @@ abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, Common
     *
     * @see
     *   Aliases: order, precedence, display order
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The rank of an element does not affect the semantics
     */
@@ -96,6 +100,8 @@ abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, Common
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
     * @see
     *   Aliases: if, body, antecedents
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def preconditions: Option[AnonymousClassExpressionImpl]
 
@@ -105,6 +111,8 @@ abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, Common
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
     * @see
     *   Aliases: then, head, consequents
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def postconditions: Option[AnonymousClassExpressionImpl]
 
@@ -114,6 +122,8 @@ abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, Common
     *   https://w3id.org/linkml/docs/specification/05validation/#rules
     * @see
     *   Aliases: else
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def elseconditions: Option[AnonymousClassExpressionImpl]
 
@@ -122,15 +132,23 @@ abstract class ClassRule extends ClassLevelRule, Extensible, Annotatable, Common
     *
     * @see
     *   Aliases: iff, if and only if
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def bidirectional: Boolean
 
   /** A deactivated rule is not executed by the rules engine
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def deactivated: Boolean
 
   /** If true, the the postconditions may be omitted in instance data, but it is valid for an
     * inference engine to add these
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def openWorld: Boolean
 }

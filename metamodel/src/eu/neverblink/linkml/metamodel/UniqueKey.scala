@@ -76,21 +76,33 @@ case class UniqueKeyImpl(
 ) extends UniqueKey
 
 /** A collection of slots whose values uniquely identify an instance of a class
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class UniqueKey extends Extensible, Annotatable, CommonMetadata {
 
   /** Name of the unique key
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def uniqueKeyName: String
 
   /** List of slot names that form a key. The tuple formed from the values of all these slots should
     * be unique.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def uniqueKeySlots: Seq[Reference[SlotDefinition]]
 
   /** By default, None values are considered equal for the purposes of comparisons in determining
     * uniqueness. Set this to true to treat missing values as per ANSI-SQL NULLs, i.e NULL=NULL is
     * always False.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def considerNullsInequal: Boolean
 }

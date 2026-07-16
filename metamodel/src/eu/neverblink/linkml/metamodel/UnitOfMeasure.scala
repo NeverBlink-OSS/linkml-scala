@@ -25,6 +25,9 @@ case class UnitOfMeasureImpl(
 
 /** A unit of measure, or unit, is a particular quantity value that has been chosen as a scale for
   * measuring other quantities the same kind (more generally of equivalent dimension).
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/units
   */
 abstract class UnitOfMeasure {
 
@@ -32,19 +35,30 @@ abstract class UnitOfMeasure {
     * the unit in contexts where non-ASCII characters would be problematic, or where using the
     * abbreviation will enhance readability. When a power of a base unit needs to be expressed, such
     * as squares this can be done using abbreviations rather than symbols (source: qudt)
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def abbreviation: Option[String]
 
   /** Expression for deriving this unit from other units
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def derivation: Option[String]
 
   /** The spelled out name of the unit, for example, meter
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def descriptiveName: Option[String]
 
   /** Used to link a unit to equivalent concepts in ontologies such as UO, SNOMED, OEM, OBOE, NCIT
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/mappings
     * @note
     *   Do not use this to encode mappings to systems for which a dedicated field exists
     */
@@ -53,17 +67,29 @@ abstract class UnitOfMeasure {
   /** Concept in a vocabulary or ontology that denotes the kind of quantity being measured, e.g.
     * length
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     * @note
     *   Potential ontologies include but are not limited to PATO, NCIT, OBOE, qudt.quantityKind
     */
   def hasQuantityKind: Option[UriOrCurie]
+
+  /** @see
+    *   From schema: https://w3id.org/linkml/units
+    */
   def iec61360code: Option[String]
 
   /** Name of the unit encoded as a symbol
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def symbol: Option[String]
 
   /** Associates a QUDT unit with its UCUM code (case-sensitive).
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/units
     */
   def ucumCode: Option[String]
 }

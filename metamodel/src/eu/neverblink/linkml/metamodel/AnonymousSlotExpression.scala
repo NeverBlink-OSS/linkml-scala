@@ -118,4 +118,7 @@ case class AnonymousSlotExpressionImpl(
     valuePresence: Option[Reference[PresenceEnum]] = None,
 ) extends AnonymousSlotExpression
 
+/** @see
+  *   From schema: https://w3id.org/linkml/meta
+  */
 abstract class AnonymousSlotExpression extends AnonymousExpression, SlotExpression {}

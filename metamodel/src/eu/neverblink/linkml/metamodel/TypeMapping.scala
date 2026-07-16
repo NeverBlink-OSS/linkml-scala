@@ -75,15 +75,24 @@ case class TypeMappingImpl(
 ) extends TypeMapping
 
 /** Represents how a slot or type can be serialized to a format.
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
 
   /** The name of a format that can be used to serialize LinkML data. The string value should be a
     * code from the LinkML frameworks vocabulary, but this is not strictly enforced
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def frameworkKey: String
 
   /** Type to coerce to
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def mappedType: Option[Reference[TypeDefinition]]
 
@@ -100,6 +109,8 @@ abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
     *
     * @see
     *   https://github.com/linkml/issues/128
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def stringSerialization: Option[String]
 }

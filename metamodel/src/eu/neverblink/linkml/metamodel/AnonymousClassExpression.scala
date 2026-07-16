@@ -80,6 +80,9 @@ case class AnonymousClassExpressionImpl(
     todos: Seq[String] = Seq(),
 ) extends AnonymousClassExpression
 
+/** @see
+  *   From schema: https://w3id.org/linkml/meta
+  */
 abstract class AnonymousClassExpression extends AnonymousExpression, ClassExpression {
 
   /** A primary parent class or slot from which inheritable metaslots are propagated from. While
@@ -88,6 +91,9 @@ abstract class AnonymousClassExpression extends AnonymousExpression, ClassExpres
     * When translating to a SI framework (e.g. java classes, python classes) then is a is used. When
     * translating a framework without polymorphism (e.g. json-schema, solr document schema) then is
     * a and mixins are recursively unfolded
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isA: Option[Reference[Definition]]
 }

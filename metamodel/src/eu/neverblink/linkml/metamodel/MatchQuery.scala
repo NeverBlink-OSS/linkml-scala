@@ -17,11 +17,17 @@ case class MatchQueryImpl(
 
 /** A query that is used on an enum expression to dynamically obtain a set of permissible values via
   * a query that matches on properties of the external concepts.
+  *
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class MatchQuery {
 
   /** A regular expression that is used to obtain a set of identifiers from a source_ontology to
     * construct a set of permissible values
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def identifierPattern: Option[String]
 
@@ -30,6 +36,8 @@ abstract class MatchQuery {
     *
     * @see
     *   Aliases: terminology, vocabulary
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Examples include schema.org, wikidata, or an OBO ontology
     * @note

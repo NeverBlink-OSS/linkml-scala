@@ -142,6 +142,8 @@ case class ClassDefinitionImpl(
   *
   * @see
   *   Aliases: table, record, template, message, observation
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
 abstract class ClassDefinition extends Definition, ClassExpression {
 
@@ -154,6 +156,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   https://linkml.io/linkml/schemas/uris-and-mappings.html
     * @see
     *   Aliases: public ID
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Assigning class_uris can provide additional hooks for interoperation, indicating a common
     *   conceptual model
@@ -163,6 +167,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
   /** The name used for a slot in the context of its owning class. If present, this is used instead
     * of the actual slot name.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
     * @note
@@ -172,6 +178,9 @@ abstract class ClassDefinition extends Definition, ClassExpression {
   def alias: Option[String]
 
   /** A primary parent class from which inheritable metaslots are propagated
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def isA: Option[Reference[ClassDefinition]]
 
@@ -181,6 +190,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   https://en.wikipedia.org/wiki/Mixin
     * @see
     *   Aliases: traits
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Mixins act in the same way as parents (is_a). They allow a model to have a primary strict
     *   hierarchy, while keeping the benefits of multiple inheritance
@@ -189,6 +200,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
 
   /** Collection of slot names that are applicable to a class
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   The list of applicable slots is inherited from parent classes
     * @note
@@ -200,6 +213,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
 
   /** The refinement of a slot in the context of the containing class definition.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Many slots may be reused across different classes, but the meaning of the slot may be
     *   refined by context. For example, a generic association model may use slots
@@ -211,6 +226,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
 
   /** Inline definition of slots
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Attributes are an alternative way of defining new slots. An attribute adds a slot to the
     *   global space in the form <class_name>__<slot_name> (lower case, double underscores).
@@ -223,6 +240,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *
     * @see
     *   https://linkml.io/linkml/intro/tutorial02.html
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Each schema should have at most one tree root
     */
@@ -233,25 +252,40 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     * where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
     * gene_my_organism, adding the slot to this class, and then adding an apply_to pointing to the
     * gene class. The new slot will be 'injected into' the gene class.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def applyTo: Seq[Reference[ClassDefinition]]
 
   /** If true then all direct is_a children are mutually disjoint and share no instances in common
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def childrenAreMutuallyDisjoint: Boolean
 
   /** The collection of classification rules that apply to all members of this class. Classification
     * rules allow for automatically assigning the instantiated type of an instance.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def classificationRules: Seq[AnonymousClassExpressionImpl]
 
   /** The combination of is a plus defining slots form a genus-differentia definition, or the set of
     * necessary and sufficient conditions that can be transformed into an OWL equivalence axiom
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def definingSlots: Seq[Reference[SlotDefinition]]
 
   /** Two classes are disjoint if they have no instances in common, two slots are disjoint if they
     * can never hold between the same two instances
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def disjointWith: Seq[Reference[ClassDefinition]]
 
@@ -265,6 +299,9 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *     forbid all additional data (default)
     *   - `range_expression: ...` - allow additional data if it matches the slot expression (see
     *     examples)
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def extraSlots: Option[ExtraSlotsExpressionImpl]
 
@@ -276,6 +313,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   https://patterns.dataincubator.org/book/qualified-relation.html
     * @see
     *   Aliases: is_reified
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   In the context of Entity-Relationship (ER) modeling, this is used to state that a class
     *   models a relationship between entities, and should be drawn with a diamond
@@ -288,19 +327,30 @@ abstract class ClassDefinition extends Definition, ClassExpression {
   def representsRelationship: Boolean
 
   /** The collection of rules that apply to all members of this class
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def rules: Seq[ClassRuleImpl]
 
   /** If true then induced/mangled slot names are not created for class_usage and attributes
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def slotNamesUnique: Boolean
 
   /** DEPRECATED -- rdfs:subClassOf to be emitted in OWL generation
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
   def subclassOf: Option[UriOrCurie]
 
   /** Indicates that the domain element consists exactly of the members of the element in the range.
     *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   This only applies in the OWL generation
     */
@@ -317,6 +367,8 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   https://w3id.org/linkml/key
     * @see
     *   https://w3id.org/linkml/identifier
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     * @note
     *   Not to be confused with a "singular unique key", which is defined by means of the `key`
     *   slot, or with an "identifier", which is defined by means of the "identifier" slot. Compound
