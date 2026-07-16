@@ -22,7 +22,7 @@ import scala.util.Using
   */
 class GeneratorBench extends CommonParams {
 
-  @Param(Array("dummy.yml", "cgmes-core.yml", "cgmes-dynamics.yml"))
+  @Param(Array( /*"dummy.yml", "cgmes-core.yml",*/ "cgmes-dynamics.yml"))
   var schema: String = uninitialized
 
   private var yaml: String = uninitialized
@@ -43,6 +43,12 @@ class GeneratorBench extends CommonParams {
   }
 
   @Benchmark
+  def jsonSchemaFromSchemas(bh: Blackhole): Unit = {
+    given sv: SchemaView = SchemaView(schemaView.schemas)
+    bh.consume(JsonSchemaGenerator().serialize())
+  }
+
+  @Benchmark
   def jsonSchemaFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
     bh.consume(JsonSchemaGenerator().serialize())
@@ -51,6 +57,12 @@ class GeneratorBench extends CommonParams {
   @Benchmark
   def shaclFromYaml(bh: Blackhole): Unit = {
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
+    writeShacl(bh)
+  }
+
+  @Benchmark
+  def shaclFromSchemas(bh: Blackhole): Unit = {
+    given sv: SchemaView = SchemaView(schemaView.schemas)
     writeShacl(bh)
   }
 
