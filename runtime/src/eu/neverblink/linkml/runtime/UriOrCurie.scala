@@ -81,7 +81,7 @@ class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
       val prefix = parts(0)
       val baseUri = prefixToUri.get(prefix)
       if (baseUri != null) baseUri + parts(1)
-      else sys.error(s"Unknown prefix '$prefix' in schema $schemaId")
+      else sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
     } else curie // relative reference
   }
 
