@@ -219,14 +219,16 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   private[schemaview] def applySlotUsage(
       slot: SlotDefinitionImpl,
+      slotName: String,
       cls: ClassDefinition,
   ): SlotDefinitionImpl = {
     var currentSlot = slot
-    for s <- cls.slotUsage.values ++ cls.attributes.values do {
-      if currentSlot.name == s.name then currentSlot = currentSlot.combineWith(s, combineRange)
-    }
-    for c <- cls.mixins.flatMap(resolve) ++ cls.isA.flatMap(resolve) do
-      currentSlot = applySlotUsage(currentSlot, c)
+    def combine(s: SlotDefinitionImpl): Unit =
+      currentSlot = currentSlot.combineWith(s, combineRange)
+    cls.slotUsage.get(slotName).foreach(combine)
+    cls.attributes.get(slotName).foreach(combine)
+    for c <- cls.mixins.flatMap(resolve) do currentSlot = applySlotUsage(currentSlot, slotName, c)
+    for c <- cls.isA.flatMap(resolve) do currentSlot = applySlotUsage(currentSlot, slotName, c)
     currentSlot
   }
 
