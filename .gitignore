@@ -29,6 +29,9 @@ target/
 # Generated files
 .generated
 
+# Raw data dir
+.data
+
 # Environment variables
 .env
 
