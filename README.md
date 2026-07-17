@@ -23,7 +23,7 @@
 
 ### 🚀 It's really fast!
 
-LinkML-Scala was built it work great with large schemas. It can be **10–20x faster than the Python implementation**, depending on the use case:
+LinkML-Scala was built to work great with large schemas. It can be **10–20x faster than the Python implementation**, depending on the use case:
 
 ![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
 
