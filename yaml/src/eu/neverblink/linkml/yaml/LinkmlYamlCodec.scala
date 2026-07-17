@@ -3,6 +3,7 @@ package eu.neverblink.linkml.yaml
 import eu.neverblink.linkml.runtime.*
 import org.virtuslab.yaml.*
 import scala.annotation.nowarn
+import scala.collection.immutable.ListMap
 import scala.collection.mutable
 import scala.quoted.*
 import scala.util.control.NoStackTrace
@@ -465,7 +466,10 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
           '{
             if ($skipId) $encodeVal
             else {
-              val kvs = Map.newBuilder[Node, Node]
+              val kvs = ListMap.newBuilder[
+                Node,
+                Node,
+              ] // for preserving field order and faster serialization
               ${ genEncodeFields('kvs) }
               Node.MappingNode(kvs.result())
             }
@@ -473,7 +477,8 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
       }
     } else {
       '{
-        val kvs = Map.newBuilder[Node, Node]
+        val kvs =
+          ListMap.newBuilder[Node, Node] // for preserving field order and faster serialization
         ${ genEncodeFields('kvs) }
         Node.MappingNode(kvs.result())
       }

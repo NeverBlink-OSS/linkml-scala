@@ -254,11 +254,12 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           b: Seq[Int] = Nil,
           c: Map[String, Boolean] = Map.empty,
           d: Boolean = false,
+          e: Int = 0,
       ) derives LinkmlYamlCodec
 
       roundTrip(
-        MyClass(Some("ABC"), Seq(123, 456), Map("+++" -> true), true),
-        "a: ABC\nb: \n  - 123\n  - 456\nc: \n  +++: true\nd: true\n",
+        MyClass(Some("ABC"), Seq(123, 456), Map("+++" -> true), true, 10),
+        "a: ABC\nb: \n  - 123\n  - 456\nc: \n  +++: true\nd: true\ne: 10\n",
       )
       roundTrip(MyClass(Some("ABC")), "a: ABC\n")
       decodeError[MyClass](
