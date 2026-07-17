@@ -3,7 +3,8 @@ package eu.neverblink.linkml.generator.tableschema
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import io.circe.syntax.EncoderOps
+import com.github.plokhotnyuk.jsoniter_scala.core.*
+import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator.*
 
 class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   val xsd = "http://www.w3.org/2001/XMLSchema#"
@@ -11,19 +12,20 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   "TableDescriptor" should {
     "serialize" when {
       "empty" in {
-        TableDescriptor().asJson.deepDropNullValues.noSpaces shouldBe """{"fields":[]}"""
+        writeToString(TableDescriptor()) shouldBe """{"fields":[]}"""
       }
       "field" in {
-        TableDescriptor(Seq(FieldDescriptor("field"))).asJson.deepDropNullValues
-          .noSpaces shouldBe """{"fields":[{"name":"field","type":"string","format":"default"}]}"""
+        writeToString(TableDescriptor(Seq(FieldDescriptor("field")))) shouldBe
+          """{"fields":[{"name":"field","type":"string","format":"default"}]}"""
       }
       "required field" in {
         val expected =
           """{"fields":[{"name":"field","type":"string","constraints":{"required":true},"format":"default"}]}"""
-        TableDescriptor(
-          Seq(FieldDescriptor("field", constraints = Some(Constraints(required = Some(true))))),
-        )
-          .asJson.deepDropNullValues.noSpaces shouldBe expected
+        writeToString(
+          TableDescriptor(
+            Seq(FieldDescriptor("field", constraints = Some(Constraints(required = Some(true))))),
+          ),
+        ) shouldBe expected
       }
     }
   }
@@ -169,7 +171,7 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate the model catalogue without throwing errors" when {
-      val emptyMaterialized = TableDescriptor().asJson.deepDropNullValues.spaces2
+      val emptyMaterialized = writeToString(TableDescriptor())
       for model <- ModelCatalogue.all do
         s"model '${model.name}'" in {
           val res = TableSchemaGenerator(using model.model).serialize(None)

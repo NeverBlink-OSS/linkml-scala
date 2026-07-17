@@ -1,7 +1,5 @@
 package eu.neverblink.linkml.generator.tableschema
 
-import io.circe.Codec
-
 /** Frictionless Table Schema field descriptor model.
   *
   * @see
@@ -53,7 +51,7 @@ case class FieldDescriptor(
 //    bareNumber: Option[Boolean] = None, // true
 //    decimalChar: Option[String] = None, // "."
 //    groupChar: Option[String] = None, // ","
-) derives Codec
+)
 
 object FieldDescriptor:
   object types:

@@ -3,8 +3,8 @@ package eu.neverblink.linkml.generator.rdf
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-/** Serialization + conformance tests for [[NTriplesWriter]], following the grammar of the
-  * RDF Test Cases spec (https://www.w3.org/TR/rdf-testcases/#ntriples).
+/** Serialization + conformance tests for [[NTriplesWriter]], following the grammar of the RDF Test
+  * Cases spec (https://www.w3.org/TR/rdf-testcases/#ntriples).
   */
 class NTriplesWriterSpec extends AnyWordSpec, Matchers {
 

@@ -1,7 +1,5 @@
 package eu.neverblink.linkml.generator.tableschema
 
-import io.circe.Codec
-
 /** Frictionless Table Schema constraints model.
   *
   * @see
@@ -35,4 +33,4 @@ case class Constraints(
     pattern: Option[String] = None,
     required: Option[Boolean] = None, // false
     unique: Option[Boolean] = None, // false
-) derives Codec
+)

@@ -115,7 +115,7 @@ class LinkMlGenerator(using sv: SchemaView) {
       outputFormat: OutputFormat = yaml,
   ): String = {
     val node = Codec.codec.encode(generate(pruningMode, skipClassDerivation))
-    if outputFormat == json then JsonUtil.yamlToJson(node).spaces2
+    if (outputFormat == json) JsonUtil.yamlToJson(node)
     else node.asYaml
   }
 }

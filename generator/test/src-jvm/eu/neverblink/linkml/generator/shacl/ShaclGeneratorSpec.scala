@@ -604,30 +604,36 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate IRI nodeKind constraints for URI or CURIE types" in {
-      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.uriOrCurie.model).generate(_))
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.uriOrCurie.model).generate(_))
       turtle should include("sh:nodeKind sh:IRI")
     }
 
     "generate IRI nodeKind constraints for implicitly prefixed slots" in {
-      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.implicitPrefix.model).generate(_))
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.implicitPrefix.model).generate(_))
       turtle should include("sh:nodeKind sh:IRI")
     }
 
     "ignore identifiers" in {
-      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.reference.model).generate(_))
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.reference.model).generate(_))
       turtle should include(
         "sh:ignoredProperties (rdf:type <https://neverblink.eu/linkml/tests/reference/id>)",
       )
     }
 
     "generate sh:or for any_of" in {
-      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.unionRange.model).generate(_))
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.unionRange.model).generate(_))
       turtle should include("sh:or ")
     }
 
     "not generate the main range for any_of" in {
       // TODO LNK-129: Get rid of this hack
-      val turtle = RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.unionRangeReference.model).generate(_))
+      val turtle = RdfUtils.toTurtle(
+        ShaclGenerator(using ModelCatalogue.unionRangeReference.model).generate(_),
+      )
       turtle should include("sh:or ")
       turtle should not include "sh:class <https://neverblink.eu/linkml/tests/unionRangeReference/BaseClass>"
     }

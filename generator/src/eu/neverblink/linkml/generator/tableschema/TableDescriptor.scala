@@ -1,7 +1,5 @@
 package eu.neverblink.linkml.generator.tableschema
 
-import io.circe.Codec
-
 /** Frictionless Table Schema table descriptor model. This is the root of the Table Schema.
   *
   * @see
@@ -17,4 +15,4 @@ import io.circe.Codec
 case class TableDescriptor(
     fields: Seq[FieldDescriptor] = Seq(),
     primaryKey: Option[String] = None,
-) derives Codec
+)
