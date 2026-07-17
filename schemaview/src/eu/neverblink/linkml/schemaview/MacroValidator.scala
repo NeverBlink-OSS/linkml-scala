@@ -20,28 +20,49 @@ import scala.quoted.*
   *   Ranges that are invalid in the schema
   * @param invalidDefaultRanges
   *   Ranges whose inferred defaults wouldn't resolve
+  * @param isEmpty
+  *   Set to true only if you are creating a ValidatorResult == ValidatorResult.ok
   */
-case class ValidatorResult(
-    unknownReferences: Seq[UnknownReference] = Seq.empty,
-    invalidRanges: Seq[InvalidRange] = Seq.empty,
-    invalidDefaultRanges: Seq[InvalidDefaultRange] = Seq.empty,
+final case class ValidatorResult private (
+    unknownReferences: Seq[UnknownReference],
+    invalidRanges: Seq[InvalidRange],
+    invalidDefaultRanges: Seq[InvalidDefaultRange],
+    isEmpty: Boolean,
 ):
   /** Merge the [[ValidatorResult]]s */
-  def +(other: ValidatorResult): ValidatorResult = ValidatorResult(
-    unknownReferences ++ other.unknownReferences,
-    invalidRanges ++ other.invalidRanges,
-    invalidDefaultRanges ++ other.invalidDefaultRanges,
-  )
+  def +(other: ValidatorResult): ValidatorResult =
+    if other.isEmpty then this
+    else
+      ValidatorResult(
+        unknownReferences ++ other.unknownReferences,
+        invalidRanges ++ other.invalidRanges,
+        invalidDefaultRanges ++ other.invalidDefaultRanges,
+      )
 
   /** Add a [[prefix]] to each result's source path */
-  def prependedPath(prefix: String): ValidatorResult = ValidatorResult(
-    unknownReferences.map(_.prependedPath(prefix)),
-    invalidRanges.map(_.prependedPath(prefix)),
-    invalidDefaultRanges.map(_.prependedPath(prefix)),
-  )
+  def prependedPath(prefix: String): ValidatorResult =
+    if isEmpty then this
+    else
+      ValidatorResult(
+        unknownReferences.map(_.prependedPath(prefix)),
+        invalidRanges.map(_.prependedPath(prefix)),
+        invalidDefaultRanges.map(_.prependedPath(prefix)),
+      )
 
 object ValidatorResult {
-  val ok: ValidatorResult = ValidatorResult(Seq.empty, Seq.empty, Seq.empty)
+  val ok: ValidatorResult = ValidatorResult(Seq.empty, Seq.empty, Seq.empty, isEmpty = true)
+
+  def apply(
+      unknownReferences: Seq[UnknownReference] = Seq(),
+      invalidRanges: Seq[InvalidRange] = Seq(),
+      invalidDefaultRanges: Seq[InvalidDefaultRange] = Seq(),
+  ): ValidatorResult =
+    new ValidatorResult(
+      unknownReferences,
+      invalidRanges,
+      invalidDefaultRanges,
+      isEmpty = false,
+    )
 }
 
 /** A reference that could not be resolved in the [[SchemaView]]
@@ -51,7 +72,7 @@ object ValidatorResult {
   * @param referenceValue
   *   Value of the invalid reference
   */
-case class UnknownReference(path: String, referenceValue: String):
+final case class UnknownReference(path: String, referenceValue: String):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): UnknownReference =
     copy(path = prefix + path)
@@ -65,7 +86,7 @@ case class UnknownReference(path: String, referenceValue: String):
   * @param actualType
   *   The definition type that this reference actually points to
   */
-case class InvalidRange(path: String, value: String, actualType: String):
+final case class InvalidRange(path: String, value: String, actualType: String):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): InvalidRange =
     copy(path = prefix + path)
@@ -75,7 +96,7 @@ case class InvalidRange(path: String, value: String, actualType: String):
   * @param path
   *   JSON path to the reference
   */
-case class InvalidDefaultRange(path: String):
+final case class InvalidDefaultRange(path: String):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): InvalidDefaultRange =
     copy(path = prefix + path)
@@ -253,7 +274,11 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
                 if fieldInfo.mappedName != "range" then vc
                 else '{ $vc.asRange },
               )
-              '{ $kvs.addOne($encodeVal.prependedPath(s"${$name}/")) }
+              '{
+                // Skip ok results to save on array expansion and folding
+                if $encodeVal ne ValidatorResult.ok then
+                  $kvs.addOne($encodeVal.prependedPath(s"${$name}/"))
+              }
           }).asTerm
         },
         '{}.asTerm,
