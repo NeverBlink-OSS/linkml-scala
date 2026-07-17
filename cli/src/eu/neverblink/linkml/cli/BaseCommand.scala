@@ -43,13 +43,22 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     * only.
     */
   final def runTestCommand(args: List[String]): (String, String) = {
+    val (out, err, _) = runTestCommandWithExitCode(args)
+    (out, err)
+  }
+
+  /** Like [[runTestCommand]] but also returns the exit code (0 if the command didn't call `exit`).
+    * For tests only.
+    */
+  final def runTestCommandWithExitCode(args: List[String]): (String, String, Int) = {
     val bufOut = ByteArrayOutputStream()
     val bufErr = ByteArrayOutputStream()
     testMode = true
     out = PrintStream(bufOut, true, "UTF-8")
     errStream = PrintStream(bufErr, true, "UTF-8")
+    var exitCode = 0
     try App.main(args.toArray)
-    catch { case _: ExitException => () }
+    catch { case ExitException(code) => exitCode = code }
     finally {
       out.flush()
       errStream.flush()
@@ -57,6 +66,6 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
       errStream = System.err
       testMode = false
     }
-    (bufOut.toString("UTF-8"), bufErr.toString("UTF-8"))
+    (bufOut.toString("UTF-8"), bufErr.toString("UTF-8"), exitCode)
   }
 }

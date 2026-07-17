@@ -1,0 +1,13 @@
+id: https://neverblink.eu/linkml/test
+name: test
+#imports: [linkml:types]
+classes:
+  Class1:
+    class_uri: http://example.org/class1>
+
+  Cat:
+    attributes:
+      id:
+        range: Name
+        identifier: true
+  Name:

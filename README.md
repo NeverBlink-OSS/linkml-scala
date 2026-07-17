@@ -15,49 +15,59 @@
 
 # LinkML-Scala
 
-**[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharding data.** You write your data model once in a simple YAML format, and LinkML generates code, schemas, and validation rules for multiple programming languages and data formats.
+**[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharding data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple programming languages and data formats.
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the JVM, [in your browser](https://linkml.neverblink.eu/playground/) or Node.js (pure JavaScript!), and even compiles to native binaries. We have both a command-line interface (CLI) and a library for programmatic access.
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have both a command-line interface (CLI) and a library for programmatic access.
 
 ## Why LinkML-Scala?
 
 ### 🚀 It's really fast!
 
-TODO
+LinkML-Scala was built it work great with large schemas. It can be **10–20x faster than the Python implementation**, depending on the use case:
 
-### 🌐 Works in the browser and Node.js
+![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
+
+We are right now working on a benchmark suite to compare LinkML-Scala with the Python implementation. Stay tuned for updates!
+
+### 🌐 Works in the browser, Node.js, and in the JVM
+
+It compiles to pure JavaScript (no dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.neverblink.eu/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
+
+For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **[Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)**.
+
+[![Web playground screenshot](./docs/img/playground.png)](https://linkml.neverblink.eu/playground)
 
 ### ⚡ Natively compiled binaries for Linux, macOS, and Windows
 
-### 🧭 Actually useful error messages
+`linkml-scala` is a self-contained binary that runs natively on Linux, macOS, and Windows. You don't need Python, Java, or anything else installed.
 
-TODO
+It starts up immediately and runs fast, even on large models. **[See the installation instructions.](#cli-tool-installation)**
 
+It's also possible to compile LinkML-Scala to a native shared library for use in Rust, C, C++, and other languages. [Let us know](https://github.com/NeverBlink-OSS/linkml-scala/discussions) if you would like to see this feature!
 
+### 🛡️ Consistent, reliable, and has great error reporting
 
-library (JVM, Scala.JS) powered by Scala 3.8+.
+LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
-Prerequisite Note: LinkML-Scala requires JDK 17 or higher. It will not run on older Java versions.
+![linkml-scala validate CLI command](./docs/img/validate.gif)
 
-While primarily a library, you can access its core features (like schema validation and code generation) 
-directly from your terminal using the `linkml-scala` Command-Line Interface (CLI) tool.
+We engineered LinkML-Scala to be as consistent as possible, so you are much less likely to run into "fun surprises" when using it with different generators. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
 
-## Quick start: Installation
+## CLI tool installation
 
 Choose the installation method that best fits your operating system and workflow. Once installed, running `linkml-scala`
 without any options will print a helpful list of available commands.
 
-### Method 1: The Install Script (Recommended for Unix/macOS)
+### Method 1: Install script (recommended for Unix/macOS)
 
-If you are on Linux (x86_64, ARM64), macOS (ARM64), or using WSL on Windows, the easiest way to grab the latest release 
-is via our installation script:
+If you are on Linux (x86_64, ARM64), macOS (ARM64), or using WSL on Windows, the easiest way to grab the latest release is via our installation script:
 
 ```shell
 . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/refs/heads/main/cli/install.sh)
 linkml-scala
 ```
 
-### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (Cross-Platform)
+### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (cross-platform)
 
 You can install `linkml-scala` on any platform (including Windows) using [mise](https://mise.jdx.dev/getting-started.html)
 environment manager:
@@ -73,16 +83,16 @@ mise use 'github:NeverBlink-OSS/linkml-scala@v0.8.6'
 linkml-scala
 ```
 
-### Method 3: Manual Download
+### Method 3: Manual download
 
-If you prefer a manual setup, head over to the Releases Page and download the pre-compiled binary for your specific OS 
-and architecture.
+If you prefer a manual setup, head over to the Releases Page and download the pre-compiled binary for your specific OS and architecture.
 
 *For macOS and Linux:*
 Rename the downloaded file, make it executable, and run it:
 
 ```shell
 mv linkml-scala-<os>-<arch> linkml-scala
+chmod +x linkml-scala
 ./linkml-scala
 ```
 
@@ -94,14 +104,14 @@ ren linkml-scala-windows-x86_64.exe linkml-scala.exe
 linkml-scala.exe
 ```
 
-### CLI Usage Guide
+### CLI – getting started
 
 #### LinkML schema validation
 
 The `validate` command inspects your LinkML schema for structural and logical issues:
 
 ```shell
-./linkml-scala validate <input-file>
+linkml-scala validate <input-file>
 ```
 
 The CLI outputs issues directly to your terminal, categorized into three severity levels:
@@ -109,44 +119,26 @@ The CLI outputs issues directly to your terminal, categorized into three severit
 - Errors: structural violations (multiple keys or ID slots, multiple tree roots, ID collisions)
 - Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root)
 
-Fatal issues are critical for generation. 
+All generators require that there are no *fatal* issues in the schema. 
 The process will report these and exit immediately, as generation cannot proceed.
 
-#### JSON Schema generation
+#### Generators
 
 Generate a standard JSON Schema from your model:
 
 ```shell
-./linkml-scala generate json-schema <input-file>
+linkml-scala generate json-schema <input-file>
 ```
-
-#### Generation of Scala classes
-
-Generate Scala data structures from your model:
-```shell
-./linkml-scala generate scala --package <scala-package> --to <output-path> <input-file>
-```
-Parameters:
-- `<scala-package>` - package name for generated classes, _default value: eu.neverblink.linkml.metamodel_
-- `<output-path>` - destination file or directory, _if not specified, output will be written to stdout_
-
-#### Generation of SHACL shapes
 
 Generate SHACL (Shapes Constraint Language) graphs for RDF validation:
+
 ```shell
-./linkml-scala generate shacl --to <output-path> <input-file>
+linkml-scala generate shacl --to <output-path> <input-file>
 ```
 Parameters:
 - `<output-path>` - destination file or directory, _if not specified, output will be written to stdout_
 
-#### Generation of RDF schema
-
-Generate RDF schema:
-```shell
-./linkml-scala generate rdfs --to <output-path> <input-file>
-```
-Parameters:
-- `<output-path>` - destination file or directory, _if not specified, output will be written to stdout_
+**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` the options for any specific generator.
 
 #### LinkML schema derivation and pruning 
 
@@ -159,15 +151,9 @@ Generate a LinkML model that:
 ./linkml-scala generate linkml --to <output-path> <input-file>
 ```
 
-## Playground
-
-Try LinkML-Scala live in your browser at [linkml.neverblink.eu/playground](https://linkml.neverblink.eu/playground), or run it locally with `./mill ui`.
-
 ## JavaScript / TypeScript library
 
-The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml)
-– a single self-contained ES module (with TypeScript declarations) compiled from Scala via Scala.js,
-with no runtime dependencies.
+The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml) – a single self-contained ES module (with TypeScript declarations) compiled from Scala via Scala.js, with no runtime dependencies.
 
 ```shell
 npm install @neverblink/linkml
@@ -182,6 +168,10 @@ const jsonSchema = LinkML.jsonSchema(mySchemaYaml, {});
 
 `LinkML` exposes `jsonSchema`, `shacl`, `rdfs`, `linkml`, `scala`, `tableSchema`, and `lint`.
 See [generator/npm/README.md](generator/npm/README.md) for details.
+
+## JVM library
+
+All modules are published to Maven Central under the `eu.neverblink.linkml` group ID. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli).
 
 ## Contributing
 
