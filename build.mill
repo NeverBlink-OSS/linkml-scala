@@ -54,8 +54,8 @@ def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
   AliasesModule.run(ev, "lint")
 }
 
-/** Bundle the TypeScript playground UI (app.ts + CodeMirror) into ui/dist via
-  * esbuild. Installs npm deps on first run. Requires Node.js and npm on the PATH.
+/** Bundle the TypeScript playground UI (app.ts + CodeMirror) into ui/dist via esbuild. Installs npm
+  * deps on first run. Requires Node.js and npm on the PATH.
   */
 def buildUiBundle(): Unit = {
   val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
@@ -68,15 +68,15 @@ def uiBundle(args: String*) = Task.Command(exclusive = true) {
   buildUiBundle()
 }
 
-/** Regenerate ui/linkml.d.ts (the LinkML API types the UI is checked against)
-  * from the Scala facade. Run after changing LinkMlJsApi.scala.
+/** Regenerate ui/linkml.d.ts (the LinkML API types the UI is checked against) from the Scala
+  * facade. Run after changing LinkMlJsApi.scala.
   */
 def uiTypes(args: String*) = Task.Command(exclusive = true) {
   os.copy.over(generator.js.tsDefs().path, mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts")
 }
 
-/** Type-check the UI against the LinkML types and confirm it bundles. Requires
-  * Node.js and npm on the PATH.
+/** Type-check the UI against the LinkML types and confirm it bundles. Requires Node.js and npm on
+  * the PATH.
   */
 def uiCheck(args: String*) = Task.Command(exclusive = true) {
   val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
@@ -317,11 +317,12 @@ object cli extends Module {
     def nativeImageGraalVmJvmId = "graalvm-oracle:25"
 
     def nativeImageOptions = Seq(
-      "-Os", // Optimized for smaller binary size and faster startup
+      "-O3", // Optimized for throughput
       "--no-fallback",
       "--initialize-at-build-time",
       "-H:+UnlockExperimentalVMOptions",
       "-H:+RemoveSaturatedTypeFlows",
+      "-H:+MLCallCountProfileInference",
       "-H:IncludeLocales=en",
       "-H:-GenLoopSafepoints",
       "-H:-ParseRuntimeOptions",
@@ -348,14 +349,20 @@ object cli extends Module {
 object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule {
   def scalaVersion = scala
 
-  // JMH forks a JVM using this runtime; the CommonParams JVM flags require JDK 24+
-  // (e.g. -XX:+UseCompactObjectHeaders).
+  // JMH forks a JVM using this runtime
   override def jvmVersion = "temurin:25"
 
   def jmhCoreVersion = "1.37"
 
   def moduleDeps = Seq(
     build.generator.jvm,
+  )
+
+  // RDF4J Rio N-Triples (generator.jvm only brings rio-turtle) and Jena ARQ/RIOT,
+  // for the N-Triples streaming-serializer benchmark.
+  override def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:$rdf4j",
+    mvn"org.apache.jena:jena-arq:5.5.0",
   )
 
   def scalacOptions = Seq(

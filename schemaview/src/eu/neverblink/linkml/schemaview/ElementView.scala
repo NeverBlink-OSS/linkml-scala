@@ -29,7 +29,7 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
   def inner: E
 
   /** The defining schema's prefix resolver */
-  given definingPrefixResolver: PrefixResolver = SchemaView.createPrefixResolver(definingSchema)
+  given definingPrefixResolver: PrefixResolver = sv.prefixResolvers(definingSchema)
 
   /** Get the URI of this element, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
@@ -56,6 +56,10 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
       }
 }
 
+private object ClassView:
+  // Used to avoid as many allocations as possible when deriving slots.
+  val emptySlotDef: SlotDefinitionImpl = SlotDefinitionImpl(name = "!!! invalid, internal !!!")
+
 final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[ClassDefinition] {
@@ -64,10 +68,19 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def uriOrCurie: UriOrCurie =
     cls.classUri.getOrElse(Uri(defaultPrefixUri + Case.PascalCase(cls.name)))
 
-  /** Derived attributes for this class.
+  /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
-  lazy val derivedAttributes: Map[String, SlotView] =
-    applicableSlots.map(v => v.ref.value -> derivedSlot(v.ref, v.source)).toMap
+  lazy val (derivedAttributes: Map[String, SlotView], identifier: Option[SlotView]) = {
+    var idSv: SlotView = null
+    val das = applicableSlots.foldLeft(Map.empty[String, SlotView]) { (acc, v) =>
+      val sv = derivedSlot(v.ref, v.source)
+      if (sv.slot.identifier) {
+        idSv = sv
+      }
+      acc.updated(v.ref.value, sv)
+    }
+    (das, Option(idSv))
+  }
 
   /** Get and dereference the direct parents (mixins + inheritance) of this class
     *
@@ -82,15 +95,15 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def subjectType: Option[SubjectType] = identifier.flatMap(slotView => {
     slotView.derivedRangeView.resolve.collect { case tv: TypeView =>
-      tv.subjectType
-    }.map {
-      // Fallback if the type does not define the prefix but the slot does
-      case SubjectType.base =>
-        slotView.implicitPrefixReference match {
-          case Some(prefix) => SubjectType.implicitPrefix(prefix)
-          case None => SubjectType.base
-        }
-      case subject => subject
+      tv.subjectType match {
+        // Fallback if the type does not define the prefix but the slot does
+        case SubjectType.base =>
+          slotView.implicitPrefixReference match {
+            case Some(prefix) => SubjectType.implicitPrefix(prefix)
+            case _ => SubjectType.base
+          }
+        case subject => subject
+      }
     }
   })
 
@@ -116,12 +129,6 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   private def getDirectSlots(cls: ClassDefinition): Seq[Reference[SlotDefinition]] =
     cls.slots ++ cls.attributes.keys.map(Reference[SlotDefinition])
-
-  /** Get the identifier slot of a class, if it has one.
-    */
-  def identifier: Option[SlotView] = {
-    derivedAttributes.values.find(_.slot.identifier)
-  }
 
   /** Get all slot references that are applicable to this class definition.
     *
@@ -181,8 +188,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
       slotRef: Reference[SlotDefinition],
       source: ElementView[?],
   ): SlotView = {
-    var currentSlot = SlotDefinitionImpl(name = slotRef.value)
-    currentSlot = sv.applySlotUsage(currentSlot, cls)
+    // Use empty slot base here to avoid an extra allocation
+    var currentSlot = ClassView.emptySlotDef
+    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls)
     sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]) match {
       // Note this is a bit off-spec, but it's a pretty reasonable
       case Some(resolved: SlotView) if !isSlotFromAttributes(slotRef) =>
@@ -196,20 +204,18 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
         }
       case _ =>
     }
-    if currentSlot.inlinedAsList && !currentSlot.inlined then {
-      currentSlot = currentSlot.copy(inlined = true)
-    }
-    if (currentSlot.identifier || currentSlot.key) && !currentSlot.required then {
-      currentSlot = currentSlot.copy(required = true)
-    }
     val finalSlot = currentSlot.copy(
+      name = slotRef.value,
       slotUri = Some(
         SlotView.uri(
-          currentSlot,
+          currentSlot.slotUri,
+          slotRef.value,
           // For prefix resolution use the context of the original slot definition
           source,
         ),
       ),
+      inlined = currentSlot.inlinedAsList || currentSlot.inlined,
+      required = currentSlot.identifier || currentSlot.key || currentSlot.required,
     )
     // Apply the original schema as the defining schema, so that default prefix / default range
     // resolution still works as defined in the original schema file.
@@ -221,7 +227,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * @return
     *   true if the class has an identifier
     */
-  def hasIdentifier: Boolean = identifier.isDefined
+  lazy val hasIdentifier: Boolean = identifier.isDefined
 
   /** Check the tree_root_as extension for this class and return the corresponding InlineType. If
     * the extension is not present, return InlineType.optional as the default.
@@ -307,13 +313,15 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *   true if the slot is inlined
     */
   def derivedInlined: Boolean =
-    slot.inlined || sv.resolve(
-      slot.range.getOrElse(definingSchema.defaultRangeResolved).asInstanceOf[Reference[
-        ElementView[?],
-      ]],
-    )
-      .collect({ case cls: ClassView => !cls.hasIdentifier })
-      .getOrElse(false)
+    slot.inlined || (sv.resolve(
+      (slot.range match {
+        case Some(range) => range
+        case _ => definingSchema.defaultRangeResolved
+      }).asInstanceOf[Reference[ElementView[?]]],
+    ) match {
+      case Some(cls: ClassView) => !cls.hasIdentifier
+      case _ => false
+    })
 
   /** Get the range of this slot, with missing values filled with `default_range` from the implicit
     * [[SchemaView]]. Does NOT take inheritance into account: Make sure you use this method after
@@ -332,13 +340,13 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
     */
-  def uriOrCurie: UriOrCurie = SlotView.uri(slot, this)
+  def uriOrCurie: UriOrCurie = SlotView.uri(slot.slotUri, slot.name, this)
 }
 
 private object SlotView:
   // Exposed for slot derivation in ClassView.
-  def uri(slot: SlotDefinition, context: ElementView[?]): UriOrCurie =
-    slot.slotUri.getOrElse(Uri(context.defaultPrefixUri + Case.deSpaceCase(slot.name)))
+  def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?]): UriOrCurie =
+    slotUri.getOrElse(Uri(context.defaultPrefixUri + Case.deSpaceCase(slotName)))
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,

@@ -51,7 +51,7 @@ npm run build     # one-off bundle
 Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://github.com/openjdk/jmh) via the mill JMH plugin. The module is JVM-only and is never published.
 
 - Run all benchmarks: `./mill benchmark.runJmh`
-- Run a subset (regex over benchmark names): `./mill benchmark.runJmh ".*jsonSchema.*"`
+- Run a subset (regex over benchmark names): `./mill benchmark.runJmh ".*NTriples.*"`
 - List available benchmarks: `./mill benchmark.listJmhBenchmarks`
 
 ## Releasing with GitHub UI

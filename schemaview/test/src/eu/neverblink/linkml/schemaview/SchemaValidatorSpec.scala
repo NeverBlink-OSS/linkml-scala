@@ -381,8 +381,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       Seq(
         """Schema validation failed:
-          |Invalid type of key / identifier slot in class 'some_class': 'UnitOfMeasure'. Expected a basic, scalar data type (e.g., string, integer, float, uri).
-          |Invalid type of key / identifier slot in class 'some_another_class': 'pv_formula_options'. Expected a basic, scalar data type (e.g., string, integer, float, uri).""".stripMargin,
+          |Invalid type of key / identifier slot in class 'some_another_class': 'pv_formula_options'. Expected a basic, scalar data type (e.g., string, integer, float, uri).
+          |Invalid type of key / identifier slot in class 'some_class': 'UnitOfMeasure'. Expected a basic, scalar data type (e.g., string, integer, float, uri).""".stripMargin,
       ) foreach { part =>
         msg should include(part)
       }

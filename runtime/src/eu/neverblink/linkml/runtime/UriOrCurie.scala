@@ -57,7 +57,7 @@ trait PrefixResolver {
   def resolvePrefix(prefix: String): Option[String]
 }
 
-class BasicPrefixResolver extends PrefixResolver {
+class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   private val prefixToUri = new java.util.HashMap[String, String]
   private val uriToPrefix = new java.util.HashMap[String, String]
 
@@ -71,17 +71,15 @@ class BasicPrefixResolver extends PrefixResolver {
     uriToPrefix.put(normalizedUri, prefix)
   }
 
-  override def resolvePrefix(prefix: String): Option[String] =
-    if prefixToUri.containsKey(prefix) then Option(prefixToUri.get(prefix))
-    else None
+  override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))
 
   override def expand(curie: String): String = {
-    val parts = curie.split(':')
-    if (parts.length == 2) {
-      val prefix = parts(0)
+    val index = curie.indexOf(':')
+    if (index >= 0) {
+      val prefix = curie.substring(0, index)
       val baseUri = prefixToUri.get(prefix)
-      if (baseUri != null) baseUri + parts(1)
-      else sys.error(s"Unknown prefix: $prefix")
+      if (baseUri ne null) baseUri + curie.substring(index + 1)
+      else sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
     } else curie // relative reference
   }
 
@@ -116,12 +114,15 @@ class BasicPrefixResolver extends PrefixResolver {
     s"$prefix:$curie"
   }
 
-  private def getLastPathSegment(uri: java.net.URI): String =
-    Option(uri.getPath) match {
-      case Some(path) if path.nonEmpty && path != "/" =>
-        path.stripSuffix("/").split("/").lastOption.getOrElse("")
-      case _ => ""
-    }
+  private def getLastPathSegment(uri: java.net.URI): String = {
+    var path = uri.getPath
+    if (path ne null) {
+      path = path.stripSuffix("/")
+      val index = path.lastIndexOf('/')
+      if (index >= 0) path.substring(index + 1)
+      else ""
+    } else ""
+  }
 }
 
 /** Regular-expression-based URI and CURIE validation functions

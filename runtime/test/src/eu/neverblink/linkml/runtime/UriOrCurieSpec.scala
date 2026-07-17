@@ -23,7 +23,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
   }
   "BasicPrefixResolver" should {
     "expand curie" in {
-      val resolver = new BasicPrefixResolver
+      val resolver = new BasicPrefixResolver("")
       resolver.add("IAO", "http://purl.obolibrary.org/obo/IAO_")
       resolver.add("OIO", "http://www.geneontology.org/formats/oboInOwl#")
       resolver.add("schema", "http://schema.org/")
@@ -36,7 +36,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       resolver.expand("skos:exactMatch") shouldBe "http://www.w3.org/2004/02/skos/core#exactMatch"
     }
     "compact uri" in {
-      val resolver = new BasicPrefixResolver
+      val resolver = new BasicPrefixResolver("")
       resolver.add("IAO", "http://purl.obolibrary.org/obo/IAO_")
       resolver.add("OIO", "http://www.geneontology.org/formats/oboInOwl#")
       resolver.add("schema", "http://schema.org/")
@@ -47,6 +47,14 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       ) shouldBe "OIO:consider"
       resolver.compact("http://schema.org/CreativeWork") shouldBe "schema:CreativeWork"
       resolver.compact("http://www.w3.org/2004/02/skos/core#exactMatch") shouldBe "skos:exactMatch"
+    }
+    "provide name in error message" in {
+      val resolver = new BasicPrefixResolver("some schema")
+      val ex = intercept[RuntimeException] {
+        Curie("ex:blep").uri(using resolver)
+      }
+      ex.getMessage should include("some schema")
+      ex.getMessage should include("ex:blep")
     }
   }
 }

@@ -1,10 +1,12 @@
 package eu.neverblink.linkml.benchmark
 
+import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
+import org.openjdk.jmh.infra.Blackhole
 
 import scala.compiletime.uninitialized
 import scala.io.Source
@@ -35,26 +37,46 @@ class GeneratorBench extends CommonParams {
   }
 
   @Benchmark
-  def jsonSchemaFromYaml: String = {
+  def jsonSchemaFromYaml(bh: Blackhole): Unit = {
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
-    JsonSchemaGenerator().serialize()
+    bh.consume(JsonSchemaGenerator().serialize())
   }
 
   @Benchmark
-  def jsonSchemaFromSchemaView: String = {
+  def jsonSchemaFromSchemas(bh: Blackhole): Unit = {
+    given sv: SchemaView = SchemaView(schemaView.schemas)
+    bh.consume(JsonSchemaGenerator().serialize())
+  }
+
+  @Benchmark
+  def jsonSchemaFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
-    JsonSchemaGenerator().serialize()
+    bh.consume(JsonSchemaGenerator().serialize())
   }
 
   @Benchmark
-  def shaclFromYaml: String = {
+  def shaclFromYaml(bh: Blackhole): Unit = {
     given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
-    RdfUtils.toTurtle(ShaclGenerator().generate())
+    writeShacl(bh)
   }
 
   @Benchmark
-  def shaclFromSchemaView: String = {
+  def shaclFromSchemas(bh: Blackhole): Unit = {
+    given sv: SchemaView = SchemaView(schemaView.schemas)
+    writeShacl(bh)
+  }
+
+  @Benchmark
+  def shaclFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
-    RdfUtils.toTurtle(ShaclGenerator().generate())
+    writeShacl(bh)
+  }
+
+  /** Same setup for RDF sinks as in the CLI.
+    */
+  private def writeShacl(bh: Blackhole)(using SchemaView): Unit = {
+    val byteSink = new BufferedByteSink(new BlackholeOutputStream(bh))
+    ShaclGenerator().generate(NTriplesRdfSink(byteSink))
+    byteSink.flush()
   }
 }

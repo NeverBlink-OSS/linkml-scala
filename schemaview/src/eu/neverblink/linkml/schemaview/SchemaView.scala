@@ -32,7 +32,6 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: TypeDefinition => types.get(ref.value).map(_._type)
       case _: ClassDefinition => classes.get(ref.value).map(_.cls)
       case _: EnumDefinition => enums.get(ref.value).map(_._enum)
-
       case _: SubsetDefinition => subsets.get(ref.value).map(_.subset)
       // `range` slot's `range` is underspecified as per the metamodel notes,
       // I think it should be ClassDef | TypeDef | EnumDef
@@ -52,19 +51,52 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** All types defined in the loaded schemas, as views.
     */
   lazy val types: Map[String, TypeView] =
-    schemas.map(schema => schema.types.map((k, v) => (k, TypeView(v, schema)))).reduce(_ ++ _)
+    schemas.foldLeft(Map.newBuilder[String, TypeView]) { (acc, schema) =>
+      schema.types.foreach((k, v) => acc.addOne((k, TypeView(v, schema))))
+      acc
+    }.result()
 
   /** All slots defined in the loaded schemas, as views.
     */
   lazy val slotDefinitions: Map[String, SlotView] =
-    schemas.map(schema => schema.slotDefinitions.map((k, v) => (k, SlotView(v, schema)))).reduce(
-      _ ++ _,
-    )
+    schemas.foldLeft(Map.newBuilder[String, SlotView]) { (acc, schema) =>
+      schema.slotDefinitions.foreach((k, v) => acc.addOne((k, SlotView(v, schema))))
+      acc
+    }.result()
 
   /** All classes defined in the loaded schemas, as views.
     */
   lazy val classes: Map[String, ClassView] =
-    schemas.map(schema => schema.classes.map((k, v) => (k, ClassView(v, schema)))).reduce(_ ++ _)
+    schemas.foldLeft(Map.newBuilder[String, ClassView]) { (acc, schema) =>
+      schema.classes.foreach((k, v) => acc.addOne((k, ClassView(v, schema))))
+      acc
+    }.result()
+
+  /** All enums defined in the loaded schemas, as views.
+    */
+  lazy val enums: Map[String, EnumView] =
+    schemas.foldLeft(Map.newBuilder[String, EnumView]) { (acc, schema) =>
+      schema.enums.map((k, v) => acc.addOne((k, EnumView(v, schema))))
+      acc
+    }.result()
+
+  /** All subsets defined in the loaded schemas, as views.
+    */
+  lazy val subsets: Map[String, SubsetView] =
+    schemas.foldLeft(Map.newBuilder[String, SubsetView]) { (acc, schema) =>
+      schema.subsets.map((k, v) => acc.addOne((k, SubsetView(v, schema))))
+      acc
+    }.result()
+
+  lazy val elements: Map[String, ElementView[?]] =
+    subsets ++ slotDefinitions ++ enums ++ types ++ classes
+
+  /** Cached prefix resolvers for each schema in the view.
+    *
+    * These should be used in ElementView instead of creating a new prefix resolver every time.
+    */
+  lazy val prefixResolvers: Map[SchemaDefinition, BasicPrefixResolver] =
+    schemas.map(schema => schema -> createPrefixResolver(schema)).toMap
 
   /** Get all classes reachable from a given class, following derived attributes and optionally
     * ancestors. The result is a map of class name to class view, including the starting class.
@@ -156,24 +188,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       },
     ).toSet
 
-  /** All enums defined in the loaded schemas, as views.
-    */
-  lazy val enums: Map[String, EnumView] =
-    schemas.map(schema => schema.enums.map((k, v) => (k, EnumView(v, schema)))).reduce(_ ++ _)
-
-  /** All subsets defined in the loaded schemas, as views.
-    */
-  lazy val subsets: Map[String, SubsetView] =
-    schemas.map(schema => schema.subsets.map((k, v) => (k, SubsetView(v, schema)))).reduce(_ ++ _)
-
   /** Get a schema element by its ID
     */
-  def getElement(name: String): Option[ElementView[?]] =
-    classes.get(name)
-      .orElse(types.get(name))
-      .orElse(enums.get(name))
-      .orElse(slotDefinitions.get(name))
-      .orElse(subsets.get(name))
+  def getElement(name: String): Option[ElementView[?]] = elements.get(name)
 
   /** Get the class defined as `tree_root: true` from the schema, if any is present
     */
@@ -209,14 +226,16 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   private[schemaview] def applySlotUsage(
       slot: SlotDefinitionImpl,
+      slotName: String,
       cls: ClassDefinition,
   ): SlotDefinitionImpl = {
     var currentSlot = slot
-    for s <- cls.slotUsage.values ++ cls.attributes.values do {
-      if currentSlot.name == s.name then currentSlot = currentSlot.combineWith(s, combineRange)
-    }
-    for c <- cls.mixins.flatMap(resolve) ++ cls.isA.flatMap(resolve) do
-      currentSlot = applySlotUsage(currentSlot, c)
+    def combine(s: SlotDefinitionImpl): Unit =
+      currentSlot = currentSlot.combineWith(s, combineRange)
+    cls.slotUsage.get(slotName).foreach(combine)
+    cls.attributes.get(slotName).foreach(combine)
+    for c <- cls.mixins.flatMap(resolve) do currentSlot = applySlotUsage(currentSlot, slotName, c)
+    for c <- cls.isA.flatMap(resolve) do currentSlot = applySlotUsage(currentSlot, slotName, c)
     currentSlot
   }
 
@@ -254,8 +273,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * @return
     *   Unit if the schema is valid, an exception with formatted problems otherwise
     */
-  def validate(maxProblems: Int = 5): Try[Unit] =
-    validator.validate(maxProblems)
+  def validate(maxProblems: Int = 5): Try[Unit] = validator.validate(maxProblems)
 
   /** Produce validation report with all detected problems
     *
@@ -438,7 +456,7 @@ object SchemaView {
     * resolves "semweb_context" curi map and loads user defined prefixes.
     */
   def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver
+    val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
     Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
     if (forSchema.defaultCuriMaps.contains("semweb_context")) {
       Array(

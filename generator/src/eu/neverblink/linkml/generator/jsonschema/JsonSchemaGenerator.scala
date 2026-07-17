@@ -80,7 +80,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
               ).dictOf // TODO LNK-34: or null
           }
         } else {
-          val referenceSchema = Schema(SchemaType.String)
+          val referenceSchema = stringSchema
             .copy($comment =
               Some(s"Reference to an instance of the '${range.inner.name}' LinkML class"),
             )
@@ -151,7 +151,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       val requiredSlots = slots.values.collect {
         case s if s.slot.required => s.slot.name
       }
-      className(cls) -> Schema(SchemaType.Object).copy(
+      className(cls) -> objectSchema.copy(
         required = requiredSlots.toList,
         properties = properties.to(immutable.ListMap),
         additionalProperties = Some(if (open) AnySchema.Anything else AnySchema.Nothing),
@@ -161,7 +161,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     }
     val defsEnums = for ev <- sv.enums.values yield {
       val enum_ = ev._enum
-      enum_.name -> Schema(SchemaType.Object).copy(
+      enum_.name -> objectSchema.copy(
         `type` = Some(List(SchemaType.String)),
         `enum` = Some(enum_.permissibleValues.keys.map(ExampleSingleValue(_)).toList),
         title = enum_.title,
@@ -189,7 +189,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
           case InlineType.optional =>
             Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
           case InlineType.list =>
-            Schema(SchemaType.Array).copy(items = Some(classSchema)) // array of objects
+            arraySchema.copy(items = Some(classSchema)) // array of objects
           case _ =>
             throw NotImplementedError(
               s"Tree root inline type '$inlineType' is not implemented for JSON Schema.",
@@ -231,26 +231,26 @@ object JsonSchemaGenerator {
     * Provides formats for date-times and URI/CURIE.
     */
   def typeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
-    case StringType => Schema(SchemaType.String)
-    case IntegerType => Schema(SchemaType.Integer)
-    case FloatType => Schema(SchemaType.Number)
-    case DoubleType => Schema(SchemaType.Number)
-    case BooleanType => Schema(SchemaType.Boolean)
-    case DecimalType => Schema(SchemaType.Number)
+    case StringType => stringSchema
+    case IntegerType => integerSchema
+    case FloatType => numberSchema
+    case DoubleType => numberSchema
+    case BooleanType => booleanSchema
+    case DecimalType => numberSchema
     case AnyType => Schema.Empty
-    case DateType => Schema(SchemaType.String).copy(format = Some(SchemaFormat.Date))
-    case DateTimeType => Schema(SchemaType.String).copy(format = Some(SchemaFormat.DateTime))
-    case TimeType => Schema(SchemaType.String).copy(format = Some("time"))
+    case DateType => stringSchema.copy(format = Some(SchemaFormat.Date))
+    case DateTimeType => stringSchema.copy(format = Some(SchemaFormat.DateTime))
+    case TimeType => stringSchema.copy(format = Some("time"))
     case UriOrCurieType =>
       Schema.Empty.copy(anyOf =
         List(
-          Schema(SchemaType.String).copy(format = Some("uri")),
-          Schema(SchemaType.String).copy(format = Some("curie")),
+          stringSchema.copy(format = Some("uri")),
+          stringSchema.copy(format = Some("curie")),
         ),
       )
-    case UriType => Schema(SchemaType.String).copy(format = Some("uri"))
-    case CurieType => Schema(SchemaType.String).copy(format = Some("curie"))
-    case NcNameType => Schema(SchemaType.String).copy(format = Some("ncname"))
+    case UriType => stringSchema.copy(format = Some("uri"))
+    case CurieType => stringSchema.copy(format = Some("curie"))
+    case NcNameType => stringSchema.copy(format = Some("ncname"))
     case UnknownType => Schema.Empty
   }
 
@@ -258,8 +258,8 @@ object JsonSchemaGenerator {
   type MappedSlotName = String
 
   extension (schema: Schema)
-    def arrayOf: Schema = Schema(SchemaType.Array).copy(items = Some(schema))
-    def dictOf: Schema = Schema(SchemaType.Object).copy(additionalProperties = Some(schema))
+    def arrayOf: Schema = arraySchema.copy(items = Some(schema))
+    def dictOf: Schema = objectSchema.copy(additionalProperties = Some(schema))
 
   private implicit lazy val codec: JsonValueCodec[Schema] = {
     implicit val schemaLikeCodec: JsonValueCodec[SchemaLike] = new JsonValueCodec {
@@ -302,4 +302,11 @@ object JsonSchemaGenerator {
         .withInlineOneValueClasses(true),
     )
   }
+
+  private val arraySchema: Schema = Schema(SchemaType.Array)
+  private val booleanSchema: Schema = Schema(SchemaType.Boolean)
+  private val integerSchema: Schema = Schema(SchemaType.Integer)
+  private val numberSchema: Schema = Schema(SchemaType.Number)
+  private val objectSchema: Schema = Schema(SchemaType.Object)
+  private val stringSchema: Schema = Schema(SchemaType.String)
 }
