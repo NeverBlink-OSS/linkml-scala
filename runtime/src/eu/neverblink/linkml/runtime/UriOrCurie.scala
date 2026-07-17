@@ -5,11 +5,13 @@ import scala.util.matching.Regex
 sealed trait UriOrCurie {
   def original: String
 
-  def +(s: String): UriOrCurie = UriOrCurie(original + s)
-
   def uri(implicit resolver: PrefixResolver): String
 
   def curie(implicit resolver: PrefixResolver): String
+
+  /** Validate the value of this UriOrCurie. Returns true if valid, false if invalid.
+    */
+  def isValid: Boolean
 }
 
 object UriOrCurie {
@@ -18,20 +20,20 @@ object UriOrCurie {
     else new Curie(s)
 }
 
-case class Uri(original: String) extends UriOrCurie {
-  require(UriCurieValidator.validateUri(original).isDefined, s"Illegal uri value: $original")
-
+final case class Uri(original: String) extends UriOrCurie {
   def uri(implicit resolver: PrefixResolver): String = original
 
   def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
+
+  def isValid: Boolean = UriCurieValidator.validateUri(original).isDefined
 }
 
-case class Curie(original: String) extends UriOrCurie {
-  require(UriCurieValidator.validateCurie(original).isDefined, s"Illegal curie value: $original")
-
+final case class Curie(original: String) extends UriOrCurie {
   def uri(implicit resolver: PrefixResolver): String = resolver.expand(original)
 
   def curie(implicit resolver: PrefixResolver): String = original
+
+  def isValid: Boolean = UriCurieValidator.validateCurie(original).isDefined
 }
 
 type NcName = String
@@ -57,7 +59,7 @@ trait PrefixResolver {
   def resolvePrefix(prefix: String): Option[String]
 }
 
-class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
+final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   private val prefixToUri = new java.util.HashMap[String, String]
   private val uriToPrefix = new java.util.HashMap[String, String]
 

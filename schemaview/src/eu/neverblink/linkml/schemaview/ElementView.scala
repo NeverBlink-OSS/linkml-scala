@@ -19,6 +19,10 @@ import scala.collection.mutable
   */
 sealed trait ElementView[E <: Element](using val sv: SchemaView) {
 
+  /** Element type name, e.g. "class", "slot", "type", "enum", "subset", used for error messages.
+    */
+  def elementType: String
+
   /** Schema definition that defined this Element. This schema should be used for prefixes and
     * default ranges.
     */
@@ -63,6 +67,8 @@ private object ClassView:
 final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[ClassDefinition] {
+  def elementType: String = "class"
+
   def inner: ClassDefinition = cls
 
   def uriOrCurie: UriOrCurie =
@@ -278,6 +284,8 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[SlotDefinition] {
+  def elementType: String = "slot"
+
   def inner: SlotDefinition = slot
 
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
@@ -351,6 +359,8 @@ private object SlotView:
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[EnumDefinition] {
+  def elementType: String = "enum"
+
   def inner: EnumDefinition = _enum
 
   def uriOrCurie: UriOrCurie =
@@ -370,6 +380,8 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[TypeDefinition] {
+  def elementType: String = "type"
+
   def inner: TypeDefinition = _type
 
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
@@ -450,6 +462,8 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[SubsetDefinition] {
+  def elementType: String = "subset"
+
   def inner: SubsetDefinition = subset
 
   def uriOrCurie: UriOrCurie =

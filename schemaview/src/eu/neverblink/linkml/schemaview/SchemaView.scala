@@ -88,7 +88,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       acc
     }.result()
 
-  lazy val elements: Map[String, ElementView[?]] =
+  lazy val elements: Map[String, ElementView[? <: Element]] =
     subsets ++ slotDefinitions ++ enums ++ types ++ classes
 
   /** Cached prefix resolvers for each schema in the view.

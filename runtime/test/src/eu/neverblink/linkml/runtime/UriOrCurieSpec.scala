@@ -16,9 +16,32 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
     "return valid Curie" in {
       UriOrCurie("skos:exactMatch") shouldBe Curie("skos:exactMatch")
     }
-    "throw exception for invalid input" in {
-      assert(intercept[Throwable](UriOrCurie("<>")).getMessage.contains("Illegal curie value"))
-      assert(intercept[Throwable](UriOrCurie("http://<>")).getMessage.contains("Illegal uri value"))
+    "dispatch to Uri or Curie based on the string shape" in {
+      UriOrCurie("http://example.org/thing") shouldBe a[Uri]
+      UriOrCurie("urn:isbn:0451450523") shouldBe a[Uri]
+      UriOrCurie("skos:exactMatch") shouldBe a[Curie]
+      UriOrCurie("just-a-local-name") shouldBe a[Curie]
+    }
+    "not validate on construction" in {
+      // Construction never inspects the value; only validate() does.
+      noException should be thrownBy UriOrCurie("<>")
+      noException should be thrownBy UriOrCurie("http://<>")
+    }
+  }
+  "Uri.isValid" should {
+    "be true for a valid value" in {
+      Uri("http://example.org/thing").isValid shouldBe true
+    }
+    "be false for an invalid value" in {
+      Uri("http://<>").isValid shouldBe false
+    }
+  }
+  "Curie.isValid" should {
+    "be true for a valid value" in {
+      Curie("skos:exactMatch").isValid shouldBe true
+    }
+    "be false for an invalid value" in {
+      Curie("<>").isValid shouldBe false
     }
   }
   "BasicPrefixResolver" should {

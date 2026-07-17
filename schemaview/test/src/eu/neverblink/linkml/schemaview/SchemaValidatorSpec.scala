@@ -466,6 +466,72 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "fail on invalid URIs or CURIEs, covering every element type" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    uri: "http://<>"
+           |classes:
+           |  SomeClass:
+           |    class_uri: "not a curie!"
+           |    slots:
+           |    - some_slot
+           |slots:
+           |  some_slot:
+           |    slot_uri: "http://<>"
+           |    range: string
+           |enums:
+           |  SomeEnum:
+           |    enum_uri: "http://<>"
+           |    permissible_values:
+           |      v1:
+           |subsets:
+           |  "Bad<Subset>":
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      val msg = SchemaValidator(using sv).validate(maxProblems = 20).failed.get.getMessage
+
+      Seq(
+        "Invalid URI or CURIE 'not a curie!' in class 'SomeClass'",
+        "Invalid URI or CURIE 'http://<>' in slot 'some_slot'",
+        "Invalid URI or CURIE 'http://<>' in enum 'SomeEnum'",
+        "Invalid URI or CURIE 'http://<>' in type 'string'",
+        "Invalid URI or CURIE 'https://neverblink.eu/linkml/referenceValidator/test/Bad<Subset>' " +
+          "in subset 'Bad<Subset>'",
+      ) foreach { part =>
+        msg should include(part)
+      }
+    }
+
+    "accept valid URIs and CURIEs for every element type" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    uri: xsd:string
+           |classes:
+           |  SomeClass:
+           |    class_uri: "https://neverblink.eu/example/SomeClass"
+           |    slots:
+           |    - some_slot
+           |slots:
+           |  some_slot:
+           |    slot_uri: ex:someSlot
+           |    range: string
+           |enums:
+           |  SomeEnum:
+           |    permissible_values:
+           |      v1:
+           |subsets:
+           |  SomeSubset:
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      SchemaValidator(using sv).validate() shouldBe a[Success[?]]
+    }
+
     "validate the metamodel" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       SchemaValidator(using sv).validate() shouldBe a[Success[?]]

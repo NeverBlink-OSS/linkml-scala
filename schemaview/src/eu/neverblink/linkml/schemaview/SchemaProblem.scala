@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.metamodel.{ClassDefinition, SlotDefinition}
+import eu.neverblink.linkml.metamodel.{ClassDefinition, Element, SlotDefinition}
 import eu.neverblink.linkml.runtime.NcName
 
 import scala.util.Failure
@@ -160,4 +160,13 @@ object SchemaProblem {
   final case class UndefinedPrefix(prefix: NcName, position: String) extends Error:
     lazy val description: String = s"Undefined prefix $prefix at $position"
     lazy val verbose: String = description
+
+  final case class InvalidUriOrCurie(inElement: ElementView[? <: Element]) extends Error:
+    lazy val description: String =
+      s"Invalid URI or CURIE '${inElement.uriOrCurie.original}' in ${inElement.elementType} " +
+        s"'${inElement.inner.name}' imported from schema '${inElement.definingSchema.id}'."
+    lazy val verbose: String =
+      s"$description. " +
+        "A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' " +
+        "where 'prefix' is defined in the schema and 'localname' is a valid NCName."
 }

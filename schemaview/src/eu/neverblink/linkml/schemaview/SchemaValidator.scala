@@ -289,6 +289,13 @@ final class SchemaValidator(using sv: SchemaView) {
       )
   }
 
+  private lazy val invalidUris: Seq[SchemaProblem.Error] = {
+    sv.elements.values.flatMap { elem =>
+      if elem.uriOrCurie.isValid then None
+      else Some(SchemaProblem.InvalidUriOrCurie(elem))
+    }.toSeq
+  }
+
   /** Any fatal problems that block further processing / validation, if any. */
   lazy val fatalProblems: Seq[SchemaProblem.Fatal] =
     unknownReferences ++
@@ -300,7 +307,8 @@ final class SchemaValidator(using sv: SchemaView) {
     identifierAndKey ++
       multipleTreeRoots ++
       nonUniqueNames ++
-      unknownPrefixes
+      unknownPrefixes ++
+      invalidUris
 
   /** Any warnings found in the schema, if any. */
   private lazy val warnings: Seq[SchemaProblem.Warning] =
