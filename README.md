@@ -45,7 +45,7 @@ It starts up immediately and runs fast, even on extra-large LinkML models. **[Se
 
 It's also possible to compile LinkML-Scala to a native shared library for use in Rust, C, C++, and other languages. [Let us know](https://github.com/NeverBlink-OSS/linkml-scala/discussions) if you would like to see this feature!
 
-### 🛡️ Consistent, reliable, and has great error reporting
+### 🛡️ Consistent, reliable, and with great error reporting
 
 LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
