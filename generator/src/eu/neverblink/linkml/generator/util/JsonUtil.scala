@@ -1,39 +1,54 @@
 package eu.neverblink.linkml.generator.util
 
-import io.circe.Json
+import com.github.plokhotnyuk.jsoniter_scala.core.*
 import org.virtuslab.yaml.{Node, NodeOps}
 
 object JsonUtil {
 
-  /** Convert scala-yaml [[Node]] to a circe [[Json]] AST.
+  /** Serialize scala-yaml [[Node]] to pretty JSON string
     */
-  def yamlToJson(yaml: Node): Json = yaml match {
-    case Node.MappingNode(entries, _) =>
-      val fields = Array.newBuilder[(String, Json)]
-      entries.foreach { kv =>
-        val value = yamlToJson(kv._2)
-        if (value != Json.False) { // skip default false values
-          fields.addOne((kv._1.asYaml.trim, value))
-        }
-      }
-      Json.obj(fields.result()*)
-    case Node.SequenceNode(elements, _) =>
-      Json.arr(elements.map(yamlToJson)*)
-    case Node.ScalarNode(value, _) =>
-      value match {
-        case "true" | "True" | "TRUE" => Json.True
-        case "false" | "False" | "FALSE" => Json.False
-        case "null" | "~" | "Null" | "NULL" => Json.Null
-        case s if s.nonEmpty && {
-              val ch = s.charAt(0)
-              Character.isDigit(ch) || ch == '-'
-            } =>
-          yaml.as[BigDecimal] match {
-            case Right(v) => Json.fromBigDecimal(v)
-            case _ => Json.fromString(value)
+  def yamlToJson(yaml: Node): String =
+    writeToString(yaml, WriterConfig.withIndentionStep(2))
+
+  private implicit val yamlCodec: JsonValueCodec[Node] = new JsonValueCodec[Node] {
+    override def decodeValue(in: JsonReader, default: Node): Node = ???
+
+    override def encodeValue(x: Node, out: JsonWriter): Unit = x match {
+      case Node.MappingNode(entries, _) =>
+        out.writeObjectStart()
+        entries.foreach { kv =>
+          kv._2 match {
+            case Node.ScalarNode(value, _)
+                if value == "false" || value == "False" | value == "FALSE" =>
+              () // skip default false values
+            case _ =>
+              out.writeKey(kv._1.asYaml.trim)
+              yamlCodec.encodeValue(kv._2, out)
           }
-        case _ => Json.fromString(value)
-      }
-    case _ => Json.Null
+        }
+        out.writeObjectEnd()
+      case Node.SequenceNode(elements, _) =>
+        out.writeArrayStart()
+        elements.foreach(e => yamlCodec.encodeValue(e, out))
+        out.writeArrayEnd()
+      case Node.ScalarNode(value, _) =>
+        value match {
+          case "true" | "True" | "TRUE" => out.writeVal(true)
+          case "false" | "False" | "FALSE" => out.writeVal(false)
+          case "null" | "~" | "Null" | "NULL" => out.writeNull()
+          case s if s.nonEmpty && {
+                val ch = s.charAt(0)
+                Character.isDigit(ch) || ch == '-' || ch == '+' || ch == '.'
+              } =>
+            x.as[BigDecimal] match {
+              case Right(v) => out.writeVal(v)
+              case _ => out.writeVal(value)
+            }
+          case _ => out.writeVal(value)
+        }
+      case _ => out.writeNull()
+    }
+
+    override def nullValue: Node = ???
   }
 }

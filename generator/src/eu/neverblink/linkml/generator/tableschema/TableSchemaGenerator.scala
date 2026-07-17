@@ -1,8 +1,9 @@
 package eu.neverblink.linkml.generator.tableschema
 
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, WriterConfig, writeToString}
+import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.generator.tableschema.FieldDescriptor.types
 import eu.neverblink.linkml.schemaview.*
-import io.circe.Codec
 
 class TableSchemaGenerator(using sv: SchemaView) {
 
@@ -127,7 +128,19 @@ class TableSchemaGenerator(using sv: SchemaView) {
     * @return
     *   Generated Table Schema (Table Descriptor)
     */
-  def serialize(treeRootOverride: Option[String] = None): String = {
-    summon[Codec[TableDescriptor]](generate(treeRootOverride)).deepDropNullValues.spaces2
-  }
+  def serialize(treeRootOverride: Option[String] = None): String =
+    writeToString(
+      generate(treeRootOverride),
+      WriterConfig.withIndentionStep(2),
+    )(using TableSchemaGenerator.tableDescriptorCodec)
+}
+
+object TableSchemaGenerator {
+  private[tableschema] implicit val tableDescriptorCodec: JsonValueCodec[TableDescriptor] =
+    JsonCodecMaker.make(
+      CodecMakerConfig.withEncodingOnly(true)
+        .withDiscriminatorFieldName(None)
+        .withTransientDefault(false)
+        .withTransientEmpty(false),
+    )
 }
