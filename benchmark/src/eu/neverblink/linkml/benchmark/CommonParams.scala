@@ -12,9 +12,9 @@ import java.util.concurrent.TimeUnit
   time = 1,
   timeUnit = TimeUnit.SECONDS,
 ) // 5s usually enough for warmup and exiting from "turbo" mode reaching PL2 (Power Limit 2)
-@Measurement(iterations = 30, time = 1, timeUnit = TimeUnit.SECONDS)
+@Measurement(iterations = 5, time = 1, timeUnit = TimeUnit.SECONDS)
 @Fork(
-  value = 0,
+  value = 1,
   jvmArgs = Array(
     "-server",
     "-Xnoclassgc",
