@@ -45,8 +45,7 @@ object Validate extends BaseCommand[ValidateOptions] {
     try
       val sv = SchemaView.loadSchemaViewFromUri(inputName)
       ValidationReport.issuesOf(SchemaValidator(using sv).lintProblems)
-    catch
-      case NonFatal(ex) => fatalIssues(Option(ex.getMessage).getOrElse(ex.toString))
+    catch case NonFatal(ex) => fatalIssues(Option(ex.getMessage).getOrElse(ex.toString))
 
   private def fatalIssues(message: String): Seq[Issue] =
     message

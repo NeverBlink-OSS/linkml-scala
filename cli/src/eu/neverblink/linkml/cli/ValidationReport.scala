@@ -79,8 +79,7 @@ object ValidationReport {
     import Ansi.*
     val sb = new StringBuilder
     sb.append(s"${dim}Validating $schemaName$reset\n\n")
-    if issues.isEmpty then
-      sb.append(s"$green$bold✔ Schema is valid.$reset") // ✔
+    if issues.isEmpty then sb.append(s"$green$bold✔ Schema is valid.$reset") // ✔
     else
       val entries = sorted(issues)
       val labelWidth = entries.iterator.map(_.severity.label.length).max
