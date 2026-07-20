@@ -18,7 +18,7 @@
 
 **[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple programming languages and data formats (e.g., JSON Schema, CSV, RDF/SHACL...).
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have both a command-line interface (CLI) and a library for programmatic access.
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have both a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 ## Why LinkML-Scala?
 
@@ -175,6 +175,10 @@ See [generator/npm/README.md](generator/npm/README.md) for details.
 ## JVM library
 
 All modules are published to Maven Central under the `eu.neverblink.linkml` group ID. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli).
+
+## GitHub Action (CI)
+
+We have a pre-packaged GitHub Action that can do schema validation and generation in your CI pipelines. See **[NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action)** for more details.
 
 ## Contributing
 

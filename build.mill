@@ -365,7 +365,7 @@ object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule 
   // for the N-Triples streaming-serializer benchmark.
   override def mvnDeps = super.mvnDeps() ++ Seq(
     mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:$rdf4j",
-    mvn"org.apache.jena:jena-arq:5.5.0",
+    mvn"org.apache.jena:jena-arq:5.6.0",
   )
 
   def scalacOptions = Seq(
