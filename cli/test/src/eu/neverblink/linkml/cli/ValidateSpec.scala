@@ -98,7 +98,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       "fail (exit 1) with --strict" in {
         withSchema(warningsOnly) { path =>
           val (out, _, code) =
-            Validate.runTestCommandWithExitCode(List("validate", "--strict", "--format", "plain", path))
+            Validate.runTestCommandWithExitCode(
+              List("validate", "--strict", "--format", "plain", path),
+            )
           out should include("WARNING:")
           code shouldBe 1
         }
@@ -112,7 +114,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
             Validate.runTestCommandWithExitCode(List("validate", "--format", "plain", path))
           plain shouldBe 1
           val (_, _, strict) =
-            Validate.runTestCommandWithExitCode(List("validate", "--strict", "--format", "plain", path))
+            Validate.runTestCommandWithExitCode(
+              List("validate", "--strict", "--format", "plain", path),
+            )
           strict shouldBe 1
         }
       }
@@ -122,7 +126,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       "succeed (exit 0) even with --strict" in {
         withSchema(validSchema) { path =>
           val (out, _, code) =
-            Validate.runTestCommandWithExitCode(List("validate", "--strict", "--format", "plain", path))
+            Validate.runTestCommandWithExitCode(
+              List("validate", "--strict", "--format", "plain", path),
+            )
           out.trim shouldBe "Schema is valid."
           code shouldBe 0
         }
