@@ -13,7 +13,7 @@ export interface SchemaView {
 
 export interface LinkMLApi {
   /**
-   * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the schema's YAML text.  Parse this once and pass the result to the generator functions ([[rdfs]], [[shacl]], …) rather than re-parsing the YAML on every call.  The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of its imports (transitively) imports the main schema back by filename, that import cannot be matched against the root and the main schema will be loaded a second time. Use [[loadFromPath]] instead when the root schema takes part in an import cycle.
+   * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the schema's YAML text.  The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of its imports (transitively) imports the main schema back by filename, that import cannot be matched against the root and the main schema will be loaded a second time. Use [[loadFromPath]] instead when the root schema takes part in an import cycle.
    * @param mainSchema Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all imports must be made available in the [[importMap]].
    * @param importMap JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
    * @returns An opaque [[SchemaView]] handle to pass to the generator functions.
