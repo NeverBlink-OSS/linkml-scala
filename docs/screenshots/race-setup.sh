@@ -21,7 +21,7 @@ LEFT="time sh -c 'linkml-scala generate shacl $SCHEMA >/dev/null 2>&1'"
 RIGHT="time sh -c 'linkml generate shacl $SCHEMA >/dev/null 2>&1'"
 
 # The pane shells are interactive and re-source ~/.bashrc, which can reset PATH
-# and PS1 — so re-apply our PATH (with linkml-scala + linkml), a clean prompt,
+# and PS1 – so re-apply our PATH (with linkml-scala + linkml), a clean prompt,
 # and C locale (dot decimals in `time` output) inside each pane.
 # PS1 is a plain "$ " (not a fancy glyph): the panes run under LC_ALL=C for
 # dot-decimal `time` output, and multibyte prompt glyphs don't render there.

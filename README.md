@@ -161,11 +161,15 @@ npm install @neverblink/linkml
 ```js
 import { LinkML } from "@neverblink/linkml";
 
-// The second argument is an import map (filename -> YAML) for `imports:`.
-const jsonSchema = LinkML.jsonSchema(mySchemaYaml, {});
+// Parse once into a reusable SchemaView handle. The second argument is an
+// import map (filename -> YAML) for `imports:`; pass {} when there are none.
+const view = LinkML.loadFromString(mySchemaYaml, {});
+const jsonSchema = LinkML.jsonSchema(view);
 ```
 
-`LinkML` exposes `jsonSchema`, `shacl`, `rdfs`, `linkml`, `scala`, `tableSchema`, and `lint`.
+Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
+import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
+`rdfs`, `linkml`, `scala`, `tableSchema`, or `lint` against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
 ## JVM library

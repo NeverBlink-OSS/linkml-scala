@@ -15,6 +15,14 @@ import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
 import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
 
+/** Handle to a loaded, import-resolved LinkML schema.
+  *
+  * Wraps a Scala [[SchemaView]] so the schema is parsed once (with all `imports:` resolved) and can
+  * then be reused across many generators, instead of re-parsing on every call. Create one with
+  * [[LinkMlJsApi.loadFromString]] or [[LinkMlJsApi.loadFromPath]].
+  */
+final class SchemaViewJs private[js] (private[js] val underlying: SchemaView)
+
 @JSExportTopLevel("LinkML")
 @JSExportAll
 object LinkMlJsApi {
@@ -23,12 +31,52 @@ object LinkMlJsApi {
       map.get(path).getOrElse(sys.error(s"Could not read from import map: $path"))
   }
 
-  /** Generate JSON Schema from the provided LinkML model
+  /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the
+    * schema's YAML text.
+    *
+    * The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of
+    * its imports (transitively) imports the main schema back by filename, that import cannot be
+    * matched against the root and the main schema will be loaded a second time. Use
+    * [[loadFromPath]] instead when the root schema takes part in an import cycle.
+    *
     * @param mainSchema
     *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
     *   imports must be made available in the [[importMap]].
     * @param importMap
     *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @return
+    *   An opaque [[SchemaView]] handle to pass to the generator functions.
+    */
+  def loadFromString(mainSchema: String, importMap: js.Dictionary[String]): SchemaViewJs =
+    new SchemaViewJs(SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap)))
+
+  /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path
+    * into the [[importMap]].
+    *
+    * Unlike [[loadFromString]], the main schema is read through the import map by its own path, so
+    * it is tracked from the start of import resolution. This makes it immune to cyclic imports
+    * involving the root schema: an import that (transitively) references the root back by path
+    * resolves to the already-loaded root instead of loading it again.
+    *
+    * Paths behave like file paths: a `.yaml` extension is appended when missing, and relative
+    * imports are resolved against the directory of their importing schema. The [[importMap]] keys
+    * must therefore be the paths as seen from the root (e.g. `"model.yaml"`,
+    * `"nested/person.yaml"`).
+    *
+    * @param path
+    *   Path of the main LinkML model within the [[importMap]] (e.g. `"model.yaml"`).
+    * @param importMap
+    *   JS dictionary (object) containing a mapping from path to LinkML models (in YAML format),
+    *   including the main schema itself under [[path]].
+    * @return
+    *   An opaque [[SchemaView]] handle to pass to the generator functions.
+    */
+  def loadFromPath(path: String, importMap: js.Dictionary[String]): SchemaViewJs =
+    new SchemaViewJs(SchemaView.loadSchemaViewFromUri(path, JsImporter(importMap)))
+
+  /** Generate JSON Schema from a loaded LinkML schema.
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param open
     *   Whether the JSON Schema should allow `additionalProperties` or not.
     * @param treeRootOverride
@@ -37,22 +85,16 @@ object LinkMlJsApi {
     *   Serialized JSON Schema
     */
   def jsonSchema(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
+      schema: SchemaViewJs,
       open: Boolean = false,
       treeRootOverride: js.UndefOr[String] = js.undefined,
-  ): String = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
-    JsonSchemaGenerator(using sv).serialize(open, treeRootOverride.toOption)
-  }
+  ): String =
+    JsonSchemaGenerator(using schema.underlying).serialize(open, treeRootOverride.toOption)
 
-  /** Generate SHACL shapes (in N-Triples format) from the provided LinkML model
+  /** Generate SHACL shapes (in N-Triples format) from a loaded LinkML schema.
     *
-    * @param mainSchema
-    *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    * @param importMap
-    *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param open
     *   Whether the SHACL shapes should be open (`_:b sh:closed false .`, allowing additional
     *   properties).
@@ -64,72 +106,62 @@ object LinkMlJsApi {
     *   SHACL shapes in N-Triples format
     */
   def shacl(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
+      schema: SchemaViewJs,
       open: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
   ): String = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
     val sink = new StringSink
-    ShaclGenerator(using sv).generate(NTriplesRdfSink(sink), open, onlyClassesFromRootSchema)
+    ShaclGenerator(using schema.underlying).generate(
+      NTriplesRdfSink(sink),
+      open,
+      onlyClassesFromRootSchema,
+    )
     sink.result
   }
 
-  /** Generate Scala code from the provided LinkML model. This is primarily used for the metamodel
+  /** Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
     *
-    * @param mainSchema
-    *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    * @param importMap
-    *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param `package`
     *   Package to generate the classes in
     * @return
     *   JS dictionary (object) containing a mapping from filename to the generated Scala code.
     */
   def scala(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
+      schema: SchemaViewJs,
       `package`: String,
-  ): js.Dictionary[String] = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
-    ScalaGenerator(using sv).generate(`package`).toMap.toJSDictionary
-  }
+  ): js.Dictionary[String] =
+    ScalaGenerator(using schema.underlying).generate(`package`).toMap.toJSDictionary
 
-  /** Generate RDFS from the provided LinkML model.
+  /** Generate RDFS from a loaded LinkML schema.
     *
-    * @param mainSchema
-    *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    *
-    * @param importMap
-    *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param onlyClassesFromRootSchema
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
     * @return
-    *   JS dictionary (object) containing a mapping from filename to the generated Scala code.
+    *   RDFS in N-Triples format
     */
   def rdfs(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
-      onlyClassesFromRootSchema: Boolean,
+      schema: SchemaViewJs,
+      onlyClassesFromRootSchema: Boolean = false,
   ): String = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
     val sink = new StringSink
-    RdfsGenerator(using sv).generate(NTriplesRdfSink(sink), onlyClassesFromRootSchema)
+    RdfsGenerator(using schema.underlying).generate(
+      NTriplesRdfSink(sink),
+      onlyClassesFromRootSchema,
+    )
     sink.result
   }
 
-  /** Materialize a derived LinkML schema from a LinkML model. Resolves imports, derives classes,
-    * and prunes unreachable elements.
+  /** Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes
+    * unreachable elements.
     *
-    * @param mainSchema
-    *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    * @param importMap
-    *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param pruningMode
     *   Pruning mode to use for removing unused elements (classes, types, enums). One of
     *   treeRoot|schemaRoot|skip. treeRoot - remove all elements unreachable from the tree_root
@@ -146,16 +178,14 @@ object LinkMlJsApi {
     *   The derived [[SchemaDefinition]] serialized in the specified format.
     */
   def linkml(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
+      schema: SchemaViewJs,
       pruningMode: String = "treeRoot",
       skipDerivation: Boolean = false,
-      treeRoot: Option[String] = None,
+      treeRoot: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
   ): String = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
     val mode = Case.camelCase(pruningMode) match {
-      case "treeRoot" => PruningMode.treeRoot(treeRoot)
+      case "treeRoot" => PruningMode.treeRoot(treeRoot.toOption)
       case "schema" => PruningMode.schemaRoot
       case "skip" => PruningMode.skip
       case s => throw RuntimeException(s"Unknown pruning mode: $s")
@@ -167,41 +197,32 @@ object LinkMlJsApi {
       case "json" => LinkMlGenerator.OutputFormat.json
       case s => throw RuntimeException(s"Unknown output format: $s")
     }
-    LinkMlGenerator(using sv).serialize(
+    LinkMlGenerator(using schema.underlying).serialize(
       skipClassDerivation = skipDerivation,
       pruningMode = mode,
       outputFormat = format,
     )
   }
 
-  /** Generate a Frictionless Table Schema from a LinkML model.
+  /** Generate a Frictionless Table Schema from a loaded LinkML schema.
     *
-    * @param mainSchema
-    *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    * @param importMap
-    *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root.
     * @return
     *   Table Schema, serialized as a JSON
     */
   def tableSchema(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
-      treeRoot: Option[String],
-  ): String = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
-    TableSchemaGenerator(using sv).serialize(treeRoot)
-  }
+      schema: SchemaViewJs,
+      treeRoot: js.UndefOr[String] = js.undefined,
+  ): String =
+    TableSchemaGenerator(using schema.underlying).serialize(treeRoot.toOption)
 
-  /** Lint the provided LinkML model, finding problems that may cause issues when using the model.
+  /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model.
     *
-    * @param mainSchema
-    *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    * @param importMap
-    *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param maxProblems
     *   Maximum number of problems to include in the summary
     * @param verbose
@@ -210,12 +231,9 @@ object LinkMlJsApi {
     *   The summary of detected problems, or an empty string if everything is correct
     */
   def lint(
-      mainSchema: String,
-      importMap: js.Dictionary[String],
+      schema: SchemaViewJs,
       maxProblems: Int = 5,
       verbose: Boolean = false,
-  ): String = {
-    val sv = SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))
-    sv.lint(maxProblems, verbose).getOrElse("")
-  }
+  ): String =
+    schema.underlying.lint(maxProblems, verbose).getOrElse("")
 }

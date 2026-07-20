@@ -95,7 +95,7 @@ body { background: var(--bg); }
 
 .ic { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex-shrink: 0; }
 /* `.ic { display }` beats the UA `[hidden] { display:none }`, so toggled icons
-   (e.g. the theme moon/sun) would both render — hide them explicitly. */
+   (e.g. the theme moon/sun) would both render – hide them explicitly. */
 .ic[hidden] { display: none; }
 
 /* ── Layout ── */
@@ -172,7 +172,7 @@ body { background: var(--bg); }
 /* ── Help / FAQ dialog ── */
 .faq-dialog {
   /* `* { margin: 0 }` in the reset kills the UA margin:auto that centres a modal
-     dialog, pinning it top-left — restore it. */
+     dialog, pinning it top-left – restore it. */
   margin: auto;
   width: min(640px, calc(100vw - 32px));
   max-height: min(80vh, 720px);
