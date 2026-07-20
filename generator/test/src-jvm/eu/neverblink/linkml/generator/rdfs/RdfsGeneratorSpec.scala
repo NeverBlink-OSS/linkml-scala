@@ -265,6 +265,45 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       "rdfs:Class".r.findAllMatchIn(turtle).size shouldBe 2
     }
 
+    "emit an enum as an rdfs:Class with its permissible values as instances" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  ex: https://example.org/
+           |  sd: http://www.w3.org/ns/sparql-service-description#
+           |emit_prefixes:
+           |  - ex
+           |  - sd
+           |enums:
+           |  Functions:
+           |    enum_uri: sd:Function
+           |    title: Functions
+           |    description: SPARQL functions.
+           |    permissible_values:
+           |      cos:
+           |        meaning: ex:cos
+           |        title: Cosine
+           |        description: Computes the cosine.
+           |      noMeaning:
+           |        title: No meaning
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
+      // The enum itself becomes an rdfs:Class, its URI taken from enum_uri.
+      turtle should include("sd:Function a rdfs:Class")
+      turtle should include("""rdfs:label "Functions"""")
+      turtle should include("""rdfs:comment "SPARQL functions."""")
+      // A permissible value with a meaning becomes an instance of the enum class.
+      turtle should include("ex:cos a sd:Function")
+      turtle should include("""rdfs:label "Cosine"""")
+      turtle should include("""rdfs:comment "Computes the cosine."""")
+      // A permissible value without a meaning falls back to defaultPrefix + text.
+      turtle should include(
+        """<https://neverblink.eu/linkml/rdfs/test/noMeaning> a sd:Function""",
+      )
+      turtle should include("""rdfs:label "No meaning"""")
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
