@@ -64,6 +64,6 @@ class WarmBench extends CommonParams {
     // create SchemaView in the benchmark to not use the class cache
     given SchemaView = SchemaView(schemaDefs)
 
-    RdfUtils.toTurtle(ShaclGenerator().generate())
+    RdfUtils.toTurtle(ShaclGenerator().generate(_))
   }
 }
