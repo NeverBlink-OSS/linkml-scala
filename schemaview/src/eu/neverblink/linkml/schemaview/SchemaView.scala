@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
 
 import scala.annotation.unused
@@ -158,6 +159,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   def reachableFrom(
       fromClasses: Seq[ClassDefinition],
       derivedClasses: Boolean,
+      inlinedOnly: Boolean = false,
   ): Set[(ElementTypeTag, Element)] =
     Closure.reflexive[(ElementTypeTag, Element)](
       fromClasses.map(ElementTypeTag.classDef -> _),
@@ -174,19 +176,73 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
             enumDefinition.inherits.flatMap(_.resolve)
           case slotDefinition: SlotDefinition =>
             val inherited = slotDefinition.isA ++ slotDefinition.mixins
-            (slotDefinition.anyOf.flatMap(
-              _.range,
-            ) ++ slotDefinition.range ++ slotDefinition.domain ++ (
-              if derivedClasses then inherited
-              else Seq.empty
-            )).flatMap(_.resolve)
-
+            (slotDefinition.anyOf.flatMap(_.range)
+              ++ (
+                if !inlinedOnly then ??? else Seq.empty
+              ) ++ slotDefinition.domain ++ (
+                if derivedClasses then inherited
+                else Seq.empty
+              )).flatMap(_.resolve)
           case _ => Seq.empty
         }
 
         elements.map(el => ElementTypeTag(el) -> el)
       },
     ).toSet
+
+  def reachableFrom2(
+      fromClasses: Seq[ClassView],
+      derivedClasses: Boolean,
+      inlinedOnly: Boolean = false,
+  ): Nothing = {
+    import ElementTypeTag.*
+    type ElementName = String
+    val agenda = mutable.Queue.from(fromClasses.map(cv => classDef -> cv.cls.name))
+    val found = mutable.Set.empty[(ElementTypeTag, ElementName)]
+    def enqueueRange(slot: SlotView): Unit =
+      slot.derivedRangeView.resolve match {
+        case Some(cls: ClassView) =>
+          agenda.enqueue(classDef -> cls.cls.name)
+        case Some(tv: TypeView) =>
+          agenda.enqueue(typeDef -> tv._type.name)
+        case Some(tv: EnumView) =>
+          agenda.enqueue(enumDef -> tv._enum.name)
+        case _ =>
+      }
+
+    while agenda.nonEmpty do
+      val current = agenda.dequeue()
+      val (typeTag, name) = current
+      if !found.contains(current) then
+        found.add(current)
+        typeTag match {
+          case ElementTypeTag.classDef =>
+            val classView = Reference[ClassView](name).resolve.get
+
+            if derivedClasses then {
+              // if we are working under the assumption that classes are going to be derived,
+              // then we can simply skip to the ranges of derived attributes
+              for (_, slot) <- classView.derivedAttributes do
+                if !inlinedOnly || slot.derivedInlined then enqueueRange(slot)
+            } else {
+              // enqueue inheritance for classes
+              for c <- classView.ancestors(reflexive = false) do
+                agenda.enqueue(classDef -> c.cls.name)
+              // enqueue referenced slots
+              for s <- classView.cls.slots do agenda.enqueue(slotDef -> s.value)
+              // enqueue the *ranges* of inline slots
+              for s <- classView.cls.attributes.values ++ classView.cls.slotUsage.values do
+                enqueueRange(SlotView(s, classView.definingSchema))
+            }
+
+          case ElementTypeTag.typeDef =>
+          case ElementTypeTag.slotDef =>
+          case ElementTypeTag.enumDef =>
+          case ElementTypeTag.other =>
+        }
+
+    ???
+  }
 
   /** Get a schema element by its ID
     */

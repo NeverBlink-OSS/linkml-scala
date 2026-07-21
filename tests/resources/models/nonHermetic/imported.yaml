@@ -1,0 +1,7 @@
+id: https://neverblink.eu/linkml/tests/nonHermetic/imported/
+name: nonHermeticImported
+
+slots:
+  some_slot:
+    description: |
+      this slot is invalid on its own: the range "string" is undefined within this schema
