@@ -221,6 +221,16 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       ).lint() shouldBe empty
     }
 
+    "serialize yaml format without errors" in {
+      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.yaml).isEmpty shouldBe false
+    }
+
+    "serialize json format without errors" in {
+      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json).isEmpty shouldBe false
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all.filter(m => !skipModels.contains(m.model.root.name)) do
         s"model '${entry.model.root.name}'" in {
