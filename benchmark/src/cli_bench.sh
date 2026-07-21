@@ -102,6 +102,7 @@ for model in "${MODELS[@]}"; do
     hyperfine \
       --warmup "$WARMUP" \
       --runs "$RUNS" \
+      --shell=none \
       "${export_args[@]}" \
       -n nativeImage "$NATIVE_IMAGE generate $generator $schema" \
       -n python "$LINKML_PY generate $generator $schema"
