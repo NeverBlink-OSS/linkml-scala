@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.runtime.PrefixResolver
 import eu.neverblink.linkml.schemaview.SchemaView
 
 class RdfsGenerator(using sv: SchemaView) {
@@ -9,7 +10,7 @@ class RdfsGenerator(using sv: SchemaView) {
     * @param sink
     *   The sink that receives namespace declarations and triples.
     * @param onlyClassesFromRootSchema
-    *   Whether to include only classes from the root schema (turned off by default).
+    *   Whether to include only classes and enums from the root schema (turned off by default).
     */
   final def generate(
       sink: RdfSink,
@@ -21,6 +22,9 @@ class RdfsGenerator(using sv: SchemaView) {
     val classes =
       if onlyClassesFromRootSchema then sv.classes.filter(_._2.definingSchema == sv.root)
       else sv.classes
+    val enums =
+      if onlyClassesFromRootSchema then sv.enums.filter(_._2.definingSchema == sv.root)
+      else sv.enums
     sv.root.prefixes.values.toArray
       .collect {
         case p if isEmitted(p.prefixPrefix) =>
@@ -63,6 +67,35 @@ class RdfsGenerator(using sv: SchemaView) {
         sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
         s.derivedRangeView.resolve.foreach { e =>
           sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
+        }
+      }
+    }
+
+    // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
+    // permissible values as an instance of that class.
+    enums.values.foreach { e =>
+      given PrefixResolver = e.definingPrefixResolver
+      val enumIri = Iri(e.uriStr)
+      sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
+      e._enum.title.foreach { t =>
+        sink.triple(enumIri, Rdfs.label, Literal(t, XmlSchema.string))
+      }
+      e._enum.description.foreach { d =>
+        sink.triple(enumIri, Rdfs.comment, Literal(d, XmlSchema.string))
+      }
+      e._enum.permissibleValues.foreach { (_, pv) =>
+        val subjectIri = Iri(
+          pv.meaning match {
+            case Some(m) => m.uri
+            case _ => e.defaultPrefixUri + pv.text
+          },
+        )
+        sink.triple(subjectIri, Rdf.`type`, enumIri)
+        pv.title.foreach { t =>
+          sink.triple(subjectIri, Rdfs.label, Literal(t, XmlSchema.string))
+        }
+        pv.description.foreach { d =>
+          sink.triple(subjectIri, Rdfs.comment, Literal(d, XmlSchema.string))
         }
       }
     }
