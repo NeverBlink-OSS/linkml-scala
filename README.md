@@ -18,13 +18,13 @@
 
 **[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple programming languages and data formats (e.g., JSON Schema, CSV, RDF/SHACL...).
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have both a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 ## Why LinkML-Scala?
 
 ### 🚀 It's really fast!
 
-LinkML-Scala was built to work great with large schemas. It can be **10–20x faster than the Python implementation**, depending on the use case:
+LinkML-Scala was built to work great with large schemas. It can be **10–20x faster than the Python implementation**:
 
 ![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
 
