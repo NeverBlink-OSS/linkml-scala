@@ -1,11 +1,14 @@
 package eu.neverblink.linkml.benchmark
 
+import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.schemaview.SchemaView
+import org.apache.jena.sparql.resultset.RDFOutput
 import org.openjdk.jmh.annotations.*
+import org.openjdk.jmh.infra.Blackhole
 import os.Path
 
 import scala.compiletime.uninitialized
@@ -53,17 +56,17 @@ class WarmBench extends CommonParams {
   }
 
   @Benchmark
-  def jsonSchema(): Unit = {
+  def jsonSchema(bh: Blackhole): Unit = {
     // create SchemaView in the benchmark to not use the class cache
     given SchemaView = SchemaView(schemaDefs)
-    JsonSchemaGenerator().serialize()
+    bh.consume(JsonSchemaGenerator().serialize())
   }
 
   @Benchmark
-  def shacl(): Unit = {
+  def shacl(bh: Blackhole): Unit = {
     // create SchemaView in the benchmark to not use the class cache
     given SchemaView = SchemaView(schemaDefs)
 
-    RdfUtils.toTurtle(ShaclGenerator().generate())
+    ShaclGenerator().generate(NTriplesRdfSink(BufferedByteSink(BlackholeOutputStream(bh))))
   }
 }
