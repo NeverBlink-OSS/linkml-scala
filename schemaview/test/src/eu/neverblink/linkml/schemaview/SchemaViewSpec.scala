@@ -428,41 +428,68 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       }
     }
     "determine reachable classes" in {
-      val r1 =
-        sv.classesReachableFrom(sv.classes("class1"), includeAncestors = false, inlinedOnly = false)
-      val r2 =
-        sv.classesReachableFrom(sv.classes("class1"), includeAncestors = true, inlinedOnly = false)
-      r1.keys should contain theSameElementsAs Seq("class1", "class2")
-      r2.keys should contain theSameElementsAs Seq("class1", "class2")
-      // class2 has as id slot, so it should not be inlined
-      val r1Inlined = sv.classesReachableFrom(
-        sv.classes("class1"),
-        includeAncestors = false,
-        inlinedOnly = true,
-      )
-      r1Inlined.keys should contain theSameElementsAs Seq("class1")
-      val r3 =
-        sv.classesReachableFrom(
-          sv.classes("class_mixin_inheritance"),
-          includeAncestors = false,
-          inlinedOnly = false,
-        )
-      r3.keys should contain theSameElementsAs Seq("class_mixin_inheritance")
-      val r4 =
-        sv.classesReachableFrom(
-          sv.classes("class_mixin_inheritance"),
-          includeAncestors = true,
-          inlinedOnly = false,
-        )
-      r4.keys should contain theSameElementsAs Seq(
-        "class_mixin_inheritance",
-        "mixin_parent",
-        "class_grandparent",
-        "mixin_parent_1",
-        "mixin_parent_2",
-        "mixin_child",
-        "class_parent",
-      )
+
+      val schema =
+        """id: urn:reachability
+          |name: reachability
+          |
+          |types:
+          |  foo:
+          |    base: str
+          |  bar:
+          |    base: str
+          |
+          |classes:
+          |  C1:
+          |    is_a: C2
+          |    attributes:
+          |      reference:
+          |        range: C3
+          |      inline:
+          |        range: C4
+          |        inlined: true
+          |  C2:
+          |  C3:
+          |    attributes:
+          |      id:
+          |        range: bar
+          |        identifier: true
+          |  C4:
+          |    attributes:
+          |      id:
+          |        range: foo
+          |        identifier: true
+          |  C5:
+          |""".stripMargin
+
+      val sv = SchemaView.loadSchemaViewFromString(schema)
+
+      val derived = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), false)
+      derived.reachable(sv.classes("C1")) shouldBe true
+      derived.reachable(sv.classes("C2")) shouldBe false
+      derived.reachable(sv.classes("C3")) shouldBe true
+      derived.reachable(sv.classes("C4")) shouldBe true
+      derived.reachable(sv.classes("C5")) shouldBe false
+      derived.reachable(sv.types("foo")) shouldBe true
+      derived.reachable(sv.types("bar")) shouldBe true
+
+      val derivedInlined = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), true)
+      derivedInlined.reachable(sv.classes("C1")) shouldBe true
+      derivedInlined.reachable(sv.classes("C2")) shouldBe false
+      derivedInlined.reachable(sv.classes("C3")) shouldBe false
+      derivedInlined.reachable(sv.classes("C4")) shouldBe true
+      derivedInlined.reachable(sv.classes("C5")) shouldBe false
+      derivedInlined.reachable(sv.types("foo")) shouldBe true
+      derivedInlined.reachable(sv.types("bar")) shouldBe false
+
+      val underived = sv.underivedReachabilityQuery(Seq(sv.classes("C1")))
+      underived.reachable(sv.classes("C1")) shouldBe true
+      underived.reachable(sv.classes("C2")) shouldBe true
+      underived.reachable(sv.classes("C3")) shouldBe true
+      underived.reachable(sv.classes("C4")) shouldBe true
+      underived.reachable(sv.classes("C5")) shouldBe false
+      underived.reachable(sv.types("foo")) shouldBe true
+      underived.reachable(sv.types("bar")) shouldBe true
     }
     "recognize the tree_root inline mode from the extension" in {
       val model =

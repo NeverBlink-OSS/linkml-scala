@@ -1,10 +1,19 @@
 package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.OutputFormat.{json, yaml}
+import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode.skip
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.schemaview.SchemaView
-import eu.neverblink.linkml.schemaview.SchemaView.{ElementTypeTag, defaultRangeResolved}
+import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.schemaview.{
+  ClassView,
+  ElementView,
+  IncludeAllReachabilityQuery,
+  SchemaReachabilityQuery,
+  SchemaView,
+  TypeView,
+}
+import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
 import org.virtuslab.yaml.NodeOps
 
 class LinkMlGenerator(using sv: SchemaView) {
@@ -24,38 +33,32 @@ class LinkMlGenerator(using sv: SchemaView) {
       pruningMode: PruningMode = PruningMode.treeRoot(None),
       skipClassDerivation: Boolean = false,
   ): SchemaDefinitionImpl = {
-    val defaultRange = sv.root.defaultRangeResolved.resolve.get
+    lazy val defaultRanges = sv.schemas.map(
+      _
+        .defaultRange
+        .getOrElse(Reference[TypeDefinition]("string"))
+        .asInstanceOf[Reference[TypeView]],
+    ).flatMap(_.resolve)
 
-    lazy val maybeTreeRoot = pruningMode match {
-      case treeRoot: PruningMode.treeRoot => sv.treeRootWithOverride(treeRoot.`override`).get
-      case _ => None
+    lazy val initialSet: Seq[ElementView[?]] = pruningMode match {
+      case PruningMode.treeRoot(ovr) =>
+        defaultRanges ++ (sv.treeRootWithOverride(ovr).get match {
+          case Some(value) => Seq(value)
+          case None => sv.root.classes.keys.map(sv.classes.apply)
+        })
+      case PruningMode.schemaRoot => defaultRanges ++ sv.root.classes.keys.map(sv.classes.apply)
+      case PruningMode.skip => Seq.empty
     }
 
-    lazy val elementsFromTreeRoot: Option[Set[(ElementTypeTag, Element)]] = maybeTreeRoot
-      .map(root =>
-        sv.reachableFrom(Seq(root.inner), skipClassDerivation)
-          .incl((ElementTypeTag.typeDef, defaultRange)),
-      )
-
-    lazy val elementsFromSchemaRoot: Set[(ElementTypeTag, Element)] =
-      sv.reachableFrom(sv.root.classes.values.toSeq, skipClassDerivation)
-
-    def doIncludeElement(element: Element): Boolean =
-      pruningMode match {
-        case PruningMode.treeRoot(_) =>
-          elementsFromTreeRoot match {
-            case Some(value) => value.contains(ElementTypeTag(element) -> element)
-            case None => elementsFromSchemaRoot.contains(ElementTypeTag(element) -> element)
-          }
-        case PruningMode.schemaRoot =>
-          elementsFromSchemaRoot.contains(ElementTypeTag(element) -> element)
-        case PruningMode.skip => true
-      }
+    val query: SchemaReachabilityQuery =
+      if pruningMode == skip then IncludeAllReachabilityQuery()
+      else if skipClassDerivation then sv.underivedReachabilityQuery(initialSet)
+      else sv.derivedReachabilityQuery(initialSet, false)
 
     sv.root.asInstanceOf[SchemaDefinitionImpl].copy(
       imports = Seq.empty,
       classes = {
-        val toInclude = sv.classes.filter((_, v) => doIncludeElement(v.inner))
+        val toInclude = sv.classes.filter((_, v) => query.reachable(v))
         if skipClassDerivation then
           toInclude.map((k, v) =>
             k -> v.cls.impl.copy(
@@ -67,7 +70,7 @@ class LinkMlGenerator(using sv: SchemaView) {
       },
       types = sv.types
         .collect {
-          case (k, v) if doIncludeElement(v.inner) =>
+          case (k, v) if query.reachable(v.inner) =>
             k -> v.inner.impl.copy(
               typeUri = Some(v.uriOrCurie),
               fromSchema = Some(v.definingSchema.id),
@@ -75,7 +78,7 @@ class LinkMlGenerator(using sv: SchemaView) {
         },
       enums = sv.enums
         .collect {
-          case (k, v) if doIncludeElement(v.inner) =>
+          case (k, v) if query.reachable(v.inner) =>
             k -> v.inner.impl.copy(
               enumUri = Some(v.uriOrCurie),
               fromSchema = Some(v.definingSchema.id),
@@ -85,7 +88,7 @@ class LinkMlGenerator(using sv: SchemaView) {
         if skipClassDerivation then
           sv.slotDefinitions
             .collect {
-              case (k, v) if doIncludeElement(v.inner) =>
+              case (k, v) if query.reachable(v.inner) =>
                 k -> v.inner.impl.copy(
                   slotUri = Some(v.uriOrCurie),
                   fromSchema = Some(v.definingSchema.id),
@@ -135,11 +138,11 @@ object LinkMlGenerator {
     /** Prune all elements that are unreachable from the schema-level tree root class. Falls back to
       * root-schema based pruning if no schema-level tree_root class is present and no override is
       * provided.
-      * @param `override`
+      * @param _override
       *   If defined, will use the class with the provided name instead of the schema-level
       *   tree_root.
       */
-    case treeRoot(`override`: Option[String])
+    case treeRoot(_override: Option[String])
 
     /** Prune all elements that are unreachable from all the classes defined in the root schema. */
     case schemaRoot

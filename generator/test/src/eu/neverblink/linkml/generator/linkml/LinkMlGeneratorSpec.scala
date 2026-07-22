@@ -185,7 +185,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "prune using schema mode if requested schema tree_root mode but no tree root" in {
+    "prune using schema mode if requested tree_root mode but no tree root" in {
       val sv = ModelCatalogue.treeRootless.model
       val schema =
         LinkMlGenerator(using sv).generate(pruningMode = treeRoot(None))
