@@ -6,14 +6,12 @@ import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.{
-  ClassView,
   ElementView,
   IncludeAllReachabilityQuery,
   SchemaReachabilityQuery,
   SchemaView,
   TypeView,
 }
-import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
 import org.virtuslab.yaml.NodeOps
 
 class LinkMlGenerator(using sv: SchemaView) {

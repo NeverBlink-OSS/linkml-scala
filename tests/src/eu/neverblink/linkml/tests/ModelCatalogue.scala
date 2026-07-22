@@ -140,6 +140,7 @@ object ModelCatalogue {
   val mixin: Entry = Entry("/models/mixin/")
   val multivaluedReference: Entry = Entry("/models/multivaluedReference/")
   val pruning: Entry = Entry("/models/pruning/")
+  val pruningDefaultRange: Entry = Entry("/models/pruningDefaultRange/")
   val reference: Entry = Entry("/models/reference/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typed: Entry = Entry("/models/typed/")

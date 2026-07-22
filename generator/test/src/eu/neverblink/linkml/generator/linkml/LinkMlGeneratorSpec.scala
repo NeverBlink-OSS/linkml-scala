@@ -208,6 +208,16 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "include all default_ranges when pruning" in {
+      val sv = ModelCatalogue.pruningDefaultRange.model
+      val schema =
+        LinkMlGenerator(using sv).generate()
+      schema.types.keys should contain theSameElementsAs Seq(
+        "integer",
+        "string",
+      )
+    }
+
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
       SchemaView.single(
