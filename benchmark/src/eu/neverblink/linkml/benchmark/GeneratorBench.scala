@@ -2,6 +2,7 @@ package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -12,7 +13,7 @@ import scala.compiletime.uninitialized
 import scala.io.Source
 import scala.util.Using
 
-/** Benchmarks the two most common code-generator outputs (JSON Schema and SHACL) produced from a
+/** Benchmarks the common code-generator outputs (JSON Schema, SHACL and LinkML) produced from a
   * LinkML schema loaded from the classpath.
   *
   * For each generator there are two variants:
@@ -21,8 +22,7 @@ import scala.util.Using
   *   - `*FromSchemaView` reuses a [[SchemaView]] parsed once in [[setup]].
   */
 class GeneratorBench extends CommonParams {
-
-  @Param(Array("dummy.yml", "cgmes-core.yml", "cgmes-dynamics.yml"))
+  @Param(Array("cgmes-core.yml", "cgmes-dynamics.yml", "TC57CIM.yml"))
   var schema: String = uninitialized
 
   private var yaml: String = uninitialized
@@ -70,6 +70,24 @@ class GeneratorBench extends CommonParams {
   def shaclFromSchemaView(bh: Blackhole): Unit = {
     given sv: SchemaView = schemaView
     writeShacl(bh)
+  }
+
+  @Benchmark
+  def linkmlFromSchemas(bh: Blackhole): Unit = {
+    given sv: SchemaView = SchemaView(schemaView.schemas)
+    bh.consume(LinkMlGenerator().serialize())
+  }
+
+  @Benchmark
+  def linkmlFromSchemaView(bh: Blackhole): Unit = {
+    given sv: SchemaView = schemaView
+    bh.consume(LinkMlGenerator().serialize())
+  }
+
+  @Benchmark
+  def linkmlFromYaml(bh: Blackhole): Unit = {
+    given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
+    bh.consume(LinkMlGenerator().serialize())
   }
 
   /** Same setup for RDF sinks as in the CLI.
