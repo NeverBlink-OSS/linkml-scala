@@ -235,7 +235,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       ).isEmpty shouldBe false
     }
 
-    "serialize null nodes in json format without errors" in {
+    "serialize strings that require double quoting in yaml using the json format without conversion them to null values" in {
       val sv = SchemaView.loadSchemaViewFromString("""name: d3fend
           |id: https://d3fend.mitre.org/ontologies/d3fend.owl
           |imports:
@@ -255,7 +255,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |    "ZeroClientComputer": {
         |      "class_uri": "d3f:ZeroClientComputer",
         |      "annotations": {
-        |        "kb-article": null
+        |        "kb-article": "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
         |      },
         |      "from_schema": "https://d3fend.mitre.org/ontologies/d3fend.owl"
         |    }
