@@ -1,0 +1,12 @@
+id: https://neverblink.eu/linkml/tests/pruningDefaultRange/
+name: pruningDefaultRange
+
+imports:
+  - linkml:types
+  - imported
+
+classes:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot

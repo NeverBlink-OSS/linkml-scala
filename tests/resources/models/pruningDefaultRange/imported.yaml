@@ -1,0 +1,11 @@
+id: https://neverblink.eu/linkml/tests/pruningDefaultRange/imported/
+name: pruningDefaultRangeImported
+
+default_range: integer
+
+imports:
+  - linkml:types
+
+slots:
+  some_slot:
+    description: No explicit range, should use the default_range integer
