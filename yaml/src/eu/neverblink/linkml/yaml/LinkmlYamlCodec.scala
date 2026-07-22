@@ -557,7 +557,8 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     enumMaps.getOrElse(
       tpe, {
         val leafTpes = adtLeafObjects(tpe)
-        val sym = symbol(s"em${enumMaps.size}", TypeRepr.of[java.util.HashMap[String, T]])
+        val sym =
+          symbol(s"em${enumMaps.size}", TypeRepr.of[java.util.HashMap[String, T]], Flags.Lazy)
         val ref = Ref(sym)
         enumMaps.update(tpe, ref)
         defs.addOne(
@@ -593,7 +594,11 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     reverseEnumMaps.getOrElse(
       tpe, {
         val leafTpes = adtLeafObjects(tpe)
-        val sym = symbol(s"rem${reverseEnumMaps.size}", TypeRepr.of[java.util.HashMap[T, String]])
+        val sym = symbol(
+          s"rem${reverseEnumMaps.size}",
+          TypeRepr.of[java.util.HashMap[T, String]],
+          Flags.Lazy,
+        )
         val ref = Ref(sym)
         reverseEnumMaps.update(tpe, ref)
         defs.addOne(

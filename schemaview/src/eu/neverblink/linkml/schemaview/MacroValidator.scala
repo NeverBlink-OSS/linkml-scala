@@ -245,6 +245,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
     else if (isNonAbstractClass(tpe)) withValidatorFor(tpe, x, sv, vc) { (x, sv, vc) =>
       genValidatorNonAbstractClass(tpe, x, sv, vc)
     }
+    else if (isAbstractClassOrTraitOrEnum(tpe)) '{ ValidatorResult.ok }
     else fail(s"Unsupported type ${tpe.show}")
   }.asInstanceOf[Expr[ValidatorResult]]
 
