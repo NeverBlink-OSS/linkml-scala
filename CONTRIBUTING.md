@@ -4,6 +4,8 @@ Thanks for your interest in LinkML-Scala! We're happy to see the project used an
 
 A note on expectations: we don't yet have a Contributor License Agreement (CLA) process in place, so we can't merge substantial external contributions just yet. You are very welcome to open issues and pull requests – bug reports and feature requests are always appreciated and help us a lot. If you're serious about contributing something larger, please [reach out to us](mailto:contact@neverblink.eu) first so we can sort out the details together.
 
+Want to chat with the maintainers, ask a question, or discuss an idea before opening a PR? **[Join our Discord](https://discord.gg/HGksVAJ6ss)**.
+
 ## Building the project
 
 LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap script is included with this repo (`./mill`), so no additional setup is required for CLI usage. In IntelliJ, [you have to import the project as BSP](https://mill-build.org/mill/cli/installation-ide.html#_intellij) and you are good to go.

@@ -1,6 +1,7 @@
 <div align="center">
 
 [![Playground](https://img.shields.io/badge/playground-try_it_live-8A2BE2?style=flat-square&logo=scala&logoColor=white)](https://linkml.neverblink.eu/playground)
+[![Discord](https://img.shields.io/badge/Discord-join_chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/HGksVAJ6ss)
 [![GitHub stars](https://img.shields.io/github/stars/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=stars&color=yellow)](https://github.com/NeverBlink-OSS/linkml-scala/stargazers)
 [![Maven Central](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3?style=flat-square&logo=apachemaven&logoColor=white&label=maven%20central)](https://central.sonatype.com/namespace/eu.neverblink.linkml)
 [![npm](https://img.shields.io/npm/v/@neverblink/linkml?style=flat-square&logo=npm&logoColor=white&label=npm)](https://www.npmjs.com/package/@neverblink/linkml)
@@ -185,6 +186,8 @@ We have a pre-packaged GitHub Action that can do schema validation and generatio
 This project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md), adapted from the Mozilla Community Participation Guidelines.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, common mill tasks, and how to contribute.
+
+Have a question, an idea, or just want to say hi? **[Join our Discord](https://discord.gg/HGksVAJ6ss)** – we're happy to help.
 
 ## License and maintainers
 
