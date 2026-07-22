@@ -2,9 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
 // LinkML API types generated from the Scala facade (`./mill uiTypes` → linkml.d.ts).
 // Type-checking the UI against these catches drift when LinkMlJsApi.scala changes.
-import type { LinkMLApi } from "./linkml";
-
-type ImportMap = Record<string, string>;
+import type { LinkMLApi, SchemaView } from "./linkml";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 const LINKML_BUNDLE_URL = "/out/generator/js/fullLinkJS.dest/main.js";
@@ -85,7 +83,7 @@ interface Target {
   label: string;
   options: Option[];
   lang: OutputLang | ((o: OptionValues) => OutputLang);
-  call: (schema: string, im: ImportMap, o: OptionValues) => string | Record<string, string>;
+  call: (view: SchemaView, o: OptionValues) => string | Record<string, string>;
 }
 
 type OptionValues = Record<string, string | number | boolean>;
@@ -101,7 +99,7 @@ const TARGETS: Target[] = [
       { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
       { key: "treeRootOverride", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
     ],
-    call: (s, im, o) => api().jsonSchema(s, im, !!o.open, blankToUndef(o.treeRootOverride)),
+    call: (v, o) => api().jsonSchema(v, !!o.open, blankToUndef(o.treeRootOverride)),
   },
   {
     id: "shacl",
@@ -111,28 +109,28 @@ const TARGETS: Target[] = [
       { key: "open", type: "checkbox", label: "Open", title: "sh:closed false" },
       { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
     ],
-    call: (s, im, o) => api().shacl(s, im, !!o.open, !!o.onlyClassesFromRootSchema),
+    call: (v, o) => api().shacl(v, !!o.open, !!o.onlyClassesFromRootSchema),
   },
   {
     id: "rdfs",
     label: "RDFS",
     lang: "turtle",
     options: [{ key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" }],
-    call: (s, im, o) => api().rdfs(s, im, !!o.onlyClassesFromRootSchema),
+    call: (v, o) => api().rdfs(v, !!o.onlyClassesFromRootSchema),
   },
   {
     id: "tableSchema",
     label: "Table Schema",
     lang: "json",
     options: [{ key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" }],
-    call: (s, im, o) => api().tableSchema(s, im, blankToUndef(o.treeRoot)),
+    call: (v, o) => api().tableSchema(v, blankToUndef(o.treeRoot)),
   },
   {
     id: "scala",
     label: "Scala code",
     lang: "scala",
     options: [{ key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" }],
-    call: (s, im, o) => api().scala(s, im, String(o.package || "eu.neverblink.linkml.metamodel")),
+    call: (v, o) => api().scala(v, String(o.package || "eu.neverblink.linkml.metamodel")),
   },
   {
     id: "linkml",
@@ -144,8 +142,8 @@ const TARGETS: Target[] = [
       { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
       { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (s, im, o) =>
-      api().linkml(s, im, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
+    call: (v, o) =>
+      api().linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
   },
   {
     id: "lint",
@@ -155,7 +153,7 @@ const TARGETS: Target[] = [
       { key: "maxProblems", type: "number", label: "Max problems", default: 5 },
       { key: "verbose", type: "checkbox", label: "Verbose" },
     ],
-    call: (s, im, o) => api().lint(s, im, Number(o.maxProblems) || 5, !!o.verbose),
+    call: (v, o) => api().lint(v, Number(o.maxProblems) || 5, !!o.verbose),
   },
 ];
 
@@ -173,6 +171,9 @@ const optionValues: Record<string, OptionValues> = Object.fromEntries(
 let scalaFiles: Record<string, string> | null = null;
 let activeScalaFile: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
+// Parse the schema once and reuse the SchemaView across target/option changes,
+// only re-parse when the input text actually changes.
+let cachedSchema: { text: string; view: SchemaView } | null = null;
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
@@ -354,7 +355,11 @@ function runGenerate(): void {
 
   const start = performance.now();
   try {
-    const result = target.call(schema, {}, optionValues[target.id]!);
+    // The empty object is the import map (filename -> YAML). The UI has no extra imports.
+    if (!cachedSchema || cachedSchema.text !== schema) {
+      cachedSchema = { text: schema, view: api().loadFromString(schema, {}) };
+    }
+    const result = target.call(cachedSchema.view, optionValues[target.id]!);
     const elapsed = Math.round(performance.now() - start);
     if (typeof result === "object") {
       showScalaFiles(result);
@@ -398,7 +403,7 @@ $copyOutput.addEventListener("click", async () => {
       $copyOutput.classList.remove("btn-secondary--done");
     }, 1200);
   } catch {
-    /* clipboard permission denied — nothing sensible to do */
+    /* clipboard permission denied – nothing sensible to do */
   }
 });
 
@@ -466,7 +471,7 @@ function renderRepoStats(stars: number, forks: number): void {
       localStorage.setItem(REPO_STATS_KEY, JSON.stringify({ stars: d.stargazers_count, forks: d.forks_count }));
     })
     .catch(() => {
-      /* offline or rate-limited — keep cached value or stay hidden */
+      /* offline or rate-limited – keep cached value or stay hidden */
     });
 })();
 

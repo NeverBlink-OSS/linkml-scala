@@ -231,6 +231,49 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       ).lint() shouldBe empty
     }
 
+    "serialize yaml format without errors" in {
+      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      LinkMlGenerator(using sv).serialize(outputFormat =
+        LinkMlGenerator.OutputFormat.yaml,
+      ).isEmpty shouldBe false
+    }
+
+    "serialize json format without errors" in {
+      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      LinkMlGenerator(using sv).serialize(outputFormat =
+        LinkMlGenerator.OutputFormat.json,
+      ).isEmpty shouldBe false
+    }
+
+    "serialize strings that require double quoting in yaml using the json format without conversion them to null values" in {
+      val sv = SchemaView.loadSchemaViewFromString("""name: d3fend
+          |id: https://d3fend.mitre.org/ontologies/d3fend.owl
+          |imports:
+          |  linkml:types
+          |default_range: string
+          |classes:
+          |  ZeroClientComputer:
+          |    class_uri: d3f:ZeroClientComputer
+          |    annotations:
+          |      kb-article: "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
+          |""".stripMargin)
+      LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json) shouldBe
+        """{
+        |  "name": "d3fend",
+        |  "id": "https://d3fend.mitre.org/ontologies/d3fend.owl",
+        |  "classes": {
+        |    "ZeroClientComputer": {
+        |      "class_uri": "d3f:ZeroClientComputer",
+        |      "annotations": {
+        |        "kb-article": "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
+        |      },
+        |      "from_schema": "https://d3fend.mitre.org/ontologies/d3fend.owl"
+        |    }
+        |  },
+        |  "default_range": "string"
+        |}""".stripMargin
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all.filter(m => !skipModels.contains(m.model.root.name)) do
         s"model '${entry.model.root.name}'" in {

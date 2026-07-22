@@ -18,17 +18,17 @@
 
 **[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple programming languages and data formats (e.g., JSON Schema, CSV, RDF/SHACL...).
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have both a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 ## Why LinkML-Scala?
 
 ### 🚀 It's really fast!
 
-LinkML-Scala was built to work great with large schemas. It can be **10–20x faster than the Python implementation**, depending on the use case:
+LinkML-Scala was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](docs/benchmarks.md) than the Python implementation**:
 
 ![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
 
-We are right now working on a benchmark suite to compare LinkML-Scala with the Python implementation. Stay tuned for updates!
+[**📊 See the benchmarks.**](docs/benchmarks.md)
 
 ### 🌐 Works in the browser, Node.js, and in the JVM
 
@@ -161,11 +161,15 @@ npm install @neverblink/linkml
 ```js
 import { LinkML } from "@neverblink/linkml";
 
-// The second argument is an import map (filename -> YAML) for `imports:`.
-const jsonSchema = LinkML.jsonSchema(mySchemaYaml, {});
+// Parse once into a reusable SchemaView handle. The second argument is an
+// import map (filename -> YAML) for `imports:`; pass {} when there are none.
+const view = LinkML.loadFromString(mySchemaYaml, {});
+const jsonSchema = LinkML.jsonSchema(view);
 ```
 
-`LinkML` exposes `jsonSchema`, `shacl`, `rdfs`, `linkml`, `scala`, `tableSchema`, and `lint`.
+Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
+import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
+`rdfs`, `linkml`, `scala`, `tableSchema`, or `lint` against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
 ## JVM library

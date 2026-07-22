@@ -99,7 +99,7 @@ object ValidationReport {
   private def summarySeverity(issues: Seq[Issue]): Severity =
     issues.map(_.severity).minBy(_.ordinal)
 
-  /** e.g. "1 error, 2 warnings" — counts per severity, most severe first, only non-zero. */
+  /** e.g. "1 error, 2 warnings" – counts per severity, most severe first, only non-zero. */
   private def summaryText(issues: Seq[Issue]): String =
     val parts = Severity.values.toSeq.flatMap { sev =>
       val n = issues.count(_.severity == sev)

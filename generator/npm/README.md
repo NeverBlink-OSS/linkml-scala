@@ -1,6 +1,6 @@
 # @neverblink/linkml
 
-JavaScript / TypeScript bindings for [LinkML-Scala](https://github.com/NeverBlink-OSS/linkml-scala) —
+JavaScript / TypeScript bindings for [LinkML-Scala](https://github.com/NeverBlink-OSS/linkml-scala) –
 LinkML schema validation and multi-format code generation (JSON Schema, SHACL, RDFS, Scala),
 compiled from Scala 3 to JavaScript via [Scala.js](https://www.scala-js.org/).
 
@@ -34,23 +34,53 @@ classes:
         range: integer
 `;
 
-// The second argument is an import map (filename -> YAML source) for any
-// models referenced via LinkML \`imports:\`. Pass {} when there are none.
-const jsonSchema = LinkML.jsonSchema(schema, {});
+// Parse the schema once into a reusable handle. The second argument 
+// is an import map (filename -> YAML source) for any models referenced
+// via LinkML \`imports:\`. Pass {} when there are none.
+const view = LinkML.loadFromString(schema, {});
+
+// Then run any generator against the loaded schema.
+const jsonSchema = LinkML.jsonSchema(view);
 console.log(jsonSchema);
+
+const shacl = LinkML.shacl(view);
+console.log(shacl);
+```
+
+### Loading
+
+There are two ways to load a schema into a `SchemaView` handle:
+
+- `loadFromString(schema, importMap)` – start from the schema's YAML text. Imported models
+  must be provided in the import map (filename → YAML).
+- `loadFromPath(path, importMap)` – start from a path into the import map. The root schema is
+  read from `importMap[path]` (paths behave like file paths, `.yaml` is appended when missing).
+  Because the root is tracked from the start of import resolution, this variant is immune to
+  cyclic imports that reference the root schema back.
+
+```js no-test
+// loadFromPath: the root lives in the import map under its own path.
+const view = LinkML.loadFromPath("model.yaml", {
+  "model.yaml": schema,
+  "person.yaml": personSchema, // referenced via `imports: - person`
+});
 ```
 
 ### Available functions
 
+Load a schema into a `SchemaView` handle (see above), then pass that handle to any generator:
+
 | Function | Returns | Notes |
 | --- | --- | --- |
-| `jsonSchema(schema, importMap, open?, treeRootOverride?)` | `string` | JSON Schema |
-| `shacl(schema, importMap, open?, onlyClassesFromRootSchema?)` | `string` | SHACL shapes in N-Triples |
-| `rdfs(schema, importMap, onlyClassesFromRootSchema?)` | `string` | RDFS in N-Triples |
-| `linkml(schema, importMap, pruningMode?, skipDerivation?, treeRoot?, outFormat?)` | `string` | derived/pruned LinkML schema |
-| `scala(schema, importMap, packageName)` | `Record<string, string>` | filename → generated Scala |
-| `tableSchema(schema, importMap, treeRoot?)` | `string` | Frictionless Table Schema (JSON) |
-| `lint(schema, importMap, maxProblems?, verbose?)` | `string` | problem summary, empty if valid |
+| `loadFromString(schema, importMap)` | `SchemaView` | parse from YAML text; reuse the handle |
+| `loadFromPath(path, importMap)` | `SchemaView` | parse from a path in the import map; cycle-safe for the root |
+| `jsonSchema(view, open?, treeRootOverride?)` | `string` | JSON Schema |
+| `shacl(view, open?, onlyClassesFromRootSchema?)` | `string` | SHACL shapes in N-Triples |
+| `rdfs(view, onlyClassesFromRootSchema?)` | `string` | RDFS in N-Triples |
+| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)` | `string` | derived/pruned LinkML schema |
+| `scala(view, packageName)` | `Record<string, string>` | filename → generated Scala |
+| `tableSchema(view, treeRoot?)` | `string` | Frictionless Table Schema (JSON) |
+| `lint(view, maxProblems?, verbose?)` | `string` | problem summary, empty if valid |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

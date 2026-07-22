@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.util
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
-import org.virtuslab.yaml.{Node, NodeOps}
+import org.virtuslab.yaml.{Node, NodeOps, Tag}
 
 object JsonUtil {
 
@@ -14,39 +14,27 @@ object JsonUtil {
     override def decodeValue(in: JsonReader, default: Node): Node = ???
 
     override def encodeValue(x: Node, out: JsonWriter): Unit = x match {
-      case Node.MappingNode(entries, _) =>
-        out.writeObjectStart()
-        entries.foreach { kv =>
-          kv._2 match {
-            case Node.ScalarNode(value, _)
-                if value == "false" || value == "False" | value == "FALSE" =>
-              () // skip default false values
-            case _ =>
-              out.writeKey(kv._1.asYaml.trim)
-              yamlCodec.encodeValue(kv._2, out)
+      case s: Node.ScalarNode =>
+        val tag = s.tag
+        if (tag eq Tag.nullTag) out.writeNull()
+        else if (tag eq Tag.str) out.writeVal(s.value)
+        else if (tag eq Tag.boolean) {
+          s.value match {
+            case "true" | "True" | "TRUE" => out.writeVal(true)
+            case _ => out.writeVal(false)
           }
+        } else out.writeRawVal(s.value.getBytes) // ints and floats
+      case m: Node.MappingNode =>
+        out.writeObjectStart()
+        m.mappings.foreach { kv =>
+          out.writeKey(kv._1.asYaml.trim)
+          yamlCodec.encodeValue(kv._2, out)
         }
         out.writeObjectEnd()
-      case Node.SequenceNode(elements, _) =>
+      case s: Node.SequenceNode =>
         out.writeArrayStart()
-        elements.foreach(e => yamlCodec.encodeValue(e, out))
+        s.nodes.foreach(e => yamlCodec.encodeValue(e, out))
         out.writeArrayEnd()
-      case Node.ScalarNode(value, _) =>
-        value match {
-          case "true" | "True" | "TRUE" => out.writeVal(true)
-          case "false" | "False" | "FALSE" => out.writeVal(false)
-          case "null" | "~" | "Null" | "NULL" => out.writeNull()
-          case s if s.nonEmpty && {
-                val ch = s.charAt(0)
-                Character.isDigit(ch) || ch == '-' || ch == '+' || ch == '.'
-              } =>
-            x.as[BigDecimal] match {
-              case Right(v) => out.writeVal(v)
-              case _ => out.writeVal(value)
-            }
-          case _ => out.writeVal(value)
-        }
-      case _ => out.writeNull()
     }
 
     override def nullValue: Node = ???

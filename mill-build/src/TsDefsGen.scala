@@ -3,7 +3,7 @@ package millbuild
 import _root_.scala.meta.*
 
 /** Generates the npm package's TypeScript declarations from the Scala.js facade ([[LinkMlJsApi]]),
-  * so the types can never drift from the implementation. Syntactic parse only — no compiler needed.
+  * so the types can never drift from the implementation. Syntactic parse only – no compiler needed.
   */
 object TsDefsGen {
   private val exportedName = "LinkML"
@@ -21,7 +21,17 @@ object TsDefsGen {
     val members = methods.map(renderMethod(scalaSource, _)).mkString("\n\n")
 
     s"""// AUTO-GENERATED from generator/src-js/eu/neverblink/linkml/js/LinkMlJsApi.scala.
-       |// Do not edit by hand — regenerate with ./mill uiTypes (or generator.js.npmPackage).
+       |// Do not edit by hand – regenerate with ./mill uiTypes (or generator.js.npmPackage).
+       |
+       |/**
+       | * Opaque handle to a loaded, import-resolved LinkML schema. Create one with
+       | * {@link ${exportedName}Api.load} and pass it to the generator functions. Parse a schema
+       | * once and reuse the handle, instead of re-parsing the YAML on every call.
+       | */
+       |export interface SchemaView {
+       |  /** @internal Nominal brand – do not access. */
+       |  readonly __linkmlSchemaView: unique symbol;
+       |}
        |
        |export interface ${exportedName}Api {
        |$members
@@ -81,6 +91,7 @@ object TsDefsGen {
           case "Boolean" => "boolean"
           case "Int" | "Long" | "Double" | "Float" => "number"
           case "js.Dictionary[String]" => "Record<string, string>"
+          case "SchemaViewJs" => "SchemaView"
           case other => other
         }
       }

@@ -27,7 +27,7 @@ Common tasks with mill:
 
 ### Playground UI
 
-The browser playground lives in [`ui/`](ui/) — a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
+The browser playground lives in [`ui/`](ui/) – a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
 
 - Serve it locally: `./mill ui` – builds the Scala.js bundle **and** the UI bundle, then serves at <http://localhost:8000/ui/>
 - Build the UI bundle only: `./mill uiBundle` → `ui/dist/app.js`

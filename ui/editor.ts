@@ -1,6 +1,6 @@
 // CodeMirror 6 setup for the playground. Colors are driven entirely by the app's
 // CSS variables (var(--…)), so the editors re-theme automatically when the app
-// toggles light/dark — no reconfiguration needed.
+// toggles light/dark – no reconfiguration needed.
 import { Compartment, EditorState } from "@codemirror/state";
 import {
   EditorView,
