@@ -1,0 +1,7 @@
+id: https://neverblink.eu/linkml/tests/nonHermetic/imported/
+name: nonHermeticImported
+
+slots:
+  some_slot:
+    range: int
+

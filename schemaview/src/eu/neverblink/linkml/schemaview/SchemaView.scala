@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
 
 import scala.annotation.unused
@@ -98,95 +99,33 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   lazy val prefixResolvers: Map[SchemaDefinition, BasicPrefixResolver] =
     schemas.map(schema => schema -> createPrefixResolver(schema)).toMap
 
-  /** Get all classes reachable from a given class, following derived attributes and optionally
-    * ancestors. The result is a map of class name to class view, including the starting class.
-    *
-    * This is useful for generators that want to prune the schema to only the relevant classes
-    * reachable from a given root.
+  /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
+    * other reference slots. This will run the query without schema derivation.
     *
     * @param from
-    *   The class to start from
-    * @param includeAncestors
-    *   Whether to include ancestors of the found classes in the result. If false, only the classes
-    *   directly reachable via slots will be included.
+    *   Starting set of elements
+    */
+  def underivedReachabilityQuery(
+      from: Seq[ElementView[?]],
+  ): UnderivedReachabilityQuery = UnderivedReachabilityQuery(from)
+
+  /** Get all elements reachable from a given starting set, following derived attributes and other
+    * reference slots. This will run the query as-if schema derivation was performed.
+    *
+    * @see
+    *   [[ClassView.materialize]] - this query will allow correct pruning for the return values of
+    *   this method
+    *
+    * @param from
+    *   Starting set of elements
     * @param inlinedOnly
     *   Whether to include only classes that are inlined in the slots where they are used. If false,
     *   all reachable classes will be included regardless of whether they are inlined or not.
-    * @todo
-    *   LNK-111 Merge with [[reachableFrom()]]
     */
-  def classesReachableFrom(
-      from: ClassView,
-      includeAncestors: Boolean,
+  def derivedReachabilityQuery(
+      from: Seq[ElementView[?]],
       inlinedOnly: Boolean,
-  ): Map[String, ClassView] =
-    val agenda = mutable.Queue(from)
-    val found = mutable.Map.empty[String, ClassView]
-    while agenda.nonEmpty do
-      val current = agenda.dequeue()
-      if !found.contains(current.cls.name) then
-        found.put(current.cls.name, current)
-        if includeAncestors then for c <- current.ancestors(reflexive = false) do agenda.enqueue(c)
-        for (_, slot) <- current.derivedAttributes do
-          if !inlinedOnly || slot.derivedInlined then
-            slot.derivedRangeView.resolve match {
-              case Some(cls: ClassView) => agenda.enqueue(cls)
-              case _ =>
-            }
-    found.toMap
-
-  /** Find all [[Element]]s that are reachable from the [[fromClasses]]. Also includes types, enums,
-    * slots.
-    *
-    * @param fromClasses
-    *   Class definition(s) to start the reachability query from.
-    * @param derivedClasses
-    *   If true, will only consider `derivedAttributes` for class derivation. This is in-line with
-    *   what [[ClassView.materialize]] will clear. If false, will instead mark inheritance-related
-    *   slots as reachable.
-    *
-    * @todo
-    *   Make this search more robust (LNK-110). Currently, this will prune things incorrectly if
-    *   there are any boolean slots (like `any_of`)
-    *
-    * @todo
-    *   LNK-111 Clean this up and merge with [[classesReachableFrom()]]
-    *
-    * @return
-    *   A set of elements reachable from [[rootClass]] and their [[ElementTypeTag]]s
-    */
-  def reachableFrom(
-      fromClasses: Seq[ClassDefinition],
-      derivedClasses: Boolean,
-  ): Set[(ElementTypeTag, Element)] =
-    Closure.reflexive[(ElementTypeTag, Element)](
-      fromClasses.map(ElementTypeTag.classDef -> _),
-      el => {
-        val elements: Iterable[Element] = el._2 match {
-          case cls: ClassDefinition =>
-            if !derivedClasses then classes(cls.name).derivedAttributes.map(_._2.slot)
-            else
-              (cls.slots ++ cls.isA ++ cls.mixins).flatMap(_.resolve)
-                ++ cls.attributes.values ++ cls.slotUsage.values
-          case typeDefinition: TypeDefinition =>
-            (typeDefinition.typeof ++ typeDefinition.unionOf).flatMap(_.resolve)
-          case enumDefinition: EnumDefinition =>
-            enumDefinition.inherits.flatMap(_.resolve)
-          case slotDefinition: SlotDefinition =>
-            val inherited = slotDefinition.isA ++ slotDefinition.mixins
-            (slotDefinition.anyOf.flatMap(
-              _.range,
-            ) ++ slotDefinition.range ++ slotDefinition.domain ++ (
-              if derivedClasses then inherited
-              else Seq.empty
-            )).flatMap(_.resolve)
-
-          case _ => Seq.empty
-        }
-
-        elements.map(el => ElementTypeTag(el) -> el)
-      },
-    ).toSet
+  ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly)
 
   /** Get a schema element by its ID
     */
@@ -439,18 +378,6 @@ object SchemaView {
       loadSchemasInternal(sUri, true, importer, visited)
     }
   }
-
-  enum ElementTypeTag:
-    case classDef, typeDef, slotDef, enumDef, other
-
-  object ElementTypeTag:
-    def apply(el: Element): ElementTypeTag = el match {
-      case _: ClassDefinition => classDef
-      case _: TypeDefinition => typeDef
-      case _: SlotDefinition => slotDef
-      case _: EnumDefinition => enumDef
-      case _ => other
-    }
 
   /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
     * resolves "semweb_context" curi map and loads user defined prefixes.

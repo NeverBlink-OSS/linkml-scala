@@ -1,0 +1,18 @@
+id: https://neverblink.eu/linkml/tests/nonHermetic/
+name: nonHermetic
+default_range: int
+
+imports:
+  # even though imported.yaml is not a valid schema, this schema is valid:
+  # as the invalid reference from imported.yaml now resolves to linkml:types->string
+  - ./imported
+
+classes:
+  SomeClass:
+    tree_root: true
+    slots:
+      - some_slot
+
+types:
+  int:
+    base: int

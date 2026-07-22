@@ -315,7 +315,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     Closure.get(slot, getParents, reflexive)
 
   /** Test whether this slot is declared as inlined, or is implicitly inlined as its range is a
-    * class without an identifier
+    * type, enum, or class without an identifier
     *
     * @return
     *   true if the slot is inlined
@@ -328,7 +328,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
       }).asInstanceOf[Reference[ElementView[?]]],
     ) match {
       case Some(cls: ClassView) => !cls.hasIdentifier
-      case _ => false
+      case _ => true
     })
 
   /** Get the range of this slot, with missing values filled with `default_range` from the implicit

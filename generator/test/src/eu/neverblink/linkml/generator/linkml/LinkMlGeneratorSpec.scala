@@ -185,7 +185,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "prune using schema mode if requested schema tree_root mode but no tree root" in {
+    "prune using schema mode if requested tree_root mode but no tree root" in {
       val sv = ModelCatalogue.treeRootless.model
       val schema =
         LinkMlGenerator(using sv).generate(pruningMode = treeRoot(None))
@@ -205,6 +205,16 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         LinkMlGenerator(using sv).generate(pruningMode = treeRoot(Some("SomeClass")))
       schema.classes.keys should contain theSameElementsAs Seq(
         "SomeClass",
+      )
+    }
+
+    "include all default_ranges when pruning" in {
+      val sv = ModelCatalogue.pruningDefaultRange.model
+      val schema =
+        LinkMlGenerator(using sv).generate()
+      schema.types.keys should contain theSameElementsAs Seq(
+        "integer",
+        "string",
       )
     }
 
@@ -258,6 +268,20 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |        "kb-article": "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
         |      },
         |      "from_schema": "https://d3fend.mitre.org/ontologies/d3fend.owl"
+        |    }
+        |  },
+        |  "types": {
+        |    "string": {
+        |      "uri": "xsd:string",
+        |      "description": "A character string",
+        |      "base": "str",
+        |      "exact_mappings": [
+        |        "schema:Text"
+        |      ],
+        |      "from_schema": "https://w3id.org/linkml/types",
+        |      "notes": [
+        |        "In RDF serializations, a slot with range of string is treated as a literal or type xsd:string. If you are authoring schemas in LinkML YAML, the type is referenced with the lower case \"string\"."
+        |      ]
         |    }
         |  },
         |  "default_range": "string"

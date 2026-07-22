@@ -115,7 +115,7 @@ case class AnonymousSlotExpressionImpl(
     todos: Seq[String] = Seq(),
     unit: Option[UnitOfMeasureImpl] = None,
     @named("value_presence")
-    valuePresence: Option[Reference[PresenceEnum]] = None,
+    valuePresence: Option[PresenceEnum] = None,
 ) extends AnonymousSlotExpression
 
 /** @see

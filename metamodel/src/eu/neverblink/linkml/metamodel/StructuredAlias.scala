@@ -15,7 +15,7 @@ case class StructuredAliasImpl(
     @named("contexts")
     aliasContexts: Seq[Uri] = Seq(),
     @named("predicate")
-    aliasPredicate: Option[Reference[AliasPredicateEnum]] = None,
+    aliasPredicate: Option[AliasPredicateEnum] = None,
     aliases: Seq[String] = Seq(),
     @named("alt_descriptions")
     @simpleDict
@@ -93,7 +93,7 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def aliasPredicate: Option[Reference[AliasPredicateEnum]]
+  def aliasPredicate: Option[AliasPredicateEnum]
 
   /** The category or categories of an alias. This can be drawn from any relevant vocabulary
     *

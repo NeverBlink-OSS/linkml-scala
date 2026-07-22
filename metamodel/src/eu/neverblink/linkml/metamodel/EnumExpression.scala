@@ -24,7 +24,7 @@ case class EnumExpressionImpl(
     @compactDict
     permissibleValues: Map[String, PermissibleValueImpl] = Map(),
     @named("pv_formula")
-    pvFormula: Option[Reference[PvFormulaOptions]] = None,
+    pvFormula: Option[PvFormulaOptions] = None,
     @named("reachable_from")
     reachableFrom: Option[ReachabilityQueryImpl] = None,
 ) extends EnumExpression
@@ -119,7 +119,7 @@ trait EnumExpression extends Expression {
     * @note
     *   Code_set must be supplied for this to be valid
     */
-  def pvFormula: Option[Reference[PvFormulaOptions]]
+  def pvFormula: Option[PvFormulaOptions]
 
   /** Specifies a query for obtaining a list of permissible values based on graph reachability
     *
