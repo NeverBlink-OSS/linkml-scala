@@ -1,8 +1,8 @@
 package eu.neverblink.linkml.benchmark
 
 import org.virtuslab.yaml.*
+import zio.blocks.schema.yaml.*
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
-import org.openjdk.jmh.infra.Blackhole
 
 import scala.compiletime.uninitialized
 import scala.io.Source
@@ -20,5 +20,8 @@ class YamlParsingBench extends CommonParams {
   }
 
   @Benchmark
-  def fromStringToNode(bh: Blackhole): Node = parseYaml(yaml).getOrElse(null)
+  def scalaYaml: Node = parseYaml(yaml).getOrElse(null)
+
+  @Benchmark
+  def zioBlocks: Yaml = YamlReader.read(yaml)
 }

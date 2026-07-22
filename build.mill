@@ -373,6 +373,7 @@ object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule 
   // RDF4J Rio N-Triples (cli only brings rio-turtle) and Jena ARQ/RIOT,
   // for the N-Triples streaming-serializer benchmark.
   override def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"dev.zio::zio-blocks-schema-yaml::0.0.41",
     mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:$rdf4j",
     mvn"org.apache.jena:jena-arq:5.6.0",
   )
