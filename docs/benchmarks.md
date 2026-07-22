@@ -2,11 +2,10 @@
 
 We benchmarked LinkML-Scala against the reference [`linkml` Python package](https://github.com/linkml/linkml) by measuring the **throughput** (generations per second) of the SHACL and JSON Schema generators.
 
-!!! tip "TL;DR"
 
-    Across a diverse set of 11 real-world schemas, LinkML-Scala was **faster than
-    LinkML (Python) in every tested scenario** – on average by **22.9–38.5×**, depending
-    on the generator and scenario.
+> [!TIP]
+> **TL;DR:**
+> Across a diverse set of 11 real-world schemas, LinkML-Scala was faster than LinkML (Python) in every tested scenario – on average by **22.9–38.5×**, depending on the generator and scenario.
 
 ## Methodology
 
