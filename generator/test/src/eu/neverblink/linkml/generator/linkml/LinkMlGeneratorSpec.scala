@@ -270,6 +270,20 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |      "from_schema": "https://d3fend.mitre.org/ontologies/d3fend.owl"
         |    }
         |  },
+        |  "types": {
+        |    "string": {
+        |      "uri": "xsd:string",
+        |      "description": "A character string",
+        |      "base": "str",
+        |      "exact_mappings": [
+        |        "schema:Text"
+        |      ],
+        |      "from_schema": "https://w3id.org/linkml/types",
+        |      "notes": [
+        |        "In RDF serializations, a slot with range of string is treated as a literal or type xsd:string. If you are authoring schemas in LinkML YAML, the type is referenced with the lower case \"string\"."
+        |      ]
+        |    }
+        |  },
         |  "default_range": "string"
         |}""".stripMargin
     }
