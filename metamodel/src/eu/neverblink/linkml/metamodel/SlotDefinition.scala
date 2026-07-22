@@ -166,7 +166,7 @@ case class SlotDefinitionImpl(
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("relational_role")
-    relationalRole: Option[Reference[RelationalRoleEnum]] = None,
+    relationalRole: Option[RelationalRoleEnum] = None,
     role: Option[String] = None,
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
@@ -199,7 +199,7 @@ case class SlotDefinitionImpl(
     @named("usage_slot_name")
     usageSlotName: Option[String] = None,
     @named("value_presence")
-    valuePresence: Option[Reference[PresenceEnum]] = None,
+    valuePresence: Option[PresenceEnum] = None,
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
 ) extends SlotDefinition {
@@ -742,7 +742,7 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   In the context of property graphs, this should be used on edge classes to indicate which
     *   slots represent the input and output nodes
     */
-  def relationalRole: Option[Reference[RelationalRoleEnum]]
+  def relationalRole: Option[RelationalRoleEnum]
 
   /** A textual descriptor that indicates the role played by the slot range
     *

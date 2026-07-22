@@ -59,9 +59,9 @@ case class EnumBindingImpl(
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[String] = Seq(),
     @named("obligation_level")
-    obligationLevel: Option[Reference[ObligationLevelEnum]] = None,
+    obligationLevel: Option[ObligationLevelEnum] = None,
     @named("pv_formula")
-    pvFormula: Option[Reference[PvFormulaOptions]] = None,
+    pvFormula: Option[PvFormulaOptions] = None,
     range: Option[Reference[EnumDefinition]] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
@@ -93,7 +93,7 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def obligationLevel: Option[Reference[ObligationLevelEnum]]
+  def obligationLevel: Option[ObligationLevelEnum]
 
   /** Defines the specific formula to be used to generate the permissible values.
     *
@@ -104,7 +104,7 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     * @note
     *   Code_set must be supplied for this to be valid
     */
-  def pvFormula: Option[Reference[PvFormulaOptions]]
+  def pvFormula: Option[PvFormulaOptions]
 
   /** Defines the type of the object of the slot. Given the following slot definition S1: domain: C1
     * range: C2 the declaration X: S1: Y

@@ -308,5 +308,5 @@ trait SlotExpression extends Expression {
     *   If set to true this has the same effect as required=true. In contrast, required=false allows
     *   a value to be present
     */
-  def valuePresence: Option[Reference[PresenceEnum]]
+  def valuePresence: Option[PresenceEnum]
 }

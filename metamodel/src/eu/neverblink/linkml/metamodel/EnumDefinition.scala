@@ -96,7 +96,7 @@ case class EnumDefinitionImpl(
     @compactDict
     permissibleValues: Map[String, PermissibleValueImpl] = Map(),
     @named("pv_formula")
-    pvFormula: Option[Reference[PvFormulaOptions]] = None,
+    pvFormula: Option[PvFormulaOptions] = None,
     @named("reachable_from")
     reachableFrom: Option[ReachabilityQueryImpl] = None,
     @named("related_mappings")
