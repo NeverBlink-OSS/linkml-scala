@@ -32,6 +32,10 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
     */
   def inner: E
 
+  /** The name of the underlying Element
+    */
+  final def name: String = inner.name
+
   /** The defining schema's prefix resolver */
   given definingPrefixResolver: PrefixResolver = sv.prefixResolvers(definingSchema)
 
@@ -87,6 +91,30 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     }
     (das, Option(idSv))
   }
+
+  lazy val resolvedAttributes: Map[String, AttributeView] = {
+    derivedAttributes.map((k, slot) =>
+      k -> (slot.derivedRangeView.resolve.get match {
+        case classView: ClassView =>
+          if classView.uriStr == "https://w3id.org/linkml/Any" then AnyView(slot)
+          else if !slot.derivedInlined then
+            ClassReferenceAttributeView(
+              slot,
+              classView,
+              classView.identifier.get.derivedRangeView.resolve.get match {
+                case tv: TypeView => tv
+                case _ => throw RuntimeException("ID slot is not type")
+              },
+            )
+          else ClassInlineAttributeView(slot, classView, InlineType(slot))
+        case tv: TypeView => TypeAttributeView(slot, tv)
+        case ev: EnumView => EnumAttributeView(slot, ev)
+        case _ => throw RuntimeException(s"Invalid range for ${cls.name}.${slot.name}")
+      }),
+    )
+  }
+
+  def collectionForm: CollectionForm = CollectionForm.of(this)
 
   /** Get and dereference the direct parents (mixins + inheritance) of this class
     *
@@ -321,12 +349,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *   true if the slot is inlined
     */
   def derivedInlined: Boolean =
-    slot.inlined || (sv.resolve(
-      (slot.range match {
-        case Some(range) => range
-        case _ => definingSchema.defaultRangeResolved
-      }).asInstanceOf[Reference[ElementView[?]]],
-    ) match {
+    slot.inlined || (sv.resolve(derivedRangeView) match {
       case Some(cls: ClassView) => !cls.hasIdentifier
       case _ => true
     })

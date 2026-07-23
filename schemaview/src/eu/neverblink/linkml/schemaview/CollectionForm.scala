@@ -32,13 +32,13 @@ object CollectionForm {
   /** Infer the possible collection forms of a class with given attributes, and record which slots
     * can be used to inline the class if the form is a [[DictForm]].
     *
-    * @param slotMap
-    *   Derived attributes of the class, as provided by [[SlotView.derivedAttributes()]]
+    * @param classView
+    *   ClassView to infer the collection form for
     * @return
     *   The [[CollectionForm]] applicable for this specific class
     */
-  def of(slotMap: Map[String, SlotView]): CollectionForm = {
-    val slots = slotMap.values.map(_.slot).toSeq
+  def of(classView: ClassView): CollectionForm = {
+    val slots = classView.derivedAttributes.values.map(_.slot).toSeq
 
     if !slots.exists(isIdOrKey) then return ListOnly
     val key = slots.filter(isIdOrKey).head
@@ -63,7 +63,7 @@ object CollectionForm {
     val range = slot.derivedRangeView
     given SchemaView = slot.sv
     range.resolve.get match {
-      case cls: ClassView => of(cls.derivedAttributes)
+      case cls: ClassView => of(cls)
       case _ =>
         // Let's be lax here, `inlined:true` does not make sense on non-classes,
         // since enum/types are already always inlined and the form is always list

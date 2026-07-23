@@ -32,10 +32,9 @@ final class ScalaGenerator(using sv: SchemaView) {
     for classView <- sv.classes.values yield {
       given PrefixResolver = classView.definingPrefixResolver
       val cls = classView.cls
-      val slotMap = classView.derivedAttributes
-      val inlineStyle = CollectionForm.of(slotMap)
-      val scalaFields = for slot <- slotMap.values.toIndexedSeq yield {
-        makeScalaField(slot, inlineStyle)
+      val collectionForm = CollectionForm.of(classView)
+      val scalaFields = for slot <- classView.derivedAttributes.values.toIndexedSeq yield {
+        makeScalaField(slot, collectionForm)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
       val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
@@ -308,14 +307,14 @@ final class ScalaGenerator(using sv: SchemaView) {
   /** Create a [[ScalaField]] instance, by inferring the [[TypedDefault]] and additional annotations
     * @param v
     *   Slot to construct the [[ScalaField]] instance for
-    * @param inlineStyle
-    *   Inline style of the owner class
+    * @param collectionForm
+    *   Collection form of the owner class
     */
-  private def makeScalaField(v: SlotView, inlineStyle: CollectionForm): ScalaField = {
+  private def makeScalaField(v: SlotView, collectionForm: CollectionForm): ScalaField = {
     val slot = v.slot
     val name = slotName(slot.name)
     // Move id / value to the front, regardless of rank
-    val (thisAnnotation, order) = inlineStyle match {
+    val (thisAnnotation, order) = collectionForm match {
       case CollectionForm.SimpleDict(key, value) if slot.name == key => (Some("@id"), -2)
       case CollectionForm.SimpleDict(key, value) if slot.name == value => (Some("@value"), -1)
       case CollectionForm.CompactDict(key) if slot.name == key => (Some("@id"), -2)

@@ -1,0 +1,18 @@
+id: https://neverblink.eu/linkml/tests/referenceInteger/
+name: referenceInteger
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        required: true
+        range: SomeOtherClass
+  SomeOtherClass:
+    attributes:
+      id:
+        identifier: true
+        range: integer

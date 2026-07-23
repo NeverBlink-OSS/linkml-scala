@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/referenceInteger/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+_:b a :SomeClass;
+  :some_slot <123> .
