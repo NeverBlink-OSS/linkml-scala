@@ -259,7 +259,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
 
       roundTrip(
         MyClass(Some("ABC"), Seq(123, 456), Map("+++" -> true), true, 10),
-        "a: ABC\nb: \n  - 123\n  - 456\nc: \n  +++: true\nd: true\ne: 10\n",
+        "a: ABC\nb:\n  - 123\n  - 456\nc:\n  +++: true\nd: true\ne: 10\n",
       )
       roundTrip(MyClass(Some("ABC")), "a: ABC\n")
       decodeError[MyClass](
@@ -274,10 +274,10 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
 
       roundTrip(
         MyClass(1, Some(MyClass(2, Some(MyClass(3, None))))),
-        "v: 1\nn: \n  v: 2\n  n: \n    v: 3\n",
+        "v: 1\nn:\n  v: 2\n  n:\n    v: 3\n",
       )
       decodeError[MyClass](
-        "v: 1\nn: \n  v: 2\n  n: \n    x: 3\n",
+        "v: 1\nn:\n  v: 2\n  n:\n    x: 3\n",
         """Expected required field 'v' of 'MyClass' at 4:4 but got:
           |    x: 3
           |    ^""".stripMargin,
@@ -300,16 +300,16 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
             "c" -> SimpleDictEntry(k = "c", v = 3),
           ),
         ),
-        "d: \n  a: 1\n  b: 2\n  c: 3\n",
+        "d:\n  a: 1\n  b: 2\n  c: 3\n",
       )
       decodeError[MyClass](
-        "d: \n  a: 1\n  b: 2\n  null: 3\n",
+        "d:\n  a: 1\n  b: 2\n  null: 3\n",
         """Expected string value at 3:2 but got:
           |  null: 3
           |  ^""".stripMargin,
       )
       decodeError[MyClass](
-        "d: \n  a: 1\n  b: 2\n  c:\n",
+        "d:\n  a: 1\n  b: 2\n  c:\n",
         """Expected 32-bit signed integer number value at 4:0 but got:
           |
           |^""".stripMargin,
@@ -329,10 +329,10 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
             "c" -> DictEntry("c", 3, false),
           ),
         ),
-        "d: \n  a: \n    v: 1\n    e: true\n  b: \n    v: 2\n    e: true\n  c: \n    v: 3\n    e: false\n",
+        "d:\n  a:\n    v: 1\n    e: true\n  b:\n    v: 2\n    e: true\n  c:\n    v: 3\n    e: false\n",
       )
       decodeError[MyClass](
-        "d: \n  a: \n    e: true\n",
+        "d:\n  a:\n    e: true\n",
         """Expected required field 'v' of 'DictEntry' at 2:4 but got:
           |    e: true
           |    ^""".stripMargin,
@@ -355,10 +355,10 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
             "c" -> DictEntry("c")(3, false),
           ),
         ),
-        "d: \n  a: \n    k: a\n    v: 1\n    e: true\n  b: \n    k: b\n    v: 2\n    e: true\n  c: \n    k: c\n    v: 3\n    e: false\n",
+        "d:\n  a:\n    k: a\n    v: 1\n    e: true\n  b:\n    k: b\n    v: 2\n    e: true\n  c:\n    k: c\n    v: 3\n    e: false\n",
       )
       decodeError[MyClass](
-        "d: \n  a: \n    e: true\n",
+        "d:\n  a:\n    e: true\n",
         """Expected required field 'v' of 'DictEntry' at 2:4 but got:
           |    e: true
           |    ^""".stripMargin,

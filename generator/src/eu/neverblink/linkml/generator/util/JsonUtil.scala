@@ -1,7 +1,10 @@
 package eu.neverblink.linkml.generator.util
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
-import org.virtuslab.yaml.{Node, NodeOps, Tag}
+import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import org.virtuslab.yaml.{Node, Tag}
+
+import scala.util.control.NonFatal
 
 object JsonUtil {
 
@@ -17,18 +20,27 @@ object JsonUtil {
       case s: Node.ScalarNode =>
         val tag = s.tag
         if (tag eq Tag.nullTag) out.writeNull()
-        else if (tag eq Tag.str) out.writeVal(s.value)
         else if (tag eq Tag.boolean) {
-          s.value match {
-            case "true" | "True" | "TRUE" => out.writeVal(true)
-            case _ => out.writeVal(false)
-          }
-        } else out.writeRawVal(s.value.getBytes) // ints and floats
+          out.writeVal(s.value.trim match {
+            case "true" | "True" | "TRUE" => true
+            case _ => false
+          })
+        } else if ((tag eq Tag.int) || (tag eq Tag.float)) {
+          val value = s.value.trim
+          // some valid YAML numbers cannot be serialized as JSON numbers
+          val bytes = s.value.getBytes
+          if (isJsonNumber(bytes)) out.writeRawVal(bytes)
+          else out.writeVal(value)
+        } else out.writeVal(s.value)
       case m: Node.MappingNode =>
         out.writeObjectStart()
         m.mappings.foreach { kv =>
-          out.writeKey(kv._1.asYaml.trim)
-          yamlCodec.encodeValue(kv._2, out)
+          kv._1 match {
+            case s: Node.ScalarNode =>
+              out.writeKey(s.value)
+              yamlCodec.encodeValue(kv._2, out)
+            case _ => sys.error("Cannot serialize non-scalar YAML nodes as JSON keys")
+          }
         }
         out.writeObjectEnd()
       case s: Node.SequenceNode =>
@@ -38,5 +50,16 @@ object JsonUtil {
     }
 
     override def nullValue: Node = ???
+
+    private def isJsonNumber(bytes: Array[Byte]): Boolean =
+      try {
+        readFromArray[Float](bytes, readerConfig)
+        true
+      } catch {
+        case ex if NonFatal(ex) => false
+      }
+
+    implicit private val floatCodec: JsonValueCodec[Float] = JsonCodecMaker.make
+    private val readerConfig: ReaderConfig = ReaderConfig.withAppendHexDumpToParseException(false)
   }
 }

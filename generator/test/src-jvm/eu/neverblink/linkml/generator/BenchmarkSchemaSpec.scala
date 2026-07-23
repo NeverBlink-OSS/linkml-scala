@@ -28,18 +28,21 @@ import java.io.StringReader
 class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
   import BenchmarkSchemaSpec.*
 
-  private def assertParsesAsJson(s: String): Unit = {
+  private def assertParsesAsJson(name: String, s: String): Unit = {
     withClue("output is empty: ") { s.trim should not be empty }
     parseJson(s) match {
       case Right(_) => ()
-      case Left(err) => fail(s"output did not parse as JSON: ${err.message}\n$s")
+      case Left(err) =>
+        val path = os.Path(s"$name.json", os.pwd)
+        os.write(path, s)
+        fail(s"output did not parse as JSON: ${err.message}\noutput stored in $path")
     }
   }
 
   private def assertParsesAsRdf(rdf: String): Unit =
-   withClue(s"output did not parse as N-Triples:\n$rdf\n") {
-     noException should be thrownBy Rio.parse(StringReader(rdf), RDFFormat.NTRIPLES)
-   }
+    withClue(s"output did not parse as N-Triples:\n$rdf\n") {
+      noException should be thrownBy Rio.parse(StringReader(rdf), RDFFormat.NTRIPLES)
+    }
 
   private def assertParsesAsYaml(s: String): Unit = {
     withClue("output is empty: ") { s.trim should not be empty }
@@ -70,7 +73,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
 
           "JSON Schema output parses as JSON" in {
             assume(!skip.contains((name, "json-schema")), skip.getOrElse((name, "json-schema"), ""))
-            assertParsesAsJson(JsonSchemaGenerator(using sv).serialize())
+            assertParsesAsJson(name, JsonSchemaGenerator(using sv).serialize())
           }
 
           "SHACL output parses as RDF" in {
@@ -89,7 +92,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
               skip.getOrElse((name, "table-schema"), ""),
             )
             // Table Schema describes a single rooted table, so it requires a tree_root.
-            try assertParsesAsJson(TableSchemaGenerator(using sv).serialize())
+            try assertParsesAsJson(name, TableSchemaGenerator(using sv).serialize())
             catch
               case e: RuntimeException if Option(e.getMessage).exists(_.contains("No tree root")) =>
                 cancel("schema has no tree_root, so a Table Schema cannot be generated")
@@ -105,6 +108,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "LinkML (JSON) output parses as JSON" in {
             assume(!skip.contains((name, "linkml-json")), skip.getOrElse((name, "linkml-json"), ""))
             assertParsesAsJson(
+              name,
               LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json),
             )
           }
@@ -147,14 +151,6 @@ object BenchmarkSchemaSpec {
   /** Map of (dataset name, generator id) -> reason, for skipping known-failing combinations.
     */
   private val skip: Map[(String, String), String] = Map(
-    // LinkML YAML serializer does not quote all values that require it (e.g. IRIs ending in ':'),
-    // yielding YAML that fails to re-parse.
-    ("chem-dcat-ap", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
-    ("d3fend", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
-    ("nmdc_microbiome", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
-    ("tc57cim", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
-    // LinkML JSON serializer emits an unquoted value, yielding invalid JSON.
-    ("crdch", "linkml-json") -> "LNK-148: invalid (unquoted) value in LinkML JSON output",
     // A generated Scala file is empty.
     ("nmdc_microbiome", "scala") -> "Known bug: a generated Scala file is empty",
   )
