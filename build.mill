@@ -231,6 +231,29 @@ object generator extends Module {
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
         mvn"com.networknt:json-schema-validator:3.0.6",
       )
+
+      /** Fetch the linkml-benchmark-schemas datasets used by `BenchmarkSchemaSpec`.
+        */
+      def benchmarkSchemas = Task(persistent = true) {
+        if Task.offline then Task.fail("Can't fetch linkml-benchmark-schemas offline")
+        val cloneDir = os.temp.dir()
+        os.call(
+          (
+            "git",
+            "clone",
+            "--depth=1",
+            "https://github.com/NeverBlink-labs/linkml-benchmark-schemas",
+          ),
+          cwd = cloneDir,
+        )
+        os.copy.over(cloneDir / "linkml-benchmark-schemas" / "benchmark_data", Task.dest)
+        PathRef(Task.dest)
+      }
+
+      // Point BenchmarkSchemaSpec at the fetched datasets, so they are cloned before the tests run.
+      override def forkEnv = super.forkEnv() ++ Map(
+        "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
+      )
     }
   }
 

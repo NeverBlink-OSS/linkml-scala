@@ -4,7 +4,7 @@ import caseapp.*
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode
-import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink, RdfSink, RdfUtils}
+import eu.neverblink.linkml.generator.rdf.{RdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -148,9 +148,7 @@ private object RdfOutput {
   def write(out: OutputStream, format: String, gen: RdfSink => Unit): Boolean =
     format.toLowerCase match {
       case "nt" | "ntriples" =>
-        val byteSink = new BufferedByteSink(out)
-        gen(NTriplesRdfSink(byteSink))
-        byteSink.flush()
+        RdfUtils.streamNTriples(out, gen)
         true
       case "ttl" | "turtle" =>
         RdfUtils.streamTurtle(out, gen)
