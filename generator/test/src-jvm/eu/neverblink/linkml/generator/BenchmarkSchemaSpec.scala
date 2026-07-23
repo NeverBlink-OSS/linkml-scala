@@ -88,8 +88,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
               !skip.contains((name, "table-schema")),
               skip.getOrElse((name, "table-schema"), ""),
             )
-            // Table Schema describes a single rooted table, so it requires a tree_root. Schemas
-            // without one legitimately cannot produce a Table Schema — treat that as N/A.
+            // Table Schema describes a single rooted table, so it requires a tree_root.
             try assertParsesAsJson(TableSchemaGenerator(using sv).serialize())
             catch
               case e: RuntimeException if Option(e.getMessage).exists(_.contains("No tree root")) =>
