@@ -142,6 +142,7 @@ object ModelCatalogue {
   val pruning: Entry = Entry("/models/pruning/")
   val pruningDefaultRange: Entry = Entry("/models/pruningDefaultRange/")
   val reference: Entry = Entry("/models/reference/")
+  val syntheticUris: Entry = Entry("/models/syntheticUris/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typed: Entry = Entry("/models/typed/")
   val unionRange: Entry = Entry("/models/unionRange/")

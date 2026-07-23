@@ -638,6 +638,24 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should not include "sh:class <https://neverblink.eu/linkml/tests/unionRangeReference/BaseClass>"
     }
 
+    "emit valid, urlencoded synthetic uris" in {
+      val sv = ModelCatalogue.syntheticUris.model
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_))
+
+      Seq(
+        "%C5%81%C4%85czony%28class%29",
+        "%C5%82%C4%85czony+%3Ctyp%3E",
+        "%C5%82%C4%85czony_%5Bslot%5D",
+        "inny_%C5%82%C4%85czony_%22slot%22",
+        "%C5%82%C4%85czony_%7Bvalue%7D",
+        "inny_%C5%82%C4%85czony_%5C%5Cvalue%2F%2F",
+      ).foreach { snippet =>
+        turtle should include(snippet)
+      }
+
+      Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
+    }
+
     "works for the metamodel without runtime exceptions" in {
       val schemaView = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))

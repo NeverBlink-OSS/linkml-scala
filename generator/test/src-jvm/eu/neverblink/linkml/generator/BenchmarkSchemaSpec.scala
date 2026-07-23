@@ -37,9 +37,10 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
   }
 
   private def assertParsesAsRdf(rdf: String): Unit =
-    withClue(s"output did not parse as N-Triples:\n$rdf\n") {
-      noException should be thrownBy Rio.parse(StringReader(rdf), RDFFormat.NTRIPLES)
-    }
+//    withClue(s"output did not parse as N-Triples:\n$rdf\n") {
+//      noException should be thrownBy
+    Rio.parse(StringReader(rdf), RDFFormat.NTRIPLES)
+//    }
 
   private def assertParsesAsYaml(s: String): Unit = {
     withClue("output is empty: ") { s.trim should not be empty }
@@ -149,16 +150,12 @@ object BenchmarkSchemaSpec {
   private val skip: Map[(String, String), String] = Map(
     // LinkML YAML serializer does not quote all values that require it (e.g. IRIs ending in ':'),
     // yielding YAML that fails to re-parse.
-    ("chem-dcat-ap", "linkml-yaml") -> "Known bug: unquoted value in LinkML YAML output",
-    ("d3fend", "linkml-yaml") -> "Known bug: unquoted value in LinkML YAML output",
-    ("nmdc_microbiome", "linkml-yaml") -> "Known bug: unquoted value in LinkML YAML output",
-    ("tc57cim", "linkml-yaml") -> "Known bug: unquoted value in LinkML YAML output",
+    ("chem-dcat-ap", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
+    ("d3fend", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
+    ("nmdc_microbiome", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
+    ("tc57cim", "linkml-yaml") -> "LNK-148: unquoted value in LinkML YAML output",
     // LinkML JSON serializer emits an unquoted value, yielding invalid JSON.
-    ("crdch", "linkml-json") -> "Known bug: invalid (unquoted) value in LinkML JSON output",
-    // Generated RDF (N-Triples) fails to parse.
-    ("crdch", "rdfs") -> "Known bug: generated RDFS N-Triples does not parse",
-    ("nmdc_microbiome", "shacl") -> "Known bug: generated SHACL N-Triples does not parse",
-    ("nmdc_microbiome", "rdfs") -> "Known bug: generated RDFS N-Triples does not parse",
+    ("crdch", "linkml-json") -> "LNK-148: invalid (unquoted) value in LinkML JSON output",
     // A generated Scala file is empty.
     ("nmdc_microbiome", "scala") -> "Known bug: a generated Scala file is empty",
   )

@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.runtime
 
+import java.net.URLEncoder
 import scala.util.matching.Regex
 
 sealed trait UriOrCurie {
@@ -26,6 +27,15 @@ final case class Uri(original: String) extends UriOrCurie {
   def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
 
   def isValid: Boolean = UriCurieValidator.validateUri(original).isDefined
+}
+
+object Uri {
+
+  /** Create a synthetic URI from a LinkML name, ensuring the name is properly escaped. Assumes
+    * [[base]] is a valid URI base and does not need escaping.
+    */
+  def synthetic(base: String, name: String): Uri =
+    Uri(base + URLEncoder.encode(name, "UTF-8"))
 }
 
 final case class Curie(original: String) extends UriOrCurie {
