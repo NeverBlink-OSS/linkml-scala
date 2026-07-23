@@ -35,12 +35,11 @@ object JsonUtil {
       case m: Node.MappingNode =>
         out.writeObjectStart()
         m.mappings.foreach { kv =>
-          kv._1 match {
-            case s: Node.ScalarNode =>
-              out.writeKey(s.value)
-              yamlCodec.encodeValue(kv._2, out)
-            case _ => sys.error("Cannot serialize non-scalar YAML nodes as JSON keys")
-          }
+          out.writeKey(kv._1 match {
+            case s: Node.ScalarNode => s.value
+            case n => writeToStringReentrant(n)
+          })
+          yamlCodec.encodeValue(kv._2, out)
         }
         out.writeObjectEnd()
       case s: Node.SequenceNode =>
