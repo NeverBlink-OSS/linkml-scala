@@ -11,12 +11,13 @@ import scala.annotation.unused
   *   The combined optional value
   */
 def combineOption[T](o1: Option[T], o2: Option[T], combineSome: (T, T) => T): Option[T] =
-  (o1, o2) match {
-    case (Some(v1), Some(v2)) =>
-      Some(if (v1 == v2) v1 else combineSome(v1, v2))
-    case (None, Some(v2)) => Some(v2)
-    case (Some(v1), None) => Some(v1)
-    case (None, None) => None
+  o1 match {
+    case Some(v1) =>
+      o2 match {
+        case Some(v2) if v1 != v2 => new Some(combineSome(v1, v2))
+        case _ => o1
+      }
+    case _ => o2
   }
 
 /** Combine two [[Seq]]s if they're distinct
