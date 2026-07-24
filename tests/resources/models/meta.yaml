@@ -10,9 +10,10 @@ classes:
   Metadata:
     class_uri: https://neverblink.eu/linkml/tests/Metadata
     attributes:
+      # TODO LNK-41 Implement this
       derived_equals:
         range: string
-        description: This model's derived tree_root class should be equivalent to the value of this
+        description: This model's derived tree_root class should be equivalent to the value of the referenced model
 
       opt_in:
         range: Boolean

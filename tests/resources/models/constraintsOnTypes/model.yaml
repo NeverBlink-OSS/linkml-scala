@@ -3,7 +3,7 @@ name: constraintsOnTypes
 imports:
   - linkml:types
 
-# TODO: symlink instances to be the same as `constraints`
+# TODO LNK-41: symlink instances to be the same as `constraints`
 
 classes:
   Typed:

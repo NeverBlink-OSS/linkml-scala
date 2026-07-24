@@ -418,7 +418,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
         case Some(prefix) =>
           val reference =
             definingPrefixResolver.resolvePrefix(prefix).getOrElse(
-              sys.error(s"Unknown prefix: $prefix"),
+              throw RuntimeException(s"Unknown implicit prefix for type $name: $prefix"),
             )
           SubjectType.implicitPrefix(reference)
         case None => SubjectType.base

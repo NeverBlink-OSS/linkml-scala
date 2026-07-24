@@ -63,7 +63,13 @@ case class TypeAttributeView(
   private val _type: TypeDefinition = typeView._type
 
   private def upgradeToImplicit(st: SubjectType): SubjectType = slot.implicitPrefix match {
-    case Some(value) => SubjectType.implicitPrefix(value)
+    case Some(value) =>
+      SubjectType.implicitPrefix(
+        slotView.definingPrefixResolver.resolvePrefix(value)
+          .getOrElse(
+            throw RuntimeException(s"Unknown implicit_prefix for slot ${slot.name}: $value"),
+          ),
+      )
     case None => st
   }
 
@@ -73,7 +79,9 @@ case class TypeAttributeView(
   def subjectType: SubjectType = {
     typeView.subjectType match {
       case SubjectType.base => upgradeToImplicit(SubjectType.base)
-      case SubjectType.implicitPrefix(pfx) => upgradeToImplicit(SubjectType.implicitPrefix(pfx))
+      case SubjectType.implicitPrefix(pfx) =>
+        // this probably should not be allowed
+        upgradeToImplicit(SubjectType.implicitPrefix(pfx))
       case st => st
     }
   }

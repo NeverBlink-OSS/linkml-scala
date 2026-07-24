@@ -13,8 +13,8 @@ enum SubjectType:
   case uri, curie, uriOrCurie, base
   case implicitPrefix(prefix: String)
 
-  /** Whether this case should be an RDF IRI or an RDF Literal when presented in the `object`
-    * position.
+  /** If a value has this SubjectType in the object position, and is not a reference, test whether
+    * it should be an RDF IRI or an RDF Literal.
     *
     * @return
     *   true if this type should be an RDF IRI
