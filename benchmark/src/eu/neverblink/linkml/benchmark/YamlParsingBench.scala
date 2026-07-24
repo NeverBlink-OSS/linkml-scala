@@ -15,9 +15,10 @@ class YamlParsingBench extends CommonParams {
   private var yaml: String = uninitialized
 
   @Setup
-  def setup(): Unit = yaml = Using.resource(getClass.getResourceAsStream(s"/schemas/$schema")) { in =>
-    Source.fromInputStream(in, "UTF-8").mkString
-  }
+  def setup(): Unit =
+    yaml = Using.resource(getClass.getResourceAsStream(s"/schemas/$schema")) { in =>
+      Source.fromInputStream(in, "UTF-8").mkString
+    }
 
   @Benchmark
   def scalaYaml: Node = parseYaml(yaml).getOrElse(null)

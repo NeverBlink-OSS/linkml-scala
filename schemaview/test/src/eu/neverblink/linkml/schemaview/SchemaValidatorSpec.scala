@@ -486,8 +486,6 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |    enum_uri: "http://<>"
            |    permissible_values:
            |      v1:
-           |subsets:
-           |  "Bad<Subset>":
            |""".stripMargin
       val sv = load(schemaYaml)
 
@@ -498,8 +496,6 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "Invalid URI or CURIE 'http://<>' in slot 'some_slot'",
         "Invalid URI or CURIE 'http://<>' in enum 'SomeEnum'",
         "Invalid URI or CURIE 'http://<>' in type 'string'",
-        "Invalid URI or CURIE 'https://neverblink.eu/linkml/referenceValidator/test/Bad<Subset>' " +
-          "in subset 'Bad<Subset>'",
       ) foreach { part =>
         msg should include(part)
       }

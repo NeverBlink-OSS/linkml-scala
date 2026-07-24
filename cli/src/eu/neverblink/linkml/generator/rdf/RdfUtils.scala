@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.util.StringSink
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.model.util.ModelBuilder
 import org.eclipse.rdf4j.model.{Value, ValueFactory, IRI as Rdf4jIri, Resource as Rdf4jResource}
@@ -63,7 +64,7 @@ object TurtleRdfSink {
 object RdfUtils {
 
   /** Serialize into a Turtle string whatever [[write]] pushes into a [[TurtleRdfSink]]. Prefer
-    * [[streamTurtle]] where an output stream is available — this materializes the whole document.
+    * [[streamTurtle]] where an output stream is available – this materializes the whole document.
     */
   def toTurtle(write: RdfSink => Unit): String = {
     val sink = new TurtleRdfSink
@@ -78,5 +79,26 @@ object RdfUtils {
     val sink = new TurtleRdfSink
     write(sink)
     sink.writeTo(out)
+  }
+
+  /** Serialize into an N-Triples string whatever [[write]] pushes into a [[NTriplesRdfSink]].
+    * Prefer [[streamNTriples]] where an output stream is available – this materializes the whole
+    * document.
+    */
+  def toNTriples(write: RdfSink => Unit): String = {
+    val charSink = StringSink()
+    val sink = NTriplesRdfSink(charSink)
+    write(sink)
+    charSink.result
+  }
+
+  /** Serialize straight to [[out]] whatever [[write]] pushes into a [[NTriplesRdfSink]], skipping
+    * the intermediate string. Typically `RdfUtils.streamNTriples(out, generator.generate(_))`.
+    */
+  def streamNTriples(out: OutputStream, write: RdfSink => Unit): Unit = {
+    val charSink = new BufferedByteSink(out)
+    val sink = NTriplesRdfSink(charSink)
+    write(sink)
+    charSink.flush()
   }
 }

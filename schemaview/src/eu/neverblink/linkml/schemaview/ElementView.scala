@@ -76,7 +76,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def inner: ClassDefinition = cls
 
   def uriOrCurie: UriOrCurie =
-    cls.classUri.getOrElse(Uri(defaultPrefixUri + Case.PascalCase(cls.name)))
+    cls.classUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name)))
 
   /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
@@ -377,7 +377,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 private object SlotView:
   // Exposed for slot derivation in ClassView.
   def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?]): UriOrCurie =
-    slotUri.getOrElse(Uri(context.defaultPrefixUri + Case.deSpaceCase(slotName)))
+    slotUri.getOrElse(Uri.synthetic(context.defaultPrefixUri, Case.deSpaceCase(slotName)))
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
@@ -387,17 +387,19 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
   def inner: EnumDefinition = _enum
 
   def uriOrCurie: UriOrCurie =
-    _enum.enumUri.getOrElse(Uri(defaultPrefixUri + Case.PascalCase(_enum.name)))
+    _enum.enumUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
+
+  /** Permissible values of this enum and their (possibly synthetic) meanings */
+  lazy val derivedValues: Seq[(pv: PermissibleValue, meaning: UriOrCurie)] =
+    _enum.permissibleValues.values.map(x =>
+      x -> x.meaning.getOrElse(Uri.synthetic(defaultPrefixUri, Case.deSpaceCase(x.text))),
+    ).toSeq
 
   lazy val toMeaning: Map[String, UriOrCurie] =
-    _enum.permissibleValues.map((k, v) =>
-      (k, v.meaning.getOrElse(UriOrCurie(defaultPrefixUri + k))),
-    )
+    derivedValues.map((x, meaning) => x.text -> meaning).toMap
 
   lazy val fromMeaning: Map[UriOrCurie, String] =
-    _enum.permissibleValues.map((k, v) =>
-      (v.meaning.getOrElse(UriOrCurie(defaultPrefixUri + k)), k),
-    )
+    derivedValues.map((x, meaning) => meaning -> x.text).toMap
 }
 
 final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinition)(using
@@ -479,7 +481,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   def coreType: CoreType = runtimeType.repr
 
   def uriOrCurie: UriOrCurie =
-    _type.typeUri.getOrElse(Uri(defaultPrefixUri + _type.name))
+    _type.typeUri.getOrElse(Uri.synthetic(defaultPrefixUri, _type.name))
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
@@ -491,5 +493,5 @@ final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefi
 
   def uriOrCurie: UriOrCurie =
     // there is no subset_uri in the metamodel
-    Uri(defaultPrefixUri + Case.deSpaceCase(subset.name))
+    Uri.synthetic(defaultPrefixUri, Case.deSpaceCase(subset.name))
 }

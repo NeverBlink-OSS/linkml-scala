@@ -83,13 +83,8 @@ class RdfsGenerator(using sv: SchemaView) {
       e._enum.description.foreach { d =>
         sink.triple(enumIri, Rdfs.comment, Literal(d, XmlSchema.string))
       }
-      e._enum.permissibleValues.foreach { (_, pv) =>
-        val subjectIri = Iri(
-          pv.meaning match {
-            case Some(m) => m.uri
-            case _ => e.defaultPrefixUri + pv.text
-          },
-        )
+      e.derivedValues.foreach { (pv, meaning) =>
+        val subjectIri = Iri(meaning.uri)
         sink.triple(subjectIri, Rdf.`type`, enumIri)
         pv.title.foreach { t =>
           sink.triple(subjectIri, Rdfs.label, Literal(t, XmlSchema.string))

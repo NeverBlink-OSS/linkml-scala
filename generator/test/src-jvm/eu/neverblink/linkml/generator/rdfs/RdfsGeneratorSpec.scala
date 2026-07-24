@@ -3,8 +3,11 @@ package eu.neverblink.linkml.generator.rdfs
 import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
+import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+
+import java.io.StringReader
 
 class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
   "RdfsGenerator" should {
@@ -302,6 +305,25 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
         """<https://neverblink.eu/linkml/rdfs/test/noMeaning> a sd:Function""",
       )
       turtle should include("""rdfs:label "No meaning"""")
+    }
+
+    "emit valid, urlencoded synthetic URIs" in {
+      val sv = ModelCatalogue.syntheticUris.model
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_))
+
+      Seq(
+        "%C5%81%C4%85czony%28class%29",
+        "%C5%82%C4%85czony+%3Ctyp%3E",
+        "%C5%82%C4%85czony_%5Bslot%5D",
+        "inny_%C5%82%C4%85czony_%22slot%22",
+        "%C5%81%C4%85czony%27enum%27",
+        "%C5%82%C4%85czony_%7Bvalue%7D",
+        "inny_%C5%82%C4%85czony_%5C%5Cvalue%2F%2F",
+      ).foreach { snippet =>
+        turtle should include(snippet)
+      }
+
+      Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
     }
 
     "generate all catalogue models without errors" when {

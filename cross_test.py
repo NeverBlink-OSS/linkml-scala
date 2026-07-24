@@ -7,7 +7,9 @@ skips = [
     # Python doesn't ship with extended types???
     "unionRange",
     "anything",
-    "externalType"
+    "externalType",
+    # Python doesn't always URL-encode names
+    "syntheticUris"
 ]
 
 if __name__ == "__main__":
