@@ -562,6 +562,47 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someEnum.`enum`.get should contain(ExampleSingleValue("YET_ANOTHER_OPTION"))
     }
 
+    "look at the identifier type when generating references" in {
+      given SchemaView = ModelCatalogue.referenceInteger.model
+
+      val schema = JsonSchemaGenerator().generate()
+
+      schema.$defs.get("SomeClass")
+        .asInstanceOf[Schema]
+        .properties("some_slot")
+        .asInstanceOf[Schema]
+        .`type` shouldBe Some(List(SchemaType.Integer))
+    }
+
+    "apply constraints on types" in {
+      given SchemaView = ModelCatalogue.constraintsOnTypes.model
+
+      val schema = JsonSchemaGenerator().generate()
+
+      val typed = schema.$defs.get("Typed")
+        .asInstanceOf[Schema]
+
+      val int = typed
+        .properties("intSlot")
+        .asInstanceOf[Schema]
+      int.`type` shouldBe Some(List(SchemaType.Integer))
+      int.minimum shouldBe Some(-1)
+      int.maximum shouldBe Some(1)
+
+      val float = typed
+        .properties("floatSlot")
+        .asInstanceOf[Schema]
+      float.`type` shouldBe Some(List(SchemaType.Number))
+      float.minimum shouldBe Some(-2.0)
+      float.maximum shouldBe Some(2.0)
+
+      val string = typed
+        .properties("stringSlot")
+        .asInstanceOf[Schema]
+      string.`type` shouldBe Some(List(SchemaType.String))
+      string.pattern shouldBe Some(Pattern("^([0-9]{3})?[0-9]{3}-[0-9]{4}$"))
+    }
+
     "generate the metamodel without errors" in {
       val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
       given SchemaView = sv
