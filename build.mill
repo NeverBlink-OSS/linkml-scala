@@ -347,7 +347,22 @@ object cli extends Module {
 
     def nativeImageClassPath = runClasspath()
 
-    def nativeImageGraalVmJvmId = "graalvm-oracle:25"
+    def nativeImageGraalVmJvmId = {
+      val os = System.getProperty("os.name").toLowerCase
+      val arch = System.getProperty("os.arch").toLowerCase
+      (os, arch) match {
+        case (m, a) if m.contains("mac") && a == "aarch64" =>
+          "https://github.com/graalvm/oracle-graalvm-ea-builds/releases/download/jdk-25i2-25.0.3-ea.03/graalvm-jdk-25i2-25.0.3-ea.03_macos-aarch64_bin.tar.gz"
+        case (l, a) if l.contains("linux") && a == "amd64" =>
+          "https://github.com/graalvm/oracle-graalvm-ea-builds/releases/download/jdk-25i2-25.0.3-ea.03/graalvm-jdk-25i2-25.0.3-ea.03_linux-x64_bin.tar.gz"
+        case (l, a) if l.contains("linux") && a == "aarch64" =>
+          "https://github.com/graalvm/oracle-graalvm-ea-builds/releases/download/jdk-25i2-25.0.3-ea.03/graalvm-jdk-25i2-25.0.3-ea.03_linux-aarch64_bin.tar.gz"
+        case (l, a) if l.contains("windows") && a == "amd64" =>
+          "https://github.com/graalvm/oracle-graalvm-ea-builds/releases/download/jdk-25i2-25.0.3-ea.03/graalvm-jdk-25i2-25.0.3-ea.03_windows-x64_bin.zip"
+        case _ =>
+          "graalvm-oracle:25" // fallback
+      }
+    }
 
     def nativeImageOptions = Seq(
       "-O3", // Optimized for throughput
@@ -355,7 +370,7 @@ object cli extends Module {
       "--initialize-at-build-time",
       "-H:+UnlockExperimentalVMOptions",
       "-H:+RemoveSaturatedTypeFlows",
-      "-H:+MLCallCountProfileInference",
+//      "-H:+MLCallCountProfileInference", // throws compilation error
       "-H:IncludeLocales=en",
       "-H:-GenLoopSafepoints",
       "-H:-ParseRuntimeOptions",
