@@ -92,7 +92,19 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     (das, Option(idSv))
   }
 
-  lazy val resolvedAttributes: Map[String, AttributeView] = {
+  /** The slot/type bundle for the identifier of this class, if it exists */
+  lazy val identifierView: Option[TypeAttributeView] = identifier.map(idSlot => {
+    idSlot.derivedRangeView.resolve.get match {
+      case tv: TypeView => TypeAttributeView(idSlot, tv)
+      case x =>
+        throw RuntimeException(s"Invalid identifier slot: ${cls.name}.${idSlot.name} -> ${x.name}")
+    }
+  })
+
+  /** Derived attribute views for this class. Generators should prefer using these bundles if
+    * possible.
+    */
+  lazy val attributeViews: Map[String, AttributeView] = {
     derivedAttributes.map((k, slot) =>
       k -> (slot.derivedRangeView.resolve.get match {
         case classView: ClassView =>
@@ -101,15 +113,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
             ClassReferenceAttributeView(
               slot,
               classView,
-              classView.identifier.get.derivedRangeView.resolve.get match {
-                case tv: TypeView => tv
-                case _ => throw RuntimeException("ID slot is not type")
-              },
+              classView.identifierView.get,
             )
           else ClassInlineAttributeView(slot, classView, InlineType(slot))
         case tv: TypeView => TypeAttributeView(slot, tv)
         case ev: EnumView => EnumAttributeView(slot, ev)
-        case _ => throw RuntimeException(s"Invalid range for ${cls.name}.${slot.name}")
+        case x => throw RuntimeException(s"Invalid range: ${cls.name}.${slot.name} -> ${x.name}")
       }),
     )
   }
@@ -127,19 +136,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * @return
     *   The subject type, or None if the class does not have an identifier
     */
-  def subjectType: Option[SubjectType] = identifier.flatMap(slotView => {
-    slotView.derivedRangeView.resolve.collect { case tv: TypeView =>
-      tv.subjectType match {
-        // Fallback if the type does not define the prefix but the slot does
-        case SubjectType.base =>
-          slotView.implicitPrefixReference match {
-            case Some(prefix) => SubjectType.implicitPrefix(prefix)
-            case _ => SubjectType.base
-          }
-        case subject => subject
-      }
-    }
-  })
+  def subjectType: Option[SubjectType] = identifierView.map(_.subjectType)
 
   private def getParents(view: ClassView): Iterable[ClassView] =
     (view.cls.mixins ++ view.cls.isA).flatMap { r =>
@@ -433,19 +430,12 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def isPrimitive: Boolean = definingSchema.id.original.startsWith("https://w3id.org/linkml/types")
 
-  /** @return
-    *   true if this type should be represented as an RDF IRI
+  /** Whether this type should be an RDF IRI or an RDF Literal
+    *
+    * @return
+    *   true if this type should be an RDF IRI
     */
-  def isIri: Boolean = runtimeType match {
-    case UriOrCurieType => true
-    case UriType => true
-    case CurieType => true
-    case _ =>
-      subjectType match {
-        case SubjectType.implicitPrefix(_) => true
-        case _ => false
-      }
-  }
+  def isIri: Boolean = subjectType.isIri
 
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
     * names into the enum. Falls back to [[UnknownType]].

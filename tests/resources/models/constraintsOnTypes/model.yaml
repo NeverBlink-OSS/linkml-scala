@@ -1,0 +1,38 @@
+id: https://neverblink.eu/linkml/tests/constraintsOnTypes/
+name: constraintsOnTypes
+imports:
+  - linkml:types
+
+# TODO: symlink instances to be the same as `constraints`
+
+classes:
+  Typed:
+    tree_root: true
+    slots:
+      - intSlot
+      - floatSlot
+      - stringSlot
+
+slots:
+  intSlot:
+    rank: 1
+    range: small_int
+  floatSlot:
+    rank: 2
+    range: small_float
+  stringSlot:
+    rank: 3
+    range: patterned_string
+
+types:
+  small_int:
+    base: int
+    minimum_value: -1
+    maximum_value: 1
+  small_float:
+    base: float
+    minimum_value: -2.0
+    maximum_value: 2.0
+  patterned_string:
+    base: str
+    pattern: "^([0-9]{3})?[0-9]{3}-[0-9]{4}$"

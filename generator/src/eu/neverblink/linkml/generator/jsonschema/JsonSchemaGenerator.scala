@@ -80,12 +80,22 @@ class JsonSchemaGenerator(using sv: SchemaView) {
             ).dictOf // TODO LNK-34: or null
         }
       case ClassReferenceAttributeView(slotView, classView, identifierView) =>
-        typeToRuntime(identifierView)
-          .copy($comment = Some(s"Reference to ${classView.name} class"))
+        typeToRuntime(identifierView.typeView)
+          .copy(
+            $comment = Some(s"Reference to ${classView.name} class"),
+            minimum = toBigDecimalOpt(identifierView.minimumValue),
+            maximum = toBigDecimalOpt(identifierView.maximumValue),
+            pattern = identifierView.pattern.map(Pattern(_)),
+          )
           .arrayOfIf(slotView.slot.multivalued)
-      case TypeAttributeView(slotView, typeView) =>
-        typeToRuntime(typeView)
-          .arrayOfIf(slotView.slot.multivalued)
+      case typeAttribute: TypeAttributeView =>
+        typeToRuntime(typeAttribute.typeView)
+          .copy(
+            minimum = toBigDecimalOpt(typeAttribute.minimumValue),
+            maximum = toBigDecimalOpt(typeAttribute.maximumValue),
+            pattern = typeAttribute.pattern.map(Pattern(_)),
+          )
+          .arrayOfIf(typeAttribute.slotView.slot.multivalued)
       case EnumAttributeView(slotView, enumView) =>
         Schema.referenceTo("#/$defs/", enumView._enum.name)
           .arrayOfIf(slotView.slot.multivalued)
@@ -93,9 +103,6 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     slotName(slot) -> slotSchema.copy(
       title = slot.slot.title,
       description = slot.slot.description,
-      minimum = toBigDecimalOpt(slot.slot.minimumValue),
-      maximum = toBigDecimalOpt(slot.slot.maximumValue),
-      pattern = slot.slot.pattern.map(Pattern(_)),
     )
   }
 
@@ -138,7 +145,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case None => IncludeAllReachabilityQuery()
     }
     val defsClasses = for cls <- sv.classes.values if query.reachable(cls) yield {
-      val attributes = cls.resolvedAttributes
+      val attributes = cls.attributeViews
       val properties = for attribute <- attributes.values yield {
         generateSlotSchema(attribute, needKeyless, needValue)
       }
