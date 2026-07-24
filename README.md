@@ -194,3 +194,7 @@ Have a question, an idea, or just want to say hi? **[Join our Discord](https://d
 LinkML-Scala is licensed under the Apache License 2.0. See the LICENSE file for details.
 
 This project is being developed and maintained by [NeverBlink](https://neverblink.eu). For any inquiries, please reach out to us via [email](mailto:contact@neverblink.eu).
+
+----
+
+*This work has been supported by the HEDGE-IoT project grant number 101136216 funded by the European Commission as part of the Horizon Europe Framework Programme. However, views and opinions expressed are those of the authors only and do not necessarily reflect those of the European Union or the European Climate, Infrastructure and Environment Executive Agency. Neither the European Union nor the granting authority can be held responsible for them.*
