@@ -353,6 +353,9 @@ object cli extends Module {
       "-O3", // Optimized for throughput
       "--no-fallback",
       "--initialize-at-build-time",
+      // os.pwd is a val, must not be initialized at build time, or we get bad PWD on runtime.
+      // See: https://github.com/com-lihaoyi/os-lib/issues/318
+      "--initialize-at-run-time=os.package$",
       "-H:+UnlockExperimentalVMOptions",
       "-H:+RemoveSaturatedTypeFlows",
       "-H:+MLCallCountProfileInference",
