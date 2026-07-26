@@ -42,12 +42,11 @@ jobs:
 
       - name: Assemble playground site
         run: |
-          mkdir -p site/playground/dist site/out/generator/js
+          mkdir -p site/playground/dist
           cp ui/index.html ui/styles.css ui/neverblink-logo.svg site/playground/
           cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/playground/
           cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/
-          cp ui/dist/app.js ui/dist/app.js.map site/playground/dist/
-          cp -r out/generator/js/fullLinkJS.dest site/out/generator/js/fullLinkJS.dest
+          cp ui/dist/app.js ui/dist/app.js.map ui/dist/linkml.js site/playground/dist/
           cp CNAME site/CNAME
           cp pages/index.html site/index.html
 

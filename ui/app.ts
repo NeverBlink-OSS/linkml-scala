@@ -5,7 +5,7 @@ import { createInput, createOutput, setDoc, setOutput, type OutputLang } from ".
 import type { LinkMLApi, SchemaView } from "./linkml";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
-const LINKML_BUNDLE_URL = "/out/generator/js/fullLinkJS.dest/main.js";
+const LINKML_BUNDLE_URL = "./linkml.js";
 
 // The Scala.js bundle expects a Node-ish `process` global.
 (globalThis as { process?: unknown }).process ??= { cwd: () => "/" };

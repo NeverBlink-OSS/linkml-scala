@@ -1,9 +1,15 @@
 // esbuild bundler for the playground UI. Invoked by `npm run build` and by the
-// Mill `ui`/`uiBundle` tasks. Bundles app.ts + CodeMirror into dist/app.js; the
-// (large, separately built) Scala.js bundle is loaded at runtime, not bundled.
+// Mill `ui`/`uiBundle` tasks. Bundles app.ts + CodeMirror into dist/app.js, and
+// minifies the (large, separately built) Scala.js bundle into dist/linkml.js.
 import * as esbuild from "esbuild";
+import { existsSync } from "node:fs";
 
-const options = {
+// The Scala.js bundle, emitted by Mill's `generator.js.fullLinkJS`. We run esbuild
+// over it to strip whitespace and rename locals.
+// Loaded at runtime by app.js as a sibling `dist/linkml.js`.
+const SCALA_BUNDLE = "../out/generator/js/fullLinkJS.dest/main.js";
+
+const appOptions = {
   entryPoints: ["app.ts"],
   bundle: true,
   format: "esm",
@@ -12,15 +18,38 @@ const options = {
   sourcemap: true,
   minify: true,
   logLevel: "info",
-  // The Scala.js bundle is large and built separately by Mill; load it at
-  // runtime instead of bundling it in.
-  external: ["/out/generator/js/fullLinkJS.dest/main.js"],
+  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle); keep esbuild
+  // from trying to inline the multi-MB bundle into app.js.
+  external: ["./linkml.js"],
 };
 
+// Minify the Scala.js bundle into dist/linkml.js. Skipped (with a warning) when
+// the bundle hasn't been built yet, so `npm run build`/typecheck still work on
+// their own; the Mill `ui`/`uiBundle`/deploy flows build fullLinkJS first.
+async function minifyScalaBundle() {
+  if (!existsSync(SCALA_BUNDLE)) {
+    console.warn(
+      `Scala.js bundle not found at ${SCALA_BUNDLE}; skipping dist/linkml.js ` +
+        "(run `./mill generator.js.fullLinkJS` first).",
+    );
+    return;
+  }
+  await esbuild.build({
+    entryPoints: [SCALA_BUNDLE],
+    format: "esm",
+    outfile: "dist/linkml.js",
+    minify: true,
+    logLevel: "info",
+    // The Scala.js source map points at .scala sources that aren't served.
+    sourcemap: false,
+  });
+}
+
 if (process.argv.includes("--watch")) {
-  const ctx = await esbuild.context(options);
+  await minifyScalaBundle();
+  const ctx = await esbuild.context(appOptions);
   await ctx.watch();
   console.log("esbuild watching…");
 } else {
-  await esbuild.build(options);
+  await Promise.all([esbuild.build(appOptions), minifyScalaBundle()]);
 }
