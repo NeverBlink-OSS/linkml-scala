@@ -2,7 +2,20 @@ package eu.neverblink.linkml.generator.rdf
 
 abstract class Vocabulary(val prefix: String) {
   def get(suffix: String): Iri = Iri(prefix + suffix)
-  def apply(suffix: String): Iri = get(suffix)
+}
+
+object XmlSchema extends Vocabulary("http://www.w3.org/2001/XMLSchema#") {
+  val string: Iri = get("string")
+  val integer: Iri = get("integer")
+  val boolean: Iri = get("boolean")
+}
+
+object Rdf extends Vocabulary("http://www.w3.org/1999/02/22-rdf-syntax-ns#") {
+  val Property: Iri = get("Property")
+  val first: Iri = get("first")
+  val nil: Iri = get("nil")
+  val rest: Iri = get("rest")
+  val `type`: Iri = get("type")
 }
 
 object Shacl extends Vocabulary("http://www.w3.org/ns/shacl#") {
@@ -40,6 +53,6 @@ object Rdfs extends Vocabulary("http://www.w3.org/2000/01/rdf-schema#") {
   val subPropertyOf: Iri = get("subPropertyOf")
 }
 
-object Skos extends Vocabulary("\thttp://www.w3.org/2004/02/skos/core#") {
+object Skos extends Vocabulary("http://www.w3.org/2004/02/skos/core#") {
   val definition: Iri = get("definition")
 }

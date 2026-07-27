@@ -4,7 +4,6 @@ import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
-import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
 
 import scala.collection.mutable
 
@@ -49,19 +48,10 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
     */
   final def uriStr: String = uriOrCurie.uri
 
-  /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
-    * (this fallback mirrors the python implementation).
+  /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
+    * schema ID (this fallback mirrors the python implementation).
     */
-  final def defaultPrefixUri: String =
-    val schema = definingSchema
-    schema.defaultPrefix // NCName / CURIE prefix
-      .flatMap(schema.prefixes.get)
-      .map(_.prefixReference.uri) // URI prefix value
-      .getOrElse {
-        // fallback
-        val uri = schema.id.uri
-        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri + "/"
-      }
+  final def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
 }
 
 private object ClassView:
@@ -356,7 +346,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     * Make sure you use this method after class/slot derivation is performed.
     */
   def derivedRange: Reference[ElementView[?]] =
-    slot.range.getOrElse(definingSchema.defaultRangeResolved)
+    slot.range.getOrElse(sv.getDefaultRange(definingSchema))
       .asInstanceOf[Reference[ElementView[?]]]
 
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
