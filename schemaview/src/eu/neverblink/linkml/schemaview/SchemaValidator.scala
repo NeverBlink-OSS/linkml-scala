@@ -39,6 +39,18 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.invalidDefaultRanges.map(SchemaProblem.InvalidDefaultRangeProblem(_))
   }
 
+  lazy val schemaIdClash: Seq[SchemaProblem.Fatal] = {
+    val schemas = sv.schemas.toIndexedSeq
+
+    for
+      (s1, s1index) <- schemas.zipWithIndex
+      s2 <- schemas.slice(s1index + 1, schemas.size)
+      if s1.id == s2.id
+        // TODO LNK-154 Robust file system importing
+        && s1 != s2
+    yield SchemaProblem.SchemaIdClash(s1, s2)
+  }
+
   /** Warning if defining a slot without a `range` will cause a fatal error, None otherwise
     */
   private lazy val undefinedDefaultRange: Option[SchemaProblem.Warning] = {
@@ -300,7 +312,8 @@ final class SchemaValidator(using sv: SchemaView) {
   lazy val fatalProblems: Seq[SchemaProblem.Fatal] =
     unknownReferences ++
       invalidRangeTypes ++
-      usedUndefinedDefaultRange
+      usedUndefinedDefaultRange ++
+      schemaIdClash
 
   /** Any errors found in the schema, if any. */
   private lazy val errors: Seq[SchemaProblem.Error] =

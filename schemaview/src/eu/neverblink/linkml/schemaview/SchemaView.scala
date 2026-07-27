@@ -96,8 +96,12 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     *
     * These should be used in ElementView instead of creating a new prefix resolver every time.
     */
-  lazy val prefixResolvers: Map[SchemaDefinition, BasicPrefixResolver] =
-    schemas.map(schema => schema -> createPrefixResolver(schema)).toMap
+  private lazy val prefixResolvers: Map[Uri, BasicPrefixResolver] =
+    schemas.map(schema => schema.id -> createPrefixResolver(schema)).toMap
+
+  def getPrefixResolver(schema: SchemaDefinition): BasicPrefixResolver = {
+    prefixResolvers(schema.id)
+  }
 
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
     * other reference slots. This will run the query without schema derivation.
@@ -316,6 +320,7 @@ object SchemaView {
       importer: Importer,
       visited: mutable.Set[String],
   ): Seq[SchemaDefinition] = {
+    // TODO LNK-154 Robust file system importing
     var normalizedUri = uri.stripSuffix(PlatformSpecificUtils.separator)
     if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml"))
       normalizedUri += ".yaml"
@@ -382,7 +387,7 @@ object SchemaView {
   /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
     * resolves "semweb_context" curi map and loads user defined prefixes.
     */
-  def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
+  private def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
     val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
     Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
     if (forSchema.defaultCuriMaps.contains("semweb_context")) {
