@@ -46,7 +46,7 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
   /** Get the URI of this element in string form, using the default prefix of the implicit
     * [[SchemaView]] if not explicitly defined.
     */
-  final def uriStr: String = uriOrCurie.uri
+  lazy val uriStr: String = uriOrCurie.uri
 
   /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
     * schema ID (this fallback mirrors the python implementation).
