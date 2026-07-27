@@ -53,7 +53,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
           description = slotView.slot.description,
           constraints = Some(Constraints(required = Some(slotView.slot.required))),
         )
-        slotView.derivedRangeView.resolve.get match {
+        slotView.derivedRange.resolve.get match {
           case cls: ClassView =>
             if cls.uriStr == "https://w3id.org/linkml/Any" then
               base.copy(
@@ -62,7 +62,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
               )
             else if !slotView.derivedInlined then {
               // If we ever write a full data-package generator then this should add foreign keys to the root
-              cls.identifier.get.derivedRangeView.resolve.get match {
+              cls.identifier.get.derivedRange.resolve.get match {
                 case tv: TypeView =>
                   val (type_, format) = remapType(tv.runtimeType)
                   base.copy(`type` = type_, rdfType = Some(cls.uriStr), format = format)

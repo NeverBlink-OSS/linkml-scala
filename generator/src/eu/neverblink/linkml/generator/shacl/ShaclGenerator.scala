@@ -13,14 +13,7 @@ import eu.neverblink.linkml.schemaview.{
   TypeView,
 }
 
-class ShaclGenerator(using sv: SchemaView) {
-
-  private var blankNodeCounter = 0
-
-  private def blankNode(): BlankNode = {
-    blankNodeCounter += 1
-    BlankNode(blankNodeCounter.toString)
-  }
+class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
 
   /** Generates SHACL shapes and pushes the namespaces and triples into the provided [[RdfSink]].
     *
@@ -142,15 +135,7 @@ class ShaclGenerator(using sv: SchemaView) {
       Some(start)
     }
 
-    val isEmitted = sv.root.defaultPrefix.foldLeft(
-      sv.root.emitPrefixes.toSet ++
-        Array( // TODO: LNK-43 check if they should be added in the emit_prefixes section of the metamodel
-          "bibo",
-          "oslc",
-          "qudt",
-          "skosxl", // TODO: LNK-43 check why `linkml generate shacl` emits `schema1` prefix instead of 'schema'
-        ),
-    )((acc, p) => acc + p)
+    val isEmitted = sv.root.emitPrefixes.toSet + sv.root.defaultPrefix
     val classes =
       if onlyClassesFromRootSchema then sv.classes.filter(_._2.definingSchema == sv.root)
       else sv.classes
@@ -180,15 +165,10 @@ class ShaclGenerator(using sv: SchemaView) {
       }
       val closed = !(enforceOpenShapes || c.cls.`abstract` || c.cls.mixin)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
-      val ignoredProperties = blankNode()
+      val ignoredProperties = addShaclList(
+        Seq(Rdf.`type`) ++ c.identifier.map(id => Iri(id.uriStr)),
+      ).get
       sink.triple(classNameIri, Shacl.ignoredProperties, ignoredProperties)
-      sink.triple(ignoredProperties, Rdf.first, Rdf.`type`)
-      if c.hasIdentifier then {
-        val ignoredId = blankNode()
-        sink.triple(ignoredProperties, Rdf.rest, ignoredId)
-        sink.triple(ignoredId, Rdf.first, Iri(c.identifier.get.uriStr))
-        sink.triple(ignoredId, Rdf.rest, Rdf.nil)
-      } else sink.triple(ignoredProperties, Rdf.rest, Rdf.nil)
       var order = 0
       c.derivedAttributes.values.filter(!_.inner.identifier).foreach { x =>
         processSlot(x, order, classNameIri); order += 1
@@ -196,30 +176,4 @@ class ShaclGenerator(using sv: SchemaView) {
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }
   }
-}
-
-object Shacl {
-  val BlankNodeOrIRI: Iri = Iri("http://www.w3.org/ns/shacl#BlankNodeOrIRI")
-  val IRI: Iri = Iri("http://www.w3.org/ns/shacl#IRI")
-  val Literal: Iri = Iri("http://www.w3.org/ns/shacl#Literal")
-  val NodeShape: Iri = Iri("http://www.w3.org/ns/shacl#NodeShape")
-  val PropertyShape: Iri = Iri("http://www.w3.org/ns/shacl#PropertyShape")
-  val `class`: Iri = Iri("http://www.w3.org/ns/shacl#class")
-  val closed: Iri = Iri("http://www.w3.org/ns/shacl#closed")
-  val datatype: Iri = Iri("http://www.w3.org/ns/shacl#datatype")
-  val description: Iri = Iri("http://www.w3.org/ns/shacl#description")
-  val ignoredProperties: Iri = Iri("http://www.w3.org/ns/shacl#ignoredProperties")
-  val in: Iri = Iri("http://www.w3.org/ns/shacl#in")
-  val maxCount: Iri = Iri("http://www.w3.org/ns/shacl#maxCount")
-  val minCount: Iri = Iri("http://www.w3.org/ns/shacl#minCount")
-  val nodeKind: Iri = Iri("http://www.w3.org/ns/shacl#nodeKind")
-  val or: Iri = Iri("http://www.w3.org/ns/shacl#or")
-  val order: Iri = Iri("http://www.w3.org/ns/shacl#order")
-  val path: Iri = Iri("http://www.w3.org/ns/shacl#path")
-  val property: Iri = Iri("http://www.w3.org/ns/shacl#property")
-  val targetClass: Iri = Iri("http://www.w3.org/ns/shacl#targetClass")
-}
-
-object Rdfs {
-  val comment: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#comment")
 }

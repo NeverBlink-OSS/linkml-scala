@@ -244,7 +244,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     *   The inferred [[TypedDefault]]
     */
   private def makeTypedDefault(slot: SlotView): TypedDefault = {
-    val range = slot.derivedRangeView
+    val range = slot.derivedRange
     val inlined = slot.derivedInlined
     val base = baseRange(range, inlined)
     InlineType(slot) match {

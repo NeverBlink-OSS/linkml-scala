@@ -94,7 +94,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   /** The slot/type bundle for the identifier of this class, if it exists */
   lazy val identifierView: Option[TypeAttributeView] = identifier.map(idSlot => {
-    idSlot.derivedRangeView.resolve.get match {
+    idSlot.derivedRange.resolve.get match {
       case tv: TypeView => TypeAttributeView(idSlot, tv)
       case x =>
         throw RuntimeException(s"Invalid identifier slot: ${cls.name}.${idSlot.name} -> ${x.name}")
@@ -106,7 +106,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   lazy val attributeViews: Map[String, AttributeView] = {
     derivedAttributes.map((k, slot) =>
-      k -> (slot.derivedRangeView.resolve.get match {
+      k -> (slot.derivedRange.resolve.get match {
         case classView: ClassView =>
           if classView.uriStr == "https://w3id.org/linkml/Any" then AnyView(slot)
           else if !slot.derivedInlined then
@@ -346,24 +346,18 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *   true if the slot is inlined
     */
   def derivedInlined: Boolean =
-    slot.inlined || (sv.resolve(derivedRangeView) match {
+    slot.inlined || (sv.resolve(derivedRange) match {
       case Some(cls: ClassView) => !cls.hasIdentifier
       case _ => true
     })
-
-  /** Get the range of this slot, with missing values filled with `default_range` from the implicit
-    * [[SchemaView]]. Does NOT take inheritance into account: Make sure you use this method after
-    * class/slot derivation is performed.
-    */
-  def derivedRange: Reference[Element] =
-    slot.range.getOrElse(definingSchema.defaultRangeResolved)
 
   /** Get the range of this slot as a reference to an [[ElementView]], with missing values filled
     * with `default_range` from the implicit [[SchemaView]]. Does NOT take inheritance into account:
     * Make sure you use this method after class/slot derivation is performed.
     */
-  def derivedRangeView: Reference[ElementView[?]] =
-    derivedRange.asInstanceOf[Reference[ElementView[?]]]
+  def derivedRange: Reference[ElementView[?]] =
+    slot.range.getOrElse(definingSchema.defaultRangeResolved)
+      .asInstanceOf[Reference[ElementView[?]]]
 
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.

@@ -65,7 +65,7 @@ class RdfsGenerator(using sv: SchemaView) {
           case _ =>
         }
         sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
-        s.derivedRangeView.resolve.foreach { e =>
+        s.derivedRange.resolve.foreach { e =>
           sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
         }
       }
@@ -95,17 +95,4 @@ class RdfsGenerator(using sv: SchemaView) {
       }
     }
   }
-}
-
-object Rdfs {
-  val Class: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#Class")
-  // val Datatype: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#Datatype")
-  val comment: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#comment")
-  val domain: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#domain")
-  // val isDefinedBy: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#isDefinedBy")
-  val label: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#label")
-  val range: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#range")
-  // val seeAlso: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#seeAlso")
-  val subClassOf: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#subClassOf")
-  // val subPropertyOf: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#subPropertyOf")
 }
