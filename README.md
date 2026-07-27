@@ -21,6 +21,9 @@
 
 **LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
+> [!NOTE]
+> ⭐ If you like LinkML-Scala, consider giving it a star – it helps others find the project!
+
 ## Why LinkML-Scala?
 
 ### 🚀 It's really fast!
@@ -54,9 +57,6 @@ LinkML-Scala will tell you exactly what is wrong with your model, and where:
 ![linkml-scala validate CLI command](./docs/img/validate.gif)
 
 We engineered it to be as consistent as possible, so you are much less likely to run into "fun surprises" when using it with different generators. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
-
-> [!NOTE]
-> ⭐ If you like LinkML-Scala, consider giving it a star – it helps others find the project!
 
 ## CLI tool installation
 
