@@ -38,7 +38,7 @@ class WarmBench extends CommonParams {
   val repoRoot: Path =
     Option(System.getenv("MILL_WORKSPACE_ROOT")).map(os.Path.apply).getOrElse(os.pwd)
 
-  val modelsDir: Path = repoRoot / ".." / "linkml-benchmark-schemas"
+  val modelsDir: Path = repoRoot / ".." / "linkml-benchmark-schemas" / "benchmark_data"
 
   assume(
     os.exists(modelsDir),
