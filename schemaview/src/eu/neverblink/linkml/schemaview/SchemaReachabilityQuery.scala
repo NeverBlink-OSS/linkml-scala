@@ -33,7 +33,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
     */
   protected def slotRefs(slot: SlotView): Iterable[TaggedReference] = {
     val booleanSlots = slot.slot.anyOf.flatMap(_.range.flatMap(_.resolve))
-    val mainRange: Option[Element] = slot.derivedRangeView.resolve.map(_.inner)
+    val mainRange: Option[Element] = slot.derivedRange.resolve.map(_.inner)
     val blep = slot.slot.domain.flatMap(_.resolve)
     (booleanSlots ++ mainRange ++ blep).map(el => ElementTypeTag(el) -> el.name)
   }

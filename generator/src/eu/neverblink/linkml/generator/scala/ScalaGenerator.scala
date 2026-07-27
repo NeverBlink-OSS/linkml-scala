@@ -244,7 +244,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     *   The inferred [[TypedDefault]]
     */
   private def makeTypedDefault(slot: SlotView): TypedDefault = {
-    val range = slot.derivedRangeView
+    val range = slot.derivedRange
     val inlined = slot.derivedInlined
     val base = baseRange(range, inlined)
     InlineType(slot) match {
@@ -335,7 +335,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       // TODO LNK-124: remove when resolved in linkml-model
       // Patch to allow for the slot rank to be inherited.
       slot.inherited || slot.name == "rank",
-      ScalaDoc(slot, v.definingSchema.id)(using sv, v.definingPrefixResolver),
+      ScalaDoc(slot, v.definingSchema.id)(using v.definingPrefixResolver),
     )
   }
 }
@@ -560,7 +560,6 @@ object ScalaGenerator {
 
   object ScalaDoc {
     def apply(metadata: CommonMetadata, fromSchema: Uri)(using
-        sv: SchemaView,
         pr: PrefixResolver,
     ): ScalaDoc = {
       new ScalaDoc(
