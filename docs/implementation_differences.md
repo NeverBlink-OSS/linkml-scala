@@ -5,11 +5,6 @@
 All LinkML references (like `slot_name` in `slots: [ slot_name ]`) are eagerly checked when creating the SchemaView.
 SchemaView is not able to proceed with derivation if this requirement is not satisfied.
 
-## Always meaningful enums
-
-Enum permissible values in LinkML-Scala always have a meaning.
-If `meaning` is not explicitly defined, then a synthetic (`default_prefix + text`) meaning will be assigned.
-
 ## Emitted prefixes
 
 Metamodel `emit_prefixes` is honored, meaning the following prefixes are defined automatically in all schemas:
@@ -27,13 +22,15 @@ Metamodel `emit_prefixes` is honored, meaning the following prefixes are defined
 ## Default `default_range`
 
 If a `default_range` is not provided, then it will be filled with `string` (as per [the specification](https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata))
-This means that all slots **always** have a range defined.
+This is always honored in LinkML-Scala.
 To make generators to emit an "accept anything" schema, set the range to a class with uri `linkml:Any`, as described [here](https://linkml.io/linkml/schemas/advanced.html#linkml-any-type).
 
 ## Default `default_prefix`
 
 If a `default_prefix` is not provided, then the schema's `id` will be used instead.
-This ensures that 
+This ensures that all schema Elements always can construct a valid URI, even if it is synthetic.
+Also applies to enum permissible values: they always have a meaning, even if `meaning` is not explicitly defined.
+
 
 ## Tree root extension
 
@@ -71,7 +68,7 @@ But rejects:
 
 ## Additional identifier constraints
 
-LinkML-Scala additionally requires the identifier slot for classes to always have a scalar `type` range.
+The identifier slot for classes to must have a scalar `type` range.
 
 ## Inline type semantics
 
