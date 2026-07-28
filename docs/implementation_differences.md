@@ -41,7 +41,11 @@ To make generators to emit an "accept anything" schema, set the range to a class
 
 If a `default_prefix` is not provided, then the schema's `id` will be used instead.
 This ensures that all schema Elements always can construct a valid URI, even if it is synthetic.
-Also applies to enum permissible values: they always have a meaning, even if `meaning` is not explicitly defined.
+
+## Always meaningful enums
+
+Enum `permissible_values` always have a meaning, even if `meaning` is not explicitly defined.
+Thanks to this, enum values can always be represented as IRIs in RDF, and LinkML-Scala does not allow string-based enums.
 
 ## Additional identifier constraints
 
