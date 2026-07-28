@@ -117,17 +117,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
     * (this fallback mirrors the python implementation).
     */
-  def getDefaultPrefix(schema: SchemaDefinition): String = {
-    given PrefixResolver = getPrefixResolver(schema)
-    schema.defaultPrefix // NCName / CURIE prefix
-      .flatMap(schema.prefixes.get)
-      .map(_.prefixReference.uri) // URI prefix value
-      .getOrElse {
-        // fallback
-        val uri = schema.id.uri
-        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri + "/"
-      }
-  }
+  def getDefaultPrefix(schema: SchemaDefinition): Uri =
+    getPrefixResolver(schema).base
 
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
     * other reference slots. This will run the query without schema derivation.
@@ -392,7 +383,7 @@ object SchemaView {
   ): Seq[SchemaDefinition] = {
     given PrefixResolver = createPrefixResolver(schema)
     schema.imports.flatMap { uoc =>
-      var sUri = uoc.uri.stripPrefix("./")
+      var sUri = uoc.value.stripPrefix("./")
       if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
         sUri = baseUri + PlatformSpecificUtils.separator + sUri
       loadSchemasInternal(sUri, true, importer, visited)
@@ -403,32 +394,38 @@ object SchemaView {
     * resolves "semweb_context" curi map and loads user defined prefixes.
     */
   private def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
-    Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
-    if (forSchema.defaultCuriMaps.contains("semweb_context")) {
-      Array(
-        ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-        ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
-        ("owl", "http://www.w3.org/2002/07/owl#"),
-        ("xsd", "http://www.w3.org/2001/XMLSchema#"),
-        ("dc", "http://purl.org/dc/terms/"),
-        ("dcterms", "http://purl.org/dc/terms/"),
-        ("faldo", "http://biohackathon.org/resource/faldo#"),
-        ("foaf", "http://xmlns.com/foaf/0.1/"),
-        ("oa", "http://www.w3.org/ns/oa#"),
-        ("idot", "http://identifiers.org/"),
-        ("void", "http://rdfs.org/ns/void#"),
-        ("prov", "http://www.w3.org/ns/prov#"),
-        ("dcat", "http://www.w3.org/ns/dcat#"),
-      ).foreach { case (prefix, uri) =>
-        prefixResolver.add(prefix, uri)
-      }
-    }
+    val emitPrefixes = Prefixes.map.map((k, v) => k -> Uri(v))
 
-    forSchema.prefixes.values.foreach(prefix =>
-      prefixResolver.add(prefix.prefixPrefix, prefix.prefixReference.original),
-    )
+    val curiMapPrefixes =
+      if forSchema.defaultCuriMaps.contains("semweb_context")
+      then
+        Array(
+          ("rdf", Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#")),
+          ("rdfs", Uri("http://www.w3.org/2000/01/rdf-schema#")),
+          ("owl", Uri("http://www.w3.org/2002/07/owl#")),
+          ("xsd", Uri("http://www.w3.org/2001/XMLSchema#")),
+          ("dc", Uri("http://purl.org/dc/terms/")),
+          ("dcterms", Uri("http://purl.org/dc/terms/")),
+          ("faldo", Uri("http://biohackathon.org/resource/faldo#")),
+          ("foaf", Uri("http://xmlns.com/foaf/0.1/")),
+          ("oa", Uri("http://www.w3.org/ns/oa#")),
+          ("idot", Uri("http://identifiers.org/")),
+          ("void", Uri("http://rdfs.org/ns/void#")),
+          ("prov", Uri("http://www.w3.org/ns/prov#")),
+          ("dcat", Uri("http://www.w3.org/ns/dcat#")),
+        )
+      else Array.empty[(String, Uri)]
 
-    prefixResolver
+    val schemaPrefixes =
+      forSchema.prefixes.values.map(prefix => prefix.prefixPrefix -> prefix.prefixReference)
+
+    val combined = emitPrefixes ++ curiMapPrefixes ++ schemaPrefixes
+
+    val base = forSchema.defaultPrefix.flatMap(combined.get).getOrElse({ // fallback
+      val uriStr = forSchema.id.value
+      if (uriStr.endsWith("#") || uriStr.endsWith("/")) Uri(uriStr) else Uri(uriStr + "/")
+    })
+
+    new BasicPrefixResolver(forSchema.id.value, combined, base)
   }
 }

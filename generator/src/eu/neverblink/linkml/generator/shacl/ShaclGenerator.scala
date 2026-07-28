@@ -42,7 +42,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
           case enumView: EnumView =>
             val permissibleValues =
               enumView.derivedValues.map(value => {
-                Iri(value.meaning.uri(using enumView.definingPrefixResolver))
+                Iri(value.meaning.uriStr(using enumView.definingPrefixResolver))
               })
             val rdfListHead = addList(sink, permissibleValues)
             sink.triple(subject, Shacl.in, rdfListHead)

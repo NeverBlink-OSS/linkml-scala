@@ -1,0 +1,16 @@
+id: https://neverblink.eu/linkml/tests/importedCurie/imported/
+name: importedCurieImported
+
+prefixes:
+  ici: https://neverblink.eu/linkml/tests/importedCurie/imported/
+
+imports:
+  - linkml:types
+
+slots:
+  some_slot:
+    slot_uri: ici:S1
+    range: string
+    required: true
+    see_also:
+      - ici:slot1

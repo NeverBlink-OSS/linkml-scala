@@ -168,8 +168,8 @@ object SchemaProblem {
 
   final case class InvalidUriOrCurie(inElement: ElementView[? <: Element]) extends Error:
     lazy val description: String =
-      s"Invalid URI or CURIE '${inElement.uriOrCurie.original}' in ${inElement.elementType} " +
-        s"'${inElement.inner.name}' imported from schema '${inElement.definingSchema.id.original}'."
+      s"Invalid URI or CURIE '${inElement.uriOrCurie.value}' in ${inElement.elementType} " +
+        s"'${inElement.inner.name}' imported from schema '${inElement.definingSchema.id.value}'."
     lazy val verbose: String =
       s"$description. " +
         "A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' " +

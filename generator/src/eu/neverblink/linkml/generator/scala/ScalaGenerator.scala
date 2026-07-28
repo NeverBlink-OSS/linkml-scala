@@ -564,9 +564,9 @@ object ScalaGenerator {
     ): ScalaDoc = {
       new ScalaDoc(
         metadata.description.map(_.capitalize).getOrElse(""),
-        metadata.seeAlso.map(_.uri) ++
+        metadata.seeAlso.map(_.uriStr) ++
           metadata.aliases.reduceOption(_ + ", " + _).map("Aliases: " + _) ++
-          Seq("From schema: " + fromSchema.uri),
+          Seq("From schema: " + fromSchema.uriStr),
         metadata.notes.map(_.capitalize) ++
           metadata.comments.map(_.capitalize),
         metadata.todos.map(_.capitalize),

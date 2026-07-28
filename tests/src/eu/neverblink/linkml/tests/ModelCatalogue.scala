@@ -99,7 +99,7 @@ object ModelCatalogue {
 
       new Entry(
         path,
-        sv.root.id.original,
+        sv.root.id.value,
         sv,
         validInstancePaths.map(instance =>
           InstanceInFormats(instance, instance.stripPrefix(path + "valid/")),
@@ -124,7 +124,7 @@ object ModelCatalogue {
       ).contains(true),
     )
 
-  // TODO: generate this automatically maybe
+  // TODO LNK-122: Generate this automatically
   val `abstract`: Entry = Entry("/models/abstract/")
   val aliases: Entry = Entry("/models/aliases/")
   val anything: Entry = Entry("/models/anything/")
@@ -137,6 +137,7 @@ object ModelCatalogue {
   val `enum`: Entry = Entry("/models/enum/")
   val externalType: Entry = Entry("/models/externalType/")
   val implicitPrefix: Entry = Entry("/models/implicitPrefix/")
+  val importedCurie: Entry = Entry("/models/importedCurie/")
   val inheritance: Entry = Entry("/models/inheritance/")
   val mixin: Entry = Entry("/models/mixin/")
   val multivaluedReference: Entry = Entry("/models/multivaluedReference/")

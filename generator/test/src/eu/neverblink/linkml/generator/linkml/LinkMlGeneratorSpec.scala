@@ -288,6 +288,31 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |}""".stripMargin
     }
 
+    "correctly serialize imported curies" in {
+      given SchemaView = ModelCatalogue.importedCurie.model
+      val json = LinkMlGenerator().serialize(
+        skipClassDerivation = true,
+        outputFormat = LinkMlGenerator.OutputFormat.json,
+      )
+      json should not include "ici:S1"
+      json should include("https://neverblink.eu/linkml/tests/importedCurie/imported/S1")
+      json should not include "https://neverblink.eu/linkml/tests/importedCurie/C1"
+      json should include("\"ic\": \"https://neverblink.eu/linkml/tests/importedCurie/\"")
+      json should include("ic:C1")
+    }
+
+    // TODO LNK-158: this test should pass
+    "correctly serialize imported curies from metadata slots" in {
+      assume(false, "LNK-158")
+      given SchemaView = ModelCatalogue.importedCurie.model
+
+      val json = LinkMlGenerator().serialize(
+        skipClassDerivation = true,
+        outputFormat = LinkMlGenerator.OutputFormat.json,
+      )
+      json should not include "ici:slot1"
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all.filter(m => !skipModels.contains(m.model.root.name)) do
         s"model '${entry.model.root.name}'" in {

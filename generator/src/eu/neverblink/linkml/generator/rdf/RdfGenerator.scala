@@ -55,7 +55,7 @@ abstract class RdfGenerator {
     sv.root.prefixes.values.toArray
       .collect {
         case p if toEmit(p.prefixPrefix) =>
-          (p.prefixPrefix, p.prefixReference.original)
+          (p.prefixPrefix, p.prefixReference.value)
       }
       .appendedAll(additional)
       .distinct.sorted.foreach(sink.namespace)

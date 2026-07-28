@@ -34,7 +34,7 @@ object LinkmlYamlCodec {
       case n => decodeError("URI or CURIE string value", n)
     }
 
-    override def encode(x: UriOrCurie, skipId: Boolean): Node = Node.ScalarNode(x.original)
+    override def encode(x: UriOrCurie, skipId: Boolean): Node = Node.ScalarNode(x.value)
   }
 
   inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make }

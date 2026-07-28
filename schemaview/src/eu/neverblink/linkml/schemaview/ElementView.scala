@@ -38,20 +38,26 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
   /** The defining schema's prefix resolver */
   given definingPrefixResolver: PrefixResolver = sv.getPrefixResolver(definingSchema)
 
-  /** Get the URI of this element, using the default prefix of the implicit [[SchemaView]] if not
-    * explicitly defined.
+  /** Get the Uri/Curie of this element, constructing a synthetic URI from the default prefix of the
+    * implicit [[SchemaView]] if not explicitly defined.
+    * @note
+    *   Use `elementView.uri.compacted` in generators to prevent loss of prefix context
     */
-  def uriOrCurie: UriOrCurie
+  private[schemaview] def uriOrCurie: UriOrCurie
+
+  /** Get the Uri/Curie of this element
+    */
+  def uri: Uri = uriOrCurie.expanded
 
   /** Get the URI of this element in string form, using the default prefix of the implicit
     * [[SchemaView]] if not explicitly defined.
     */
-  lazy val uriStr: String = uriOrCurie.uri
+  lazy val uriStr: String = uri.value
 
   /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
     * schema ID (this fallback mirrors the python implementation).
     */
-  final def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
+  final def defaultPrefixUri: Uri = sv.getDefaultPrefix(definingSchema)
 }
 
 private object ClassView:
@@ -412,7 +418,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** @return
     *   true if this type was defined as part of metamodel types (linkml:types)
     */
-  def isPrimitive: Boolean = definingSchema.id.original.startsWith("https://w3id.org/linkml/types")
+  def isPrimitive: Boolean = definingSchema.id.value.startsWith("https://w3id.org/linkml/types")
 
   /** Whether this type should be an RDF IRI or an RDF Literal
     *

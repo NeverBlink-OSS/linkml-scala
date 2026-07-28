@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.OutputFormat.{json,
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode.skip
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
 import eu.neverblink.linkml.schemaview.{
   ElementView,
   IncludeAllReachabilityQuery,
@@ -53,6 +53,8 @@ class LinkMlGenerator(using sv: SchemaView) {
       else if skipClassDerivation then sv.underivedReachabilityQuery(initialSet)
       else sv.derivedReachabilityQuery(initialSet, false)
 
+    given PrefixResolver = sv.rootPrefixResolver
+
     sv.root.asInstanceOf[SchemaDefinitionImpl].copy(
       imports = Seq.empty,
       classes = {
@@ -60,7 +62,7 @@ class LinkMlGenerator(using sv: SchemaView) {
         if skipClassDerivation then
           toInclude.map((k, v) =>
             k -> v.cls.impl.copy(
-              classUri = Some(v.uriOrCurie),
+              classUri = Some(v.uri.compacted),
               fromSchema = Some(v.definingSchema.id),
             ),
           )
@@ -70,7 +72,7 @@ class LinkMlGenerator(using sv: SchemaView) {
         .collect {
           case (k, v) if query.reachable(v.inner) =>
             k -> v.inner.impl.copy(
-              typeUri = Some(v.uriOrCurie),
+              typeUri = Some(v.uri.compacted),
               fromSchema = Some(v.definingSchema.id),
             )
         },
@@ -78,7 +80,7 @@ class LinkMlGenerator(using sv: SchemaView) {
         .collect {
           case (k, v) if query.reachable(v.inner) =>
             k -> v.inner.impl.copy(
-              enumUri = Some(v.uriOrCurie),
+              enumUri = Some(v.uri.compacted),
               fromSchema = Some(v.definingSchema.id),
             )
         },
@@ -88,7 +90,7 @@ class LinkMlGenerator(using sv: SchemaView) {
             .collect {
               case (k, v) if query.reachable(v.inner) =>
                 k -> v.inner.impl.copy(
-                  slotUri = Some(v.uriOrCurie),
+                  slotUri = Some(v.uri.compacted),
                   fromSchema = Some(v.definingSchema.id),
                 )
             }

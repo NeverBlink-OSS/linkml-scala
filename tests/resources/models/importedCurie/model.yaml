@@ -1,0 +1,16 @@
+id: https://neverblink.eu/linkml/tests/importedCurie/
+name: importedCurie
+
+prefixes:
+  ic: https://neverblink.eu/linkml/tests/importedCurie/
+
+imports:
+  - linkml:types
+  - ./imported
+
+classes:
+  SomeClass:
+    class_uri: ic:C1
+    tree_root: true
+    slots:
+      - some_slot

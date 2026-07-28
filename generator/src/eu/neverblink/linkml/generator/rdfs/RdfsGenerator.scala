@@ -71,7 +71,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
       sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
       emitCommonMetadata(sink, enumIri, e._enum)
       e.derivedValues.foreach { (pv, meaning) =>
-        val pvIri = Iri(meaning.uri)
+        val pvIri = Iri(meaning.uriStr)
         sink.triple(pvIri, Rdf.`type`, enumIri)
         emitCommonMetadata(sink, pvIri, pv)
       }

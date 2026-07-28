@@ -167,7 +167,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     "use fallback default prefix" in {
       val sv2 = SchemaView.single(schemaFallbackful)
       val cls = sv2.classes("class1")
-      cls.defaultPrefixUri shouldBe "http://schema2/"
+      cls.defaultPrefixUri shouldBe Uri("http://schema2/")
       cls.uriStr shouldBe "http://schema2/Class1"
     }
 
@@ -175,7 +175,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       val schemaWithHash = schemaFallbackful.copy(id = Uri("http://schema2#"))
       val sv2 = SchemaView.single(schemaWithHash)
       val cls = sv2.classes("class1")
-      cls.defaultPrefixUri shouldBe "http://schema2#"
+      cls.defaultPrefixUri shouldBe Uri("http://schema2#")
       cls.uriStr shouldBe "http://schema2#Class1"
     }
 
@@ -183,7 +183,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       val schemaWithSlash = schemaFallbackful.copy(id = Uri("http://schema2/"))
       val sv2 = SchemaView.single(schemaWithSlash)
       val cls = sv2.classes("class1")
-      cls.defaultPrefixUri shouldBe "http://schema2/"
+      cls.defaultPrefixUri shouldBe Uri("http://schema2/")
       cls.uriStr shouldBe "http://schema2/Class1"
     }
 
@@ -320,7 +320,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         withClue("for derived attribute " + attrName) {
           val attr = attrs(attrName)
           attr.derivedRange.value shouldBe "integer"
-          attr.defaultPrefixUri shouldBe "https://neverblink.eu/imported#"
+          attr.defaultPrefixUri shouldBe Uri("https://neverblink.eu/imported#")
           attr.uriStr shouldBe s"https://neverblink.eu/imported#$attrName"
           if attrName.endsWith("specialized") then
             // slot_usage should be applied

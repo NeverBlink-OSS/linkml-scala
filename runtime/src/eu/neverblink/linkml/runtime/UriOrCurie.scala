@@ -4,11 +4,28 @@ import java.net.URLEncoder
 import scala.util.matching.Regex
 
 sealed trait UriOrCurie {
-  def original: String
 
-  def uri(implicit resolver: PrefixResolver): String
+  /** The string value that this was defined with. Can be either a URI or CURIE.
+    */
+  def value: String
 
-  def curie(implicit resolver: PrefixResolver): String
+  /** Attempt to expand this if it is a CURIE and return the URI value. If this is a URI, return its
+    * value.
+    * @throws java.lang.RuntimeException
+    *   if this is a CURIE, and it could not be expanded
+    */
+  final def uriStr(using resolver: PrefixResolver): String = expanded.value
+
+  /** Attempt to expand this if it is a CURIE. If this is a URI, return itself.
+    * @throws java.lang.RuntimeException
+    *   if this is a CURIE, and it could not be expanded
+    */
+  def expanded(using resolver: PrefixResolver): Uri
+
+  /** If this is a URI, attempt to compact it using [[resolver]]. If not possible to compact, or
+    * this is instead a CURIE, return itself.
+    */
+  def compacted(using resolver: PrefixResolver): UriOrCurie
 
   /** Validate the value of this UriOrCurie. Returns true if valid, false if invalid.
     */
@@ -17,16 +34,17 @@ sealed trait UriOrCurie {
 
 object UriOrCurie {
   def apply(s: String): UriOrCurie =
-    if (s.startsWith("urn:") || s.contains("://")) new Uri(s)
-    else new Curie(s)
+    if s.startsWith("urn:") || s.contains("://") then Uri(s)
+    else if s.contains(':') then Curie(s)
+    else Relative(s)
 }
 
-final case class Uri(original: String) extends UriOrCurie {
-  def uri(implicit resolver: PrefixResolver): String = original
+final case class Uri(value: String) extends UriOrCurie {
+  def expanded(using resolver: PrefixResolver): Uri = this
 
-  def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
+  def isValid: Boolean = UriCurieValidator.validateUri(value).isDefined
 
-  def isValid: Boolean = UriCurieValidator.validateUri(original).isDefined
+  def compacted(using resolver: PrefixResolver): UriOrCurie = resolver.compact(this)
 }
 
 object Uri {
@@ -34,16 +52,24 @@ object Uri {
   /** Create a synthetic URI from a LinkML name, ensuring the name is properly escaped. Assumes
     * [[base]] is a valid URI base and does not need escaping.
     */
-  def synthetic(base: String, name: String): Uri =
-    Uri(base + URLEncoder.encode(name, "UTF-8"))
+  def synthetic(base: Uri, name: String): Uri =
+    Uri(base.value + URLEncoder.encode(name, "UTF-8"))
 }
 
-final case class Curie(original: String) extends UriOrCurie {
-  def uri(implicit resolver: PrefixResolver): String = resolver.expand(original)
+final case class Curie(value: String) extends UriOrCurie {
+  def isValid: Boolean = UriCurieValidator.validateCurie(value).isDefined
 
-  def curie(implicit resolver: PrefixResolver): String = original
+  def expanded(using resolver: PrefixResolver): Uri = resolver.expand(this)
 
-  def isValid: Boolean = UriCurieValidator.validateCurie(original).isDefined
+  def compacted(using resolver: PrefixResolver): UriOrCurie = this
+}
+
+final case class Relative(value: String) extends UriOrCurie {
+  def isValid: Boolean = true
+
+  def expanded(using resolver: PrefixResolver): Uri = resolver.expand(this)
+
+  def compacted(using resolver: PrefixResolver): UriOrCurie = this
 }
 
 type NcName = String
@@ -54,13 +80,12 @@ trait PrefixResolver {
     * @throws java.lang.RuntimeException
     *   If this prefix resolver can't expand the CURIE
     */
-  def expand(curie: String): String
+  def expand(curie: UriOrCurie): Uri
 
-  /** Compact a URI into a CURIE using prefixes defined in this resolver.
-    * @throws java.lang.RuntimeException
-    *   If this prefix resolver can't compact the URI
+  /** Try compact a URI into a CURIE using prefixes defined in this resolver. Returns the input
+    * unchanged if this prefix resolver can't compact this URI.
     */
-  def compact(uri: String): String
+  def compact(uri: Uri): UriOrCurie
 
   /** Get the expansion of a prefix from this resolver.
     * @return
@@ -69,11 +94,17 @@ trait PrefixResolver {
   def resolvePrefix(prefix: String): Option[String]
 }
 
-final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
+final class BasicPrefixResolver(
+    schemaId: String,
+    prefixes: Iterable[(NcName, Uri)],
+    val base: Uri,
+) extends PrefixResolver {
   private val prefixToUri = new java.util.HashMap[String, String]
   private val uriToPrefix = new java.util.HashMap[String, String]
 
-  def add(prefix: String, uri: String): Unit = {
+  for prefix <- prefixes do add(prefix._1, prefix._2.value)
+
+  private def add(prefix: String, uri: String): Unit = {
     val u = new java.net.URI(uri)
     var normalizedUri = u.normalize().toString
     if (
@@ -85,18 +116,20 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
 
   override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))
 
-  override def expand(curie: String): String = {
-    val index = curie.indexOf(':')
-    if (index >= 0) {
-      val prefix = curie.substring(0, index)
-      val baseUri = prefixToUri.get(prefix)
-      if (baseUri ne null) baseUri + curie.substring(index + 1)
-      else sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
-    } else curie // relative reference
-  }
+  override def expand(uriOrCurie: UriOrCurie): Uri =
+    uriOrCurie match {
+      case uri: Uri => uri
+      case Curie(curie) =>
+        val index = curie.indexOf(':')
+        val prefix = curie.substring(0, index)
+        val baseUri = prefixToUri.get(prefix)
+        if (baseUri ne null) Uri(baseUri + curie.substring(index + 1))
+        else sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
+      case Relative(rel) => Uri(base.value + rel)
+    }
 
-  override def compact(uri: String): String = {
-    val normalizedUri = new java.net.URI(uri).normalize()
+  override def compact(uri: Uri): UriOrCurie = {
+    val normalizedUri = new java.net.URI(uri.value).normalize()
     var curie = normalizedUri.getFragment
     val baseUri =
       if (curie ne null) {
@@ -119,11 +152,9 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
         ).toString
       } else normalizedUri.toString
     val prefix = uriToPrefix.get(baseUri)
-    if (prefix eq null) sys.error(s"Unknown uri: $baseUri")
-    if ((curie eq null) || curie.isEmpty) {
-      sys.error(s"Cannot compact uri without fragment, query, or last path segment: $uri")
-    }
-    s"$prefix:$curie"
+    if prefix eq null then return uri
+    if (curie eq null) || curie.isEmpty then return uri
+    Curie(s"$prefix:$curie")
   }
 
   private def getLastPathSegment(uri: java.net.URI): String = {

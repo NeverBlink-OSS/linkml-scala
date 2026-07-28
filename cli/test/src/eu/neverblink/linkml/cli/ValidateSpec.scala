@@ -25,7 +25,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       |  string:
       |classes:
       |  SomeClass:
-      |    class_uri: "not a curie!"
+      |    class_uri: "not a curie!:"
       |""".stripMargin
 
   private val validSchema =
@@ -52,7 +52,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           out should include("WARNING")
           out should include("✖")
           out should include("⚠")
-          out should include("Invalid URI or CURIE 'not a curie!' in class 'SomeClass'")
+          out should include("Invalid URI or CURIE 'not a curie!:' in class 'SomeClass'")
           out should include("No 'tree_root' class is defined in the schema")
           // per-severity summary
           out should include("1 error, 1 warning")
@@ -64,7 +64,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))
 
           out should not include Esc.toString // no color codes
-          out should include("ERROR: Invalid URI or CURIE 'not a curie!' in class 'SomeClass'")
+          out should include("ERROR: Invalid URI or CURIE 'not a curie!:' in class 'SomeClass'")
           out should include("WARNING: No 'tree_root' class is defined in the schema")
           out should include("1 error, 1 warning")
         }
