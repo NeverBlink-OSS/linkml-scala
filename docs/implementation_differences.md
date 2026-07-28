@@ -1,5 +1,16 @@
 # Implementation differences
 
+## Limitations
+
+The following features are not yet supported in LinkML-Scala:
+
+- Arrays
+- Boolean expressions (`any_of`, `none_of`); initial support in SHACL
+- Defaults & computed values (`ifabsent`, `equals_expression`)
+- Type designators (`type_designator`)
+- Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
+- Rules (`rules`)
+
 ## Eager validation of references
 
 All LinkML references (like `slot_name` in `slots: [ slot_name ]`) are eagerly checked when creating the SchemaView.
