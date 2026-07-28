@@ -401,7 +401,7 @@ object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule 
   override def mvnDeps = super.mvnDeps() ++ Seq(
     mvn"dev.zio::zio-blocks-schema-yaml::0.0.41",
     mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:$rdf4j",
-    mvn"org.apache.jena:jena-arq:5.6.0",
+    mvn"org.apache.jena:jena-arq:6.1.0",
   )
 
   def scalacOptions = Seq(
