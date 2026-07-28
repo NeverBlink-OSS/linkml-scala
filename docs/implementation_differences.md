@@ -10,6 +10,69 @@ SchemaView is not able to proceed with derivation if this requirement is not sat
 Enum permissible values in LinkML-Scala always have a meaning.
 If `meaning` is not explicitly defined, then a synthetic (`default_prefix + text`) meaning will be assigned.
 
+## Emitted prefixes
+
+Metamodel `emit_prefixes` is honored, meaning the following prefixes are defined automatically in all schemas:
+
+- `linkml`: https://w3id.org/linkml/
+- `rdf`: http://www.w3.org/1999/02/22-rdf-syntax-ns#
+- `rdfs`: http://www.w3.org/2000/01/rdf-schema#
+- `xsd`: http://www.w3.org/2001/XMLSchema#
+- `skos`: http://www.w3.org/2004/02/skos/core#
+- `dcterms`: http://purl.org/dc/terms/
+- `OIO`: http://www.geneontology.org/formats/oboInOwl#
+- `owl`: http://www.w3.org/2002/07/owl#
+- `pav`: http://purl.org/pav/
+
+## Default `default_range`
+
+If a `default_range` is not provided, then it will be filled with `string` (as per [the specification](https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata))
+This means that all slots **always** have a range defined.
+To make generators to emit an "accept anything" schema, set the range to a class with uri `linkml:Any`, as described [here](https://linkml.io/linkml/schemas/advanced.html#linkml-any-type).
+
+## Default `default_prefix`
+
+If a `default_prefix` is not provided, then the schema's `id` will be used instead.
+This ensures that 
+
+## Tree root extension
+
+LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.
+For example, this allows specifying that the root of a JSON document should be a JSON array with instances of this class:
+
+```yaml
+SomeClass:
+  tree_root: true
+  tree_root_as: list
+  attributes:
+    id:
+      range: string
+      identifier: true
+    value:
+      range: integer
+      required: true
+```
+
+JSON Schema generated from this LinkML schema accepts: 
+
+```json
+[
+  { "id": "1", "value": 1 }, 
+  { "id": "2", "value": 2 }, 
+  { "id": "3", "value": 3 }
+]
+```
+
+But rejects:
+
+```json
+{ "id": "1", "value": 1 }
+```
+
+## Additional identifier constraints
+
+LinkML-Scala additionally requires the identifier slot for classes to always have a scalar `type` range.
+
 ## Inline type semantics
 
 Different forms:
@@ -59,12 +122,3 @@ Optional:
   - Means `None`
 - `[]` not allowed
 
-
-## Tree root extension
-
-LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.
-For example, this allows specifying that the root of a JSON document should be a JSON array with instances of this class. 
-
-## Additional identifier constraints
-
-LinkML-Scala additionally requires the identifier slot for classes to always have a scalar `type` range.
