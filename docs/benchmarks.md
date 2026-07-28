@@ -74,5 +74,5 @@ For small datasets in the cold-start scenario, LinkML-Scala is mainly limited by
 
 ---
 
-**Benchmark code and datasets:**
-[NeverBlink-labs/linkml-benchmark-schemas](https://github.com/NeverBlink-labs/linkml-benchmark-schemas)
+- **Benchmark code and datasets:** [NeverBlink-labs/linkml-benchmark-schemas](https://github.com/NeverBlink-labs/linkml-benchmark-schemas)
+- **Paper preprint:** *[LinkML-Scala: a Robust, Fast, and Portable Implementation of LinkML](https://arxiv.org/abs/2607.22335)*

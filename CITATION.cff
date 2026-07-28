@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+title: >-
+  LinkML-Scala: a robust, fast, and portable implementation
+  of LinkML
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - name: NeverBlink
+    website: 'https://neverblink.eu'
+    email: contact@neverblink.eu
+  - name: LinkML-Scala contributors
+    website: >-
+      https://github.com/NeverBlink-OSS/linkml-scala/graphs/contributors
+identifiers:
+  - type: doi
+    value: 10.48550/arXiv.2607.22335
+    description: Preprint DOI
+repository-code: 'https://github.com/NeverBlink-OSS/linkml-scala'
+url: 'https://linkml.neverblink.eu'
+abstract: >-
+  LinkML-Scala is a fast, portable (JS/JVM/native), and
+  robust implementation of LinkML for cross-language data
+  modeling.
+license: Apache-2.0
+preferred-citation:
+  type: conference-paper
+  authors:
+    - given-names: Piotr
+      family-names: Sowiński
+    - given-names: Kacper
+      family-names: Grzymkowski
+    - given-names: Andriy
+      family-names: Plokhotnyuk
+  url: 'https://doi.org/10.48550/arXiv.2607.22335'
+  title: 'LinkML-Scala: a Robust, Fast, and Portable Implementation of LinkML'
+  year: 2026

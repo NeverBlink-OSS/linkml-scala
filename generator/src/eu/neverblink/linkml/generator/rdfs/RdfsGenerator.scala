@@ -1,10 +1,20 @@
 package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.metamodel.CommonMetadata
 import eu.neverblink.linkml.runtime.PrefixResolver
 import eu.neverblink.linkml.schemaview.SchemaView
 
-class RdfsGenerator(using sv: SchemaView) {
+class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
+
+  private def emitCommonMetadata(sink: RdfSink, subject: Resource, cm: CommonMetadata): Unit = {
+    cm.title.foreach { t =>
+      sink.triple(subject, Rdfs.label, Literal(t, XmlSchema.string))
+    }
+    cm.description.foreach { d =>
+      sink.triple(subject, Rdfs.comment, Literal(d, XmlSchema.string))
+    }
+  }
 
   /** Generates RDF Schema and pushes the namespaces and triples into the provided [[RdfSink]].
     * @param sink
@@ -16,39 +26,23 @@ class RdfsGenerator(using sv: SchemaView) {
       sink: RdfSink,
       onlyClassesFromRootSchema: Boolean = false,
   ): Unit = {
-    val isEmitted = sv.root.defaultPrefix.foldLeft(
-      sv.root.emitPrefixes.toSet,
-    )((acc, p) => acc + p)
+    addNamespaces(
+      sink,
+      Array(
+        ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+        ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
+        ("xsd", "http://www.w3.org/2001/XMLSchema#"),
+      ),
+    )
+
     val classes =
-      if onlyClassesFromRootSchema then sv.classes.filter(_._2.definingSchema == sv.root)
+      if onlyClassesFromRootSchema then sv.classes.filter(_._2.definingSchema.id == sv.root.id)
       else sv.classes
-    val enums =
-      if onlyClassesFromRootSchema then sv.enums.filter(_._2.definingSchema == sv.root)
-      else sv.enums
-    sv.root.prefixes.values.toArray
-      .collect {
-        case p if isEmitted(p.prefixPrefix) =>
-          (p.prefixPrefix, p.prefixReference.original)
-      }
-      .appendedAll {
-        Array(
-          ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-          ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
-          ("xsd", "http://www.w3.org/2001/XMLSchema#"),
-        )
-      }
-      .distinct.sorted.foreach(sink.namespace)
 
     classes.values.foreach { c =>
       val classNameIri = Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
-      c.cls.title.foreach { t =>
-        sink.triple(classNameIri, Rdfs.label, Literal(t, XmlSchema.string))
-      }
-      c.cls.description match {
-        case Some(d) => sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
-        case _ =>
-      }
+      emitCommonMetadata(sink, classNameIri, c.cls)
       (c.cls.isA.toList ++ c.cls.mixins).foreach { m =>
         sv.getElement(m.value).foreach { e =>
           sink.triple(classNameIri, Rdfs.subClassOf, Iri(e.uriStr))
@@ -57,19 +51,17 @@ class RdfsGenerator(using sv: SchemaView) {
       c.derivedAttributes.values.filter(!_.inner.identifier).foreach { s =>
         val propertyNameIri = Iri(s.uriStr)
         sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-        s.slot.title.foreach { t =>
-          sink.triple(propertyNameIri, Rdfs.label, Literal(t, XmlSchema.string))
-        }
-        s.slot.description match {
-          case Some(d) => sink.triple(propertyNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
-          case _ =>
-        }
+        emitCommonMetadata(sink, propertyNameIri, s.slot)
         sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
-        s.derivedRangeView.resolve.foreach { e =>
+        s.derivedRange.resolve.foreach { e =>
           sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
         }
       }
     }
+
+    val enums =
+      if onlyClassesFromRootSchema then sv.enums.filter(_._2.definingSchema.id == sv.root.id)
+      else sv.enums
 
     // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
     // permissible values as an instance of that class.
@@ -77,35 +69,12 @@ class RdfsGenerator(using sv: SchemaView) {
       given PrefixResolver = e.definingPrefixResolver
       val enumIri = Iri(e.uriStr)
       sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
-      e._enum.title.foreach { t =>
-        sink.triple(enumIri, Rdfs.label, Literal(t, XmlSchema.string))
-      }
-      e._enum.description.foreach { d =>
-        sink.triple(enumIri, Rdfs.comment, Literal(d, XmlSchema.string))
-      }
+      emitCommonMetadata(sink, enumIri, e._enum)
       e.derivedValues.foreach { (pv, meaning) =>
-        val subjectIri = Iri(meaning.uri)
-        sink.triple(subjectIri, Rdf.`type`, enumIri)
-        pv.title.foreach { t =>
-          sink.triple(subjectIri, Rdfs.label, Literal(t, XmlSchema.string))
-        }
-        pv.description.foreach { d =>
-          sink.triple(subjectIri, Rdfs.comment, Literal(d, XmlSchema.string))
-        }
+        val pvIri = Iri(meaning.uri)
+        sink.triple(pvIri, Rdf.`type`, enumIri)
+        emitCommonMetadata(sink, pvIri, pv)
       }
     }
   }
-}
-
-object Rdfs {
-  val Class: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#Class")
-  // val Datatype: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#Datatype")
-  val comment: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#comment")
-  val domain: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#domain")
-  // val isDefinedBy: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#isDefinedBy")
-  val label: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#label")
-  val range: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#range")
-  // val seeAlso: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#seeAlso")
-  val subClassOf: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#subClassOf")
-  // val subPropertyOf: Iri = Iri("http://www.w3.org/2000/01/rdf-schema#subPropertyOf")
 }

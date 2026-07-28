@@ -60,7 +60,7 @@ object CollectionForm {
     *   The [[CollectionForm]] applicable for the slot's range
     */
   def ofRange(slot: SlotView): CollectionForm = {
-    val range = slot.derivedRangeView
+    val range = slot.derivedRange
     given SchemaView = slot.sv
     range.resolve.get match {
       case cls: ClassView => of(cls)

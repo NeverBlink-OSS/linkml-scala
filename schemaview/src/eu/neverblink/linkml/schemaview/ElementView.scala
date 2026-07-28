@@ -4,7 +4,6 @@ import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
-import eu.neverblink.linkml.schemaview.SchemaView.defaultRangeResolved
 
 import scala.collection.mutable
 
@@ -37,7 +36,7 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
   final def name: String = inner.name
 
   /** The defining schema's prefix resolver */
-  given definingPrefixResolver: PrefixResolver = sv.prefixResolvers(definingSchema)
+  given definingPrefixResolver: PrefixResolver = sv.getPrefixResolver(definingSchema)
 
   /** Get the URI of this element, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
@@ -47,21 +46,12 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
   /** Get the URI of this element in string form, using the default prefix of the implicit
     * [[SchemaView]] if not explicitly defined.
     */
-  final def uriStr: String = uriOrCurie.uri
+  lazy val uriStr: String = uriOrCurie.uri
 
-  /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
-    * (this fallback mirrors the python implementation).
+  /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
+    * schema ID (this fallback mirrors the python implementation).
     */
-  final def defaultPrefixUri: String =
-    val schema = definingSchema
-    schema.defaultPrefix // NCName / CURIE prefix
-      .flatMap(schema.prefixes.get)
-      .map(_.prefixReference.uri) // URI prefix value
-      .getOrElse {
-        // fallback
-        val uri = schema.id.uri
-        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri + "/"
-      }
+  final def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
 }
 
 private object ClassView:
@@ -94,7 +84,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   /** The slot/type bundle for the identifier of this class, if it exists */
   lazy val identifierView: Option[TypeAttributeView] = identifier.map(idSlot => {
-    idSlot.derivedRangeView.resolve.get match {
+    idSlot.derivedRange.resolve.get match {
       case tv: TypeView => TypeAttributeView(idSlot, tv)
       case x =>
         throw RuntimeException(s"Invalid identifier slot: ${cls.name}.${idSlot.name} -> ${x.name}")
@@ -106,7 +96,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   lazy val attributeViews: Map[String, AttributeView] = {
     derivedAttributes.map((k, slot) =>
-      k -> (slot.derivedRangeView.resolve.get match {
+      k -> (slot.derivedRange.resolve.get match {
         case classView: ClassView =>
           if classView.uriStr == "https://w3id.org/linkml/Any" then AnyView(slot)
           else if !slot.derivedInlined then
@@ -346,24 +336,18 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *   true if the slot is inlined
     */
   def derivedInlined: Boolean =
-    slot.inlined || (sv.resolve(derivedRangeView) match {
+    slot.inlined || (sv.resolve(derivedRange) match {
       case Some(cls: ClassView) => !cls.hasIdentifier
       case _ => true
     })
-
-  /** Get the range of this slot, with missing values filled with `default_range` from the implicit
-    * [[SchemaView]]. Does NOT take inheritance into account: Make sure you use this method after
-    * class/slot derivation is performed.
-    */
-  def derivedRange: Reference[Element] =
-    slot.range.getOrElse(definingSchema.defaultRangeResolved)
 
   /** Get the range of this slot as a reference to an [[ElementView]], with missing values filled
     * with `default_range` from the implicit [[SchemaView]]. Does NOT take inheritance into account:
     * Make sure you use this method after class/slot derivation is performed.
     */
-  def derivedRangeView: Reference[ElementView[?]] =
-    derivedRange.asInstanceOf[Reference[ElementView[?]]]
+  def derivedRange: Reference[ElementView[?]] =
+    slot.range.getOrElse(sv.getDefaultRange(definingSchema))
+      .asInstanceOf[Reference[ElementView[?]]]
 
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
