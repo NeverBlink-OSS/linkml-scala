@@ -58,6 +58,8 @@ LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
 We engineered it to be as consistent as possible, so you are much less likely to run into "fun surprises" when using it with different generators. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
 
+In some cases, we decided to diverge from the reference implementation or opted to not implement a feature yet. You can find the list of implementation differences [here](docs/implementation_differences.md). 
+
 ## CLI tool installation
 
 ### Method 1: Install script (recommended for Unix/macOS)

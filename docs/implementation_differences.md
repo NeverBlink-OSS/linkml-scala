@@ -10,6 +10,7 @@ The following features are not yet supported in LinkML-Scala:
 - Type designators (`type_designator`)
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Rules (`rules`)
+- Null semantics (see below)
 
 ## Eager validation of references
 
@@ -42,6 +43,10 @@ If a `default_prefix` is not provided, then the schema's `id` will be used inste
 This ensures that all schema Elements always can construct a valid URI, even if it is synthetic.
 Also applies to enum permissible values: they always have a meaning, even if `meaning` is not explicitly defined.
 
+## Additional identifier constraints
+
+The identifier slot for classes to must have a scalar `type` range.
+It is an error to have an `enum` or `class` identifier.
 
 ## Tree root extension
 
@@ -77,10 +82,6 @@ But rejects:
 { "id": "1", "value": 1 }
 ```
 
-## Additional identifier constraints
-
-The identifier slot for classes to must have a scalar `type` range.
-
 ## Inline type semantics
 
 Different forms:
@@ -102,6 +103,8 @@ LinkML-Scala uses the following logic when a slot `s` is inlining a class `c`:
   - Otherwise, the inline type is `CompactDict`.
 
 ## Null semantics
+
+We're working on strict null semantics for LinkML instances - formalizing the usages of null, compatible with the expected metamodel structure.
 
 (Not yet fully implemented)
 
@@ -129,4 +132,3 @@ Optional:
 - `<omitted>` (canonical) = `null`
   - Means `None`
 - `[]` not allowed
-
