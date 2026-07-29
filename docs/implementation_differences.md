@@ -60,7 +60,8 @@ For example, this allows specifying that the root of a JSON document should be a
 ```yaml
 SomeClass:
   tree_root: true
-  tree_root_as: list
+  extensions:
+    tree_root_as: list
   attributes:
     id:
       range: string
