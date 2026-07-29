@@ -49,7 +49,7 @@ Thanks to this, enum values can always be represented as IRIs in RDF, and LinkML
 
 ## Additional identifier constraints
 
-The identifier slot for classes to must have a scalar `type` range.
+The identifier slot for classes must have a scalar `type` range.
 It is an error to have an `enum` or `class` identifier.
 
 ## Tree root extension
