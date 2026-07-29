@@ -3,7 +3,7 @@ package eu.neverblink.linkml.cli
 import caseapp.*
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode
+import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.rdf.{RdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator

@@ -155,7 +155,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   def derivedReachabilityQuery(
       from: Seq[ElementView[?]],
       inlinedOnly: Boolean,
-  ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly)
+      includeClassAncestors: Boolean,
+  ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
 
   /** Get a schema element by its ID
     */

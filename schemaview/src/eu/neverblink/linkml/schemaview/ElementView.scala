@@ -35,6 +35,8 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
     */
   final def name: String = inner.name
 
+  def aliasedName: String
+
   /** The defining schema's prefix resolver */
   given definingPrefixResolver: PrefixResolver = sv.getPrefixResolver(definingSchema)
 
@@ -67,6 +69,8 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   def uriOrCurie: UriOrCurie =
     cls.classUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name)))
+
+  override def aliasedName: String = cls.alias.getOrElse(Case.PascalCase(cls.name))
 
   /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
@@ -303,6 +307,8 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 
   def inner: SlotDefinition = slot
 
+  override def aliasedName: String = slot.alias.getOrElse(Case.deSpaceCase(slot.name))
+
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
   def implicitPrefixReference: Option[String] =
@@ -367,6 +373,8 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def inner: EnumDefinition = _enum
 
+  override def aliasedName: String = Case.PascalCase(_enum.name)
+
   def uriOrCurie: UriOrCurie =
     _enum.enumUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
 
@@ -389,6 +397,8 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   def elementType: String = "type"
 
   def inner: TypeDefinition = _type
+
+  override def aliasedName: String = name
 
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
     * the RDF representations.
@@ -464,6 +474,8 @@ final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefi
   def elementType: String = "subset"
 
   def inner: SubsetDefinition = subset
+
+  override def aliasedName: String = name
 
   def uriOrCurie: UriOrCurie =
     // there is no subset_uri in the metamodel
