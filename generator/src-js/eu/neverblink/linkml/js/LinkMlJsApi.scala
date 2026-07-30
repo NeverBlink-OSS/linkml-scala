@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import LinkMlGenerator.PruningMode
+import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
 import eu.neverblink.linkml.generator.util.StringSink
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator

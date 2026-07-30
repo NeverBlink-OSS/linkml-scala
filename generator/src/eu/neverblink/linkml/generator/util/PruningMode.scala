@@ -2,7 +2,13 @@ package eu.neverblink.linkml.generator.util
 
 import eu.neverblink.linkml.metamodel.TypeDefinition
 import eu.neverblink.linkml.runtime.Reference
-import eu.neverblink.linkml.schemaview.{ElementView, IncludeAllReachabilityQuery, SchemaReachabilityQuery, SchemaView, TypeView}
+import eu.neverblink.linkml.schemaview.{
+  ElementView,
+  IncludeAllReachabilityQuery,
+  SchemaReachabilityQuery,
+  SchemaView,
+  TypeView,
+}
 
 /** The method to use for schema definition pruning: tree root-based, schema root based and no
   * pruning
@@ -42,7 +48,9 @@ enum PruningMode:
     }
   }
 
-  def derivedQuery(inlinedOnly: Boolean, includeClassAncestors: Boolean)(using sv: SchemaView): SchemaReachabilityQuery = {
+  def derivedQuery(inlinedOnly: Boolean, includeClassAncestors: Boolean)(using
+      sv: SchemaView,
+  ): SchemaReachabilityQuery = {
     if this == skip then IncludeAllReachabilityQuery()
     else sv.derivedReachabilityQuery(initialSet, inlinedOnly, includeClassAncestors)
   }

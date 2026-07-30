@@ -201,6 +201,7 @@ case class GraphQlInterfaceDefinition(
     val body = {
       if fields.isEmpty
       then """{
+             |  # GraphQL does not allow empty interfaces
              |  _emptyClass: String
              |}
              |""".stripMargin
@@ -239,6 +240,7 @@ case class GraphQlTypeDefinition(
     val body = {
       if fields.isEmpty
       then """{
+             |  # GraphQL does not allow empty classes
              |  _emptyClass: String
              |}
              |""".stripMargin
@@ -351,9 +353,12 @@ case class GraphQlField(
       else if nonNull then range + "!"
       // nullability: field always present if requested, need to use null on output
       else range
-    val directive = if identifier then "@linkml_identifier @linkml_uri(uri: \"$uri\")"
-    else s"@linkml_uri(uri: \"$uri\")"
+    val uriDirective = s"@linkml_uri(uri: \"$uri\")"
+    val directives =
+      if identifier
+      then s"@linkml_identifier $uriDirective"
+      else uriDirective
     indent"""${wrapDescription(description)}
-            |$name: $typeExpr $directive
+            |$name: $typeExpr $directives
             |""".stripMargin
   }

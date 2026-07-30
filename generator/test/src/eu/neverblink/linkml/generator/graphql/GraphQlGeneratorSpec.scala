@@ -11,6 +11,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
   "GraphQlGenerator" should {
     "generate types for classes" in {
       given SchemaView = ModelCatalogue.basic2.model
+
       val result = GraphQlGenerator().serialize()
       Seq(
         "type SomeClass",
@@ -68,6 +69,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate rdf_iri directives for classes" in {
       given SchemaView = ModelCatalogue.basic2.model
+
       val base = ModelCatalogue.basic2.model.root.id.original
       val result = GraphQlGenerator().serialize()
       Seq(
@@ -110,6 +112,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate scalars for URIs" in {
       given SchemaView = ModelCatalogue.uri.model
+
       val result = GraphQlGenerator().serialize()
       Seq(
         "scalar uri",
@@ -127,6 +130,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       Seq(
         "scalar ext_type",
         "some_slot: ext_type",
+        s"@linkml_uri(uri: \"${ModelCatalogue.externalType.model.root.id.original}ext_type\")",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -134,6 +138,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate enums" in {
       given SchemaView = ModelCatalogue.`enum`.model
+
       val id = ModelCatalogue.`enum`.model.root.id.original
 
       val result = GraphQlGenerator().serialize()
@@ -164,58 +169,59 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
         result should not include snippet
       }
     }
-  }
 
-  "include unused linkml:types elements if requested" in {
-    given SchemaView = ModelCatalogue.reference.model
+    "include unused linkml:types elements if requested" in {
+      given SchemaView = ModelCatalogue.reference.model
 
-    val result = GraphQlGenerator().serialize(pruningMode = skip)
-    Seq(
-      "scalar uri",
-      "scalar uriorcurie",
-      "scalar nodeidentifier",
-    ).foreach { snippet =>
-      result should include(snippet)
+      val result = GraphQlGenerator().serialize(pruningMode = skip)
+      Seq(
+        "scalar uri",
+        "scalar uriorcurie",
+        "scalar nodeidentifier",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
     }
-  }
 
-  "prune in tree_root mode if requested" in {
-    given SchemaView = ModelCatalogue.pruning.model
+    "prune in tree_root mode if requested" in {
+      given SchemaView = ModelCatalogue.pruning.model
 
-    val result = GraphQlGenerator().serialize(pruningMode = PruningMode.treeRoot(None))
-    Seq(
-      "type SomeClass",
-      "interface SomeOtherClass",
-    ).foreach { snippet =>
-      result should include(snippet)
+      val result = GraphQlGenerator().serialize(pruningMode = PruningMode.treeRoot(None))
+      Seq(
+        "type SomeClass",
+        "interface SomeOtherClass",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
+      Seq(
+        "scalar uri",
+        "scalar uriorcurie",
+        "scalar nodeidentifier",
+        "NonTreeRootClass",
+      ).foreach { snippet =>
+        result should not include (snippet)
+      }
     }
-    Seq(
-      "scalar uri",
-      "scalar uriorcurie",
-      "scalar nodeidentifier",
-      "NonTreeRootClass",
-    ).foreach { snippet =>
-      result should not include(snippet)
-    }
-  }
 
-  "prune in tree_root mode with override" in {
-    given SchemaView = ModelCatalogue.pruning.model
+    "prune in tree_root mode with override" in {
+      given SchemaView = ModelCatalogue.pruning.model
 
-    val result = GraphQlGenerator().serialize(pruningMode = PruningMode.treeRoot(Some("NotTreeRootClass")))
-    Seq(
-      "type NotTreeRootClass"
-    ).foreach { snippet =>
-      result should include(snippet)
-    }
-    Seq(
-      "scalar uri",
-      "scalar uriorcurie",
-      "scalar nodeidentifier",
-      "type SomeClass",
-      "interface SomeOtherClass",
-    ).foreach { snippet =>
-      result should not include (snippet)
+      val result =
+        GraphQlGenerator().serialize(pruningMode = PruningMode.treeRoot(Some("NotTreeRootClass")))
+      Seq(
+        "type NotTreeRootClass",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
+      Seq(
+        "scalar uri",
+        "scalar uriorcurie",
+        "scalar nodeidentifier",
+        "type SomeClass",
+        "interface SomeOtherClass",
+      ).foreach { snippet =>
+        result should not include (snippet)
+      }
     }
   }
 }
