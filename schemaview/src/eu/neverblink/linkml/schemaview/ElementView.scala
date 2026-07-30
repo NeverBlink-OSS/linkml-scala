@@ -102,7 +102,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     derivedAttributes.map((k, slot) =>
       k -> (slot.derivedRange.resolve.get match {
         case classView: ClassView =>
-          if classView.uriStr == "https://w3id.org/linkml/Any" then AnyView(slot)
+          if classView.isAny then AnyView(slot)
           else if !slot.derivedInlined then
             ClassReferenceAttributeView(
               slot,
@@ -116,6 +116,11 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
       }),
     )
   }
+
+  /** @return
+    *   true if this class should be treated as an `Any`
+    */
+  def isAny: Boolean = uriStr == "https://w3id.org/linkml/Any"
 
   def collectionForm: CollectionForm = CollectionForm.of(this)
 

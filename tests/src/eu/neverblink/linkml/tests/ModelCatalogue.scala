@@ -130,6 +130,7 @@ object ModelCatalogue {
   val anything: Entry = Entry("/models/anything/")
   val basic: Entry = Entry("/models/basic/")
   val basic2: Entry = Entry("/models/basic2/")
+  val cardinality: Entry = Entry("/models/cardinality/")
   val constraints: Entry = Entry("/models/constraints/")
   val constraintsOnTypes: Entry = Entry("/models/constraintsOnTypes/")
   val curie: Entry = Entry("/models/curie/")

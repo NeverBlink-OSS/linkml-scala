@@ -5,6 +5,7 @@ imports:
   - linkml:types
 classes:
   SomeOtherClass:
+    abstract: true
     slots:
       - some_other_slot
   UnusedClass:

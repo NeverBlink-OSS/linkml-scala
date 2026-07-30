@@ -230,6 +230,7 @@ object generator extends Module {
         mvn"org.eclipse.rdf4j:rdf4j-shacl:$rdf4j",
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
         mvn"com.networknt:json-schema-validator:3.0.6",
+        mvn"org.sangria-graphql::sangria:4.2.19",
       )
 
       /** Fetch the linkml-benchmark-schemas datasets used by `BenchmarkSchemaSpec`.
