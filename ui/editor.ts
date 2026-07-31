@@ -14,6 +14,7 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import {
   HighlightStyle,
   StreamLanguage,
+  type StreamParser,
   bracketMatching,
   indentOnInput,
   syntaxHighlighting,
@@ -24,13 +25,69 @@ import { turtle } from "@codemirror/legacy-modes/mode/turtle";
 import { scala } from "@codemirror/legacy-modes/mode/clike";
 import { tags as t } from "@lezer/highlight";
 
-export type OutputLang = "json" | "yaml" | "turtle" | "scala" | "text";
+export type OutputLang = "json" | "yaml" | "turtle" | "scala" | "graphql" | "text";
+
+// Minimal GraphQL SDL mode
+const GRAPHQL_KEYWORDS = new Set([
+  "type", "interface", "enum", "scalar", "input", "union", "schema", "directive",
+  "extend", "implements", "on", "query", "mutation", "subscription", "fragment",
+]);
+
+
+interface GraphQLState {
+  inBlockString: boolean; // Multi-line """ <text> """ descriptions
+}
+
+const graphql: StreamParser<GraphQLState> = {
+  startState: () => ({ inBlockString: false }),
+  copyState: (s) => ({ inBlockString: s.inBlockString }),
+  token(stream, state) {
+    if (state.inBlockString) {
+      while (!stream.eol()) {
+        if (stream.match('"""')) {
+          state.inBlockString = false;
+          break;
+        }
+        stream.next();
+      }
+      return "string";
+    }
+    if (stream.eatSpace()) return null;
+    if (stream.match("#")) {
+      stream.skipToEnd();
+      return "comment";
+    }
+    if (stream.match('"""')) {
+      while (!stream.eol()) {
+        if (stream.match('"""')) return "string"; // closed on the same line
+        stream.next();
+      }
+      state.inBlockString = true; // spans onto the next line
+      return "string";
+    }
+    if (stream.match(/^"(?:[^"\\]|\\.)*"?/)) return "string";
+    if (stream.match(/^@[A-Za-z_][A-Za-z0-9_]*/)) return "meta"; // @directive
+    const word = stream.match(/^[A-Za-z_][A-Za-z0-9_]*/) as RegExpMatchArray | null;
+    if (word) {
+      const w = word[0];
+      if (GRAPHQL_KEYWORDS.has(w)) return "keyword";
+      if (w === "true" || w === "false" || w === "null") return "atom";
+      // Capitalized identifiers read as type names; others as fields/args.
+      return /^[A-Z]/.test(w) ? "type" : "variable";
+    }
+    if (stream.match(/^[[\]{}(),]/)) return "punctuation";
+    if (stream.match(/^[:=!&|]/)) return "operator";
+    stream.next();
+    return null;
+  },
+};
 
 const LANGS: Record<OutputLang, unknown[]> = {
   json: [json()],
   yaml: [yaml()],
   turtle: [StreamLanguage.define(turtle)],
   scala: [StreamLanguage.define(scala)],
+  graphql: [StreamLanguage.define(graphql)],
   text: [],
 };
 
@@ -44,6 +101,7 @@ const highlight = HighlightStyle.define([
   { tag: [t.comment, t.lineComment, t.blockComment], color: "var(--text-muted)", fontStyle: "italic" },
   { tag: [t.punctuation, t.separator, t.bracket, t.brace], color: "var(--text-muted)" },
   { tag: t.operator, color: "var(--text-secondary)" },
+  { tag: [t.meta, t.annotation], color: "var(--orange)" }, // @directives (GraphQL), @prefix (Turtle)
   { tag: t.variableName, color: "var(--text)" },
 ]);
 

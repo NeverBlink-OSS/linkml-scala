@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.linkml
 
-import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode.*
+import eu.neverblink.linkml.generator.util.PruningMode.*
 import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue

@@ -464,7 +464,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
 
       val sv = SchemaView.loadSchemaViewFromString(schema)
 
-      val derived = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), false)
+      val derived = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), false, false)
       derived.reachable(sv.classes("C1")) shouldBe true
       derived.reachable(sv.classes("C2")) shouldBe false
       derived.reachable(sv.classes("C3")) shouldBe true
@@ -473,7 +473,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       derived.reachable(sv.types("foo")) shouldBe true
       derived.reachable(sv.types("bar")) shouldBe true
 
-      val derivedInlined = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), true)
+      val derivedInlined = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), true, false)
       derivedInlined.reachable(sv.classes("C1")) shouldBe true
       derivedInlined.reachable(sv.classes("C2")) shouldBe false
       derivedInlined.reachable(sv.classes("C3")) shouldBe false

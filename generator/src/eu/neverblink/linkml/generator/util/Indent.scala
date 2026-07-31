@@ -40,7 +40,7 @@ extension (sc: StringContext)
     *
     * @note
     *   This interpolator does not allow complex objects by default, but allows [[Printable]]
-    *   objects. This allows defining
+    *   objects. This allows defining intermediate models for chunks of code.
     */
   def indent(args: PrintableOrSimple*): String = {
     val sb = lang.StringBuilder()

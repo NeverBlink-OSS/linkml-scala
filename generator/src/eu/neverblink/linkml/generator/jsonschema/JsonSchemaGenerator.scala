@@ -141,7 +141,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     // If a tree root is defined, only include classes reachable from the tree root (pruning).
     // Otherwise, include all classes in the schema view.
     val query = maybeTreeRoot match {
-      case Some(root) => sv.derivedReachabilityQuery(Seq(root), true)
+      case Some(root) => sv.derivedReachabilityQuery(Seq(root), true, false)
       case None => IncludeAllReachabilityQuery()
     }
     val defsClasses = for cls <- sv.classes.values if query.reachable(cls) yield {

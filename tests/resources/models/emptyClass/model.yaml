@@ -1,0 +1,13 @@
+id: https://neverblink.eu/linkml/tests/emptyClass/
+name: emptyClass
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: SomeOtherClass
+  SomeOtherClass: {}
