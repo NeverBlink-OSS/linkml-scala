@@ -126,6 +126,16 @@ const TARGETS: Target[] = [
     call: (v, o) => api().tableSchema(v, blankToUndef(o.treeRoot)),
   },
   {
+    id: "graphQl",
+    label: "GraphQL",
+    lang: "graphql",
+    options: [
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
+      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
+    ],
+    call: (v, o) => api().graphQl(v, String(o.pruningMode || "treeRoot"), blankToUndef(o.treeRoot)),
+  },
+  {
     id: "scala",
     label: "Scala code",
     lang: "scala",
