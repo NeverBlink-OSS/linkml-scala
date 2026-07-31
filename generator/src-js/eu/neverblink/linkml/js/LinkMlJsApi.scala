@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.js
 
+import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -9,7 +10,7 @@ import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
 import eu.neverblink.linkml.generator.util.StringSink
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.schemaview.{StringImporter, SchemaView, Case}
+import eu.neverblink.linkml.schemaview.{StringImporter, SchemaView}
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
@@ -184,12 +185,7 @@ object LinkMlJsApi {
       treeRoot: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
   ): String = {
-    val mode = Case.camelCase(pruningMode) match {
-      case "treeRoot" => PruningMode.treeRoot(treeRoot.toOption)
-      case "schema" => PruningMode.schemaRoot
-      case "skip" => PruningMode.skip
-      case s => throw RuntimeException(s"Unknown pruning mode: $s")
-    }
+    val mode = PruningMode(pruningMode, treeRoot.toOption)
 
     val format = outFormat.toLowerCase match {
       case "yaml" => LinkMlGenerator.OutputFormat.yaml
@@ -218,6 +214,30 @@ object LinkMlJsApi {
       treeRoot: js.UndefOr[String] = js.undefined,
   ): String =
     TableSchemaGenerator(using schema.underlying).serialize(treeRoot.toOption)
+
+  /** Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums,
+    * queries must be provided for a specific implementation.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Pruning mode to use for removing unused elements (classes, types, enums). One of
+    *   treeRoot|schemaRoot|skip. treeRoot - remove all elements unreachable from the tree_root
+    *   class. schema - remove all elements unreachable from any of the classes defined in the root
+    *   schema. skip - do not remove unused elements. Default: treeRoot
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root.
+    * @return
+    *   Table Schema, serialized as a JSON
+    */
+  def graphQl(
+      schema: SchemaViewJs,
+      pruningMode: String = "treeRoot",
+      treeRoot: js.UndefOr[String] = js.undefined,
+  ): String =
+    GraphQlGenerator(using schema.underlying).serialize(
+      PruningMode(pruningMode, treeRoot.toOption),
+    )
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model.
     *

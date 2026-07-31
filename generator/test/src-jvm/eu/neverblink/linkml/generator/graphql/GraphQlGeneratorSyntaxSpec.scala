@@ -12,7 +12,6 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
     "syntheticUris" -> "Escaping not implemented",
     "typeDesignator" -> "Non-abstract inheritance not allowed",
     "unionRangeReference" -> "Non-abstract inheritance not allowed",
-//    "inheritance" -> "Non-abstract inheritance not allowed",
     "implicitInlineAsList" -> "LNK-???: Empty classes don't work in graphql gen",
   )
 

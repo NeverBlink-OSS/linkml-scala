@@ -202,7 +202,7 @@ case class GraphQlInterfaceDefinition(
       if fields.isEmpty
       then """{
              |  # GraphQL does not allow empty interfaces
-             |  _emptyClass: String
+             |  _: String
              |}
              |""".stripMargin
       else indent"""{
@@ -241,7 +241,7 @@ case class GraphQlTypeDefinition(
       if fields.isEmpty
       then """{
              |  # GraphQL does not allow empty classes
-             |  _emptyClass: String
+             |  _: String
              |}
              |""".stripMargin
       else indent"""{

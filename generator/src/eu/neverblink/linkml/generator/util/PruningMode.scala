@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.util
 import eu.neverblink.linkml.metamodel.TypeDefinition
 import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.{
+  Case,
   ElementView,
   IncludeAllReachabilityQuery,
   SchemaReachabilityQuery,
@@ -59,3 +60,11 @@ enum PruningMode:
     if this == skip then IncludeAllReachabilityQuery()
     else sv.underivedReachabilityQuery(initialSet)
   }
+
+object PruningMode:
+  def apply(mode: String, treeRootOverride: Option[String]): PruningMode =
+    Case.camelCase(mode) match {
+      case "treeRoot" => PruningMode.treeRoot(treeRootOverride)
+      case "schema" => PruningMode.schemaRoot
+      case "skip" => PruningMode.skip
+    }
