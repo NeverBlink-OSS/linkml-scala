@@ -9,11 +9,15 @@ import sangria.parser.{ParserConfig, QueryParser}
 
 class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   override val skipModels: Map[String, String] = Map(
-    "syntheticUris" -> "Escaping not implemented",
-    "typeDesignator" -> "Non-abstract inheritance not allowed",
-    "unionRangeReference" -> "Non-abstract inheritance not allowed",
-    "implicitInlineAsList" -> "LNK-???: Empty classes don't work in graphql gen",
+    "syntheticUris" -> "LNK-159: Full escaping not implemented",
   )
+
+  // dummy query object to make the generated types a valid graphql schema
+  val dummyQuery =
+    """type Query {
+      |  test: String
+      |}
+      |""".stripMargin
 
   def parseOrThrow(schema: String): Schema[Any, Any] = {
     val doc = QueryParser.parse(schema, ParserConfig())
@@ -25,11 +29,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
       s"generate a valid schema for model '${entry.name}'" in {
         processSkip(entry.name, "")
         val schema = {
-          """# dummy query object to make the generated types a valid graphql schema
-            |type Query {
-            |  test: String
-            |}
-            |""".stripMargin +
+          dummyQuery +
             GraphQlGenerator(using entry.model).serialize()
         }
         val result = parseOrThrow(schema)
@@ -41,11 +41,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
 
     "generate the metamodel" in {
       val schema = {
-        """# dummy query object to make the generated types a valid graphql schema
-          |type Query {
-          |  test: String
-          |}
-          |""".stripMargin +
+        dummyQuery +
           GraphQlGenerator(using SchemaView.loadSchemaViewFromUri("linkml:meta")).serialize()
       }
 
