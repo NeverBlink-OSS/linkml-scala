@@ -149,8 +149,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * @param from
     *   Starting set of elements
     * @param inlinedOnly
-    *   Whether to include only classes that are inlined in the slots where they are used. If false,
-    *   all reachable classes will be included regardless of whether they are inlined or not.
+    *   If true, will exclude by-reference class ranges when computing reachability.
+    * @param includeClassAncestors
+    *   If true, will include class' ancestors when computing reachability.
     */
   def derivedReachabilityQuery(
       from: Seq[ElementView[?]],

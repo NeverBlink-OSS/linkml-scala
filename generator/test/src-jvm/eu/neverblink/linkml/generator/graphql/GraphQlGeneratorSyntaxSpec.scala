@@ -34,7 +34,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
         }
         val result = parseOrThrow(schema)
         result.directives
-          .map(_.name) should contain allOf ("linkml_uri", "linkml_identifier")
+          .map(_.name) should contain ("linkml_uri")
 
         result.typeList should not be empty
       }
@@ -51,7 +51,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
 
       val result = parseOrThrow(schema)
       result.directives
-        .map(_.name) should contain allOf("linkml_uri", "linkml_identifier")
+        .map(_.name) should contain ("linkml_uri")
 
       result.typeList should not be empty
     }

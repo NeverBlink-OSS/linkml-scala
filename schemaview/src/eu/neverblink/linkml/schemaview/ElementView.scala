@@ -35,6 +35,9 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
     */
   final def name: String = inner.name
 
+  /** The name of the underlying Element, aliased with the `alias` slot if defined, re-cased
+    * appropriately if needed.
+    */
   def aliasedName: String
 
   /** The defining schema's prefix resolver */

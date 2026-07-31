@@ -52,7 +52,9 @@ final class IncludeAllReachabilityQuery(using SchemaView) extends SchemaReachabi
   * @param from
   *   [[Element]]s to start the search from
   * @param inlinedOnly
-  *   If true, will exclude by-reference classes when performing the query
+  *   If true, will exclude by-reference class ranges when computing reachability.
+  * @param includeClassAncestors
+  *   If true, will include class' ancestors when computing reachability.
   */
 final class DerivedReachabilityQuery(
     val from: Seq[ElementView[?]],

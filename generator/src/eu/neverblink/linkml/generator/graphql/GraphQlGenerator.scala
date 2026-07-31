@@ -12,10 +12,6 @@ class GraphQlGenerator(using sv: SchemaView) {
       |directive @linkml_uri(
       |  uri: String!
       |) on OBJECT | INTERFACE | SCALAR | ENUM | ENUM_VALUE | FIELD_DEFINITION
-      |
-      |"Specify that this field is an identifier"
-      |directive @linkml_identifier on FIELD_DEFINITION
-      |
       |""".stripMargin.strip()
 
   /** Generate the GraphQL definitions which use custom directives for rdf interop.
@@ -93,7 +89,6 @@ class GraphQlGenerator(using sv: SchemaView) {
         range,
         slotView.slot.required,
         slotView.slot.multivalued,
-        slotView.slot.identifier,
         slotView.slot.description,
       )
     })
@@ -118,8 +113,7 @@ class GraphQlGenerator(using sv: SchemaView) {
           fields,
           cls.parents
             // Break the inheritance chain on concrete -> concrete inheritance
-            // We still use the derived slots and interfaces and types
-            // have to "duplicate" fields in GraphQL anyway
+            // We still need to use the derived slots and interfaces and types anyway
             .filter(cv => cv.cls.`abstract` || cv.cls.mixin)
             .map(_.aliasedName).toSeq,
           cls.cls.description,
@@ -331,8 +325,6 @@ case class GraphQlScalarDefinition(
   *   Whether the [[range]] should be declared non-null ("Range!")
   * @param multivalued
   *   Whether the [[range]] should be declared an array ("[Range]")
-  * @param identifier
-  *   Whether the field should include the @linkml_identifier directive
   * @param description
   *   Description of the field
   */
@@ -342,7 +334,6 @@ case class GraphQlField(
     range: String,
     nonNull: Boolean,
     multivalued: Boolean,
-    identifier: Boolean,
     description: Option[String],
 ) extends GraphQlElement:
   def print: String = {
@@ -354,11 +345,7 @@ case class GraphQlField(
       // nullability: field always present if requested, need to use null on output
       else range
     val uriDirective = s"@linkml_uri(uri: \"$uri\")"
-    val directives =
-      if identifier
-      then s"@linkml_identifier $uriDirective"
-      else uriDirective
     indent"""${wrapDescription(description)}
-            |$name: $typeExpr $directives
+            |$name: $typeExpr $uriDirective
             |""".stripMargin
   }

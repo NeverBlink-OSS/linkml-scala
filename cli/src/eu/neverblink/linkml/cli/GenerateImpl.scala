@@ -236,7 +236,11 @@ object TableSchema extends StringGenerate[TableSchemaOptions] {
     )
 }
 
-@HelpMessage("Generate a GraphQL Schema from a LinkML model.")
+@HelpMessage(
+  "Generate a GraphQL Schema from a LinkML model. " +
+    "Provides a @linkml_uri directive for all elements with an URI. " +
+    "Only generates types/interfaces/scalar/enums, queries must be added manually.",
+)
 @ArgsName("<input-file>")
 final case class GraphQlOptions(
     @Recurse
