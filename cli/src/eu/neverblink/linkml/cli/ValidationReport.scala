@@ -69,6 +69,41 @@ object ValidationReport {
       case Format.Plain => renderPlain(issues)
       case Format.Terminal => renderTerminal(schemaName, issues)
 
+  /** Render the reports for a whole set of schemas, one `(name, issues)` pair each.
+    *
+    * A single schema renders exactly as [[render]] does. With more than one, every block is labeled
+    * with its file name and a combined summary is appended.
+    */
+  def renderAll(reports: Seq[(String, Seq[Issue])], format: Format): String =
+    reports match
+      case Seq((name, issues)) => render(name, issues, format)
+      case _ =>
+        val blocks = reports.map((name, issues) => renderBlock(name, issues, format))
+        (blocks :+ totalSummary(reports, format)).mkString("\n\n")
+
+  private def renderBlock(schemaName: String, issues: Seq[Issue], format: Format): String =
+    format match
+      case Format.Plain => s"# $schemaName\n${renderPlain(issues)}"
+      case Format.Terminal => renderTerminal(schemaName, issues)
+
+  private def totalSummary(reports: Seq[(String, Seq[Issue])], format: Format): String =
+    import Ansi.*
+    val all = reports.flatMap(_._2)
+    val text =
+      if all.isEmpty then s"${reports.size} schemas checked, no issues."
+      else
+        val withIssues = reports.count(_._2.nonEmpty)
+        s"${reports.size} schemas checked, $withIssues with issues: ${summaryText(all)}"
+    format match
+      case Format.Plain => s"# $text"
+      case Format.Terminal =>
+        val (color, icon) = all.headOption match
+          case None => (green, "✔") // ✔
+          case Some(_) =>
+            val s = summarySeverity(all)
+            (s.color, s.icon)
+        s"  $color$bold$icon $text$reset"
+
   private def renderPlain(issues: Seq[Issue]): String =
     if issues.isEmpty then "Schema is valid."
     else
