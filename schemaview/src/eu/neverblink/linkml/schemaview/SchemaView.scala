@@ -103,6 +103,32 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     prefixResolvers(schema.id)
   }
 
+  /** Get the default range for the model, with the `string` type fallback as specified in the spec.
+    *
+    * @see
+    *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata
+    */
+  def getDefaultRange(schema: SchemaDefinition): Reference[TypeView] = {
+    schema.defaultRange
+      .map(_.asInstanceOf[Reference[TypeView]])
+      .getOrElse(Reference[TypeView]("string"))
+  }
+
+  /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
+    * (this fallback mirrors the python implementation).
+    */
+  def getDefaultPrefix(schema: SchemaDefinition): String = {
+    given PrefixResolver = getPrefixResolver(schema)
+    schema.defaultPrefix // NCName / CURIE prefix
+      .flatMap(schema.prefixes.get)
+      .map(_.prefixReference.uri) // URI prefix value
+      .getOrElse {
+        // fallback
+        val uri = schema.id.uri
+        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri + "/"
+      }
+  }
+
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
     * other reference slots. This will run the query without schema derivation.
     *
@@ -123,13 +149,15 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * @param from
     *   Starting set of elements
     * @param inlinedOnly
-    *   Whether to include only classes that are inlined in the slots where they are used. If false,
-    *   all reachable classes will be included regardless of whether they are inlined or not.
+    *   If true, will exclude by-reference class ranges when computing reachability.
+    * @param includeClassAncestors
+    *   If true, will include class' ancestors when computing reachability.
     */
   def derivedReachabilityQuery(
       from: Seq[ElementView[?]],
       inlinedOnly: Boolean,
-  ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly)
+      includeClassAncestors: Boolean,
+  ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
 
   /** Get a schema element by its ID
     */
@@ -243,17 +271,6 @@ object SchemaView {
     *   Schema definition to create the view from
     */
   def single(schema: SchemaDefinition): SchemaView = new SchemaView(Seq(schema))
-
-  extension (schema: SchemaDefinition)
-
-    /** Get the default range for the model, with the `string` type fallback as specified in the
-      * spec.
-      *
-      * @see
-      *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata
-      */
-    def defaultRangeResolved: Reference[Element] =
-      schema.defaultRange.getOrElse(Reference[TypeDefinition]("string"))
 
   /** Loads a schema view from the specified URI, loading its imports.
     *

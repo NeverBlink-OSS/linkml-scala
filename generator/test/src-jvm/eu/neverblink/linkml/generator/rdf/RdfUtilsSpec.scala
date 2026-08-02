@@ -1,6 +1,5 @@
 package eu.neverblink.linkml.generator.rdf
 
-import eu.neverblink.linkml.generator.shacl.Shacl
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

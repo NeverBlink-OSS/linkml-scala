@@ -1,15 +1,16 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.PruningMode
+import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.rdf.{RdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.schemaview.{Case, SchemaView}
+import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
 
@@ -193,12 +194,6 @@ object LinkMl extends StringGenerate[LinkMlOptions] {
   override protected[cli] def generate(
       options: LinkMlOptions,
   )(using SchemaView): Iterable[(String, String)] = {
-    val pruningMode = Case.camelCase(options.pruningMode) match {
-      case "treeRoot" => PruningMode.treeRoot(options.treeRoot)
-      case "schema" => PruningMode.schemaRoot
-      case "skip" => PruningMode.skip
-    }
-
     val format = options.format.toLowerCase match {
       case "yaml" => LinkMlGenerator.OutputFormat.yaml
       case "yml" => LinkMlGenerator.OutputFormat.yaml
@@ -211,7 +206,7 @@ object LinkMl extends StringGenerate[LinkMlOptions] {
         "",
         LinkMlGenerator().serialize(
           skipClassDerivation = options.skipDerivation,
-          pruningMode = pruningMode,
+          pruningMode = PruningMode(options.pruningMode, options.treeRoot),
           outputFormat = format,
         ),
       ),
@@ -238,5 +233,41 @@ object TableSchema extends StringGenerate[TableSchemaOptions] {
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
       ("", TableSchemaGenerator().serialize(options.treeRoot)),
+    )
+}
+
+@HelpMessage(
+  "Generate a GraphQL Schema from a LinkML model. " +
+    "Provides a @linkml_uri directive for all elements with an URI. " +
+    "Only generates types/interfaces/scalar/enums, queries must be added manually.",
+)
+@ArgsName("<input-file>")
+final case class GraphQlOptions(
+    @Recurse
+    common: GenerateOptions,
+    @HelpMessage(
+      "Pruning mode to use for removing unused elements (classes, types, enums). " +
+        "One of treeRoot|schemaRoot|skip.\n" +
+        "treeRoot - remove all elements unreachable from the tree_root class.\n" +
+        "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
+        "skip - do not remove unused elements.\n" +
+        "Default: schema.",
+    )
+    pruningMode: String = "treeRoot",
+    @HelpMessage(
+      "Tree root class name to use instead of the schema defined tree_root. " +
+        "Does nothing if not in tree root pruning mode.",
+    )
+    treeRoot: Option[String] = None,
+) extends HasGenerateOptions
+
+object GraphQl extends StringGenerate[GraphQlOptions] {
+  override protected def generatorName: String = "graphql"
+
+  override protected[cli] def generate(
+      options: GraphQlOptions,
+  )(using SchemaView): Iterable[(String, String)] =
+    Seq(
+      ("", GraphQlGenerator().serialize(PruningMode(options.pruningMode, options.treeRoot))),
     )
 }

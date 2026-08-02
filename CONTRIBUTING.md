@@ -64,3 +64,7 @@ Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://
 4. Press "Generate Release Notes" button
 5. Select "Pre-release" or "Release" list item
 6. Press "Publish Release" button
+
+## Snapshots
+
+We publish snapshot versions of LinkML-Scala, you can find them [here](https://central.sonatype.com/repository/maven-snapshots/eu/neverblink/linkml/generator_3/maven-metadata.xml)

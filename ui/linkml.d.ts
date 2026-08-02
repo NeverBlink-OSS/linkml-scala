@@ -82,6 +82,15 @@ export interface LinkMLApi {
   tableSchema(schema: SchemaView, treeRoot?: string): string;
 
   /**
+   * Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums, queries must be provided for a specific implementation.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schemaRoot|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
+   * @returns Table Schema, serialized as a JSON
+   */
+  graphQl(schema: SchemaView, pruningMode?: string, treeRoot?: string): string;
+
+  /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param maxProblems Maximum number of problems to include in the summary

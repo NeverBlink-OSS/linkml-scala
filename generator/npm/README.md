@@ -70,17 +70,18 @@ const view = LinkML.loadFromPath("model.yaml", {
 
 Load a schema into a `SchemaView` handle (see above), then pass that handle to any generator:
 
-| Function | Returns | Notes |
-| --- | --- | --- |
-| `loadFromString(schema, importMap)` | `SchemaView` | parse from YAML text; reuse the handle |
-| `loadFromPath(path, importMap)` | `SchemaView` | parse from a path in the import map; cycle-safe for the root |
-| `jsonSchema(view, open?, treeRootOverride?)` | `string` | JSON Schema |
-| `shacl(view, open?, onlyClassesFromRootSchema?)` | `string` | SHACL shapes in N-Triples |
-| `rdfs(view, onlyClassesFromRootSchema?)` | `string` | RDFS in N-Triples |
-| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)` | `string` | derived/pruned LinkML schema |
-| `scala(view, packageName)` | `Record<string, string>` | filename → generated Scala |
-| `tableSchema(view, treeRoot?)` | `string` | Frictionless Table Schema (JSON) |
-| `lint(view, maxProblems?, verbose?)` | `string` | problem summary, empty if valid |
+| Function                                                             | Returns | Notes                                                        |
+|----------------------------------------------------------------------| --- |--------------------------------------------------------------|
+| `loadFromString(schema, importMap)`                                  | `SchemaView` | parse from YAML text; reuse the handle                       |
+| `loadFromPath(path, importMap)`                                      | `SchemaView` | parse from a path in the import map; cycle-safe for the root |
+| `jsonSchema(view, open?, treeRootOverride?)`                         | `string` | JSON Schema                                                  |
+| `shacl(view, open?, onlyClassesFromRootSchema?)`                     | `string` | SHACL shapes in N-Triples                                    |
+| `rdfs(view, onlyClassesFromRootSchema?)`                             | `string` | RDFS in N-Triples                                            |
+| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)` | `string` | derived/pruned LinkML schema                                 |
+| `scala(view, packageName)`                                           | `Record<string, string>` | filename → generated Scala                                   |
+| `tableSchema(view, treeRoot?)`                                       | `string` | Frictionless Table Schema (JSON)                             |
+| `graphQl(view, pruningMode?, treeRoot?)`                             | `string` | GraphQL                                                      |
+| `lint(view, maxProblems?, verbose?)`                                 | `string` | problem summary, empty if valid                              |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

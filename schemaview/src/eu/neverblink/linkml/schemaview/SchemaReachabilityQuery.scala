@@ -33,7 +33,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
     */
   protected def slotRefs(slot: SlotView): Iterable[TaggedReference] = {
     val booleanSlots = slot.slot.anyOf.flatMap(_.range.flatMap(_.resolve))
-    val mainRange: Option[Element] = slot.derivedRangeView.resolve.map(_.inner)
+    val mainRange: Option[Element] = slot.derivedRange.resolve.map(_.inner)
     val blep = slot.slot.domain.flatMap(_.resolve)
     (booleanSlots ++ mainRange ++ blep).map(el => ElementTypeTag(el) -> el.name)
   }
@@ -52,22 +52,23 @@ final class IncludeAllReachabilityQuery(using SchemaView) extends SchemaReachabi
   * @param from
   *   [[Element]]s to start the search from
   * @param inlinedOnly
-  *   If true, will exclude by-reference classes when performing the query
+  *   If true, will exclude by-reference class ranges when computing reachability.
+  * @param includeClassAncestors
+  *   If true, will include class' ancestors when computing reachability.
   */
 final class DerivedReachabilityQuery(
     val from: Seq[ElementView[?]],
     val inlinedOnly: Boolean,
+    val includeClassAncestors: Boolean,
 )(using sv: SchemaView)
     extends SchemaReachabilityQuery {
 
   protected lazy val resolved: Set[TaggedReference] = {
     val start: Seq[TaggedReference] = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
-    Closure.reflexive(start, walk(inlinedOnly)).toSet
+    Closure.reflexive(start, walk).toSet
   }
 
-  private def walk(
-      inlinedOnly: Boolean,
-  )(current: TaggedReference): Iterable[TaggedReference] = {
+  private def walk(current: TaggedReference): Iterable[TaggedReference] = {
     val (tag, name) = current
     val res: Iterable[TaggedReference] = tag match {
       case ElementTypeTag.classDef =>
@@ -76,7 +77,11 @@ final class DerivedReachabilityQuery(
           // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
           case s if !inlinedOnly || s.derivedInlined => slotRefs(s)
           case _ => None
-        }
+        } ++ (
+          if includeClassAncestors
+          then classView.parents.map(classDef -> _.name)
+          else Seq()
+        )
       case ElementTypeTag.typeDef =>
         val typeView = sv.types(name)
         (typeView._type.typeof ++ typeView._type.unionOf)
