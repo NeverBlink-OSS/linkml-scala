@@ -16,7 +16,21 @@ class GenerateSpec extends AnyWordSpec, Matchers {
       |classes:
       |  Root:
       |    tree_root: true
+      |    attributes:
+      |      name:
       |""".stripMargin
+
+  /** Every generator, with markers that must appear in its stdout output for [[validSchema]].
+    */
+  private val generators: Seq[(BaseCommand[?], String, Seq[String])] = Seq(
+    (JsonSchema, "json-schema", Seq("\"Root\"", "\"name\"")),
+    (Shacl, "shacl", Seq("shacl#NodeShape", "<https://neverblink.eu/test/name>")),
+    (Scala, "scala", Seq("abstract class Root", "def name: Option[String]")),
+    (Rdfs, "rdfs", Seq("rdf-schema#Class", "rdf-schema#domain")),
+    (LinkMl, "linkml", Seq("Root:", "attributes:")),
+    (TableSchema, "table-schema", Seq("\"fields\"", "\"name\": \"name\"")),
+    (GraphQl, "graphql", Seq("type Root", "name: string @linkml_uri")),
+  )
 
   /** Write [[validSchema]] to n temporary `.yaml` files and pass their paths to test. */
   private def withSchemas(n: Int)(test: Seq[String] => Unit): Unit = {
@@ -31,13 +45,24 @@ class GenerateSpec extends AnyWordSpec, Matchers {
 
   "a generate command" when {
     "given a single input file" should {
-      "generate from it" in {
-        withSchemas(1) { paths =>
-          val (out, _, code) =
-            JsonSchema.runTestCommandWithExitCode(List("generate", "json-schema") ++ paths)
-          out should include("\"$schema\"")
-          code shouldBe 0
+      for (command, name, markers) <- generators do
+        s"generate $name from it" in {
+          withSchemas(1) { paths =>
+            val (out, err, code) =
+              command.runTestCommandWithExitCode(List("generate", name) ++ paths)
+            withClue(s"stderr was: $err\nstdout was: $out\n") {
+              code shouldBe 0
+              markers.foreach(out should include(_))
+            }
+          }
         }
+
+      "cover every registered generator" in {
+        val registered = App()
+          .commands
+          .filter(_.group == "generate")
+          .flatMap(_.names.map(_.mkString(" ")))
+        registered should contain theSameElementsAs generators.map("generate " + _._2)
       }
     }
 

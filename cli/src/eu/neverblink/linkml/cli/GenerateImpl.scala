@@ -247,11 +247,11 @@ final case class GraphQlOptions(
     common: GenerateOptions,
     @HelpMessage(
       "Pruning mode to use for removing unused elements (classes, types, enums). " +
-        "One of treeRoot|schemaRoot|skip.\n" +
+        "One of treeRoot|schema|skip.\n" +
         "treeRoot - remove all elements unreachable from the tree_root class.\n" +
         "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
         "skip - do not remove unused elements.\n" +
-        "Default: schema.",
+        "Default: treeRoot.",
     )
     pruningMode: String = "treeRoot",
     @HelpMessage(

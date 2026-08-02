@@ -28,6 +28,7 @@ final class App private[cli] (
     Rdfs,
     LinkMl,
     TableSchema,
+    GraphQl,
     Version,
   )
 
