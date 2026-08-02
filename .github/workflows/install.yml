@@ -1,0 +1,56 @@
+name: Test install script
+
+# Verifies that `cli/install.sh` actually installs a working binary on every
+# platform it claims to support.
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'cli/install.sh'
+      - '.github/workflows/install.yml'
+      - '.github/workflows/release.yml'
+  schedule:
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install-script:
+    name: install.sh on ${{ matrix.os }}
+    # Don't burn scheduled runs on forks, which have no releases to install.
+    if: github.event_name != 'schedule' || github.repository == 'NeverBlink-OSS/linkml-scala'
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Every platform with a published release asset that install.sh supports.
+        os: [ ubuntu-latest, ubuntu-22.04-arm, macos-14 ]
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Install via install.sh
+        run: |
+          . ./cli/install.sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Installed binary reports its version
+        run: |
+          linkml-scala --version
+
+      - name: Installed binary can validate a schema
+        run: |
+          OUTPUT=$(linkml-scala validate tests/resources/models/basic/model.yaml)
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -Fq "Schema is valid."; then
+            echo "Error: Expected success message not found."
+            exit 1
+          fi
