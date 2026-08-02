@@ -9,7 +9,6 @@ on:
     paths:
       - 'cli/install.sh'
       - '.github/workflows/install.yml'
-      - '.github/workflows/release.yml'
   schedule:
     - cron: '0 5 * * 1'
   workflow_dispatch:
