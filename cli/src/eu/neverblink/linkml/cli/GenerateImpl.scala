@@ -4,7 +4,6 @@ import caseapp.*
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.rdf.{RdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
@@ -170,20 +169,8 @@ final case class LinkMlOptions(
     common: GenerateOptions,
     @HelpMessage("Whether to skip the class derivation. Default: false.")
     skipDerivation: Boolean = false,
-    @HelpMessage(
-      "Pruning mode to use for removing unused elements (classes, types, enums). " +
-        "One of treeRoot|schemaRoot|skip.\n" +
-        "treeRoot - remove all elements unreachable from the tree_root class.\n" +
-        "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
-        "skip - do not remove unused elements.\n" +
-        "Default: treeRoot.",
-    )
-    pruningMode: String = "treeRoot",
-    @HelpMessage(
-      "Tree root class name to use instead of the schema defined tree_root. " +
-        "Does nothing if not in tree root pruning mode.",
-    )
-    treeRoot: Option[String] = None,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
     @HelpMessage("Format to serialize the model in. One of yaml|json. Default: yaml.")
     format: String = "yaml",
 ) extends HasGenerateOptions
@@ -206,7 +193,7 @@ object LinkMl extends StringGenerate[LinkMlOptions] {
         "",
         LinkMlGenerator().serialize(
           skipClassDerivation = options.skipDerivation,
-          pruningMode = PruningMode(options.pruningMode, options.treeRoot),
+          pruningMode = options.pruning.resolvedPruningMode,
           outputFormat = format,
         ),
       ),
@@ -236,6 +223,8 @@ object TableSchema extends StringGenerate[TableSchemaOptions] {
     )
 }
 
+// GraphQL
+
 @HelpMessage(
   "Generate a GraphQL Schema from a LinkML model. " +
     "Provides a @linkml_uri directive for all elements with an URI. " +
@@ -245,20 +234,8 @@ object TableSchema extends StringGenerate[TableSchemaOptions] {
 final case class GraphQlOptions(
     @Recurse
     common: GenerateOptions,
-    @HelpMessage(
-      "Pruning mode to use for removing unused elements (classes, types, enums). " +
-        "One of treeRoot|schema|skip.\n" +
-        "treeRoot - remove all elements unreachable from the tree_root class.\n" +
-        "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
-        "skip - do not remove unused elements.\n" +
-        "Default: treeRoot.",
-    )
-    pruningMode: String = "treeRoot",
-    @HelpMessage(
-      "Tree root class name to use instead of the schema defined tree_root. " +
-        "Does nothing if not in tree root pruning mode.",
-    )
-    treeRoot: Option[String] = None,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
 ) extends HasGenerateOptions
 
 object GraphQl extends StringGenerate[GraphQlOptions] {
@@ -268,6 +245,6 @@ object GraphQl extends StringGenerate[GraphQlOptions] {
       options: GraphQlOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", GraphQlGenerator().serialize(PruningMode(options.pruningMode, options.treeRoot))),
+      ("", GraphQlGenerator().serialize(options.pruning.resolvedPruningMode)),
     )
 }

@@ -32,11 +32,31 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (GraphQl, "graphql", Seq("type Root", "name: string @linkml_uri")),
   )
 
-  /** Write [[validSchema]] to n temporary `.yaml` files and pass their paths to test. */
-  private def withSchemas(n: Int)(test: Seq[String] => Unit): Unit = {
+  /** A schema with a class that pruning can remove: `Other` is reachable only through the `Root`
+    * tree root, so the pruning mode and tree root override are both visible in the output.
+    */
+  private val prunableSchema =
+    """id: https://neverblink.eu/test/
+      |name: test
+      |default_range: string
+      |types:
+      |  string:
+      |classes:
+      |  Root:
+      |    tree_root: true
+      |    attributes:
+      |      other:
+      |        range: Other
+      |  Other:
+      |    attributes:
+      |      name:
+      |""".stripMargin
+
+  /** Write [[schema]] to n temporary `.yaml` files and pass their paths to test. */
+  private def withSchemas[A](n: Int, schema: String = validSchema)(test: Seq[String] => A): A = {
     val files = Seq.fill(n) {
       val file = Files.createTempFile("linkml-generate", ".yaml")
-      Files.writeString(file, validSchema)
+      Files.writeString(file, schema)
       file
     }
     try test(files.map(_.toString))
@@ -63,6 +83,57 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           .filter(_.group == "generate")
           .flatMap(_.names.map(_.mkString(" ")))
         registered should contain theSameElementsAs generators.map("generate " + _._2)
+      }
+    }
+
+    "given a pruning mode" should {
+      def graphQl(args: String*): (String, String, Int) =
+        withSchemas(1, prunableSchema) { paths =>
+          GraphQl.runTestCommandWithExitCode(List("generate", "graphql") ++ args ++ paths)
+        }
+
+      "reject an unknown one, naming the valid modes" in {
+        val (out, err, code) = graphQl("--pruning-mode", "bogus")
+        err should include("Malformed pruning mode: bogus")
+        err should include("treeRoot, schema, skip")
+        out should not include "type Root" // nothing was generated
+        code shouldBe 1
+      }
+
+      "reject `schemaRoot`, which the help used to advertise" in {
+        val (_, err, code) = graphQl("--pruning-mode", "schemaRoot")
+        err should include("Malformed pruning mode: schemaRoot")
+        code shouldBe 1
+      }
+
+      "accept the mode in kebab case too" in {
+        val (out, _, code) = graphQl("--pruning-mode", "tree-root")
+        out should include("type Root")
+        code shouldBe 0
+      }
+
+      "apply --tree-root to the tree root mode" in {
+        val (out, _, code) = graphQl("--tree-root", "Other")
+        out should include("type Other")
+        out should not include "type Root" // unreachable from the overridden tree root
+        code shouldBe 0
+      }
+
+      "ignore --tree-root when not pruning by tree root" in {
+        val (out, _, code) = graphQl("--pruning-mode", "skip", "--tree-root", "Other")
+        out should include("type Other")
+        out should include("type Root")
+        code shouldBe 0
+      }
+
+      "be shared with the linkml generator" in {
+        withSchemas(1, prunableSchema) { paths =>
+          val (_, err, code) = LinkMl.runTestCommandWithExitCode(
+            List("generate", "linkml", "--pruning-mode", "bogus") ++ paths,
+          )
+          err should include("Malformed pruning mode: bogus")
+          code shouldBe 1
+        }
       }
     }
 
