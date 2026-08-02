@@ -245,6 +245,24 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "invoked as `lint`" should {
+      "behave exactly like `validate`" in {
+        withSchemas(validSchema, schemaWithIssues) { paths =>
+          val asValidate =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "plain") ++ paths)
+          val asLint =
+            Validate.runTestCommandWithExitCode(List("lint", "--format", "plain") ++ paths)
+          asLint shouldBe asValidate
+        }
+      }
+
+      "be listed alongside `validate` in the CLI help" in {
+        val (out, _, _) = Validate.runTestCommandWithExitCode(List("--help"))
+        // The command list is colored, so drop the escape codes before matching.
+        out.replaceAll(s"$Esc\\[[0-9;]*m", "") should include("validate, lint")
+      }
+    }
+
     "given a schema with fatal problems" should {
       "report them as fatal issues" in {
         // An unknown slot reference is a fatal problem: the SchemaView can't even be built.

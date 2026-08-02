@@ -59,8 +59,8 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
         finally stream.close()
       case None =>
         // `out` is the command's stdout (redirected in tests). Flush but never close it.
-        write(out)
-        out.flush()
+        write(outStream)
+        outStream.flush()
     }
 
   private def writeToFileOrStdout(file: Option[String], content: String): Unit =
@@ -97,6 +97,6 @@ abstract class StringGenerate[T <: HasGenerateOptions: {Parser, Help}] extends G
   */
 abstract class StreamGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
 
-  /** Write the output to [[out]]. Must not close [[out]]. */
+  /** Write the output to [[outStream]]. Must not close [[outStream]]. */
   protected[cli] def generate(options: T, out: OutputStream)(using sv: SchemaView): Unit
 }

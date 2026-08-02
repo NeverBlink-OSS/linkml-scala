@@ -19,6 +19,11 @@ final case class ValidateOptions(
 )
 
 object Validate extends BaseCommand[ValidateOptions] {
+  override def names: List[List[String]] = List(
+    List("validate"),
+    List("lint"),
+  )
+
   override def run(options: ValidateOptions, remainingArgs: RemainingArgs): Unit =
     val format = Format.parse(options.format).getOrElse(
       err(s"Unknown format '${options.format}'. Supported formats: ${Format.supported}."),
