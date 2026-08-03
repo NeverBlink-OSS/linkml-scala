@@ -163,12 +163,11 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       val result = GraphQlGenerator().serialize()
       Seq(
         "some_slot: Any",
-        "scalar Any"
+        "scalar Any",
       ).foreach { snippet =>
         result should include(snippet)
       }
     }
-
 
     "generate descriptions" in {
       given SchemaView = ModelCatalogue.metadata.title.model
@@ -176,20 +175,20 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       val result = GraphQlGenerator().serialize()
       Seq(
         "This is a class for testing purposes",
-        "This is a slot for testing purposes"
+        "This is a slot for testing purposes",
       ).foreach { snippet =>
         result should include(snippet)
       }
     }
-    
+
     "generate empty classes" in {
       given SchemaView = ModelCatalogue.emptyClass.model
-      
+
       val result = GraphQlGenerator().serialize()
       Seq(
         "SomeClass",
         "SomeOtherClass",
-        "_: String"
+        "_: String",
       ).foreach { snippet =>
         result should include(snippet)
       }

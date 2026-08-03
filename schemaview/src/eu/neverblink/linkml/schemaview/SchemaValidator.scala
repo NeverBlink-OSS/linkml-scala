@@ -25,6 +25,7 @@ final class SchemaValidator(using sv: SchemaView) {
     // TODO LNK-166: Store the element "fromSchema"
     acc + macroValidator.validate(schema.asInstanceOf).prependedPath("/")
   }
+
   /** Any invalid references present in the schema. Empty if all references are valid. */
   lazy val unknownReferences: Seq[SchemaProblem.Fatal] =
     macroResult.unknownReferences.map(SchemaProblem.UnknownReferenceProblem(_))
