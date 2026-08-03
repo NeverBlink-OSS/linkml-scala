@@ -15,9 +15,9 @@ final case class PruningOptions(
         "treeRoot - remove all elements unreachable from the tree_root class.\n" +
         "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
         "skip - do not remove unused elements.\n" +
-        "Default: treeRoot.",
+        "Default: skip.",
     )
-    pruningMode: PruningMode = PruningMode.treeRoot(None),
+    pruningMode: PruningMode = PruningMode.skip,
     @HelpMessage(
       "Tree root class name to use instead of the schema-defined tree_root.",
     )

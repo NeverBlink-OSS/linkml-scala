@@ -113,7 +113,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
       }
 
       "apply --tree-root to the tree root mode" in {
-        val (out, _, code) = graphQl("--tree-root", "Other")
+        val (out, _, code) = graphQl("--pruning-mode", "treeRoot", "--tree-root", "Other")
         out should include("type Other")
         out should not include "type Root" // unreachable from the overridden tree root
         code shouldBe 0
