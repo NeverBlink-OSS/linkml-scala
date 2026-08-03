@@ -165,9 +165,9 @@ object LinkMlJsApi {
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param pruningMode
     *   Pruning mode to use for removing unused elements (classes, types, enums). One of
-    *   treeRoot|schemaRoot|skip. treeRoot - remove all elements unreachable from the tree_root
-    *   class. schema - remove all elements unreachable from any of the classes defined in the root
-    *   schema. skip - do not remove unused elements. Default: treeRoot
+    *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
+    *   schema - remove all elements unreachable from any of the classes defined in the root schema.
+    *   skip - do not remove unused elements. Default: treeRoot
     * @param skipDerivation
     *   If true, will not derive classes and instead copy them as-is.
     * @param treeRoot
@@ -222,9 +222,9 @@ object LinkMlJsApi {
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param pruningMode
     *   Pruning mode to use for removing unused elements (classes, types, enums). One of
-    *   treeRoot|schemaRoot|skip. treeRoot - remove all elements unreachable from the tree_root
-    *   class. schema - remove all elements unreachable from any of the classes defined in the root
-    *   schema. skip - do not remove unused elements. Default: treeRoot
+    *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
+    *   schema - remove all elements unreachable from any of the classes defined in the root schema.
+    *   skip - do not remove unused elements. Default: treeRoot
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root.
     * @return

@@ -14,19 +14,18 @@ final case class ExitException(code: Int) extends RuntimeException
   */
 abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
   private var testMode = false
-  protected var out: PrintStream = System.out
+  protected var outStream: PrintStream = System.out
   protected var errStream: PrintStream = System.err
 
   final override def printLine(line: String, toStderr: Boolean): Unit =
-    if toStderr then errStream.println(line) else out.println(line)
+    if toStderr then errStream.println(line) else outStream.println(line)
 
   final override def exit(code: Int): Nothing =
     if testMode then throw ExitException(code) else super.exit(code)
 
-  protected final def err(message: String): Nothing = {
+  protected final def err(message: String): Nothing =
     printLine(message, toStderr = true)
     exit(1)
-  }
 
   def loadSchema(inFile: Option[String]): SchemaView =
     inFile match {
@@ -54,15 +53,15 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     val bufOut = ByteArrayOutputStream()
     val bufErr = ByteArrayOutputStream()
     testMode = true
-    out = PrintStream(bufOut, true, "UTF-8")
+    outStream = PrintStream(bufOut, true, "UTF-8")
     errStream = PrintStream(bufErr, true, "UTF-8")
     var exitCode = 0
-    try App.main(args.toArray)
+    try App(testMode, outStream, errStream).main(args.toArray)
     catch { case ExitException(code) => exitCode = code }
     finally {
-      out.flush()
+      outStream.flush()
       errStream.flush()
-      out = System.out
+      outStream = System.out
       errStream = System.err
       testMode = false
     }

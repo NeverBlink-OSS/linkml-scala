@@ -6,8 +6,8 @@ import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView}
 
 import scala.util.control.NonFatal
 
-@HelpMessage("Validate a LinkML schema")
-@ArgsName("<input-file>")
+@HelpMessage("Validate one or more LinkML schemas")
+@ArgsName("<input-file>...")
 final case class ValidateOptions(
     @HelpMessage(
       "Output format for the validation report. One of terminal|plain. " +
@@ -19,20 +19,29 @@ final case class ValidateOptions(
 )
 
 object Validate extends BaseCommand[ValidateOptions] {
+  override def names: List[List[String]] = List(
+    List("validate"),
+    List("lint"),
+  )
+
   override def run(options: ValidateOptions, remainingArgs: RemainingArgs): Unit =
     val format = Format.parse(options.format).getOrElse(
       err(s"Unknown format '${options.format}'. Supported formats: ${Format.supported}."),
     )
-    val inputName = remainingArgs.remaining.headOption.getOrElse(err("Input file is required."))
+    val inputNames = remainingArgs.remaining
+    if inputNames.isEmpty then err("At least one input file is required.")
 
-    val issues = collectIssues(inputName)
-    printLine(ValidationReport.render(inputName, issues, format))
+    // Every file is checked even if an earlier one failed.
+    val reports = inputNames.map(name => name -> collectIssues(name))
+    printLine(ValidationReport.renderAll(reports, format))
 
-    // Errors and fatal problems always fail the command; warnings only fail in --strict mode.
-    val failed = issues.exists { i =>
-      i.severity == Severity.Fatal || i.severity == Severity.Error ||
-      (options.strict && i.severity == Severity.Warning)
-    }
+    // Errors and fatal problems always fail the command. Warnings only fail in --strict mode.
+    val failed = reports.exists((_, issues) =>
+      issues.exists { i =>
+        i.severity == Severity.Fatal || i.severity == Severity.Error ||
+        (options.strict && i.severity == Severity.Warning)
+      },
+    )
     if failed then exit(1)
 
   /** Load the schema and collect every issue.

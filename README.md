@@ -113,10 +113,10 @@ linkml-scala.exe
 
 #### LinkML schema validation
 
-The `validate` command inspects your LinkML schema for structural and logical issues:
+The `validate` command (also available as `lint`) inspects your LinkML schemas for structural and logical issues:
 
 ```shell
-linkml-scala validate <input-file>
+linkml-scala validate <input-file> ...
 ```
 
 The CLI outputs issues directly to your terminal, categorized into three severity levels:

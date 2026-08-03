@@ -7,12 +7,19 @@ import java.nio.file.Files
 
 class ValidateSpec extends AnyWordSpec, Matchers {
 
-  /** Write [[yaml]] to a temporary `.yaml` file and pass its path to [[test]]. */
-  private def withSchema(yaml: String)(test: String => Unit): Unit = {
-    val file = Files.createTempFile("linkml-validate", ".yaml")
-    Files.writeString(file, yaml)
-    try test(file.toString)
-    finally Files.deleteIfExists(file)
+  /** Write [[yaml]] to a temporary `.yaml` file and pass its path to test. */
+  private def withSchema(yaml: String)(test: String => Unit): Unit =
+    withSchemas(yaml)(paths => test(paths.head))
+
+  /** Write each of yamls to its own temporary `.yaml` file, in order, and pass the paths. */
+  private def withSchemas(yamls: String*)(test: Seq[String] => Unit): Unit = {
+    val files = yamls.map { yaml =>
+      val file = Files.createTempFile("linkml-validate", ".yaml")
+      Files.writeString(file, yaml)
+      file
+    }
+    try test(files.map(_.toString))
+    finally files.foreach(Files.deleteIfExists)
   }
 
   // Loads cleanly (no fatal problems) but has one error (invalid class_uri) and one
@@ -152,6 +159,82 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "given several input files" should {
+      "check every one of them, not just the first" in {
+        withSchemas(validSchema, schemaWithIssues) { paths =>
+          val (out, _, code) =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "plain") ++ paths)
+
+          // The problems live in the *second* file: finding them proves it wasn't skipped.
+          out should include("ERROR: Invalid URI or CURIE 'not a curie!' in class 'SomeClass'")
+          code shouldBe 1
+        }
+      }
+
+      "label each report with its file name" in {
+        withSchemas(validSchema, schemaWithIssues) { paths =>
+          val (out, _) =
+            Validate.runTestCommand(List("validate", "--format", "plain") ++ paths)
+
+          out should include(s"# ${paths(0)}")
+          out should include(s"# ${paths(1)}")
+          // ...and the per-file verdicts are still there, one per schema.
+          out should include("Schema is valid.")
+          out should include("1 error, 1 warning")
+        }
+      }
+
+      "close with a combined summary" in {
+        withSchemas(validSchema, schemaWithIssues, validSchema) { paths =>
+          val (out, _) =
+            Validate.runTestCommand(List("validate", "--format", "plain") ++ paths)
+          out should include("# 3 schemas checked, 1 with issues: 1 error, 1 warning")
+        }
+      }
+
+      "succeed (exit 0) when all of them are valid" in {
+        withSchemas(validSchema, validSchema) { paths =>
+          val (out, _, code) =
+            Validate.runTestCommandWithExitCode(
+              List("validate", "--strict", "--format", "plain") ++ paths,
+            )
+          out should include("# 2 schemas checked, no issues.")
+          code shouldBe 0
+        }
+      }
+
+      "name every schema in the terminal report" in {
+        withSchemas(validSchema, schemaWithIssues) { paths =>
+          val (out, _) = Validate.runTestCommand(List("validate") ++ paths)
+          out should include(s"Validating ${paths(0)}")
+          out should include(s"Validating ${paths(1)}")
+          out should include("2 schemas checked, 1 with issues: 1 error, 1 warning")
+        }
+      }
+
+      "report an unreadable file as fatal and still check the rest" in {
+        withSchemas(validSchema) { paths =>
+          val missing = paths.head + ".does-not-exist"
+          val (out, _, code) =
+            Validate.runTestCommandWithExitCode(
+              List("validate", "--format", "plain", missing) ++ paths,
+            )
+          out should include("FATAL:")
+          out should include(s"# ${paths.head}")
+          out should include("Schema is valid.")
+          code shouldBe 1
+        }
+      }
+    }
+
+    "given no input file" should {
+      "fail with a helpful message" in {
+        val (_, err, code) = Validate.runTestCommandWithExitCode(List("validate"))
+        err should include("At least one input file is required.")
+        code shouldBe 1
+      }
+    }
+
     "given an unknown format" should {
       "fail with a helpful message" in {
         withSchema(validSchema) { path =>
@@ -159,6 +242,24 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           err should include("Unknown format 'xml'")
           err should include("terminal|plain")
         }
+      }
+    }
+
+    "invoked as `lint`" should {
+      "behave exactly like `validate`" in {
+        withSchemas(validSchema, schemaWithIssues) { paths =>
+          val asValidate =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "plain") ++ paths)
+          val asLint =
+            Validate.runTestCommandWithExitCode(List("lint", "--format", "plain") ++ paths)
+          asLint shouldBe asValidate
+        }
+      }
+
+      "be listed alongside `validate` in the CLI help" in {
+        val (out, _, _) = Validate.runTestCommandWithExitCode(List("--help"))
+        // The command list is colored, so drop the escape codes before matching.
+        out.replaceAll(s"$Esc\\[[0-9;]*m", "") should include("validate, lint")
       }
     }
 

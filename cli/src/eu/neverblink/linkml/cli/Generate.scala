@@ -31,7 +31,14 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
   )
 
   final override def run(options: T, remainingArgs: RemainingArgs): Unit =
-    val sv = loadSchema(remainingArgs.remaining.headOption)
+    val inputs = remainingArgs.remaining
+    if inputs.sizeIs > 1 then
+      err(
+        s"`generate $generatorName` takes a single input file, but ${inputs.size} were given: " +
+          s"${inputs.mkString(", ")}.\n" +
+          "Generate one schema at a time, or point at a schema that `imports` the others.",
+      )
+    val sv = loadSchema(inputs.headOption)
     this match {
       case g: StringGenerate[T @unchecked] =>
         val files = g.generate(options)(using sv)
@@ -52,14 +59,14 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
         finally stream.close()
       case None =>
         // `out` is the command's stdout (redirected in tests). Flush but never close it.
-        write(out)
-        out.flush()
+        write(outStream)
+        outStream.flush()
     }
 
   private def writeToFileOrStdout(file: Option[String], content: String): Unit =
     file match {
       case Some(value) => os.write(os.Path(value, os.pwd), content)
-      case None => println(content)
+      case None => printLine(content)
     }
 
   private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
@@ -70,8 +77,8 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
         files.foreach((k, v) => os.write.over(path / k, v))
       case None =>
         files.foreach((k, v) => {
-          println(s"//\n// FILE $k\n//")
-          println(v)
+          printLine(s"//\n// FILE $k\n//")
+          printLine(v)
         })
     }
 }
@@ -90,6 +97,6 @@ abstract class StringGenerate[T <: HasGenerateOptions: {Parser, Help}] extends G
   */
 abstract class StreamGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
 
-  /** Write the output to [[out]]. Must not close [[out]]. */
+  /** Write the output to [[outStream]]. Must not close [[outStream]]. */
   protected[cli] def generate(options: T, out: OutputStream)(using sv: SchemaView): Unit
 }
