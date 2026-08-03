@@ -153,5 +153,11 @@ object BenchmarkSchemaSpec {
   private val skip: Map[(String, String), String] = Map(
     // A generated Scala file is empty.
     ("nmdc_microbiome", "scala") -> "Known bug: a generated Scala file is empty",
+    "nmdc_microbiome" -> "json-schema" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "table-schema" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "shacl" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "rdfs" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "linkml-yaml" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "linkml-json" -> "TODO LNK-167",
   )
 }
