@@ -501,6 +501,41 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "catch an invalid reference in an imported file" in {
+      val imported =
+        """id: urn:imported
+          |name: imported
+          |classes:
+          |  ImportedClass:
+          |    slots:
+          |      - i_do_not_exist
+          |""".stripMargin
+
+      val main =
+        """id: urn:main
+          |name: main
+          |
+          |imports:
+          |  - imported
+          |classes:
+          |  RootClass:
+          |    tree_root: true
+          |    is_a: ImportedClass
+          |""".stripMargin
+
+      val ex = intercept[RuntimeException] {
+        SchemaView.loadSchemaViewFromUri(
+          "main",
+          MapImporter(
+            "imported.yaml" -> imported,
+            "main.yaml" -> main,
+          ),
+        )
+      }
+
+      ex.getMessage should include("i_do_not_exist")
+    }
+
     "accept valid URIs and CURIEs for every element type" in {
       val schemaYaml =
         s"""$schemaShared

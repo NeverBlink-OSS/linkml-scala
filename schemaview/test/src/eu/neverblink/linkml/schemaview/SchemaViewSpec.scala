@@ -491,6 +491,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       underived.reachable(sv.types("foo")) shouldBe true
       underived.reachable(sv.types("bar")) shouldBe true
     }
+
     "recognize the tree_root inline mode from the extension" in {
       val model =
         """id: http://example.com/c
@@ -521,6 +522,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       }
       ex.getMessage should include("Unknown tree_root_as extension value: 'unknown'")
     }
+
     "return failure if the tree_root override is invalid" in {
       val root = sv.treeRootWithOverride(Some("nonexistent_class"))
       root match {

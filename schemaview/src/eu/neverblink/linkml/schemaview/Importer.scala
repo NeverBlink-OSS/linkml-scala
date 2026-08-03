@@ -43,8 +43,6 @@ trait Importer {
   }
 }
 
-object Importer {}
-
 /** A simple Importer that reads the schema text as a string and then parses it into a
   * SchemaDefinition using the standard SchemaView loading mechanism. This is suitable for most use
   * cases.
@@ -64,4 +62,11 @@ trait StringImporter extends Importer {
   */
 object FileSystemImporter extends StringImporter {
   def read(path: String): String = PlatformSpecificUtils.readFile(path)
+}
+
+/** A basic importer implementation which delegates the read operation to a mapping
+  */
+final class MapImporter(content: (String, String)*) extends StringImporter {
+  val mapping: Map[String, String] = content.toMap
+  def read(path: String): String = mapping(path)
 }

@@ -27,7 +27,10 @@ final class SchemaValidator(using sv: SchemaView) {
   private given ValidatorContext = ValidatorContext(isDefaultRangeAllowed)
 
   /** Macro validator's result */
-  private lazy val macroResult = macroValidator.validate(sv.root.asInstanceOf).prependedPath("/")
+  private lazy val macroResult = sv.schemas.map(schema =>
+    // TODO LNK-166: Store the element "fromSchema"
+    macroValidator.validate(schema.asInstanceOf).prependedPath("/"),
+  ).fold(ValidatorResult.ok)(_ + _)
 
   /** Any invalid references present in the schema. Empty if all references are valid. */
   lazy val unknownReferences: Seq[SchemaProblem.Fatal] = {
