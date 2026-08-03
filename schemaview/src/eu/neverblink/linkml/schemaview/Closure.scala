@@ -23,21 +23,26 @@ object Closure {
       function: T => Iterable[T],
       reflexive: Boolean,
   ): Iterable[T] = {
-    val ret = if reflexive then mutable.ArrayBuffer.from(start) else mutable.ArrayBuffer.empty[T]
+    val ret = mutable.ListBuffer.empty[T]
     val visited = mutable.ArrayBuffer.empty[T]
-    val todo = mutable.ArrayDeque.from(start)
-
-    while todo.nonEmpty do {
+    val todo = mutable.ArrayDeque.empty[T]
+    start.foreach { s =>
+      if (!visited.contains(s)) {
+        visited.addOne(s)
+        todo.addOne(s)
+        if (reflexive) ret.addOne(s)
+      }
+    }
+    while (todo.nonEmpty) {
       val current = todo.removeLast()
-      visited.append(current)
-      for neighbor <- function(current) do {
-        if !visited.contains(neighbor) then {
-          todo.append(neighbor)
-          ret.append(neighbor)
+      function(current).foreach { neighbor =>
+        if (!visited.contains(neighbor)) {
+          visited.addOne(neighbor)
+          todo.addOne(neighbor)
+          ret.addOne(neighbor)
         }
       }
     }
-
-    ret.toSeq
+    ret.toList
   }
 }
