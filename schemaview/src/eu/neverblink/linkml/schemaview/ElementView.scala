@@ -5,8 +5,6 @@ import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
 
-import scala.collection.mutable
-
 /** Element views provide a rich interface for working with schema elements. They require an
   * implicit [[SchemaView]] and are always linked to a defining schema, which is the schema in which
   * the element was originally defined. This allows you to both have the full context of all
@@ -79,12 +77,28 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   lazy val (derivedAttributes: Map[String, SlotView], identifier: Option[SlotView]) = {
     var idSv: SlotView = null
-    val das = applicableSlots.foldLeft(Map.empty[String, SlotView]) { (acc, v) =>
-      val sv = derivedSlot(v.ref, v.source)
-      if (sv.slot.identifier) {
-        idSv = sv
+    var das = Map.empty[String, SlotView]
+    ancestors(true).foreach { anc =>
+      val keys = anc.cls.attributes.keysIterator
+      while (keys.hasNext) {
+        val name = keys.next()
+        if (!das.contains(name)) {
+          val ref = new Reference[SlotDefinition](name)
+          val sv = derivedSlot(ref, anc)
+          if (sv.slot.identifier) idSv = sv
+          das = das.updated(ref.value, sv)
+        }
       }
-      acc.updated(v.ref.value, sv)
+      val slots = anc.cls.slots.iterator
+      while (slots.hasNext) {
+        val ref = slots.next()
+        val name = ref.value
+        if (!das.contains(name)) {
+          val sv = derivedSlot(ref, ref.asInstanceOf[Reference[SlotView]].resolve.get)
+          if (sv.slot.identifier) idSv = sv
+          das = das.updated(name, sv)
+        }
+      }
     }
     (das, Option(idSv))
   }
@@ -162,29 +176,6 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   private def getDirectSlots(cls: ClassDefinition): Seq[Reference[SlotDefinition]] =
     cls.slots ++ cls.attributes.keys.map(Reference[SlotDefinition])
-
-  /** Get all slot references that are applicable to this class definition.
-    *
-    * Returns a sequence of pairs of (slot reference, source of the slot definition), where the
-    * source is either a ClassView (if the slot is defined as an attribute) or a SlotView (if the
-    * slot is defined as a top-level slot). The source is used for default prefix and range
-    * resolution according to the original schema file.
-    *
-    * @see
-    *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#function-applicable-slots
-    */
-  def applicableSlots: Seq[(ref: Reference[SlotDefinition], source: ElementView[?])] =
-    // LinkedHashMap to preserve the order of slot definitions.
-    val buffer = mutable.LinkedHashMap[Reference[SlotDefinition], ElementView[?]]()
-    ancestors(true).foreach { anc =>
-      val candidates: Seq[(Reference[SlotDefinition], ElementView[?])] =
-        anc.cls.slots.map(ref => (ref, ref.asInstanceOf[Reference[SlotView]].resolve.get)) ++
-          anc.cls.attributes.keys.map(name => (Reference[SlotDefinition](name), anc))
-      for ((ref, source) <- candidates) do
-        // Older ancestors take precedence, so that we resolve to the original source of the slot.
-        buffer.update(ref, source)
-    }
-    buffer.toSeq
 
   /** Test whether the class or its ancestors have this slot defined as an attribute.
     *
