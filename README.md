@@ -77,19 +77,20 @@ You can install `linkml-scala` on any platform (including Windows) using the [mi
 environment manager:
 
 ```shell
-mise use 'github:NeverBlink-OSS/linkml-scala'
+mise use 'ubi:NeverBlink-OSS/linkml-scala'
 linkml-scala
 ```
 
-Or install a specific version (useful if a new release is within mise's 7-day registry caching window)
+Or pin a specific version (recommended for reproducible setups, e.g. in a project's `mise.toml`):
+
 ```shell
-mise use 'github:NeverBlink-OSS/linkml-scala@v0.8.6'
+mise use 'ubi:NeverBlink-OSS/linkml-scala@v0.11.2'
 linkml-scala
 ```
 
 ### Method 3: Manual download
 
-If you prefer a manual setup, head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/tag/v0.8.9) and download the pre-compiled binary for your specific OS and architecture.
+If you prefer a manual setup, head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest) and download the pre-compiled binary for your specific OS and architecture.
 
 *For macOS and Linux:*
 Rename the downloaded file, make it executable, and run it:

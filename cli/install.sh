@@ -22,7 +22,7 @@ ARCH=$(uname -m)
 # Map the architecture to the appropriate binary name
 case $OS in
   linux) BINARY_NAME="linkml-scala-linux" ;;
-  darwin) BINARY_NAME="linkml-scala-mac" ;;
+  darwin) BINARY_NAME="linkml-scala-macos" ;;
   *) echo "Unsupported operating system: $OS"; exit 1 ;;
 esac
 # Append the architecture to the binary name but yell for cases we don't support
