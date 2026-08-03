@@ -23,7 +23,7 @@ object Closure {
       function: T => Iterable[T],
       reflexive: Boolean,
   ): Iterable[T] = {
-    val ret = mutable.ListBuffer.empty[T]
+    val ret = Vector.newBuilder[T]
     val visited = mutable.ArrayBuffer.empty[T]
     val todo = mutable.ArrayDeque.empty[T]
     start.foreach { s =>
@@ -34,8 +34,7 @@ object Closure {
       }
     }
     while (todo.nonEmpty) {
-      val current = todo.removeLast()
-      function(current).foreach { neighbor =>
+      function(todo.removeLast()).foreach { neighbor =>
         if (!visited.contains(neighbor)) {
           visited.addOne(neighbor)
           todo.addOne(neighbor)
@@ -43,6 +42,6 @@ object Closure {
         }
       }
     }
-    ret.toList
+    ret.result()
   }
 }
