@@ -4,6 +4,7 @@ import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
+import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, ListOnly, SimpleDict}
 
 import scala.collection.mutable
 
@@ -125,7 +126,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def isAny: Boolean = uriStr == "https://w3id.org/linkml/Any"
 
-  def collectionForm: CollectionForm = CollectionForm.of(this)
+  /** The collection form of this class, checking whether dict inlines are applicable.
+    */
+  lazy val collectionForm: CollectionForm = CollectionForm.of(this)
 
   /** Get and dereference the direct parents (mixins + inheritance) of this class
     *
@@ -263,7 +266,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   lazy val hasIdentifier: Boolean = identifier.isDefined
 
   /** Check the tree_root_as extension for this class and return the corresponding InlineType. If
-    * the extension is not present, return InlineType.optional as the default.
+    * the extension is not present, return InlineType.plain as the default.
     *
     * @param overrideType
     *   An optional override for the tree_root_as extension value. If provided, this value will be
@@ -273,14 +276,32 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     val value = overrideType.orElse {
       cls.extensions.get("tree_root_as").map(_.extensionValue.value.trim)
     }
+    lazy val msg =
+      s"Class '$name' has 'tree_root_as: ${value.get}', but it cannot be inlined in this form"
     value.map(v =>
-      v.toLowerCase match {
+      Case.camelCase(v).strip() match {
         case "plain" => InlineType.plain
         case "optional" => InlineType.optional
         case "list" => InlineType.list
+        case "simpleDict" =>
+          collectionForm match {
+            case form: SimpleDict => InlineType.dict(form)
+            case _ => throw new IllegalArgumentException(msg)
+          }
+        case "compactDict" =>
+          collectionForm match {
+            case form: DictForm =>
+              // override simpledict inference to
+              InlineType.dict(CompactDict(form.key))
+            case _ => throw new IllegalArgumentException(msg)
+          }
+        case _ if overrideType.isEmpty =>
+          throw new IllegalArgumentException(
+            s"Class '$name' has unknown 'tree_root_as' extension value: '$v'",
+          )
         case _ =>
           throw new IllegalArgumentException(
-            s"Unknown tree_root_as extension value: '$v''",
+            s"Class '$name' has unknown 'tree_root_as' override value: '$v'",
           )
       },
     ).getOrElse(InlineType.plain)

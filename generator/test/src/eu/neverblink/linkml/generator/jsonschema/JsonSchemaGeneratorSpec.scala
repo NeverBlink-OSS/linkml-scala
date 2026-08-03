@@ -20,8 +20,11 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         |name: test
         |types:
         |  string:
+        |    base: str
         |  integer:
+        |    base: int
         |  boolean:
+        |    base: Bool
         |"""
 
     "create typed top level classes" in {
@@ -601,6 +604,203 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         .asInstanceOf[Schema]
       string.`type` shouldBe Some(List(SchemaType.String))
       string.pattern shouldBe Some(Pattern("^([0-9]{3})?[0-9]{3}-[0-9]{4}$"))
+    }
+
+    "handle the tree_root_as extension" when {
+
+      def treeRootAs(mode: String): String =
+        s"""$schemaShared
+           |
+           |classes:
+           |  C1:
+           |    tree_root: true
+           |    extensions:
+           |      tree_root_as: $mode
+           |    attributes:
+           |      id: 
+           |        key: true
+           |        range: string
+           |      value:
+           |        range: string
+           |    
+           |""".stripMargin
+
+      "extension is plain" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("plain"),
+        )
+
+        JsonSchemaGenerator().generate().$ref shouldBe Some("#/$defs/C1")
+      }
+
+      "extension is optional" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("optional"),
+        )
+
+        val schema = JsonSchemaGenerator().generate()
+
+        schema.oneOf.map(
+          _.asInstanceOf[Schema].$ref,
+        ) should contain(Some("#/$defs/C1"))
+
+        schema.oneOf.map(
+          _.asInstanceOf[Schema].`type`,
+        ) should contain(Some(List(SchemaType.Null)))
+      }
+
+      "extension is list" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("list"),
+        )
+
+        val schema = JsonSchemaGenerator().generate()
+
+        schema.`type` shouldBe Some(List(SchemaType.Array))
+
+        schema.items.map(
+          _.asInstanceOf[Schema].$ref,
+        ) should contain(Some("#/$defs/C1"))
+      }
+
+      "extension is compact_dict" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("compact_dict"),
+        )
+
+        val schema = JsonSchemaGenerator().generate()
+        schema.additionalProperties.get.asInstanceOf[Schema]
+          .$ref shouldBe Some("#/$defs/C1__identifier_optional")
+
+        schema.$defs.get.keys should contain("C1__identifier_optional")
+      }
+
+      "extension is simple_dict" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("simple_dict"),
+        )
+
+        val schema = JsonSchemaGenerator().generate()
+        schema.additionalProperties.get.asInstanceOf[Schema]
+          .$ref shouldBe Some("#/$defs/C1__simple_dict_value")
+
+        schema.$defs.get.keys should contain("C1__simple_dict_value")
+      }
+
+      "override to plain" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("list"),
+        )
+
+        JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("plain"))
+          .$ref shouldBe Some("#/$defs/C1")
+      }
+
+      "override to optional" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("plain"),
+        )
+
+        val schema = JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("optional"))
+
+        schema.oneOf.map(
+          _.asInstanceOf[Schema].$ref,
+        ) should contain(Some("#/$defs/C1"))
+
+        schema.oneOf.map(
+          _.asInstanceOf[Schema].`type`,
+        ) should contain(Some(List(SchemaType.Null)))
+      }
+
+      "override to list" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("plain"),
+        )
+
+        val schema = JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("list"))
+
+        schema.`type` shouldBe Some(List(SchemaType.Array))
+
+        schema.items.map(
+          _.asInstanceOf[Schema].$ref,
+        ) should contain(Some("#/$defs/C1"))
+      }
+
+      "override to compact_dict" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("plain"),
+        )
+
+        val schema =
+          JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("compact_dict"))
+
+        schema.additionalProperties.get.asInstanceOf[Schema]
+          .$ref shouldBe Some("#/$defs/C1__identifier_optional")
+
+        schema.$defs.get.keys should contain("C1__identifier_optional")
+      }
+
+      "override to simple_dict" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          treeRootAs("plain"),
+        )
+
+        val schema =
+          JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("simple_dict"))
+
+        schema.additionalProperties.get.asInstanceOf[Schema]
+          .$ref shouldBe Some("#/$defs/C1__simple_dict_value")
+
+        schema.$defs.get.keys should contain("C1__simple_dict_value")
+      }
+
+      "fail if tree_root can't be a compact dict" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          s"""$schemaShared
+             |classes:
+             |  C1:
+             |    tree_root: true
+             |    extensions:
+             |      tree_root_as: compact_dict
+             |    attributes:
+             |      s1:
+             |        range: string
+             |      s2:
+             |        range: string
+             |""".stripMargin,
+        )
+
+        val ex = intercept[IllegalArgumentException] {
+          JsonSchemaGenerator().generate()
+        }.getMessage
+        ex should include("C1")
+        ex should include("tree_root_as")
+        ex should include("compact_dict")
+      }
+
+      "fail if tree_root can't be a simple dict" in {
+        given SchemaView = SchemaView.loadSchemaViewFromString(
+          s"""$schemaShared
+             |classes:
+             |  C1:
+             |    tree_root: true
+             |    extensions:
+             |      tree_root_as: simple_dict
+             |    attributes:
+             |      s1:
+             |        range: string
+             |      s2:
+             |        range: string
+             |""".stripMargin,
+        )
+
+        val ex = intercept[IllegalArgumentException] {
+          JsonSchemaGenerator().generate()
+        }.getMessage
+        ex should include("C1")
+        ex should include("tree_root_as")
+        ex should include("simple_dict")
+      }
     }
 
     "generate the metamodel without errors" in {

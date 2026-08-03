@@ -53,6 +53,8 @@ final case class JsonSchemaOptions(
     open: Boolean = false,
     @HelpMessage("If provided, override the schema tree_root with this class")
     treeRootOverride: Option[String] = None,
+    @HelpMessage("If provided, override the tree_root class' tree_root_as extension")
+    treeRootInlineTypeOverride: Option[String] = None,
 ) extends HasGenerateOptions
 
 object JsonSchema extends StringGenerate[JsonSchemaOptions] {
@@ -62,7 +64,14 @@ object JsonSchema extends StringGenerate[JsonSchemaOptions] {
       options: JsonSchemaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", JsonSchemaGenerator().serialize(options.open, options.treeRootOverride)),
+      (
+        "",
+        JsonSchemaGenerator().serialize(
+          options.open,
+          options.treeRootOverride,
+          treeRootInlineTypeOverride = options.treeRootInlineTypeOverride,
+        ),
+      ),
     )
 }
 
