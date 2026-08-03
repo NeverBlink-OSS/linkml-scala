@@ -4,7 +4,7 @@ import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
-import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, ListOnly, SimpleDict}
+import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
 
 import scala.collection.mutable
 
