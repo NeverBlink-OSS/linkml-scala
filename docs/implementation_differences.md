@@ -87,6 +87,15 @@ But rejects:
 { "id": "1", "value": 1 }
 ```
 
+`tree_root_as` accepts the following options:
+
+* `plain`: object instance, 
+* `optional`: object instance or null, 
+* `list`: array of object instances, may be empty, 
+* `compact_dict`: dict object mapping the key field to the identifier-optional object instances
+* `simple_dict`: dict object mapping the key field to the value field of the object instances
+
+
 ## Inline type semantics
 
 Different forms:

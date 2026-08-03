@@ -53,7 +53,12 @@ final case class JsonSchemaOptions(
     open: Boolean = false,
     @HelpMessage("If provided, override the schema tree_root with this class")
     treeRootOverride: Option[String] = None,
-    @HelpMessage("If provided, override the tree_root class' tree_root_as extension")
+    @HelpMessage(
+      "If provided, override the tree_root class' tree_root_as extension. " +
+        "One of: 'plain', 'optional', 'list', 'compact_dict', 'simple_dict'. " +
+        "If no extension or override is provided, the default behavior is 'plain'." +
+        "See the documentation for more information.",
+    )
     treeRootInlineTypeOverride: Option[String] = None,
 ) extends HasGenerateOptions
 
