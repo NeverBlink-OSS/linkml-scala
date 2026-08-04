@@ -75,10 +75,13 @@ final class DerivedReachabilityQuery(
 )(using sv: SchemaView)
     extends SchemaReachabilityQuery {
 
-  protected lazy val resolved: Set[TaggedReference] = {
-    val start = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
-    Closure.get(start, walk, true, Set.newBuilder[TaggedReference])
-  }
+  protected lazy val resolved: Set[TaggedReference] = Closure.get(
+    start = from.map(ev => (ElementTypeTag(ev.inner), ev.inner.name)),
+    function = walk,
+    reflexive = true,
+    resultBuilder = Set.newBuilder[TaggedReference],
+    useHashCode = true,
+  )
 
   private def walk(current: TaggedReference): Iterable[TaggedReference] = {
     val tag = current.tag
@@ -131,10 +134,13 @@ final class UnderivedReachabilityQuery(
 )(using sv: SchemaView)
     extends SchemaReachabilityQuery {
 
-  protected lazy val resolved: Set[TaggedReference] = {
-    val start = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
-    Closure.get(start, walk, true, Set.newBuilder[TaggedReference])
-  }
+  protected lazy val resolved: Set[TaggedReference] = Closure.get(
+    start = from.map(ev => (ElementTypeTag(ev.inner), ev.inner.name)),
+    function = walk,
+    reflexive = true,
+    resultBuilder = Set.newBuilder[TaggedReference],
+    useHashCode = true,
+  )
 
   private def walk(current: TaggedReference): Iterable[TaggedReference] =
     val tag = current.tag

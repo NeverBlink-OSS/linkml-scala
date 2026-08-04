@@ -97,10 +97,9 @@ object Closure {
     * types.
     *
     * This method performs a Depth-First Search (DFS) using an `ArrayDeque` as a stack. It includes
-    * a performance optimization: if the provided `resultBuilder` is for a `Set`, it uses an O(1)
-    * `HashSet` to track visited nodes. For all other builder types, it falls back to an O(N)
-    * `ArrayBuffer` for visited checks to strictly preserve insertion order/duplicates based on the
-    * builder's semantics.
+    * a performance optimization: if the provided `useHashCode` is `true`, it uses an O(1) `HashSet`
+    * to track visited nodes. Otherwise, it falls back to an O(N) `ArrayBuffer` for visited checks
+    * to strictly preserve insertion order/duplicates based on the builder's semantics.
     *
     * In an irreflexive closure, the `start` node will not be included in the result.
     *
@@ -117,6 +116,8 @@ object Closure {
     * @param resultBuilder
     *   A mutable builder used to construct the final output collection. Defaults to a `Vector`
     *   builder.
+    * @param useHashCode
+    *   A flag that allows using `hashCode` calls of `T` values for the performance optimization.
     * @return
     *   The computed closure, packaged in the collection type `C[T]`.
     */
@@ -125,47 +126,47 @@ object Closure {
       function: T => Iterable[T],
       reflexive: Boolean,
       resultBuilder: mutable.Builder[T, C[T]] = Vector.newBuilder[T],
+      useHashCode: Boolean = false,
   ): C[T] = {
     // Stack for Depth-First Search traversal
     val todo = new mutable.ArrayDeque[T]
-    resultBuilder match {
-      case b if b.getClass.getSimpleName.contains("SetBuilder") =>
-        // Optimization: If the target collection is Set-based, we can use a fast HashSet for visited checks.
-        val visited = new mutable.HashSet[T]
-        start.foreach { s =>
-          if (visited.add(s)) {
-            todo.addOne(s)
-            if (reflexive) resultBuilder.addOne(s)
+    if (useHashCode) {
+      // Optimization: If the target collection is Set-based, we can use a fast HashSet for visited checks.
+      val visited = new mutable.HashSet[T]
+      start.foreach { s =>
+        if (visited.add(s)) {
+          todo.addOne(s)
+          if (reflexive) resultBuilder.addOne(s)
+        }
+      }
+      while (todo.nonEmpty) {
+        function(todo.removeLast()).foreach { neighbor =>
+          if (visited.add(neighbor)) {
+            todo.addOne(neighbor)
+            resultBuilder.addOne(neighbor)
           }
         }
-        while (todo.nonEmpty) {
-          function(todo.removeLast()).foreach { neighbor =>
-            if (visited.add(neighbor)) {
-              todo.addOne(neighbor)
-              resultBuilder.addOne(neighbor)
-            }
+      }
+    } else {
+      // Fallback: For sequence-based collections where order matters, use an ArrayBuffer.
+      // Note: `visited.contains` is O(N), which may impact performance on very large graphs.
+      val visited = new mutable.ArrayBuffer[T]
+      start.foreach { s =>
+        if (!visited.contains(s)) {
+          visited.addOne(s)
+          todo.addOne(s)
+          if (reflexive) resultBuilder.addOne(s)
+        }
+      }
+      while (todo.nonEmpty) {
+        function(todo.removeLast()).foreach { neighbor =>
+          if (!visited.contains(neighbor)) {
+            visited.addOne(neighbor)
+            todo.addOne(neighbor)
+            resultBuilder.addOne(neighbor)
           }
         }
-      case _ =>
-        // Fallback: For sequence-based collections where order matters, use an ArrayBuffer.
-        // Note: `visited.contains` is O(N), which may impact performance on very large graphs.
-        val visited = new mutable.ArrayBuffer[T]
-        start.foreach { s =>
-          if (!visited.contains(s)) {
-            visited.addOne(s)
-            todo.addOne(s)
-            if (reflexive) resultBuilder.addOne(s)
-          }
-        }
-        while (todo.nonEmpty) {
-          function(todo.removeLast()).foreach { neighbor =>
-            if (!visited.contains(neighbor)) {
-              visited.addOne(neighbor)
-              todo.addOne(neighbor)
-              resultBuilder.addOne(neighbor)
-            }
-          }
-        }
+      }
     }
     resultBuilder.result()
   }
