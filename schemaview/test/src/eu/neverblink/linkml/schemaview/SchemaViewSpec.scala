@@ -520,7 +520,43 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       val ex = intercept[IllegalArgumentException] {
         sv.classes("ExtUnknown").treeRootInlineType(None)
       }
-      ex.getMessage should include("Unknown tree_root_as extension value: 'unknown'")
+      ex.getMessage should include("ExtUnknown")
+      ex.getMessage should include("tree_root_as")
+      ex.getMessage should include("'unknown'")
+    }
+
+    "use the tree_root_as mode override" in {
+      val model =
+        """id: http://example.com/c
+          |name: c
+          |classes:
+          |  NoExt:
+          |    tree_root: true
+          |  ExtPlain:
+          |    extensions:
+          |      tree_root_as: plain
+          |  ExtOptional:
+          |    extensions:
+          |      tree_root_as: optional
+          |  ExtList:
+          |    extensions:
+          |      tree_root_as: list
+          |  ExtUnknown:
+          |    extensions:
+          |      tree_root_as: unknown
+          |""".stripMargin
+      val sv = SchemaView.single(parse(model))
+      sv.classes("NoExt").treeRootInlineType(Some("list")) shouldBe InlineType.list
+      sv.classes("ExtPlain").treeRootInlineType(Some("optional")) shouldBe InlineType.optional
+      sv.classes("ExtOptional").treeRootInlineType(Some("plain")) shouldBe InlineType.plain
+      sv.classes("ExtList").treeRootInlineType(Some("plain")) shouldBe InlineType.plain
+      val ex = intercept[IllegalArgumentException] {
+        sv.classes("ExtUnknown").treeRootInlineType(Some("very unknown"))
+      }
+      ex.getMessage should include("ExtUnknown")
+      ex.getMessage should include("tree_root_as")
+      ex.getMessage should include("override")
+      ex.getMessage should include("very unknown")
     }
 
     "return failure if the tree_root override is invalid" in {

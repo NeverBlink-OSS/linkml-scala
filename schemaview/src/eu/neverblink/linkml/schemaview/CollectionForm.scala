@@ -6,7 +6,8 @@ import eu.neverblink.linkml.metamodel.SlotDefinition
 sealed trait CollectionForm
 
 /** Dict form of a class, excludes List from [[CollectionForm]] */
-sealed trait DictForm extends CollectionForm
+sealed trait DictForm extends CollectionForm:
+  def key: String
 
 object CollectionForm {
 

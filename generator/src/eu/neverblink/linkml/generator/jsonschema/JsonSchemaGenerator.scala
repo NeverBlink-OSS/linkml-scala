@@ -169,6 +169,36 @@ class JsonSchemaGenerator(using sv: SchemaView) {
         description = enum_.description,
       )
     }
+
+    val baseSchema = maybeTreeRoot match {
+      case Some(treeRoot) =>
+        val classSchema = Schema.referenceTo("#/$defs/", className(treeRoot))
+        val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
+        inlineType match {
+          case InlineType.plain => classSchema // object (mandatory)
+          case InlineType.optional =>
+            Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
+          case InlineType.list =>
+            arraySchema.copy(items = Some(classSchema)) // array of objects
+          case InlineType.dict(CollectionForm.CompactDict(key)) =>
+            val mappedClassName = className(treeRoot)
+            needKeyless.add(mappedClassName -> slotName(treeRoot.derivedAttributes(key)))
+            Schema.referenceTo(
+              "#/$defs/",
+              mappedClassName + "__identifier_optional",
+            ).dictOf
+          case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
+            val mappedClassName = className(treeRoot)
+            needValue.add(mappedClassName -> slotName(treeRoot.derivedAttributes(value)))
+            Schema.referenceTo(
+              "#/$defs/",
+              mappedClassName + "__simple_dict_value",
+            ).dictOf
+        }
+      case _ => Schema.Empty
+    }
+
+    // Generate the needed keyless/value refs
     val defMap = defsClasses.toMap
     val defsKeyless = for (className, idField) <- needKeyless yield {
       val classSchema = defMap(className)
@@ -180,24 +210,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       val simpleDict = defMap(className)
       className + "__simple_dict_value" -> simpleDict.properties(valueField).asInstanceOf[Schema]
     }
-    val baseSchema = maybeTreeRoot match {
-      case Some(treeRoot) =>
-        // TODO LNK-97: cover this with tests
-        val classSchema = Schema.referenceTo("#/$defs/", className(treeRoot))
-        val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
-        inlineType match {
-          case InlineType.plain => classSchema // object (mandatory)
-          case InlineType.optional =>
-            Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
-          case InlineType.list =>
-            arraySchema.copy(items = Some(classSchema)) // array of objects
-          case _ =>
-            throw NotImplementedError(
-              s"Tree root inline type '$inlineType' is not implemented for JSON Schema.",
-            )
-        }
-      case _ => Schema.Empty
-    }
+
     baseSchema.copy(
       $schema = Some("https://json-schema.org/draft/2020-12/schema"),
       $id = Some(sv.root.id.uri(using sv.rootPrefixResolver)),
@@ -222,8 +235,12 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       open: Boolean = false,
       treeRootOverride: Option[String] = None,
       indentationStep: Int = 2,
+      treeRootInlineTypeOverride: Option[String] = None,
   ): String =
-    writeToString(generate(open, treeRootOverride), WriterConfig.withIndentionStep(indentationStep))
+    writeToString(
+      generate(open, treeRootOverride, treeRootInlineTypeOverride),
+      WriterConfig.withIndentionStep(indentationStep),
+    )
 }
 
 object JsonSchemaGenerator {
