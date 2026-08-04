@@ -98,8 +98,7 @@ object Closure {
     *
     * This method performs a Depth-First Search (DFS) using an `ArrayDeque` as a stack. It includes
     * a performance optimization: if the provided `useHashCode` is `true`, it uses an O(1) `HashSet`
-    * to track visited nodes. Otherwise, it falls back to an O(N) `ArrayBuffer` for visited checks
-    * to strictly preserve insertion order/duplicates based on the builder's semantics.
+    * to track visited nodes. Otherwise, it falls back to an O(N) `ArrayBuffer` for visited checks.
     *
     * In an irreflexive closure, the `start` node will not be included in the result.
     *
