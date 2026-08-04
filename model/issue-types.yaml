@@ -1,0 +1,59 @@
+id: https://linkml.neverblink.eu/model/issue-types
+name: issue-types
+title: LinkML schema validation issue types
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  report: https://linkml.neverblink.eu/model/validation-report#
+  issue: https://linkml.neverblink.eu/model/issue-types#
+default_prefix: issue
+imports:
+  - validation-report
+
+classes:
+  # TODO: invalid yaml (parse error)
+  UndefinedDefaultRange:
+    is_a: SchemaWarning
+    slot_usage:
+      message:
+        equals_expression: "No 'default_range' is defined in the schema"
+      details:
+        equals_expression: >-
+          The 'default_range' of the schema is not defined and could not find a 'string' type to use as a fallback.
+          This will become a fatal error if any slots in the schema omit their 'range'.
+          Add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
+
+  UnknownReference:
+    is_a: SchemaFatal
+    attributes:
+      reference_value:
+        range: string
+        required: true
+        title: reference value
+    slot_usage:
+      message:
+        equals_expression: "Unknown reference to element '{reference_value}'"
+      details:
+        equals_expression: >-
+          The schema contains a reference to an element '{reference_value}' that is not defined in the schema.
+          This could be a class, slot, or type. Check the schema for typos or missing definitions.
+
+  UnknownStringReference:
+    is_a: SchemaFatal
+    slot_usage:
+      message:
+        equals_expression: "Unknown reference to element 'string'"
+      details:
+        equals_expression: >-
+          The schema contains a reference to an element 'string' that is not defined in the schema.
+          Make sure you have 'linkml:types' imported.
+
+#MissingClass:
+#  is_a: SchemaIssue
+#  attributes:
+#    class:
+#      range: string
+#      required: true
+#      title: class
+#  slot_usage:
+#    message:
+#      equals_expression: "{class} is missing from the schema."
