@@ -102,20 +102,20 @@ final class DerivedReachabilityQuery(
         val type_ = sv.types(name)._type
         type_.typeof.foreach { t =>
           t.resolve match {
-            case Some(r) => result.addOne((typeDef, r.name))
+            case Some(td) => result.addOne((typeDef, td.name))
             case _ =>
           }
         }
         type_.unionOf.foreach { t =>
           t.resolve match {
-            case Some(r) => result.addOne((typeDef, r.name))
+            case Some(td) => result.addOne((typeDef, td.name))
             case _ =>
           }
         }
       case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.foreach { t =>
-          t.resolve match {
-            case Some(r) => result.addOne((enumDef, r.name))
+        sv.enums(name)._enum.inherits.foreach { e =>
+          e.resolve match {
+            case Some(ed) => result.addOne((enumDef, ed.name))
             case _ =>
           }
         }
@@ -192,9 +192,9 @@ final class UnderivedReachabilityQuery(
         }
         collectSlotRefs(slotView, result)
       case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.foreach { t =>
-          t.resolve match {
-            case Some(r) => result.addOne((enumDef, r.name))
+        sv.enums(name)._enum.inherits.foreach { e =>
+          e.resolve match {
+            case Some(ed) => result.addOne((enumDef, ed.name))
             case _ =>
           }
         }
