@@ -46,9 +46,7 @@ object Closure {
 
   /** Computes the irreflexive transitive closure starting from a single node.
     *
-    * In an irreflexive closure, the `start` node is NOT automatically included in the result. It
-    * will only be present in the output if it is reachable via a cycle (i.e., another node points
-    * back to it).
+    * In an irreflexive closure, the `start` node will not be included in the result.
     *
     * @tparam T
     *   The type of the nodes in the graph.
@@ -103,6 +101,8 @@ object Closure {
     * `HashSet` to track visited nodes. For all other builder types, it falls back to an O(N)
     * `ArrayBuffer` for visited checks to strictly preserve insertion order/duplicates based on the
     * builder's semantics.
+    *
+    * In an irreflexive closure, the `start` node will not be included in the result.
     *
     * @tparam T
     *   The type of the nodes in the graph.
