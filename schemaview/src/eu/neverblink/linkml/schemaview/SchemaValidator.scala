@@ -230,13 +230,15 @@ final class SchemaValidator(using sv: SchemaView) {
     */
   private lazy val invalidSlotUsage: Seq[SchemaProblem.Warning] =
     sv.classes.values.foldLeft(Seq.newBuilder[SchemaProblem.Warning]) { (acc, cls) =>
-      val applicableSlotNames = java.util.HashSet[String]
+      // Collect all slot names that are applicable to this class definition.
+      val applicableSlotNames = new util.HashSet[String]
       cls.ancestors(true).foreach { anc =>
         val keys = anc.cls.attributes.keysIterator
         while (keys.hasNext) applicableSlotNames.add(keys.next())
         val slots = anc.cls.slots.iterator
         while (slots.hasNext) applicableSlotNames.add(slots.next().value)
       }
+      // Filter problematic slots for the warning per class
       val problemSlots = cls.cls.slotUsage.keys
         .filter(x => !applicableSlotNames.contains(x))
       if (problemSlots.nonEmpty) {

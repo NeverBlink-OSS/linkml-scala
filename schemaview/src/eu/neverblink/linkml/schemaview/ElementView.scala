@@ -78,6 +78,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   lazy val (derivedAttributes: Map[String, SlotView], identifier: Option[SlotView]) = {
     var idSv: SlotView = null
     var das = Map.empty[String, SlotView]
+    // Get all slots that are applicable to this class definition.
+    // Returns a sequence of pairs of slot name and the derived slot definition,
+    // where the source is either a ClassView (if the slot is defined as an attribute) or
+    // a SlotView (if the slot is defined as a top-level slot). The source is used
+    // for default prefix and range resolution according to the original schema file.
+    // See: https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#function-applicable-slots
     ancestors(true).foreach { anc =>
       val keys = anc.cls.attributes.keysIterator
       while (keys.hasNext) {

@@ -147,7 +147,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
         "enum SomeEnum",
         s"@linkml_uri(uri: \"${id}SomeEnum\")",
         "SOME_OPTION",
-        s"@linkml_uri(uri: \"http://www.w3.org/1999/02/22-rdf-syntax-ns#subject\")",
+        "@linkml_uri(uri: \"http://www.w3.org/1999/02/22-rdf-syntax-ns#subject\")",
         "SOME_OTHER_OPTION",
         s"@linkml_uri(uri: \"${id}SOME_OTHER_OPTION\")",
         "YET_ANOTHER_OPTION",
