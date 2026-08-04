@@ -4,6 +4,8 @@ import eu.neverblink.linkml.metamodel.*
 import SchemaReachabilityQuery.*
 import ElementTypeTag.*
 
+import scala.collection.mutable
+
 /** Base class for LinkML schema reachability queries. Provides information about whether metamodel
   * [[Element]]s should are reachable in some way, specified by concrete implementations.
   * @todo
@@ -29,13 +31,23 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
     */
   protected lazy val resolved: Set[TaggedReference]
 
-  /** Shared method for computing the [[TaggedReference]]s for a slot's range/domains.
+  /** Shared method for collecting the [[TaggedReference]]s for a slot's range/domains.
     */
-  protected def slotRefs(slot: SlotView): Iterable[TaggedReference] = {
-    val booleanSlots = slot.slot.anyOf.flatMap(_.range.flatMap(_.resolve))
-    val mainRange: Option[Element] = slot.derivedRange.resolve.map(_.inner)
-    val blep = slot.slot.domain.flatMap(_.resolve)
-    (booleanSlots ++ mainRange ++ blep).map(el => ElementTypeTag(el) -> el.name)
+  protected def collectSlotRefs(
+      slot: SlotView,
+      results: mutable.ArrayBuffer[TaggedReference],
+  ): Unit = {
+    slot.slot.anyOf.foreach { anyOfNode =>
+      anyOfNode.range.foreach { rangeNode =>
+        rangeNode.resolve.foreach(el => results.addOne((ElementTypeTag(el), el.name)))
+      }
+    }
+    slot.derivedRange.resolve.foreach { resolvedRange =>
+      results.addOne((ElementTypeTag(resolvedRange.inner), resolvedRange.inner.name))
+    }
+    slot.slot.domain.foreach { domainNode =>
+      domainNode.resolve.foreach(el => results.addOne((ElementTypeTag(el), el.name)))
+    }
   }
 }
 
@@ -64,36 +76,49 @@ final class DerivedReachabilityQuery(
     extends SchemaReachabilityQuery {
 
   protected lazy val resolved: Set[TaggedReference] = {
-    val start: Seq[TaggedReference] = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
-    Closure.reflexive(start, walk).toSet
+    val start = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
+    Closure.get(start, walk, true, Set.newBuilder[TaggedReference])
   }
 
   private def walk(current: TaggedReference): Iterable[TaggedReference] = {
-    val (tag, name) = current
-    val res: Iterable[TaggedReference] = tag match {
+    val tag = current.tag
+    val name = current.value
+    val result = new mutable.ArrayBuffer[TaggedReference]
+    tag match {
       case ElementTypeTag.classDef =>
         val classView = sv.classes(name)
-        classView.derivedAttributes.values.flatMap {
+        classView.derivedAttributes.values.foreach {
           // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
-          case s if !inlinedOnly || s.derivedInlined => slotRefs(s)
-          case _ => None
-        } ++ (
-          if includeClassAncestors
-          then classView.parents.map(classDef -> _.name)
-          else Seq()
-        )
+          case s if !inlinedOnly || s.derivedInlined => collectSlotRefs(s, result)
+          case _ =>
+        }
+        if (includeClassAncestors) {
+          classView.parents.foreach(anc => result.addOne((classDef, anc.name)))
+        }
       case ElementTypeTag.typeDef =>
-        val typeView = sv.types(name)
-        (typeView._type.typeof ++ typeView._type.unionOf)
-          .flatMap(_.resolve)
-          .map(typeDef -> _.name)
-      case ElementTypeTag.slotDef =>
-        None // this should not happen
+        val type_ = sv.types(name)._type
+        type_.typeof.foreach { t =>
+          t.resolve match {
+            case Some(r) => result.addOne((typeDef, r.name))
+            case _ =>
+          }
+        }
+        type_.unionOf.foreach { t =>
+          t.resolve match {
+            case Some(r) => result.addOne((typeDef, r.name))
+            case _ =>
+          }
+        }
       case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.flatMap(_.resolve).map(enumDef -> _.name)
-      case _ => None
+        sv.enums(name)._enum.inherits.foreach { t =>
+          t.resolve match {
+            case Some(r) => result.addOne((enumDef, r.name))
+            case _ =>
+          }
+        }
+      case _ =>
     }
-    res
+    result
   }
 }
 
@@ -107,38 +132,67 @@ final class UnderivedReachabilityQuery(
     extends SchemaReachabilityQuery {
 
   protected lazy val resolved: Set[TaggedReference] = {
-    val start: Seq[TaggedReference] = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
-    Closure.reflexive(start, walk).toSet
+    val start = from.map(ev => ElementTypeTag(ev.inner) -> ev.inner.name)
+    Closure.get(start, walk, true, Set.newBuilder[TaggedReference])
   }
 
   private def walk(current: TaggedReference): Iterable[TaggedReference] =
-    val (typeTag, name) = current
-    typeTag match {
+    val tag = current.tag
+    val name = current.value
+    val result = new mutable.ArrayBuffer[TaggedReference]
+    tag match {
       case ElementTypeTag.classDef =>
         val classView = sv.classes(name)
-        val inheritance = classView.ancestors(reflexive = false).map(classDef -> _.cls.name)
-        val referencedSlots = classView.cls.slots.map(slotDef -> _.value)
+        classView.ancestors(reflexive = false).foreach { anc =>
+          result.addOne(classDef -> anc.cls.name)
+        }
+        classView.cls.slots.foreach(slot => result.addOne(slotDef -> slot.value))
         // The *ranges* of class-defined slots (attributes, slot_usage)
-        val classDefinedSlots =
-          (classView.cls.attributes.values ++ classView.cls.slotUsage.values)
-            .flatMap(sd => slotRefs(SlotView(sd, classView.definingSchema)))
-        inheritance ++ referencedSlots ++ classDefinedSlots
+        classView.cls.attributes.values.foreach { sd =>
+          collectSlotRefs(SlotView(sd, classView.definingSchema), result)
+        }
+        classView.cls.slotUsage.values.foreach { sd =>
+          collectSlotRefs(SlotView(sd, classView.definingSchema), result)
+        }
       case ElementTypeTag.typeDef =>
-        val typeView = sv.types(name)
-        (typeView._type.typeof ++ typeView._type.unionOf)
-          .flatMap(_.resolve)
-          .map(typeDef -> _.name)
+        val type_ = sv.types(name)._type
+        type_.typeof.foreach { t =>
+          t.resolve match {
+            case Some(td) => result.addOne((typeDef, td.name))
+            case _ =>
+          }
+        }
+        type_.unionOf.foreach { t =>
+          t.resolve match {
+            case Some(td) => result.addOne((typeDef, td.name))
+            case _ =>
+          }
+        }
       case ElementTypeTag.slotDef =>
         val slotView = sv.slotDefinitions(name)
-        val inheritance = slotView.slot.isA ++ slotView.slot.mixins
-        val ranges = slotRefs(slotView)
-        inheritance
-          .flatMap(_.resolve)
-          .map(el => ElementTypeTag(el) -> el.name) ++ ranges
+        slotView.slot.isA.foreach { s =>
+          s.resolve match {
+            case Some(sd) => result.addOne((slotDef, sd.name))
+            case _ =>
+          }
+        }
+        slotView.slot.mixins.foreach { s =>
+          s.resolve match {
+            case Some(sd) => result.addOne((slotDef, sd.name))
+            case _ =>
+          }
+        }
+        collectSlotRefs(slotView, result)
       case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.flatMap(_.resolve).map(enumDef -> _.name)
-      case _ => None
+        sv.enums(name)._enum.inherits.foreach { t =>
+          t.resolve match {
+            case Some(r) => result.addOne((enumDef, r.name))
+            case _ =>
+          }
+        }
+      case _ =>
     }
+    result
 }
 
 private object SchemaReachabilityQuery {

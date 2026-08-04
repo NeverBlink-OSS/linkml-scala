@@ -13,7 +13,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
   )
 
   // dummy query object to make the generated types a valid graphql schema
-  val dummyQuery =
+  val dummyQuery: String =
     """type Query {
       |  test: String
       |}
