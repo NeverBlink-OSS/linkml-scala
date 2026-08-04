@@ -15,36 +15,27 @@ final class SchemaValidator(using sv: SchemaView) {
   // TODO: warn about shadowing
 
   /** Whether omitting `range` will result in a valid reference */
-  private lazy val isDefaultRangeAllowed: Boolean = sv.root.defaultRange match {
-    case Some(value) => true
-    case None =>
-      sv.types.get("string") match {
-        case Some(value) => true
-        case None => false
-      }
-  }
+  private lazy val isDefaultRangeAllowed: Boolean =
+    sv.root.defaultRange.isDefined || sv.types.contains("string")
 
   private given ValidatorContext = ValidatorContext(isDefaultRangeAllowed)
 
   /** Macro validator's result */
-  private lazy val macroResult = sv.schemas.map(schema =>
+  private lazy val macroResult = sv.schemas.foldLeft(ValidatorResult.ok) { (acc, schema) =>
     // TODO LNK-166: Store the element "fromSchema"
-    macroValidator.validate(schema.asInstanceOf).prependedPath("/"),
-  ).fold(ValidatorResult.ok)(_ + _)
+    acc + macroValidator.validate(schema.asInstanceOf).prependedPath("/")
+  }
 
   /** Any invalid references present in the schema. Empty if all references are valid. */
-  lazy val unknownReferences: Seq[SchemaProblem.Fatal] = {
+  lazy val unknownReferences: Seq[SchemaProblem.Fatal] =
     macroResult.unknownReferences.map(SchemaProblem.UnknownReferenceProblem(_))
-  }
 
   /** Any usages of an undefined `default_range`. Empty if no usages found. */
-  lazy val usedUndefinedDefaultRange: Seq[SchemaProblem.Fatal] = {
+  lazy val usedUndefinedDefaultRange: Seq[SchemaProblem.Fatal] =
     macroResult.invalidDefaultRanges.map(SchemaProblem.InvalidDefaultRangeProblem(_))
-  }
 
   lazy val schemaIdClash: Seq[SchemaProblem.Fatal] = {
     val schemas = sv.schemas.toIndexedSeq
-
     for
       (s1, s1index) <- schemas.zipWithIndex
       s2 <- schemas.slice(s1index + 1, schemas.size)
@@ -56,15 +47,13 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Warning if defining a slot without a `range` will cause a fatal error, None otherwise
     */
-  private lazy val undefinedDefaultRange: Option[SchemaProblem.Warning] = {
+  private lazy val undefinedDefaultRange: Option[SchemaProblem.Warning] =
     if isDefaultRangeAllowed then None
     else Some(SchemaProblem.UndefinedDefaultRange)
-  }
 
   /** Any `range` slots pointing at invalid elements in the schema. */
-  lazy val invalidRangeTypes: Seq[SchemaProblem.Fatal] = {
+  lazy val invalidRangeTypes: Seq[SchemaProblem.Fatal] =
     macroResult.invalidRanges.map(SchemaProblem.InvalidRangeProblem(_))
-  }
 
   /** Error when a schema has multiple `tree_root` classes, None otherwise */
   private lazy val multipleTreeRoots: Option[SchemaProblem.Error] = {
@@ -239,18 +228,24 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Ensure that any declared slot usages are refining some applicable slot (top level slot or
     * attribute)
     */
-  private lazy val invalidSlotUsage: Seq[SchemaProblem.Warning] = {
-    val perClass = for (cls <- sv.classes.values) yield {
-      val slotUsageNames = cls.cls.slotUsage.keys
-      val applicableSlotNames = cls.applicableSlots.map(_.ref.value)
-      val problemSlots = slotUsageNames
+  private lazy val invalidSlotUsage: Seq[SchemaProblem.Warning] =
+    sv.classes.values.foldLeft(Seq.newBuilder[SchemaProblem.Warning]) { (acc, cls) =>
+      // Collect all slot names that are applicable to this class definition.
+      val applicableSlotNames = new util.HashSet[String]
+      cls.ancestors(true).foreach { anc =>
+        val keys = anc.cls.attributes.keysIterator
+        while (keys.hasNext) applicableSlotNames.add(keys.next())
+        val slots = anc.cls.slots.iterator
+        while (slots.hasNext) applicableSlotNames.add(slots.next().value)
+      }
+      // Filter problematic slots for the warning per class
+      val problemSlots = cls.cls.slotUsage.keys
         .filter(x => !applicableSlotNames.contains(x))
-      if problemSlots.nonEmpty then
-        Some(SchemaProblem.InvalidSlotUsage(cls.cls, problemSlots.toSeq))
-      else None
-    }
-    perClass.flatten.toSeq
-  }
+      if (problemSlots.nonEmpty) {
+        acc.addOne(SchemaProblem.InvalidSlotUsage(cls.cls, problemSlots.toSeq))
+      }
+      acc
+    }.result()
 
   private def slotImplicitPrefix(
       slotDefinition: SlotDefinition,
