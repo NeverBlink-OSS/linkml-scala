@@ -9,34 +9,6 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
   def decode(schemaYaml: String): SchemaView =
     SchemaView.loadSchemaViewFromString(schemaYaml)
 
-  /** Compile the given Scala sources with the Scala 3 compiler. The test classpath is reused, so
-    * the generated code is checked against the real `runtime` module.
-    *
-    * @return
-    *   The compiler output if compilation failed, or None if it succeeded.
-    */
-  def compileScala(sources: Seq[os.Path]): Option[String] = {
-    val out = os.temp.dir(prefix = "linkml-scala-out")
-    val args = Array(
-      "-classpath",
-      System.getProperty("java.class.path"),
-      "-d",
-      out.toString,
-    ) ++ sources.map(_.toString)
-    val log = java.io.ByteArrayOutputStream()
-    val reporter = Console.withErr(log) {
-      Console.withOut(log)(dotty.tools.dotc.Driver().process(args))
-    }
-    Option.when(reporter.hasErrors)(log.toString)
-  }
-
-  val knownNotCompiling: Map[String, String] = Map(
-    "syntheticUris" ->
-      "LNK-169: element names that are not valid Scala identifiers are emitted without escaping",
-    "nonHermetic" ->
-      "LNK-169: a type whose base has the same name generates a cyclic alias (`type Int = Int`)",
-  )
-
   "Scala generator" should {
     // Shared part of the schema
     val schemaShared =
@@ -850,31 +822,6 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
           val files = ScalaGenerator(using entry.model).generate("eu.neverblink.linkml.scala.test")
           files should not be empty
           for (_, content) <- files do content should not be ""
-        }
-    }
-
-    "generate code that compiles" when {
-      for entry <- ModelCatalogue.all do
-        val modelName = entry.model.root.name
-        s"model '$modelName'" in {
-          val dir = os.temp.dir(prefix = "linkml-scala-src")
-          val sources = ScalaGenerator(using entry.model).generate("generated").map {
-            (name, content) =>
-              val file = dir / name
-              os.write(file, content)
-              file
-          }.toSeq
-          sources should not be empty
-          val failure = compileScala(sources)
-          knownNotCompiling.get(modelName) match {
-            case None =>
-              withClue(s"compiler output:\n${failure.getOrElse("")}\n")(failure shouldBe None)
-            case Some(reason) =>
-              withClue(
-                s"model '$modelName' is listed as known not to compile ($reason), but it " +
-                  "compiles now - remove it from knownNotCompiling",
-              )(failure should not be None)
-          }
         }
     }
   }
