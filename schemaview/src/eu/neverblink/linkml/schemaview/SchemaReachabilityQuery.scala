@@ -43,7 +43,8 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
       }
     }
     slot.derivedRange.resolve.foreach { resolvedRange =>
-      results.addOne((ElementTypeTag(resolvedRange.inner), resolvedRange.inner.name))
+      val el = resolvedRange.inner
+      results.addOne((ElementTypeTag(el), el.name))
     }
     slot.slot.domain.foreach { domainNode =>
       domainNode.resolve.foreach(el => results.addOne((ElementTypeTag(el), el.name)))
@@ -76,7 +77,10 @@ final class DerivedReachabilityQuery(
     extends SchemaReachabilityQuery {
 
   protected lazy val resolved: Set[TaggedReference] = Closure.get(
-    start = from.map(ev => (ElementTypeTag(ev.inner), ev.inner.name)),
+    start = from.map { ev =>
+      val el = ev.inner
+      (ElementTypeTag(el), el.name)
+    },
     function = walk,
     reflexive = true,
     resultBuilder = Set.newBuilder[TaggedReference],
@@ -135,7 +139,10 @@ final class UnderivedReachabilityQuery(
     extends SchemaReachabilityQuery {
 
   protected lazy val resolved: Set[TaggedReference] = Closure.get(
-    start = from.map(ev => (ElementTypeTag(ev.inner), ev.inner.name)),
+    start = from.map { ev =>
+      val el = ev.inner
+      (ElementTypeTag(el), el.name)
+    },
     function = walk,
     reflexive = true,
     resultBuilder = Set.newBuilder[TaggedReference],
@@ -153,7 +160,7 @@ final class UnderivedReachabilityQuery(
           result.addOne((classDef, anc.cls.name))
         }
         val cls = classView.cls
-        cls.slots.foreach(slot => result.addOne(slotDef -> slot.value))
+        cls.slots.foreach(slot => result.addOne((slotDef, slot.value)))
         // The *ranges* of class-defined slots (attributes, slot_usage)
         val definingSchema = classView.definingSchema
         cls.attributes.values.foreach { sd =>
