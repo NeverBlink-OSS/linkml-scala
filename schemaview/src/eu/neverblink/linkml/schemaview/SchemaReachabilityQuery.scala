@@ -96,7 +96,7 @@ final class DerivedReachabilityQuery(
         val classView = sv.classes(name)
         classView.derivedAttributes.values.foreach {
           // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
-          case s if !inlinedOnly || s.derivedInlined => collectSlotRefs(s, result)
+          case sv if !inlinedOnly || sv.derivedInlined => collectSlotRefs(sv, result)
           case _ =>
         }
         if (includeClassAncestors) {
@@ -104,21 +104,21 @@ final class DerivedReachabilityQuery(
         }
       case ElementTypeTag.typeDef =>
         val type_ = sv.types(name)._type
-        type_.typeof.foreach { t =>
-          t.resolve match {
+        type_.typeof.foreach { tr =>
+          tr.resolve match {
             case Some(td) => result.addOne((typeDef, td.name))
             case _ =>
           }
         }
-        type_.unionOf.foreach { t =>
-          t.resolve match {
+        type_.unionOf.foreach { tr =>
+          tr.resolve match {
             case Some(td) => result.addOne((typeDef, td.name))
             case _ =>
           }
         }
       case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.foreach { e =>
-          e.resolve match {
+        sv.enums(name)._enum.inherits.foreach { er =>
+          er.resolve match {
             case Some(ed) => result.addOne((enumDef, ed.name))
             case _ =>
           }
@@ -160,7 +160,7 @@ final class UnderivedReachabilityQuery(
           result.addOne((classDef, anc.cls.name))
         }
         val cls = classView.cls
-        cls.slots.foreach(slot => result.addOne((slotDef, slot.value)))
+        cls.slots.foreach(sr => result.addOne((slotDef, sr.value)))
         // The *ranges* of class-defined slots (attributes, slot_usage)
         val definingSchema = classView.definingSchema
         cls.attributes.values.foreach { sd =>
@@ -171,36 +171,36 @@ final class UnderivedReachabilityQuery(
         }
       case ElementTypeTag.typeDef =>
         val type_ = sv.types(name)._type
-        type_.typeof.foreach { t =>
-          t.resolve match {
+        type_.typeof.foreach { tr =>
+          tr.resolve match {
             case Some(td) => result.addOne((typeDef, td.name))
             case _ =>
           }
         }
-        type_.unionOf.foreach { t =>
-          t.resolve match {
+        type_.unionOf.foreach { tr =>
+          tr.resolve match {
             case Some(td) => result.addOne((typeDef, td.name))
             case _ =>
           }
         }
       case ElementTypeTag.slotDef =>
         val slotView = sv.slotDefinitions(name)
-        slotView.slot.isA.foreach { s =>
-          s.resolve match {
+        slotView.slot.isA.foreach { sr =>
+          sr.resolve match {
             case Some(sd) => result.addOne((slotDef, sd.name))
             case _ =>
           }
         }
-        slotView.slot.mixins.foreach { s =>
-          s.resolve match {
+        slotView.slot.mixins.foreach { sr =>
+          sr.resolve match {
             case Some(sd) => result.addOne((slotDef, sd.name))
             case _ =>
           }
         }
         collectSlotRefs(slotView, result)
       case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.foreach { e =>
-          e.resolve match {
+        sv.enums(name)._enum.inherits.foreach { er =>
+          er.resolve match {
             case Some(ed) => result.addOne((enumDef, ed.name))
             case _ =>
           }
