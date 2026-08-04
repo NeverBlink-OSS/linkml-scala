@@ -131,7 +131,7 @@ object Closure {
     // Stack for Depth-First Search traversal
     val todo = new mutable.ArrayDeque[T]
     if (useHashCode) {
-      // Optimization: If the target collection is Set-based, we can use a fast HashSet for visited checks.
+      // Optimization: We can use a fast HashSet for visited checks.
       val visited = new mutable.HashSet[T]
       start.foreach { s =>
         if (visited.add(s)) {
@@ -148,7 +148,7 @@ object Closure {
         }
       }
     } else {
-      // Fallback: For sequence-based collections where order matters, use an ArrayBuffer.
+      // Fallback: Use an ArrayBuffer.
       // Note: `visited.contains` is O(N), which may impact performance on very large graphs.
       val visited = new mutable.ArrayBuffer[T]
       start.foreach { s =>
