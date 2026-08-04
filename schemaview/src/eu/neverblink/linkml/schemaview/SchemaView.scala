@@ -45,7 +45,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: EnumView => enums.get(ref.value)
       case _: SlotView => slotDefinitions.get(ref.value)
       case _: SubsetView => subsets.get(ref.value)
-      case _: ElementView[?] => getElement(ref.value)
+      case _: ElementView[?, ?] => getElement(ref.value)
       case _ => compiletime.error("SchemaView can't dereference " + compiletime.codeOf(ref))
     }).asInstanceOf[Option[T]]
 
@@ -89,7 +89,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       acc
     }.result()
 
-  lazy val elements: Map[String, ElementView[? <: Element]] =
+  lazy val elements: Map[String, ElementView[? <: Element, ?]] =
     subsets ++ slotDefinitions ++ enums ++ types ++ classes
 
   /** Cached prefix resolvers for each schema in the view.
@@ -136,7 +136,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     *   Starting set of elements
     */
   def underivedReachabilityQuery(
-      from: Seq[ElementView[?]],
+      from: Seq[ElementView[?, ?]],
   ): UnderivedReachabilityQuery = UnderivedReachabilityQuery(from)
 
   /** Get all elements reachable from a given starting set, following derived attributes and other
@@ -154,14 +154,14 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     *   If true, will include class' ancestors when computing reachability.
     */
   def derivedReachabilityQuery(
-      from: Seq[ElementView[?]],
+      from: Seq[ElementView[?, ?]],
       inlinedOnly: Boolean,
       includeClassAncestors: Boolean,
   ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
 
   /** Get a schema element by its ID
     */
-  def getElement(name: String): Option[ElementView[?]] = elements.get(name)
+  def getElement(name: String): Option[ElementView[?, ?]] = elements.get(name)
 
   /** Get the class defined as `tree_root: true` from the schema, if any is present
     */

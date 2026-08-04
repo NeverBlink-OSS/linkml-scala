@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class ExtraSlotsExpressionImpl(
+final case class ExtraSlotsExpressionImpl(
     allowed: Boolean = false,
     @named("range_expression")
     rangeExpression: Option[AnonymousSlotExpressionImpl] = None,

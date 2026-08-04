@@ -30,7 +30,7 @@ enum PruningMode:
   /** Don't prune anything */
   case skip
 
-  private def initialSet(using sv: SchemaView): Seq[ElementView[?]] = {
+  private def initialSet(using sv: SchemaView): Seq[ElementView[?, ?]] = {
     lazy val defaultRanges = sv.schemas.map(
       _
         .defaultRange

@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class SettingImpl(
+final case class SettingImpl(
     @id
     @named("setting_key")
     settingKey: NcName,

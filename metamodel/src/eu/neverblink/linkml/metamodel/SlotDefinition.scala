@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class SlotDefinitionImpl(
+final case class SlotDefinitionImpl(
     @id
     name: String,
     @named("slot_uri")

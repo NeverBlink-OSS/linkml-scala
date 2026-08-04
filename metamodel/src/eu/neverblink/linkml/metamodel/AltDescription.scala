@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class AltDescriptionImpl(
+final case class AltDescriptionImpl(
     @id
     @named("source")
     altDescriptionSource: String,

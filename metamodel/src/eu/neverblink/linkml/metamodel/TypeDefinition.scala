@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class TypeDefinitionImpl(
+final case class TypeDefinitionImpl(
     @id
     name: String,
     @named("uri")

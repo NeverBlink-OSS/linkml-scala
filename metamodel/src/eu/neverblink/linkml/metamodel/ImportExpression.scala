@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class ImportExpressionImpl(
+final case class ImportExpressionImpl(
     title: Option[String] = None,
     description: Option[String] = None,
     rank: Option[Int] = None,

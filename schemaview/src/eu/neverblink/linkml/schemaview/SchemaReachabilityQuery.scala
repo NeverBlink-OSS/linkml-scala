@@ -23,7 +23,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
   /** @return
     *   true if the underlying [[Element]] of the provided [[ElementView]] is reachable
     */
-  def reachable(element: ElementView[?]): Boolean =
+  def reachable(element: ElementView[?, ?]): Boolean =
     reachable(element.inner.asInstanceOf[Element])
 
   /** Lazily computed set of [[TaggedReference]]s that are reachable for the default implementation
@@ -56,7 +56,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
   */
 final class IncludeAllReachabilityQuery(using SchemaView) extends SchemaReachabilityQuery {
   override def reachable(element: Element): Boolean = true
-  override def reachable(element: ElementView[?]): Boolean = true
+  override def reachable(element: ElementView[?, ?]): Boolean = true
   protected lazy val resolved: Set[TaggedReference] = Set.empty
 }
 
@@ -70,7 +70,7 @@ final class IncludeAllReachabilityQuery(using SchemaView) extends SchemaReachabi
   *   If true, will include class' ancestors when computing reachability.
   */
 final class DerivedReachabilityQuery(
-    val from: Seq[ElementView[?]],
+    val from: Seq[ElementView[?, ?]],
     val inlinedOnly: Boolean,
     val includeClassAncestors: Boolean,
 )(using sv: SchemaView)
@@ -134,7 +134,7 @@ final class DerivedReachabilityQuery(
   *   [[Element]]s to start the search from
   */
 final class UnderivedReachabilityQuery(
-    val from: Seq[ElementView[?]],
+    val from: Seq[ElementView[?, ?]],
 )(using sv: SchemaView)
     extends SchemaReachabilityQuery {
 

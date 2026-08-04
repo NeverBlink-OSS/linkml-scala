@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
@@ -567,6 +568,35 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
             include("Could not find class 'nonexistent_class'")
         case Success(_) => fail("Expected failure but got success")
       }
+    }
+
+    "resolve the ifabsent default value of a slot" in {
+      val model =
+        """id: http://example.com/ifabsent
+          |name: ifabsent
+          |enums:
+          |  E1:
+          |    permissible_values:
+          |      V1:
+          |      V2:
+          |slots:
+          |  enum_default:
+          |    range: E1
+          |    ifabsent: E1(V2)
+          |  enum_no_default:
+          |    range: E1
+          |  enum_bad_default:
+          |    range: E1
+          |    ifabsent: E1(V9)
+          |""".stripMargin
+      val ifSv = SchemaView.single(parse(model))
+      val e1 = ifSv.enums("E1")
+      val enumDefault: Option[PermissibleValue] = ifSv.slotDefinitions("enum_default").ifAbsent(e1)
+      enumDefault.map(_.text) shouldBe Some("V2")
+      ifSv.slotDefinitions("enum_no_default").ifAbsent(e1) shouldBe None
+      intercept[ConstructorExpression.EvaluationException] {
+        ifSv.slotDefinitions("enum_bad_default").ifAbsent(e1)
+      }.getMessage should include("Value 'V9' not found in enum 'E1'")
     }
 
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))

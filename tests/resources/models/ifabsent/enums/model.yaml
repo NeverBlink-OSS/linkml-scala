@@ -1,0 +1,33 @@
+id: https://neverblink.eu/linkml/tests/ifabsent/enums/
+name: ifabsent_enums
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: SomeEnum
+        ifabsent: SomeEnum(SOME_OPTION)
+      some_other_slot:
+        range: SomeEnum
+        ifabsent: SomeEnum(SOME_OTHER_OPTION)
+      yet_another_slot:
+        range: SomeEnum
+        ifabsent: SomeEnum(YET_ANOTHER_OPTION)
+      with_spaces:
+        range: SomeEnum
+        ifabsent: SomeEnum(option with spaces)
+      no_ifabsent:
+        range: SomeEnum
+
+enums:
+  SomeEnum:
+    permissible_values:
+      SOME_OPTION:
+        meaning: rdf:subject
+      SOME_OTHER_OPTION:
+      YET_ANOTHER_OPTION:
+      "option with spaces":

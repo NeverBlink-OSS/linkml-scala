@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class PrefixImpl(
+final case class PrefixImpl(
     @id
     @named("prefix_prefix")
     prefixPrefix: NcName,

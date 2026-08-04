@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class SchemaDefinitionImpl(
+final case class SchemaDefinitionImpl(
     @id
     name: NcName,
     @value

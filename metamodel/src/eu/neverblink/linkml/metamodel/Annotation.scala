@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class AnnotationImpl(
+final case class AnnotationImpl(
     @id
     @named("tag")
     extensionTag: UriOrCurie,

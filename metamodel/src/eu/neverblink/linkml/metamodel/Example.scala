@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class ExampleImpl(
+final case class ExampleImpl(
     value: Option[String] = None,
     @named("description")
     valueDescription: Option[String] = None,

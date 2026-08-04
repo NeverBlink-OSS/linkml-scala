@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class EnumExpressionImpl(
+final case class EnumExpressionImpl(
     @named("code_set")
     codeSet: Option[UriOrCurie] = None,
     @named("code_set_tag")
