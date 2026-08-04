@@ -152,13 +152,15 @@ final class UnderivedReachabilityQuery(
         classView.ancestors(reflexive = false).foreach { anc =>
           result.addOne((classDef, anc.cls.name))
         }
-        classView.cls.slots.foreach(slot => result.addOne(slotDef -> slot.value))
+        val cls = classView.cls
+        cls.slots.foreach(slot => result.addOne(slotDef -> slot.value))
         // The *ranges* of class-defined slots (attributes, slot_usage)
-        classView.cls.attributes.values.foreach { sd =>
-          collectSlotRefs(SlotView(sd, classView.definingSchema), result)
+        val definingSchema = classView.definingSchema
+        cls.attributes.values.foreach { sd =>
+          collectSlotRefs(SlotView(sd, definingSchema), result)
         }
-        classView.cls.slotUsage.values.foreach { sd =>
-          collectSlotRefs(SlotView(sd, classView.definingSchema), result)
+        cls.slotUsage.values.foreach { sd =>
+          collectSlotRefs(SlotView(sd, definingSchema), result)
         }
       case ElementTypeTag.typeDef =>
         val type_ = sv.types(name)._type
