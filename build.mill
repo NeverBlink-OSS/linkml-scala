@@ -519,7 +519,7 @@ trait CommonModule
 
 trait CommonTestModule extends ScalaModule, TestModule.ScalaTest, ScalafixModule, ScalafmtModule {
   def mvnDeps = Seq(
-    mvn"org.scalatestplus::scalacheck-1-18::3.2.19.0",
+    mvn"org.scalatestplus::scalacheck-1-19::3.2.20.0",
   )
 
   override def scalaTestVersion = Task("3.2.20")
