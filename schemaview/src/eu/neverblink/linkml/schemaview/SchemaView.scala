@@ -4,7 +4,7 @@ import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
-import eu.neverblink.linkml.validation.SchemaFatal
+import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal}
 
 import scala.annotation.unused
 import scala.collection.mutable
@@ -229,16 +229,12 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   }
 
   /** Whether the merged schema is valid */
-  lazy val isValid: Boolean = validator.validate().isSuccess
+  lazy val isValid: Boolean = validator.validationProblems.isEmpty
 
-  /** Validate the merged schema, checking for errors and fatal errors
-    *
-    * @param maxProblems
-    *   Max number of problems to include
-    * @return
-    *   Unit if the schema is valid, an exception with formatted problems otherwise
+  /** Errors and fatal problems in the merged schema, empty if the schema is valid. Warnings are not
+    * included - use [[lint]] for a report that covers those too.
     */
-  def validate(maxProblems: Int = 5): Try[Unit] = validator.validate(maxProblems)
+  def validationProblems: Seq[SchemaError | SchemaFatal] = validator.validationProblems
 
   /** Produce validation report with all detected problems
     *

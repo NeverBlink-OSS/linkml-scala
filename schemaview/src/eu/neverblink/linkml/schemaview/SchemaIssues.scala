@@ -1,8 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.validation.{IssueSeverity, SchemaError, SchemaFatal, SchemaIssue}
-
-import scala.util.Failure
+import eu.neverblink.linkml.validation.{IssueSeverity, SchemaFatal, SchemaIssue}
 
 /** Presentation helpers for the generated schema validation report model.
   */
@@ -74,18 +72,6 @@ object SchemaIssues {
         "Fatal validation problems:\n" + format(problems, maxProblems, true, false),
       )
 
-  /** Exception which formats a collection of schema (fatal) errors
-    *
-    * @param problems
-    *   Issues to show in the exception
-    * @param maxProblems
-    *   Max number of issues to format
-    */
-  final case class ValidationFailedException(
-      problems: Seq[SchemaError | SchemaFatal],
-      maxProblems: Int,
-  ) extends Exception("Schema validation failed:\n" + format(problems, maxProblems, false, false))
-
   /** Unwrap a load result, throwing [[FatalSchemaException]] if it failed.
     */
   def orThrow[T](loaded: Either[Seq[SchemaFatal], T], maxProblems: Int = 5): T =
@@ -93,18 +79,4 @@ object SchemaIssues {
       case Right(value) => value
       case Left(problems) => throw FatalSchemaException(problems.map(_.infer()), maxProblems)
     }
-
-  /** Create a [[Failure]] containing a [[ValidationFailedException]]
-    * @param problems
-    *   Issues to include in the exception. Must be non-empty
-    * @param maxProblems
-    *   Max number of issues to include before ellipsis
-    */
-  def failure(
-      problems: Seq[SchemaError | SchemaFatal],
-      maxProblems: Int,
-  ): Failure[Nothing] = {
-    assume(problems.nonEmpty)
-    Failure(ValidationFailedException(problems, maxProblems))
-  }
 }

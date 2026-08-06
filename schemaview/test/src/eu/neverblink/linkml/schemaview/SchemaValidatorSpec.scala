@@ -3,7 +3,7 @@ package eu.neverblink.linkml.schemaview
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import eu.neverblink.linkml.validation.SchemaFatal
+import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal}
 
 import scala.util.Success
 
@@ -15,6 +15,21 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
     */
   def loadFailure(schemaYaml: String): String =
     failureOf(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+  /** Validate a schema expected to be invalid, returning its problems formatted for comparison. */
+  def validationFailure(sv: SchemaView, maxProblems: Int = 5): String = {
+    val problems = SchemaValidator(using sv).validationProblems
+    if problems.isEmpty then fail("Expected the schema to be invalid")
+    SchemaIssues.format(
+      problems.map[SchemaError | SchemaFatal] {
+        case error: SchemaError => error.infer()
+        case fatal: SchemaFatal => fatal.infer()
+      },
+      maxProblems,
+      verbose = false,
+      showLevel = false,
+    )
+  }
 
   private def failureOf(loaded: Either[Seq[SchemaFatal], SchemaView]): String =
     loaded match {
@@ -142,11 +157,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage
+      val msg = validationFailure(sv)
 
       Seq(
-        """Schema validation failed:
-          |Non-unique name 'some4' used for enum from 'test' schema and type from 'test' schema
+        """Non-unique name 'some4' used for enum from 'test' schema and type from 'test' schema
           |Non-unique name 'some5' used for enum from 'test' schema and type from 'test' schema
           |Non-unique name 'some1' used for class from 'test' schema and type from 'test' schema
           |Non-unique name 'some2' used for class from 'test' schema and enum from 'test' schema
@@ -180,11 +194,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage
+      val msg = validationFailure(sv)
 
       Seq(
-        """Schema validation failed:
-          |Non-unique name 'pv_formula_options' used for enum from 'test' and 'meta' schemas
+        """Non-unique name 'pv_formula_options' used for enum from 'test' and 'meta' schemas
           |Non-unique name 'string' used for type from 'test' and 'types' schemas
           |Non-unique name 'UnitOfMeasure' used for class from 'units' and 'test' schemas
           |Non-unique name 'name' used for slot from 'meta' and 'test' schemas
@@ -239,7 +252,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage.toLowerCase
+      val msg = validationFailure(sv).toLowerCase
 
       Seq(
         "'one'",
@@ -271,7 +284,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           FileSystemImporter.parseSchema(schemaImported).toOption.get,
         ),
       )
-      SchemaValidator(using sv).validate() shouldBe a[Success[?]]
+      SchemaValidator(using sv).validationProblems shouldBe empty
     }
 
     "fail on multiple identifiers" in {
@@ -292,7 +305,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage.toLowerCase
+      val msg = validationFailure(sv).toLowerCase
 
       Seq(
         "identifier",
@@ -323,7 +336,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage.toLowerCase
+      val msg = validationFailure(sv).toLowerCase
 
       Seq(
         "identifier",
@@ -354,7 +367,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage.toLowerCase
+      val msg = validationFailure(sv).toLowerCase
 
       Seq(
         "identifier",
@@ -391,11 +404,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate().failed.get.getMessage
+      val msg = validationFailure(sv)
 
       Seq(
-        """Schema validation failed:
-          |Invalid type of key / identifier slot in class 'some_another_class': 'pv_formula_options'. Expected a basic, scalar data type (e.g., string, integer, float, uri).
+        """Invalid type of key / identifier slot in class 'some_another_class': 'pv_formula_options'. Expected a basic, scalar data type (e.g., string, integer, float, uri).
           |Invalid type of key / identifier slot in class 'some_class': 'UnitOfMeasure'. Expected a basic, scalar data type (e.g., string, integer, float, uri).""".stripMargin,
       ) foreach { part =>
         msg should include(part)
@@ -519,7 +531,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      val msg = SchemaValidator(using sv).validate(maxProblems = 20).failed.get.getMessage
+      val msg = validationFailure(sv, maxProblems = 20)
 
       Seq(
         "Invalid URI or CURIE 'not a curie!' in class 'SomeClass'",
@@ -590,13 +602,13 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = load(schemaYaml)
 
-      SchemaValidator(using sv).validate() shouldBe a[Success[?]]
+      SchemaValidator(using sv).validationProblems shouldBe empty
     }
 
     "validate the metamodel" in {
       val sv =
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
-      SchemaValidator(using sv).validate() shouldBe a[Success[?]]
+      SchemaValidator(using sv).validationProblems shouldBe empty
     }
   }
 }

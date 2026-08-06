@@ -5,7 +5,6 @@ import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
 import eu.neverblink.linkml.validation.*
 
 import java.util
-import scala.util.{Success, Try}
 
 /** Performs validation for a [[SchemaView]], most importantly checking whether all references are
   * correct.
@@ -399,8 +398,12 @@ final class SchemaValidator(using sv: SchemaView) {
       undefinedDefaultRange ++
       noTreeRoot
 
-  /** Any validation problems (fatal + error) found in the schema */
-  private lazy val validationProblems: Seq[SchemaError | SchemaFatal] = {
+  /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.
+    * Warnings are not included - see [[lintProblems]] for those.
+    *
+    * As elsewhere, the issues' messages are left for the consumer to `infer()`.
+    */
+  lazy val validationProblems: Seq[SchemaError | SchemaFatal] = {
     val fatal: Seq[SchemaFatal] = fatalProblems
     if fatal.nonEmpty then fatal else errors
   }
@@ -409,25 +412,6 @@ final class SchemaValidator(using sv: SchemaView) {
   lazy val lintProblems: Seq[SchemaIssue] = {
     if fatalProblems.nonEmpty then fatalProblems
     else errors ++ warnings
-  }
-
-  /** Run the validation for the schema, formatting any errors into an exception. Ignores warnings.
-    *
-    * @param maxProblems
-    *   Max number of problems to include in the message.
-    * @return
-    *   Success if no validation problems found, or an exception with an appropriate error message
-    */
-  def validate(maxProblems: Int = 5): Try[Unit] = {
-    if validationProblems.nonEmpty then
-      // Matched rather than mapped, so that `infer()` resolves to the narrowed override on each
-      // branch instead of widening the union to SchemaIssue.
-      val inferred = validationProblems.map[SchemaError | SchemaFatal] {
-        case error: SchemaError => error.infer()
-        case fatal: SchemaFatal => fatal.infer()
-      }
-      SchemaIssues.failure(inferred, maxProblems)
-    else Success(())
   }
 
   /** Create a validation report of all detected issues, formatting problems appropriately.
