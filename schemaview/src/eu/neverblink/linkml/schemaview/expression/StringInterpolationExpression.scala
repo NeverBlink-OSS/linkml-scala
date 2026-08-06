@@ -36,7 +36,7 @@ object StringInterpolationExpression:
 
     private def element[$: P]: P[Element] = P(escapedBrace | substitution | literal)
 
-    /** `{{` and `}}` — an escaped single brace. */
+    /** `{{` and `}}` – an escaped single brace. */
     private def escapedBrace[$: P]: P[Literal] =
       P(("{{" | "}}").!).map(s => Literal(s.take(1)))
 
