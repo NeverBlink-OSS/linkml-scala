@@ -3,6 +3,7 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.runtime.{Curie, Uri}
 import eu.neverblink.linkml.schemaview.InlineType.plain
 import eu.neverblink.linkml.schemaview.SubjectType.{base, implicitPrefix}
+import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression.{Literal, Substitution}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -162,6 +163,47 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
       c3.attributeViews("united")
         .shouldBeA[TypeAttributeView]
         .equalsString shouldBe Some("blep")
+    }
+
+    val equalsExpressionSchema =
+      """id: urn:test
+        |name: test
+        |imports:
+        |  - linkml:types
+        |classes:
+        |  C4:
+        |    attributes:
+        |      a:
+        |        range: string
+        |        equals_expression: "Hello {b} and {c}. Here are some braces: {{ and }}."
+        |      b:
+        |        range: string
+        |      c:
+        |        range: string
+        |""".stripMargin
+
+    lazy val sv3 = SchemaView.loadSchemaViewFromString(equalsExpressionSchema)
+    lazy val c4 = sv3.classes("C4")
+
+    "parse equals_expression into StringInterpolationExpression" in {
+      val a = c4.attributeViews("a")
+        .shouldBeA[TypeAttributeView]
+      val expr = a.equalsExpression
+        .getOrElse(fail("Expected equals_expression to be defined"))
+      expr.isSuccess shouldBe true
+      expr.get.value.elements shouldBe Seq(
+        Literal("Hello "),
+        Substitution(c4.attributeViews("b")),
+        Literal(" and "),
+        Substitution(c4.attributeViews("c")),
+        Literal(". Here are some braces: { and }."),
+      )
+    }
+
+    "provide None for equals_expression when not defined" in {
+      val b = c4.attributeViews("b")
+        .shouldBeA[TypeAttributeView]
+      b.equalsExpression shouldBe None
     }
   }
 }

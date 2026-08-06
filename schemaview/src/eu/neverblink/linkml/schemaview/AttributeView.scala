@@ -3,6 +3,8 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview.SubjectType.implicitPrefix
+import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
+import fastparse.Parsed
 
 /** ADT bundling a slot with its resolved range, handling different edge cases. Generators should
   * match on the subtypes of this trait when handling a slot.
@@ -12,10 +14,26 @@ sealed trait AttributeView:
     */
   def slotView: SlotView
 
+  /** The class that defines this derived attribute.
+    */
+  def definingClassView: ClassView
+
+  /** Returns the parsed abstract syntax tree of the slot's `equals_expression`, if any. This is
+    * used to generate code that computes the value of this slot from other slots in the same class.
+    *
+    * Currently, only string interpolation expressions are supported. If the slot's
+    * `equals_expression` is not a string interpolation expression, this method will return a
+    * parsing failure.
+    */
+  final def equalsExpression: Option[Parsed[StringInterpolationExpression]] =
+    slotView.slot.equalsExpression.map { expr =>
+      StringInterpolationExpression.parse(expr)(using this)
+    }
+
 /** Slot's range is `linkml:Any` - validator generators should emit an "accept all" schema if
   * possible.
   */
-case class AnyView(slotView: SlotView) extends AttributeView
+final case class AnyView(slotView: SlotView, definingClassView: ClassView) extends AttributeView
 
 /** Slot's range is an inlined class or a reference to a class. Generators for formats without
   * inlining should match on this instead of its subtypes.
@@ -33,8 +51,9 @@ sealed trait ClassAttributeView:
   * @param inlineType
   *   The inline type of this slot/class combination
   */
-case class ClassInlineAttributeView(
+final case class ClassInlineAttributeView(
     slotView: SlotView,
+    definingClassView: ClassView,
     classView: ClassView,
     inlineType: InlineType,
 ) extends AttributeView,
@@ -45,8 +64,9 @@ case class ClassInlineAttributeView(
   * @param identifierView
   *   The [[TypeAttributeView]] slot/type bundle for the class' identifier slot.
   */
-case class ClassReferenceAttributeView(
+final case class ClassReferenceAttributeView(
     slotView: SlotView,
+    definingClassView: ClassView,
     classView: ClassView,
     identifierView: TypeAttributeView,
 ) extends AttributeView,
@@ -55,8 +75,9 @@ case class ClassReferenceAttributeView(
 /** Slot's range is a type. Provides shorthand methods for merging shared slot/type metaslots, such
   * as [[pattern]], [[unit]], and [[implicitPrefix]], as well as [[SubjectType]] computation.
   */
-case class TypeAttributeView(
+final case class TypeAttributeView(
     slotView: SlotView,
+    definingClassView: ClassView,
     typeView: TypeView,
 ) extends AttributeView:
   private val slot: SlotDefinition = slotView.slot
@@ -124,7 +145,8 @@ case class TypeAttributeView(
 
 /** Slot's range is an enum.
   */
-case class EnumAttributeView(
+final case class EnumAttributeView(
     slotView: SlotView,
+    definingClassView: ClassView,
     enumView: EnumView,
 ) extends AttributeView
