@@ -729,6 +729,30 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate ifabsent default values for enum-ranged slots" in {
+      val files = ScalaGenerator(using ModelCatalogue.ifabsent.enums.model).generate(testPkg).toMap
+      val code = files("SomeClass.scala")
+      Seq(
+        "someSlot: Option[SomeEnum] = Some(SomeEnum.SomeOption)",
+        "someOtherSlot: Option[SomeEnum] = Some(SomeEnum.SomeOtherOption)",
+        "yetAnotherSlot: Option[SomeEnum] = Some(SomeEnum.YetAnotherOption)",
+        // Permissible values that aren't valid Scala identifiers are re-cased in the default, too
+        "withSpaces: Option[SomeEnum] = Some(SomeEnum.OptionWithSpaces)",
+        // No ifabsent metaslot -> no default value
+        "noIfabsent: Option[SomeEnum] = None",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+
+      Seq(
+        // The raw permissible value text must not leak into the default value
+        "SomeEnum.SOME_OPTION",
+        "option with spaces",
+      ).foreach { snippet =>
+        code should not include snippet
+      }
+    }
+
     "generate an emit_prefixes object" in {
       val files = ScalaGenerator(using ModelCatalogue.emitPrefixes.model)
         .generate(testPkg).toMap

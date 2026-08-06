@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class PermissibleValueImpl(
+final case class PermissibleValueImpl(
     @id
     text: String,
     title: Option[String] = None,

@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class EnumDefinitionImpl(
+final case class EnumDefinitionImpl(
     @id
     name: String,
     title: Option[String] = None,

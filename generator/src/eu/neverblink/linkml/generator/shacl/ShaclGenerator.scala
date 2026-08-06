@@ -25,7 +25,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     // TODO LNK-129 HACK: Skip the main range if any boolean slot is defined.
     if slotExpression.anyOf.isEmpty then
       slotExpression.range.getOrElse(sv.getDefaultRange(slotView.definingSchema))
-        .asInstanceOf[Reference[ElementView[?]]].resolve.foreach {
+        .asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreach {
           case typeView: TypeView =>
             val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
             if !isIri then

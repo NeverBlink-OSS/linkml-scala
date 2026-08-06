@@ -5,6 +5,7 @@ import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
+import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 
 /** Element views provide a rich interface for working with schema elements. They require an
   * implicit [[SchemaView]] and are always linked to a defining schema, which is the schema in which
@@ -14,8 +15,13 @@ import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
   *
   * @param sv
   *   Root SchemaView that (transitively) imported this Element
+  * @tparam E
+  *   The type of the underlying Element
+  * @tparam R
+  *   The type of default values for this element when resolving constructor expressions (e.g. from
+  *   the `ifabsent` metaslot).
   */
-sealed trait ElementView[E <: Element](using val sv: SchemaView) {
+sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
 
   /** Element type name, e.g. "class", "slot", "type", "enum", "subset", used for error messages.
     */
@@ -38,6 +44,19 @@ sealed trait ElementView[E <: Element](using val sv: SchemaView) {
     * appropriately if needed.
     */
   def aliasedName: String
+
+  /** Evaluate a constructor expression (e.g. from the `ifabsent` metaslot) treating this element as
+    * the range.
+    *
+    * May throw a [[ConstructorExpression.EvaluationException]] if the expression is invalid or
+    * cannot be parsed into a value of type [[R]].
+    *
+    * @return
+    *   The evaluated value, or None if constructor expressions are not supported for this element
+    *   type.
+    */
+  // TODO LNK-63: implement other types in ifabsent
+  private[schemaview] def evaluateConstructor(expr: String): Option[R] = None
 
   /** The defining schema's prefix resolver */
   given definingPrefixResolver: PrefixResolver = sv.getPrefixResolver(definingSchema)
@@ -64,7 +83,7 @@ private object ClassView:
 
 final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
-) extends ElementView[ClassDefinition] {
+) extends ElementView[ClassDefinition, AnyRef] {
   def elementType: String = "class"
 
   def inner: ClassDefinition = cls
@@ -219,7 +238,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   private def derivedSlot(
       slotRef: Reference[SlotDefinition],
-      source: ElementView[?],
+      source: ElementView[?, ?],
   ): SlotView = {
     // Use empty slot base here to avoid an extra allocation
     var currentSlot = ClassView.emptySlotDef
@@ -328,7 +347,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
 final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
-) extends ElementView[SlotDefinition] {
+) extends ElementView[SlotDefinition, Nothing] {
   def elementType: String = "slot"
 
   def inner: SlotDefinition = slot
@@ -377,9 +396,20 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     * with `default_range` from the implicit [[SchemaView]]. Does NOT take inheritance into account:
     * Make sure you use this method after class/slot derivation is performed.
     */
-  def derivedRange: Reference[ElementView[?]] =
+  def derivedRange: Reference[ElementView[?, ?]] =
     slot.range.getOrElse(sv.getDefaultRange(definingSchema))
-      .asInstanceOf[Reference[ElementView[?]]]
+      .asInstanceOf[Reference[ElementView[?, ?]]]
+
+  /** Get the default value of this slot if the `ifabsent` metaslot is defined.
+    *
+    * May throw a [[ConstructorExpression.EvaluationException]] if the `ifabsent` expression is
+    * invalid or cannot be parsed into a value of type R.
+    *
+    * @param range
+    *   The range of the slot. Obtain it from [[SlotView.derivedRange]].
+    */
+  def ifAbsent[R](range: ElementView[?, R]): Option[R] =
+    slot.ifabsent.flatMap(range.evaluateConstructor)
 
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
@@ -389,17 +419,20 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 
 private object SlotView:
   // Exposed for slot derivation in ClassView.
-  def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?]): UriOrCurie =
+  def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): UriOrCurie =
     slotUri.getOrElse(Uri.synthetic(context.defaultPrefixUri, Case.deSpaceCase(slotName)))
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
-) extends ElementView[EnumDefinition] {
+) extends ElementView[EnumDefinition, PermissibleValue] {
   def elementType: String = "enum"
 
   def inner: EnumDefinition = _enum
 
   override def aliasedName: String = Case.PascalCase(_enum.name)
+
+  override private[schemaview] def evaluateConstructor(expr: String): Option[PermissibleValue] =
+    Some(ConstructorExpression.evaluateEnum(expr, this))
 
   def uriOrCurie: UriOrCurie =
     _enum.enumUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
@@ -417,9 +450,13 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
     derivedValues.map((x, meaning) => meaning -> x.text).toMap
 }
 
+// TODO LNK-63:
+//  This might be incorrect, to be finalized when we implement default values for datatypes.
+type RuntimeScalar = String | Int | Boolean | Float | Double | BigDecimal | UriOrCurie
+
 final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
-) extends ElementView[TypeDefinition] {
+) extends ElementView[TypeDefinition, RuntimeScalar] {
   def elementType: String = "type"
 
   def inner: TypeDefinition = _type
@@ -496,7 +533,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
-) extends ElementView[SubsetDefinition] {
+) extends ElementView[SubsetDefinition, Nothing] {
   def elementType: String = "subset"
 
   def inner: SubsetDefinition = subset

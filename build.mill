@@ -231,6 +231,7 @@ object generator extends Module {
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
         mvn"com.networknt:json-schema-validator:3.0.6",
         mvn"org.sangria-graphql::sangria:4.2.19",
+        mvn"org.scala-lang::scala3-compiler:$scala",
       )
 
       /** Fetch the linkml-benchmark-schemas datasets used by `BenchmarkSchemaSpec`.

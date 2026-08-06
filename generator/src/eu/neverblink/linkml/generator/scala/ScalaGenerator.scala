@@ -200,36 +200,43 @@ final class ScalaGenerator(using sv: SchemaView) {
 
   /** Translates a LinkML range value to the appropriate Scala type.
     *
+    * @param slot
+    *   SlotView of the slot we are generating the Scala type for
     * @param range
     *   Value of the LinkML range
     * @param isInlined
     *   Whether the slot is declared as inlined. Note: The slot may be implicitly inlined when the
     *   range class does not have an identifier.
     * @return
-    *   Scala type which best represents the range
+    *   (Scala type which best represents the range, default value for the type if applicable)
     */
-  private def baseRange(range: Reference[ElementView[?]], isInlined: Boolean): String = {
+  private def baseRange(
+      slot: SlotView,
+      range: Reference[ElementView[?, ?]],
+      isInlined: Boolean,
+  ): (scalaType: String, baseDefault: Option[String]) = {
     range.resolve.get match {
       case classView: ClassView =>
         // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
         // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
         // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
         val className = Case.PascalCase(classView.cls.name)
-        if (classView.uriStr == "https://w3id.org/linkml/Any") className
-        else if (isInlined) s"${className}Impl"
-        else s"Reference[$className]"
+        if (classView.uriStr == "https://w3id.org/linkml/Any") (className, None)
+        else if (isInlined) (s"${className}Impl", None)
+        else (s"Reference[$className]", None)
       case typeView: TypeView =>
-        if typeView.isPrimitive then typeToRuntime(typeView)
-        else Case.PascalCase(typeView._type.name)
+        if typeView.isPrimitive then (typeToRuntime(typeView), None)
+        else (Case.PascalCase(typeView._type.name), None)
       // True enum support would require working around the dynamic "enums" of LinkML, which I'm sure
       // were a really convenient idea for the biologists, but it adds a lot of complexity for us
       case enumView: EnumView =>
         val enumDef = enumView._enum
-        if (enumDef.permissibleValues.isEmpty) "String" // fallback to String for dynamic enums
+        if (enumDef.permissibleValues.isEmpty)
+          ("String", None) // fallback to String for dynamic enums
         else {
           val enumName = Case.PascalCase(enumDef.name)
-          if (isInlined) enumName
-          else s"Reference[$enumName]"
+          val default: Option[PermissibleValue] = slot.ifAbsent(enumView)
+          (enumName, default.map(p => s"$enumName.${Case.PascalCase(p.text)}"))
         }
       case _ => throw RuntimeException(s"Couldn't map range $range")
     }
@@ -246,24 +253,24 @@ final class ScalaGenerator(using sv: SchemaView) {
   private def makeTypedDefault(slot: SlotView): TypedDefault = {
     val range = slot.derivedRange
     val inlined = slot.derivedInlined
-    val base = baseRange(range, inlined)
+    val (scalaType, defaultValue) = baseRange(slot, range, inlined)
     InlineType(slot) match {
-      case InlineType.plain => TypedDefault(base)
-      case InlineType.optional if base == "Boolean" =>
+      case InlineType.plain => TypedDefault(scalaType, defaultValue)
+      case InlineType.optional if scalaType == "Boolean" =>
         TypedDefault(
-          base,
+          scalaType,
           default = Some("false"),
           combineFunc = combineBoolean,
         )
       case InlineType.optional =>
         TypedDefault(
-          s"Option[$base]",
-          default = Some("None"),
+          s"Option[$scalaType]",
+          default = Some(defaultValue.map(v => s"Some($v)").getOrElse("None")),
           combineFunc = combineOption(combineFallback),
         )
       case InlineType.list =>
         TypedDefault(
-          s"Seq[$base]",
+          s"Seq[$scalaType]",
           default = if slot.slot.required then None else Some("Seq()"),
           combineFunc = combineSeq,
         )
@@ -273,7 +280,7 @@ final class ScalaGenerator(using sv: SchemaView) {
           case _: CollectionForm.CompactDict => "@compactDict"
         }
         TypedDefault(
-          s"Map[String, $base]",
+          s"Map[String, $scalaType]",
           default = if slot.slot.required then None else Some("Map()"),
           annotation = Some(annotation),
           combineFunc = combineMap,
@@ -399,7 +406,7 @@ object ScalaGenerator {
             |  * 
             |  * @inheritdoc
             |  */
-            |case class ${name}Impl(
+            |final case class ${name}Impl(
             |    ${fields.map(_.generateCaseClassField).mkString("\n")}
             |) extends $name
             |""".stripMargin

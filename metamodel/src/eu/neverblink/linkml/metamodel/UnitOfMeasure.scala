@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class UnitOfMeasureImpl(
+final case class UnitOfMeasureImpl(
     abbreviation: Option[String] = None,
     derivation: Option[String] = None,
     @named("descriptive_name")

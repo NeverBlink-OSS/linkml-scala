@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class MatchQueryImpl(
+final case class MatchQueryImpl(
     @named("identifier_pattern")
     identifierPattern: Option[String] = None,
     @named("source_ontology")

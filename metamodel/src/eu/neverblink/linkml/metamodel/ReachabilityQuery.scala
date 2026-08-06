@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class ReachabilityQueryImpl(
+final case class ReachabilityQueryImpl(
     @named("include_self")
     includeSelf: Boolean = false,
     @named("is_direct")

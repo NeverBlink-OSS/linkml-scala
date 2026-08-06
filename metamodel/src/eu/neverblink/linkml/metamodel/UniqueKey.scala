@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class UniqueKeyImpl(
+final case class UniqueKeyImpl(
     @id
     @named("unique_key_name")
     uniqueKeyName: String,

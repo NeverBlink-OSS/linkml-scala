@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class SubsetDefinitionImpl(
+final case class SubsetDefinitionImpl(
     @id
     name: String,
     title: Option[String] = None,

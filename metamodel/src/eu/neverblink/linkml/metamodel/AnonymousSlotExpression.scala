@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class AnonymousSlotExpressionImpl(
+final case class AnonymousSlotExpressionImpl(
     title: Option[String] = None,
     description: Option[String] = None,
     multivalued: Boolean = false,

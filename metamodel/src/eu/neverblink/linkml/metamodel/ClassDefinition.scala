@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class ClassDefinitionImpl(
+final case class ClassDefinitionImpl(
     @id
     name: String,
     @named("class_uri")

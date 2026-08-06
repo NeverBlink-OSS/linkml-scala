@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class AnonymousTypeExpressionImpl(
+final case class AnonymousTypeExpressionImpl(
     pattern: Option[String] = None,
     @named("any_of")
     anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),

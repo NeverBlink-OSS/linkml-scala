@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class LocalNameImpl(
+final case class LocalNameImpl(
     @id
     @named("local_name_source")
     localNameSource: NcName,

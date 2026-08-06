@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class PathExpressionImpl(
+final case class PathExpressionImpl(
     title: Option[String] = None,
     description: Option[String] = None,
     rank: Option[Int] = None,

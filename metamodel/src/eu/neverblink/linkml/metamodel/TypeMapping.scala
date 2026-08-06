@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class TypeMappingImpl(
+final case class TypeMappingImpl(
     @id
     @named("framework")
     frameworkKey: String,

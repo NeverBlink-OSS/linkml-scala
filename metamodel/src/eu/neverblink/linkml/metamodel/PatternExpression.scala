@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class PatternExpressionImpl(
+final case class PatternExpressionImpl(
     title: Option[String] = None,
     description: Option[String] = None,
     rank: Option[Int] = None,

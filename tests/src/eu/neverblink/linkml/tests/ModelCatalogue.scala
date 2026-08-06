@@ -180,6 +180,10 @@ object ModelCatalogue {
     val selfCompact3Required: Entry = Entry("/models/inlines/selfCompact3Required/")
   }
 
+  object ifabsent {
+    val enums: Entry = Entry("/models/ifabsent/enums/")
+  }
+
   object metadata {
     val title: Entry = Entry("/models/metadata/title/")
   }

@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @inheritdoc
   */
-case class DimensionExpressionImpl(
+final case class DimensionExpressionImpl(
     title: Option[String] = None,
     description: Option[String] = None,
     alias: Option[String] = None,
