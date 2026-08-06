@@ -1,0 +1,41 @@
+id: https://neverblink.eu/linkml/tests/equalsExpression/
+name: equals_expression
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      reference_value:
+        range: string
+      optional_message:
+        range: string
+        equals_expression: "Unknown reference to element '{reference_value}'"
+      required_message:
+        range: string
+        required: true
+        equals_expression: "ref is {reference_value}"
+      required_source:
+        range: string
+        required: true
+      from_required:
+        range: string
+        equals_expression: "{required_source} / {required_source}"
+      literal_only:
+        range: string
+        equals_expression: "no substitutions here"
+      with_escapes:
+        range: string
+        equals_expression: "braces {{like this}} and a \"quote\""
+      no_expression:
+        range: string
+      # Out of scope: not a single-valued string, so the expression must be ignored
+      multivalued_ignored:
+        range: string
+        multivalued: true
+        equals_expression: "{reference_value}"
+      integer_ignored:
+        range: integer
+        equals_expression: "{reference_value}"

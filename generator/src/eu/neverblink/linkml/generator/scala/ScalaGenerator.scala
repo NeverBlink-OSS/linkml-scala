@@ -307,8 +307,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     }
 
   /** Test whether an attribute is in scope for `equals_expression` support: its range must be
-    * `string` and it must hold a single value. Interpolating a collection or a non-string range is
-    * not supported, so such slots are left alone.
+    * `string` and it must hold a single value.
     */
   private def isSingleValuedString(attribute: AttributeView): Boolean =
     attribute match {
@@ -320,9 +319,8 @@ final class ScalaGenerator(using sv: SchemaView) {
       case _ => false
     }
 
-  /** Build the [[InferredField]]s for a class - one per in-scope slot that has an
-    * `equals_expression`. Out-of-scope slots (see [[isSingleValuedString]]) are skipped, so they
-    * behave exactly as they did before `equals_expression` was supported.
+  /** Build the [[InferredField]]s for a class – one per in-scope slot that has an
+    * `equals_expression`.
     *
     * @throws RuntimeException
     *   if an in-scope slot's expression fails to parse, or references an out-of-scope slot
