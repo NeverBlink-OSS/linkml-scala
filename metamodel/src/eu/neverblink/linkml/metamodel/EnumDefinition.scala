@@ -112,7 +112,21 @@ final case class EnumDefinitionImpl(
     todos: Seq[String] = Seq(),
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
-) extends EnumDefinition
+) extends EnumDefinition {
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * Only single-valued slots with a `string` range are inferred; slots with any other range are
+    * left untouched.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): EnumDefinitionImpl =
+    this
+}
 
 /** An element whose instances must be drawn from a specified set of permissible values
   *
@@ -133,4 +147,12 @@ abstract class EnumDefinition extends Definition, EnumExpression {
     *   From schema: https://w3id.org/linkml/meta
     */
   def enumUri: Option[UriOrCurie]
+
+  /** Fill in the slots that have an `equals_expression`, and check the values already present
+    * against them.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it
+    */
+  def infer(): EnumDefinition
 }

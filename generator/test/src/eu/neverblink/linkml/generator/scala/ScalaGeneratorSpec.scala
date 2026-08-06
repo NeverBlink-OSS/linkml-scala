@@ -729,6 +729,51 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate an infer() method from equals_expression" in {
+      val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      Seq(
+        // Declared on the interface, narrowed to the implementation type in the impl
+        "def infer(): SomeClass\n",
+        "def infer(): SomeClassImpl",
+        // Optional target is filled in, the Option-ranged reference is unwrapped
+        """optionalMessage = inferOptional("optional_message", optionalMessage, """ +
+          """"Unknown reference to element '" + inferenceInput("reference_value", """ +
+          """referenceValue) + "'")""",
+        // Required target is checked only
+        """requiredMessage = inferRequired("required_message", requiredMessage, """ +
+          """"ref is " + inferenceInput("reference_value", referenceValue))""",
+        // A required reference needs no unwrapping
+        """fromRequired = inferOptional("from_required", fromRequired, """ +
+          """requiredSource + " / " + requiredSource)""",
+        // A literal-only expression is emitted as a plain string
+        """literalOnly = inferOptional("literal_only", literalOnly, "no substitutions here")""",
+        // `{{`/`}}` are unescaped, and quotes are escaped for the Scala literal
+        """withEscapes = inferOptional("with_escapes", withEscapes, """ +
+          """"braces {like this} and a \"quote\"")""",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+
+      Seq(
+        // Slots without an expression are not inferred
+        "noExpression = infer",
+        // Out of scope: only single-valued string slots are inferred
+        "multivaluedIgnored = infer",
+        "integerIgnored = infer",
+      ).foreach { snippet =>
+        code should not include snippet
+      }
+    }
+
+    "generate an infer() method that does nothing when there are no expressions" in {
+      val code = ScalaGenerator(using ModelCatalogue.basic.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      code should include("def infer(): SomeClassImpl")
+      code should include("def infer(): SomeClass\n")
+      code should not include "inferOptional"
+    }
+
     "generate ifabsent default values for enum-ranged slots" in {
       val files = ScalaGenerator(using ModelCatalogue.ifabsent.enums.model).generate(testPkg).toMap
       val code = files("SomeClass.scala")

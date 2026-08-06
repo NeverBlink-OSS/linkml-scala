@@ -111,7 +111,21 @@ final case class TypeDefinitionImpl(
     @named("union_of")
     unionOf: Seq[Reference[TypeDefinition]] = Seq(),
     unit: Option[UnitOfMeasureImpl] = None,
-) extends TypeDefinition
+) extends TypeDefinition {
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * Only single-valued slots with a `string` range are inferred; slots with any other range are
+    * left untouched.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): TypeDefinitionImpl =
+    this
+}
 
 /** An element that whose instances are atomic scalar values that can be mapped to primitive types
   *
@@ -172,4 +186,12 @@ abstract class TypeDefinition extends Element, TypeExpression {
     *   This only applies in the OWL generation
     */
   def unionOf: Seq[Reference[TypeDefinition]]
+
+  /** Fill in the slots that have an `equals_expression`, and check the values already present
+    * against them.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it
+    */
+  def infer(): TypeDefinition
 }

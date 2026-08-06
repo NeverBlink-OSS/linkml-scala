@@ -136,6 +136,7 @@ object ModelCatalogue {
   val curie: Entry = Entry("/models/curie/")
   val emitPrefixes: Entry = Entry("/models/emitPrefixes/")
   val emptyClass: Entry = Entry("/models/emptyClass/")
+  val equalsExpression: Entry = Entry("/models/equalsExpression/")
   val `enum`: Entry = Entry("/models/enum/")
   val externalType: Entry = Entry("/models/externalType/")
   val implicitPrefix: Entry = Entry("/models/implicitPrefix/")

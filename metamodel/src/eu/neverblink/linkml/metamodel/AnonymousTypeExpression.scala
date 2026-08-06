@@ -33,11 +33,34 @@ final case class AnonymousTypeExpressionImpl(
     @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
     unit: Option[UnitOfMeasureImpl] = None,
-) extends AnonymousTypeExpression
+) extends AnonymousTypeExpression {
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * Only single-valued slots with a `string` range are inferred; slots with any other range are
+    * left untouched.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): AnonymousTypeExpressionImpl =
+    this
+}
 
 /** A type expression that is not a top-level named type definition. Used for nesting.
   *
   * @see
   *   From schema: https://w3id.org/linkml/meta
   */
-abstract class AnonymousTypeExpression extends TypeExpression {}
+abstract class AnonymousTypeExpression extends TypeExpression {
+
+  /** Fill in the slots that have an `equals_expression`, and check the values already present
+    * against them.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it
+    */
+  def infer(): AnonymousTypeExpression
+}

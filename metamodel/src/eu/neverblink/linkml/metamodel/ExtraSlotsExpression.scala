@@ -12,7 +12,21 @@ final case class ExtraSlotsExpressionImpl(
     allowed: Boolean = false,
     @named("range_expression")
     rangeExpression: Option[AnonymousSlotExpressionImpl] = None,
-) extends ExtraSlotsExpression
+) extends ExtraSlotsExpression {
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * Only single-valued slots with a `string` range are inferred; slots with any other range are
+    * left untouched.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): ExtraSlotsExpressionImpl =
+    this
+}
 
 /** An expression that defines how to handle additional data in an instance of class beyond the
   * slots/attributes defined for that class. See `extra_slots` for usage examples.
@@ -38,4 +52,12 @@ abstract class ExtraSlotsExpression extends Expression {
     *   combine two enums
     */
   def rangeExpression: Option[AnonymousSlotExpressionImpl]
+
+  /** Fill in the slots that have an `equals_expression`, and check the values already present
+    * against them.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it
+    */
+  def infer(): ExtraSlotsExpression
 }

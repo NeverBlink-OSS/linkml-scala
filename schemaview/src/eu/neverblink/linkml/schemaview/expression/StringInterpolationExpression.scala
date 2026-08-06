@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.schemaview.expression
 
-import eu.neverblink.linkml.schemaview.{AttributeView, ClassView, SlotView}
+import eu.neverblink.linkml.schemaview.AttributeView
 import fastparse.*
 import fastparse.NoWhitespace.given
 

@@ -101,4 +101,12 @@ abstract class Definition extends Element {
     *   From schema: https://w3id.org/linkml/meta
     */
   def valuesFrom: Seq[UriOrCurie]
+
+  /** Fill in the slots that have an `equals_expression`, and check the values already present
+    * against them.
+    *
+    * @throws InferenceException
+    *   if a slot's value contradicts the value inferred for it
+    */
+  def infer(): Definition
 }
