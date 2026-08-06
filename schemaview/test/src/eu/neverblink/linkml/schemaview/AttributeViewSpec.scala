@@ -196,9 +196,9 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
       expr.isSuccess shouldBe true
       expr.get.value.elements shouldBe Seq(
         Literal("Hello "),
-        Substitution(c4.attributeViews("b")),
+        Substitution(Seq(c4.attributeViews("b"))),
         Literal(" and "),
-        Substitution(c4.attributeViews("c")),
+        Substitution(Seq(c4.attributeViews("c"))),
         Literal(". Here are some braces: { and }."),
       )
     }

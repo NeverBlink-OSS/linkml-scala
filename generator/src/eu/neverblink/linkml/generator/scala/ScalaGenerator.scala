@@ -366,19 +366,33 @@ final class ScalaGenerator(using sv: SchemaView) {
     else
       expression.elements.map {
         case Literal(value) => scalaStringLiteral(value)
-        case Substitution(referenced) =>
-          val name = referenced.slotView.slot.name
-          if !isSingleValuedString(referenced) then
+        case substitution: Substitution =>
+          if !isSingleValuedString(substitution.target) then
             throw RuntimeException(
               s"The equals_expression on '${classView.name}.${target.slotView.slot.name}' " +
-                s"references slot '$name', which is not a single-valued string",
+                s"references slot '${substitution.pathString}', which is not a single-valued " +
+                "string",
             )
-          val field = slotName(name)
-          if InlineType(referenced.slotView) == InlineType.optional then
-            s"""inferenceInput("$name", $field)"""
-          else field
+          renderPath(substitution.path)
       }.mkString(" + ")
   }
+
+  /** Render a resolved slot path as a Scala expression reading the value at its end. Optional links
+    * along the way are unwrapped with `inferenceInput`, which fails at runtime if the value is
+    * absent. Nested `equals_expression`s are not applied – the value is read as it is.
+    */
+  private def renderPath(path: Seq[AttributeView]): String =
+    path.foldLeft(("", "")) { case ((expression, prefix), attribute) =>
+      val name = attribute.slotView.slot.name
+      val qualified = if prefix.isEmpty then name else s"$prefix.$name"
+      val access =
+        if expression.isEmpty then slotName(name) else s"$expression.${slotName(name)}"
+      val unwrapped =
+        if InlineType(attribute.slotView) == InlineType.optional then
+          s"""inferenceInput("$qualified", $access)"""
+        else access
+      (unwrapped, qualified)
+    }._1
 
   /** Quote and escape a string so it can be emitted as a Scala string literal. */
   private def scalaStringLiteral(value: String): String = {

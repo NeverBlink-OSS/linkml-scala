@@ -22,10 +22,35 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
     |        range: string
     |      other:
     |        range: string
+    |      nested:
+    |        range: Nested
+    |        inlined: true
+    |      nested_many:
+    |        range: Nested
+    |        inlined: true
+    |        multivalued: true
+    |      nested_ref:
+    |        range: Identified
     |  C2:
     |    attributes:
     |      only_in_c2:
     |        range: string
+    |  Nested:
+    |    attributes:
+    |      leaf:
+    |        range: string
+    |      deeper:
+    |        range: Deeper
+    |        inlined: true
+    |  Deeper:
+    |    attributes:
+    |      bottom:
+    |        range: string
+    |  Identified:
+    |    attributes:
+    |      id:
+    |        range: string
+    |        identifier: true
   """.stripMargin
 
   private def parse(
@@ -48,6 +73,10 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
     val attrReferenceValue = sv.classes("C1").attributeViews("reference_value")
     val attrClass = sv.classes("C1").attributeViews("class")
     val attrOther = sv.classes("C1").attributeViews("other")
+    val attrNested = sv.classes("C1").attributeViews("nested")
+    val attrLeaf = sv.classes("Nested").attributeViews("leaf")
+    val attrDeeper = sv.classes("Nested").attributeViews("deeper")
+    val attrBottom = sv.classes("Deeper").attributeViews("bottom")
 
     "parse a string with no substitutions" in {
       parse("No 'default_range' is defined in the schema") shouldBe
@@ -57,31 +86,31 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
     "parse a substitution in the middle of a string" in {
       parse("Unknown reference to element '{reference_value}'") shouldBe Seq(
         Literal("Unknown reference to element '"),
-        Substitution(attrReferenceValue),
+        Substitution(Seq(attrReferenceValue)),
         Literal("'"),
       )
     }
 
     "parse a substitution at the start of a string" in {
       parse("{other} is missing from the schema.") shouldBe Seq(
-        Substitution(attrOther),
+        Substitution(Seq(attrOther)),
         Literal(" is missing from the schema."),
       )
     }
 
     "parse multiple substitutions" in {
       parse("{reference_value}-{other}") shouldBe Seq(
-        Substitution(attrReferenceValue),
+        Substitution(Seq(attrReferenceValue)),
         Literal("-"),
-        Substitution(attrOther),
+        Substitution(Seq(attrOther)),
       )
     }
 
     "parse adjacent substitutions" in {
       parse("{reference_value}{other}{other}") shouldBe Seq(
-        Substitution(attrReferenceValue),
-        Substitution(attrOther),
-        Substitution(attrOther),
+        Substitution(Seq(attrReferenceValue)),
+        Substitution(Seq(attrOther)),
+        Substitution(Seq(attrOther)),
       )
     }
 
@@ -96,19 +125,19 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
     "merge escapes into the surrounding literal" in {
       parse("a {{b}} {class} d") shouldBe Seq(
         Literal("a {b} "),
-        Substitution(attrClass),
+        Substitution(Seq(attrClass)),
         Literal(" d"),
       )
     }
 
     "parse a string that is only a substitution" in {
-      parse("{reference_value}") shouldBe Seq(Substitution(attrReferenceValue))
+      parse("{reference_value}") shouldBe Seq(Substitution(Seq(attrReferenceValue)))
     }
 
     "unescape braces around a substitution" in {
       parse("{{{reference_value}}}") shouldBe Seq(
         Literal("{"),
-        Substitution(attrReferenceValue),
+        Substitution(Seq(attrReferenceValue)),
         Literal("}"),
       )
     }
@@ -120,7 +149,7 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
 
     "resolve slots against the defining class of the context" in {
       given c2: AttributeView = sv.classes("C2").attributeViews("only_in_c2")
-      parse("{only_in_c2}") shouldBe Seq(Substitution(c2))
+      parse("{only_in_c2}") shouldBe Seq(Substitution(Seq(c2)))
     }
 
     "reject a slot that belongs to a different class" in {
@@ -156,6 +185,49 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
 
     "reject an empty substitution" in {
       parseError("Hello {}") should include("substitution:1:7 / a slot name:1:8")
+    }
+
+    "resolve a path into an inlined class" in {
+      parse("{nested.leaf}") shouldBe Seq(Substitution(Seq(attrNested, attrLeaf)))
+    }
+
+    "resolve a path several levels deep" in {
+      parse("in {nested.deeper.bottom}!") shouldBe Seq(
+        Literal("in "),
+        Substitution(Seq(attrNested, attrDeeper, attrBottom)),
+        Literal("!"),
+      )
+    }
+
+    "expose the path as written in the schema" in {
+      parse("{nested.deeper.bottom}").head
+        .asInstanceOf[Substitution].pathString shouldBe "nested.deeper.bottom"
+    }
+
+    "reject an unknown slot in a nested class, naming the nested class" in {
+      val error = parseError("{nested.nope}")
+      error should include("nope")
+      error should include("Nested")
+    }
+
+    "reject descending into a multivalued inlined class" in {
+      val error = parseError("{nested_many.leaf}")
+      error should include("nested_many")
+      error should include("multivalued")
+    }
+
+    "reject descending into a class reference" in {
+      parseError("{nested_ref.id}") should include("nested_ref")
+    }
+
+    "reject descending into a plain type" in {
+      parseError("{reference_value.leaf}") should include("reference_value")
+    }
+
+    "reject a path with an empty segment" in {
+      parseError("{nested..leaf}") should include("nested..leaf")
+      parseError("{.leaf}") should include(".leaf")
+      parseError("{nested.}") should include("nested.")
     }
   }
 }

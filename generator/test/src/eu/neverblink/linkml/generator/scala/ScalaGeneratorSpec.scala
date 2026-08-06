@@ -790,6 +790,23 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate an infer() method reaching into inlined classes" in {
+      val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      Seq(
+        // Every optional link along the path is unwrapped, the outermost one last
+        """fromOptionalNested = inferOptional("from_optional_nested", fromOptionalNested, """ +
+          """inferenceInput("optional_nested.leaf", """ +
+          """inferenceInput("optional_nested", optionalNested).leaf))""",
+        // A required link needs no unwrapping, an optional one further down still does
+        """fromRequiredNested = inferOptional("from_required_nested", fromRequiredNested, """ +
+          """requiredNested.requiredLeaf + " at " + """ +
+          """inferenceInput("required_nested.deeper", requiredNested.deeper).bottom)""",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+    }
+
     "generate an infer() method that does nothing when there are no expressions" in {
       val code = ScalaGenerator(using ModelCatalogue.basic.model)
         .generate(testPkg).toMap.apply("SomeClass.scala")
