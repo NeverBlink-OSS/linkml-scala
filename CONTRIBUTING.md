@@ -18,8 +18,9 @@ Common tasks with mill:
 - Compile all modules: `./mill __.compile`
 - Run all tests: `./mill __.test` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`)
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
-- Lint the project `./mill lint` (scalafix + scalafmt)
-- Re-generate the metamodel classes `./mill metamodel.regenerate`
+- Lint the project: `./mill lint` (scalafix + scalafmt)
+- Re-generate the metamodel classes: `./mill metamodel.regenerate`
+- Re-generate the validation model classes: `./mill validation.regenerate`
 - Fetch the metamodel definitions from [linkml/linkml-model](https://github.com/linkml/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
