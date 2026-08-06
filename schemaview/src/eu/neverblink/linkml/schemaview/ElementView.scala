@@ -18,7 +18,8 @@ import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
   * @tparam E
   *   The type of the underlying Element
   * @tparam R
-  *   The runtime type of the underlying Element, which is used for resolving default values.
+  *   The type of default values for this element when resolving constructor expressions (e.g. from
+  *   the `ifabsent` metaslot).
   */
 sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
 
@@ -45,7 +46,7 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
   def aliasedName: String
 
   /** Evaluate a constructor expression (e.g. from the `ifabsent` metaslot) treating this element as
-    * the range. Dispatches on the element type, so that the result is statically typed as [[R]].
+    * the range.
     *
     * May throw a [[ConstructorExpression.EvaluationException]] if the expression is invalid or
     * cannot be parsed into a value of type [[R]].

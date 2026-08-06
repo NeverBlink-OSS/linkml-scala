@@ -236,8 +236,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         else {
           val enumName = Case.PascalCase(enumDef.name)
           val default: Option[PermissibleValue] = slot.ifAbsent(enumView)
-          if (isInlined) (enumName, default.map(p => s"$enumName.${Case.PascalCase(p.text)}"))
-          else (s"Reference[$enumName]", None) // no idea what to do with that
+          (enumName, default.map(p => s"$enumName.${Case.PascalCase(p.text)}"))
         }
       case _ => throw RuntimeException(s"Couldn't map range $range")
     }
