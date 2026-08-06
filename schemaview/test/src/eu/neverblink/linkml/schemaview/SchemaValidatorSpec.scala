@@ -255,8 +255,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val msg = validationFailure(sv).toLowerCase
 
       Seq(
-        "'one'",
-        "'two'",
+        "one, two",
         "tree_root",
       ) foreach { part =>
         msg should include(part)
@@ -310,8 +309,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       Seq(
         "identifier",
         "key",
-        "'id1'",
-        "'id2'",
+        "id1, id2",
         "some_class",
       ) foreach { part =>
         msg should include(part)
@@ -341,8 +339,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       Seq(
         "identifier",
         "key",
-        "'id1'",
-        "'id2'",
+        "id1, id2",
         "some_class",
       ) foreach { part =>
         msg should include(part)
@@ -372,8 +369,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       Seq(
         "identifier",
         "key",
-        "'id1'",
-        "'id2'",
+        "id1, id2",
         "some_class",
       ) foreach { part =>
         msg should include(part)

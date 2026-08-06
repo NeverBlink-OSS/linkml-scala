@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
+import eu.neverblink.linkml.runtime.{NcName, PrefixResolver, Reference}
 import eu.neverblink.linkml.validation.*
 
 import java.util
@@ -10,7 +10,7 @@ import java.util
   * correct.
   */
 final class SchemaValidator(using sv: SchemaView) {
-  import SchemaValidator.{macroValidator, quoteJoin}
+  import SchemaValidator.macroValidator
 
   /** Location of an issue that is pinned to a JSON path within the root schema. */
   private def at(jsonPath: String): IssueLocationImpl =
@@ -94,7 +94,7 @@ final class SchemaValidator(using sv: SchemaView) {
       Some(
         MultipleTreeRootsImpl(
           location = rootLocation,
-          classNameList = quoteJoin(treeRoots.map(_.name)),
+          classNames = treeRoots.map(_.name),
         ),
       )
     else None
@@ -121,7 +121,7 @@ final class SchemaValidator(using sv: SchemaView) {
           MultipleKeyOrIdSlotsImpl(
             location = classLocation(derivedCls.cls.name),
             className = derivedCls.cls.name,
-            slotNameList = quoteJoin(keyOrId.toSeq.map(_.name)),
+            slotNames = keyOrId.toSeq.map(_.name),
           ),
         )
       } else if (keyOrId.size == 1) {
@@ -296,7 +296,7 @@ final class SchemaValidator(using sv: SchemaView) {
           InvalidSlotUsageImpl(
             location = classLocation(cls.cls.name),
             className = cls.cls.name,
-            slotNameList = quoteJoin(problemSlots.toSeq),
+            slotNames = problemSlots.toSeq,
           ),
         )
       }
@@ -311,28 +311,25 @@ final class SchemaValidator(using sv: SchemaView) {
     slotDefinition.implicitPrefix match {
       case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
         Some(
-          undefinedPrefix(
-            prefix.toString,
-            s"$locationPrefix/${slotDefinition.name}/implicit_prefix",
-          ),
+          undefinedPrefix(prefix, s"$locationPrefix/${slotDefinition.name}/implicit_prefix"),
         )
       case _ => None
     }
   }
 
-  private def undefinedPrefix(prefix: String, position: String): SchemaError =
+  private def undefinedPrefix(prefix: NcName, position: String): SchemaError =
     UndefinedPrefixImpl(location = at(position), prefix = prefix)
 
   private lazy val unknownPrefixes: Seq[SchemaError] = {
     sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
       if sv.rootPrefixResolver.resolvePrefix(prefix).isEmpty
-      then Some(undefinedPrefix(prefix.toString, s"/emit_prefixes/$idx"))
+      then Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx"))
       else None,
     ) ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
           case Some(prefix) if tv.definingPrefixResolver.resolvePrefix(prefix).isEmpty =>
-            Some(undefinedPrefix(prefix.toString, s"/types/${tv._type.name}/implicit_prefix"))
+            Some(undefinedPrefix(prefix, s"/types/${tv._type.name}/implicit_prefix"))
           case _ => None
         }
       }) ++
@@ -365,10 +362,9 @@ final class SchemaValidator(using sv: SchemaView) {
         Some(
           InvalidUriOrCurieImpl(
             location = IssueLocationImpl(schemaId = Some(elem.definingSchema.id)),
-            uriOrCurie = elem.uriOrCurie.original,
+            uriOrCurie = elem.uriOrCurie,
             elementType = elem.elementType,
             elementName = elem.inner.name,
-            definingSchemaId = elem.definingSchema.id.original,
           ),
         )
     }.toSeq
@@ -439,7 +435,4 @@ object SchemaValidator {
   /** Macro validator instance which will be used in the [[SchemaValidator]] */
   private val macroValidator: MacroValidator[SchemaDefinitionImpl] =
     MacroValidator.derived
-
-  /** Format a list of names the way the issue messages expect: quoted and comma separated. */
-  private def quoteJoin(names: Seq[String]): String = names.mkString("'", "', '", "'")
 }

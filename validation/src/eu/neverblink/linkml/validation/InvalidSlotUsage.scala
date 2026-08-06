@@ -15,8 +15,8 @@ final case class InvalidSlotUsageImpl(
     location: IssueLocationImpl,
     message: Option[String] = None,
     severity: IssueSeverity = IssueSeverity.Warning,
-    @named("slot_name_list")
-    slotNameList: String,
+    @named("slot_names")
+    slotNames: Seq[String],
 ) extends InvalidSlotUsage {
 
   override def infer(): InvalidSlotUsageImpl =
@@ -24,12 +24,14 @@ final case class InvalidSlotUsageImpl(
       details = inferOptional(
         "details",
         details,
-        "Class '" + className + "' has declared 'slot_usage' for slots that are not defined for its ancestors. These slots will not be included: " + slotNameList,
+        "Class '" + className + "' has declared 'slot_usage' for slots that are not defined for its ancestors. These slots will not be included: " + stringify(
+          slotNames,
+        ),
       ),
       message = inferOptional(
         "message",
         message,
-        "Invalid 'slot_usage' slots: " + slotNameList + " in class " + className,
+        "Invalid 'slot_usage' slots: " + stringify(slotNames) + " in class " + className,
       ),
     )
 }
@@ -71,7 +73,7 @@ abstract class InvalidSlotUsage extends SchemaWarning {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def slotNameList: String
+  def slotNames: Seq[String]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

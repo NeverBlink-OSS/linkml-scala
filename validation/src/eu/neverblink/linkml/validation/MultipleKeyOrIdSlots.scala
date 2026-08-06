@@ -15,8 +15,8 @@ final case class MultipleKeyOrIdSlotsImpl(
     location: IssueLocationImpl,
     message: Option[String] = None,
     severity: IssueSeverity = IssueSeverity.Error,
-    @named("slot_name_list")
-    slotNameList: String,
+    @named("slot_names")
+    slotNames: Seq[String],
 ) extends MultipleKeyOrIdSlots {
 
   override def infer(): MultipleKeyOrIdSlotsImpl =
@@ -24,7 +24,7 @@ final case class MultipleKeyOrIdSlotsImpl(
       message = inferOptional(
         "message",
         message,
-        "Multiple key / identifier slots in class '" + className + "': " + slotNameList,
+        "Multiple key / identifier slots in class '" + className + "': " + stringify(slotNames),
       ),
     )
 }
@@ -56,7 +56,7 @@ abstract class MultipleKeyOrIdSlots extends SchemaError {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def slotNameList: String
+  def slotNames: Seq[String]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -12,7 +12,7 @@ final case class UndefinedPrefixImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
-    prefix: String,
+    prefix: NcName,
     severity: IssueSeverity = IssueSeverity.Error,
 ) extends UndefinedPrefix {
 
@@ -21,7 +21,7 @@ final case class UndefinedPrefixImpl(
       message = inferOptional(
         "message",
         message,
-        "Undefined prefix " + prefix + " at " + inferenceInput(
+        "Undefined prefix " + stringify(prefix) + " at " + inferenceInput(
           "location.json_pointer",
           location.jsonPointer,
         ),
@@ -49,7 +49,7 @@ abstract class UndefinedPrefix extends SchemaError {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def prefix: String
+  def prefix: NcName
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -9,8 +9,6 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class InvalidUriOrCurieImpl(
-    @named("defining_schema_id")
-    definingSchemaId: String,
     details: Option[String] = None,
     @named("element_name")
     elementName: String,
@@ -20,7 +18,7 @@ final case class InvalidUriOrCurieImpl(
     message: Option[String] = None,
     severity: IssueSeverity = IssueSeverity.Error,
     @named("uri_or_curie")
-    uriOrCurie: String,
+    uriOrCurie: UriOrCurie,
 ) extends InvalidUriOrCurie {
 
   override def infer(): InvalidUriOrCurieImpl =
@@ -28,12 +26,20 @@ final case class InvalidUriOrCurieImpl(
       details = inferOptional(
         "details",
         details,
-        "Invalid URI or CURIE '" + uriOrCurie + "' in " + elementType + " '" + elementName + "' imported from schema '" + definingSchemaId + "'. A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a valid NCName.",
+        "Invalid URI or CURIE '" + stringify(
+          uriOrCurie,
+        ) + "' in " + elementType + " '" + elementName + "' imported from schema '" + stringify(
+          inferenceInput("location.schema_id", location.schemaId),
+        ) + "'. A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a valid NCName.",
       ),
       message = inferOptional(
         "message",
         message,
-        "Invalid URI or CURIE '" + uriOrCurie + "' in " + elementType + " '" + elementName + "' imported from schema '" + definingSchemaId + "'.",
+        "Invalid URI or CURIE '" + stringify(
+          uriOrCurie,
+        ) + "' in " + elementType + " '" + elementName + "' imported from schema '" + stringify(
+          inferenceInput("location.schema_id", location.schemaId),
+        ) + "'.",
       ),
     )
 }
@@ -44,11 +50,6 @@ final case class InvalidUriOrCurieImpl(
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
 abstract class InvalidUriOrCurie extends SchemaError {
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def definingSchemaId: String
 
   /** Longer, human-readable message describing the issue in more detail.
     *
@@ -85,7 +86,7 @@ abstract class InvalidUriOrCurie extends SchemaError {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def uriOrCurie: String
+  def uriOrCurie: UriOrCurie
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

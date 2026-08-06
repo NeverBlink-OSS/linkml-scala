@@ -12,7 +12,8 @@ notes:
   - >-
     `message` is the short, one-line description. `details` is the long form. When an issue's long
     form is identical to its short form, only `message` is given.
-  - Slots named `*_list` hold an already-formatted, quoted and comma-separated string.
+  - Multivalued slots are joined with ", " when substituted into an expression, and non-string
+    ranges are stringified automatically, so issue slots are typed after the value they hold.
 
 # Reusable slots for use in schema issue subclasses.
 slots:
@@ -143,13 +144,14 @@ classes:
     is_a: SchemaError
     description: More than one class in the root schema is marked as `tree_root`.
     attributes:
-      class_name_list:
+      class_names:
         range: string
         required: true
+        multivalued: true
         title: class names
     slot_usage:
       message:
-        equals_expression: "Multiple classes are defined as a 'tree_root': {class_name_list}"
+        equals_expression: "Multiple classes are defined as a 'tree_root': {class_names}"
 
   MultipleKeyOrIdSlots:
     is_a: SchemaError
@@ -157,14 +159,15 @@ classes:
     slots:
       - class_name
     attributes:
-      slot_name_list:
+      slot_names:
         range: string
         required: true
+        multivalued: true
         title: slot names
     slot_usage:
       message:
         equals_expression: >-
-          Multiple key / identifier slots in class '{class_name}': {slot_name_list}
+          Multiple key / identifier slots in class '{class_name}': {slot_names}
 
   InvalidKeyOrIdSlotType:
     is_a: SchemaError
@@ -198,7 +201,7 @@ classes:
     description: A prefix is referenced but not defined in the schema.
     attributes:
       prefix:
-        range: string
+        range: ncname
         required: true
         title: prefix
     slot_usage:
@@ -212,28 +215,22 @@ classes:
       - element_name
     attributes:
       uri_or_curie:
-        range: string
+        range: uriorcurie
         required: true
         title: URI or CURIE
       element_type:
         range: string
         required: true
         title: element type
-      # Not folded into `location.schema_id`: that slot's range is `uri`, and message expressions
-      # only substitute single-valued strings.
-      defining_schema_id:
-        range: string
-        required: true
-        title: defining schema identifier
     slot_usage:
       message:
         equals_expression: >-
           Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
-          schema '{defining_schema_id}'.
+          schema '{location.schema_id}'.
       details:
         equals_expression: >-
           Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
-          schema '{defining_schema_id}'. A valid URI must be a valid IRI, and a valid CURIE must be
+          schema '{location.schema_id}'. A valid URI must be a valid IRI, and a valid CURIE must be
           of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a
           valid NCName.
 
@@ -264,15 +261,16 @@ classes:
     slots:
       - class_name
     attributes:
-      slot_name_list:
+      slot_names:
         range: string
         required: true
+        multivalued: true
         title: slot names
     slot_usage:
       message:
         equals_expression: >-
-          Invalid 'slot_usage' slots: {slot_name_list} in class {class_name}
+          Invalid 'slot_usage' slots: {slot_names} in class {class_name}
       details:
         equals_expression: >-
           Class '{class_name}' has declared 'slot_usage' for slots that are not defined for its ancestors.
-          These slots will not be included: {slot_name_list}
+          These slots will not be included: {slot_names}

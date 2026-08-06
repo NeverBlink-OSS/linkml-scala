@@ -9,8 +9,8 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class MultipleTreeRootsImpl(
-    @named("class_name_list")
-    classNameList: String,
+    @named("class_names")
+    classNames: Seq[String],
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
@@ -22,7 +22,7 @@ final case class MultipleTreeRootsImpl(
       message = inferOptional(
         "message",
         message,
-        "Multiple classes are defined as a 'tree_root': " + classNameList,
+        "Multiple classes are defined as a 'tree_root': " + stringify(classNames),
       ),
     )
 }
@@ -37,7 +37,7 @@ abstract class MultipleTreeRoots extends SchemaError {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def classNameList: String
+  def classNames: Seq[String]
 
   /** Short, human-readable message describing the issue.
     *

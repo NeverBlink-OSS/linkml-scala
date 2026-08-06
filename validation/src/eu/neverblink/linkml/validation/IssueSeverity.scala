@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @see
   *   From schema: https://linkml.neverblink.eu/model/validation-report
   */
-sealed abstract class IssueSeverity
+sealed abstract class IssueSeverity derives Stringify
 
 object IssueSeverity {
 
