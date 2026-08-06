@@ -173,6 +173,7 @@ object ModelCatalogue {
     val explicitInlineImplicitlyAsSimpleDict: Entry =
       Entry("/models/inlines/explicitInlineImplicitlyAsSimpleDict/")
     val explicitInlineList: Entry = Entry("/models/inlines/explicitInlineList/")
+    val inlineAbstract: Entry = Entry("/models/inlines/inlineAbstract/")
 
     val selfSimple2: Entry = Entry("/models/inlines/selfSimple2/")
     val selfSimple2Required: Entry = Entry("/models/inlines/selfSimple2Required/")

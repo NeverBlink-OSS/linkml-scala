@@ -199,6 +199,30 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "type inlined ranges of abstract classes and mixins as the interface" in {
+      // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
+      // one has to be typed as the interface, or the generated code does not compile.
+      given SchemaView = ModelCatalogue.inlines.inlineAbstract.model
+
+      val code = ScalaGenerator().generate(testPkg).toMap.apply("Container.scala")
+      Seq(
+        "toAbstract: Option[AbstractRange] = None",
+        "toMixin: Option[MixinRange] = None",
+        "manyAbstract: Seq[AbstractRange] = Seq()",
+        // A concrete range still gets the implementation type
+        "toConcrete: Option[ConcreteRangeImpl] = None",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+
+      Seq(
+        "AbstractRangeImpl",
+        "MixinRangeImpl",
+      ).foreach { snippet =>
+        code should not include snippet
+      }
+    }
+
     "provide annotations for the 'alias' slot" in {
       val input =
         s"""$schemaShared

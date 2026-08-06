@@ -218,7 +218,11 @@ final class ScalaGenerator(using sv: SchemaView) {
       case AnyView(slotView, _) =>
         (Case.PascalCase(slotView.derivedRange.resolve.get.name), None)
       case ClassInlineAttributeView(_, _, classView, _) =>
-        (s"${Case.PascalCase(classView.cls.name)}Impl", None)
+        // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
+        // one has to be typed as the interface instead.
+        val className = Case.PascalCase(classView.cls.name)
+        val hasImpl = !classView.cls.`abstract` && !classView.cls.mixin
+        (if hasImpl then s"${className}Impl" else className, None)
       case ClassReferenceAttributeView(_, _, classView, _) =>
         (s"Reference[${Case.PascalCase(classView.cls.name)}]", None)
       case TypeAttributeView(_, _, typeView) =>
@@ -496,14 +500,7 @@ object ScalaGenerator {
             |""".stripMargin
         val inferMethod =
           indent"""
-            |/** Fill in the slots that have an `equals_expression` with their computed values, and
-            |  * check that the values already present agree with what their expressions infer.
-            |  *
-            |  * @throws InferenceException
-            |  *   if a slot's value contradicts the value inferred for it, or if an expression
-            |  *   references a slot that has no value
-            |  */
-            |def infer(): ${name}Impl =
+            |override def infer(): ${name}Impl =
             |  ${
               if inferredFields.isEmpty then "this"
               else indent"""copy(
@@ -570,11 +567,12 @@ object ScalaGenerator {
       // Declared on the interface so callers can infer without knowing the implementation type.
       // The implementation narrows the return type to its own `${name}Impl`.
       val inferDeclaration =
-        indent"""/** Fill in the slots that have an `equals_expression`, and check the values already
-                |  * present against them.
+        indent"""/** Fill in the slots that have an `equals_expression` with their computed values, and
+                |  * check that the values already present agree with what their expressions infer.
                 |  *
-                |  * @throws InferenceException
-                |  *   if a slot's value contradicts the value inferred for it
+                |  * @throws eu.neverblink.linkml.runtime.InferenceException
+                |  *   if a slot's value contradicts the value inferred for it, or if an expression
+                |  *   references a slot that has no value
                 |  */
                 |def infer(): $name
                 |""".stripMargin

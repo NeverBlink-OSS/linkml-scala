@@ -74,14 +74,7 @@ final case class DimensionExpressionImpl(
     todos: Seq[String] = Seq(),
 ) extends DimensionExpression {
 
-  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
-    * the values already present agree with what their expressions infer.
-    *
-    * @throws InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression references a
-    *   slot that has no value
-    */
-  def infer(): DimensionExpressionImpl =
+  override def infer(): DimensionExpressionImpl =
     this
 }
 
@@ -133,11 +126,12 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
     */
   def minimumCardinality: Option[Int]
 
-  /** Fill in the slots that have an `equals_expression`, and check the values already present
-    * against them.
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
     *
-    * @throws InferenceException
-    *   if a slot's value contradicts the value inferred for it
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
     */
   def infer(): DimensionExpression
 }
