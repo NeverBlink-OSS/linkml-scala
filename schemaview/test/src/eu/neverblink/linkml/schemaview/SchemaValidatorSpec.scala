@@ -67,9 +67,9 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |  string:
            |""".stripMargin
       loadFailure(schemaYaml) shouldBe
-        """Unknown reference '???' at /classes/SomeClass/slots/0/.
-          |Unknown reference 'unknown' at /classes/SomeClass/slots/1/.
-          |Unknown reference 'nope' at /slots/wrong/range/.""".stripMargin
+        """Unknown reference '???' at /classes/SomeClass/slots/0/
+          |Unknown reference 'unknown' at /classes/SomeClass/slots/1/
+          |Unknown reference 'nope' at /slots/wrong/range/""".stripMargin
     }
 
     "find unknown references in deeply nested schemas" in {
@@ -84,7 +84,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |              - range: nope
            |""".stripMargin
       loadFailure(schemaYaml) shouldBe
-        """Unknown reference 'nope' at /slots/root/any_of/0/exactly_one_of/0/none_of/0/all_of/0/range/.
+        """Unknown reference 'nope' at /slots/root/any_of/0/exactly_one_of/0/none_of/0/all_of/0/range/
           |Undefined range at /slots/root/any_of/0/exactly_one_of/0/none_of/0/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
           |Undefined range at /slots/root/any_of/0/exactly_one_of/0/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
           |Undefined range at /slots/root/any_of/0/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
@@ -108,9 +108,9 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |  string:
            |""".stripMargin
       loadFailure(schemaYaml) shouldBe
-        """Unknown reference '???' at /classes/SomeClass/slots/0/.
-          |Unknown reference 'unknown' at /classes/SomeClass/slots/1/.
-          |Unknown reference 'nope' at /slots/wrong/range/.""".stripMargin
+        """Unknown reference '???' at /classes/SomeClass/slots/0/
+          |Unknown reference 'unknown' at /classes/SomeClass/slots/1/
+          |Unknown reference 'nope' at /slots/wrong/range/""".stripMargin
     }
 
     "fail for non-unique names in the different element kinds: classes, types, and enums" in {

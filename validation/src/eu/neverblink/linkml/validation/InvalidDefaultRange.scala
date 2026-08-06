@@ -10,8 +10,6 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class InvalidDefaultRangeImpl(
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
     severity: IssueSeverity = IssueSeverity.Fatal,
@@ -19,12 +17,19 @@ final case class InvalidDefaultRangeImpl(
 
   override def infer(): InvalidDefaultRangeImpl =
     copy(
+      message = inferOptional(
+        "message",
+        message,
+        "Undefined range at " + inferenceInput("location.json_pointer", location.jsonPointer),
+      ),
       details = inferOptional(
         "details",
         details,
-        "Undefined range at " + jsonPath + ", schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.",
+        "Undefined range at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ) + ", schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.",
       ),
-      message = inferOptional("message", message, "Undefined range at " + jsonPath),
     )
 }
 
@@ -44,14 +49,6 @@ abstract class InvalidDefaultRange extends SchemaFatal {
     *   report wishes to include it.
     */
   def details: Option[String]
-
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def jsonPath: String
 
   /** Short, human-readable message describing the issue.
     *

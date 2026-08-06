@@ -12,14 +12,20 @@ final case class UndefinedPrefixImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
-    position: String,
     prefix: String,
     severity: IssueSeverity = IssueSeverity.Error,
 ) extends UndefinedPrefix {
 
   override def infer(): UndefinedPrefixImpl =
     copy(
-      message = inferOptional("message", message, "Undefined prefix " + prefix + " at " + position),
+      message = inferOptional(
+        "message",
+        message,
+        "Undefined prefix " + prefix + " at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ),
+      ),
     )
 }
 
@@ -39,11 +45,6 @@ abstract class UndefinedPrefix extends SchemaError {
     *   report wishes to include it.
     */
   def message: Option[String]
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def position: String
 
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types

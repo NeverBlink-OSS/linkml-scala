@@ -10,8 +10,6 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UnknownReferenceImpl(
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
     @named("reference_value")
@@ -21,15 +19,13 @@ final case class UnknownReferenceImpl(
 
   override def infer(): UnknownReferenceImpl =
     copy(
-      details = inferOptional(
-        "details",
-        details,
-        "Unknown reference '" + referenceValue + "' at " + jsonPath + ".",
-      ),
       message = inferOptional(
         "message",
         message,
-        "Unknown reference '" + referenceValue + "' at " + jsonPath,
+        "Unknown reference '" + referenceValue + "' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ),
       ),
     )
 }
@@ -40,24 +36,6 @@ final case class UnknownReferenceImpl(
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
 abstract class UnknownReference extends SchemaFatal {
-
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def jsonPath: String
 
   /** Short, human-readable message describing the issue.
     *

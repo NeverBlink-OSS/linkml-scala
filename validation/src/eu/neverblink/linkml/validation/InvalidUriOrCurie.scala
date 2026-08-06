@@ -28,7 +28,7 @@ final case class InvalidUriOrCurieImpl(
       details = inferOptional(
         "details",
         details,
-        "Invalid URI or CURIE '" + uriOrCurie + "' in " + elementType + " '" + elementName + "' imported from schema '" + definingSchemaId + "'.. A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a valid NCName.",
+        "Invalid URI or CURIE '" + uriOrCurie + "' in " + elementType + " '" + elementName + "' imported from schema '" + definingSchemaId + "'. A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a valid NCName.",
       ),
       message = inferOptional(
         "message",

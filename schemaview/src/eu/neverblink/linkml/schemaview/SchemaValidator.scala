@@ -43,12 +43,10 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.unknownReferences.map(ref =>
       // A dangling 'string' reference nearly always means 'linkml:types' was not imported, so it
       // gets its own issue type with a hint.
-      if ref.referenceValue == "string" then
-        UnknownStringReferenceImpl(location = at(ref.path), jsonPath = ref.path)
+      if ref.referenceValue == "string" then UnknownStringReferenceImpl(location = at(ref.path))
       else
         UnknownReferenceImpl(
           location = at(ref.path),
-          jsonPath = ref.path,
           referenceValue = ref.referenceValue,
         ),
     )
@@ -56,7 +54,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Any usages of an undefined `default_range`. Empty if no usages found. */
   lazy val usedUndefinedDefaultRange: Seq[SchemaFatal] =
     macroResult.invalidDefaultRanges.map(range =>
-      InvalidDefaultRangeImpl(location = at(range.path), jsonPath = range.path),
+      InvalidDefaultRangeImpl(location = at(range.path)),
     )
 
   lazy val schemaIdClash: Seq[SchemaFatal] = {
@@ -81,7 +79,6 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.invalidRanges.map(range =>
       InvalidRangeImpl(
         location = at(range.path),
-        jsonPath = range.path,
         rangeValue = range.value,
         actualType = range.actualType,
       ),
@@ -324,7 +321,7 @@ final class SchemaValidator(using sv: SchemaView) {
   }
 
   private def undefinedPrefix(prefix: String, position: String): SchemaError =
-    UndefinedPrefixImpl(location = at(position), prefix = prefix, position = position)
+    UndefinedPrefixImpl(location = at(position), prefix = prefix)
 
   private lazy val unknownPrefixes: Seq[SchemaError] = {
     sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>

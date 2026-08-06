@@ -12,8 +12,6 @@ final case class InvalidRangeImpl(
     @named("actual_type")
     actualType: String,
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
     @named("range_value")
@@ -26,10 +24,19 @@ final case class InvalidRangeImpl(
       details = inferOptional(
         "details",
         details,
-        "Invalid range '" + rangeValue + "' at " + jsonPath + ", which refers to " + actualType + ". Ranges can only reference types, classes or enums.",
+        "Invalid range '" + rangeValue + "' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ) + ", which refers to " + actualType + ". Ranges can only reference types, classes or enums.",
       ),
-      message =
-        inferOptional("message", message, "Invalid range '" + rangeValue + "' at " + jsonPath),
+      message = inferOptional(
+        "message",
+        message,
+        "Invalid range '" + rangeValue + "' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ),
+      ),
     )
 }
 
@@ -56,14 +63,6 @@ abstract class InvalidRange extends SchemaFatal {
     *   report wishes to include it.
     */
   def details: Option[String]
-
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def jsonPath: String
 
   /** Short, human-readable message describing the issue.
     *

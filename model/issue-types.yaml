@@ -16,14 +16,6 @@ notes:
 
 # Reusable slots for use in schema issue subclasses.
 slots:
-  json_path:
-    range: string
-    required: true
-    title: JSON path
-    description: >-
-      Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-      `equals_expression` cannot reach into.
-
   class_name:
     range: string
     required: true
@@ -42,8 +34,6 @@ classes:
   UnknownReference:
     is_a: SchemaFatal
     description: A reference in the schema points at an element that is not defined.
-    slots:
-      - json_path
     attributes:
       reference_value:
         range: string
@@ -51,29 +41,23 @@ classes:
         title: reference value
     slot_usage:
       message:
-        equals_expression: "Unknown reference '{reference_value}' at {json_path}"
-      details:
-        equals_expression: "Unknown reference '{reference_value}' at {json_path}."
+        equals_expression: "Unknown reference '{reference_value}' at {location.json_pointer}"
 
   UnknownStringReference:
     is_a: SchemaFatal
     description: >-
       A reference to the `string` type could not be resolved, which almost always means that
       `linkml:types` was not imported.
-    slots:
-      - json_path
     slot_usage:
       message:
-        equals_expression: "Unknown reference 'string' at {json_path}"
+        equals_expression: "Unknown reference 'string' at {location.json_pointer}"
       details:
         equals_expression: >-
-          Unknown reference 'string' at {json_path}. Make sure you have 'linkml:types' imported.
+          Unknown reference 'string' at {location.json_pointer}. Make sure you have 'linkml:types' imported.
 
   InvalidRange:
     is_a: SchemaFatal
     description: A `range` points at an element that cannot be used as a range.
-    slots:
-      - json_path
     attributes:
       range_value:
         range: string
@@ -86,23 +70,21 @@ classes:
         description: The metamodel type the range actually resolved to.
     slot_usage:
       message:
-        equals_expression: "Invalid range '{range_value}' at {json_path}"
+        equals_expression: "Invalid range '{range_value}' at {location.json_pointer}"
       details:
         equals_expression: >-
-          Invalid range '{range_value}' at {json_path}, which refers to {actual_type}. Ranges can
+          Invalid range '{range_value}' at {location.json_pointer}, which refers to {actual_type}. Ranges can
           only reference types, classes or enums.
 
   InvalidDefaultRange:
     is_a: SchemaFatal
     description: A slot omits its `range` while no usable `default_range` exists.
-    slots:
-      - json_path
     slot_usage:
       message:
-        equals_expression: "Undefined range at {json_path}"
+        equals_expression: "Undefined range at {location.json_pointer}"
       details:
         equals_expression: >-
-          Undefined range at {json_path}, schema 'default_range' is undefined, and the fallback
+          Undefined range at {location.json_pointer}, schema 'default_range' is undefined, and the fallback
           'string' type is not available. Define the 'range' of the slot, add a 'default_range' to
           the schema, import 'linkml:types', or define a 'string' type to fix.
 
@@ -219,13 +201,9 @@ classes:
         range: string
         required: true
         title: prefix
-      position:
-        range: string
-        required: true
-        title: position
     slot_usage:
       message:
-        equals_expression: "Undefined prefix {prefix} at {position}"
+        equals_expression: "Undefined prefix {prefix} at {location.json_pointer}"
 
   InvalidUriOrCurie:
     is_a: SchemaError
@@ -241,6 +219,8 @@ classes:
         range: string
         required: true
         title: element type
+      # Not folded into `location.schema_id`: that slot's range is `uri`, and message expressions
+      # only substitute single-valued strings.
       defining_schema_id:
         range: string
         required: true
@@ -253,7 +233,7 @@ classes:
       details:
         equals_expression: >-
           Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
-          schema '{defining_schema_id}'.. A valid URI must be a valid IRI, and a valid CURIE must be
+          schema '{defining_schema_id}'. A valid URI must be a valid IRI, and a valid CURIE must be
           of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a
           valid NCName.
 

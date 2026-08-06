@@ -10,8 +10,6 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UnknownStringReferenceImpl(
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
     severity: IssueSeverity = IssueSeverity.Fatal,
@@ -19,12 +17,22 @@ final case class UnknownStringReferenceImpl(
 
   override def infer(): UnknownStringReferenceImpl =
     copy(
+      message = inferOptional(
+        "message",
+        message,
+        "Unknown reference 'string' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ),
+      ),
       details = inferOptional(
         "details",
         details,
-        "Unknown reference 'string' at " + jsonPath + ". Make sure you have 'linkml:types' imported.",
+        "Unknown reference 'string' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ) + ". Make sure you have 'linkml:types' imported.",
       ),
-      message = inferOptional("message", message, "Unknown reference 'string' at " + jsonPath),
     )
 }
 
@@ -45,14 +53,6 @@ abstract class UnknownStringReference extends SchemaFatal {
     *   report wishes to include it.
     */
   def details: Option[String]
-
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def jsonPath: String
 
   /** Short, human-readable message describing the issue.
     *
