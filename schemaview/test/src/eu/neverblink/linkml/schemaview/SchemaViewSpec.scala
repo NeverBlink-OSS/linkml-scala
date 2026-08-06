@@ -347,11 +347,11 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           |name: empty
           |""".stripMargin
 
-      val schema = FileSystemImporter.parseSchema(schemaStr)
+      val schema = FileSystemImporter.parseSchema(schemaStr).toOption.get
       val emptySchema = FileSystemImporter.parseSchema(emptySchemaStr)
       val touchedPaths = mutable.ArrayBuffer[String]()
       val importer = new Importer {
-        def readSchema(path: String): SchemaDefinition = {
+        def readSchema(path: String): Either[ImportFailure, SchemaDefinition] = {
           touchedPaths.addOne(path)
           emptySchema
         }
@@ -414,8 +414,8 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val sv = SchemaView(
         Seq(
-          FileSystemImporter.parseSchema(schemaMain),
-          FileSystemImporter.parseSchema(schemaImported),
+          FileSystemImporter.parseSchema(schemaMain).toOption.get,
+          FileSystemImporter.parseSchema(schemaImported).toOption.get,
         ),
       )
       sv.treeRoot shouldBe None

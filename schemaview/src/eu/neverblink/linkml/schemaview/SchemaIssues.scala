@@ -59,6 +59,21 @@ object SchemaIssues {
     printed + rest
   }
 
+  /** Exception thrown when a schema cannot be loaded at all – a parse failure, an unreadable
+    * import, or a fatal validation problem.
+    *
+    * @param problems
+    *   Issues that blocked loading. Must already have been through `infer()`.
+    * @param maxProblems
+    *   Max number of issues to format
+    */
+  final case class FatalSchemaException(
+      problems: Seq[SchemaIssue],
+      maxProblems: Int,
+  ) extends RuntimeException(
+        "Fatal validation problems:\n" + format(problems, maxProblems, true, false),
+      )
+
   /** Exception which formats a collection of schema (fatal) errors
     *
     * @param problems

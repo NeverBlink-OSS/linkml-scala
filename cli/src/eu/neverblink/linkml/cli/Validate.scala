@@ -2,7 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.cli.ValidationReport.{Format, Issue, Severity}
-import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView}
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaValidator, SchemaView}
 
 import scala.util.control.NonFatal
 
@@ -47,14 +47,17 @@ object Validate extends BaseCommand[ValidateOptions] {
   /** Load the schema and collect every issue.
     *
     * Fatal problems can't be recovered into a [[SchemaView]] (its constructor refuses to build a
-    * schema with fatal problems), so they surface as a load exception, which we translate into
-    * fatal issues. Errors and warnings come from the linter on the successfully-built view.
+    * schema with fatal problems), so they surface as a load exception. [[FatalSchemaException]]
+    * carries the structured issues, anything else only has a message to go on. Errors and warnings
+    * come from the linter on the successfully-built view.
     */
   private def collectIssues(inputName: String): Seq[Issue] =
     try
       val sv = SchemaView.loadSchemaViewFromUri(inputName)
       ValidationReport.issuesOf(SchemaValidator(using sv).lintProblems)
-    catch case NonFatal(ex) => fatalIssues(Option(ex.getMessage).getOrElse(ex.toString))
+    catch
+      case ex: SchemaIssues.FatalSchemaException => ValidationReport.issuesOf(ex.problems)
+      case NonFatal(ex) => fatalIssues(Option(ex.getMessage).getOrElse(ex.toString))
 
   private def fatalIssues(message: String): Seq[Issue] =
     message

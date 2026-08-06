@@ -253,8 +253,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       val sv = SchemaView(
         Seq(
-          FileSystemImporter.parseSchema(schemaMain),
-          FileSystemImporter.parseSchema(schemaImported),
+          FileSystemImporter.parseSchema(schemaMain).toOption.get,
+          FileSystemImporter.parseSchema(schemaImported).toOption.get,
         ),
       )
       SchemaValidator(using sv).validate() shouldBe a[Success[?]]

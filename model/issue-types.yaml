@@ -113,6 +113,48 @@ classes:
       message:
         equals_expression: "Non-unique schema IDs detected"
 
+  SchemaParseError:
+    is_a: SchemaFatal
+    description: >-
+      The schema text could not be parsed as YAML, or could not be decoded into the LinkML
+      metamodel. Where the underlying parser reported a position, it is carried in
+      `location.code_region`.
+    attributes:
+      parser_message:
+        range: string
+        required: true
+        title: parser message
+        description: Verbatim message from the YAML parser or the metamodel decoder.
+      source_uri:
+        range: string
+        required: true
+        title: source URI
+        description: URI the schema text came from. Empty when parsing an in-memory string.
+    slot_usage:
+      message:
+        equals_expression: "Cannot parse schema: {parser_message}"
+      details:
+        equals_expression: "Cannot parse schema '{source_uri}': {parser_message}"
+
+  SchemaImportError:
+    is_a: SchemaFatal
+    description: An imported schema could not be read.
+    attributes:
+      import_uri:
+        range: string
+        required: true
+        title: import URI
+      reason:
+        range: string
+        required: true
+        title: reason
+        description: Verbatim message from whatever failed to supply the schema text.
+    slot_usage:
+      message:
+        equals_expression: "Cannot import schema '{import_uri}'"
+      details:
+        equals_expression: "Cannot import schema '{import_uri}': {reason}"
+
   # ---- Error ------------------------------------------------------------------------------------
 
   MultipleTreeRoots:

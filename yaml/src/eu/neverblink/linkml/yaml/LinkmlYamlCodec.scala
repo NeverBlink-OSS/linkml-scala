@@ -15,11 +15,14 @@ abstract class LinkmlYamlCodec[T] {
 }
 
 object LinkmlYamlCodec {
-  def decodeError(msg: String, node: Node): Nothing = throw new DecodeError(node.pos match {
-    case Some(pos) =>
-      s"Expected $msg at ${pos.start.line}:${pos.start.column} but got:\n${pos.errorMsg}"
-    case _ => s"Expected $msg but got:\n$node"
-  })
+  def decodeError(msg: String, node: Node): Nothing = throw new DecodeError(
+    node.pos match {
+      case Some(pos) =>
+        s"Expected $msg at ${pos.start.line}:${pos.start.column} but got:\n${pos.errorMsg}"
+      case _ => s"Expected $msg but got:\n$node"
+    },
+    node.pos,
+  )
 
   implicit val anythingCodec: LinkmlYamlCodec[LinkmlAny] = new LinkmlYamlCodec[LinkmlAny] {
     override def decode(node: Node, id: Option[Any]): LinkmlAny = LinkmlAny.apply(node.asYaml)
@@ -654,4 +657,12 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     Symbol.requiredClass("eu.neverblink.linkml.yaml.LinkmlYamlCodec").typeRef
 }
 
-class DecodeError(msg: String) extends RuntimeException(msg), NoStackTrace
+/** Failure to decode a YAML node into a metamodel type.
+  *
+  * @param position
+  *   Where in the source the offending node was, when the node carried that information. Callers
+  *   use it to report the failure structurally instead of scraping it out of [[msg]].
+  */
+class DecodeError(msg: String, val position: Option[Range] = None)
+    extends RuntimeException(msg),
+      NoStackTrace

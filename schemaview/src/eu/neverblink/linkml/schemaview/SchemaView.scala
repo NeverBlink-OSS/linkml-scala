@@ -224,13 +224,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   {
     val problems = validator.fatalProblems
     if (problems.nonEmpty) {
-      val formatted = SchemaIssues.format(
-        problems.map(_.infer()),
-        maxProblems = 5,
-        verbose = true,
-        showLevel = false,
-      )
-      sys.error(s"Fatal validation problems:\n$formatted")
+      throw SchemaIssues.FatalSchemaException(problems.map(_.infer()), maxProblems = 5)
     }
   }
 
@@ -305,7 +299,7 @@ object SchemaView {
       yaml: String,
       importer: Importer = FileSystemImporter,
   ): SchemaView = {
-    val root = importer.parseSchema(yaml)
+    val root = orFatal(importer.parseSchema(yaml))
     new SchemaView(root +: loadImports(root, "", importer))
   }
 
@@ -331,6 +325,29 @@ object SchemaView {
   ): Seq[SchemaDefinition] =
     loadSchemasInternal(uri, true, importer, mutable.Set.empty)
 
+  /** Unwrap a load result, reporting a failure the same way as any other fatal schema issue so that
+    * callers see one consistent message format.
+    */
+  private def orFatal(loaded: Either[ImportFailure, SchemaDefinition]): SchemaDefinition =
+    loaded match {
+      case Right(schema) => schema
+      case Left(failure) =>
+        throw SchemaIssues.FatalSchemaException(Seq(failure.infer()), maxProblems = 5)
+    }
+
+  /** Load one of the schemas bundled as a resource, reporting a missing resource as an import
+    * failure rather than letting the resource lookup throw.
+    */
+  private def builtIn(
+      uri: String,
+      resource: String,
+      importer: Importer,
+  ): Either[ImportFailure, SchemaDefinition] =
+    Importer.readText(uri)(Resources.read(resource)) match {
+      case Right(text) => importer.parseSchema(text, uri)
+      case Left(failure) => Left(failure)
+    }
+
   private def loadSchemasInternal(
       uri: String,
       doImportLoading: Boolean,
@@ -346,18 +363,17 @@ object SchemaView {
     if visited.contains(normalizedUri) then Seq()
     else
       visited.add(normalizedUri)
-      val schema: SchemaDefinition =
+      // Built-in schemas come from bundled resources, everything else from the importer. Both
+      // routes yield the same structured issues on failure.
+      val loaded: Either[ImportFailure, SchemaDefinition] =
         if (normalizedUri.startsWith("https://w3id.org/linkml/")) {
-          importer.parseSchema(Resources.read(normalizedUri.stripPrefix("https://w3id.org/linkml")))
+          builtIn(normalizedUri, normalizedUri.stripPrefix("https://w3id.org/linkml"), importer)
         } else if (normalizedUri.startsWith("linkml:")) {
-          importer.parseSchema(Resources.read("/" + normalizedUri.stripPrefix("linkml:")))
+          builtIn(normalizedUri, "/" + normalizedUri.stripPrefix("linkml:"), importer)
         } else {
-          try importer.readSchema(normalizedUri)
-          catch {
-            case ex if NonFatal(ex) =>
-              sys.error(s"Cannot import schema '$normalizedUri'\n" + ex.getMessage)
-          }
+          importer.readSchema(normalizedUri)
         }
+      val schema: SchemaDefinition = orFatal(loaded)
       if (doImportLoading) {
         var baseUri = ""
         val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
