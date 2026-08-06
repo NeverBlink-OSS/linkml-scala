@@ -441,6 +441,39 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       result.pattern shouldBe Some("Some pattern")
     }
 
+    "inherit zero cardinalities from parent slots" in {
+      val slotParent = SlotDefinitionImpl(
+        name = "slotParent",
+        minimumCardinality = Some(0),
+        maximumCardinality = Some(0),
+        range = Some(Reference("base")),
+      )
+
+      val slotChild = SlotDefinitionImpl(
+        name = "slotChild",
+        isA = Some(slotParent.reference),
+        range = Some(Reference("base")),
+      )
+
+      val base = ClassDefinitionImpl(
+        name = "base",
+        slots = Seq(slotChild.reference),
+      )
+
+      val sv = SchemaView.single(
+        SchemaDefinitionImpl(
+          name = "",
+          id = Uri("https://neverblink.eu/test/"),
+          slotDefinitions = Map(slotChild.compact, slotParent.compact),
+          classes = Map(base.compact),
+        ),
+      )
+
+      val result = sv.classes("base").derivedAttributes("slotChild").slot
+      result.minimumCardinality shouldBe Some(0)
+      result.maximumCardinality shouldBe Some(0)
+    }
+
     "not apply slot usages to slots with different ids" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
