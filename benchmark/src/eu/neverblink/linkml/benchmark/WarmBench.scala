@@ -52,7 +52,7 @@ class WarmBench extends CommonParams {
 
   @Setup
   def setup(): Unit = {
-    schemaDefs = SchemaView.loadSchemas((modelsDir / model / "main.yaml").toString)
+    schemaDefs = SchemaView.loadSchemas((modelsDir / model / "main.yaml").toString).toOption.get
   }
 
   @Benchmark

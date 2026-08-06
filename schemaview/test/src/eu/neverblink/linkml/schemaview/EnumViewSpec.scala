@@ -6,7 +6,7 @@ import eu.neverblink.linkml.runtime.*
 
 class EnumViewSpec extends AnyWordSpec, Matchers {
   "EnumView" should {
-    val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+    val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
 
     "provide meaning mappings" in {
       val pv_formula_options = sv.enums("relational_role_enum")

@@ -4,12 +4,12 @@ import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
+import eu.neverblink.linkml.validation.SchemaFatal
 
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.compiletime.erasedValue
 import scala.util.{Failure, Success, Try}
-import scala.util.control.NonFatal
 
 /** SchemaView is a wrapper class around a metamodel-generated [[SchemaDefinition]], which
   * implements the semantics of the metamodel, such as: references, schema-level default values,
@@ -280,7 +280,8 @@ object SchemaView {
   def loadSchemaViewFromUri(
       uri: String,
       importer: Importer = FileSystemImporter,
-  ): SchemaView = new SchemaView(loadSchemas(uri, importer))
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    loadSchemas(uri, importer).left.map(Seq(_)).flatMap(viewOf)
 
   /** Loads a schema view from the specified YAML string, loading its imports. This is mainly for
     * testing and custom applications, as in most cases you would want to load from a URI to get
@@ -298,10 +299,11 @@ object SchemaView {
   def loadSchemaViewFromString(
       yaml: String,
       importer: Importer = FileSystemImporter,
-  ): SchemaView = {
-    val root = orFatal(importer.parseSchema(yaml))
-    new SchemaView(root +: loadImports(root, "", importer))
-  }
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    importer.parseSchema(yaml)
+      .flatMap(root => loadImports(root, "", importer).map(root +: _))
+      .left.map(Seq(_))
+      .flatMap(viewOf)
 
   /** Loads individual schema definitions from the specified URI, optionally loading their imports.
     * Import loading is recursive.
@@ -322,18 +324,15 @@ object SchemaView {
   def loadSchemas(
       uri: String,
       importer: Importer = FileSystemImporter,
-  ): Seq[SchemaDefinition] =
+  ): Either[ImportFailure, Seq[SchemaDefinition]] =
     loadSchemasInternal(uri, true, importer, mutable.Set.empty)
 
-  /** Unwrap a load result, reporting a failure the same way as any other fatal schema issue so that
-    * callers see one consistent message format.
+  /** Build a view from already-loaded schemas, turning the constructor's fatal validation problems
+    * into a Left rather than an exception.
     */
-  private def orFatal(loaded: Either[ImportFailure, SchemaDefinition]): SchemaDefinition =
-    loaded match {
-      case Right(schema) => schema
-      case Left(failure) =>
-        throw SchemaIssues.FatalSchemaException(Seq(failure.infer()), maxProblems = 5)
-    }
+  private def viewOf(schemas: Seq[SchemaDefinition]): Either[Seq[SchemaFatal], SchemaView] =
+    try Right(new SchemaView(schemas))
+    catch { case ex: SchemaIssues.FatalSchemaException => Left(ex.problems) }
 
   /** Load one of the schemas bundled as a resource, reporting a missing resource as an import
     * failure rather than letting the resource lookup throw.
@@ -353,14 +352,14 @@ object SchemaView {
       doImportLoading: Boolean,
       importer: Importer,
       visited: mutable.Set[String],
-  ): Seq[SchemaDefinition] = {
+  ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     // TODO LNK-154 Robust file system importing
     var normalizedUri = uri.stripSuffix(PlatformSpecificUtils.separator)
     if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml"))
       normalizedUri += ".yaml"
     // After URI normalization, check if we've already visited this URI to avoid infinite loops
     // and repeatedly loading the same schema.
-    if visited.contains(normalizedUri) then Seq()
+    if visited.contains(normalizedUri) then Right(Seq())
     else
       visited.add(normalizedUri)
       // Built-in schemas come from bundled resources, everything else from the importer. Both
@@ -373,13 +372,14 @@ object SchemaView {
         } else {
           importer.readSchema(normalizedUri)
         }
-      val schema: SchemaDefinition = orFatal(loaded)
-      if (doImportLoading) {
-        var baseUri = ""
-        val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
-        if (idx > 0) baseUri = normalizedUri.substring(0, idx)
-        schema +: loadImportsInternal(schema, baseUri, importer, visited)
-      } else Seq(schema)
+      loaded.flatMap { schema =>
+        if (doImportLoading) {
+          var baseUri = ""
+          val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
+          if (idx > 0) baseUri = normalizedUri.substring(0, idx)
+          loadImportsInternal(schema, baseUri, importer, visited).map(schema +: _)
+        } else Right(Seq(schema))
+      }
   }
 
   /** Loads a schema's imports from the specified schema, loading its imports recursively from the
@@ -399,7 +399,7 @@ object SchemaView {
       schema: SchemaDefinition,
       baseUri: String = "",
       importer: Importer = FileSystemImporter,
-  ): Seq[SchemaDefinition] =
+  ): Either[ImportFailure, Seq[SchemaDefinition]] =
     loadImportsInternal(schema, baseUri, importer, mutable.Set.empty)
 
   private def loadImportsInternal(
@@ -407,13 +407,17 @@ object SchemaView {
       baseUri: String,
       importer: Importer,
       visited: mutable.Set[String],
-  ): Seq[SchemaDefinition] = {
+  ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     given PrefixResolver = createPrefixResolver(schema)
-    schema.imports.flatMap { uoc =>
-      var sUri = uoc.uri.stripPrefix("./")
-      if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
-        sUri = baseUri + PlatformSpecificUtils.separator + sUri
-      loadSchemasInternal(sUri, true, importer, visited)
+    // Short-circuits on the first import that cannot be loaded.
+    schema.imports.foldLeft[Either[ImportFailure, Seq[SchemaDefinition]]](Right(Seq())) {
+      (acc, uoc) =>
+        acc.flatMap { loadedSoFar =>
+          var sUri = uoc.uri.stripPrefix("./")
+          if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
+            sUri = baseUri + PlatformSpecificUtils.separator + sUri
+          loadSchemasInternal(sUri, true, importer, visited).map(loadedSoFar ++ _)
+        }
     }
   }
 

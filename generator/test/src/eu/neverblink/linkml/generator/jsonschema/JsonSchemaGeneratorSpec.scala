@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.jsonschema
 
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -10,7 +11,7 @@ import sttp.apispec.{ExampleSingleValue, Pattern, Schema, SchemaType}
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
   def load(schemaYaml: String): SchemaView = {
-    SchemaView.loadSchemaViewFromString(schemaYaml)
+    SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
   }
 
   "JsonSchemaGenerator" should {
@@ -626,16 +627,20 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
 
       "extension is plain" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("plain"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("plain"),
+          ),
         )
 
         JsonSchemaGenerator().generate().$ref shouldBe Some("#/$defs/C1")
       }
 
       "extension is optional" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("optional"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("optional"),
+          ),
         )
 
         val schema = JsonSchemaGenerator().generate()
@@ -650,8 +655,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "extension is list" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("list"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("list"),
+          ),
         )
 
         val schema = JsonSchemaGenerator().generate()
@@ -664,8 +671,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "extension is compact_dict" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("compact_dict"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("compact_dict"),
+          ),
         )
 
         val schema = JsonSchemaGenerator().generate()
@@ -676,8 +685,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "extension is simple_dict" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("simple_dict"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("simple_dict"),
+          ),
         )
 
         val schema = JsonSchemaGenerator().generate()
@@ -688,8 +699,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "override to plain" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("list"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("list"),
+          ),
         )
 
         JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("plain"))
@@ -697,8 +710,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "override to optional" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("plain"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("plain"),
+          ),
         )
 
         val schema = JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("optional"))
@@ -713,8 +728,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "override to list" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("plain"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("plain"),
+          ),
         )
 
         val schema = JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("list"))
@@ -727,8 +744,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "override to compact_dict" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("plain"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("plain"),
+          ),
         )
 
         val schema =
@@ -741,8 +760,10 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "override to simple_dict" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          treeRootAs("plain"),
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            treeRootAs("plain"),
+          ),
         )
 
         val schema =
@@ -755,8 +776,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "fail if tree_root can't be a compact dict" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          s"""$schemaShared
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            s"""$schemaShared
              |classes:
              |  C1:
              |    tree_root: true
@@ -768,6 +790,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
              |      s2:
              |        range: string
              |""".stripMargin,
+          ),
         )
 
         val ex = intercept[IllegalArgumentException] {
@@ -779,8 +802,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "fail if tree_root can't be a simple dict" in {
-        given SchemaView = SchemaView.loadSchemaViewFromString(
-          s"""$schemaShared
+        given SchemaView = SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromString(
+            s"""$schemaShared
              |classes:
              |  C1:
              |    tree_root: true
@@ -792,6 +816,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
              |      s2:
              |        range: string
              |""".stripMargin,
+          ),
         )
 
         val ex = intercept[IllegalArgumentException] {
@@ -804,7 +829,8 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate the metamodel without errors" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
+      val sv =
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       given SchemaView = sv
       val generator = JsonSchemaGenerator()
       val expected = encoderSchema(generator.generate(false, None)).noSpaces

@@ -2,7 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.cli.ValidationReport.{Format, Issue, Severity}
-import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaValidator, SchemaView}
+import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView}
 
 import scala.util.control.NonFatal
 
@@ -53,11 +53,11 @@ object Validate extends BaseCommand[ValidateOptions] {
     */
   private def collectIssues(inputName: String): Seq[Issue] =
     try
-      val sv = SchemaView.loadSchemaViewFromUri(inputName)
-      ValidationReport.issuesOf(SchemaValidator(using sv).lintProblems)
-    catch
-      case ex: SchemaIssues.FatalSchemaException => ValidationReport.issuesOf(ex.problems)
-      case NonFatal(ex) => fatalIssues(Option(ex.getMessage).getOrElse(ex.toString))
+      SchemaView.loadSchemaViewFromUri(inputName) match {
+        case Right(sv) => ValidationReport.issuesOf(SchemaValidator(using sv).lintProblems)
+        case Left(problems) => ValidationReport.issuesOf(problems)
+      }
+    catch case NonFatal(ex) => fatalIssues(Option(ex.getMessage).getOrElse(ex.toString))
 
   private def fatalIssues(message: String): Seq[Issue] =
     message

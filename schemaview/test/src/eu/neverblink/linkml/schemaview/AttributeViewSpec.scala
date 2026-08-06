@@ -67,7 +67,7 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
         |      V2:
         |""".stripMargin
 
-    lazy val sv = SchemaView.loadSchemaViewFromString(schema)
+    lazy val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
     lazy val c1 = sv.classes("C1")
 
     "provide AnyViews for classes with linkml:Any uri" in {
@@ -141,7 +141,8 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
         |    equals_string: blip
         |""".stripMargin
 
-    lazy val sv2 = SchemaView.loadSchemaViewFromString(upgradeSubjectTypeSchema)
+    lazy val sv2 =
+      SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(upgradeSubjectTypeSchema))
     lazy val c3 = sv2.classes("C3")
 
     "upgrade subject type from base to implicit prefix" in {
@@ -185,7 +186,7 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
         |        range: string
         |""".stripMargin
 
-    lazy val sv3 = SchemaView.loadSchemaViewFromString(equalsExpressionSchema)
+    lazy val sv3 = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(equalsExpressionSchema))
     lazy val c4 = sv3.classes("C4")
 
     "parse equals_expression into StringInterpolationExpression" in {

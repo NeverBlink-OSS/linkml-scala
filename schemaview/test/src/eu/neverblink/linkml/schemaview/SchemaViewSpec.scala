@@ -230,10 +230,14 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       val schemaC = parse(schemaCStr)
       val schemaB = parse(schemaBStr)
       val schemaA = parse(schemaAStr)
-      SchemaView.loadSchemaViewFromUri(s"${cwd}${sep}schemaview/test/resources/a.yaml") shouldBe
+      SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(s"${cwd}${sep}schemaview/test/resources/a.yaml"),
+      ) shouldBe
         SchemaView(Seq(schemaA, schemaB, schemaD, schemaC))
       // Should also work with the .yml extension
-      SchemaView.loadSchemaViewFromUri(s"${cwd}${sep}schemaview/test/resources/a.yml") shouldBe
+      SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(s"${cwd}${sep}schemaview/test/resources/a.yml"),
+      ) shouldBe
         SchemaView(Seq(schemaA, schemaB, schemaD, schemaC))
     }
     "load imported schemas only once" in {
@@ -244,17 +248,21 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           FileSystemImporter.read(path)
       }
 
-      val sv = SchemaView.loadSchemaViewFromUri(
-        s"${cwd}${sep}schemaview/test/resources/a.yaml",
-        importer = importer,
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          s"${cwd}${sep}schemaview/test/resources/a.yaml",
+          importer = importer,
+        ),
       )
       sv.schemas.size shouldBe 4
       // Each path should be attempted only once.
       imported.size shouldBe 4
     }
     "not get caught up in circular imports" in {
-      val sv = SchemaView.loadSchemaViewFromUri(
-        s"${cwd}${sep}schemaview/test/resources/loop/a.yaml",
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          s"${cwd}${sep}schemaview/test/resources/loop/a.yaml",
+        ),
       )
       // it's a->b->c->a, but we should only see each schema once
       sv.schemas.size shouldBe 3
@@ -268,22 +276,30 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         loadSchemaResource("/annotations.yaml"),
         loadSchemaResource("/units.yaml"),
       )
-      SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta").schemas shouldBe expected
+      SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"),
+      ).schemas shouldBe expected
     }
     "load schema from a file with imports from inlined resources" in {
       val linkmlTypes = loadSchemaResource("/types.yaml")
 
-      SchemaView.loadSchemaViewFromUri(
-        s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
+      SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
+        ),
       ).schemas should contain(linkmlTypes)
-      SchemaView.loadSchemaViewFromUri(
-        s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
+      SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
+        ),
       ).schemas should contain(linkmlTypes)
     }
     "resolve default uris and ranges of classes, slots, types, enums in imported schemas" in {
       val sv =
-        SchemaView.loadSchemaViewFromUri(
-          s"${cwd}${sep}schemaview/test/resources/import_uris/main.yaml",
+        SchemaIssues.orThrow(
+          SchemaView.loadSchemaViewFromUri(
+            s"${cwd}${sep}schemaview/test/resources/import_uris/main.yaml",
+          ),
         )
       sv.classes.size shouldBe 2
       sv.slotDefinitions.size shouldBe 4
@@ -379,13 +395,14 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           |    attributes:
           |      id: { identifier: true }
           |""".stripMargin
-      val sv = SchemaView.loadSchemaViewFromString(model)
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(model))
       val attr = sv.classes("SomeClass").derivedAttributes("id")
       attr.slot.identifier shouldBe true
       attr.definingSchema shouldBe sv.root
     }
     "find the tree_root" in {
-      val model = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
+      val model =
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       val root = model.treeRoot
       root.isDefined shouldBe true
       root.get.cls.name shouldBe "schema_definition"
@@ -463,7 +480,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           |  C5:
           |""".stripMargin
 
-      val sv = SchemaView.loadSchemaViewFromString(schema)
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
 
       val derived = sv.derivedReachabilityQuery(Seq(sv.classes("C1")), false, false)
       derived.reachable(sv.classes("C1")) shouldBe true

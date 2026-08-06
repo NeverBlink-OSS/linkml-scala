@@ -3,10 +3,30 @@ package eu.neverblink.linkml.schemaview
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
+import eu.neverblink.linkml.validation.SchemaFatal
+
 import scala.util.Success
 
 class SchemaValidatorSpec extends AnyWordSpec, Matchers {
-  def load(schemaYaml: String): SchemaView = SchemaView.loadSchemaViewFromString(schemaYaml)
+  def load(schemaYaml: String): SchemaView =
+    SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+  /** Load a schema that is expected to fail, returning its fatal issues formatted for comparison.
+    */
+  def loadFailure(schemaYaml: String): String =
+    failureOf(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+  private def failureOf(loaded: Either[Seq[SchemaFatal], SchemaView]): String =
+    loaded match {
+      case Left(problems) =>
+        SchemaIssues.format(
+          problems.map(_.infer()),
+          maxProblems = 5,
+          verbose = true,
+          showLevel = false,
+        )
+      case Right(_) => fail("Expected the schema to fail loading")
+    }
 
   // Shared part of the schema
   val schemaShared =
@@ -31,9 +51,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |types:
            |  string:
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Unknown reference '???' at /classes/SomeClass/slots/0/.
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference '???' at /classes/SomeClass/slots/0/.
           |Unknown reference 'unknown' at /classes/SomeClass/slots/1/.
           |Unknown reference 'nope' at /slots/wrong/range/.""".stripMargin
     }
@@ -49,9 +68,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |           - all_of:
            |              - range: nope
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Unknown reference 'nope' at /slots/root/any_of/0/exactly_one_of/0/none_of/0/all_of/0/range/.
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'nope' at /slots/root/any_of/0/exactly_one_of/0/none_of/0/all_of/0/range/.
           |Undefined range at /slots/root/any_of/0/exactly_one_of/0/none_of/0/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
           |Undefined range at /slots/root/any_of/0/exactly_one_of/0/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
           |Undefined range at /slots/root/any_of/0/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
@@ -74,9 +92,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |types:
            |  string:
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Unknown reference '???' at /classes/SomeClass/slots/0/.
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference '???' at /classes/SomeClass/slots/0/.
           |Unknown reference 'unknown' at /classes/SomeClass/slots/1/.
           |Unknown reference 'nope' at /slots/wrong/range/.""".stripMargin
     }
@@ -184,9 +201,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |  wrong:
            |    range: wrong
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
     }
 
     "fail on ranges referencing subsets" in {
@@ -198,9 +214,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |  wrong:
            |    range: some_subset
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Invalid range 'some_subset' at /slots/wrong/range/, which refers to SubsetDefinition. Ranges can only reference types, classes or enums.""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Invalid range 'some_subset' at /slots/wrong/range/, which refers to SubsetDefinition. Ranges can only reference types, classes or enums.""".stripMargin
     }
 
     "find default_range usages without a valid default_range" in {
@@ -209,9 +224,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |slots:
            |  wrong:
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Undefined range at /slots/wrong/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Undefined range at /slots/wrong/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.""".stripMargin
     }
 
     "fail on multiple tree roots" in {
@@ -395,9 +409,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |  wrong:
            |    range: string
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Unknown reference 'string' at /slots/wrong/range/. Make sure you have 'linkml:types' imported.""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'string' at /slots/wrong/range/. Make sure you have 'linkml:types' imported.""".stripMargin
     }
 
     "explain undefined ranges" in {
@@ -406,9 +419,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |slots:
            |  wrong:
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Undefined range at /slots/wrong/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Undefined range at /slots/wrong/range/, schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.""".stripMargin
     }
 
     "explain invalid ranges" in {
@@ -418,9 +430,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |  wrong:
            |    range: wrong
            |""".stripMargin
-      intercept[RuntimeException](load(schemaYaml)).getMessage shouldBe
-        """Fatal validation problems:
-          |Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
     }
 
     "leave issue messages unpopulated until the consumer infers them" in {
@@ -542,17 +553,17 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |    is_a: ImportedClass
           |""".stripMargin
 
-      val ex = intercept[RuntimeException] {
+      val failure = failureOf(
         SchemaView.loadSchemaViewFromUri(
           "main",
           MapImporter(
             "imported.yaml" -> imported,
             "main.yaml" -> main,
           ),
-        )
-      }
+        ),
+      )
 
-      ex.getMessage should include("i_do_not_exist")
+      failure should include("i_do_not_exist")
     }
 
     "accept valid URIs and CURIEs for every element type" in {
@@ -583,7 +594,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
     }
 
     "validate the metamodel" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
+      val sv =
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       SchemaValidator(using sv).validate() shouldBe a[Success[?]]
     }
   }

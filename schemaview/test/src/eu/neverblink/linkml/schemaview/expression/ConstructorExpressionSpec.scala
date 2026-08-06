@@ -1,5 +1,7 @@
 package eu.neverblink.linkml.schemaview.expression
 
+import eu.neverblink.linkml.schemaview.SchemaIssues
+
 import eu.neverblink.linkml.runtime.Curie
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.scalatest.matchers.should.Matchers
@@ -28,7 +30,7 @@ class ConstructorExpressionSpec extends AnyWordSpec, Matchers {
         |      V1:
         |""".stripMargin
 
-    lazy val sv = SchemaView.loadSchemaViewFromString(schema)
+    lazy val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
     lazy val e1 = sv.enums("E1")
     lazy val otherEnum = sv.enums("Other_Enum")
 

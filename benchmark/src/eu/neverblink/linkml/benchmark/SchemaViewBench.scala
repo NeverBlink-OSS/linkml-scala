@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.metamodel.SchemaDefinition
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
 import org.openjdk.jmh.infra.Blackhole
@@ -24,7 +25,7 @@ class SchemaViewBench extends CommonParams {
     val yaml = Using.resource(getClass.getResourceAsStream(s"/schemas/$schema")) { in =>
       Source.fromInputStream(in, "UTF-8").mkString
     }
-    schemas = SchemaView.loadSchemaViewFromString(yaml).schemas
+    schemas = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)).schemas
   }
 
   /** Construction: includes checking for fatal problems in the sv. */

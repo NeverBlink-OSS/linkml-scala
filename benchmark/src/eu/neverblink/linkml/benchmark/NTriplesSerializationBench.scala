@@ -4,6 +4,7 @@ import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.generator.rdf.NTriplesOutput
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.apache.jena.datatypes.TypeMapper
 import org.apache.jena.graph.{NodeFactory, Node as JenaNode, Triple as JenaTriple}
@@ -46,7 +47,7 @@ class NTriplesSerializationBench extends CommonParams {
     val yaml = Using.resource(getClass.getResourceAsStream(s"/schemas/$schema")) { in =>
       Source.fromInputStream(in, "UTF-8").mkString
     }
-    given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
+    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
     val collector = new CollectingRdfSink
     ShaclGenerator().generate(collector)
     val triples = collector.triples

@@ -68,7 +68,7 @@ object SchemaIssues {
     *   Max number of issues to format
     */
   final case class FatalSchemaException(
-      problems: Seq[SchemaIssue],
+      problems: Seq[SchemaFatal],
       maxProblems: Int,
   ) extends RuntimeException(
         "Fatal validation problems:\n" + format(problems, maxProblems, true, false),
@@ -85,6 +85,14 @@ object SchemaIssues {
       problems: Seq[SchemaError | SchemaFatal],
       maxProblems: Int,
   ) extends Exception("Schema validation failed:\n" + format(problems, maxProblems, false, false))
+
+  /** Unwrap a load result, throwing [[FatalSchemaException]] if it failed.
+    */
+  def orThrow[T](loaded: Either[Seq[SchemaFatal], T], maxProblems: Int = 5): T =
+    loaded match {
+      case Right(value) => value
+      case Left(problems) => throw FatalSchemaException(problems.map(_.infer()), maxProblems)
+    }
 
   /** Create a [[Failure]] containing a [[ValidationFailedException]]
     * @param problems

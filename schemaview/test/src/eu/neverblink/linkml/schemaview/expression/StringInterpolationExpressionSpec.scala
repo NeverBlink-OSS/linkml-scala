@@ -4,7 +4,7 @@ import fastparse.Parsed
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import StringInterpolationExpression.{Literal, Substitution}
-import eu.neverblink.linkml.schemaview.{AttributeView, SchemaView}
+import eu.neverblink.linkml.schemaview.{AttributeView, SchemaIssues, SchemaView}
 
 class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
 
@@ -68,7 +68,7 @@ class StringInterpolationExpressionSpec extends AnyWordSpec, Matchers {
     }
 
   "StringInterpolationExpression" should {
-    given sv: SchemaView = SchemaView.loadSchemaViewFromString(schema)
+    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
     given context: AttributeView = sv.classes("C1").attributeViews("reference_value")
     val attrReferenceValue = sv.classes("C1").attributeViews("reference_value")
     val attrClass = sv.classes("C1").attributeViews("class")

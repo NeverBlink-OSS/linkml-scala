@@ -119,16 +119,14 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
   }
 
   "SchemaView loading" should {
-    "raise a FatalSchemaException carrying the parse issue" in {
-      val error = intercept[SchemaIssues.FatalSchemaException] {
-        SchemaView.loadSchemaViewFromString("classes: [a, b")
+    "return the parse issue rather than throwing" in {
+      inside(SchemaView.loadSchemaViewFromString("classes: [a, b")) { case Left(problems) =>
+        problems should have size 1
+        problems.head shouldBe a[SchemaParseError]
       }
-      error.problems should have size 1
-      error.problems.head shouldBe a[SchemaParseError]
-      error.getMessage should startWith("Fatal validation problems:")
     }
 
-    "raise a FatalSchemaException carrying the import issue" in {
+    "return the import issue rather than throwing" in {
       val importer = MapImporter(
         "main.yaml" ->
           """id: https://neverblink.eu/linkml/importer/test/
@@ -137,11 +135,30 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
             |  - i_do_not_exist
             |""".stripMargin,
       )
-      val error = intercept[SchemaIssues.FatalSchemaException] {
-        SchemaView.loadSchemaViewFromUri("main.yaml", importer = importer)
+      inside(SchemaView.loadSchemaViewFromUri("main.yaml", importer = importer)) {
+        case Left(problems) =>
+          problems.head shouldBe a[SchemaImportError]
+          SchemaIssues.description(problems.head.infer()) should include("i_do_not_exist")
       }
-      error.problems.head shouldBe a[SchemaImportError]
-      error.getMessage should include("i_do_not_exist")
+    }
+
+    "return the fatal validation problems rather than throwing" in {
+      // Parses and imports fine, but references an undefined element.
+      val schema =
+        """id: https://neverblink.eu/linkml/importer/test/
+          |name: test
+          |slots:
+          |  wrong:
+          |    range: i_am_not_defined
+          |""".stripMargin
+      inside(SchemaView.loadSchemaViewFromString(schema)) { case Left(problems) =>
+        problems should not be empty
+        SchemaIssues.description(problems.head.infer()) should include("i_am_not_defined")
+      }
+    }
+
+    "return the view for a schema that loads cleanly" in {
+      SchemaView.loadSchemaViewFromString(validSchema).map(_.root.name) shouldBe Right("test")
     }
   }
 }

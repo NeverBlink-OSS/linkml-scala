@@ -1,10 +1,9 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
-import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 
 import java.io.{ByteArrayOutputStream, PrintStream}
-import scala.util.control.NonFatal
 
 /** Thrown instead of a real process exit when a command runs in test mode. */
 final case class ExitException(code: Int) extends RuntimeException
@@ -31,10 +30,16 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     inFile match {
       case None => err("Input file is required."); null
       case Some(inputName) =>
-        try SchemaView.loadSchemaViewFromUri(inputName)
-        catch {
-          case ex if NonFatal(ex) =>
-            err("Cannot load schema: " + ex.getMessage); null
+        SchemaView.loadSchemaViewFromUri(inputName) match {
+          case Right(sv) => sv
+          case Left(problems) =>
+            val formatted = SchemaIssues.format(
+              problems.map(_.infer()),
+              maxProblems = 5,
+              verbose = true,
+              showLevel = false,
+            )
+            err("Cannot load schema: " + formatted); null
         }
     }
 

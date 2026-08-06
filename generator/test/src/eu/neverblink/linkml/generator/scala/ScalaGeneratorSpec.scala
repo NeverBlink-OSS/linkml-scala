@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.scala
 
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -7,7 +8,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
   def decode(schemaYaml: String): SchemaView =
-    SchemaView.loadSchemaViewFromString(schemaYaml)
+    SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
 
   "Scala generator" should {
     // Shared part of the schema
@@ -1011,7 +1012,8 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate the metamodel" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
+      val sv =
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       given SchemaView = sv
 
       ScalaGenerator().generate("eu.neverblink.linkml.metamodel")

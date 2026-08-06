@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
 import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.eclipse.rdf4j.model.ValueFactory
@@ -26,7 +27,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 
   "ShaclGenerator" should {
     def loadWithImports(schemaYaml: String): SchemaView =
-      SchemaView.loadSchemaViewFromString(schemaYaml)
+      SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
 
     // Shared part of the schema
     val schemaShared =
@@ -468,7 +469,9 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "include imported classes by default" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
+      )
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_))
       turtle should include("linkml:Annotatable a sh:NodeShape")
       turtle should include("linkml:Annotation a sh:NodeShape")
@@ -480,7 +483,9 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "not include imported classes when onlyClassesFromRootSchema=true" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
+      )
       val turtle =
         RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_, onlyClassesFromRootSchema = true))
       turtle should include("linkml:Annotatable a sh:NodeShape")
@@ -492,7 +497,9 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "works for the metamodel annotations and extensions" in {
-      val schemaView = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
+      val schemaView = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
+      )
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       val expected =
         """@prefix linkml: <https://w3id.org/linkml/> .
@@ -657,7 +664,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "works for the metamodel without runtime exceptions" in {
-      val schemaView = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta")
+      val schemaView =
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
       turtle.isEmpty shouldBe false
     }

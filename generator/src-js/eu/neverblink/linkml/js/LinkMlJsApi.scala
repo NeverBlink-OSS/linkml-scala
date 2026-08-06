@@ -10,7 +10,7 @@ import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
 import eu.neverblink.linkml.generator.util.StringSink
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.schemaview.{StringImporter, SchemaView}
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView, StringImporter}
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
@@ -49,7 +49,9 @@ object LinkMlJsApi {
     *   An opaque [[SchemaView]] handle to pass to the generator functions.
     */
   def loadFromString(mainSchema: String, importMap: js.Dictionary[String]): SchemaViewJs =
-    new SchemaViewJs(SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap)))
+    new SchemaViewJs(
+      SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap))),
+    )
 
   /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path
     * into the [[importMap]].
@@ -73,7 +75,9 @@ object LinkMlJsApi {
     *   An opaque [[SchemaView]] handle to pass to the generator functions.
     */
   def loadFromPath(path: String, importMap: js.Dictionary[String]): SchemaViewJs =
-    new SchemaViewJs(SchemaView.loadSchemaViewFromUri(path, JsImporter(importMap)))
+    new SchemaViewJs(
+      SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri(path, JsImporter(importMap))),
+    )
 
   /** Generate JSON Schema from a loaded LinkML schema.
     * @param schema
