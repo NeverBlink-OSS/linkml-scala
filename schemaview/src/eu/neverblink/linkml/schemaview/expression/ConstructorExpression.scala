@@ -17,6 +17,7 @@ object ConstructorExpression:
     * @param message
     *   The error message.
     */
+  // TODO LNK-63: Make this a SchemaValidator check instead if possible
   final class EvaluationException(message: String) extends RuntimeException(message)
 
   private val enumExprPattern = """^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$""".r
