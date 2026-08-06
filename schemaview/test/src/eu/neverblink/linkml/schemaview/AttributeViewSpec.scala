@@ -3,7 +3,10 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.runtime.{Curie, Uri}
 import eu.neverblink.linkml.schemaview.InlineType.plain
 import eu.neverblink.linkml.schemaview.SubjectType.{base, implicitPrefix}
-import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression.{Literal, Substitution}
+import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression.{
+  Literal,
+  Substitution,
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 

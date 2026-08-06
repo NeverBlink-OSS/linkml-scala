@@ -33,8 +33,8 @@ final class ScalaGenerator(using sv: SchemaView) {
       given PrefixResolver = classView.definingPrefixResolver
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
-      val scalaFields = for slot <- classView.derivedAttributes.values.toIndexedSeq yield {
-        makeScalaField(slot, collectionForm)
+      val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
+        makeScalaField(attribute, collectionForm)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
       val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
@@ -198,62 +198,54 @@ final class ScalaGenerator(using sv: SchemaView) {
     case UnknownType => tv.inner.base.getOrElse("Unknown")
   }
 
-  /** Translates a LinkML range value to the appropriate Scala type.
+  /** Translates an attribute's resolved range to the appropriate Scala type.
     *
-    * @param slot
-    *   SlotView of the slot we are generating the Scala type for
-    * @param range
-    *   Value of the LinkML range
-    * @param isInlined
-    *   Whether the slot is declared as inlined. Note: The slot may be implicitly inlined when the
-    *   range class does not have an identifier.
+    * @param attribute
+    *   AttributeView of the slot we are generating the Scala type for
     * @return
     *   (Scala type which best represents the range, default value for the type if applicable)
     */
   private def baseRange(
-      slot: SlotView,
-      range: Reference[ElementView[?, ?]],
-      isInlined: Boolean,
+      attribute: AttributeView,
   ): (scalaType: String, baseDefault: Option[String]) = {
-    range.resolve.get match {
-      case classView: ClassView =>
-        // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
-        // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
-        // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
-        val className = Case.PascalCase(classView.cls.name)
-        if (classView.uriStr == "https://w3id.org/linkml/Any") (className, None)
-        else if (isInlined) (s"${className}Impl", None)
-        else (s"Reference[$className]", None)
-      case typeView: TypeView =>
+    attribute match {
+      // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
+      // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
+      // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
+      case AnyView(slotView, _) =>
+        (Case.PascalCase(slotView.derivedRange.resolve.get.name), None)
+      case ClassInlineAttributeView(_, _, classView, _) =>
+        (s"${Case.PascalCase(classView.cls.name)}Impl", None)
+      case ClassReferenceAttributeView(_, _, classView, _) =>
+        (s"Reference[${Case.PascalCase(classView.cls.name)}]", None)
+      case TypeAttributeView(_, _, typeView) =>
         if typeView.isPrimitive then (typeToRuntime(typeView), None)
         else (Case.PascalCase(typeView._type.name), None)
       // True enum support would require working around the dynamic "enums" of LinkML, which I'm sure
       // were a really convenient idea for the biologists, but it adds a lot of complexity for us
-      case enumView: EnumView =>
+      case EnumAttributeView(slotView, _, enumView) =>
         val enumDef = enumView._enum
         if (enumDef.permissibleValues.isEmpty)
           ("String", None) // fallback to String for dynamic enums
         else {
           val enumName = Case.PascalCase(enumDef.name)
-          val default: Option[PermissibleValue] = slot.ifAbsent(enumView)
+          val default: Option[PermissibleValue] = slotView.ifAbsent(enumView)
           (enumName, default.map(p => s"$enumName.${Case.PascalCase(p.text)}"))
         }
-      case _ => throw RuntimeException(s"Couldn't map range $range")
     }
   }
 
   /** Create a [[TypedDefault]] containing all the type-level information for a slot's range / Scala
     * field type. Handles implicit / explicit inlines, inline styles, combining functions and
     * default values (sans `ifabasent`).
-    * @param slot
-    *   Slot to derive the type-level information for
+    * @param attribute
+    *   Attribute to derive the type-level information for
     * @return
     *   The inferred [[TypedDefault]]
     */
-  private def makeTypedDefault(slot: SlotView): TypedDefault = {
-    val range = slot.derivedRange
-    val inlined = slot.derivedInlined
-    val (scalaType, defaultValue) = baseRange(slot, range, inlined)
+  private def makeTypedDefault(attribute: AttributeView): TypedDefault = {
+    val slot = attribute.slotView
+    val (scalaType, defaultValue) = baseRange(attribute)
     InlineType(slot) match {
       case InlineType.plain => TypedDefault(scalaType, defaultValue)
       case InlineType.optional if scalaType == "Boolean" =>
@@ -312,12 +304,16 @@ final class ScalaGenerator(using sv: SchemaView) {
     }
 
   /** Create a [[ScalaField]] instance, by inferring the [[TypedDefault]] and additional annotations
-    * @param v
-    *   Slot to construct the [[ScalaField]] instance for
+    * @param attribute
+    *   Attribute to construct the [[ScalaField]] instance for
     * @param collectionForm
     *   Collection form of the owner class
     */
-  private def makeScalaField(v: SlotView, collectionForm: CollectionForm): ScalaField = {
+  private def makeScalaField(
+      attribute: AttributeView,
+      collectionForm: CollectionForm,
+  ): ScalaField = {
+    val v = attribute.slotView
     val slot = v.slot
     val name = slotName(slot.name)
     // Move id / value to the front, regardless of rank
@@ -331,7 +327,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       slot.alias
         .orElse(if slot.name != name then Some(slot.name) else None)
         .map(s => s"@named(\"${Case.deSpaceCase(s)}\")")
-    val typedDefault = makeTypedDefault(v)
+    val typedDefault = makeTypedDefault(attribute)
     ScalaField(
       name,
       typedDefault.typeName,
