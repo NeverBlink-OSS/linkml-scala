@@ -310,8 +310,9 @@ final class ScalaGenerator(using sv: SchemaView) {
       case _ => rangeCombineFunc
     }
 
-  /** Test whether an attribute is in scope for `equals_expression` support: its range must be
-    * `string` and it must hold a single value.
+  /** Test whether an attribute is a single-valued `string`. That is the only shape a slot can have
+    * to *carry* an `equals_expression`, and the one substitution that needs no [[stringify]]
+    * wrapper.
     */
   private def isSingleValuedString(attribute: AttributeView): Boolean =
     attribute match {
@@ -322,6 +323,24 @@ final class ScalaGenerator(using sv: SchemaView) {
         })
       case _ => false
     }
+
+  /** Describe why `attribute` cannot be substituted into an expression, or None if it can.
+    */
+  private def substitutionProblem(attribute: AttributeView): Option[String] =
+    attribute match {
+      case _: ClassInlineAttributeView =>
+        Some("is an inlined class, which has no string representation")
+      case _ => None
+    }
+
+  /** Whether a slot's Scala field is wrapped in `Option`, and so has to be unwrapped before its
+    * value can be read. Optional booleans are the exception: they are emitted as a plain `Boolean`
+    * defaulting to `false`. Mirrors [[makeTypedDefault]].
+    */
+  private def isOptionField(attribute: AttributeView): Boolean = {
+    val isOptional = InlineType(attribute.slotView) == InlineType.optional
+    isOptional && baseRange(attribute).scalaType != "Boolean"
+  }
 
   /** Build the [[InferredField]]s for a class – one per in-scope slot that has an
     * `equals_expression`.
@@ -346,7 +365,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         InferredField(
           slotName(slot.name),
           slot.name,
-          InlineType(attribute.slotView) == InlineType.optional,
+          isOptionField(attribute),
           renderExpression(classView, attribute, expression),
         )
       }
@@ -367,32 +386,35 @@ final class ScalaGenerator(using sv: SchemaView) {
       expression.elements.map {
         case Literal(value) => scalaStringLiteral(value)
         case substitution: Substitution =>
-          if !isSingleValuedString(substitution.target) then
+          substitutionProblem(substitution.target).foreach { problem =>
             throw RuntimeException(
               s"The equals_expression on '${classView.name}.${target.slotView.slot.name}' " +
-                s"references slot '${substitution.pathString}', which is not a single-valued " +
-                "string",
+                s"references slot '${substitution.pathString}', which $problem",
             )
+          }
           renderPath(substitution.path)
       }.mkString(" + ")
   }
 
-  /** Render a resolved slot path as a Scala expression reading the value at its end. Optional links
-    * along the way are unwrapped with `inferenceInput`, which fails at runtime if the value is
-    * absent. Nested `equals_expression`s are not applied – the value is read as it is.
+  /** Render a resolved slot path as a Scala expression producing the string at its end. Optional
+    * links along the way are unwrapped with `inferenceInput`, which fails at runtime if the value
+    * is absent. Nested `equals_expression`s are not applied – the value is read as it is.
     */
-  private def renderPath(path: Seq[AttributeView]): String =
-    path.foldLeft(("", "")) { case ((expression, prefix), attribute) =>
+  private def renderPath(path: Seq[AttributeView]): String = {
+    val access = path.foldLeft(("", "")) { case ((expression, prefix), attribute) =>
       val name = attribute.slotView.slot.name
       val qualified = if prefix.isEmpty then name else s"$prefix.$name"
-      val access =
+      val field =
         if expression.isEmpty then slotName(name) else s"$expression.${slotName(name)}"
       val unwrapped =
-        if InlineType(attribute.slotView) == InlineType.optional then
-          s"""inferenceInput("$qualified", $access)"""
-        else access
+        if isOptionField(attribute) then s"""inferenceInput("$qualified", $field)"""
+        else field
       (unwrapped, qualified)
     }._1
+    // A string is already what the expression needs. Every other range – numbers, URIs, CURIEs,
+    // dates, references, multivalued slots – goes through the `Stringify` typeclass.
+    if isSingleValuedString(path.last) then access else s"stringify($access)"
+  }
 
   /** Quote and escape a string so it can be emitted as a Scala string literal. */
   private def scalaStringLiteral(value: String): String = {
@@ -635,6 +657,9 @@ object ScalaGenerator {
         else "abstract class"
 
       val kind = extensibleKind + baseKind
+      val declaration =
+        if (sealedInterface) s"$kind $name derives Stringify"
+        else s"$kind $name"
 
       indent"""package $pkg
          |
@@ -643,7 +668,7 @@ object ScalaGenerator {
          |import eu.neverblink.linkml.runtime.*
          |
          |$docs
-         |$kind $name
+         |$declaration
          |
          |object $name {
          |  ${cases.map(_.generateCase).mkString("\n")}

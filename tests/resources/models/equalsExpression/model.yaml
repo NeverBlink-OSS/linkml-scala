@@ -4,6 +4,12 @@ name: equals_expression
 imports:
   - linkml:types
 
+enums:
+  StatusEnum:
+    permissible_values:
+      in progress:
+      done:
+
 classes:
   SomeClass:
     tree_root: true
@@ -45,6 +51,57 @@ classes:
       from_required_nested:
         range: string
         equals_expression: "{required_nested.required_leaf} at {required_nested.deeper.bottom}"
+      # Non-string ranges are stringified automatically
+      count:
+        range: integer
+      ratio:
+        range: double
+      flag:
+        range: boolean
+      created:
+        range: date
+      from_numbers:
+        range: string
+        equals_expression: "{count} items, ratio {ratio}, flag {flag}, on {created}"
+      # URIs and CURIEs stringify to the value as written, with no prefix resolution
+      homepage:
+        range: uri
+        required: true
+      term:
+        range: curie
+      either:
+        range: uriorcurie
+      from_uris:
+        range: string
+        equals_expression: "{homepage} | {term} | {either}"
+      # Multivalued slots are joined with ", "
+      tags:
+        range: string
+        multivalued: true
+      codes:
+        range: curie
+        multivalued: true
+      from_multivalued:
+        range: string
+        equals_expression: "tags: [{tags}], codes: [{codes}]"
+      # A reference stringifies to the identifier it holds
+      target:
+        range: Identified
+      targets:
+        range: Identified
+        multivalued: true
+      from_references:
+        range: string
+        equals_expression: "{target} <- {targets}"
+      # Enums stringify to their LinkML text, which is not the generated case name
+      status:
+        range: StatusEnum
+      statuses:
+        range: StatusEnum
+        multivalued: true
+      from_enum:
+        range: string
+        equals_expression: "{status} of ({statuses})"
       # Out of scope: not a single-valued string, so the expression must be ignored
       multivalued_ignored:
         range: string
@@ -70,3 +127,11 @@ classes:
       bottom:
         range: string
         required: true
+
+  Identified:
+    attributes:
+      id:
+        range: string
+        identifier: true
+      label:
+        range: string

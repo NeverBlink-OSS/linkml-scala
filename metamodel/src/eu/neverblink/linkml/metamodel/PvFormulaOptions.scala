@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @see
   *   From schema: https://w3id.org/linkml/meta
   */
-sealed abstract class PvFormulaOptions
+sealed abstract class PvFormulaOptions derives Stringify
 
 object PvFormulaOptions {
 
