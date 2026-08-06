@@ -8,11 +8,218 @@ prefixes:
 default_prefix: issue
 imports:
   - validation-report
+notes:
+  - >-
+    `message` is the short, one-line description. `details` is the long form. When an issue's long
+    form is identical to its short form, only `message` is given.
+  - Slots named `*_list` hold an already-formatted, quoted and comma-separated string.
+
+# Reusable slots for use in schema issue subclasses.
+slots:
+  json_path:
+    range: string
+    required: true
+    title: JSON path
+    description: >-
+      Path to the offending part of the schema. Mirrors `location.json_pointer`, which
+      `equals_expression` cannot reach into.
+
+  class_name:
+    range: string
+    required: true
+    title: class name
+    description: Name of the class the issue was found in.
+
+  element_name:
+    range: string
+    required: true
+    title: element name
+    description: Name of the element the issue was found in.
 
 classes:
-  # TODO: invalid yaml (parse error)
+  # ---- Fatal ------------------------------------------------------------------------------------
+
+  UnknownReference:
+    is_a: SchemaFatal
+    description: A reference in the schema points at an element that is not defined.
+    slots:
+      - json_path
+    attributes:
+      reference_value:
+        range: string
+        required: true
+        title: reference value
+    slot_usage:
+      message:
+        equals_expression: "Unknown reference '{reference_value}' at {json_path}"
+      details:
+        equals_expression: "Unknown reference '{reference_value}' at {json_path}."
+
+  UnknownStringReference:
+    is_a: SchemaFatal
+    description: >-
+      A reference to the `string` type could not be resolved, which almost always means that
+      `linkml:types` was not imported.
+    slots:
+      - json_path
+    slot_usage:
+      message:
+        equals_expression: "Unknown reference 'string' at {json_path}"
+      details:
+        equals_expression: >-
+          Unknown reference 'string' at {json_path}. Make sure you have 'linkml:types' imported.
+
+  InvalidRange:
+    is_a: SchemaFatal
+    description: A `range` points at an element that cannot be used as a range.
+    slots:
+      - json_path
+    attributes:
+      range_value:
+        range: string
+        required: true
+        title: range value
+      actual_type:
+        range: string
+        required: true
+        title: actual type
+        description: The metamodel type the range actually resolved to.
+    slot_usage:
+      message:
+        equals_expression: "Invalid range '{range_value}' at {json_path}"
+      details:
+        equals_expression: >-
+          Invalid range '{range_value}' at {json_path}, which refers to {actual_type}. Ranges can
+          only reference types, classes or enums.
+
+  InvalidDefaultRange:
+    is_a: SchemaFatal
+    description: A slot omits its `range` while no usable `default_range` exists.
+    slots:
+      - json_path
+    slot_usage:
+      message:
+        equals_expression: "Undefined range at {json_path}"
+      details:
+        equals_expression: >-
+          Undefined range at {json_path}, schema 'default_range' is undefined, and the fallback
+          'string' type is not available. Define the 'range' of the slot, add a 'default_range' to
+          the schema, import 'linkml:types', or define a 'string' type to fix.
+
+  SchemaIdClash:
+    is_a: SchemaFatal
+    description: Two distinct schemas declare the same `id`.
+    slot_usage:
+      message:
+        equals_expression: "Non-unique schema IDs detected"
+
+  # ---- Error ------------------------------------------------------------------------------------
+
+  MultipleTreeRoots:
+    is_a: SchemaError
+    description: More than one class in the root schema is marked as `tree_root`.
+    attributes:
+      class_name_list:
+        range: string
+        required: true
+        title: class names
+    slot_usage:
+      message:
+        equals_expression: "Multiple classes are defined as a 'tree_root': {class_name_list}"
+
+  MultipleKeyOrIdSlots:
+    is_a: SchemaError
+    description: A class has more than one `key` or `identifier` slot.
+    slots:
+      - class_name
+    attributes:
+      slot_name_list:
+        range: string
+        required: true
+        title: slot names
+    slot_usage:
+      message:
+        equals_expression: >-
+          Multiple key / identifier slots in class '{class_name}': {slot_name_list}
+
+  InvalidKeyOrIdSlotType:
+    is_a: SchemaError
+    description: A `key` or `identifier` slot has a range that is not a scalar type.
+    slots:
+      - class_name
+      - element_name
+    slot_usage:
+      message:
+        equals_expression: >-
+          Invalid type of key / identifier slot in class '{class_name}': '{element_name}'. Expected
+          a basic, scalar data type (e.g., string, integer, float, uri).
+
+  NonUniqueName:
+    is_a: SchemaError
+    description: The same name is used by more than one element.
+    slots:
+      - element_name
+    attributes:
+      used_for:
+        range: string
+        required: true
+        title: used for
+        description: Formatted description of the elements that share the name.
+    slot_usage:
+      message:
+        equals_expression: "Non-unique name '{element_name}' used for {used_for}"
+
+  UndefinedPrefix:
+    is_a: SchemaError
+    description: A prefix is referenced but not defined in the schema.
+    attributes:
+      prefix:
+        range: string
+        required: true
+        title: prefix
+      position:
+        range: string
+        required: true
+        title: position
+    slot_usage:
+      message:
+        equals_expression: "Undefined prefix {prefix} at {position}"
+
+  InvalidUriOrCurie:
+    is_a: SchemaError
+    description: An element's URI or CURIE is not a valid IRI or `prefix:localname` pair.
+    slots:
+      - element_name
+    attributes:
+      uri_or_curie:
+        range: string
+        required: true
+        title: URI or CURIE
+      element_type:
+        range: string
+        required: true
+        title: element type
+      defining_schema_id:
+        range: string
+        required: true
+        title: defining schema identifier
+    slot_usage:
+      message:
+        equals_expression: >-
+          Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
+          schema '{defining_schema_id}'.
+      details:
+        equals_expression: >-
+          Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
+          schema '{defining_schema_id}'.. A valid URI must be a valid IRI, and a valid CURIE must be
+          of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a
+          valid NCName.
+
+  # ---- Warning ----------------------------------------------------------------------------------
+
   UndefinedDefaultRange:
     is_a: SchemaWarning
+    description: The schema has no `default_range` and no `string` type to fall back on.
     slot_usage:
       message:
         equals_expression: "No 'default_range' is defined in the schema"
@@ -22,38 +229,28 @@ classes:
           This will become a fatal error if any slots in the schema omit their 'range'.
           Add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.
 
-  UnknownReference:
-    is_a: SchemaFatal
+  NoTreeRootClass:
+    is_a: SchemaWarning
+    description: No class in the root schema is marked as `tree_root`.
+    slot_usage:
+      message:
+        equals_expression: "No 'tree_root' class is defined in the schema"
+
+  InvalidSlotUsage:
+    is_a: SchemaWarning
+    description: A class declares `slot_usage` for slots that none of its ancestors provide.
+    slots:
+      - class_name
     attributes:
-      reference_value:
+      slot_name_list:
         range: string
         required: true
-        title: reference value
+        title: slot names
     slot_usage:
       message:
-        equals_expression: "Unknown reference to element '{reference_value}'"
+        equals_expression: >-
+          Invalid 'slot_usage' slots: {slot_name_list} in class {class_name}
       details:
         equals_expression: >-
-          The schema contains a reference to an element '{reference_value}' that is not defined in the schema.
-          This could be a class, slot, or type. Check the schema for typos or missing definitions.
-
-  UnknownStringReference:
-    is_a: SchemaFatal
-    slot_usage:
-      message:
-        equals_expression: "Unknown reference to element 'string'"
-      details:
-        equals_expression: >-
-          The schema contains a reference to an element 'string' that is not defined in the schema.
-          Make sure you have 'linkml:types' imported.
-
-#MissingClass:
-#  is_a: SchemaIssue
-#  attributes:
-#    class:
-#      range: string
-#      required: true
-#      title: class
-#  slot_usage:
-#    message:
-#      equals_expression: "{class} is missing from the schema."
+          Class '{class_name}' has declared 'slot_usage' for slots that are not defined for its ancestors.
+          These slots will not be included: {slot_name_list}

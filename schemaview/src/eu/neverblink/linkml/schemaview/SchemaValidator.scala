@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
+import eu.neverblink.linkml.validation.*
 
 import java.util
 import scala.util.{Success, Try}
@@ -10,7 +11,19 @@ import scala.util.{Success, Try}
   * correct.
   */
 final class SchemaValidator(using sv: SchemaView) {
-  import SchemaValidator.macroValidator
+  import SchemaValidator.{macroValidator, quoteJoin}
+
+  /** Location of an issue that is pinned to a JSON path within the root schema. */
+  private def at(jsonPath: String): IssueLocationImpl =
+    IssueLocationImpl(schemaId = Some(sv.root.id), jsonPointer = Some(jsonPath))
+
+  /** Location of an issue that pertains to a class of the root schema. */
+  private def classLocation(className: String): IssueLocationImpl =
+    at(s"/classes/$className")
+
+  /** Location of an issue that pertains to the root schema as a whole. */
+  private def rootLocation: IssueLocationImpl =
+    IssueLocationImpl(schemaId = Some(sv.root.id))
 
   // TODO: warn about shadowing
 
@@ -27,14 +40,27 @@ final class SchemaValidator(using sv: SchemaView) {
   }
 
   /** Any invalid references present in the schema. Empty if all references are valid. */
-  lazy val unknownReferences: Seq[SchemaProblem.Fatal] =
-    macroResult.unknownReferences.map(SchemaProblem.UnknownReferenceProblem(_))
+  lazy val unknownReferences: Seq[SchemaFatal] =
+    macroResult.unknownReferences.map(ref =>
+      // A dangling 'string' reference nearly always means 'linkml:types' was not imported, so it
+      // gets its own issue type with a hint.
+      if ref.referenceValue == "string" then
+        UnknownStringReferenceImpl(location = at(ref.path), jsonPath = ref.path)
+      else
+        UnknownReferenceImpl(
+          location = at(ref.path),
+          jsonPath = ref.path,
+          referenceValue = ref.referenceValue,
+        ),
+    )
 
   /** Any usages of an undefined `default_range`. Empty if no usages found. */
-  lazy val usedUndefinedDefaultRange: Seq[SchemaProblem.Fatal] =
-    macroResult.invalidDefaultRanges.map(SchemaProblem.InvalidDefaultRangeProblem(_))
+  lazy val usedUndefinedDefaultRange: Seq[SchemaFatal] =
+    macroResult.invalidDefaultRanges.map(range =>
+      InvalidDefaultRangeImpl(location = at(range.path), jsonPath = range.path),
+    )
 
-  lazy val schemaIdClash: Seq[SchemaProblem.Fatal] = {
+  lazy val schemaIdClash: Seq[SchemaFatal] = {
     val schemas = sv.schemas.toIndexedSeq
     for
       (s1, s1index) <- schemas.zipWithIndex
@@ -42,33 +68,46 @@ final class SchemaValidator(using sv: SchemaView) {
       if s1.id == s2.id
         // TODO LNK-154 Robust file system importing
         && s1 != s2
-    yield SchemaProblem.SchemaIdClash(s1, s2)
+    yield SchemaIdClashImpl(location = IssueLocationImpl(schemaId = Some(s1.id)))
   }
 
   /** Warning if defining a slot without a `range` will cause a fatal error, None otherwise
     */
-  private lazy val undefinedDefaultRange: Option[SchemaProblem.Warning] =
+  private lazy val undefinedDefaultRange: Option[SchemaWarning] =
     if isDefaultRangeAllowed then None
-    else Some(SchemaProblem.UndefinedDefaultRange)
+    else Some(UndefinedDefaultRangeImpl(location = rootLocation))
 
   /** Any `range` slots pointing at invalid elements in the schema. */
-  lazy val invalidRangeTypes: Seq[SchemaProblem.Fatal] =
-    macroResult.invalidRanges.map(SchemaProblem.InvalidRangeProblem(_))
+  lazy val invalidRangeTypes: Seq[SchemaFatal] =
+    macroResult.invalidRanges.map(range =>
+      InvalidRangeImpl(
+        location = at(range.path),
+        jsonPath = range.path,
+        rangeValue = range.value,
+        actualType = range.actualType,
+      ),
+    )
 
   /** Error when a schema has multiple `tree_root` classes, None otherwise */
-  private lazy val multipleTreeRoots: Option[SchemaProblem.Error] = {
+  private lazy val multipleTreeRoots: Option[SchemaError] = {
     // Python implementation only looks at the root schema, not the imports:
     // tree_roots = [c for c in schema_view.all_classes(imports=False).values() if c.tree_root]
     // if len(tree_roots) > 0: # -> validation error
     val treeRoots = sv.root.classes.values.filter(_.treeRoot).toSeq
-    if treeRoots.size > 1 then Some(SchemaProblem.MultipleTreeRoots(treeRoots))
+    if treeRoots.size > 1 then
+      Some(
+        MultipleTreeRootsImpl(
+          location = rootLocation,
+          classNameList = quoteJoin(treeRoots.map(_.name)),
+        ),
+      )
     else None
   }
 
   /** Warning when there does not exist a `tree_root` class, None otherwise */
-  private lazy val noTreeRoot: Option[SchemaProblem.Warning] = {
+  private lazy val noTreeRoot: Option[SchemaWarning] = {
     val treeRoots = sv.root.classes.values.filter(_.treeRoot)
-    if treeRoots.isEmpty then Some(SchemaProblem.NoTreeRootClass)
+    if treeRoots.isEmpty then Some(NoTreeRootClassImpl(location = rootLocation))
     else None
 
   }
@@ -76,20 +115,32 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Errors for each class with multiple identifier/key slots, empty if all classes have correct
     * identifier/key slots
     */
-  private lazy val identifierAndKey: Seq[SchemaProblem.Error] = {
-    val errors = Seq.newBuilder[SchemaProblem.Error]
+  private lazy val identifierAndKey: Seq[SchemaError] = {
+    val errors = Seq.newBuilder[SchemaError]
     sv.classes.values.foreach { derivedCls =>
       val keyOrId = derivedCls.derivedAttributes.values
         .collect { case s if s.slot.identifier || s.slot.key => s.slot }
       if (keyOrId.size > 1) {
-        errors.addOne(SchemaProblem.MultipleKeyOrIdSlots(derivedCls.cls, keyOrId.toSeq))
+        errors.addOne(
+          MultipleKeyOrIdSlotsImpl(
+            location = classLocation(derivedCls.cls.name),
+            className = derivedCls.cls.name,
+            slotNameList = quoteJoin(keyOrId.toSeq.map(_.name)),
+          ),
+        )
       } else if (keyOrId.size == 1) {
         keyOrId.head.range.flatMap(sv.resolve).orElse(sv.schemas.collectFirst {
           case s if s.defaultRange.isDefined => s.defaultRange.flatMap(sv.resolve)
         }.flatten).orNull match {
           case _: TypeDefinition | null =>
           case elem =>
-            errors.addOne(SchemaProblem.InvalidKeyOrIdSlotType(derivedCls.cls, elem.name))
+            errors.addOne(
+              InvalidKeyOrIdSlotTypeImpl(
+                location = classLocation(derivedCls.cls.name),
+                className = derivedCls.cls.name,
+                elementName = elem.name,
+              ),
+            )
         }
       }
     }
@@ -98,8 +149,11 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Errors for classes, types, and enums that have non-unique names
     */
-  private lazy val nonUniqueNames: Seq[SchemaProblem.Error] = {
-    val errors = Seq.newBuilder[SchemaProblem.Error]
+  private def nonUniqueName(name: String, usedFor: String): SchemaError =
+    NonUniqueNameImpl(location = rootLocation, elementName = name, usedFor = usedFor)
+
+  private lazy val nonUniqueNames: Seq[SchemaError] = {
+    val errors = Seq.newBuilder[SchemaError]
     val enumNames =
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.enums.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
@@ -107,7 +161,7 @@ final class SchemaValidator(using sv: SchemaView) {
         val enumSchemaName = enumNames.put(enumName, s.name)
         if (enumSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               enumName,
               s"enum from '$enumSchemaName' and '${s.name}' schemas",
             ),
@@ -123,7 +177,7 @@ final class SchemaValidator(using sv: SchemaView) {
         val enumSchemaName = enumNames.get(typeName)
         if (enumSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               typeName,
               if (typeSchemaName ne null) {
                 s"type from '$typeSchemaName' and '${s.name}' schemas, and enum from '$enumSchemaName' schema"
@@ -134,7 +188,7 @@ final class SchemaValidator(using sv: SchemaView) {
           )
         } else if (typeSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               typeName,
               s"type from '$typeSchemaName' and '${s.name}' schemas",
             ),
@@ -151,7 +205,7 @@ final class SchemaValidator(using sv: SchemaView) {
         val enumSchemaName = enumNames.get(className)
         if (enumSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               className, {
                 if (typeSchemaName ne null) {
                   if (classSchemaName ne null) {
@@ -169,7 +223,7 @@ final class SchemaValidator(using sv: SchemaView) {
           )
         } else if (typeSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               className, {
                 if (classSchemaName ne null) {
                   s"class from '${s.name}' schema, class from '$classSchemaName' schema and type from '$typeSchemaName' schema"
@@ -181,7 +235,7 @@ final class SchemaValidator(using sv: SchemaView) {
           )
         } else if (classSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               className,
               s"class from '${s.name}' and '$classSchemaName' schemas",
             ),
@@ -199,7 +253,7 @@ final class SchemaValidator(using sv: SchemaView) {
         val slotSchemaName = slotNames.put(slotName, s.name)
         if (slotSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               slotName,
               s"slot from '${s.name}' and '$slotSchemaName' schemas",
             ),
@@ -214,7 +268,7 @@ final class SchemaValidator(using sv: SchemaView) {
         val subsetSchemaName = subsetNames.put(subsetName, s.name)
         if (subsetSchemaName ne null) {
           errors.addOne(
-            SchemaProblem.NonUniqueName(
+            nonUniqueName(
               subsetName,
               s"subset from '${s.name}' and '$subsetSchemaName' schemas",
             ),
@@ -228,8 +282,8 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Ensure that any declared slot usages are refining some applicable slot (top level slot or
     * attribute)
     */
-  private lazy val invalidSlotUsage: Seq[SchemaProblem.Warning] =
-    sv.classes.values.foldLeft(Seq.newBuilder[SchemaProblem.Warning]) { (acc, cls) =>
+  private lazy val invalidSlotUsage: Seq[SchemaWarning] =
+    sv.classes.values.foldLeft(Seq.newBuilder[SchemaWarning]) { (acc, cls) =>
       // Collect all slot names that are applicable to this class definition.
       val applicableSlotNames = new util.HashSet[String]
       cls.ancestors(true).foreach { anc =>
@@ -242,7 +296,13 @@ final class SchemaValidator(using sv: SchemaView) {
       val problemSlots = cls.cls.slotUsage.keys
         .filter(x => !applicableSlotNames.contains(x))
       if (problemSlots.nonEmpty) {
-        acc.addOne(SchemaProblem.InvalidSlotUsage(cls.cls, problemSlots.toSeq))
+        acc.addOne(
+          InvalidSlotUsageImpl(
+            location = classLocation(cls.cls.name),
+            className = cls.cls.name,
+            slotNameList = quoteJoin(problemSlots.toSeq),
+          ),
+        )
       }
       acc
     }.result()
@@ -251,12 +311,12 @@ final class SchemaValidator(using sv: SchemaView) {
       slotDefinition: SlotDefinition,
       prefixResolver: PrefixResolver,
       locationPrefix: String,
-  ): Option[SchemaProblem.Error] = {
+  ): Option[SchemaError] = {
     slotDefinition.implicitPrefix match {
       case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
         Some(
-          SchemaProblem.UndefinedPrefix(
-            prefix,
+          undefinedPrefix(
+            prefix.toString,
             s"$locationPrefix/${slotDefinition.name}/implicit_prefix",
           ),
         )
@@ -264,16 +324,19 @@ final class SchemaValidator(using sv: SchemaView) {
     }
   }
 
-  private lazy val unknownPrefixes: Seq[SchemaProblem.Error] = {
+  private def undefinedPrefix(prefix: String, position: String): SchemaError =
+    UndefinedPrefixImpl(location = at(position), prefix = prefix, position = position)
+
+  private lazy val unknownPrefixes: Seq[SchemaError] = {
     sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
       if sv.rootPrefixResolver.resolvePrefix(prefix).isEmpty
-      then Some(SchemaProblem.UndefinedPrefix(prefix, s"/emit_prefixes/$idx"))
+      then Some(undefinedPrefix(prefix.toString, s"/emit_prefixes/$idx"))
       else None,
     ) ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
           case Some(prefix) if tv.definingPrefixResolver.resolvePrefix(prefix).isEmpty =>
-            Some(SchemaProblem.UndefinedPrefix(prefix, s"/types/${tv._type.name}/implicit_prefix"))
+            Some(undefinedPrefix(prefix.toString, s"/types/${tv._type.name}/implicit_prefix"))
           case _ => None
         }
       }) ++
@@ -299,22 +362,31 @@ final class SchemaValidator(using sv: SchemaView) {
       )
   }
 
-  private lazy val invalidUris: Seq[SchemaProblem.Error] = {
+  private lazy val invalidUris: Seq[SchemaError] = {
     sv.elements.values.flatMap { elem =>
       if elem.uriOrCurie.isValid then None
-      else Some(SchemaProblem.InvalidUriOrCurie(elem))
+      else
+        Some(
+          InvalidUriOrCurieImpl(
+            location = IssueLocationImpl(schemaId = Some(elem.definingSchema.id)),
+            uriOrCurie = elem.uriOrCurie.original,
+            elementType = elem.elementType,
+            elementName = elem.inner.name,
+            definingSchemaId = elem.definingSchema.id.original,
+          ),
+        )
     }.toSeq
   }
 
   /** Any fatal problems that block further processing / validation, if any. */
-  lazy val fatalProblems: Seq[SchemaProblem.Fatal] =
+  lazy val fatalProblems: Seq[SchemaFatal] =
     unknownReferences ++
       invalidRangeTypes ++
       usedUndefinedDefaultRange ++
       schemaIdClash
 
   /** Any errors found in the schema, if any. */
-  private lazy val errors: Seq[SchemaProblem.Error] =
+  private lazy val errors: Seq[SchemaError] =
     identifierAndKey ++
       multipleTreeRoots ++
       nonUniqueNames ++
@@ -322,19 +394,19 @@ final class SchemaValidator(using sv: SchemaView) {
       invalidUris
 
   /** Any warnings found in the schema, if any. */
-  private lazy val warnings: Seq[SchemaProblem.Warning] =
+  private lazy val warnings: Seq[SchemaWarning] =
     invalidSlotUsage ++
       undefinedDefaultRange ++
       noTreeRoot
 
   /** Any validation problems (fatal + error) found in the schema */
-  private lazy val validationProblems: Seq[SchemaProblem.Error | SchemaProblem.Fatal] = {
-    val fatal: Seq[SchemaProblem.Fatal] = fatalProblems
+  private lazy val validationProblems: Seq[SchemaError | SchemaFatal] = {
+    val fatal: Seq[SchemaFatal] = fatalProblems
     if fatal.nonEmpty then fatal else errors
   }
 
   /** Any lint problems found in the schema (fatal + error + warning) */
-  lazy val lintProblems: Seq[SchemaProblem] = {
+  lazy val lintProblems: Seq[SchemaIssue] = {
     if fatalProblems.nonEmpty then fatalProblems
     else errors ++ warnings
   }
@@ -347,12 +419,18 @@ final class SchemaValidator(using sv: SchemaView) {
     *   Success if no validation problems found, or an exception with an appropriate error message
     */
   def validate(maxProblems: Int = 5): Try[Unit] = {
-    if validationProblems.nonEmpty then SchemaProblem.failure(validationProblems, maxProblems)
+    if validationProblems.nonEmpty then
+      // Matched rather than mapped, so that `infer()` resolves to the narrowed override on each
+      // branch instead of widening the union to SchemaIssue.
+      val inferred = validationProblems.map[SchemaError | SchemaFatal] {
+        case error: SchemaError => error.infer()
+        case fatal: SchemaFatal => fatal.infer()
+      }
+      SchemaIssues.failure(inferred, maxProblems)
     else Success(())
   }
 
-  /** Create a validation report of all detected [[SchemaProblem]]s, formatting problems
-    * appropriately.
+  /** Create a validation report of all detected issues, formatting problems appropriately.
     *
     * @param maxProblems
     *   Max number of problems to format
@@ -365,8 +443,8 @@ final class SchemaValidator(using sv: SchemaView) {
     if lintProblems.isEmpty then None
     else
       Some(
-        s"Found ${lintProblems.size} problems in the schema:\n" + SchemaProblem.format(
-          lintProblems,
+        s"Found ${lintProblems.size} problems in the schema:\n" + SchemaIssues.format(
+          lintProblems.map(_.infer()),
           maxProblems,
           verbose,
           showLevel = true,
@@ -380,4 +458,7 @@ object SchemaValidator {
   /** Macro validator instance which will be used in the [[SchemaValidator]] */
   private val macroValidator: MacroValidator[SchemaDefinitionImpl] =
     MacroValidator.derived
+
+  /** Format a list of names the way the issue messages expect: quoted and comma separated. */
+  private def quoteJoin(names: Seq[String]): String = names.mkString("'", "', '", "'")
 }

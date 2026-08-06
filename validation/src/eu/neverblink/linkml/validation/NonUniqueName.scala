@@ -4,60 +4,44 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[UnknownReference]] LinkML class
+/** Base implementation of the [[NonUniqueName]] LinkML class
   *
   * @inheritdoc
   */
-final case class UnknownReferenceImpl(
+final case class NonUniqueNameImpl(
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
+    @named("element_name")
+    elementName: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
-    @named("reference_value")
-    referenceValue: String,
-    severity: IssueSeverity = IssueSeverity.Fatal,
-) extends UnknownReference {
+    severity: IssueSeverity = IssueSeverity.Error,
+    @named("used_for")
+    usedFor: String,
+) extends NonUniqueName {
 
-  override def infer(): UnknownReferenceImpl =
+  override def infer(): NonUniqueNameImpl =
     copy(
-      details = inferOptional(
-        "details",
-        details,
-        "Unknown reference '" + referenceValue + "' at " + jsonPath + ".",
-      ),
       message = inferOptional(
         "message",
         message,
-        "Unknown reference '" + referenceValue + "' at " + jsonPath,
+        "Non-unique name '" + elementName + "' used for " + usedFor,
       ),
     )
 }
 
-/** A reference in the schema points at an element that is not defined.
+/** The same name is used by more than one element.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-abstract class UnknownReference extends SchemaFatal {
+abstract class NonUniqueName extends SchemaError {
 
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
+  /** Name of the element the issue was found in.
     *
     * @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def jsonPath: String
+  def elementName: String
 
   /** Short, human-readable message describing the issue.
     *
@@ -69,10 +53,12 @@ abstract class UnknownReference extends SchemaFatal {
     */
   def message: Option[String]
 
-  /** @see
+  /** Formatted description of the elements that share the name.
+    *
+    * @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def referenceValue: String
+  def usedFor: String
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -81,5 +67,5 @@ abstract class UnknownReference extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): UnknownReference
+  def infer(): NonUniqueName
 }

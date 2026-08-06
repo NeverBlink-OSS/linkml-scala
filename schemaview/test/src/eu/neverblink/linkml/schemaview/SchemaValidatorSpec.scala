@@ -423,6 +423,25 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
     }
 
+    "leave issue messages unpopulated until the consumer infers them" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    class_uri: "not a curie!"
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      val problems = SchemaValidator(using sv).lintProblems
+      problems should not be empty
+      problems.foreach { problem =>
+        withClue(s"$problem: ") {
+          problem.message shouldBe None
+          problem.details shouldBe None
+        }
+      }
+    }
+
     "warn on no tree root" in {
       val schemaYaml =
         s"""$schemaShared

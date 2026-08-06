@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
-import eu.neverblink.linkml.schemaview.SchemaProblem
+import eu.neverblink.linkml.schemaview.SchemaIssues
+import eu.neverblink.linkml.validation.{IssueSeverity, SchemaIssue}
 
 /** ANSI escape codes for the terminal report. Kept private to this file. */
 private object Ansi {
@@ -45,14 +46,14 @@ object ValidationReport {
 
   final case class Issue(severity: Severity, message: String)
 
-  /** Map structured schema problems to display issues. */
-  def issuesOf(problems: Seq[SchemaProblem]): Seq[Issue] =
-    problems.map { p =>
-      val severity = p match
-        case _: SchemaProblem.Fatal => Severity.Fatal
-        case _: SchemaProblem.Error => Severity.Error
-        case _: SchemaProblem.Warning => Severity.Warning
-      Issue(severity, p.description)
+  /** Map structured schema issues to display issues. */
+  def issuesOf(problems: Seq[SchemaIssue]): Seq[Issue] =
+    problems.map(_.infer()).map { p =>
+      val severity = p.severity match
+        case IssueSeverity.Fatal => Severity.Fatal
+        case IssueSeverity.Error => Severity.Error
+        case IssueSeverity.Warning => Severity.Warning
+      Issue(severity, SchemaIssues.description(p))
     }
 
   /** Render a full validation report.

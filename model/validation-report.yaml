@@ -163,9 +163,6 @@ classes:
         description: >-
           The column number in the schema where the issue ends (1-based, EXCLUSIVE).
 
-# Reusable slots for use in schema issue subclasses.
-slots: {}
-
 enums:
   IssueSeverity:
     title: Issue severity

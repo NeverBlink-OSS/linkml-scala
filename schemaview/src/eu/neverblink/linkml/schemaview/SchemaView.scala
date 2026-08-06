@@ -224,8 +224,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   {
     val problems = validator.fatalProblems
     if (problems.nonEmpty) {
-      val formatted = SchemaProblem.format(
-        problems,
+      val formatted = SchemaIssues.format(
+        problems.map(_.infer()),
         maxProblems = 5,
         verbose = true,
         showLevel = false,

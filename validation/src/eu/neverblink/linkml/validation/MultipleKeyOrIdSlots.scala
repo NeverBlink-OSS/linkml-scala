@@ -4,60 +4,44 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[UnknownReference]] LinkML class
+/** Base implementation of the [[MultipleKeyOrIdSlots]] LinkML class
   *
   * @inheritdoc
   */
-final case class UnknownReferenceImpl(
+final case class MultipleKeyOrIdSlotsImpl(
+    @named("class_name")
+    className: String,
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
-    @named("reference_value")
-    referenceValue: String,
-    severity: IssueSeverity = IssueSeverity.Fatal,
-) extends UnknownReference {
+    severity: IssueSeverity = IssueSeverity.Error,
+    @named("slot_name_list")
+    slotNameList: String,
+) extends MultipleKeyOrIdSlots {
 
-  override def infer(): UnknownReferenceImpl =
+  override def infer(): MultipleKeyOrIdSlotsImpl =
     copy(
-      details = inferOptional(
-        "details",
-        details,
-        "Unknown reference '" + referenceValue + "' at " + jsonPath + ".",
-      ),
       message = inferOptional(
         "message",
         message,
-        "Unknown reference '" + referenceValue + "' at " + jsonPath,
+        "Multiple key / identifier slots in class '" + className + "': " + slotNameList,
       ),
     )
 }
 
-/** A reference in the schema points at an element that is not defined.
+/** A class has more than one `key` or `identifier` slot.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-abstract class UnknownReference extends SchemaFatal {
+abstract class MultipleKeyOrIdSlots extends SchemaError {
 
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
+  /** Name of the class the issue was found in.
     *
     * @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def jsonPath: String
+  def className: String
 
   /** Short, human-readable message describing the issue.
     *
@@ -72,7 +56,7 @@ abstract class UnknownReference extends SchemaFatal {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def referenceValue: String
+  def slotNameList: String
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -81,5 +65,5 @@ abstract class UnknownReference extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): UnknownReference
+  def infer(): MultipleKeyOrIdSlots
 }

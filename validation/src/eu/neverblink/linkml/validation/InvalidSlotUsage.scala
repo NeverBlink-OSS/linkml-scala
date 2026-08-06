@@ -4,37 +4,49 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[UnknownStringReference]] LinkML class
+/** Base implementation of the [[InvalidSlotUsage]] LinkML class
   *
   * @inheritdoc
   */
-final case class UnknownStringReferenceImpl(
+final case class InvalidSlotUsageImpl(
+    @named("class_name")
+    className: String,
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
-    severity: IssueSeverity = IssueSeverity.Fatal,
-) extends UnknownStringReference {
+    severity: IssueSeverity = IssueSeverity.Warning,
+    @named("slot_name_list")
+    slotNameList: String,
+) extends InvalidSlotUsage {
 
-  override def infer(): UnknownStringReferenceImpl =
+  override def infer(): InvalidSlotUsageImpl =
     copy(
       details = inferOptional(
         "details",
         details,
-        "Unknown reference 'string' at " + jsonPath + ". Make sure you have 'linkml:types' imported.",
+        "Class '" + className + "' has declared 'slot_usage' for slots that are not defined for its ancestors. These slots will not be included: " + slotNameList,
       ),
-      message = inferOptional("message", message, "Unknown reference 'string' at " + jsonPath),
+      message = inferOptional(
+        "message",
+        message,
+        "Invalid 'slot_usage' slots: " + slotNameList + " in class " + className,
+      ),
     )
 }
 
-/** A reference to the `string` type could not be resolved, which almost always means that
-  * `linkml:types` was not imported.
+/** A class declares `slot_usage` for slots that none of its ancestors provide.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-abstract class UnknownStringReference extends SchemaFatal {
+abstract class InvalidSlotUsage extends SchemaWarning {
+
+  /** Name of the class the issue was found in.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def className: String
 
   /** Longer, human-readable message describing the issue in more detail.
     *
@@ -46,14 +58,6 @@ abstract class UnknownStringReference extends SchemaFatal {
     */
   def details: Option[String]
 
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def jsonPath: String
-
   /** Short, human-readable message describing the issue.
     *
     * @see
@@ -64,6 +68,11 @@ abstract class UnknownStringReference extends SchemaFatal {
     */
   def message: Option[String]
 
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def slotNameList: String
+
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
     *
@@ -71,5 +80,5 @@ abstract class UnknownStringReference extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): UnknownStringReference
+  def infer(): InvalidSlotUsage
 }

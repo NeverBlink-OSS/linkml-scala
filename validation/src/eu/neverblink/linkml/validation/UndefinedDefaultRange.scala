@@ -15,14 +15,7 @@ final case class UndefinedDefaultRangeImpl(
     severity: IssueSeverity = IssueSeverity.Warning,
 ) extends UndefinedDefaultRange {
 
-  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
-    * the values already present agree with what their expressions infer.
-    *
-    * @throws InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression references a
-    *   slot that has no value
-    */
-  def infer(): UndefinedDefaultRangeImpl =
+  override def infer(): UndefinedDefaultRangeImpl =
     copy(
       message = inferOptional("message", message, "No 'default_range' is defined in the schema"),
       details = inferOptional(
@@ -33,7 +26,9 @@ final case class UndefinedDefaultRangeImpl(
     )
 }
 
-/** @see
+/** The schema has no `default_range` and no `string` type to fall back on.
+  *
+  * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
 abstract class UndefinedDefaultRange extends SchemaWarning {
@@ -58,11 +53,12 @@ abstract class UndefinedDefaultRange extends SchemaWarning {
     */
   def message: Option[String]
 
-  /** Fill in the slots that have an `equals_expression`, and check the values already present
-    * against them.
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
     *
-    * @throws InferenceException
-    *   if a slot's value contradicts the value inferred for it
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
     */
   def infer(): UndefinedDefaultRange
 }

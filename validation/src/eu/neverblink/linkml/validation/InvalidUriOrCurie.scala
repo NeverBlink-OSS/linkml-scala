@@ -4,37 +4,51 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[UnknownStringReference]] LinkML class
+/** Base implementation of the [[InvalidUriOrCurie]] LinkML class
   *
   * @inheritdoc
   */
-final case class UnknownStringReferenceImpl(
+final case class InvalidUriOrCurieImpl(
+    @named("defining_schema_id")
+    definingSchemaId: String,
     details: Option[String] = None,
-    @named("json_path")
-    jsonPath: String,
+    @named("element_name")
+    elementName: String,
+    @named("element_type")
+    elementType: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
-    severity: IssueSeverity = IssueSeverity.Fatal,
-) extends UnknownStringReference {
+    severity: IssueSeverity = IssueSeverity.Error,
+    @named("uri_or_curie")
+    uriOrCurie: String,
+) extends InvalidUriOrCurie {
 
-  override def infer(): UnknownStringReferenceImpl =
+  override def infer(): InvalidUriOrCurieImpl =
     copy(
       details = inferOptional(
         "details",
         details,
-        "Unknown reference 'string' at " + jsonPath + ". Make sure you have 'linkml:types' imported.",
+        "Invalid URI or CURIE '" + uriOrCurie + "' in " + elementType + " '" + elementName + "' imported from schema '" + definingSchemaId + "'.. A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a valid NCName.",
       ),
-      message = inferOptional("message", message, "Unknown reference 'string' at " + jsonPath),
+      message = inferOptional(
+        "message",
+        message,
+        "Invalid URI or CURIE '" + uriOrCurie + "' in " + elementType + " '" + elementName + "' imported from schema '" + definingSchemaId + "'.",
+      ),
     )
 }
 
-/** A reference to the `string` type could not be resolved, which almost always means that
-  * `linkml:types` was not imported.
+/** An element's URI or CURIE is not a valid IRI or `prefix:localname` pair.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-abstract class UnknownStringReference extends SchemaFatal {
+abstract class InvalidUriOrCurie extends SchemaError {
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def definingSchemaId: String
 
   /** Longer, human-readable message describing the issue in more detail.
     *
@@ -46,13 +60,17 @@ abstract class UnknownStringReference extends SchemaFatal {
     */
   def details: Option[String]
 
-  /** Path to the offending part of the schema. Mirrors `location.json_pointer`, which
-    * `equals_expression` cannot reach into.
+  /** Name of the element the issue was found in.
     *
     * @see
     *   From schema: https://linkml.neverblink.eu/model/issue-types
     */
-  def jsonPath: String
+  def elementName: String
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def elementType: String
 
   /** Short, human-readable message describing the issue.
     *
@@ -64,6 +82,11 @@ abstract class UnknownStringReference extends SchemaFatal {
     */
   def message: Option[String]
 
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def uriOrCurie: String
+
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
     *
@@ -71,5 +94,5 @@ abstract class UnknownStringReference extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): UnknownStringReference
+  def infer(): InvalidUriOrCurie
 }

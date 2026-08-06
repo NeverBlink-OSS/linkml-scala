@@ -4,37 +4,36 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[UnknownStringReference]] LinkML class
+/** Base implementation of the [[InvalidDefaultRange]] LinkML class
   *
   * @inheritdoc
   */
-final case class UnknownStringReferenceImpl(
+final case class InvalidDefaultRangeImpl(
     details: Option[String] = None,
     @named("json_path")
     jsonPath: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
     severity: IssueSeverity = IssueSeverity.Fatal,
-) extends UnknownStringReference {
+) extends InvalidDefaultRange {
 
-  override def infer(): UnknownStringReferenceImpl =
+  override def infer(): InvalidDefaultRangeImpl =
     copy(
       details = inferOptional(
         "details",
         details,
-        "Unknown reference 'string' at " + jsonPath + ". Make sure you have 'linkml:types' imported.",
+        "Undefined range at " + jsonPath + ", schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.",
       ),
-      message = inferOptional("message", message, "Unknown reference 'string' at " + jsonPath),
+      message = inferOptional("message", message, "Undefined range at " + jsonPath),
     )
 }
 
-/** A reference to the `string` type could not be resolved, which almost always means that
-  * `linkml:types` was not imported.
+/** A slot omits its `range` while no usable `default_range` exists.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-abstract class UnknownStringReference extends SchemaFatal {
+abstract class InvalidDefaultRange extends SchemaFatal {
 
   /** Longer, human-readable message describing the issue in more detail.
     *
@@ -71,5 +70,5 @@ abstract class UnknownStringReference extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): UnknownStringReference
+  def infer(): InvalidDefaultRange
 }
