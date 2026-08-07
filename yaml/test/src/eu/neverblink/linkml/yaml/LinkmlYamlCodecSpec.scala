@@ -278,6 +278,68 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |   ^""".stripMargin,
       )
     }
+    "encode default values of fields annotated with @serializeDefault" in {
+      case class MyClass(
+          a: Option[String] = Some("ifabsent"),
+          @serializeDefault b: Option[String] = Some("ifabsent"),
+          @serializeDefault c: Int = 42,
+          @named("dd") @serializeDefault d: Boolean = true,
+      ) derives LinkmlYamlCodec
+
+      // Untouched defaults: 'a' is omitted, the annotated fields are still written out
+      roundTrip(
+        MyClass(),
+        """b: ifabsent
+          |c: 42
+          |dd: true
+          |""".stripMargin,
+      )
+      roundTrip(
+        MyClass(Some("x"), Some("y"), 1, false),
+        """a: x
+          |b: y
+          |c: 1
+          |dd: false
+          |""".stripMargin,
+      )
+      // Annotated fields remain optional on decode, falling back to their defaults
+      decode[MyClass]("a: x", MyClass(a = Some("x")))
+      // An explicitly serialized default round-trips to the same value
+      decode[MyClass](
+        """b: ifabsent
+          |c: 42
+          |dd: true
+          |""".stripMargin,
+        MyClass(),
+      )
+    }
+    "not use the compact form for classes with a @serializeDefault field" in {
+      case class DictEntry(
+          @id k: String,
+          @value v: Int,
+          @serializeDefault e: Boolean = true,
+      )
+
+      case class MyClass(@simpleDict d: Map[String, DictEntry], x: Option[Int] = None)
+          derives LinkmlYamlCodec
+
+      // Without '@serializeDefault' on 'e' this would collapse to the compact form below
+      roundTrip(
+        MyClass(Map("a" -> DictEntry("a", 1))),
+        """d:
+          |  a:
+          |    v: 1
+          |    e: true
+          |""".stripMargin,
+      )
+      // The compact form is still accepted on decode
+      decode[MyClass](
+        """d:
+          |  a: 1
+          |""".stripMargin,
+        MyClass(Map("a" -> DictEntry("a", 1))),
+      )
+    }
     "decode and encode recursive case classes" in {
       case class MyClass(v: Int, n: Option[MyClass] = None) derives LinkmlYamlCodec
 
@@ -643,6 +705,11 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         """case class MyClass(@id a: String, @value b: Int, @value c: Boolean) derives LinkmlYamlCodec"""
       }).getMessage.contains {
         """More than one field is defined with '@value' annotation in 'MyClass'."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class MyClass(a: String, @serializeDefault b: Int) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """'eu.neverblink.linkml.runtime.serializeDefault' is defined for 'b' of 'MyClass', which has no default value."""
       })
     }
   }
