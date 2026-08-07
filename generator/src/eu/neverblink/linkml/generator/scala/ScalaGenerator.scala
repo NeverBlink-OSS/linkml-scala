@@ -253,8 +253,13 @@ final class ScalaGenerator(using sv: SchemaView) {
   private def makeTypedDefault(attribute: AttributeView): TypedDefault = {
     val slot = attribute.slotView
     val (scalaType, defaultValue) = baseRange(attribute)
+    // Defaults coming from 'ifabsent' are meaningful and must survive serialization, unlike the
+    // implicit "empty" defaults (None / Seq() / Map()) that codecs are free to omit.
+    val ifAbsentAnnotation =
+      if defaultValue.isDefined then Seq("@serializeDefault") else Seq()
     InlineType(slot) match {
-      case InlineType.plain => TypedDefault(scalaType, defaultValue)
+      case InlineType.plain =>
+        TypedDefault(scalaType, defaultValue, annotations = ifAbsentAnnotation)
       case InlineType.optional if scalaType == "Boolean" =>
         TypedDefault(
           scalaType,
@@ -265,6 +270,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         TypedDefault(
           s"Option[$scalaType]",
           default = Some(defaultValue.map(v => s"Some($v)").getOrElse("None")),
+          annotations = ifAbsentAnnotation,
           combineFunc = combineOption(combineFallback),
         )
       case InlineType.list =>
@@ -281,7 +287,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         TypedDefault(
           s"Map[String, $scalaType]",
           default = if slot.slot.required then None else Some("Map()"),
-          annotation = Some(annotation),
+          annotations = Seq(annotation),
           combineFunc = combineMap,
         )
     }
@@ -456,7 +462,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       name,
       typedDefault.typeName,
       typedDefault.default,
-      Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotation,
+      Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
       remapMetamodelCombineFunctions(v, typedDefault.combineFunc),
       order,
       // TODO LNK-124: remove when resolved in linkml-model
@@ -860,16 +866,16 @@ object ScalaGenerator {
     * @param default
     *   The default value to provide for the field, or None if the field should be required. Must be
     *   compatible with [[typeName]]
-    * @param annotation
-    *   The range inlining annotation specifying which dict inline style should be used. None if not
-    *   applicable.
+    * @param annotations
+    *   Annotations implied by the type-level information, e.g. the dict inline style to use, or
+    *   whether the default value must be serialized. Empty if none apply.
     * @param combineFunc
     *   The combining function appropriate for the [[typeName]].
     */
   case class TypedDefault(
       typeName: String,
       default: Option[String] = None,
-      annotation: Option[String] = None,
+      annotations: Seq[String] = Seq(),
       combineFunc: CombineFunction = CombineFunction.combineFallback,
   )
 }

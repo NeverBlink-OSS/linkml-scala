@@ -422,13 +422,15 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
             case '[ft] =>
               val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId)
               fieldInfo.defaultValue match {
-                case Some(d) =>
+                // '@serializeDefault' fields carry a meaningful default (e.g. from 'ifabsent'),
+                // so they are written out even when they still hold it.
+                case Some(d) if !fieldInfo.serializeDefault =>
                   '{
                     if (${ getter } != ${ d.asExpr }) {
                       $kvs.addOne((Node.ScalarNode($name), $encodeVal))
                     }
                   }
-                case None =>
+                case _ =>
                   if (fieldInfo.kind == FieldKind.Id) '{
                     if (! $skipId) $kvs.addOne((Node.ScalarNode($name), $encodeVal))
                   }
@@ -451,8 +453,11 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
       }
     } else if (
       fields.exists(_.kind == FieldKind.Id) && fields.exists(_.kind == FieldKind.Value) &&
+      // A '@serializeDefault' field must always be written, so the class cannot collapse to the
+      // compact (bare value) form. Decoding of that form stays supported either way.
       fields.forall(x =>
-        x.kind == FieldKind.Id || x.kind == FieldKind.Value || x.defaultValue.isDefined,
+        x.kind == FieldKind.Id || x.kind == FieldKind.Value ||
+          (x.defaultValue.isDefined && !x.serializeDefault),
       )
     ) {
       val fieldInfo = fields.find(_.kind == FieldKind.Value).get

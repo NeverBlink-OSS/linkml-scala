@@ -937,6 +937,23 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "mark ifabsent default values with @serializeDefault" in {
+      val files = ScalaGenerator(using ModelCatalogue.ifabsent.enums.model).generate(testPkg).toMap
+      // Drop the indentation, so that the snippets below can be written without it.
+      // Done without a regex, as Scala.js has no MULTILINE support below ES2018.
+      val code = files("SomeClass.scala").linesIterator.map(_.stripLeading()).mkString("\n")
+      Seq(
+        "@serializeDefault\nsomeSlot: Option[SomeEnum] = Some(SomeEnum.SomeOption)",
+        "@serializeDefault\nsomeOtherSlot: Option[SomeEnum] = Some(SomeEnum.SomeOtherOption)",
+        "@serializeDefault\nyetAnotherSlot: Option[SomeEnum] = Some(SomeEnum.YetAnotherOption)",
+        "@serializeDefault\nwithSpaces: Option[SomeEnum] = Some(SomeEnum.OptionWithSpaces)",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+      // Slots without an ifabsent default must not be annotated -- their default is just "empty"
+      code should not include "@serializeDefault\nnoIfabsent"
+    }
+
     "generate an emit_prefixes object" in {
       val files = ScalaGenerator(using ModelCatalogue.emitPrefixes.model)
         .generate(testPkg).toMap

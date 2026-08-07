@@ -82,6 +82,8 @@ trait MacroUtils(using val quotes: Quotes) {
     *   The fully resolved type representation (`TypeRepr`) of the field.
     * @param kind
     *   The structural role of this field in LinkML mappings (e.g., ID, Value, Dictionary).
+    * @param serializeDefault
+    *   Whether the default value must be serialized instead of omitted (`@serializeDefault`).
     */
   class FieldInfo(
       val symbol: Symbol,
@@ -90,6 +92,7 @@ trait MacroUtils(using val quotes: Quotes) {
       val defaultValue: Option[Term],
       val resolvedTpe: TypeRepr,
       val kind: FieldKind,
+      val serializeDefault: Boolean,
   )
 
   /** Defines the specific mapping behavior or structural role a field has within a LinkML schema.
@@ -316,11 +319,20 @@ trait MacroUtils(using val quotes: Quotes) {
             }
             var named: Option[Term] = None
             var kind: FieldKind = FieldKind.Regular
+            var serializeDefault = false
             getterOrField.annotations.foreach { annotation =>
               val aTpe = annotation.tpe
               if (aTpe =:= namedTpe) {
                 if (named eq None) named = new Some(annotation)
                 else fail(s"Duplicated '${namedTpe.show}' defined for '$name' of '${tpe.show}'.")
+              } else if (aTpe =:= serializeDefaultTpe) {
+                if (defaultValue.isEmpty) {
+                  fail(
+                    s"'${serializeDefaultTpe.show}' is defined for '$name' of '${tpe.show}', which has no " +
+                      "default value. The annotation is only valid on fields with a default value.",
+                  )
+                }
+                serializeDefault = true
               } else {
                 if (kind != FieldKind.Regular) {
                   fail(
@@ -337,7 +349,15 @@ trait MacroUtils(using val quotes: Quotes) {
             val mappedName = namedValueOpt(named, tpe) match
               case Some(name1) => name1
               case _ => name
-            new FieldInfo(symbol, mappedName, getterOrField, defaultValue, fieldTpe, kind)
+            new FieldInfo(
+              symbol,
+              mappedName,
+              getterOrField,
+              defaultValue,
+              fieldTpe,
+              kind,
+              serializeDefault,
+            )
         }
 
       new ClassInfo(
@@ -526,4 +546,6 @@ trait MacroUtils(using val quotes: Quotes) {
     Symbol.requiredClass("eu.neverblink.linkml.runtime.compactDict").typeRef
   private val expandedDictTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.expandedDict").typeRef
+  private val serializeDefaultTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.serializeDefault").typeRef
 }
