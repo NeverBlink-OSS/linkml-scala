@@ -45,6 +45,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
+      # ADDED: Explicit cache for the extracted GraalVM directory
+      - name: Cache Extracted GraalVM
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/coursier/jvm
+            ~/Library/Caches/Coursier/jvm
+            ~\AppData\Local\Coursier\Cache\jvm
+            ~\AppData\Local\Coursier\data\jvm
+          # Hashing build.sc ensures the cache busts if you update the GraalVM URL/version in Mill
+          key: ${{ runner.os }}-graalvm-extracted-${{ hashFiles('build.sc') }}
+          restore-keys: |
+            ${{ runner.os }}-graalvm-extracted-
+
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
 
