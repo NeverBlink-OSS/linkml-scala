@@ -1,7 +1,13 @@
 package eu.neverblink.linkml.cli
 
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.schemaview.SchemaIssues
-import eu.neverblink.linkml.validation.{IssueSeverity, SchemaIssue}
+import eu.neverblink.linkml.validation.{
+  Codec,
+  IssueSeverity,
+  SchemaIssue,
+  SchemaValidationReportImpl,
+}
 
 /** ANSI escape codes for the terminal report. Kept private to this file. */
 private object Ansi {
@@ -29,14 +35,18 @@ object ValidationReport {
     /** Bare `LEVEL: message` lines for machine consumption. */
     case Plain
 
+    /** A `SchemaValidationReport` serialized as JSON. */
+    case Json
+
   object Format:
     def parse(s: String): Option[Format] = s.toLowerCase match
       case "terminal" => Some(Terminal)
       case "plain" => Some(Plain)
+      case "json" => Some(Json)
       case _ => None
 
     /** Human-readable list of the supported values, for help / error messages. */
-    val supported: String = "terminal|plain"
+    val supported: String = "terminal|plain|json"
 
   /** Severity of an issue. Declaration order is display / sort order (most severe first). */
   enum Severity(val label: String, val icon: String, val color: String):
@@ -69,18 +79,33 @@ object ValidationReport {
     format match
       case Format.Plain => renderPlain(issues)
       case Format.Terminal => renderTerminal(schemaName, issues)
+      case Format.Json => renderJson(Seq())
 
   /** Render the reports for a whole set of schemas, one `(name, issues)` pair each.
     *
     * A single schema renders exactly as [[render]] does. With more than one, every block is labeled
-    * with its file name and a combined summary is appended.
+    * with its file name and a combined summary is appended. The JSON format has no notion of the
+    * file an issue came from - issues carry their own `location.schema_id` - so every schema's
+    * issues go into one report.
     */
-  def renderAll(reports: Seq[(String, Seq[Issue])], format: Format): String =
-    reports match
-      case Seq((name, issues)) => render(name, issues, format)
+  def renderAll(reports: Seq[(String, Seq[SchemaIssue])], format: Format): String =
+    format match
+      case Format.Json => renderJson(reports.flatMap(_._2))
       case _ =>
-        val blocks = reports.map((name, issues) => renderBlock(name, issues, format))
-        (blocks :+ totalSummary(reports, format)).mkString("\n\n")
+        val display = reports.map((name, issues) => name -> issuesOf(issues))
+        display match
+          case Seq((name, issues)) => render(name, issues, format)
+          case _ =>
+            val blocks = display.map((name, issues) => renderBlock(name, issues, format))
+            (blocks :+ totalSummary(display, format)).mkString("\n\n")
+
+  /** Serialize the issues as a [[SchemaValidationReportImpl]], exactly as the LinkML model defines
+    * it. The messages are inferred, so that a consumer of the JSON gets them without having to know
+    * the expressions.
+    */
+  private def renderJson(issues: Seq[SchemaIssue]): String =
+    val report = SchemaValidationReportImpl(issues = issues.map(_.infer()))
+    JsonUtil.yamlToJson(Codec.codec.encode(report))
 
   private def renderBlock(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match

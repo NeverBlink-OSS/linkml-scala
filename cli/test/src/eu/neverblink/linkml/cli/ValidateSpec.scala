@@ -77,6 +77,35 @@ class ValidateSpec extends AnyWordSpec, Matchers {
         }
       }
 
+      "serialize a SchemaValidationReport for --format json" in {
+        withSchema(schemaWithIssues) { path =>
+          val (out, _) = Validate.runTestCommand(List("validate", "--format", "json", path))
+
+          // A report is a single-slot class, which the LinkML codec collapses to its `issues` list.
+          out.trim should startWith("[")
+          out.trim should endWith("]")
+          // The inferred messages are included, keyed by their LinkML slot names.
+          out should include("\"message\"")
+          out should include("Invalid URI or CURIE 'not a curie!' in class 'SomeClass'")
+          out should include("No 'tree_root' class is defined in the schema")
+          // Structured fields, not just prose.
+          out should include("\"element_name\": \"SomeClass\"")
+          out should include("\"element_type\": \"class\"")
+          out should include("\"schema_id\": \"https://neverblink.eu/test/\"")
+          // No display chrome
+          out should not include "ERROR:"
+          out should not include "1 error, 1 warning"
+        }
+      }
+
+      "still exit non-zero for --format json" in {
+        withSchema(schemaWithIssues) { path =>
+          val (_, _, code) =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "json", path))
+          code shouldBe 1
+        }
+      }
+
       "not print the ugly Uri(...) wrapper for the defining schema id" in {
         withSchema(schemaWithIssues) { path =>
           val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))
