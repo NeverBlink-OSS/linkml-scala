@@ -34,7 +34,7 @@ object LinkmlYamlCodec {
       case n => decodeError("URI or CURIE string value", n)
     }
 
-    override def encode(x: UriOrCurie, skipId: Boolean): Node = Node.ScalarNode(x.original)
+    override def encode(x: UriOrCurie, skipId: Boolean): Node = StringNode(x.original)
   }
 
   inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make }
@@ -174,7 +174,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     if (implCodec.isDefined) {
       '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.encode($x, $skipId) }
     } else if (tpe =:= stringTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
-      '{ Node.ScalarNode(${ x.asInstanceOf[Expr[String]] }) }
+      '{ StringNode(${ x.asInstanceOf[Expr[String]] }) }
     }
     else if (tpe =:= intTpe || tpe =:= booleanTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
       '{ Node.ScalarNode($x.toString) }
@@ -213,7 +213,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     }
     else if (isAbstractClassOrTraitOrEnum(tpe)) withEncoderFor(tpe, x, skipId) { (x, _) =>
       val m = withReverseEnumMapFor[T](tpe)
-      '{ Node.ScalarNode($m.get($x)) }
+      '{ StringNode($m.get($x)) }
     }
     else
       withEncoderFor(tpe, x, skipId) { (x, skipId) =>

@@ -288,6 +288,42 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |}""".stripMargin
     }
 
+    "serialize string values that look like numbers, booleans or nulls as strings" in {
+      val sv = SchemaView.loadSchemaViewFromString("""name: numeric_strings
+          |id: https://example.org/numeric-strings
+          |title: "123"
+          |description: "true"
+          |license: "null"
+          |classes:
+          |  SomeClass:
+          |    description: "3.14"
+          |""".stripMargin)
+
+      LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json) shouldBe
+        """{
+        |  "name": "numeric_strings",
+        |  "id": "https://example.org/numeric-strings",
+        |  "classes": {
+        |    "SomeClass": {
+        |      "class_uri": "https://example.org/numeric-strings/SomeClass",
+        |      "description": "3.14",
+        |      "from_schema": "https://example.org/numeric-strings"
+        |    }
+        |  },
+        |  "title": "123",
+        |  "description": "true",
+        |  "license": "null"
+        |}""".stripMargin
+
+      // The same nodes feed the YAML output, which must quote them for the same reason.
+      val yaml =
+        LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.yaml)
+      yaml should include("""title: "123"""")
+      yaml should include("""description: "true"""")
+      yaml should include("""license: "null"""")
+      yaml should include("""description: "3.14"""")
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all.filter(m => !skipModels.contains(m.model.root.name)) do
         s"model '${entry.model.root.name}'" in {
