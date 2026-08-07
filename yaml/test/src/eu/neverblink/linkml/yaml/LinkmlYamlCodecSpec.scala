@@ -15,12 +15,21 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
     "decode and encode strings" in {
       implicit val codec: LinkmlYamlCodec[String] = LinkmlYamlCodec.derived
       roundTrip("abc", "abc\n")
-      roundTrip("true", "true\n")
-      roundTrip("false", "false\n")
-      roundTrip("123", "123\n")
-      roundTrip("123.456", "123.456\n")
       roundTrip("Привіт", "Привіт\n")
       roundTrip("★🎸🎧⋆｡°⋆", "★🎸🎧⋆｡°⋆\n")
+      // Strings that look like other scalar types must be quoted on encode, otherwise they
+      // re-parse (and serialize to JSON) as a number/boolean/null rather than a string.
+      roundTrip("true", "\"true\"\n")
+      roundTrip("false", "\"false\"\n")
+      roundTrip("null", "\"null\"\n")
+      roundTrip("~", "\"~\"\n")
+      roundTrip("123", "\"123\"\n")
+      roundTrip("123.456", "\"123.456\"\n")
+      roundTrip("", "\"\"\n")
+      // Unquoted scalars still decode as strings.
+      decode[String]("true\n", "true")
+      decode[String]("123\n", "123")
+      decode[String]("123.456\n", "123.456")
       decodeError[String](
         "a: abc\n",
         """Expected string value at 0:0 but got:
@@ -642,6 +651,9 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
     parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(value)
     codec.encode(value).asYaml shouldEqual yaml
   }
+
+  private def decode[T](yaml: String, value: T)(implicit codec: LinkmlYamlCodec[T]): Unit =
+    parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(value)
 
   private def decodeError[T](yaml: String, error: String)(implicit
       codec: LinkmlYamlCodec[T],
