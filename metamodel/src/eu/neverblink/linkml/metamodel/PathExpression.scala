@@ -79,7 +79,11 @@ final case class PathExpressionImpl(
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
     traverse: Option[Reference[SlotDefinition]] = None,
-) extends PathExpression
+) extends PathExpression {
+
+  override def infer(): PathExpressionImpl =
+    this
+}
 
 /** An expression that describes an abstract path from an object to another through a sequence of
   * slot lookups
@@ -155,4 +159,13 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *   From schema: https://w3id.org/linkml/meta
     */
   def traverse: Option[Reference[SlotDefinition]]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): PathExpression
 }

@@ -72,7 +72,11 @@ final case class ArrayExpressionImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
-) extends ArrayExpression
+) extends ArrayExpression {
+
+  override def infer(): ArrayExpressionImpl =
+    this
+}
 
 /** Defines the dimensions of an array
   *
@@ -120,4 +124,13 @@ abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
     *   Minimum_cardinality cannot be greater than maximum_cardinality
     */
   def minimumNumberDimensions: Option[Int]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): ArrayExpression
 }

@@ -136,6 +136,7 @@ object ModelCatalogue {
   val curie: Entry = Entry("/models/curie/")
   val emitPrefixes: Entry = Entry("/models/emitPrefixes/")
   val emptyClass: Entry = Entry("/models/emptyClass/")
+  val equalsExpression: Entry = Entry("/models/equalsExpression/")
   val `enum`: Entry = Entry("/models/enum/")
   val externalType: Entry = Entry("/models/externalType/")
   val implicitPrefix: Entry = Entry("/models/implicitPrefix/")
@@ -172,6 +173,7 @@ object ModelCatalogue {
     val explicitInlineImplicitlyAsSimpleDict: Entry =
       Entry("/models/inlines/explicitInlineImplicitlyAsSimpleDict/")
     val explicitInlineList: Entry = Entry("/models/inlines/explicitInlineList/")
+    val inlineAbstract: Entry = Entry("/models/inlines/inlineAbstract/")
 
     val selfSimple2: Entry = Entry("/models/inlines/selfSimple2/")
     val selfSimple2Required: Entry = Entry("/models/inlines/selfSimple2Required/")

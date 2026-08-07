@@ -4,6 +4,8 @@ import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview.*
+import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
+import fastparse.Parsed
 import java.lang
 
 final class ScalaGenerator(using sv: SchemaView) {
@@ -33,8 +35,8 @@ final class ScalaGenerator(using sv: SchemaView) {
       given PrefixResolver = classView.definingPrefixResolver
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
-      val scalaFields = for slot <- classView.derivedAttributes.values.toIndexedSeq yield {
-        makeScalaField(slot, collectionForm)
+      val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
+        makeScalaField(attribute, collectionForm)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
       val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
@@ -59,6 +61,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             cls.`abstract` || cls.mixin,
             shouldBeTrait,
             isSlotDefinitionClass,
+            makeInferredFields(classView),
             ScalaDoc(classView.materialize, classView.definingSchema.id),
           ).print
       )
@@ -198,62 +201,58 @@ final class ScalaGenerator(using sv: SchemaView) {
     case UnknownType => tv.inner.base.getOrElse("Unknown")
   }
 
-  /** Translates a LinkML range value to the appropriate Scala type.
+  /** Translates an attribute's resolved range to the appropriate Scala type.
     *
-    * @param slot
-    *   SlotView of the slot we are generating the Scala type for
-    * @param range
-    *   Value of the LinkML range
-    * @param isInlined
-    *   Whether the slot is declared as inlined. Note: The slot may be implicitly inlined when the
-    *   range class does not have an identifier.
+    * @param attribute
+    *   AttributeView of the slot we are generating the Scala type for
     * @return
     *   (Scala type which best represents the range, default value for the type if applicable)
     */
   private def baseRange(
-      slot: SlotView,
-      range: Reference[ElementView[?, ?]],
-      isInlined: Boolean,
+      attribute: AttributeView,
   ): (scalaType: String, baseDefault: Option[String]) = {
-    range.resolve.get match {
-      case classView: ClassView =>
-        // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
-        // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
-        // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
+    attribute match {
+      // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
+      // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
+      // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
+      case AnyView(slotView, _) =>
+        (Case.PascalCase(slotView.derivedRange.resolve.get.name), None)
+      case ClassInlineAttributeView(_, _, classView, _) =>
+        // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
+        // one has to be typed as the interface instead.
         val className = Case.PascalCase(classView.cls.name)
-        if (classView.uriStr == "https://w3id.org/linkml/Any") (className, None)
-        else if (isInlined) (s"${className}Impl", None)
-        else (s"Reference[$className]", None)
-      case typeView: TypeView =>
+        val hasImpl = !classView.cls.`abstract` && !classView.cls.mixin
+        (if hasImpl then s"${className}Impl" else className, None)
+      case ClassReferenceAttributeView(_, _, classView, _) =>
+        (s"Reference[${Case.PascalCase(classView.cls.name)}]", None)
+      case TypeAttributeView(_, _, typeView) =>
         if typeView.isPrimitive then (typeToRuntime(typeView), None)
         else (Case.PascalCase(typeView._type.name), None)
       // True enum support would require working around the dynamic "enums" of LinkML, which I'm sure
       // were a really convenient idea for the biologists, but it adds a lot of complexity for us
-      case enumView: EnumView =>
+      case EnumAttributeView(slotView, _, enumView) =>
         val enumDef = enumView._enum
         if (enumDef.permissibleValues.isEmpty)
           ("String", None) // fallback to String for dynamic enums
         else {
           val enumName = Case.PascalCase(enumDef.name)
-          val default: Option[PermissibleValue] = slot.ifAbsent(enumView)
+          val default: Option[PermissibleValue] = slotView.ifAbsent(enumView)
           (enumName, default.map(p => s"$enumName.${Case.PascalCase(p.text)}"))
         }
-      case _ => throw RuntimeException(s"Couldn't map range $range")
     }
   }
 
   /** Create a [[TypedDefault]] containing all the type-level information for a slot's range / Scala
     * field type. Handles implicit / explicit inlines, inline styles, combining functions and
     * default values (sans `ifabasent`).
-    * @param slot
-    *   Slot to derive the type-level information for
+    * @param attribute
+    *   Attribute to derive the type-level information for
     * @return
     *   The inferred [[TypedDefault]]
     */
-  private def makeTypedDefault(slot: SlotView): TypedDefault = {
-    val range = slot.derivedRange
-    val inlined = slot.derivedInlined
-    val (scalaType, defaultValue) = baseRange(slot, range, inlined)
+  private def makeTypedDefault(attribute: AttributeView): TypedDefault = {
+    val slot = attribute.slotView
+    val (scalaType, defaultValue) = baseRange(attribute)
     // Defaults coming from 'ifabsent' are meaningful and must survive serialization, unlike the
     // implicit "empty" defaults (None / Seq() / Map()) that codecs are free to omit.
     val ifAbsentAnnotation =
@@ -317,13 +316,134 @@ final class ScalaGenerator(using sv: SchemaView) {
       case _ => rangeCombineFunc
     }
 
+  /** Test whether an attribute is a single-valued `string`. That is the only shape a slot can have
+    * to *carry* an `equals_expression`, and the one substitution that needs no [[stringify]]
+    * wrapper.
+    */
+  private def isSingleValuedString(attribute: AttributeView): Boolean =
+    attribute match {
+      case TypeAttributeView(slotView, _, typeView) =>
+        typeView.runtimeType == StringType && (InlineType(slotView) match {
+          case InlineType.plain | InlineType.optional => true
+          case _ => false
+        })
+      case _ => false
+    }
+
+  /** Describe why `attribute` cannot be substituted into an expression, or None if it can.
+    */
+  private def substitutionProblem(attribute: AttributeView): Option[String] =
+    attribute match {
+      case _: ClassInlineAttributeView =>
+        Some("is an inlined class, which has no string representation")
+      case _ => None
+    }
+
+  /** Whether a slot's Scala field is wrapped in `Option`, and so has to be unwrapped before its
+    * value can be read. Optional booleans are the exception: they are emitted as a plain `Boolean`
+    * defaulting to `false`. Mirrors [[makeTypedDefault]].
+    */
+  private def isOptionField(attribute: AttributeView): Boolean = {
+    val isOptional = InlineType(attribute.slotView) == InlineType.optional
+    isOptional && baseRange(attribute).scalaType != "Boolean"
+  }
+
+  /** Build the [[InferredField]]s for a class – one per in-scope slot that has an
+    * `equals_expression`.
+    *
+    * @throws RuntimeException
+    *   if an in-scope slot's expression fails to parse, or references an out-of-scope slot
+    */
+  private def makeInferredFields(classView: ClassView): Seq[InferredField] =
+    classView.attributeViews.values.toSeq
+      .filter(isSingleValuedString)
+      .flatMap(attribute => attribute.equalsExpression.map(attribute -> _))
+      .map { (attribute, parsed) =>
+        val slot = attribute.slotView.slot
+        val expression = parsed match {
+          case Parsed.Success(value, _) => value
+          case f: Parsed.Failure =>
+            throw RuntimeException(
+              s"Invalid equals_expression on '${classView.name}.${slot.name}': " +
+                f.trace().longAggregateMsg,
+            )
+        }
+        InferredField(
+          slotName(slot.name),
+          slot.name,
+          isOptionField(attribute),
+          renderExpression(classView, attribute, expression),
+        )
+      }
+
+  /** Render a parsed interpolation expression as a Scala string-concatenation expression.
+    *
+    * @throws RuntimeException
+    *   if the expression references an out-of-scope slot
+    */
+  private def renderExpression(
+      classView: ClassView,
+      target: AttributeView,
+      expression: StringInterpolationExpression,
+  ): String = {
+    import StringInterpolationExpression.{Literal, Substitution}
+    if expression.elements.isEmpty then "\"\""
+    else
+      expression.elements.map {
+        case Literal(value) => scalaStringLiteral(value)
+        case substitution: Substitution =>
+          substitutionProblem(substitution.target).foreach { problem =>
+            throw RuntimeException(
+              s"The equals_expression on '${classView.name}.${target.slotView.slot.name}' " +
+                s"references slot '${substitution.pathString}', which $problem",
+            )
+          }
+          renderPath(substitution.path)
+      }.mkString(" + ")
+  }
+
+  /** Render a resolved slot path as a Scala expression producing the string at its end. Optional
+    * links along the way are unwrapped with `inferenceInput`, which fails at runtime if the value
+    * is absent. Nested `equals_expression`s are not applied – the value is read as it is.
+    */
+  private def renderPath(path: Seq[AttributeView]): String = {
+    val access = path.foldLeft(("", "")) { case ((expression, prefix), attribute) =>
+      val name = attribute.slotView.slot.name
+      val qualified = if prefix.isEmpty then name else s"$prefix.$name"
+      val field =
+        if expression.isEmpty then slotName(name) else s"$expression.${slotName(name)}"
+      val unwrapped =
+        if isOptionField(attribute) then s"""inferenceInput("$qualified", $field)"""
+        else field
+      (unwrapped, qualified)
+    }._1
+    // A string is already what the expression needs. Every other range – numbers, URIs, CURIEs,
+    // dates, references, multivalued slots – goes through the `Stringify` typeclass.
+    if isSingleValuedString(path.last) then access else s"stringify($access)"
+  }
+
+  /** Quote and escape a string so it can be emitted as a Scala string literal. */
+  private def scalaStringLiteral(value: String): String = {
+    val escaped = value
+      .replace("\\", "\\\\")
+      .replace("\"", "\\\"")
+      .replace("\n", "\\n")
+      .replace("\r", "\\r")
+      .replace("\t", "\\t")
+    s""""$escaped""""
+  }
+
   /** Create a [[ScalaField]] instance, by inferring the [[TypedDefault]] and additional annotations
-    * @param v
-    *   Slot to construct the [[ScalaField]] instance for
+    * @param attribute
+    *   Attribute to construct the [[ScalaField]] instance for
     * @param collectionForm
     *   Collection form of the owner class
     */
-  private def makeScalaField(v: SlotView, collectionForm: CollectionForm): ScalaField = {
+  private def makeScalaField(
+      attribute: AttributeView,
+      collectionForm: CollectionForm,
+  ): ScalaField = {
+    val v = attribute.slotView
     val slot = v.slot
     val name = slotName(slot.name)
     // Move id / value to the front, regardless of rank
@@ -337,7 +457,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       slot.alias
         .orElse(if slot.name != name then Some(slot.name) else None)
         .map(s => s"@named(\"${Case.deSpaceCase(s)}\")")
-    val typedDefault = makeTypedDefault(v)
+    val typedDefault = makeTypedDefault(attribute)
     ScalaField(
       name,
       typedDefault.typeName,
@@ -376,6 +496,9 @@ object ScalaGenerator {
     *   class.
     * @param generateSlotCombining
     *   Whether to generate the slot combining methods for this class.
+    * @param inferredFields
+    *   Fields whose value can be computed from an `equals_expression`. May be empty, in which case
+    *   `infer()` is still generated, but does nothing.
     * @param docs
     *   ScalaDoc for generating Scaladoc for this class.
     */
@@ -388,6 +511,7 @@ object ScalaGenerator {
       skipImpl: Boolean,
       traitInterface: Boolean,
       generateSlotCombining: Boolean,
+      inferredFields: Seq[InferredField],
       docs: ScalaDoc,
   ) extends Printable:
     /** Builds the Scala representation of a LinkML [[ClassDefinition]]
@@ -416,12 +540,24 @@ object ScalaGenerator {
             |    ${fields.map(_.generateCaseClassField).mkString("\n")}
             |) extends $name
             |""".stripMargin
-        val caseClassBody =
-          if !generateSlotCombining then ""
-          else {
-            val combineRange =
-              "combineRange: (Reference[Element], Reference[Element]) => Reference[Element]"
-            val combiningFunctions =
+        // TODO LNK-170: consider making infer() a typeclass, so that the generated classes are not
+        // bound to inference logic.
+        val inferMethod =
+          indent"""
+            |override def infer(): ${name}Impl =
+            |  ${
+              if inferredFields.isEmpty then "this"
+              else indent"""copy(
+                  |  ${inferredFields.map(_.generateInferPart).mkString(",\n")}
+                  |)""".stripMargin
+            }
+            |""".stripMargin
+        val caseClassBody = {
+          val combining =
+            if !generateSlotCombining then ""
+            else {
+              val combineRange =
+                "combineRange: (Reference[Element], Reference[Element]) => Reference[Element]"
               indent"""
               |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
               |  * merges ALL SlotDefinition slots.
@@ -452,12 +588,14 @@ object ScalaGenerator {
                   .mkString(",\n")}
               |  )
               |""".stripMargin
-            indent"""
-            |{
-            |  $combiningFunctions
-            |}
-            |""".stripMargin
-          }
+            }
+          indent"""
+          |{
+          |  $combining
+          |  $inferMethod
+          |}
+          |""".stripMargin
+        }
 
         sb.append(indent"$caseClassConstructor $caseClassBody\n\n")
       }
@@ -470,9 +608,23 @@ object ScalaGenerator {
       val interfaceBody = fields
         .filter(x => interfaceFields.contains(x.name))
         .map(_.generateInterfaceField).mkString("\n")
+      // Declared on the interface so callers can infer without knowing the implementation type.
+      // The implementation narrows the return type to its own `${name}Impl`.
+      val inferDeclaration =
+        indent"""/** Fill in the slots that have an `equals_expression` with their computed values, and
+                |  * check that the values already present agree with what their expressions infer.
+                |  *
+                |  * @throws eu.neverblink.linkml.runtime.InferenceException
+                |  *   if a slot's value contradicts the value inferred for it, or if an expression
+                |  *   references a slot that has no value
+                |  */
+                |def infer(): $name
+                |""".stripMargin
       sb.append(indent"""$docs
                 |$interfaceDef $name $inheritanceList {
                 |  $interfaceBody
+                |
+                |  $inferDeclaration
                 |}
                 |""".stripMargin)
       sb.toString
@@ -513,6 +665,9 @@ object ScalaGenerator {
         else "abstract class"
 
       val kind = extensibleKind + baseKind
+      val declaration =
+        if (sealedInterface) s"$kind $name derives Stringify"
+        else s"$kind $name"
 
       indent"""package $pkg
          |
@@ -521,7 +676,7 @@ object ScalaGenerator {
          |import eu.neverblink.linkml.runtime.*
          |
          |$docs
-         |$kind $name
+         |$declaration
          |
          |object $name {
          |  ${cases.map(_.generateCase).mkString("\n")}
@@ -642,6 +797,29 @@ object ScalaGenerator {
       */
     def generateCombiningFunctionPart: String =
       s"""$name = ${combineFunc.generate(name, "this", "other")}"""
+
+  /** A field whose value can be computed from the slot's `equals_expression`.
+    *
+    * @param name
+    *   Name of the field, in camelCase.
+    * @param slotName
+    *   Name of the slot as written in the schema, used in error messages at runtime.
+    * @param optional
+    *   Whether the field is an `Option`, and so can be filled in. Required fields can only be
+    *   checked for consistency.
+    * @param expression
+    *   Scala expression computing the field's value from the other fields of the class.
+    */
+  case class InferredField(
+      name: String,
+      slotName: String,
+      optional: Boolean,
+      expression: String,
+  ):
+    /** Generate the `copy()` argument that infers or checks this field. */
+    def generateInferPart: String =
+      if optional then s"""$name = inferOptional("$slotName", $name, $expression)"""
+      else s"""$name = inferRequired("$slotName", $name, $expression)"""
 
   /** Contains all information necessary for generating a Scala enum cases.
     *

@@ -72,7 +72,11 @@ final case class TypeMappingImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
-) extends TypeMapping
+) extends TypeMapping {
+
+  override def infer(): TypeMappingImpl =
+    this
+}
 
 /** Represents how a slot or type can be serialized to a format.
   *
@@ -113,4 +117,13 @@ abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
     *   From schema: https://w3id.org/linkml/meta
     */
   def stringSerialization: Option[String]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): TypeMapping
 }

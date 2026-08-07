@@ -132,7 +132,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   /** The slot/type bundle for the identifier of this class, if it exists */
   lazy val identifierView: Option[TypeAttributeView] = identifier.map(idSlot => {
     idSlot.derivedRange.resolve.get match {
-      case tv: TypeView => TypeAttributeView(idSlot, tv)
+      case tv: TypeView => TypeAttributeView(idSlot, this, tv)
       case x =>
         throw RuntimeException(s"Invalid identifier slot: ${cls.name}.${idSlot.name} -> ${x.name}")
     }
@@ -145,16 +145,17 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     derivedAttributes.map((k, slot) =>
       k -> (slot.derivedRange.resolve.get match {
         case classView: ClassView =>
-          if classView.isAny then AnyView(slot)
+          if classView.isAny then AnyView(slot, this)
           else if !slot.derivedInlined then
             ClassReferenceAttributeView(
               slot,
+              this,
               classView,
               classView.identifierView.get,
             )
-          else ClassInlineAttributeView(slot, classView, InlineType(slot))
-        case tv: TypeView => TypeAttributeView(slot, tv)
-        case ev: EnumView => EnumAttributeView(slot, ev)
+          else ClassInlineAttributeView(slot, this, classView, InlineType(slot))
+        case tv: TypeView => TypeAttributeView(slot, this, tv)
+        case ev: EnumView => EnumAttributeView(slot, this, ev)
         case x => throw RuntimeException(s"Invalid range: ${cls.name}.${slot.name} -> ${x.name}")
       }),
     )

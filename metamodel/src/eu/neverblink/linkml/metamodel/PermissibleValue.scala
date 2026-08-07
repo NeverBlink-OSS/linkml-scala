@@ -74,7 +74,11 @@ final case class PermissibleValueImpl(
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
     unit: Option[UnitOfMeasureImpl] = None,
-) extends PermissibleValue
+) extends PermissibleValue {
+
+  override def infer(): PermissibleValueImpl =
+    this
+}
 
 /** A permissible value, accompanied by intended text and an optional mapping to a concept URI
   *
@@ -169,4 +173,13 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *   From schema: https://w3id.org/linkml/units
     */
   def unit: Option[UnitOfMeasureImpl]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): PermissibleValue
 }

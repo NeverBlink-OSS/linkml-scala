@@ -72,7 +72,11 @@ final case class EnumBindingImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
-) extends EnumBinding
+) extends EnumBinding {
+
+  override def infer(): EnumBindingImpl =
+    this
+}
 
 /** A binding of a slot or a class to a permissible value from an enumeration.
   *
@@ -121,4 +125,13 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     *   To use a URI or CURIE as the range, create a class with the URI or curie as the class_uri
     */
   def range: Option[Reference[EnumDefinition]]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): EnumBinding
 }

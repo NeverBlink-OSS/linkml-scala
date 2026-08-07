@@ -190,7 +190,7 @@ object metamodel extends Module {
 }
 
 object schemaview extends Module {
-  object jvm extends CommonModule {
+  object jvm extends SchemaViewModule {
     def moduleDeps = Seq(
       build.metamodel.jvm,
     )
@@ -198,12 +198,24 @@ object schemaview extends Module {
     object test extends ScalaTests, CommonTestModule
   }
 
-  object js extends NoBspModule, CommonScalaJSModule {
+  object js extends SchemaViewModule, NoBspModule, CommonScalaJSModule {
     def moduleDeps = Seq(
       build.metamodel.js,
     )
 
     object test extends ScalaJSTests, CommonTestModule
+  }
+
+  trait SchemaViewModule extends CommonModule {
+    def mvnDeps = Seq(
+      mvn"com.lihaoyi::fastparse::3.1.1",
+    )
+
+    // fastparse's `rep`/`StringIn` macros trip -Xcheck-macros ("Expression created in a splice was
+    // used outside of that splice") on Scala 3.8. The generated parsers are correct -- it's a
+    // scope-tracking bug in fastparse's quotes, fixed upstream but unreleased (3.1.1 is latest).
+    // Scoped to this module so the rest of the build keeps the check.
+    override def scalacOptions = super.scalacOptions().filterNot(_ == "-Xcheck-macros")
   }
 }
 

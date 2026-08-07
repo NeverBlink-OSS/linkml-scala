@@ -21,7 +21,11 @@ final case class ReachabilityQueryImpl(
     sourceOntology: Option[UriOrCurie] = None,
     @named("traverse_up")
     traverseUp: Boolean = false,
-) extends ReachabilityQuery
+) extends ReachabilityQuery {
+
+  override def infer(): ReachabilityQueryImpl =
+    this
+}
 
 /** A query that is used on an enum expression to dynamically obtain a set of permissible values via
   * walking from a set of source nodes to a set of descendants or ancestors over a set of
@@ -89,4 +93,13 @@ abstract class ReachabilityQuery {
     *   From schema: https://w3id.org/linkml/meta
     */
   def traverseUp: Boolean
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): ReachabilityQuery
 }

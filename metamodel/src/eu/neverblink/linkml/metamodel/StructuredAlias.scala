@@ -71,7 +71,11 @@ final case class StructuredAliasImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
-) extends StructuredAlias
+) extends StructuredAlias {
+
+  override def infer(): StructuredAliasImpl =
+    this
+}
 
 /** Object that contains meta data about a synonym or alias including where it came from (source)
   * and its scope (narrow, broad, etc.)
@@ -115,4 +119,13 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
     *   From schema: https://w3id.org/linkml/meta
     */
   def literalForm: String
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): StructuredAlias
 }

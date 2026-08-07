@@ -1,0 +1,40 @@
+id: https://neverblink.eu/linkml/tests/inlines/inlineAbstract/
+name: inline_abstract
+
+imports:
+  - linkml:types
+
+classes:
+  AbstractRange:
+    abstract: true
+    attributes:
+      some_slot:
+        range: string
+
+  MixinRange:
+    mixin: true
+    attributes:
+      other_slot:
+        range: string
+
+  ConcreteRange:
+    attributes:
+      third_slot:
+        range: string
+
+  Container:
+    tree_root: true
+    attributes:
+      to_abstract:
+        range: AbstractRange
+        inlined: true
+      to_mixin:
+        range: MixinRange
+        inlined: true
+      to_concrete:
+        range: ConcreteRange
+        inlined: true
+      many_abstract:
+        range: AbstractRange
+        inlined: true
+        multivalued: true

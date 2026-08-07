@@ -80,11 +80,25 @@ final case class SubsetDefinitionImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
-) extends SubsetDefinition
+) extends SubsetDefinition {
+
+  override def infer(): SubsetDefinitionImpl =
+    this
+}
 
 /** An element that can be used to group other metamodel elements
   *
   * @see
   *   From schema: https://w3id.org/linkml/meta
   */
-abstract class SubsetDefinition extends Element {}
+abstract class SubsetDefinition extends Element {
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): SubsetDefinition
+}

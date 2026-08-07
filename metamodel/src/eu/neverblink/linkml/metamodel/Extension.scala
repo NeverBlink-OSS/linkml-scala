@@ -17,7 +17,11 @@ final case class ExtensionImpl(
     extensionValue: AnyValue,
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
-) extends Extension
+) extends Extension {
+
+  override def infer(): ExtensionImpl =
+    this
+}
 
 /** A tag/value pair used to add non-model information to an entry
   *
@@ -46,4 +50,13 @@ abstract class Extension {
     *   From schema: https://w3id.org/linkml/extensions
     */
   def extensions: Map[String, ExtensionImpl]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): Extension
 }

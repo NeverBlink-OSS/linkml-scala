@@ -13,7 +13,7 @@ import java.io.{BufferedOutputStream, OutputStream, StringWriter}
   * pretty-printed Turtle. Building the model and running the RDF4J writer is substantially slower
   * than the streaming [[NTriplesRdfSink]], but produces prefixed, blank-node inlined output.
   *
-  * Serialize either straight to an [[OutputStream]] via [[writeTo]] (preferred — no full-document
+  * Serialize either straight to an [[OutputStream]] via [[writeTo]] (preferred – no full-document
   * string is materialized) or as a [[String]] via [[result]].
   */
 final class TurtleRdfSink(using vf: ValueFactory = SimpleValueFactory.getInstance())

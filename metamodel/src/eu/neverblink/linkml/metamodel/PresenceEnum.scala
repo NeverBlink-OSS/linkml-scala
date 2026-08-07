@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @see
   *   From schema: https://w3id.org/linkml/meta
   */
-sealed abstract class PresenceEnum
+sealed abstract class PresenceEnum derives Stringify
 
 object PresenceEnum {
 

@@ -75,13 +75,13 @@ class GraphQlGenerator(using sv: SchemaView) {
     lazy val fields = cls.attributeViews.values.map(av => {
       val slotView = av.slotView
       val range = av match {
-        case AnyView(_) =>
+        case AnyView(_, _) =>
           "Any"
         case classAttributeView: ClassAttributeView =>
           classAttributeView.classView.aliasedName
-        case TypeAttributeView(_, typeView) =>
+        case TypeAttributeView(_, _, typeView) =>
           remappedType(typeView)
-        case EnumAttributeView(_, enumView) => enumView.aliasedName
+        case EnumAttributeView(_, _, enumView) => enumView.aliasedName
       }
       GraphQlField(
         slotView.aliasedName,

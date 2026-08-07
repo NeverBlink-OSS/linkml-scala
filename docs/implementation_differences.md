@@ -2,12 +2,14 @@
 
 ## Limitations
 
-The following features are not yet supported in LinkML-Scala:
+The following features are not yet supported or are partially supported in LinkML-Scala:
 
 - Arrays
 - Boolean expressions (`any_of`, `none_of`); initial support in SHACL
-- Defaults & computed values (`ifabsent`, `equals_expression`)
+- Partial support for default values (`ifabsent`)
   - Only enum defaults are supported, only in the Scala generator
+- Partial support for computed values (e.g., `equals_expression`)
+  - Only string interpolation is supported, only in the Scala generator
 - Type designators (`type_designator`)
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Rules (`rules`)

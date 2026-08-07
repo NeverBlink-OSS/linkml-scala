@@ -199,6 +199,30 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "type inlined ranges of abstract classes and mixins as the interface" in {
+      // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
+      // one has to be typed as the interface, or the generated code does not compile.
+      given SchemaView = ModelCatalogue.inlines.inlineAbstract.model
+
+      val code = ScalaGenerator().generate(testPkg).toMap.apply("Container.scala")
+      Seq(
+        "toAbstract: Option[AbstractRange] = None",
+        "toMixin: Option[MixinRange] = None",
+        "manyAbstract: Seq[AbstractRange] = Seq()",
+        // A concrete range still gets the implementation type
+        "toConcrete: Option[ConcreteRangeImpl] = None",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+
+      Seq(
+        "AbstractRangeImpl",
+        "MixinRangeImpl",
+      ).foreach { snippet =>
+        code should not include snippet
+      }
+    }
+
     "provide annotations for the 'alias' slot" in {
       val input =
         s"""$schemaShared
@@ -659,7 +683,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
           |  * @see
           |  *   From schema: https://neverblink.eu/linkml/scala/test
           |  */
-          |sealed abstract class SomeEnum
+          |sealed abstract class SomeEnum derives Stringify
           |
           |object SomeEnum {
           |  /** Value 1.
@@ -727,6 +751,166 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       ).foreach { snippet =>
         code should include(snippet)
       }
+    }
+
+    "generate an infer() method from equals_expression" in {
+      val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      Seq(
+        // Declared on the interface, narrowed to the implementation type in the impl
+        "def infer(): SomeClass\n",
+        "def infer(): SomeClassImpl",
+        // Optional target is filled in, the Option-ranged reference is unwrapped
+        """optionalMessage = inferOptional("optional_message", optionalMessage, """ +
+          """"Unknown reference to element '" + inferenceInput("reference_value", """ +
+          """referenceValue) + "'")""",
+        // Required target is checked only
+        """requiredMessage = inferRequired("required_message", requiredMessage, """ +
+          """"ref is " + inferenceInput("reference_value", referenceValue))""",
+        // A required reference needs no unwrapping
+        """fromRequired = inferOptional("from_required", fromRequired, """ +
+          """requiredSource + " / " + requiredSource)""",
+        // A literal-only expression is emitted as a plain string
+        """literalOnly = inferOptional("literal_only", literalOnly, "no substitutions here")""",
+        // `{{`/`}}` are unescaped, and quotes are escaped for the Scala literal
+        """withEscapes = inferOptional("with_escapes", withEscapes, """ +
+          """"braces {like this} and a \"quote\"")""",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+
+      Seq(
+        // Slots without an expression are not inferred
+        "noExpression = infer",
+        // Out of scope: only single-valued string slots are inferred
+        "multivaluedIgnored = infer",
+        "integerIgnored = infer",
+      ).foreach { snippet =>
+        code should not include snippet
+      }
+    }
+
+    "generate an infer() method reaching into inlined classes" in {
+      val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      Seq(
+        // Every optional link along the path is unwrapped, the outermost one last
+        """fromOptionalNested = inferOptional("from_optional_nested", fromOptionalNested, """ +
+          """inferenceInput("optional_nested.leaf", """ +
+          """inferenceInput("optional_nested", optionalNested).leaf))""",
+        // A required link needs no unwrapping, an optional one further down still does
+        """fromRequiredNested = inferOptional("from_required_nested", fromRequiredNested, """ +
+          """requiredNested.requiredLeaf + " at " + """ +
+          """inferenceInput("required_nested.deeper", requiredNested.deeper).bottom)""",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+    }
+
+    "generate an infer() method that stringifies non-string ranges" in {
+      val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      Seq(
+        """fromNumbers = inferOptional("from_numbers", fromNumbers, """ +
+          """stringify(inferenceInput("count", count)) + " items, ratio " + """ +
+          """stringify(inferenceInput("ratio", ratio)) + ", flag " + stringify(flag) + """ +
+          """", on " + stringify(inferenceInput("created", created)))""",
+        // A required URI needs no unwrapping, optional CURIEs still do
+        """fromUris = inferOptional("from_uris", fromUris, stringify(homepage) + " | " + """ +
+          """stringify(inferenceInput("term", term)) + " | " + """ +
+          """stringify(inferenceInput("either", either)))""",
+        // Multivalued slots are never Option-wrapped, so they go straight to `stringify`
+        """fromMultivalued = inferOptional("from_multivalued", fromMultivalued, """ +
+          """"tags: [" + stringify(tags) + "], codes: [" + stringify(codes) + "]")""",
+        // References stringify to the identifier they hold
+        """fromReferences = inferOptional("from_references", fromReferences, """ +
+          """stringify(inferenceInput("target", target)) + " <- " + stringify(targets))""",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+
+      // A plain string is already a string, so it is not wrapped
+      code should include(""""ref is " + inferenceInput("reference_value", referenceValue)""")
+    }
+
+    "refuse to substitute an inlined class into an expression" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Inner:
+           |    attributes:
+           |      a:
+           |        range: string
+           |  SomeClass:
+           |    attributes:
+           |      inner:
+           |        range: Inner
+           |        inlined: true
+           |      message:
+           |        range: string
+           |        equals_expression: "{inner}"
+           |""".stripMargin
+      val error = intercept[RuntimeException] {
+        ScalaGenerator(using decode(input)).generate(testPkg).toMap
+      }
+      error.getMessage should include("SomeClass.message")
+      error.getMessage should include("inner")
+      error.getMessage should include("inlined class")
+    }
+
+    "substitute a static enum, which stringifies to its LinkML text" in {
+      val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model)
+        .generate(testPkg).toMap
+      // The instance is derived from the sealed hierarchy, reading the `@named` text
+      code("StatusEnum.scala") should include("sealed abstract class StatusEnum derives Stringify")
+      code("StatusEnum.scala") should include("""@named("in progress") case object InProgress""")
+      code("SomeClass.scala") should include(
+        """fromEnum = inferOptional("from_enum", fromEnum, """ +
+          """stringify(inferenceInput("status", status)) + " of (" + stringify(statuses) + ")")""",
+      )
+    }
+
+    "not derive Stringify for a non-sealed enum" in {
+      val input =
+        s"""$schemaShared
+           |enums:
+           |  SomeEnum:
+           |    abstract: true
+           |    permissible_values:
+           |      a:
+           |""".stripMargin
+      val code = ScalaGenerator(using decode(input)).generate(testPkg).toMap
+        .apply("SomeEnum.scala")
+      code should include("abstract class SomeEnum")
+      code should not include "derives Stringify"
+    }
+
+    "substitute a dynamic enum, which is generated as a plain string" in {
+      val input =
+        s"""$schemaShared
+           |enums:
+           |  SomeEnum: {}
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      choice:
+           |        range: SomeEnum
+           |      message:
+           |        range: string
+           |        equals_expression: "{choice}"
+           |""".stripMargin
+      val code = ScalaGenerator(using decode(input)).generate(testPkg).toMap
+        .apply("SomeClass.scala")
+      code should include("choice: Option[String]")
+      code should include("""inferenceInput("choice", choice)""")
+    }
+
+    "generate an infer() method that does nothing when there are no expressions" in {
+      val code = ScalaGenerator(using ModelCatalogue.basic.model)
+        .generate(testPkg).toMap.apply("SomeClass.scala")
+      code should include("def infer(): SomeClassImpl")
+      code should include("def infer(): SomeClass\n")
+      code should not include "inferOptional"
     }
 
     "generate ifabsent default values for enum-ranged slots" in {

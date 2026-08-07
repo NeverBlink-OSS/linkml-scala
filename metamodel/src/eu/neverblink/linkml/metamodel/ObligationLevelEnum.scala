@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @see
   *   From schema: https://w3id.org/linkml/meta
   */
-sealed abstract class ObligationLevelEnum
+sealed abstract class ObligationLevelEnum derives Stringify
 
 object ObligationLevelEnum {
 

@@ -69,7 +69,11 @@ final case class PatternExpressionImpl(
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     syntax: Option[String] = None,
     todos: Seq[String] = Seq(),
-) extends PatternExpression
+) extends PatternExpression {
+
+  override def infer(): PatternExpressionImpl =
+    this
+}
 
 /** A regular expression pattern used to evaluate conformance of a string
   *
@@ -99,4 +103,13 @@ abstract class PatternExpression extends Extensible, Annotatable, CommonMetadata
     *   From schema: https://w3id.org/linkml/meta
     */
   def syntax: Option[String]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): PatternExpression
 }

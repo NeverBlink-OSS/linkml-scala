@@ -56,8 +56,8 @@ class JsonSchemaGenerator(using sv: SchemaView) {
   ): (MappedSlotName, Schema) = {
     val slot = attributeView.slotView
     val slotSchema = attributeView match {
-      case AnyView(slotView) => Schema.Empty
-      case ClassInlineAttributeView(slotView, classView, inlineType) =>
+      case AnyView(slotView, _) => Schema.Empty
+      case ClassInlineAttributeView(slotView, _, classView, inlineType) =>
         val mappedClassName = className(classView)
         inlineType match {
           case InlineType.plain =>
@@ -79,7 +79,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
               mappedClassName + "__simple_dict_value",
             ).dictOf // TODO LNK-34: or null
         }
-      case ClassReferenceAttributeView(slotView, classView, identifierView) =>
+      case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
         typeToRuntime(identifierView.typeView)
           .copy(
             $comment = Some(s"Reference to ${classView.name} class"),
@@ -96,7 +96,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
             pattern = typeAttribute.pattern.map(Pattern(_)),
           )
           .arrayOfIf(typeAttribute.slotView.slot.multivalued)
-      case EnumAttributeView(slotView, enumView) =>
+      case EnumAttributeView(slotView, _, enumView) =>
         Schema.referenceTo("#/$defs/", enumView._enum.name)
           .arrayOfIf(slotView.slot.multivalued)
     }
