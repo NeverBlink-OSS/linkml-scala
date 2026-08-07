@@ -16,6 +16,7 @@ final case class InvalidRangeImpl(
     message: Option[String] = None,
     @named("range_value")
     rangeValue: String,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
 ) extends InvalidRange {
 

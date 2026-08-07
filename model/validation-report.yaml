@@ -17,6 +17,14 @@ classes:
       A report of the validation of a LinkML schema.
     tree_root: true
     attributes:
+      validation_run_id:
+        range: string
+        title: validation run identifier
+        recommended: true
+        description: >-
+          Implementation-specific identifier of this validation run.
+          This can be, for example, the top-level file name of the schema being validated.
+          It is useful for multi-schema (batch) validation runs.
       issues:
         range: SchemaIssue
         title: issues

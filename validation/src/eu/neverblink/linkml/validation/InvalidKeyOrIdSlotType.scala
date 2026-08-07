@@ -16,6 +16,7 @@ final case class InvalidKeyOrIdSlotTypeImpl(
     elementName: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
 ) extends InvalidKeyOrIdSlotType {
 

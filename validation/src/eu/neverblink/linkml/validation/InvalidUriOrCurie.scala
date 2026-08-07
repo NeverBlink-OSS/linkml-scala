@@ -16,6 +16,7 @@ final case class InvalidUriOrCurieImpl(
     elementType: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
     @named("uri_or_curie")
     uriOrCurie: UriOrCurie,

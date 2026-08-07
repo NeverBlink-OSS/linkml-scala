@@ -14,6 +14,7 @@ final case class MultipleTreeRootsImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
 ) extends MultipleTreeRoots {
 

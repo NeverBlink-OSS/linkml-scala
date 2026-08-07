@@ -12,6 +12,7 @@ final case class NoTreeRootClassImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Warning,
 ) extends NoTreeRootClass {
 

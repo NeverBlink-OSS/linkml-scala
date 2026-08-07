@@ -14,6 +14,7 @@ final case class UnknownReferenceImpl(
     message: Option[String] = None,
     @named("reference_value")
     referenceValue: String,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
 ) extends UnknownReference {
 

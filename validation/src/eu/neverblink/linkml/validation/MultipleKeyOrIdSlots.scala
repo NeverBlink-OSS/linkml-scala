@@ -14,6 +14,7 @@ final case class MultipleKeyOrIdSlotsImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
     @named("slot_names")
     slotNames: Seq[String],

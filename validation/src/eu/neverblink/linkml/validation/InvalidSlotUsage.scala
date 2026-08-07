@@ -14,6 +14,7 @@ final case class InvalidSlotUsageImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Warning,
     @named("slot_names")
     slotNames: Seq[String],

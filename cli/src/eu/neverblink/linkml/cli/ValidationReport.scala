@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import eu.neverblink.linkml.generator.util.JsonUtil
+import org.virtuslab.yaml.Node
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.validation.{
   Codec,
@@ -66,31 +67,31 @@ object ValidationReport {
       Issue(severity, SchemaIssues.description(p))
     }
 
-  /** Render a full validation report.
+  /** Render a full validation report in one of the human-readable formats.
     *
     * @param schemaName
     *   Name of the validated schema, shown in the terminal header.
     * @param issues
     *   The issues found; empty means the schema is valid.
     * @param format
-    *   The output format.
+    *   The output format. [[Format.Json]] is handled by [[renderAll]], which needs the structured
+    *   issues rather than the display ones.
     */
-  def render(schemaName: String, issues: Seq[Issue], format: Format): String =
+  private def render(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match
       case Format.Plain => renderPlain(issues)
       case Format.Terminal => renderTerminal(schemaName, issues)
-      case Format.Json => renderJson(Seq())
+      case Format.Json => throw UnsupportedOperationException()
 
   /** Render the reports for a whole set of schemas, one `(name, issues)` pair each.
     *
     * A single schema renders exactly as [[render]] does. With more than one, every block is labeled
-    * with its file name and a combined summary is appended. The JSON format has no notion of the
-    * file an issue came from - issues carry their own `location.schema_id` - so every schema's
-    * issues go into one report.
+    * with its file name and a combined summary is appended. JSON always produces one report per
+    * input file, in input order, even for a single file.
     */
   def renderAll(reports: Seq[(String, Seq[SchemaIssue])], format: Format): String =
     format match
-      case Format.Json => renderJson(reports.flatMap(_._2))
+      case Format.Json => renderJson(reports)
       case _ =>
         val display = reports.map((name, issues) => name -> issuesOf(issues))
         display match
@@ -99,13 +100,22 @@ object ValidationReport {
             val blocks = display.map((name, issues) => renderBlock(name, issues, format))
             (blocks :+ totalSummary(display, format)).mkString("\n\n")
 
-  /** Serialize the issues as a [[SchemaValidationReportImpl]], exactly as the LinkML model defines
-    * it. The messages are inferred, so that a consumer of the JSON gets them without having to know
-    * the expressions.
+  /** Serialize one [[SchemaValidationReportImpl]] per input file, in input order, as a JSON array.
+    *
+    * The run id is the input name exactly as the user gave it on the command line, so that a report
+    * can be traced back to the file it came from. The messages are inferred, so that a consumer of
+    * the JSON gets them without having to know the expressions.
     */
-  private def renderJson(issues: Seq[SchemaIssue]): String =
-    val report = SchemaValidationReportImpl(issues = issues.map(_.infer()))
-    JsonUtil.yamlToJson(Codec.codec.encode(report))
+  private def renderJson(reports: Seq[(String, Seq[SchemaIssue])]): String =
+    val nodes = reports.map { (inputName, issues) =>
+      Codec.codec.encode(
+        SchemaValidationReportImpl(
+          issues = issues.map(_.infer()),
+          validationRunId = Some(inputName),
+        ),
+      )
+    }
+    JsonUtil.yamlToJson(Node.SequenceNode(nodes*))
 
   private def renderBlock(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match

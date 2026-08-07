@@ -13,6 +13,7 @@ final case class UndefinedPrefixImpl(
     location: IssueLocationImpl,
     message: Option[String] = None,
     prefix: NcName,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
 ) extends UndefinedPrefix {
 

@@ -15,6 +15,7 @@ final case class SchemaImportErrorImpl(
     location: IssueLocationImpl,
     message: Option[String] = None,
     reason: String,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
 ) extends SchemaImportError {
 

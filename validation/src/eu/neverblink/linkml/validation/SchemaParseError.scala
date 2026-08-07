@@ -14,6 +14,7 @@ final case class SchemaParseErrorImpl(
     message: Option[String] = None,
     @named("parser_message")
     parserMessage: String,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
     @named("source_uri")
     sourceUri: String,

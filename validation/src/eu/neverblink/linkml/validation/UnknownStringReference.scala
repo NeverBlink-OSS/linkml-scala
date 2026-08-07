@@ -12,6 +12,7 @@ final case class UnknownStringReferenceImpl(
     details: Option[String] = None,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
 ) extends UnknownStringReference {
 

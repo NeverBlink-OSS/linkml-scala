@@ -14,6 +14,7 @@ final case class NonUniqueNameImpl(
     elementName: String,
     location: IssueLocationImpl,
     message: Option[String] = None,
+    @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
     @named("used_for")
     usedFor: String,
