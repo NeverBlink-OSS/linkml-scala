@@ -540,6 +540,8 @@ object ScalaGenerator {
             |    ${fields.map(_.generateCaseClassField).mkString("\n")}
             |) extends $name
             |""".stripMargin
+        // TODO LNK-170: consider making infer() a typeclass, so that the generated classes are not
+        // bound to inference logic.
         val inferMethod =
           indent"""
             |override def infer(): ${name}Impl =

@@ -21,6 +21,9 @@ import scala.annotation.tailrec
   *
   * TODO LNK-170: when we implement other expression types, we probably should make this extend some
   * common Expression trait.
+  *
+  * TODO LNK-170: consider decoupling this from SchemaView, so that we can parse expressions without
+  * needing a context.
   */
 final case class StringInterpolationExpression(
     elements: Seq[StringInterpolationExpression.Element],
