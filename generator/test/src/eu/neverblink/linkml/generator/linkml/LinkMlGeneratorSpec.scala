@@ -290,7 +290,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "serialize string values that look like numbers, booleans or nulls as strings" in {
-      val sv = SchemaView.loadSchemaViewFromString("""name: numeric_strings
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""name: numeric_strings
           |id: https://example.org/numeric-strings
           |title: "123"
           |description: "true"
@@ -298,7 +298,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           |classes:
           |  SomeClass:
           |    description: "3.14"
-          |""".stripMargin)
+          |""".stripMargin))
 
       LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json) shouldBe
         """{
