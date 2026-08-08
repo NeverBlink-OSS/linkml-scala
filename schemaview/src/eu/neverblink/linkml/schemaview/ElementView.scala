@@ -520,14 +520,14 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
       }.toList
 
   lazy val toMeaning: Map[String, UriOrCurie] =
-    derivedValues.foldLeft(Map.empty[String, UriOrCurie]) { case (acc, (x, meaning)) =>
-      acc.updated(x.text, meaning)
-    }
+    derivedValues.foldLeft(Map.newBuilder[String, UriOrCurie]) { case (acc, (x, meaning)) =>
+      acc.addOne((x.text, meaning))
+    }.result()
 
   lazy val fromMeaning: Map[UriOrCurie, String] =
-    derivedValues.foldLeft(Map.empty[UriOrCurie, String]) { case (acc, (x, meaning)) =>
-      acc.updated(meaning, x.text)
-    }
+    derivedValues.foldLeft(Map.newBuilder[UriOrCurie, String]) { case (acc, (x, meaning)) =>
+      acc.addOne((meaning, x.text))
+    }.result()
 }
 
 // TODO LNK-63:
