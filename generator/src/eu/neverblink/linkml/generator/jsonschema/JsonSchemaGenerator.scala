@@ -86,7 +86,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     // SimpleDict form inlining. The slot will be the value to omit from required fields.
     val needValue = mutable.Set.empty[(MappedClassName, MappedSlotName)]
     // Accumulator of all schema definitions, reused to search definition for
-    // keyless classes and value feds
+    // keyless classes and value definitions
     val defs = new mutable.LinkedHashMap[String, Schema]
     val enums = sv.enums.values
     val classes = sv.classes.values
@@ -218,7 +218,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     for ev <- enums do {
       val enum_ = ev._enum
       val enumValues = enum_.permissibleValues.keys.foldLeft(new mutable.ListBuffer[ExampleValue]) {
-        (acc, v) => acc.addOne(ExampleSingleValue(v))
+        (acc, v) => acc.addOne(new ExampleSingleValue(v))
       }.toList
       defs.update(
         enum_.name,
@@ -271,28 +271,22 @@ object JsonSchemaGenerator {
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
     * Provides formats for date-times and URI/CURIE.
     */
-  def typeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
-    case StringType => stringSchema
-    case IntegerType => integerSchema
-    case FloatType => numberSchema
-    case DoubleType => numberSchema
-    case BooleanType => booleanSchema
-    case DecimalType => numberSchema
-    case AnyType => Schema.Empty
-    case DateType => stringSchema.copy(format = new Some(SchemaFormat.Date))
-    case DateTimeType => stringSchema.copy(format = new Some(SchemaFormat.DateTime))
-    case TimeType => stringSchema.copy(format = new Some("time"))
-    case UriOrCurieType =>
-      Schema.Empty.copy(anyOf =
-        List(
-          stringSchema.copy(format = new Some("uri")),
-          stringSchema.copy(format = new Some("curie")),
-        ),
-      )
-    case UriType => stringSchema.copy(format = new Some("uri"))
-    case CurieType => stringSchema.copy(format = new Some("curie"))
-    case NcNameType => stringSchema.copy(format = new Some("ncname"))
-    case UnknownType => Schema.Empty
+  def typeToRuntime(tv: TypeView): Schema = {
+    val rt = tv.runtimeType
+    if (rt eq StringType) stringSchema
+    else if (rt eq IntegerType) integerSchema
+    else if (rt eq FloatType) numberSchema
+    else if (rt eq DoubleType) numberSchema
+    else if (rt eq BooleanType) booleanSchema
+    else if (rt eq DecimalType) numberSchema
+    else if (rt eq DateType) dateSchema
+    else if (rt eq DateTimeType) datetimeSchema
+    else if (rt eq TimeType) timeSchema
+    else if (rt eq UriOrCurieType) uriOrCurieSchema
+    else if (rt eq UriType) uriSchema
+    else if (rt eq CurieType) curieSchema
+    else if (rt eq NcNameType) ncNameSchema
+    else Schema.Empty
   }
 
   type MappedClassName = String
@@ -359,4 +353,16 @@ object JsonSchemaGenerator {
   private val numberSchema: Schema = Schema(SchemaType.Number)
   private val objectSchema: Schema = Schema(SchemaType.Object)
   private val stringSchema: Schema = Schema(SchemaType.String)
+  private val dateSchema: Schema = stringSchema.copy(format = new Some(SchemaFormat.Date))
+  private val datetimeSchema: Schema = stringSchema.copy(format = new Some(SchemaFormat.DateTime))
+  private val timeSchema: Schema = stringSchema.copy(format = new Some("time"))
+  private val ncNameSchema: Schema = stringSchema.copy(format = new Some("ncname"))
+  private val uriSchema: Schema = stringSchema.copy(format = new Some("uri"))
+  private val curieSchema: Schema = stringSchema.copy(format = new Some("curie"))
+  private val uriOrCurieSchema: Schema = new Schema(anyOf =
+    List(
+      stringSchema.copy(format = new Some("uri")),
+      stringSchema.copy(format = new Some("curie")),
+    ),
+  )
 }

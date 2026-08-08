@@ -322,7 +322,7 @@ final class ScalaGenerator(using sv: SchemaView) {
   private def isSingleValuedString(attribute: AttributeView): Boolean =
     attribute match {
       case TypeAttributeView(slotView, _, typeView) =>
-        typeView.runtimeType == StringType && (InlineType(slotView) match {
+        (typeView.runtimeType eq StringType) && (InlineType(slotView) match {
           case InlineType.plain | InlineType.optional => true
           case _ => false
         })

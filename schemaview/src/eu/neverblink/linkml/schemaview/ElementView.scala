@@ -584,21 +584,19 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
         case "str" => StringType
         case "int" => IntegerType
         case "Bool" => BooleanType
-        // thanks, python
-        case "float" if inner.typeUri.contains("xsd:double") => DoubleType
         case "double" => DoubleType
-        case "float" => FloatType
+        case "float" =>
+          // thanks, python
+          if (inner.typeUri.contains("xsd:double")) DoubleType
+          else FloatType
         case "Decimal" => DecimalType
-
         case "URI" => UriType
         case "Curie" => CurieType
         case "URIorCURIE" => UriOrCurieType
         case "NCName" => NcNameType
-
         case "XSDDateTime" => DateTimeType
         case "XSDDate" => DateType
         case "XSDTime" => TimeType
-
         case _ => UnknownType
       }
     case _ => UnknownType
