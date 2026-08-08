@@ -70,13 +70,13 @@ class JsonSchemaGenerator(using sv: SchemaView) {
             needKeyless.add(mappedClassName -> slotName(classView.derivedAttributes(key)))
             Schema.referenceTo(
               "#/$defs/",
-              mappedClassName + "__identifier_optional",
+              mappedClassName.concat("__identifier_optional"),
             ).dictOf // TODO LNK-34: or null
           case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
             needValue.add(mappedClassName -> slotName(classView.derivedAttributes(value)))
             Schema.referenceTo(
               "#/$defs/",
-              mappedClassName + "__simple_dict_value",
+              mappedClassName.concat("__simple_dict_value"),
             ).dictOf // TODO LNK-34: or null
         }
       case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
@@ -185,14 +185,14 @@ class JsonSchemaGenerator(using sv: SchemaView) {
             needKeyless.add(mappedClassName -> slotName(treeRoot.derivedAttributes(key)))
             Schema.referenceTo(
               "#/$defs/",
-              mappedClassName + "__identifier_optional",
+              mappedClassName.concat("__identifier_optional"),
             ).dictOf
           case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
             val mappedClassName = className(treeRoot)
             needValue.add(mappedClassName -> slotName(treeRoot.derivedAttributes(value)))
             Schema.referenceTo(
               "#/$defs/",
-              mappedClassName + "__simple_dict_value",
+              mappedClassName.concat("__simple_dict_value"),
             ).dictOf
         }
       case _ => Schema.Empty
@@ -202,13 +202,15 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     val defMap = defsClasses.toMap
     val defsKeyless = for (className, idField) <- needKeyless yield {
       val classSchema = defMap(className)
-      className + "__identifier_optional" -> classSchema.copy(required =
+      className.concat("__identifier_optional") -> classSchema.copy(required =
         classSchema.required.filter(_ != idField),
       )
     }
     val defsValues = for (className, valueField) <- needValue yield {
       val simpleDict = defMap(className)
-      className + "__simple_dict_value" -> simpleDict.properties(valueField).asInstanceOf[Schema]
+      className.concat("__simple_dict_value") -> simpleDict.properties(valueField).asInstanceOf[
+        Schema,
+      ]
     }
 
     baseSchema.copy(

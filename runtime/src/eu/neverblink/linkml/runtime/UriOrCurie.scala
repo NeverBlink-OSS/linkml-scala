@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.runtime
 
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import scala.util.matching.Regex
 
 sealed trait UriOrCurie {
@@ -35,7 +36,7 @@ object Uri {
     * [[base]] is a valid URI base and does not need escaping.
     */
   def synthetic(base: String, name: String): Uri =
-    Uri(base + URLEncoder.encode(name, "UTF-8"))
+    new Uri(base.concat(URLEncoder.encode(name, StandardCharsets.UTF_8)))
 }
 
 final case class Curie(original: String) extends UriOrCurie {
@@ -78,7 +79,7 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
     var normalizedUri = u.normalize().toString
     if (
       !normalizedUri.endsWith("/") && !normalizedUri.endsWith("?") && !normalizedUri.endsWith("#")
-    ) normalizedUri += "/"
+    ) normalizedUri = normalizedUri.concat("/")
     prefixToUri.put(prefix, normalizedUri)
     uriToPrefix.put(normalizedUri, prefix)
   }
@@ -90,7 +91,7 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
     if (index >= 0) {
       val prefix = curie.substring(0, index)
       val baseUri = prefixToUri.get(prefix)
-      if (baseUri ne null) baseUri + curie.substring(index + 1)
+      if (baseUri ne null) baseUri.concat(curie.substring(index + 1))
       else sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
     } else curie // relative reference
   }

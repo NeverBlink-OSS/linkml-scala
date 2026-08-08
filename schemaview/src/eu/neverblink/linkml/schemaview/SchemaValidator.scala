@@ -416,18 +416,17 @@ final class SchemaValidator(using sv: SchemaView) {
     * @return
     *   None if no problems were
     */
-  def lint(maxProblems: Int = 5, verbose: Boolean = false): Option[String] = {
-    if lintProblems.isEmpty then None
-    else
-      Some(
-        s"Found ${lintProblems.size} problems in the schema:\n" + SchemaIssues.format(
-          lintProblems.map(_.infer()),
-          maxProblems,
-          verbose,
-          showLevel = true,
-        ),
+  def lint(maxProblems: Int = 5, verbose: Boolean = false): Option[String] =
+    if (lintProblems.isEmpty) None
+    else {
+      val formattedProblems = SchemaIssues.format(
+        lintProblems.map(_.infer()),
+        maxProblems,
+        verbose,
+        showLevel = true,
       )
-  }
+      new Some(s"Found ${lintProblems.size} problems in the schema:\n$formattedProblems")
+    }
 }
 
 object SchemaValidator {

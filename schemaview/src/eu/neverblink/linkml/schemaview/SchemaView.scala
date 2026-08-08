@@ -52,7 +52,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: SlotView => slotDefinitions.get(ref.value)
       case _: SubsetView => subsets.get(ref.value)
       case _: ElementView[?, ?] => getElement(ref.value)
-      case _ => compiletime.error("SchemaView can't dereference " + compiletime.codeOf(ref))
+      case _ => compiletime.error("SchemaView can't dereference ".concat(compiletime.codeOf(ref)))
     }).asInstanceOf[Option[T]]
 
   /** All types defined in the loaded schemas, as views.
@@ -131,7 +131,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       .getOrElse {
         // fallback
         val uri = schema.id.uri
-        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri + "/"
+        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri.concat("/")
       }
   }
 
@@ -377,8 +377,9 @@ object SchemaView {
   ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     // TODO LNK-154 Robust file system importing
     var normalizedUri = uri.stripSuffix(PlatformSpecificUtils.separator)
-    if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml"))
-      normalizedUri += ".yaml"
+    if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml")) {
+      normalizedUri = normalizedUri.concat(".yaml")
+    }
     // After URI normalization, check if we've already visited this URI to avoid infinite loops
     // and repeatedly loading the same schema.
     if visited.contains(normalizedUri) then Right(Seq())
@@ -391,6 +392,7 @@ object SchemaView {
           builtIn(normalizedUri, normalizedUri.stripPrefix("https://w3id.org/linkml"), importer)
         } else if (normalizedUri.startsWith("linkml:")) {
           builtIn(normalizedUri, "/" + normalizedUri.stripPrefix("linkml:"), importer)
+          importer.parseSchema(Resources.read("/".concat(normalizedUri.stripPrefix("linkml:"))))
         } else {
           importer.readSchema(normalizedUri)
         }

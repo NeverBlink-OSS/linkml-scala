@@ -119,6 +119,7 @@ object ValidationReport {
 
   private def renderBlock(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match
+      case Format.Json => renderPlain(issues)
       case Format.Plain => s"# $schemaName\n${renderPlain(issues)}"
       case Format.Terminal => renderTerminal(schemaName, issues)
       case Format.Json => throw UnsupportedOperationException()
@@ -132,6 +133,7 @@ object ValidationReport {
         val withIssues = reports.count(_._2.nonEmpty)
         s"${reports.size} schemas checked, $withIssues with issues: ${summaryText(all)}"
     format match
+      case Format.Json => text
       case Format.Plain => s"# $text"
       case Format.Terminal =>
         val (color, icon) = all.headOption match

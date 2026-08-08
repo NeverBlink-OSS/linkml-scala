@@ -43,7 +43,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       val className = Case.PascalCase(cls.name)
       val interfaceFields =
         (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(slotName).toSet
-      className + ".scala" -> (
+      className.concat(".scala") -> (
         if classView.uriStr == "https://w3id.org/linkml/Any" then
           typeDef(
             pkg,
@@ -99,7 +99,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             ScalaDoc(en, ev.definingSchema.id),
           )
             .generate()
-        Some(enumName + ".scala" -> enumInfo)
+        Some(enumName.concat(".scala") -> enumInfo)
       }
     }
 
@@ -170,8 +170,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     */
   private def slotName(snakeCase: String): String = {
     val camel = Case.camelCase(snakeCase)
-    if scalaKeywords.contains(camel)
-    then "`" + camel + "`"
+    if (scalaKeywords.contains(camel)) s"`$camel`"
     else camel
   }
 
@@ -603,7 +602,7 @@ object ScalaGenerator {
         if traitInterface then "trait"
         else "abstract class"
       val inheritanceList = if inheritsFrom.nonEmpty then {
-        " extends " + inheritsFrom.mkString(", ")
+        inheritsFrom.mkString(" extends ", ", ", "")
       } else ""
       val interfaceBody = fields
         .filter(x => interfaceFields.contains(x.name))
