@@ -74,8 +74,7 @@ object ValidatorResult {
   */
 final case class UnknownReference(path: String, referenceValue: String):
   /** Add a [[prefix]] to this class' path */
-  def prependedPath(prefix: String): UnknownReference =
-    copy(path = prefix + path)
+  def prependedPath(prefix: String): UnknownReference = copy(path = prefix.concat(path))
 
 /** A `range` reference that is resolvable, but points to an invalid value
   *
@@ -88,8 +87,7 @@ final case class UnknownReference(path: String, referenceValue: String):
   */
 final case class InvalidRange(path: String, value: String, actualType: String):
   /** Add a [[prefix]] to this class' path */
-  def prependedPath(prefix: String): InvalidRange =
-    copy(path = prefix + path)
+  def prependedPath(prefix: String): InvalidRange = copy(path = prefix.concat(path))
 
 /** An inferred default `range`, that is not allowed as the `default_range` slot is not resolvable.
   *
@@ -98,8 +96,7 @@ final case class InvalidRange(path: String, value: String, actualType: String):
   */
 final case class InvalidDefaultRange(path: String):
   /** Add a [[prefix]] to this class' path */
-  def prependedPath(prefix: String): InvalidDefaultRange =
-    copy(path = prefix + path)
+  def prependedPath(prefix: String): InvalidDefaultRange = copy(path = prefix.concat(path))
 
 private trait MacroValidator[T] {
   def validate(t: T)(using SchemaView, ValidatorContext): ValidatorResult
@@ -223,9 +220,13 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
         case '[t1] =>
           val seq = x.asInstanceOf[Expr[Seq[t1]]]
           '{
-            $seq.zipWithIndex.map((e, idx) =>
-              ${ genValidator[t1](tpe1, 'e, sv, vc) }.prependedPath(s"$idx/"),
-            ).fold(ValidatorResult.ok)(_ + _)
+            $seq.foldLeft(ValidatorResult.ok) {
+              var idx = 0
+              (acc, e) =>
+                val res = ${ genValidator[t1](tpe1, 'e, sv, vc) }.prependedPath(s"$idx/")
+                idx += 1
+                acc + res
+            }
           }
       }
     }
@@ -236,9 +237,9 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
         case ('[t1], '[t2]) =>
           val map = x.asInstanceOf[Expr[Map[t1, t2]]]
           '{
-            $map.map((k, v) => ${ genValidator[t2](tpe2, 'v, sv, vc) }.prependedPath(s"$k/")).fold(
-              ValidatorResult.ok,
-            )(_ + _)
+            $map.foldLeft(ValidatorResult.ok) { case (acc, (k, v)) =>
+              acc + ${ genValidator[t2](tpe2, 'v, sv, vc) }.prependedPath(s"$k/")
+            }
           }
       }
     }

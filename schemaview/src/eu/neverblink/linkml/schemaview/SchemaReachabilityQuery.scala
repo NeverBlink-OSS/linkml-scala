@@ -18,7 +18,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
     *   true if the provided [[Element]] is reachable
     */
   def reachable(element: Element): Boolean =
-    resolved.contains(ElementTypeTag(element) -> element.name)
+    resolved.contains((ElementTypeTag(element), element.name))
 
   /** @return
     *   true if the underlying [[Element]] of the provided [[ElementView]] is reachable

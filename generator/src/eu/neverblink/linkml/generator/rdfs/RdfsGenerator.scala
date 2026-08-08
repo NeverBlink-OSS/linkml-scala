@@ -2,7 +2,6 @@ package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.CommonMetadata
-import eu.neverblink.linkml.runtime.PrefixResolver
 import eu.neverblink.linkml.schemaview.SchemaView
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
@@ -48,13 +47,15 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
           sink.triple(classNameIri, Rdfs.subClassOf, Iri(e.uriStr))
         }
       }
-      c.derivedAttributes.values.filter(!_.inner.identifier).foreach { s =>
-        val propertyNameIri = Iri(s.uriStr)
-        sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-        emitCommonMetadata(sink, propertyNameIri, s.slot)
-        sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
-        s.derivedRange.resolve.foreach { e =>
-          sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
+      c.derivedAttributes.values.foreach { s =>
+        if (!s.inner.identifier) {
+          val propertyNameIri = Iri(s.uriStr)
+          sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
+          emitCommonMetadata(sink, propertyNameIri, s.slot)
+          sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
+          s.derivedRange.resolve.foreach { e =>
+            sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
+          }
         }
       }
     }
@@ -66,12 +67,12 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
     // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
     // permissible values as an instance of that class.
     enums.values.foreach { e =>
-      given PrefixResolver = e.definingPrefixResolver
+      val prefixResolver = e.definingPrefixResolver
       val enumIri = Iri(e.uriStr)
       sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
       emitCommonMetadata(sink, enumIri, e._enum)
       e.derivedValues.foreach { (pv, meaning) =>
-        val pvIri = Iri(meaning.uri)
+        val pvIri = Iri(meaning.uri(using prefixResolver))
         sink.triple(pvIri, Rdf.`type`, enumIri)
         emitCommonMetadata(sink, pvIri, pv)
       }

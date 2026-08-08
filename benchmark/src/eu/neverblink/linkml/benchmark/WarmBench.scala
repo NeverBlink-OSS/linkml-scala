@@ -58,15 +58,13 @@ class WarmBench extends CommonParams {
   @Benchmark
   def jsonSchema(bh: Blackhole): Unit = {
     // create SchemaView in the benchmark to not use the class cache
-    given SchemaView = SchemaView(schemaDefs)
-    bh.consume(JsonSchemaGenerator().serialize())
+    bh.consume(JsonSchemaGenerator(using SchemaView(schemaDefs)).serialize())
   }
 
   @Benchmark
   def shacl(bh: Blackhole): Unit = {
     // create SchemaView in the benchmark to not use the class cache
-    given SchemaView = SchemaView(schemaDefs)
-
-    ShaclGenerator().generate(NTriplesRdfSink(BufferedByteSink(BlackholeOutputStream(bh))))
+    ShaclGenerator(using SchemaView(schemaDefs))
+      .generate(NTriplesRdfSink(BufferedByteSink(BlackholeOutputStream(bh))))
   }
 }
