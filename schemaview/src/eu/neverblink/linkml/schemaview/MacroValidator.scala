@@ -220,9 +220,13 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
         case '[t1] =>
           val seq = x.asInstanceOf[Expr[Seq[t1]]]
           '{
-            $seq.zipWithIndex.map((e, idx) =>
-              ${ genValidator[t1](tpe1, 'e, sv, vc) }.prependedPath(s"$idx/"),
-            ).fold(ValidatorResult.ok)(_ + _)
+            $seq.foldLeft(ValidatorResult.ok) {
+              var idx = 0
+              (acc, e) =>
+                val res = ${ genValidator[t1](tpe1, 'e, sv, vc) }.prependedPath(s"$idx/")
+                idx += 1
+                acc + res
+            }
           }
       }
     }
@@ -233,9 +237,9 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
         case ('[t1], '[t2]) =>
           val map = x.asInstanceOf[Expr[Map[t1, t2]]]
           '{
-            $map.map((k, v) => ${ genValidator[t2](tpe2, 'v, sv, vc) }.prependedPath(s"$k/")).fold(
-              ValidatorResult.ok,
-            )(_ + _)
+            $map.foldLeft(ValidatorResult.ok) { case (acc, (k, v)) =>
+              acc + ${ genValidator[t2](tpe2, 'v, sv, vc) }.prependedPath(s"$k/")
+            }
           }
       }
     }
