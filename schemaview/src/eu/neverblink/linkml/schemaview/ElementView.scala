@@ -185,7 +185,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * @return
     *   Direct parents of the class, mixins before inheritance
     */
-  def parents: Iterable[ClassView] = getParents(this)
+  def parents: Seq[ClassView] = getParents(this)
 
   /** Get the subject type for this class, if possible. Uses the class' identifier slot's range.
     * @return
@@ -193,7 +193,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def subjectType: Option[SubjectType] = identifierView.map(_.subjectType)
 
-  private def getParents(view: ClassView): Iterable[ClassView] = {
+  private def getParents(view: ClassView): Seq[ClassView] = {
     val parents = new ListBuffer[ClassView]
     val cls = view.cls
     cls.mixins.foreach { r =>
