@@ -62,8 +62,7 @@ object CollectionForm {
     */
   def ofRange(slot: SlotView): CollectionForm = {
     val range = slot.derivedRange
-    given SchemaView = slot.sv
-    range.resolve.get match {
+    range.resolve(using slot.sv).get match {
       case cls: ClassView => of(cls)
       case _ =>
         // Let's be lax here, `inlined:true` does not make sense on non-classes,
@@ -71,7 +70,6 @@ object CollectionForm {
         // TODO LNK-27: But we should have this as a warning if possible
         ListOnly
     }
-
   }
 
   private def isIdOrKey(slot: SlotDefinition): Boolean = slot.key || slot.identifier
