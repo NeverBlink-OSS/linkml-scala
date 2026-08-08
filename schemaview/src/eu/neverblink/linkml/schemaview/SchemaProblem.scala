@@ -43,12 +43,13 @@ object SchemaProblem {
   ): String = {
     val limited = problems.take(maxProblems)
     val stringified = limited.map(x =>
-      (if showLevel then x.level + ": " else "") + (if verbose then x.verbose else x.description),
+      (if showLevel then x.level.concat(": ") else "").concat(if verbose then x.verbose
+      else x.description),
     )
     val printed = stringified.mkString("\n")
     val restCount = problems.size - maxProblems
     val rest = if restCount > 0 then s"\nand $restCount more problems..." else ""
-    printed + rest
+    printed.concat(rest)
   }
 
   /** Exception which formats a collection of schema (fatal) errors
@@ -61,7 +62,9 @@ object SchemaProblem {
   final case class ValidationFailedException(
       problems: Seq[SchemaProblem.Error | SchemaProblem.Fatal],
       maxProblems: Int,
-  ) extends Exception("Schema validation failed:\n" + format(problems, maxProblems, false, false))
+  ) extends Exception(
+        "Schema validation failed:\n".concat(format(problems, maxProblems, false, false)),
+      )
 
   /** Create a [[Failure]] containing a [[ValidationFailedException]]
     * @param problems
