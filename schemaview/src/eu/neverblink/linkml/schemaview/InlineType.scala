@@ -17,15 +17,15 @@ object InlineType {
   /** Derive an [[InlineType]] for a given slot's range using an implicit SchemaView
     */
   def apply(v: SlotView): InlineType = {
-    val inlined = v.derivedInlined
-
-    if !v.slot.required && !v.slot.multivalued then optional
-    else if v.slot.multivalued && (!inlined || v.slot.inlinedAsList) then list
-    else if v.slot.multivalued && inlined && !v.slot.inlinedAsList then {
-      CollectionForm.ofRange(v) match {
-        case CollectionForm.ListOnly => list
-        case style: DictForm => dict(style)
-      }
-    } else plain
+    val slot = v.slot
+    if (slot.multivalued) {
+      if (!slot.inlinedAsList && v.derivedInlined) {
+        CollectionForm.ofRange(v) match {
+          case style: DictForm => dict(style)
+          case _ => list
+        }
+      } else list
+    } else if (slot.required) plain
+    else optional
   }
 }
