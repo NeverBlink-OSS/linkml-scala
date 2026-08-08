@@ -582,8 +582,7 @@ object ScalaGenerator {
               |def combineInherited(other: ${name}Impl, $combineRange): ${name}Impl =
               |  copy(
               |    ${fields
-                  .filter(_.inherited)
-                  .map(_.generateCombiningFunctionPart)
+                  .collect { case f if f.inherited => f.generateCombiningFunctionPart }
                   .mkString(",\n")}
               |  )
               |""".stripMargin
@@ -605,8 +604,8 @@ object ScalaGenerator {
         inheritsFrom.mkString(" extends ", ", ", "")
       } else ""
       val interfaceBody = fields
-        .filter(x => interfaceFields.contains(x.name))
-        .map(_.generateInterfaceField).mkString("\n")
+        .collect { case x if interfaceFields.contains(x.name) => x.generateInterfaceField }
+        .mkString("\n")
       // Declared on the interface so callers can infer without knowing the implementation type.
       // The implementation narrows the return type to its own `${name}Impl`.
       val inferDeclaration =

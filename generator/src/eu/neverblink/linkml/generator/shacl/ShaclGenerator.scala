@@ -137,10 +137,13 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
         Seq(Rdf.`type`) ++ c.identifier.map(id => Iri(id.uriStr)),
       )
       sink.triple(classNameIri, Shacl.ignoredProperties, ignoredPropertiesListHead)
-      var order = 0
-      c.derivedAttributes.values.filter(!_.inner.identifier).foreach { x =>
-        processSlot(sink, x, order, classNameIri)
-        order += 1
+      c.derivedAttributes.values.foreach {
+        var order = 0
+        x =>
+          if (!x.inner.identifier) {
+            processSlot(sink, x, order, classNameIri)
+            order += 1
+          }
       }
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }

@@ -47,13 +47,15 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
           sink.triple(classNameIri, Rdfs.subClassOf, Iri(e.uriStr))
         }
       }
-      c.derivedAttributes.values.filter(!_.inner.identifier).foreach { s =>
-        val propertyNameIri = Iri(s.uriStr)
-        sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-        emitCommonMetadata(sink, propertyNameIri, s.slot)
-        sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
-        s.derivedRange.resolve.foreach { e =>
-          sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
+      c.derivedAttributes.values.foreach { s =>
+        if (!s.inner.identifier) {
+          val propertyNameIri = Iri(s.uriStr)
+          sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
+          emitCommonMetadata(sink, propertyNameIri, s.slot)
+          sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
+          s.derivedRange.resolve.foreach { e =>
+            sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
+          }
         }
       }
     }
