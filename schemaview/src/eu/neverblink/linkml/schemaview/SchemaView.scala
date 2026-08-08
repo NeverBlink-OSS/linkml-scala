@@ -146,15 +146,15 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * (this fallback mirrors the python implementation).
     */
   def getDefaultPrefix(schema: SchemaDefinition): String = {
-    given PrefixResolver = prefixResolvers(schema.id)
+    val prefixResolver = prefixResolvers(schema.id)
     val prefixRef = schema.defaultPrefix match {
       case Some(prefix) => schema.prefixes.get(prefix)
-      case _         => None
+      case _ => None
     }
     prefixRef match {
-      case Some(ref) => ref.prefixReference.uri
+      case Some(ref) => ref.prefixReference.uri(using prefixResolver)
       case _ =>
-        val uri = schema.id.uri
+        val uri = schema.id.uri(using prefixResolver)
         val len = uri.length
         if (len > 0) {
           val ch = uri.charAt(len - 1)
@@ -192,7 +192,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       from: Seq[ElementView[?, ?]],
       inlinedOnly: Boolean,
       includeClassAncestors: Boolean,
-  ): DerivedReachabilityQuery = new DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
+  ): DerivedReachabilityQuery =
+    new DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
 
   /** Get a schema element by its ID
     */
@@ -244,17 +245,18 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case Some(s) => currentSlot = currentSlot.combineWith(s, combineRange)
       case _ =>
     }
-    cls.mixins.foreach { r => 
+    cls.mixins.foreach { r =>
       resolve(r) match {
         case Some(c) => currentSlot = applySlotUsage(currentSlot, slotName, c)
         case _ =>
       }
     }
     cls.isA match {
-      case Some(r) => resolve(r) match {
-        case Some(c) => currentSlot = applySlotUsage(currentSlot, slotName, c)
-        case _ =>
-      }
+      case Some(r) =>
+        resolve(r) match {
+          case Some(c) => currentSlot = applySlotUsage(currentSlot, slotName, c)
+          case _ =>
+        }
       case _ =>
     }
     currentSlot
@@ -443,11 +445,12 @@ object SchemaView {
       importer: Importer,
       visited: mutable.Set[String],
   ): Seq[SchemaDefinition] = {
-    given PrefixResolver = createPrefixResolver(schema)
+    val prefixResolver = createPrefixResolver(schema)
     schema.imports.flatMap { uoc =>
-      var sUri = uoc.uri.stripPrefix("./")
-      if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
+      var sUri = uoc.uri(using prefixResolver).stripPrefix("./")
+      if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:")) {
         sUri = baseUri + PlatformSpecificUtils.separator + sUri
+      }
       loadSchemasInternal(sUri, true, importer, visited)
     }
   }

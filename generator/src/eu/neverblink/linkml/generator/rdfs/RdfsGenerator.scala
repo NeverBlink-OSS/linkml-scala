@@ -66,12 +66,12 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
     // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
     // permissible values as an instance of that class.
     enums.values.foreach { e =>
-      given PrefixResolver = e.definingPrefixResolver
+      val prefixResolver = e.definingPrefixResolver
       val enumIri = Iri(e.uriStr)
       sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
       emitCommonMetadata(sink, enumIri, e._enum)
       e.derivedValues.foreach { (pv, meaning) =>
-        val pvIri = Iri(meaning.uri)
+        val pvIri = Iri(meaning.uri(using prefixResolver))
         sink.triple(pvIri, Rdf.`type`, enumIri)
         emitCommonMetadata(sink, pvIri, pv)
       }

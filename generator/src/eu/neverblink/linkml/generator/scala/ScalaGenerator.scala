@@ -32,7 +32,6 @@ final class ScalaGenerator(using sv: SchemaView) {
     */
   private def generateClasses(pkg: String): Iterable[(String, String)] = {
     for classView <- sv.classes.values yield {
-      given PrefixResolver = classView.definingPrefixResolver
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
       val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
@@ -43,13 +42,14 @@ final class ScalaGenerator(using sv: SchemaView) {
       val className = Case.PascalCase(cls.name)
       val interfaceFields =
         (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(slotName).toSet
+      val prefixResolver = classView.definingPrefixResolver
       className.concat(".scala") -> (
         if classView.uriStr == "https://w3id.org/linkml/Any" then
           typeDef(
             pkg,
             Case.PascalCase(cls.name),
             "LinkmlAny",
-            ScalaDoc(cls, classView.definingSchema.id),
+            ScalaDoc(cls, classView.definingSchema.id)(using prefixResolver),
           )
         else
           ScalaClassInfo(
@@ -62,7 +62,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             shouldBeTrait,
             isSlotDefinitionClass,
             makeInferredFields(classView),
-            ScalaDoc(classView.materialize, classView.definingSchema.id),
+            ScalaDoc(classView.materialize, classView.definingSchema.id)(using prefixResolver),
           ).print
       )
     }
@@ -76,17 +76,17 @@ final class ScalaGenerator(using sv: SchemaView) {
     */
   private def generateEnums(pkg: String): Iterable[(String, String)] =
     sv.enums.values.flatMap { ev =>
-      given PrefixResolver = ev.definingPrefixResolver
       val en = ev._enum
       if (en.permissibleValues.isEmpty) None
       else {
+        val prefixResolver = ev.definingPrefixResolver
         val enumName = Case.PascalCase(en.name)
         val enumCases = en.permissibleValues.values.map(v =>
           ScalaEnumCase(
             caseName = v.text,
             objectName = Case.PascalCase(v.text),
             enumName = enumName,
-            doc = ScalaDoc(v, ev.definingSchema.id),
+            doc = ScalaDoc(v, ev.definingSchema.id)(using prefixResolver),
           ),
         ).toSeq
         val enumInfo =
@@ -96,7 +96,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             enumCases,
             !en.`abstract`,
             en.mixin,
-            ScalaDoc(en, ev.definingSchema.id),
+            ScalaDoc(en, ev.definingSchema.id)(using prefixResolver),
           )
             .generate()
         Some(enumName.concat(".scala") -> enumInfo)
@@ -132,12 +132,12 @@ final class ScalaGenerator(using sv: SchemaView) {
     sv.types.values.collect {
       case tv if !tv.isPrimitive =>
         val name = Case.PascalCase(tv._type.name)
-        given PrefixResolver = tv.definingPrefixResolver
+        val prefixResolver = tv.definingPrefixResolver
         s"$name.scala" -> typeDef(
           pkg,
           name,
           typeToRuntime(tv),
-          ScalaDoc(tv._type, tv.definingSchema.id),
+          ScalaDoc(tv._type, tv.definingSchema.id)(using prefixResolver),
         )
     }
   }

@@ -22,7 +22,8 @@ def combineOption[T](o1: Option[T], o2: Option[T], combineSome: (T, T) => T): Op
 
 /** Combine two [[Seq]]s if they're distinct
   */
-def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] = if v2.isEmpty || v1 == v2 then v1 else v1.appendedAll(v2)
+def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
+  if v2.isEmpty || v1 == v2 then v1 else v1.appendedAll(v2)
 
 /** Combine two [[Map]]s if they're distinct
   */
