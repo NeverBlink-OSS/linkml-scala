@@ -2,8 +2,9 @@ package eu.neverblink.linkml.yaml
 
 import eu.neverblink.linkml.runtime.*
 import org.virtuslab.yaml.*
+
 import scala.annotation.nowarn
-import scala.collection.immutable.ListMap
+import scala.collection.immutable.{ListMap, VectorMap}
 import scala.collection.mutable
 import scala.quoted.*
 import scala.util.control.NoStackTrace
@@ -27,8 +28,12 @@ object LinkmlYamlCodec {
   implicit val anythingCodec: LinkmlYamlCodec[LinkmlAny] = new LinkmlYamlCodec[LinkmlAny] {
     override def decode(node: Node, id: Option[Any]): LinkmlAny = LinkmlAny.apply(node.asYaml)
 
-    override def encode(x: LinkmlAny, skipId: Boolean): Node =
-      parseYaml(x.toString).getOrElse(Node.ScalarNode(null))
+    override def encode(x: LinkmlAny, skipId: Boolean): Node = parseYaml(x.toString) match {
+      case Right(n) => n
+      case _ => nullNode
+    }
+
+    private val nullNode = Node.ScalarNode(null)
   }
 
   implicit val uriOrCurieCodec: LinkmlYamlCodec[UriOrCurie] = new LinkmlYamlCodec[UriOrCurie] {
@@ -42,8 +47,13 @@ object LinkmlYamlCodec {
 
   inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make }
 
-  def getFields(n: Node.MappingNode): Map[String, Node] =
-    n.mappings.collect { case (n: Node.ScalarNode, v) if Tag.str eq n.tag => (n.value, v) }
+  def getFields(n: Node.MappingNode): java.util.HashMap[String, Node] =
+    new java.util.HashMap[String, Node](n.mappings.size << 1) {
+      n.mappings.foreach {
+        case (n: Node.ScalarNode, v) if Tag.str eq n.tag => put(n.value, v)
+        case _ =>
+      }
+    }
 }
 
 private object LinkmlYamlCodecImpl {
@@ -142,10 +152,10 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
           '{
             $node match {
               case n: Node.MappingNode =>
-                n.mappings.map { case (k, v) =>
+                n.mappings.foldLeft(VectorMap.newBuilder[t1, t2]) { case (acc, (k, v)) =>
                   val vId = ${ genDecode[t1](tpe1, 'k, '{ None }) }
-                  (vId, ${ genDecode[t2](tpe2, 'v, '{ new Some(vId) }) })
-                }
+                  acc.addOne((vId, ${ genDecode[t2](tpe2, 'v, '{ new Some(vId) }) }))
+                }.result().asInstanceOf[Map[t1, t2]]
               case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty
               case n => LinkmlYamlCodec.decodeError("map or null value", n)
             }
@@ -233,7 +243,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     val classInfo = getClassInfo(tpe)
     val fields = classInfo.fields
 
-    def genDecodeFields(kvs: Expr[Map[String, Node]])(using Quotes): Expr[T] = {
+    def genDecodeFields(kvs: Expr[java.util.HashMap[String, Node]])(using Quotes): Expr[T] = {
       val readBlock = new mutable.ListBuffer[Statement]
       val valDefs = new mutable.ArrayBuffer[ValDef](fields.size)
       fields.foreach { fieldInfo =>
@@ -278,12 +288,8 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
             valDefs.addOne(valDef)
             readBlock.addOne(valDef)
             readBlock.addOne('{
-              $kvs.get($mappedName) match {
-                case Some(v) =>
-                  ${
-                    Assign(Ref(valDef.symbol), genDecode[ft](fTpe, 'v, '{ None }).asTerm).asExpr
-                  }
-                case _ =>
+              (if ($kvs ne null) $kvs.get($mappedName) else null) match {
+                case null =>
                   ${
                     if (fieldInfo.defaultValue.isEmpty) {
                       if (fieldInfo.kind == FieldKind.Id) {
@@ -306,6 +312,10 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                     } else {
                       '{}
                     }
+                  }
+                case v =>
+                  ${
+                    Assign(Ref(valDef.symbol), genDecode[ft](fTpe, 'v, '{ None }).asTerm).asExpr
                   }
               }
             }.asTerm.changeOwner(Symbol.spliceOwner))
@@ -384,7 +394,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                 case _ =>
                   val kvs = $node match {
                     case n: Node.MappingNode => LinkmlYamlCodec.getFields(n)
-                    case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty[String, Node]
+                    case n: Node.ScalarNode if Tag.nullTag eq n.tag => null
                     case n => LinkmlYamlCodec.decodeError("map or null value", n)
                   }
                   ${ genDecodeFields('kvs) }
@@ -395,7 +405,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
         '{
           val kvs = $node match {
             case n: Node.MappingNode => LinkmlYamlCodec.getFields(n)
-            case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty[String, Node]
+            case n: Node.ScalarNode if Tag.nullTag eq n.tag => null
             case n => LinkmlYamlCodec.decodeError("map or null value", n)
           }
           ${ genDecodeFields('kvs) }
