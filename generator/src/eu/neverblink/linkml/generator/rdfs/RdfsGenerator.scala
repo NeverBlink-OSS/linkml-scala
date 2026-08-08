@@ -2,7 +2,6 @@ package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.CommonMetadata
-import eu.neverblink.linkml.runtime.PrefixResolver
 import eu.neverblink.linkml.schemaview.SchemaView
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
