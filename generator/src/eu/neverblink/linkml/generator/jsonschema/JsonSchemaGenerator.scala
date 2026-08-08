@@ -94,7 +94,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     for cls <- classes if query.reachable(cls) do {
       // Generate a Schema for a specific slot, which maps to a JSON Schema property
       val attributes = cls.attributeViews.values // The slot to define a JSON Schema property for
-      val properties = new mutable.LinkedHashMap[MappedClassName, Schema]
+      val properties = new mutable.LinkedHashMap[MappedSlotName, Schema]
       properties.sizeHint(attributes.size)
       for attribute <- attributes do {
         val slot = attribute.slotView
@@ -157,7 +157,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
         )
       }
       val requiredSlots = attributes.foldLeft(new mutable.ListBuffer[String]) { (acc, s) =>
-        if (s.slotView.slot.required) acc.addOne(s.slotView.name)
+        if (s.slotView.slot.required) acc.addOne(slotName(s.slotView))
         else acc
       }.toList
       defs.update(

@@ -44,13 +44,14 @@ object LinkmlYamlCodec {
 
   inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make }
 
-  def getFields(n: Node.MappingNode): java.util.HashMap[String, Node] =
-    new java.util.HashMap[String, Node](n.mappings.size << 1) {
-      n.mappings.foreach {
-        case (n: Node.ScalarNode, v) if Tag.str eq n.tag => put(n.value, v)
-        case _ =>
-      }
+  def getFields(n: Node.MappingNode): java.util.HashMap[String, Node] = {
+    val m = new java.util.HashMap[String, Node](n.mappings.size << 1, 0.5f)
+    n.mappings.foreach {
+      case (n: Node.ScalarNode, v) if Tag.str eq n.tag => m.put(n.value, v)
+      case _ =>
     }
+    m
+  }
 }
 
 private object LinkmlYamlCodecImpl {
