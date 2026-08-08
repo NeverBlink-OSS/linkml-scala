@@ -79,21 +79,24 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case Some(root) => sv.derivedReachabilityQuery(Seq(root), true, false)
       case _ => IncludeAllReachabilityQuery()
     }
-    // Accumulator of all schema definitions, reused to search definition for
-    // keyless classes and value feds
-    val defs = new mutable.LinkedHashMap[String, Schema]
     // Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
     // for CompactDict form inlining. The slot will be the key to omit from required fields.
     val needKeyless = mutable.Set.empty[(MappedClassName, MappedSlotName)]
     // Mutable set this method will add to if it requires a value def to be defined in `$defs` for
     // SimpleDict form inlining. The slot will be the value to omit from required fields.
     val needValue = mutable.Set.empty[(MappedClassName, MappedSlotName)]
-    for cls <- sv.classes.values if query.reachable(cls) do {
+    // Accumulator of all schema definitions, reused to search definition for
+    // keyless classes and value feds
+    val defs = new mutable.LinkedHashMap[String, Schema]
+    val enums = sv.enums.values
+    val classes = sv.classes.values
+    defs.sizeHint(classes.size + enums.size << 1)
+    for cls <- classes if query.reachable(cls) do {
       // Generate a Schema for a specific slot, which maps to a JSON Schema property
-      val attributes = cls.attributeViews // The slot to define a JSON Schema property for
+      val attributes = cls.attributeViews.values // The slot to define a JSON Schema property for
       val properties = new mutable.LinkedHashMap[MappedClassName, Schema]
-      properties.sizeHint(attributes.values.size)
-      for attribute <- attributes.values do {
+      properties.sizeHint(attributes.size)
+      for attribute <- attributes do {
         val slot = attribute.slotView
         val slotSchema = attribute match {
           case _: AnyView => Schema.Empty
@@ -153,15 +156,16 @@ class JsonSchemaGenerator(using sv: SchemaView) {
           ),
         )
       }
-      val requiredSlots = attributes.values.foldLeft(new mutable.ListBuffer[String]) { (acc, s) =>
+      val requiredSlots = attributes.foldLeft(new mutable.ListBuffer[String]) { (acc, s) =>
         if (s.slotView.slot.required) acc.addOne(s.slotView.name)
         else acc
-      }.toList // avoids O(n^2) complexity
+      }.toList
       defs.update(
         className(cls),
         objectSchema.copy(
           required = requiredSlots,
-          properties = immutable.ListMap.newBuilder.addAll(properties).result(),
+          properties =
+            immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
           title = cls.cls.title,
           description = cls.cls.description,
@@ -211,7 +215,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
         simpleDict.properties(valueField).asInstanceOf[Schema],
       )
     }
-    for ev <- sv.enums.values do {
+    for ev <- enums do {
       val enum_ = ev._enum
       val enumValues = enum_.permissibleValues.keys.foldLeft(new mutable.ListBuffer[ExampleValue]) {
         (acc, v) => acc.addOne(ExampleSingleValue(v))
@@ -231,9 +235,11 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
       title = sv.root.title.orElse(new Some(sv.root.name)),
       description = sv.root.description,
-      $defs = new Some(immutable.ListMap.newBuilder[String, SchemaLike].addAll(
-        defs,
-      ).result()), // avoids O(n^2) complexity
+      $defs = new Some(
+        immutable.ListMap.newBuilder[String, SchemaLike].addAll(
+          defs,
+        ).result(), // avoids O(n^2) complexity
+      ),
     )
   }
 
