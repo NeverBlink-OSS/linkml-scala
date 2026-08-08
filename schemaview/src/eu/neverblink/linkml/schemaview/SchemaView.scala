@@ -129,9 +129,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * These should be used in ElementView instead of creating a new prefix resolver every time.
     */
   private lazy val prefixResolvers: Map[Uri, BasicPrefixResolver] =
-    schemas.foldLeft(Map.empty[Uri, BasicPrefixResolver]) { (acc, schema) =>
-      acc.updated(schema.id, createPrefixResolver(schema))
-    }
+    schemas.foldLeft(Map.newBuilder[Uri, BasicPrefixResolver]) { (acc, schema) =>
+      acc.addOne((schema.id, createPrefixResolver(schema)))
+    }.result()
 
   def getPrefixResolver(schema: SchemaDefinition): BasicPrefixResolver =
     prefixResolvers(schema.id)
@@ -219,16 +219,15 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * `Option[ClassView]`.
     */
   def treeRootWithOverride(treeRootOverride: Option[String]): Try[Option[ClassView]] =
-    treeRootOverride match {
+    new Success(treeRootOverride match {
       case Some(className) =>
-        classes.get(className) match {
-          case x: Some[_] => new Success(x)
-          case _ =>
-            val msg = s"Could not find class '$className' defined as the tree root override"
-            new Failure(new RuntimeException(msg))
-        }
-      case _ => new Success(treeRoot)
-    }
+        val optCv = classes.get(className)
+        if (optCv eq None) {
+          val msg = s"Could not find class '$className' defined as the tree root override"
+          return new Failure(new RuntimeException(msg))
+        } else optCv
+      case _ => treeRoot
+    })
 
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.
