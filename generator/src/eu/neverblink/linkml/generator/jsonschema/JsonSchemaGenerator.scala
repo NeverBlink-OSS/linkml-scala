@@ -43,80 +43,6 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case _ => Case.deSpaceCase(slot.slot.name)
     }
 
-  /** Generate a Schema for a specific slot, which maps to a JSON Schema property.
-    * @param attributeView
-    *   The slot to define a JSON Schema property for
-    * @param needKeyless
-    *   Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
-    *   for CompactDict form inlining. The slot will be the key to omit from required fields.
-    * @param needValue
-    *   Mutable set this method will add to if it requires a value def to be defined in `$defs` for
-    *   SimpleDict form inlining. The slot will be the value to omit from required fields.
-    * @return
-    *   A tuple of the mapped slot name and the JSON [[Schema]] for the property value
-    */
-  private def generateSlotSchema(
-      attributeView: AttributeView,
-      needKeyless: mutable.Set[(MappedClassName, MappedSlotName)],
-      needValue: mutable.Set[(MappedClassName, MappedSlotName)],
-  ): (MappedSlotName, Schema) = {
-    val slot = attributeView.slotView
-    val slotSchema = attributeView match {
-      case _: AnyView => Schema.Empty
-      case ClassInlineAttributeView(_, _, classView, inlineType) =>
-        val mappedClassName = className(classView)
-        inlineType match {
-          case InlineType.plain =>
-            new Schema(
-              $ref = new Some("#/$defs/".concat(mappedClassName)),
-            )
-          case InlineType.optional =>
-            new Schema(
-              $ref = new Some("#/$defs/".concat(mappedClassName)),
-            ) // TODO LNK-34: or null
-          case InlineType.list =>
-            new Schema(
-              $ref = new Some("#/$defs/".concat(mappedClassName)),
-            ).arrayOf // TODO LNK-34: or null
-          case InlineType.dict(CollectionForm.CompactDict(key)) =>
-            needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
-            new Schema(
-              $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
-            ).dictOf // TODO LNK-34: or null
-          case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-            needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
-            new Schema(
-              $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
-            ).dictOf // TODO LNK-34: or null
-        }
-      case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
-        typeToRuntime(identifierView.typeView)
-          .copy(
-            $comment = Some(s"Reference to ${classView.name} class"),
-            minimum = toBigDecimalOpt(identifierView.minimumValue),
-            maximum = toBigDecimalOpt(identifierView.maximumValue),
-            pattern = identifierView.pattern.map(Pattern(_)),
-          )
-          .arrayOfIf(slotView.slot.multivalued)
-      case typeAttribute: TypeAttributeView =>
-        typeToRuntime(typeAttribute.typeView)
-          .copy(
-            minimum = toBigDecimalOpt(typeAttribute.minimumValue),
-            maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-            pattern = typeAttribute.pattern.map(Pattern(_)),
-          )
-          .arrayOfIf(typeAttribute.slotView.slot.multivalued)
-      case EnumAttributeView(slotView, _, enumView) =>
-        new Schema(
-          $ref = new Some("#/$defs/".concat(enumView._enum.name)),
-        ).arrayOfIf(slotView.slot.multivalued)
-    }
-    slotName(slot) -> slotSchema.copy(
-      title = slot.slot.title,
-      description = slot.slot.description,
-    )
-  }
-
   private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] = x match {
     case Some(v) =>
       try new Some(BigDecimal(v.value.trim))
@@ -153,20 +79,85 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case Some(root) => sv.derivedReachabilityQuery(Seq(root), true, false)
       case _ => IncludeAllReachabilityQuery()
     }
+    // Accumulator of all schema definitions, reused to search definition for
+    // keyless classes and value feds
+    val defs = new mutable.LinkedHashMap[String, Schema]
+    // Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
+    // for CompactDict form inlining. The slot will be the key to omit from required fields.
     val needKeyless = mutable.Set.empty[(MappedClassName, MappedSlotName)]
+    // Mutable set this method will add to if it requires a value def to be defined in `$defs` for
+    // SimpleDict form inlining. The slot will be the value to omit from required fields.
     val needValue = mutable.Set.empty[(MappedClassName, MappedSlotName)]
-    val defsClasses = for cls <- sv.classes.values if query.reachable(cls) yield {
-      val attributes = cls.attributeViews
+    for cls <- sv.classes.values if query.reachable(cls) do {
+      // Generate a Schema for a specific slot, which maps to a JSON Schema property
+      val attributes = cls.attributeViews // The slot to define a JSON Schema property for
       val properties = new mutable.LinkedHashMap[MappedClassName, Schema]
       properties.sizeHint(attributes.values.size)
       for attribute <- attributes.values do {
-        properties.addOne(generateSlotSchema(attribute, needKeyless, needValue))
+        val slot = attribute.slotView
+        val slotSchema = attribute match {
+          case _: AnyView => Schema.Empty
+          case ClassInlineAttributeView(_, _, classView, inlineType) =>
+            val mappedClassName = className(classView)
+            inlineType match {
+              case InlineType.plain =>
+                new Schema(
+                  $ref = new Some("#/$defs/".concat(mappedClassName)),
+                )
+              case InlineType.optional =>
+                new Schema(
+                  $ref = new Some("#/$defs/".concat(mappedClassName)),
+                ) // TODO LNK-34: or null
+              case InlineType.list =>
+                new Schema(
+                  $ref = new Some("#/$defs/".concat(mappedClassName)),
+                ).arrayOf // TODO LNK-34: or null
+              case InlineType.dict(CollectionForm.CompactDict(key)) =>
+                needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
+                new Schema(
+                  $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
+                ).dictOf // TODO LNK-34: or null
+              case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
+                needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
+                new Schema(
+                  $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
+                ).dictOf // TODO LNK-34: or null
+            }
+          case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
+            typeToRuntime(identifierView.typeView)
+              .copy(
+                $comment = Some(s"Reference to ${classView.name} class"),
+                minimum = toBigDecimalOpt(identifierView.minimumValue),
+                maximum = toBigDecimalOpt(identifierView.maximumValue),
+                pattern = identifierView.pattern.map(Pattern(_)),
+              )
+              .arrayOfIf(slotView.slot.multivalued)
+          case typeAttribute: TypeAttributeView =>
+            typeToRuntime(typeAttribute.typeView)
+              .copy(
+                minimum = toBigDecimalOpt(typeAttribute.minimumValue),
+                maximum = toBigDecimalOpt(typeAttribute.maximumValue),
+                pattern = typeAttribute.pattern.map(Pattern(_)),
+              )
+              .arrayOfIf(typeAttribute.slotView.slot.multivalued)
+          case EnumAttributeView(slotView, _, enumView) =>
+            new Schema(
+              $ref = new Some("#/$defs/".concat(enumView._enum.name)),
+            ).arrayOfIf(slotView.slot.multivalued)
+        }
+        properties.update(
+          slotName(slot),
+          slotSchema.copy(
+            title = slot.slot.title,
+            description = slot.slot.description,
+          ),
+        )
       }
       val requiredSlots = attributes.values.foldLeft(new mutable.ListBuffer[String]) { (acc, s) =>
         if (s.slotView.slot.required) acc.addOne(s.slotView.name)
         else acc
-      }.toList
-      (
+      }.toList // avoids O(n^2) complexity
+      defs.update(
         className(cls),
         objectSchema.copy(
           required = requiredSlots,
@@ -174,21 +165,6 @@ class JsonSchemaGenerator(using sv: SchemaView) {
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
           title = cls.cls.title,
           description = cls.cls.description,
-        ),
-      )
-    }
-    val defsEnums = for ev <- sv.enums.values yield {
-      val enum_ = ev._enum
-      val enumValues = enum_.permissibleValues.keys.foldLeft(new mutable.ListBuffer[ExampleValue]) {
-        (acc, v) => acc.addOne(ExampleSingleValue(v))
-      }.toList
-      (
-        enum_.name,
-        objectSchema.copy(
-          `type` = new Some(List(SchemaType.String)),
-          `enum` = new Some(enumValues),
-          title = enum_.title,
-          description = enum_.description,
         ),
       )
     }
@@ -221,36 +197,43 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case _ => Schema.Empty
     }
     // Generate the needed keyless/value refs
-    val defMap = defsClasses.toMap
-    val defsKeyless = for (className, idField) <- needKeyless yield {
-      val classSchema = defMap(className)
-      (
+    for (className, idField) <- needKeyless do {
+      val classSchema = defs(className)
+      defs.update(
         className.concat("__identifier_optional"),
         classSchema.copy(required = classSchema.required.filter(_ != idField)),
       )
     }
-    val defsValues = for (className, valueField) <- needValue yield {
-      val simpleDict = defMap(className)
-      (
+    for (className, valueField) <- needValue do {
+      val simpleDict = defs(className)
+      defs.update(
         className.concat("__simple_dict_value"),
         simpleDict.properties(valueField).asInstanceOf[Schema],
       )
     }
-    val defs = immutable.ListMap.newBuilder[String, SchemaLike].addAll({
-      val m = new collection.mutable.LinkedHashMap[String, SchemaLike]
-      m.sizeHint(defsClasses.size + defsEnums.size + defsKeyless.size + defsValues.size)
-      defsClasses.foreach(kv => m.update(kv._1, kv._2))
-      defsEnums.foreach(kv => m.update(kv._1, kv._2))
-      defsKeyless.foreach(kv => m.update(kv._1, kv._2))
-      defsValues.foreach(kv => m.update(kv._1, kv._2))
-      m
-    }).result()
+    for ev <- sv.enums.values do {
+      val enum_ = ev._enum
+      val enumValues = enum_.permissibleValues.keys.foldLeft(new mutable.ListBuffer[ExampleValue]) {
+        (acc, v) => acc.addOne(ExampleSingleValue(v))
+      }.toList
+      defs.update(
+        enum_.name,
+        objectSchema.copy(
+          `type` = new Some(List(SchemaType.String)),
+          `enum` = new Some(enumValues),
+          title = enum_.title,
+          description = enum_.description,
+        ),
+      )
+    }
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
       title = sv.root.title.orElse(new Some(sv.root.name)),
       description = sv.root.description,
-      $defs = new Some(defs),
+      $defs = new Some(immutable.ListMap.newBuilder[String, SchemaLike].addAll(
+        defs,
+      ).result()), // avoids O(n^2) complexity
     )
   }
 
