@@ -1,14 +1,21 @@
 // Type-level smoke test for the generated index.d.ts, type-checked by
 // verify-package.mjs. Not shipped in the package.
 
-import { LinkML, type SchemaView } from "@neverblink/linkml";
+import { LinkML, type LoadResult, type SchemaView } from "@neverblink/linkml";
 
 const schema = "id: https://example.org/s\nname: s";
 const importMap: Record<string, string> = {};
 
-const view: SchemaView = LinkML.loadFromString(schema, importMap);
-const viewFromPath: SchemaView = LinkML.loadFromPath("model.yaml", { "model.yaml": schema });
-void viewFromPath;
+// Loading always yields a report; `view` is absent when the schema has fatal problems.
+const loaded: LoadResult = LinkML.loadFromString(schema, importMap);
+const loadReport: unknown = loaded.report;
+if (!loaded.view) throw new Error("schema did not load");
+const view: SchemaView = loaded.view;
+
+const loadedFromPath: LoadResult = LinkML.loadFromPath("model.yaml", { "model.yaml": schema });
+const loadedNoMessages: LoadResult = LinkML.loadFromString(schema, importMap, false);
+void loadedFromPath;
+void loadedNoMessages;
 
 const jsonSchema: string = LinkML.jsonSchema(view);
 const jsonSchemaFull: string = LinkML.jsonSchema(view, true, "Person");
@@ -26,6 +33,7 @@ const lintIssues: unknown[] = lint.issues;
 const lintNoMessages: any = LinkML.lint(view, false);
 
 void [
+  loadReport,
   jsonSchema,
   jsonSchemaFull,
   shacl,

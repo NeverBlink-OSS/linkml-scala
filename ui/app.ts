@@ -2,7 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
 // LinkML API types generated from the Scala facade (`./mill uiTypes` → linkml.d.ts).
 // Type-checking the UI against these catches drift when LinkMlJsApi.scala changes.
-import type { LinkMLApi, SchemaView } from "./linkml";
+import type { LinkMLApi, LoadResult, SchemaView } from "./linkml";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 const LINKML_BUNDLE_URL = "./linkml.js";
@@ -212,7 +212,7 @@ let activeScalaFile: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
 // Parse the schema once and reuse the SchemaView across target/option changes,
 // only re-parse when the input text actually changes.
-let cachedSchema: { text: string; view: SchemaView } | null = null;
+let cachedSchema: { text: string; loaded: LoadResult } | null = null;
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
@@ -522,10 +522,19 @@ function runGenerate(): void {
   try {
     // The empty object is the import map (filename -> YAML). The UI has no extra imports.
     if (!cachedSchema || cachedSchema.text !== schema) {
-      cachedSchema = { text: schema, view: api().loadFromString(schema, {}) };
+      cachedSchema = { text: schema, loaded: api().loadFromString(schema, {}) };
     }
-    const result = target.call(cachedSchema.view, optionValues[target.id]!);
+    const { view, report } = cachedSchema.loaded;
     const elapsed = Math.round(performance.now() - start);
+
+    // Fatal problems mean there is no view to generate from, so every target shows the report.
+    if (!view) {
+      showReport(report as ValidationReport);
+      setStatus(false, `${elapsed}ms`);
+      return;
+    }
+
+    const result = target.call(view, optionValues[target.id]!);
     if (target.view === "report") {
       showReport(result as ValidationReport);
     } else if (typeof result === "object") {

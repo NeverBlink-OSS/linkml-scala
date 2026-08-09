@@ -33,6 +33,15 @@ object TsDefsGen {
        |  readonly __linkmlSchemaView: unique symbol;
        |}
        |
+       |/**
+       | * What loading a schema produced. There is always a report - loading is validating - and a
+       | * `view` unless the schema had fatal problems.
+       | */
+       |export interface LoadResult {
+       |  readonly view?: SchemaView;
+       |  readonly report: any;
+       |}
+       |
        |export interface ${exportedName}Api {
        |$members
        |}
