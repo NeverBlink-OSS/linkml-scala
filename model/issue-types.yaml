@@ -139,6 +139,21 @@ classes:
       details:
         equals_expression: "Cannot import schema '{import_uri}': {reason}"
 
+  UnexpectedError:
+    is_a: SchemaFatal
+    description: >-
+      Something unexpected went wrong that during schema loading or validation. Consider filing 
+      a bug report with the schema and the error message: {reason}
+    attributes:
+      reason:
+        range: string
+        required: true
+        title: reason
+        description: Message of the underlying exception.
+    slot_usage:
+      message:
+        equals_expression: "Unexpected error while loading the schema: {reason}"
+
   # ---- Error ------------------------------------------------------------------------------------
 
   MultipleTreeRoots:

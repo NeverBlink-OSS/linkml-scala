@@ -4,12 +4,18 @@ import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
-import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal}
+import eu.neverblink.linkml.validation.{
+  IssueLocationImpl,
+  SchemaError,
+  SchemaFatal,
+  UnexpectedErrorImpl,
+}
 
 import scala.annotation.unused
 import scala.collection.mutable
 import scala.compiletime.erasedValue
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
 /** SchemaView is a wrapper class around a metamodel-generated [[SchemaDefinition]], which
   * implements the semantics of the metamodel, such as: references, schema-level default values,
@@ -277,7 +283,7 @@ object SchemaView {
       uri: String,
       importer: Importer = FileSystemImporter,
   ): Either[Seq[SchemaFatal], SchemaView] =
-    loadSchemas(uri, importer).left.map(Seq(_)).flatMap(viewOf)
+    guarded(loadSchemas(uri, importer).left.map(Seq(_)).flatMap(viewOf))
 
   /** Loads a schema view from the specified YAML string, loading its imports. This is mainly for
     * testing and custom applications, as in most cases you would want to load from a URI to get
@@ -296,10 +302,27 @@ object SchemaView {
       yaml: String,
       importer: Importer = FileSystemImporter,
   ): Either[Seq[SchemaFatal], SchemaView] =
-    importer.parseSchema(yaml)
-      .flatMap(root => loadImports(root, "", importer).map(root +: _))
-      .left.map(Seq(_))
-      .flatMap(viewOf)
+    guarded(
+      importer.parseSchema(yaml)
+        .flatMap(root => loadImports(root, "", importer).map(root +: _))
+        .left.map(Seq(_))
+        .flatMap(viewOf),
+    )
+
+  /** Run a load, reporting anything it throws as an
+    * [[eu.neverblink.linkml.validation.UnexpectedError]].
+    */
+  private def guarded(
+      load: => Either[Seq[SchemaFatal], SchemaView],
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    try load
+    catch { case NonFatal(ex) => Left(Seq(unexpectedError(ex))) }
+
+  private def unexpectedError(ex: Throwable): UnexpectedErrorImpl =
+    UnexpectedErrorImpl(
+      location = IssueLocationImpl(),
+      reason = Option(ex.getMessage).getOrElse(ex.toString),
+    )
 
   /** Loads individual schema definitions from the specified URI, optionally loading their imports.
     * Import loading is recursive.
@@ -327,8 +350,11 @@ object SchemaView {
     * into a Left rather than an exception.
     */
   private def viewOf(schemas: Seq[SchemaDefinition]): Either[Seq[SchemaFatal], SchemaView] =
-    try Right(new SchemaView(schemas))
-    catch { case ex: SchemaIssues.FatalSchemaException => Left(ex.problems) }
+    try Right(SchemaView(schemas))
+    catch {
+      case ex: SchemaIssues.FatalSchemaException => Left(ex.problems)
+      case NonFatal(ex) => Left(Seq(unexpectedError(ex)))
+    }
 
   /** Load one of the schemas bundled as a resource, reporting a missing resource as an import
     * failure rather than letting the resource lookup throw.

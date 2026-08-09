@@ -14,9 +14,6 @@ export interface SchemaView {
 /**
  * What loading a schema produced. There is always a report - loading is validating - and a
  * `view` unless the schema had fatal problems.
- *
- * TODO: `report` is untyped. Generating TS declarations from the LinkML validation report
- * model would give it a real type. LINK THIS TO AN ISSUE.
  */
 export interface LoadResult {
   readonly view?: SchemaView;

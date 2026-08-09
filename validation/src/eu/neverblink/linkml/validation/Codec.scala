@@ -30,6 +30,7 @@ object Codec {
       case i: SchemaImportErrorImpl => schemaImportError.encode(i, skipId)
       case i: SchemaParseErrorImpl => schemaParseError.encode(i, skipId)
       case i: UndefinedDefaultRangeImpl => undefinedDefaultRange.encode(i, skipId)
+      case i: UnexpectedErrorImpl => unexpectedError.encode(i, skipId)
       case i: UndefinedPrefixImpl => undefinedPrefix.encode(i, skipId)
       case i: UnknownReferenceImpl => unknownReference.encode(i, skipId)
       case i: UnknownStringReferenceImpl => unknownStringReference.encode(i, skipId)
@@ -58,6 +59,7 @@ object Codec {
   private val undefinedDefaultRange: LinkmlYamlCodec[UndefinedDefaultRangeImpl] =
     LinkmlYamlCodec.derived
   private val undefinedPrefix: LinkmlYamlCodec[UndefinedPrefixImpl] = LinkmlYamlCodec.derived
+  private val unexpectedError: LinkmlYamlCodec[UnexpectedErrorImpl] = LinkmlYamlCodec.derived
   private val unknownReference: LinkmlYamlCodec[UnknownReferenceImpl] = LinkmlYamlCodec.derived
   private val unknownStringReference: LinkmlYamlCodec[UnknownStringReferenceImpl] =
     LinkmlYamlCodec.derived
