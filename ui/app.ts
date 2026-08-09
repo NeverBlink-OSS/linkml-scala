@@ -209,6 +209,10 @@ const optionValues: Record<string, OptionValues> = Object.fromEntries(
 );
 let scalaFiles: Record<string, string> | null = null;
 let activeScalaFile: string | null = null;
+// The validation report is rendered as DOM rather than into the output editor, so keep a
+// plain-text rendition of it around for the Copy button. Non-null exactly while the report
+// is the visible view.
+let reportText: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
 // Parse the schema once and reuse the SchemaView across target/option changes,
 // only re-parse when the input text actually changes.
@@ -389,6 +393,7 @@ function locationLabel(location?: IssueLocation): string {
 function hideReport(): void {
   $reportView.hidden = true;
   $reportView.innerHTML = "";
+  reportText = null;
   $outputEditorHost.hidden = false;
 }
 
@@ -411,6 +416,8 @@ function showReport(report: ValidationReport): void {
     : severitySummary(issues);
   $reportView.appendChild(summary);
 
+  const textLines: string[] = [summary.textContent];
+
   for (const issue of issues) {
     const item = document.createElement("article");
     item.className = `report-item report-item--${severityClass(issue)}`;
@@ -430,12 +437,15 @@ function showReport(report: ValidationReport): void {
     head.appendChild(message);
     item.appendChild(head);
 
+    const issueLines = [`${badge.textContent} ${message.textContent}`];
+
     const where = locationLabel(issue.location);
     if (where) {
       const loc = document.createElement("div");
       loc.className = "report-location";
       loc.textContent = where;
       item.appendChild(loc);
+      issueLines.push(`  at ${where}`);
     }
 
     if (issue.details && issue.details !== issue.message) {
@@ -443,10 +453,14 @@ function showReport(report: ValidationReport): void {
       details.className = "report-details";
       details.textContent = issue.details;
       item.appendChild(details);
+      issueLines.push(`  ${issue.details}`);
     }
 
     $reportView.appendChild(item);
+    textLines.push(issueLines.join("\n"));
   }
+
+  reportText = textLines.join("\n\n");
 }
 
 function severityClass(issue: ReportIssue): string {
@@ -567,7 +581,9 @@ $clearInput.addEventListener("click", () => {
 });
 
 $copyOutput.addEventListener("click", async () => {
-  const text = outputView.state.doc.toString();
+  // While the report is shown the output editor is hidden and still holds the previously
+  // generated target's text, so copying it would hand back content from another tab.
+  const text = reportText ?? outputView.state.doc.toString();
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
