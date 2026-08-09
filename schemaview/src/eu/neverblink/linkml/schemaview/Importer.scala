@@ -72,12 +72,6 @@ object Importer {
     )
 
   /** Extract the position a [[YamlError]] reported, if it carries one.
-    *
-    * @note
-    *   `ExpectedTokenKind` and `ScannerError.Obtained` - the two kinds most schema typos produce -
-    *   only expose their position through the `Token` in the library's `internal` package. Reading
-    *   it here is deliberate; if a scala-yaml upgrade moves it, this stops compiling rather than
-    *   silently losing positions.
     */
   private def codeRegionOf(error: YamlError): Option[CodeRegionImpl] = error match {
     case e: ParseError.ExpectedTokenKind => Some(codeRegion(e.got.range))
