@@ -1,8 +1,9 @@
 id: https://linkml.neverblink.eu/model/validation-report
 name: validation-report
 title: Schema for LinkML validation reports
-description: |
-  TODO
+description: >-
+  A schema for validation reports of LinkML schemas. These reports are emitted by the
+  LinkML-Scala CLI (`linkml-scala validate --format json`) or via the JavaScript API.
 license: https://creativecommons.org/publicdomain/zero/1.0/
 prefixes:
   report: https://linkml.neverblink.eu/model/validation-report#
@@ -78,7 +79,7 @@ classes:
         description: Longer, human-readable message describing the issue in more detail.
         notes:
           - This field is inferred using equals_expression and is present only if the consumer of the report wishes to include it.
-      # TODO: type designators
+      # TODO LNK-172: type designators
 #      issue_type: # for now skip this
 #        designates_type: true
 #        range: string # this would be automatically filled with the class name on serialization
@@ -120,7 +121,7 @@ classes:
           The identifier of the schema in which the issue was found.
           Always present, unless the issue pertains to the lack of the identifier itself.
       json_pointer:
-        range: jsonpointer # TODO: scala runtime support for jsonpointer type?
+        range: jsonpointer
         recommended: true
         title: JSON pointer
         description: >-

@@ -21,8 +21,9 @@ const linkmlFull: string = LinkML.linkml(view, "skip", true, "Person", "json");
 const scala: Record<string, string> = LinkML.scala(view, "com.example");
 const tableSchema: string = LinkML.tableSchema(view);
 const tableSchemaRoot: string = LinkML.tableSchema(view, "Person");
-const lint: string = LinkML.lint(view);
-const lintFull: string = LinkML.lint(view, 10, true);
+const lint: any = LinkML.lint(view);
+const lintIssues: unknown[] = lint.issues;
+const lintNoMessages: any = LinkML.lint(view, false);
 
 void [
   jsonSchema,
@@ -37,5 +38,6 @@ void [
   tableSchema,
   tableSchemaRoot,
   lint,
-  lintFull,
+  lintIssues,
+  lintNoMessages,
 ];

@@ -12,8 +12,9 @@ notes:
   - >-
     `message` is the short, one-line description. `details` is the long form. When an issue's long
     form is identical to its short form, only `message` is given.
-  - Multivalued slots are joined with ", " when substituted into an expression, and non-string
-    ranges are stringified automatically, so issue slots are typed after the value they hold.
+  - User messages are created using `equals_expression` (string interpolation).
+    Multivalued slots are joined with ", " when substituted into an expression, and non-string
+    slots are stringified automatically.
 
 # Reusable slots for use in schema issue subclasses.
 slots:

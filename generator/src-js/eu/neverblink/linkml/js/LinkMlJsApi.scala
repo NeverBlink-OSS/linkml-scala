@@ -6,11 +6,12 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
 import eu.neverblink.linkml.generator.util.StringSink
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.validation.{Codec, SchemaValidationReportImpl}
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
@@ -244,20 +245,24 @@ object LinkMlJsApi {
     )
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model.
+   * This method returns a structured JSON that follows the validation-report.yaml model.
+   *
+   * TODO: consider typing the return value in TypeScript using a TypeScript generator. See:
+   * https://github.com/NeverBlink-OSS/linkml-scala/issues/127
     *
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param maxProblems
-    *   Maximum number of problems to include in the summary
-    * @param verbose
-    *   Whether to use the more verbose problem descriptions
+    * @param inferMessages
+    *   Whether to fill in each issue's human-readable `message` and `details` from the model's
+    *   `equals_expression`s. Turn it off to get only the structured fields.
     * @return
-    *   The summary of detected problems, or an empty string if everything is correct
+    *   A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean.
     */
-  def lint(
-      schema: SchemaViewJs,
-      maxProblems: Int = 5,
-      verbose: Boolean = false,
-  ): String =
-    schema.underlying.lint(maxProblems, verbose).getOrElse("")
+  def lint(schema: SchemaViewJs, inferMessages: Boolean = true): js.Any = {
+    val issues = SchemaValidator(using schema.underlying).lintProblems
+    val report = SchemaValidationReportImpl(
+      issues = if inferMessages then issues.map(_.infer()) else issues,
+    )
+    js.JSON.parse(JsonUtil.yamlToJson(Codec.codec.encode(report)))
+  }
 }

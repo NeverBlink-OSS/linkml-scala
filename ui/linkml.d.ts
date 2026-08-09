@@ -93,11 +93,10 @@ export interface LinkMLApi {
   /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param maxProblems Maximum number of problems to include in the summary
-   * @param verbose Whether to use the more verbose problem descriptions
-   * @returns The summary of detected problems, or an empty string if everything is correct
+   * @param inferMessages Whether to fill in each issue's human-readable `message` and `details` from the model's `equals_expression`s. Turn it off to get only the structured fields.
+   * @returns A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean. @note The return type is untyped on the JS side. TODO: generate TypeScript declarations from the LinkML validation report model - a TS generator for LinkML would give this a real type instead of `any`. LINK THIS TO AN ISSUE.
    */
-  lint(schema: SchemaView, maxProblems?: number, verbose?: boolean): string;
+  lint(schema: SchemaView, inferMessages?: boolean): any;
 }
 
 export declare const LinkML: LinkMLApi;
