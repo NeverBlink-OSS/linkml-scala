@@ -12,18 +12,21 @@ the `linkml-scala` CLI, 0.12.0 or newer — the skill walks the user through ins
 
 ### Codex
 
-Codex discovers `.agents/skills/` in the repository you are working in, or `~/.agents/skills/`
-for every project:
+Add this repository as a plugin marketplace, then install **linkml** from `/plugins`:
+
+```shell
+codex plugin marketplace add NeverBlink-OSS/linkml-scala
+codex plugin marketplace upgrade linkml-scala   # if you added it before
+```
+
+Codex also discovers `.agents/skills/` in the repository you are working in, or
+`~/.agents/skills/` for every project, if you would rather copy the skill in:
 
 ```shell
 git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala /tmp/linkml-scala
 mkdir -p ~/.agents/skills
 cp -r /tmp/linkml-scala/.agents/skills/linkml ~/.agents/skills/
 ```
-
-Project-level `.agents/skills/` is the more reliable of the two today — there are open reports of
-user-level skills intermittently not being indexed. This repository can also be added as a Codex
-plugin marketplace via [`plugins/marketplace.json`](plugins/marketplace.json).
 
 ### Claude Code
 
@@ -45,32 +48,6 @@ ln -s ~/src/linkml-scala/.agents/skills/linkml ~/.claude/skills/linkml
 
 Copy `skills/linkml/` wherever your tool looks for skills. It is self-contained, and the
 frontmatter sticks to the fields in the Agent Skills spec, so it should load anywhere.
-
-## Layout
-
-```
-.agents/
-├── skills/linkml/
-│   ├── SKILL.md                  always loaded; guidance + routed index
-│   ├── 100-authoring.md          slots, inheritance, constraints, enums, keys, imports, URIs
-│   ├── 200-limitations.md        GENERATED - unsupported features, divergent semantics
-│   ├── 300-bootstrap.md          converting RDFS/OWL, SHACL, JSON Schema, XSD, sample data
-│   ├── 400-review.md             modelling-quality review checklist
-│   ├── 500-validate-data.md      validating instance data
-│   ├── 600-ci.md                 GitHub Actions, with templates in assets/
-│   ├── 900-metaslots.tsv         GENERATED - the metamodel vocabulary, for grepping
-│   ├── 910-examples.md           GENERATED - known-good example schemas by feature
-│   ├── 990-install.md            install options
-│   └── assets/                   copy-and-adapt CI workflows
-├── .claude-plugin/plugin.json
-├── .codex-plugin/plugin.json
-├── plugins/marketplace.json      Codex plugin marketplace
-├── generate.py                   regenerates the GENERATED files
-└── check.py                      validates the skill
-```
-
-Topic files are numbered by theme so the index reads in a stable order: 100s authoring, 200s
-limits and validation, 300–600 workflows, 900s lookup tables.
 
 ## Maintaining
 

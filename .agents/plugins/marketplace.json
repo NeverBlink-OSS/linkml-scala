@@ -8,7 +8,7 @@
       "name": "linkml",
       "source": {
         "source": "local",
-        "path": "./.."
+        "path": "./.agents"
       },
       "policy": {
         "installation": "AVAILABLE"
