@@ -274,22 +274,22 @@ object JsonSchemaGenerator {
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
     * Provides formats for date-times and URI/CURIE.
     */
-  def typeToRuntime(tv: TypeView): Schema = {
-    val rt = tv.runtimeType
-    if (rt eq StringType) stringSchema
-    else if (rt eq IntegerType) integerSchema
-    else if (rt eq FloatType) numberSchema
-    else if (rt eq DoubleType) numberSchema
-    else if (rt eq BooleanType) booleanSchema
-    else if (rt eq DecimalType) numberSchema
-    else if (rt eq DateType) dateSchema
-    else if (rt eq DateTimeType) datetimeSchema
-    else if (rt eq TimeType) timeSchema
-    else if (rt eq UriOrCurieType) uriOrCurieSchema
-    else if (rt eq UriType) uriSchema
-    else if (rt eq CurieType) curieSchema
-    else if (rt eq NcNameType) ncNameSchema
-    else Schema.Empty
+  def typeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
+    case _: StringType.type => stringSchema
+    case _: IntegerType.type => integerSchema
+    case _: FloatType.type => numberSchema
+    case _: DoubleType.type => numberSchema
+    case _: BooleanType.type => booleanSchema
+    case _: DecimalType.type => numberSchema
+    case _: AnyType.type => Schema.Empty
+    case _: DateType.type => dateSchema
+    case _: DateTimeType.type => datetimeSchema
+    case _: TimeType.type => timeSchema
+    case _: UriOrCurieType.type => uriOrCurieSchema
+    case _: UriType.type => uriSchema
+    case _: CurieType.type => curieSchema
+    case _: NcNameType.type => ncNameSchema
+    case _: UnknownType.type => Schema.Empty
   }
 
   type MappedClassName = String
@@ -298,15 +298,15 @@ object JsonSchemaGenerator {
   extension (schema: Schema)
     /** Wrap this Schema in an array
       */
-    def arrayOf: Schema = arraySchema.copy(items = new Some(schema))
+    inline def arrayOf: Schema = arraySchema.copy(items = new Some(schema))
 
     /** Wrap this Schema in an array if the condition is true, return the schema unchanged otherwise
       */
-    def arrayOfIf(condition: Boolean): Schema = if condition then schema.arrayOf else schema
+    inline def arrayOfIf(condition: Boolean): Schema = if condition then schema.arrayOf else schema
 
     /** Wrap this Schema as a dict (object with additional properties set to this schema)
       */
-    def dictOf: Schema = objectSchema.copy(additionalProperties = new Some(schema))
+    inline def dictOf: Schema = objectSchema.copy(additionalProperties = new Some(schema))
 
   private implicit lazy val codec: JsonValueCodec[Schema] = {
     implicit val schemaLikeCodec: JsonValueCodec[SchemaLike] = new JsonValueCodec {
