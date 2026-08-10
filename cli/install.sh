@@ -95,15 +95,6 @@ _linkml_scala_install() {
       ;;
   esac
 
-  # Not every OS/arch pair has a native binary. Point at the JVM build instead.
-  if [ "$os$arch_suffix" = "darwin-x86_64" ]; then
-    echo "Error: there is no native binary for Intel macOS." >&2
-    echo "Use the JVM build instead (requires Java 17 or newer):" >&2
-    echo "  curl -fsSLO https://github.com/$repo_base/releases/download/$tag/linkml-scala.jar" >&2
-    echo "  java -jar linkml-scala.jar --help" >&2
-    return 1
-  fi
-
   asset="$binary_name$arch_suffix"
   release_url="https://github.com/$repo_base/releases/download/$tag"
 

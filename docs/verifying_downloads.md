@@ -12,14 +12,14 @@ Every LinkML-Scala artifact is published with a cryptographic signature, so you 
 
 ### Checksums
 
-Each release publishes a `SHA256SUMS` file covering every asset – the four native binaries, their `.gz` counterparts, and `linkml-scala.jar`. Download it next to whatever you grabbed and compare:
+Each release publishes a `SHA256SUMS` file covering every asset – the five native binaries, their `.gz` counterparts, and `linkml-scala.jar`. Download it next to whatever you grabbed and compare:
 
 ```shell
 curl -fsSLO https://github.com/NeverBlink-OSS/linkml-scala/releases/latest/download/SHA256SUMS
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-`--ignore-missing` is what lets you verify a single asset without downloading all nine. On macOS, use `shasum -a 256 --ignore-missing -c SHA256SUMS` instead.
+`--ignore-missing` is what lets you verify a single asset without downloading all eleven. On macOS, use `shasum -a 256 --ignore-missing -c SHA256SUMS` instead.
 
 Expect one `OK` line per file you actually have:
 

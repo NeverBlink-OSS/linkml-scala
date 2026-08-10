@@ -66,7 +66,7 @@ In some cases, LinkML-Scala diverges from the Python implementation, or is missi
 
 ### Method 1: Install script (recommended for Unix/macOS)
 
-If you are on Linux (x86-64, ARM64), macOS (ARM64), or using WSL on Windows, the easiest way to grab the latest release is via our installation script:
+If you are on Linux (x86-64, ARM64), macOS (x86-64, ARM64), or using WSL on Windows, the easiest way to grab the latest release is via our installation script:
 
 ```shell
 . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/refs/heads/main/cli/install.sh)
