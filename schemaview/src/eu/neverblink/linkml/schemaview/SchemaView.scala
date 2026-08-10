@@ -281,27 +281,17 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   {
     val problems = validator.fatalProblems
     if (problems.nonEmpty) {
-      val formatted = SchemaProblem.format(
-        problems,
-        maxProblems = 5,
-        verbose = true,
-        showLevel = false,
-      )
-      sys.error(s"Fatal validation problems:\n$formatted")
+      throw SchemaIssues.FatalSchemaException(problems.map(_.infer()), maxProblems = 5)
     }
   }
 
   /** Whether the merged schema is valid */
-  lazy val isValid: Boolean = validator.validate().isSuccess
+  lazy val isValid: Boolean = validator.validationProblems.isEmpty
 
-  /** Validate the merged schema, checking for errors and fatal errors
-    *
-    * @param maxProblems
-    *   Max number of problems to include
-    * @return
-    *   Unit if the schema is valid, an exception with formatted problems otherwise
+  /** Errors and fatal problems in the merged schema, empty if the schema is valid. Warnings are not
+    * included - use [[lint]] for a report that covers those too.
     */
-  def validate(maxProblems: Int = 5): Try[Unit] = validator.validate(maxProblems)
+  def validationProblems: Seq[SchemaError | SchemaFatal] = validator.validationProblems
 
   /** Produce validation report with all detected problems
     *
@@ -343,7 +333,8 @@ object SchemaView {
   def loadSchemaViewFromUri(
       uri: String,
       importer: Importer = FileSystemImporter,
-  ): SchemaView = new SchemaView(loadSchemas(uri, importer))
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    guarded(loadSchemas(uri, importer).left.map(Seq(_)).flatMap(viewOf))
 
   /** Loads a schema view from the specified YAML string, loading its imports. This is mainly for
     * testing and custom applications, as in most cases you would want to load from a URI to get
@@ -361,10 +352,28 @@ object SchemaView {
   def loadSchemaViewFromString(
       yaml: String,
       importer: Importer = FileSystemImporter,
-  ): SchemaView = {
-    val root = importer.parseSchema(yaml)
-    new SchemaView(root +: loadImports(root, "", importer))
-  }
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    guarded(
+      importer.parseSchema(yaml)
+        .flatMap(root => loadImports(root, "", importer).map(root +: _))
+        .left.map(Seq(_))
+        .flatMap(viewOf),
+    )
+
+  /** Run a load, reporting anything it throws as an
+    * [[eu.neverblink.linkml.validation.UnexpectedError]].
+    */
+  private def guarded(
+      load: => Either[Seq[SchemaFatal], SchemaView],
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    try load
+    catch { case NonFatal(ex) => Left(Seq(unexpectedError(ex))) }
+
+  private def unexpectedError(ex: Throwable): UnexpectedErrorImpl =
+    UnexpectedErrorImpl(
+      location = IssueLocationImpl(),
+      reason = Option(ex.getMessage).getOrElse(ex.toString),
+    )
 
   /** Loads individual schema definitions from the specified URI, optionally loading their imports.
     * Import loading is recursive.
@@ -385,15 +394,38 @@ object SchemaView {
   def loadSchemas(
       uri: String,
       importer: Importer = FileSystemImporter,
-  ): Seq[SchemaDefinition] =
+  ): Either[ImportFailure, Seq[SchemaDefinition]] =
     loadSchemasInternal(uri, true, importer, mutable.Set.empty)
+
+  /** Build a view from already-loaded schemas, turning the constructor's fatal validation problems
+    * into a Left rather than an exception.
+    */
+  private def viewOf(schemas: Seq[SchemaDefinition]): Either[Seq[SchemaFatal], SchemaView] =
+    try Right(SchemaView(schemas))
+    catch {
+      case ex: SchemaIssues.FatalSchemaException => Left(ex.problems)
+      case NonFatal(ex) => Left(Seq(unexpectedError(ex)))
+    }
+
+  /** Load one of the schemas bundled as a resource, reporting a missing resource as an import
+    * failure rather than letting the resource lookup throw.
+    */
+  private def builtIn(
+      uri: String,
+      resource: String,
+      importer: Importer,
+  ): Either[ImportFailure, SchemaDefinition] =
+    Importer.readText(uri)(Resources.read(resource)) match {
+      case Right(text) => importer.parseSchema(text, uri)
+      case Left(failure) => Left(failure)
+    }
 
   private def loadSchemasInternal(
       uri: String,
       doImportLoading: Boolean,
       importer: Importer,
       visited: mutable.Set[String],
-  ): Seq[SchemaDefinition] = {
+  ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     // TODO LNK-154 Robust file system importing
     var normalizedUri = uri.stripSuffix(PlatformSpecificUtils.separator)
     if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml")) {
@@ -401,27 +433,27 @@ object SchemaView {
     }
     // After URI normalization, check if we've already visited this URI to avoid infinite loops
     // and repeatedly loading the same schema.
-    if visited.contains(normalizedUri) then Seq()
+    if visited.contains(normalizedUri) then Right(Seq())
     else
       visited.add(normalizedUri)
-      val schema: SchemaDefinition =
+      // Built-in schemas come from bundled resources, everything else from the importer. Both
+      // routes yield the same structured issues on failure.
+      val loaded: Either[ImportFailure, SchemaDefinition] =
         if (normalizedUri.startsWith("https://w3id.org/linkml/")) {
-          importer.parseSchema(Resources.read(normalizedUri.stripPrefix("https://w3id.org/linkml")))
+          builtIn(normalizedUri, normalizedUri.stripPrefix("https://w3id.org/linkml"), importer)
         } else if (normalizedUri.startsWith("linkml:")) {
-          importer.parseSchema(Resources.read("/".concat(normalizedUri.stripPrefix("linkml:"))))
+          builtIn(normalizedUri, "/" + normalizedUri.stripPrefix("linkml:"), importer)
         } else {
-          try importer.readSchema(normalizedUri)
-          catch {
-            case ex if NonFatal(ex) =>
-              sys.error(s"Cannot import schema '$normalizedUri'\n${ex.getMessage}")
-          }
+          importer.readSchema(normalizedUri)
         }
-      if (doImportLoading) {
-        var baseUri = ""
-        val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
-        if (idx > 0) baseUri = normalizedUri.substring(0, idx)
-        schema +: loadImportsInternal(schema, baseUri, importer, visited)
-      } else Seq(schema)
+      loaded.flatMap { schema =>
+        if (doImportLoading) {
+          var baseUri = ""
+          val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
+          if (idx > 0) baseUri = normalizedUri.substring(0, idx)
+          loadImportsInternal(schema, baseUri, importer, visited).map(schema +: _)
+        } else Right(Seq(schema))
+      }
   }
 
   /** Loads a schema's imports from the specified schema, loading its imports recursively from the

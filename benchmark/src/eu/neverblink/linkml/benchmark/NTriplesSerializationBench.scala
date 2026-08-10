@@ -48,7 +48,9 @@ class NTriplesSerializationBench extends CommonParams {
       Source.fromInputStream(in, "UTF-8").mkString
     }
     val collector = new CollectingRdfSink
-    ShaclGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))).generate(collector)
+    ShaclGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))).generate(
+      collector,
+    )
     val triples = collector.triples
 
     linkmlTriples = triples.toArray

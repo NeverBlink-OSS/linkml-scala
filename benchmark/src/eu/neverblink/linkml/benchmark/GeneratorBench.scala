@@ -39,7 +39,11 @@ class GeneratorBench extends CommonParams {
 
   @Benchmark
   def jsonSchemaFromYaml(bh: Blackhole): Unit =
-    bh.consume(JsonSchemaGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))).serialize())
+    bh.consume(
+      JsonSchemaGenerator(using
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
+      ).serialize(),
+    )
 
   def jsonSchemaFromYaml(bh: Blackhole): Unit =
     bh.consume(JsonSchemaGenerator(using SchemaView.loadSchemaViewFromString(yaml)).serialize())
@@ -77,7 +81,11 @@ class GeneratorBench extends CommonParams {
 
   @Benchmark
   def linkmlFromYaml(bh: Blackhole): Unit =
-    bh.consume(LinkMlGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))).serialize())
+    bh.consume(
+      LinkMlGenerator(using
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
+      ).serialize(),
+    )
 
   /** Same setup for RDF sinks as in the CLI.
     */
