@@ -129,7 +129,7 @@ jobs:
           gzip -9 -k linkml-scala-windows-x86_64.exe &
           wait
 
-      # See: docs/verifyiing_downloads.md
+      # See: docs/verifying_downloads.md
       - name: Generate Checksums
         run: sha256sum linkml-scala* | tee SHA256SUMS
 

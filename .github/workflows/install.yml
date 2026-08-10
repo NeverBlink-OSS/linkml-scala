@@ -51,12 +51,21 @@ jobs:
           "$RUNNER_TEMP/linkml-exec/linkml-scala" --version
 
       # A sourced install.sh must never terminate the caller's shell.
+      # `set +e` mirrors an interactive shell, which is the case that matters. It also keeps
+      # the check portable: bash 3.2 (the /bin/bash on macOS runners) does not extend the
+      # `&&` suppression of `-e` into a sourced file, so `. script && ...` would abort here.
       - name: Sourcing install.sh survives a failure
         run: |
-          LINKML_SCALA_VERSION=v0.0.0-does-not-exist
-          export LINKML_SCALA_VERSION
-          . ./cli/install.sh && { echo "Error: expected a non-zero status."; exit 1; }
-          echo "Still alive after a failed source, as expected."
+          export LINKML_SCALA_VERSION=v0.0.0-does-not-exist
+          set +e
+          . ./cli/install.sh
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "Error: expected a non-zero status from a failed install."
+            exit 1
+          fi
+          echo "Still alive after a failed source (status $rc), as expected."
 
       - name: Installed binary reports its version
         run: |

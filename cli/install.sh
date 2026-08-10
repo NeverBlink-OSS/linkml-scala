@@ -37,7 +37,7 @@ _linkml_scala_install() {
   local install_dir="${LINKML_SCALA_INSTALL_DIR:-$HOME/.local/bin}"
   local tag="${LINKML_SCALA_VERSION:-}"
   local tool os arch arch_suffix binary_name asset release_url tmp_dir
-  local release_info expected actual profile path_line answer
+  local latest_url expected actual profile path_line answer
 
   for tool in curl gzip mktemp; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -53,17 +53,24 @@ _linkml_scala_install() {
     return 1
   fi
 
-  # Resolve the release tag unless one was pinned.
+  # Resolve the release tag unless one was pinned. This follows the redirect that
+  # /releases/latest issues, rather than asking api.github.com, which rate-limits
+  # unauthenticated callers to 60 requests per hour per IP.
   if [ -z "$tag" ]; then
-    release_info=$(curl -fsSL "https://api.github.com/repos/$repo_base/releases/latest") || {
-      echo "Error: could not fetch the latest release info for $repo_base." >&2
+    latest_url=$(curl -fsSLI -o /dev/null -w '%{url_effective}' \
+      "https://github.com/$repo_base/releases/latest") || {
+      echo "Error: could not reach GitHub to determine the latest release." >&2
+      echo "Set LINKML_SCALA_VERSION to install a specific release instead." >&2
       return 1
     }
-    tag=$(printf '%s' "$release_info" | grep -o '"tag_name": *"[^"]*' | head -n 1 | sed 's/.*"//')
-    if [ -z "$tag" ]; then
-      echo "Error: could not determine the latest release tag." >&2
-      return 1
-    fi
+    case "$latest_url" in
+      */releases/tag/?*) tag="${latest_url##*/tag/}" ;;
+      *)
+        echo "Error: could not determine the latest release tag of $repo_base." >&2
+        echo "Set LINKML_SCALA_VERSION to install a specific release instead." >&2
+        return 1
+        ;;
+    esac
   fi
 
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
