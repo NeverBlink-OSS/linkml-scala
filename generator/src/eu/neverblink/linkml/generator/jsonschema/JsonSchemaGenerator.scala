@@ -92,28 +92,23 @@ class JsonSchemaGenerator(using sv: SchemaView) {
         case _: AnyView => Schema.Empty
         case ClassInlineAttributeView(_, _, classView, inlineType) =>
           val mappedClassName = className(classView)
+          val $ref = "#/$defs/".concat(mappedClassName)
           inlineType match {
             case InlineType.plain =>
-              new Schema(
-                $ref = new Some("#/$defs/".concat(mappedClassName)),
-              )
+              new Schema($ref = new Some($ref))
             case InlineType.optional =>
-              new Schema(
-                $ref = new Some("#/$defs/".concat(mappedClassName)),
-              ) // TODO LNK-34: or null
+              new Schema($ref = new Some($ref)) // TODO LNK-34: or null
             case InlineType.list =>
-              new Schema(
-                $ref = new Some("#/$defs/".concat(mappedClassName)),
-              ).arrayOf // TODO LNK-34: or null
+              new Schema($ref = new Some($ref)).arrayOf // TODO LNK-34: or null
             case InlineType.dict(CollectionForm.CompactDict(key)) =>
               needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
               new Schema(
-                $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
+                $ref = new Some($ref.concat("__identifier_optional")),
               ).dictOf // TODO LNK-34: or null
             case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
               needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
-              new Schema(
-                $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
+              new Schema($ref =
+                new Some($ref.concat("__simple_dict_value")),
               ).dictOf // TODO LNK-34: or null
           }
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
