@@ -167,7 +167,12 @@ def wrap(fragment: dict, carried: dict) -> dict | None:
     doc.update({k: copy.deepcopy(v) for k, v in carried.items()})
     for key, value in fragment.items():
         if key == "imports":
-            continue  # relative imports point at files that are not on disk
+            # `linkml:` imports resolve against the bundled metamodel, so keep them - a
+            # block using `linkml:extended_types` must be checked with it. Relative
+            # imports point at sibling files that do not exist here, so drop those.
+            keep = [i for i in value or [] if isinstance(i, str) and i.startswith("linkml:")]
+            doc["imports"] = list(dict.fromkeys(doc["imports"] + keep))
+            continue
         if key == "prefixes":
             doc["prefixes"] = {**doc["prefixes"], **value}
         elif key in ("slots", "settings") and isinstance(value, dict):

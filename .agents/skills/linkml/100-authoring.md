@@ -108,13 +108,29 @@ Everyday scalars: `string`, `integer`, `boolean`, `float`, `double`, `decimal`.
 
 Dates and times: `date`, `datetime`, `time`, `date_or_datetime`.
 
-Identifiers: `uri`, `uriorcurie`, `curie`, `ncname` (the prefix part of a CURIE),
-`objectidentifier` and `nodeidentifier` (an IRI, CURIE or blank node naming a node in a graph).
-
-Sized numerics: `int8`…`int64`, `uint8`…`uint64`, `float16`/`float32`/`float64`,
-`signedinteger`, `unsignedinteger`, `any_number`.
+Identifiers: `uri`, `uriorcurie`, `curie`, `ncname` (the prefix part of a CURIE).
 
 Validated string formats: `jsonpath`, `jsonpointer`, `sparqlpath`.
+
+Everything above comes from `linkml:types`. **Sized numerics live in a different schema** —
+`linkml:extended_types` — and importing only `linkml:types` makes them a fatal
+`Unknown reference`:
+
+```yaml
+imports:
+  - linkml:types
+  - linkml:extended_types
+classes:
+  Measurement:
+    attributes:
+      count:
+        range: uint32
+```
+
+That import adds `int8`…`int64`, `uint8`…`uint64`, `float16`/`float32`/`float64`,
+`signedinteger`, `unsignedinteger` and `any_number`. It is part of the upstream LinkML
+metamodel, not a linkml-scala extension, but it is new enough and obscure enough that other
+tooling may not handle these types — prefer plain `integer`/`float` unless the width matters.
 
 `structured_pattern` composes a regex from `settings:`, and is expanded at derivation time:
 

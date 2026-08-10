@@ -121,6 +121,7 @@ object ValidationReport {
     format match
       case Format.Plain => s"# $schemaName\n${renderPlain(issues)}"
       case Format.Terminal => renderTerminal(schemaName, issues)
+      case Format.Json => throw UnsupportedOperationException()
 
   private def totalSummary(reports: Seq[(String, Seq[Issue])], format: Format): String =
     import Ansi.*
@@ -139,6 +140,7 @@ object ValidationReport {
             val s = summarySeverity(all)
             (s.color, s.icon)
         s"  $color$bold$icon $text$reset"
+      case Format.Json => throw UnsupportedOperationException()
 
   private def renderPlain(issues: Seq[Issue]): String =
     if issues.isEmpty then "Schema is valid."
