@@ -33,6 +33,15 @@ object TsDefsGen {
        |  readonly __linkmlSchemaView: unique symbol;
        |}
        |
+       |/**
+       | * What loading a schema produced. There is always a report - loading is validating - and a
+       | * `view` unless the schema had fatal problems.
+       | */
+       |export interface LoadResult {
+       |  readonly view?: SchemaView;
+       |  readonly report: any;
+       |}
+       |
        |export interface ${exportedName}Api {
        |$members
        |}
@@ -91,6 +100,10 @@ object TsDefsGen {
           case "Boolean" => "boolean"
           case "Int" | "Long" | "Double" | "Float" => "number"
           case "js.Dictionary[String]" => "Record<string, string>"
+          // TODO: `js.Any` becomes an untyped `any`. Generating TS declarations from the LinkML
+          // model itself would let return values like the validation report be properly typed.
+          // https://github.com/NeverBlink-OSS/linkml-scala/issues/127
+          case "js.Any" | "js.Dynamic" => "any"
           case "SchemaViewJs" => "SchemaView"
           case other => other
         }

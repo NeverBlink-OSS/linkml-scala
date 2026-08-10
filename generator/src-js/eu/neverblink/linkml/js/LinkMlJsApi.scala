@@ -6,11 +6,12 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
 import eu.neverblink.linkml.generator.util.StringSink
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.schemaview.{StringImporter, SchemaView}
+import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReportImpl}
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
@@ -23,6 +24,15 @@ import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
   * [[LinkMlJsApi.loadFromString]] or [[LinkMlJsApi.loadFromPath]].
   */
 final class SchemaViewJs private[js] (private[js] val underlying: SchemaView)
+
+/** What loading a schema produced: always a validation report, and a usable handle if the schema
+  * could be loaded at all.
+  */
+@JSExportAll
+final class LoadResult private[js] (
+    val view: js.UndefOr[SchemaViewJs],
+    val report: js.Any,
+)
 
 @JSExportTopLevel("LinkML")
 @JSExportAll
@@ -45,11 +55,22 @@ object LinkMlJsApi {
     *   imports must be made available in the [[importMap]].
     * @param importMap
     *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+    * @param inferMessages
+    *   Whether to fill in each issue's human-readable `message` and `details`.
     * @return
-    *   An opaque [[SchemaView]] handle to pass to the generator functions.
+    *   The validation report, and a handle to pass to the generator functions unless the schema had
+    *   fatal problems.
     */
-  def loadFromString(mainSchema: String, importMap: js.Dictionary[String]): SchemaViewJs =
-    new SchemaViewJs(SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap)))
+  def loadFromString(
+      mainSchema: String,
+      importMap: js.Dictionary[String],
+      inferMessages: Boolean = true,
+  ): LoadResult =
+    loadResult(
+      SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap)),
+      runId = None,
+      inferMessages,
+    )
 
   /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path
     * into the [[importMap]].
@@ -69,11 +90,51 @@ object LinkMlJsApi {
     * @param importMap
     *   JS dictionary (object) containing a mapping from path to LinkML models (in YAML format),
     *   including the main schema itself under [[path]].
+    * @param inferMessages
+    *   Whether to fill in each issue's human-readable `message` and `details`.
     * @return
-    *   An opaque [[SchemaView]] handle to pass to the generator functions.
+    *   The validation report, and a handle to pass to the generator functions unless the schema had
+    *   fatal problems.
     */
-  def loadFromPath(path: String, importMap: js.Dictionary[String]): SchemaViewJs =
-    new SchemaViewJs(SchemaView.loadSchemaViewFromUri(path, JsImporter(importMap)))
+  def loadFromPath(
+      path: String,
+      importMap: js.Dictionary[String],
+      inferMessages: Boolean = true,
+  ): LoadResult =
+    loadResult(
+      SchemaView.loadSchemaViewFromUri(path, JsImporter(importMap)),
+      runId = Some(path),
+      inferMessages,
+    )
+
+  /** Turn a load outcome into a [[LoadResult]]. A schema that loaded is linted straight away, so
+    * that the report covers errors and warnings too - not just the fatals that blocked loading.
+    */
+  private def loadResult(
+      loaded: Either[Seq[SchemaFatal], SchemaView],
+      runId: Option[String],
+      inferMessages: Boolean,
+  ): LoadResult =
+    loaded match {
+      case Right(sv) =>
+        val issues = SchemaValidator(using sv).lintProblems
+        new LoadResult(new SchemaViewJs(sv), reportJson(issues, runId, inferMessages))
+      case Left(problems) =>
+        new LoadResult(js.undefined, reportJson(problems, runId, inferMessages))
+    }
+
+  /** Serialize issues as a `SchemaValidationReport`, as a plain JS object. */
+  private def reportJson(
+      issues: Seq[SchemaIssue],
+      runId: Option[String],
+      inferMessages: Boolean,
+  ): js.Any = {
+    val report = SchemaValidationReportImpl(
+      issues = if inferMessages then issues.map(_.infer()) else issues,
+      validationRunId = runId,
+    )
+    js.JSON.parse(JsonUtil.yamlToJson(Codec.codec.encode(report)))
+  }
 
   /** Generate JSON Schema from a loaded LinkML schema.
     * @param schema
@@ -239,21 +300,20 @@ object LinkMlJsApi {
       PruningMode(pruningMode, treeRoot.toOption),
     )
 
-  /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model.
+  /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This
+    * method returns a structured JSON that follows the validation-report.yaml model.
+    *
+    * TODO: consider typing the return value in TypeScript using a TypeScript generator. See:
+    * https://github.com/NeverBlink-OSS/linkml-scala/issues/127
     *
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param maxProblems
-    *   Maximum number of problems to include in the summary
-    * @param verbose
-    *   Whether to use the more verbose problem descriptions
+    * @param inferMessages
+    *   Whether to fill in each issue's human-readable `message` and `details` from the model's
+    *   `equals_expression`s. Turn it off to get only the structured fields.
     * @return
-    *   The summary of detected problems, or an empty string if everything is correct
+    *   A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean.
     */
-  def lint(
-      schema: SchemaViewJs,
-      maxProblems: Int = 5,
-      verbose: Boolean = false,
-  ): String =
-    schema.underlying.lint(maxProblems, verbose).getOrElse("")
+  def lint(schema: SchemaViewJs, inferMessages: Boolean = true): js.Any =
+    reportJson(SchemaValidator(using schema.underlying).lintProblems, None, inferMessages)
 }

@@ -37,7 +37,8 @@ classes:
 // Parse the schema once into a reusable handle. The second argument 
 // is an import map (filename -> YAML source) for any models referenced
 // via LinkML \`imports:\`. Pass {} when there are none.
-const view = LinkML.loadFromString(schema, {});
+const { view, report } = LinkML.loadFromString(schema, {});
+if (!view) throw new Error(JSON.stringify(report, null, 2)); // fatal problems: nothing to generate from
 
 // Then run any generator against the loaded schema.
 const jsonSchema = LinkML.jsonSchema(view);
@@ -60,7 +61,7 @@ There are two ways to load a schema into a `SchemaView` handle:
 
 ```js no-test
 // loadFromPath: the root lives in the import map under its own path.
-const view = LinkML.loadFromPath("model.yaml", {
+const { view } = LinkML.loadFromPath("model.yaml", {
   "model.yaml": schema,
   "person.yaml": personSchema, // referenced via `imports: - person`
 });
@@ -72,8 +73,8 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 
 | Function                                                             | Returns | Notes                                                        |
 |----------------------------------------------------------------------| --- |--------------------------------------------------------------|
-| `loadFromString(schema, importMap)`                                  | `SchemaView` | parse from YAML text; reuse the handle                       |
-| `loadFromPath(path, importMap)`                                      | `SchemaView` | parse from a path in the import map; cycle-safe for the root |
+| `loadFromString(schema, importMap, inferMessages?)`                  | `LoadResult` | parse from YAML text; `{ view?, report }`                    |
+| `loadFromPath(path, importMap, inferMessages?)`                      | `LoadResult` | parse from a path in the import map; cycle-safe for the root |
 | `jsonSchema(view, open?, treeRootOverride?)`                         | `string` | JSON Schema                                                  |
 | `shacl(view, open?, onlyClassesFromRootSchema?)`                     | `string` | SHACL shapes in N-Triples                                    |
 | `rdfs(view, onlyClassesFromRootSchema?)`                             | `string` | RDFS in N-Triples                                            |
@@ -81,7 +82,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `scala(view, packageName)`                                           | `Record<string, string>` | filename → generated Scala                                   |
 | `tableSchema(view, treeRoot?)`                                       | `string` | Frictionless Table Schema (JSON)                             |
 | `graphQl(view, pruningMode?, treeRoot?)`                             | `string` | GraphQL                                                      |
-| `lint(view, maxProblems?, verbose?)`                                 | `string` | problem summary, empty if valid                              |
+| `lint(view, inferMessages?)`                                         | `object` | `SchemaValidationReport` (JSON)                              |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

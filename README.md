@@ -56,6 +56,8 @@ LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
 ![linkml-scala validate CLI command](./docs/img/validate.gif)
 
+The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
+
 We engineered it to be as consistent as possible, so you are much less likely to run into "fun surprises" when using it with different generators. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
 
 In some cases, LinkML-Scala diverges from the Python implementation, or is missing some features. You can find the list of implementation differences [here](docs/implementation_differences.md). 

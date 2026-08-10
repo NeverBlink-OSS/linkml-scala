@@ -48,6 +48,13 @@ object LinkMlAliases extends Aliases {
     "metamodel.jvm.fix",
     "metamodel.jvm.reformat",
   )
+
+  def regenerateValidation: Seq[String] = alias(
+    "cli.jvm.run generate scala --to validation/src/eu/neverblink/linkml/validation/ " +
+      "--package eu.neverblink.linkml.validation model/issue-types.yaml",
+    "validation.jvm.fix",
+    "validation.jvm.reformat",
+  )
 }
 
 def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
@@ -189,10 +196,41 @@ object metamodel extends Module {
   }
 }
 
+/** The LinkML validation report model, generated into Scala by this project's own Scala generator.
+  *
+  * @note
+  *   The sources are checked in, because regenerating them needs `cli`, which transitively depends
+  *   on this module. If they ever stop compiling, revert them before running
+  *   `validation.regenerate`.
+  */
+object validation extends Module {
+  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
+    Task.Command(exclusive = true) {
+      AliasesModule.run(ev, "regenerateValidation")
+    }
+
+  object jvm extends CommonModule {
+    def moduleDeps = Seq(
+      build.yaml.jvm,
+    )
+
+    object test extends ScalaTests, CommonTestModule
+  }
+
+  object js extends NoBspModule, CommonScalaJSModule {
+    def moduleDeps = Seq(
+      build.yaml.js,
+    )
+
+    object test extends ScalaJSTests, CommonTestModule
+  }
+}
+
 object schemaview extends Module {
   object jvm extends SchemaViewModule {
     def moduleDeps = Seq(
       build.metamodel.jvm,
+      build.validation.jvm,
     )
 
     object test extends ScalaTests, CommonTestModule
@@ -201,6 +239,7 @@ object schemaview extends Module {
   object js extends SchemaViewModule, NoBspModule, CommonScalaJSModule {
     def moduleDeps = Seq(
       build.metamodel.js,
+      build.validation.js,
     )
 
     object test extends ScalaJSTests, CommonTestModule

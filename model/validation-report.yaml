@@ -1,0 +1,186 @@
+id: https://linkml.neverblink.eu/model/validation-report
+name: validation-report
+title: Schema for LinkML validation reports
+description: >-
+  A schema for validation reports of LinkML schemas. These reports are emitted by the
+  LinkML-Scala CLI (`linkml-scala validate --format json`) or via the JavaScript API.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  report: https://linkml.neverblink.eu/model/validation-report#
+default_prefix: report
+imports:
+  - linkml:types
+
+classes:
+  SchemaValidationReport:
+    title: Schema validation report
+    description: >-
+      A report of the validation of a LinkML schema.
+    tree_root: true
+    attributes:
+      validation_run_id:
+        range: string
+        title: validation run identifier
+        recommended: true
+        description: >-
+          Implementation-specific identifier of this validation run.
+          This can be, for example, the top-level file name of the schema being validated.
+          It is useful for multi-schema (batch) validation runs.
+      issues:
+        range: SchemaIssue
+        title: issues
+        description: >-
+          A list of issues found during the validation of the schema.
+        multivalued: true
+        required: true
+        inlined: true
+        inlined_as_list: true
+
+  SchemaIssue:
+    abstract: true
+    title: Schema issue
+    description: >-
+      A single issue found during the validation of a LinkML schema.
+    notes:
+      - >-
+        This class is intended to be subclassed for specific types of issues. The issues should
+        declare additional slots that are specific to the type of issue (e.g., name of class). 
+        The `message` and `details` slots should be specified in the subclass using `equals_expression` 
+        to provide a human-readable message describing the issue.
+      - >-
+        Do not subclass this class directly. Instead, subclass one of the following classes:
+        SchemaWarning, SchemaError, SchemaFatal.
+    attributes:
+      location:
+        range: IssueLocation
+        title: location
+        required: true
+        description: |
+          The location in the schema where the issue was found.
+      severity:
+        range: IssueSeverity
+        title: severity
+        required: true
+        description: |
+          The severity of the issue.
+        notes:
+          - >-
+            Subclasses should set this slot's default value using `ifabsent`. For example:
+            `IssueSeverity(FATAL)`
+      message:
+        range: string
+        title: message
+        description: Short, human-readable message describing the issue.
+        notes:
+          - This field is inferred using equals_expression and is present only if the consumer of the report wishes to include it.
+      details:
+        range: string
+        title: details
+        description: Longer, human-readable message describing the issue in more detail.
+        notes:
+          - This field is inferred using equals_expression and is present only if the consumer of the report wishes to include it.
+      # TODO LNK-172: type designators
+#      issue_type: # for now skip this
+#        designates_type: true
+#        range: string # this would be automatically filled with the class name on serialization
+
+  # Abstract subclasses of SchemaIssue for different severities of issues.
+  SchemaWarning:
+    is_a: SchemaIssue
+    abstract: true
+    slot_usage:
+      severity:
+        ifabsent: IssueSeverity(WARNING)
+
+  SchemaError:
+    is_a: SchemaIssue
+    abstract: true
+    slot_usage:
+      severity:
+        ifabsent: IssueSeverity(ERROR)
+
+  SchemaFatal:
+    is_a: SchemaIssue
+    abstract: true
+    slot_usage:
+      severity:
+        ifabsent: IssueSeverity(FATAL)
+
+  # Elements of a SchemaIssue.
+
+  IssueLocation:
+    title: Issue location
+    description: |
+      A location in a schema where an issue was found.
+    attributes:
+      schema_id:
+        range: uri
+        recommended: true
+        title: schema identifier
+        description: >-
+          The identifier of the schema in which the issue was found.
+          Always present, unless the issue pertains to the lack of the identifier itself.
+      json_pointer:
+        range: jsonpointer
+        recommended: true
+        title: JSON pointer
+        description: >-
+          A JSON pointer to the location in the schema where the issue was found.
+      code_region:
+        range: CodeRegion
+        recommended: true
+        title: code region
+        inline: true
+        description: >-
+          A region of code in the schema where the issue was found.
+
+  CodeRegion:
+    title: Code region
+    description: |
+      A region of code in a schema where an issue was found.
+      This class is a simplified (special case) version of the `region` object from the SARIF specification:
+      https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/sarif-v2.1.0-errata01-os-complete.html#_Toc141790935
+      
+      Indexing is 1-based.
+    attributes:
+      start_line:
+        range: integer
+        required: true
+        minimum_value: 1
+        title: start line
+        description: >-
+          The line number in the schema where the issue starts (1-based).
+      start_column:
+        range: integer
+        required: true
+        minimum_value: 1
+        title: start column
+        description: >-
+          The column number in the schema where the issue starts (1-based).
+      end_line:
+        range: integer
+        recommended: true
+        minimum_value: 1
+        title: end line
+        description: >-
+          The line number in the schema where the issue ends (1-based, inclusive).
+      end_column:
+        range: integer
+        recommended: true
+        minimum_value: 1
+        title: end column
+        description: >-
+          The column number in the schema where the issue ends (1-based, EXCLUSIVE).
+
+enums:
+  IssueSeverity:
+    title: Issue severity
+    description: >-
+      The severity of an issue found during the validation of a LinkML schema.
+    permissible_values:
+      FATAL:
+        description: A fatal error that prevents the schema from being loaded and validated further.
+      ERROR:
+        description: An error that prevents the schema from being valid.
+      WARNING:
+        description: A warning that indicates a potential issue with the schema.

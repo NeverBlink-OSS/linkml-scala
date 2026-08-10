@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.graphql
 
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
@@ -42,7 +43,9 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
     "generate the metamodel" in {
       val schema = {
         dummyQuery +
-          GraphQlGenerator(using SchemaView.loadSchemaViewFromUri("linkml:meta")).serialize()
+          GraphQlGenerator(using
+            SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta")),
+          ).serialize()
       }
 
       val result = parseOrThrow(schema)

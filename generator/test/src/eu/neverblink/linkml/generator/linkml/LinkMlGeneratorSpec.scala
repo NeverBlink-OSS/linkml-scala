@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.util.PruningMode.*
 import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.wordspec.AnyWordSpec
@@ -219,7 +220,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate the metamodel without errors" in {
-      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       SchemaView.single(
         LinkMlGenerator(using sv).generate(),
       ).lint() shouldBe empty
@@ -232,21 +233,21 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "serialize yaml format without errors" in {
-      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       LinkMlGenerator(using sv).serialize(outputFormat =
         LinkMlGenerator.OutputFormat.yaml,
       ).isEmpty shouldBe false
     }
 
     "serialize json format without errors" in {
-      val sv = SchemaView.loadSchemaViewFromUri("linkml:meta")
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       LinkMlGenerator(using sv).serialize(outputFormat =
         LinkMlGenerator.OutputFormat.json,
       ).isEmpty shouldBe false
     }
 
     "serialize strings that require double quoting in yaml using the json format without conversion them to null values" in {
-      val sv = SchemaView.loadSchemaViewFromString("""name: d3fend
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""name: d3fend
           |id: https://d3fend.mitre.org/ontologies/d3fend.owl
           |imports:
           |  linkml:types
@@ -256,7 +257,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           |    class_uri: d3f:ZeroClientComputer
           |    annotations:
           |      kb-article: "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
-          |""".stripMargin)
+          |""".stripMargin))
       LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json) shouldBe
         """{
         |  "name": "d3fend",
@@ -289,7 +290,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "serialize string values that look like numbers, booleans or nulls as strings" in {
-      val sv = SchemaView.loadSchemaViewFromString("""name: numeric_strings
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""name: numeric_strings
           |id: https://example.org/numeric-strings
           |title: "123"
           |description: "true"
@@ -297,7 +298,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           |classes:
           |  SomeClass:
           |    description: "3.14"
-          |""".stripMargin)
+          |""".stripMargin))
 
       LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json) shouldBe
         """{

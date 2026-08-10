@@ -77,6 +77,63 @@ class ValidateSpec extends AnyWordSpec, Matchers {
         }
       }
 
+      "serialize a SchemaValidationReport for --format json" in {
+        withSchema(schemaWithIssues) { path =>
+          val (out, _) = Validate.runTestCommand(List("validate", "--format", "json", path))
+
+          // One report object per input file, wrapped in an array.
+          out.trim should startWith("[")
+          out.trim should endWith("]")
+          out should include("\"issues\"")
+          out should include(s"\"validation_run_id\": \"$path\"")
+          out should include("\"severity\": \"ERROR\"")
+          out should include("\"severity\": \"WARNING\"")
+          // The inferred messages are included, keyed by their LinkML slot names.
+          out should include("\"message\"")
+          out should include("Invalid URI or CURIE 'not a curie!' in class 'SomeClass'")
+          out should include("No 'tree_root' class is defined in the schema")
+          // Structured fields, not just prose.
+          out should include("\"element_name\": \"SomeClass\"")
+          out should include("\"element_type\": \"class\"")
+          out should include("\"schema_id\": \"https://neverblink.eu/test/\"")
+          // No display chrome
+          out should not include "ERROR:"
+          out should not include "1 error, 1 warning"
+        }
+      }
+
+      "emit one JSON report per input file, tagged with the name the user gave" in {
+        withSchemas(schemaWithIssues, validSchema) { paths =>
+          val (out, _) = Validate.runTestCommand(List("validate", "--format", "json") ++ paths)
+          // JSON is valid YAML, so reuse the parser already on the classpath.
+          import org.virtuslab.yaml.Node
+          val reports = org.virtuslab.yaml.parseYaml(out).toOption.get
+            .asInstanceOf[Node.SequenceNode].nodes.map(_.asInstanceOf[Node.MappingNode])
+
+          def slot(report: Node.MappingNode, name: String): Option[Node] =
+            report.mappings.collectFirst {
+              case (k: Node.ScalarNode, v) if k.value == name => v
+            }
+
+          reports should have size 2
+          // The run id is the input name verbatim, in input order.
+          reports.map(r => slot(r, "validation_run_id").map(_.asInstanceOf[Node.ScalarNode].value))
+            .shouldBe(paths.map(Some(_)))
+          // First file has the issues, second is clean.
+          slot(reports.head, "issues").get
+            .asInstanceOf[Node.SequenceNode].nodes should not be empty
+          slot(reports(1), "issues").get.asInstanceOf[Node.SequenceNode].nodes shouldBe empty
+        }
+      }
+
+      "still exit non-zero for --format json" in {
+        withSchema(schemaWithIssues) { path =>
+          val (_, _, code) =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "json", path))
+          code shouldBe 1
+        }
+      }
+
       "not print the ugly Uri(...) wrapper for the defining schema id" in {
         withSchema(schemaWithIssues) { path =>
           val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))

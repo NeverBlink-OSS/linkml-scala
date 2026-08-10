@@ -5,6 +5,7 @@ import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
 import org.openjdk.jmh.infra.Blackhole
@@ -33,12 +34,12 @@ class GeneratorBench extends CommonParams {
     yaml = Using.resource(getClass.getResourceAsStream(s"/schemas/$schema")) { in =>
       Source.fromInputStream(in, "UTF-8").mkString
     }
-    schemaView = SchemaView.loadSchemaViewFromString(yaml)
+    schemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
   }
 
   @Benchmark
   def jsonSchemaFromYaml(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
+    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
     bh.consume(JsonSchemaGenerator().serialize())
   }
 
@@ -56,7 +57,7 @@ class GeneratorBench extends CommonParams {
 
   @Benchmark
   def shaclFromYaml(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
+    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
     writeShacl(bh)
   }
 
@@ -86,7 +87,7 @@ class GeneratorBench extends CommonParams {
 
   @Benchmark
   def linkmlFromYaml(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaView.loadSchemaViewFromString(yaml)
+    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
     bh.consume(LinkMlGenerator().serialize())
   }
 

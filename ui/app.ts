@@ -2,7 +2,7 @@ import type { EditorView } from "@codemirror/view";
 import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
 // LinkML API types generated from the Scala facade (`./mill uiTypes` → linkml.d.ts).
 // Type-checking the UI against these catches drift when LinkMlJsApi.scala changes.
-import type { LinkMLApi, SchemaView } from "./linkml";
+import type { LinkMLApi, LoadResult, SchemaView } from "./linkml";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 const LINKML_BUNDLE_URL = "./linkml.js";
@@ -78,12 +78,41 @@ interface Option {
   default?: string | number | boolean;
 }
 
+/** Shape of the `SchemaValidationReport` that `LinkML.lint` returns.
+ *
+ * Hand-written because the API is untyped for now - see the TODO on `LinkMlJsApi.lint`. Everything
+ * is optional: the serializer omits slots that are empty or equal to their default.
+ */
+interface CodeRegion {
+  start_line?: number;
+  start_column?: number;
+}
+interface IssueLocation {
+  schema_id?: string;
+  json_pointer?: string;
+  code_region?: CodeRegion;
+}
+interface ReportIssue {
+  severity?: string;
+  message?: string;
+  details?: string;
+  location?: IssueLocation;
+}
+interface ValidationReport {
+  validation_run_id?: string;
+  issues?: ReportIssue[];
+}
+
+type TargetResult = string | Record<string, string> | ValidationReport;
+
 interface Target {
   id: string;
   label: string;
   options: Option[];
   lang: OutputLang | ((o: OptionValues) => OutputLang);
-  call: (view: SchemaView, o: OptionValues) => string | Record<string, string>;
+  /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`. */
+  view?: "report";
+  call: (view: SchemaView, o: OptionValues) => TargetResult;
 }
 
 type OptionValues = Record<string, string | number | boolean>;
@@ -158,12 +187,12 @@ const TARGETS: Target[] = [
   {
     id: "lint",
     label: "Lint",
-    lang: "text",
+    lang: "json",
+    view: "report",
     options: [
-      { key: "maxProblems", type: "number", label: "Max problems", default: 5 },
-      { key: "verbose", type: "checkbox", label: "Verbose" },
+      { key: "inferMessages", type: "checkbox", label: "Messages", default: true },
     ],
-    call: (v, o) => api().lint(v, Number(o.maxProblems) || 5, !!o.verbose),
+    call: (v, o) => api().lint(v, !!o.inferMessages) as ValidationReport,
   },
 ];
 
@@ -180,16 +209,22 @@ const optionValues: Record<string, OptionValues> = Object.fromEntries(
 );
 let scalaFiles: Record<string, string> | null = null;
 let activeScalaFile: string | null = null;
+// The validation report is rendered as DOM rather than into the output editor, so keep a
+// plain-text rendition of it around for the Copy button. Non-null exactly while the report
+// is the visible view.
+let reportText: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
 // Parse the schema once and reuse the SchemaView across target/option changes,
 // only re-parse when the input text actually changes.
-let cachedSchema: { text: string; view: SchemaView } | null = null;
+let cachedSchema: { text: string; loaded: LoadResult } | null = null;
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
 const $fileTabs = $("fileTabs");
+const $reportView = $("reportView");
+const $outputEditorHost = $("outputEditor");
 const $targetTabs = $("targetTabs");
 const $optionsRow = $("optionsRow");
 const $generateBtn = $<HTMLButtonElement>("generateBtn");
@@ -302,6 +337,7 @@ function renderOptions(): void {
 
 function showOutputText(text: string, lang: OutputLang): void {
   scalaFiles = null;
+  hideReport();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.remove("cm-output--error");
@@ -310,14 +346,147 @@ function showOutputText(text: string, lang: OutputLang): void {
 
 function showOutputError(text: string): void {
   scalaFiles = null;
+  hideReport();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.add("cm-output--error");
   setOutput(outputView, text, "text");
 }
 
+// ── Validation report ───────────────────────────────────────────────────────
+
+/** Most severe first, so the report reads top-down in order of urgency. */
+const SEVERITY_ORDER = ["FATAL", "ERROR", "WARNING"];
+
+function severityRank(issue: ReportIssue): number {
+  const i = SEVERITY_ORDER.indexOf(String(issue.severity ?? "").toUpperCase());
+  return i === -1 ? SEVERITY_ORDER.length : i;
+}
+
+/** e.g. "1 error, 2 warnings" - counts per severity, most severe first, only non-zero. */
+function severitySummary(issues: ReportIssue[]): string {
+  const parts: string[] = [];
+  for (const sev of SEVERITY_ORDER) {
+    const n = issues.filter((i) => String(i.severity ?? "").toUpperCase() === sev).length;
+    if (n === 0) continue;
+    const noun = sev === "FATAL" ? "fatal error" : sev.toLowerCase();
+    parts.push(`${n} ${noun}${n === 1 ? "" : "s"}`);
+  }
+  const unknown = issues.length - parts.reduce((a, p) => a + Number(p.split(" ")[0]), 0);
+  if (unknown > 0) parts.push(`${unknown} other`);
+  return parts.join(", ");
+}
+
+/** Where an issue was found, as a single compact line. */
+function locationLabel(location?: IssueLocation): string {
+  if (!location) return "";
+  const bits: string[] = [];
+  if (location.json_pointer) bits.push(location.json_pointer);
+  const region = location.code_region;
+  if (region?.start_line) {
+    bits.push(`line ${region.start_line}${region.start_column ? `:${region.start_column}` : ""}`);
+  }
+  if (!bits.length && location.schema_id) bits.push(location.schema_id);
+  return bits.join(" · ");
+}
+
+function hideReport(): void {
+  $reportView.hidden = true;
+  $reportView.innerHTML = "";
+  reportText = null;
+  $outputEditorHost.hidden = false;
+}
+
+function showReport(report: ValidationReport): void {
+  scalaFiles = null;
+  $fileTabs.hidden = true;
+  $fileTabs.innerHTML = "";
+  outputView.dom.classList.remove("cm-output--error");
+  $outputEditorHost.hidden = true;
+  $reportView.hidden = false;
+  $reportView.innerHTML = "";
+
+  const issues = [...(report.issues ?? [])].sort((a, b) => severityRank(a) - severityRank(b));
+
+  const summary = document.createElement("div");
+  summary.className = "report-summary" +
+    (issues.length === 0 ? " report-summary--ok" : ` report-summary--${severityClass(issues[0]!)}`);
+  summary.textContent = issues.length === 0
+    ? "Schema is valid."
+    : severitySummary(issues);
+  $reportView.appendChild(summary);
+
+  const textLines: string[] = [summary.textContent];
+
+  for (const issue of issues) {
+    const item = document.createElement("article");
+    item.className = `report-item report-item--${severityClass(issue)}`;
+
+    const head = document.createElement("div");
+    head.className = "report-item-head";
+
+    const badge = document.createElement("span");
+    badge.className = "report-badge";
+    badge.textContent = String(issue.severity ?? "ISSUE").toUpperCase();
+    head.appendChild(badge);
+
+    const message = document.createElement("span");
+    message.className = "report-message";
+    // With messages turned off there is nothing human-readable, so fall back to the raw slots.
+    message.textContent = issue.message ?? rawSummary(issue);
+    head.appendChild(message);
+    item.appendChild(head);
+
+    const issueLines = [`${badge.textContent} ${message.textContent}`];
+
+    const where = locationLabel(issue.location);
+    if (where) {
+      const loc = document.createElement("div");
+      loc.className = "report-location";
+      loc.textContent = where;
+      item.appendChild(loc);
+      issueLines.push(`  at ${where}`);
+    }
+
+    if (issue.details && issue.details !== issue.message) {
+      const details = document.createElement("p");
+      details.className = "report-details";
+      details.textContent = issue.details;
+      item.appendChild(details);
+      issueLines.push(`  ${issue.details}`);
+    }
+
+    $reportView.appendChild(item);
+    textLines.push(issueLines.join("\n"));
+  }
+
+  reportText = textLines.join("\n\n");
+}
+
+function severityClass(issue: ReportIssue): string {
+  const sev = String(issue.severity ?? "").toUpperCase();
+  return SEVERITY_ORDER.includes(sev) ? sev.toLowerCase() : "other";
+}
+
+/** Describe an issue that carries no `message`, from whatever structured slots it does have.
+ *
+ * Multivalued slots arrive as arrays, so join them rather than dropping them. Nested objects (only
+ * `location`, which is shown separately) are skipped.
+ */
+function rawSummary(issue: ReportIssue): string {
+  const slots = Object.entries(issue)
+    .filter(([k]) => k !== "severity" && k !== "location")
+    .flatMap(([k, v]) => {
+      if (Array.isArray(v)) return [`${k}: ${v.map(String).join(", ")}`];
+      if (v !== null && typeof v === "object") return [];
+      return [`${k}: ${String(v)}`];
+    });
+  return slots.length ? slots.join(", ") : "(no message)";
+}
+
 function showScalaFiles(dict: Record<string, string>): void {
   scalaFiles = dict;
+  hideReport();
   const names = Object.keys(dict);
   if (!activeScalaFile || !names.includes(activeScalaFile)) activeScalaFile = names[0] ?? null;
 
@@ -367,14 +536,25 @@ function runGenerate(): void {
   try {
     // The empty object is the import map (filename -> YAML). The UI has no extra imports.
     if (!cachedSchema || cachedSchema.text !== schema) {
-      cachedSchema = { text: schema, view: api().loadFromString(schema, {}) };
+      cachedSchema = { text: schema, loaded: api().loadFromString(schema, {}) };
     }
-    const result = target.call(cachedSchema.view, optionValues[target.id]!);
+    const { view, report } = cachedSchema.loaded;
     const elapsed = Math.round(performance.now() - start);
-    if (typeof result === "object") {
-      showScalaFiles(result);
+
+    // Fatal problems mean there is no view to generate from, so every target shows the report.
+    if (!view) {
+      showReport(report as ValidationReport);
+      setStatus(false, `${elapsed}ms`);
+      return;
+    }
+
+    const result = target.call(view, optionValues[target.id]!);
+    if (target.view === "report") {
+      showReport(result as ValidationReport);
+    } else if (typeof result === "object") {
+      showScalaFiles(result as Record<string, string>);
     } else {
-      showOutputText(result || "Schema is clean", targetLang(target));
+      showOutputText((result as string) || "Schema is clean", targetLang(target));
     }
     setStatus(true, `${elapsed}ms`);
   } catch (e) {
@@ -401,7 +581,9 @@ $clearInput.addEventListener("click", () => {
 });
 
 $copyOutput.addEventListener("click", async () => {
-  const text = outputView.state.doc.toString();
+  // While the report is shown the output editor is hidden and still holds the previously
+  // generated target's text, so copying it would hand back content from another tab.
+  const text = reportText ?? outputView.state.doc.toString();
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);

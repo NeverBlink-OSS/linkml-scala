@@ -7,6 +7,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import io.circe.parser.parse as parseJson
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -69,7 +70,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
         val name = dataset.last
         s"produce well-formed output for benchmark schema '$name'" when {
           lazy val sv: SchemaView =
-            SchemaView.loadSchemaViewFromUri((dataset / "main.yaml").toString)
+            SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri((dataset / "main.yaml").toString))
 
           "JSON Schema output parses as JSON" in {
             assume(!skip.contains((name, "json-schema")), skip.getOrElse((name, "json-schema"), ""))

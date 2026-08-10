@@ -1,6 +1,14 @@
 package eu.neverblink.linkml.cli
 
-import eu.neverblink.linkml.schemaview.SchemaProblem
+import eu.neverblink.linkml.generator.util.JsonUtil
+import org.virtuslab.yaml.Node
+import eu.neverblink.linkml.schemaview.SchemaIssues
+import eu.neverblink.linkml.validation.{
+  Codec,
+  IssueSeverity,
+  SchemaIssue,
+  SchemaValidationReportImpl,
+}
 
 /** ANSI escape codes for the terminal report. Kept private to this file. */
 private object Ansi {
@@ -28,14 +36,18 @@ object ValidationReport {
     /** Bare `LEVEL: message` lines for machine consumption. */
     case Plain
 
+    /** A `SchemaValidationReport` serialized as JSON. */
+    case Json
+
   object Format:
     def parse(s: String): Option[Format] = s.toLowerCase match
       case "terminal" => Some(Terminal)
       case "plain" => Some(Plain)
+      case "json" => Some(Json)
       case _ => None
 
     /** Human-readable list of the supported values, for help / error messages. */
-    val supported: String = "terminal|plain"
+    val supported: String = "terminal|plain|json"
 
   /** Severity of an issue. Declaration order is display / sort order (most severe first). */
   enum Severity(val label: String, val icon: String, val color: String):
@@ -45,41 +57,65 @@ object ValidationReport {
 
   final case class Issue(severity: Severity, message: String)
 
-  /** Map structured schema problems to display issues. */
-  def issuesOf(problems: Seq[SchemaProblem]): Seq[Issue] =
-    problems.map { p =>
-      val severity = p match
-        case _: SchemaProblem.Fatal => Severity.Fatal
-        case _: SchemaProblem.Error => Severity.Error
-        case _: SchemaProblem.Warning => Severity.Warning
-      Issue(severity, p.description)
+  /** Map structured schema issues to display issues. */
+  def issuesOf(problems: Seq[SchemaIssue]): Seq[Issue] =
+    problems.map(_.infer()).map { p =>
+      val severity = p.severity match
+        case IssueSeverity.Fatal => Severity.Fatal
+        case IssueSeverity.Error => Severity.Error
+        case IssueSeverity.Warning => Severity.Warning
+      Issue(severity, SchemaIssues.description(p))
     }
 
-  /** Render a full validation report.
+  /** Render a full validation report in one of the human-readable formats.
     *
     * @param schemaName
     *   Name of the validated schema, shown in the terminal header.
     * @param issues
     *   The issues found; empty means the schema is valid.
     * @param format
-    *   The output format.
+    *   The output format. [[Format.Json]] is handled by [[renderAll]], which needs the structured
+    *   issues rather than the display ones.
     */
-  def render(schemaName: String, issues: Seq[Issue], format: Format): String =
+  private def render(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match
       case Format.Plain => renderPlain(issues)
       case Format.Terminal => renderTerminal(schemaName, issues)
+      case Format.Json => throw UnsupportedOperationException()
 
   /** Render the reports for a whole set of schemas, one `(name, issues)` pair each.
     *
     * A single schema renders exactly as [[render]] does. With more than one, every block is labeled
-    * with its file name and a combined summary is appended.
+    * with its file name and a combined summary is appended. JSON always produces one report per
+    * input file, in input order, even for a single file.
     */
-  def renderAll(reports: Seq[(String, Seq[Issue])], format: Format): String =
-    reports match
-      case Seq((name, issues)) => render(name, issues, format)
+  def renderAll(reports: Seq[(String, Seq[SchemaIssue])], format: Format): String =
+    format match
+      case Format.Json => renderJson(reports)
       case _ =>
-        val blocks = reports.map((name, issues) => renderBlock(name, issues, format))
-        (blocks :+ totalSummary(reports, format)).mkString("\n\n")
+        val display = reports.map((name, issues) => name -> issuesOf(issues))
+        display match
+          case Seq((name, issues)) => render(name, issues, format)
+          case _ =>
+            val blocks = display.map((name, issues) => renderBlock(name, issues, format))
+            (blocks :+ totalSummary(display, format)).mkString("\n\n")
+
+  /** Serialize one [[SchemaValidationReportImpl]] per input file, in input order, as a JSON array.
+    *
+    * The run id is the input name exactly as the user gave it on the command line, so that a report
+    * can be traced back to the file it came from. The messages are inferred, so that a consumer of
+    * the JSON gets them without having to know the expressions.
+    */
+  private def renderJson(reports: Seq[(String, Seq[SchemaIssue])]): String =
+    val nodes = reports.map { (inputName, issues) =>
+      Codec.codec.encode(
+        SchemaValidationReportImpl(
+          issues = issues.map(_.infer()),
+          validationRunId = Some(inputName),
+        ),
+      )
+    }
+    JsonUtil.yamlToJson(Node.SequenceNode(nodes*))
 
   private def renderBlock(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match

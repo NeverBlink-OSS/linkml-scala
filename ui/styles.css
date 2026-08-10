@@ -479,3 +479,99 @@ body { background: var(--bg); }
   .footer-links { display: none; }
   .app-footer { justify-content: flex-start; }
 }
+
+/* ── Validation report ─────────────────────────────────────────────────────── */
+
+.report {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.report[hidden] { display: none; }
+
+.report-summary {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.report-summary--ok {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: var(--success);
+}
+.report-summary--fatal,
+.report-summary--error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+.report-summary--warning {
+  color: var(--orange);
+  background: rgba(209, 154, 102, 0.14);
+  border-color: rgba(209, 154, 102, 0.4);
+}
+
+.report-item {
+  border: 1px solid var(--border-subtle);
+  border-left: 3px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.report-item--fatal { border-left-color: var(--danger); }
+.report-item--error { border-left-color: var(--danger); }
+.report-item--warning { border-left-color: var(--orange); }
+
+.report-item-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.report-badge {
+  flex-shrink: 0;
+  font-family: var(--code-font);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: var(--tag-bg);
+  color: var(--tag-text);
+}
+.report-item--fatal .report-badge,
+.report-item--error .report-badge { background: var(--danger-soft); color: var(--danger); }
+.report-item--warning .report-badge { background: rgba(209, 154, 102, 0.16); color: var(--orange); }
+
+.report-message {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.report-location {
+  font-family: var(--code-font);
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.report-details {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}

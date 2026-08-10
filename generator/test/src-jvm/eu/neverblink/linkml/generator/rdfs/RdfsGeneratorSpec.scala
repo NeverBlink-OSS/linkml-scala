@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
+import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
@@ -12,7 +13,7 @@ import java.io.StringReader
 class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
   "RdfsGenerator" should {
     def loadWithImports(schemaYaml: String): SchemaView =
-      SchemaView.loadSchemaViewFromString(schemaYaml)
+      SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
 
     // Shared part of the schema
     val schemaShared =
@@ -245,7 +246,9 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "include imported classes by default" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
+      )
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_))
       turtle should include("linkml:Annotatable a rdfs:Class")
       turtle should include("linkml:Annotation a rdfs:Class")
@@ -257,7 +260,9 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "not include imported classes when onlyClassesFromRootSchema=true" in {
-      val sv = SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations")
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
+      )
       val turtle =
         RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_, onlyClassesFromRootSchema = true))
       turtle should include("linkml:Annotatable a rdfs:Class")
