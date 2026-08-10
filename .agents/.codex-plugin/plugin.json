@@ -1,0 +1,40 @@
+{
+  "name": "linkml",
+  "version": "0.1.0",
+  "description": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, bootstrapping from RDFS/OWL/SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
+  "author": {
+    "name": "NeverBlink",
+    "url": "https://neverblink.eu"
+  },
+  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/.agents/skills/linkml",
+  "repository": "https://github.com/NeverBlink-OSS/linkml-scala",
+  "license": "Apache-2.0",
+  "keywords": [
+    "linkml",
+    "schema",
+    "json-schema",
+    "shacl",
+    "rdf",
+    "data-modelling",
+    "validation",
+    "code-generation"
+  ],
+  "skills": "./skills",
+  "interface": {
+    "displayName": "LinkML",
+    "shortDescription": "Author and validate LinkML schemas with linkml-scala.",
+    "longDescription": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, bootstrapping from RDFS/OWL/SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
+    "developerName": "NeverBlink",
+    "category": "Development",
+    "capabilities": [
+      "Skills"
+    ],
+    "websiteURL": "https://github.com/NeverBlink-OSS/linkml-scala",
+    "defaultPrompt": [
+      "Create a LinkML schema for this data",
+      "Validate and review my LinkML schema",
+      "Convert this SHACL/JSON Schema into LinkML"
+    ],
+    "brandColor": "#8A2BE2"
+  }
+}
