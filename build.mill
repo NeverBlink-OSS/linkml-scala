@@ -394,7 +394,7 @@ object cli extends Module {
 
     override def mainClass = Some(nativeImageMainClass())
 
-    def nativeImageMainClass = "eu.neverblink.linkml.cli.App"
+    def nativeImageMainClass = "eu.neverblink.linkml.cli.Main"
 
     def nativeImageName = "linkml-scala"
 
