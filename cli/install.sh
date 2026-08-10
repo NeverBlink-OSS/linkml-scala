@@ -15,6 +15,9 @@
 #   LINKML_SCALA_VERSION           Release tag to install, e.g. v0.12.0 (default: latest).
 #   LINKML_SCALA_INSTALL_DIR       Where to put the binary (default: $HOME/.local/bin).
 #   LINKML_SCALA_REQUIRE_CHECKSUM  Set to 1 to abort if the release publishes no SHA256SUMS.
+#   LINKML_SCALA_REQUIRE_ATTESTATION  Set to 1 to abort unless the build provenance verifies.
+#                                  Needs the GitHub CLI, recent enough to read the current
+#                                  Sigstore trust root.
 #   LINKML_SCALA_MODIFY_PROFILE    Preset the "add to PATH?" answer (1/yes to accept,
 #                                  anything else to decline). Skips the prompt.
 #
@@ -37,7 +40,7 @@ _linkml_scala_install() {
   local install_dir="${LINKML_SCALA_INSTALL_DIR:-$HOME/.local/bin}"
   local tag="${LINKML_SCALA_VERSION:-}"
   local tool os arch arch_suffix binary_name asset release_url tmp_dir
-  local latest_url expected actual profile path_line answer
+  local latest_url expected actual attestation profile path_line answer
 
   for tool in curl gzip mktemp; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -145,12 +148,39 @@ _linkml_scala_install() {
   fi
 
   # Best effort: Sigstore-backed proof that these bytes came out of the release workflow.
+  # gh exits 1 for every problem alike - a missing attestation, a stale gh that cannot
+  # parse the Sigstore trust root, no auth, a genuine mismatch - so branch on what it
+  # actually said. Reporting all of those as "no provenance" hides the ones that matter.
   if command -v gh >/dev/null 2>&1; then
-    if gh attestation verify "$tmp_dir/$asset.gz" --repo "$repo_base" >/dev/null 2>&1; then
+    if attestation=$(gh attestation verify "$tmp_dir/$asset.gz" --repo "$repo_base" 2>&1); then
       echo "Build provenance verified with gh attestation."
     else
-      echo "Note: no build provenance found for $tag (older releases have none)." >&2
+      case "$attestation" in
+        *"HTTP 404"* | *"no attestations found"*)
+          # Releases up to and including v0.12.0 predate the attestation.
+          echo "Note: release $tag publishes no build provenance (older releases have none)." >&2
+          ;;
+        *)
+          echo "Warning: the build provenance of $tag could not be checked. gh reported:" >&2
+          printf '%s\n' "$attestation" | sed '/^[[:space:]]*$/d; s/^/  /' >&2
+          echo "This is most often an out-of-date gh that cannot read the current Sigstore" >&2
+          echo "trust root; upgrading gh usually fixes it. The checksum above still matched," >&2
+          echo "but to check the provenance itself, re-run:" >&2
+          echo "  gh attestation verify <file> --repo $repo_base" >&2
+          ;;
+      esac
+      if [ "${LINKML_SCALA_REQUIRE_ATTESTATION:-}" = "1" ]; then
+        echo "Error: LINKML_SCALA_REQUIRE_ATTESTATION=1 was set, so an unverified build" >&2
+        echo "provenance is fatal. Refusing to install." >&2
+        rm -rf "$tmp_dir"
+        return 1
+      fi
     fi
+  elif [ "${LINKML_SCALA_REQUIRE_ATTESTATION:-}" = "1" ]; then
+    echo "Error: LINKML_SCALA_REQUIRE_ATTESTATION=1 was set but 'gh' was not found, so the" >&2
+    echo "build provenance cannot be checked. Refusing to install." >&2
+    rm -rf "$tmp_dir"
+    return 1
   fi
 
   if ! gzip -d -f "$tmp_dir/$asset.gz"; then

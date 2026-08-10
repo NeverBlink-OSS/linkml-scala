@@ -50,6 +50,22 @@ jobs:
           LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/linkml-exec" bash ./cli/install.sh
           "$RUNNER_TEMP/linkml-exec/linkml-scala" --version
 
+      # Runners ship a current gh, so the strict path must actually verify. Guards both
+      # halves: that our releases really carry provenance, and that install.sh reports a
+      # successful check as such instead of shrugging it off.
+      - name: Install with build provenance required
+        env:
+          GH_TOKEN: ${{ github.token }} # gh attestation verify calls the API
+        run: |
+          OUTPUT=$(LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/linkml-attest" \
+            LINKML_SCALA_REQUIRE_ATTESTATION=1 bash ./cli/install.sh 2>&1)
+          echo "$OUTPUT"
+          if ! echo "$OUTPUT" | grep -Fq "Build provenance verified"; then
+            echo "Error: expected the provenance check to succeed."
+            exit 1
+          fi
+          "$RUNNER_TEMP/linkml-attest/linkml-scala" --version
+
       # A sourced install.sh must never terminate the caller's shell.
       # `set +e` mirrors an interactive shell, which is the case that matters. It also keeps
       # the check portable: bash 3.2 (the /bin/bash on macOS runners) does not extend the
