@@ -27,7 +27,7 @@ jobs:
       fail-fast: false
       matrix:
         # Every platform with a published release asset that install.sh supports.
-        os: [ ubuntu-latest, ubuntu-22.04-arm, macos-14 ]
+        os: [ ubuntu-latest, ubuntu-22.04-arm, macos-14, macos-15-intel ]
     defaults:
       run:
         shell: bash
