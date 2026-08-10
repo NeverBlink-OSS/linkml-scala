@@ -5,6 +5,12 @@ import caseapp.core.commandparser.RuntimeCommandParser
 
 import java.io.PrintStream
 
+/** The launcher entry point.
+  */
+object Main {
+  def main(args: Array[String]): Unit = new App().main(args)
+}
+
 final class App private[cli] (
     testMode: Boolean,
     outStream: PrintStream,

@@ -1,0 +1,38 @@
+# Validate LinkML schemas on every push and pull request.
+#
+# Adapt before using:
+#   - `files`: where your schemas live.
+#   - `imports`: only needed if your schemas use `imports:`. Point it at the directory
+#     holding the imported files, keyed by the path used in `imports:`.
+#   - `strict`: recommended for published schemas. Warnings such as a missing `tree_root`
+#     degrade every generated artifact, so failing on them is usually right.
+#
+# Problems are posted as annotations on the pull request's "Files changed" tab.
+name: Validate schemas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel superseded runs on the same ref - schema validation is quick, but there is no
+# point queueing five runs for five pushes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: linkml-scala validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: NeverBlink-OSS/linkml-scala-action@v1
+        with:
+          files: "schemas/**/*.yaml"
+          # imports: "schemas"
+          strict: true

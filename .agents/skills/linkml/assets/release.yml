@@ -1,0 +1,84 @@
+# Publish a release when a version tag is pushed: validate the schemas, generate every
+# artifact, and attach them all to the GitHub release.
+#
+# Adapt before using:
+#   - `files` and `imports` in both jobs, to match your layout.
+#   - the `generator` matrix: drop anything nobody consumes. `linkml` is worth keeping -
+#     it emits a single self-contained schema with imports resolved and slots
+#     materialised, which downstream consumers can read without any LinkML tooling.
+#
+# Trigger with:  git tag v1.0.0 && git push origin v1.0.0
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  # Never build a release from a schema that does not pass strict validation.
+  validate:
+    name: Validate before release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: NeverBlink-OSS/linkml-scala-action@v1
+        with:
+          files: "schemas/**/*.yaml"
+          # imports: "schemas"
+          strict: true
+
+  generate:
+    name: Generate ${{ matrix.generator }}
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        generator: [json-schema, shacl, rdfs, table-schema, linkml]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: NeverBlink-OSS/linkml-scala-action@v1
+        with:
+          command: generate
+          generator: ${{ matrix.generator }}
+          files: "schemas/**/*.yaml"
+          # imports: "schemas"
+          output: build/${{ matrix.generator }}
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.generator }}
+          path: build/${{ matrix.generator }}
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: generate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to create the release. Nothing else is needed.
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      # One archive per generator, so a consumer downloads only what they need.
+      - name: Package each generator's output
+        run: |
+          mkdir -p dist
+          for dir in artifacts/*/; do
+            name=$(basename "$dir")
+            tar -czf "dist/$name.tar.gz" -C "$dir" .
+            echo "packaged $name"
+          done
+          ls -l dist
+
+      - uses: softprops/action-gh-release@v3
+        with:
+          files: dist/*
+          generate_release_notes: true

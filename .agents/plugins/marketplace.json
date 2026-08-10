@@ -1,0 +1,19 @@
+{
+  "name": "linkml-scala",
+  "interface": {
+    "displayName": "LinkML (linkml-scala)"
+  },
+  "plugins": [
+    {
+      "name": "linkml",
+      "source": {
+        "source": "local",
+        "path": "./.agents"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Development"
+    }
+  ]
+}

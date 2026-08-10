@@ -23,6 +23,56 @@ jobs:
         run: ./mill --no-server __.jvm.checkFormat
 
 
+  skills-check:
+    name: Agent skills
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM and Mill
+        uses: coursier/setup-action@v3
+        with:
+          jvm: temurin:17
+          apps: mill
+
+      - name: Install PyYAML
+        run: pip install --quiet pyyaml
+
+      # check.py validates every schema example in the skill against the real validator.
+      - name: Build the CLI and put it on PATH
+        run: |
+          ./mill --no-server cli.jvm.assembly
+          jar="$(pwd)/out/cli/jvm/assembly.dest/out.jar"
+          test -f "$jar" || { echo "no assembly at $jar"; ls -la "$(dirname "$jar")"; exit 1; }
+          # Resolve java via JAVA_HOME: the setup action exports it but does not
+          # necessarily put java itself on PATH.
+          java="java"
+          if [ -x "$JAVA_HOME/bin/java" ]; then java="$JAVA_HOME/bin/java"; fi
+          mkdir -p "$RUNNER_TEMP/bin"
+          printf '#!/bin/sh\nexec "%s" -jar "%s" "$@"\n' "$java" "$jar" \
+            > "$RUNNER_TEMP/bin/linkml-scala"
+          chmod +x "$RUNNER_TEMP/bin/linkml-scala"
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          # Prove the wrapper runs here, where the error is legible.
+          "$RUNNER_TEMP/bin/linkml-scala" version
+
+      - name: Fetch the LinkML metamodel definitions
+        run: ./mill --no-server show metamodel.definitions
+
+      - name: Regenerate the skill's derived files and check they are committed
+        run: python3 .agents/generate.py --check
+
+      - name: Check skill structure, links and every schema example
+        run: python3 .agents/check.py --require-cli
+
+
   ui-check:
     name: UI typecheck & build
     runs-on: ubuntu-latest

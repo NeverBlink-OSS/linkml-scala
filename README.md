@@ -191,6 +191,35 @@ All modules are published to Maven Central under the `eu.neverblink.linkml` grou
 
 We have a pre-packaged GitHub Action that can do schema validation and generation in your CI pipelines. See **[NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action)** for more details.
 
+## Agent skill (Claude Code, Codex, …)
+
+We ship an [agent skill](https://agentskills.io/specification) that teaches coding agents to author, validate, review and release LinkML schemas with LinkML-Scala. See [.agents/README.md](.agents/README.md) for what it covers.
+
+It drives the CLI, so install that first (see [CLI tool installation](#cli-tool-installation)). Version 0.12.0 or newer is required.
+
+**Claude Code** – install it as a plugin:
+
+```
+/plugin marketplace add NeverBlink-OSS/linkml-scala
+/plugin install linkml@linkml-scala
+```
+
+**Codex** – add this repository as a plugin marketplace, then install **linkml** from `/plugins`:
+
+```shell
+codex plugin marketplace add NeverBlink-OSS/linkml-scala
+```
+
+If you added the marketplace before, refresh it first with `codex plugin marketplace upgrade linkml-scala`.
+
+**Cursor, OpenCode, and any other agent** – these load [Agent Skills](https://agentskills.io) directly from the vendor-neutral `~/.agents/skills/` directory:
+
+```shell
+git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala /tmp/linkml-scala
+mkdir -p ~/.agents/skills
+cp -r /tmp/linkml-scala/.agents/skills/linkml ~/.agents/skills/
+```
+
 ## Contributing
 
 This project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md), adapted from the Mozilla Community Participation Guidelines.
