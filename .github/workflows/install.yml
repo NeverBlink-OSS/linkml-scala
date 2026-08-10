@@ -36,10 +36,36 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
+      # The invocation documented in README. Sourcing also puts the install dir on PATH
+      # for the rest of this step, which executing the script cannot do.
       - name: Install via install.sh
         run: |
           . ./cli/install.sh
+          command -v linkml-scala # sourcing must make it callable immediately
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # The other documented form. Must work without a TTY and without prompting.
+      - name: Install via install.sh, executed rather than sourced
+        run: |
+          LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/linkml-exec" bash ./cli/install.sh
+          "$RUNNER_TEMP/linkml-exec/linkml-scala" --version
+
+      # A sourced install.sh must never terminate the caller's shell.
+      # `set +e` mirrors an interactive shell, which is the case that matters. It also keeps
+      # the check portable: bash 3.2 (the /bin/bash on macOS runners) does not extend the
+      # `&&` suppression of `-e` into a sourced file, so `. script && ...` would abort here.
+      - name: Sourcing install.sh survives a failure
+        run: |
+          export LINKML_SCALA_VERSION=v0.0.0-does-not-exist
+          set +e
+          . ./cli/install.sh
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "Error: expected a non-zero status from a failed install."
+            exit 1
+          fi
+          echo "Still alive after a failed source (status $rc), as expected."
 
       - name: Installed binary reports its version
         run: |

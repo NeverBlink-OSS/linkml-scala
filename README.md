@@ -73,6 +73,8 @@ If you are on Linux (x86-64, ARM64), macOS (ARM64), or using WSL on Windows, the
 linkml-scala
 ```
 
+Read the script before running it: [install.sh](cli/install.sh).
+
 ### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (cross-platform)
 
 You can install `linkml-scala` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html)
@@ -86,7 +88,7 @@ linkml-scala
 Or pin a specific version (recommended for reproducible setups, e.g. in a project's `mise.toml`):
 
 ```shell
-mise use 'ubi:NeverBlink-OSS/linkml-scala@v0.11.2'
+mise use 'ubi:NeverBlink-OSS/linkml-scala@v0.12.0'
 linkml-scala
 ```
 
@@ -110,6 +112,9 @@ Simply rename the downloaded executable, and run it:
 ren linkml-scala-windows-x86_64.exe linkml-scala.exe
 linkml-scala.exe
 ```
+
+Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm
+a download came from our release workflow. **[See how to verify it.](docs/verifying_downloads.md)**
 
 ### CLI – getting started
 

@@ -92,6 +92,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write # Required by actions/attest to mint a Sigstore OIDC token
+      attestations: write # Required to record the provenance attestation on the repo
     needs:
       - aot-compile
       - jar-assemble
@@ -127,12 +129,23 @@ jobs:
           gzip -9 -k linkml-scala-windows-x86_64.exe &
           wait
 
+      # See: docs/verifying_downloads.md
+      - name: Generate Checksums
+        run: sha256sum linkml-scala* | tee SHA256SUMS
+
+      - name: Attest Build Provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            linkml-scala*
+            SHA256SUMS
+
       - name: Upload Binaries
         uses: ncipollo/release-action@v1.21.0
         with:
           tag: "${{ github.ref_name }}"
           name: "${{ github.ref_name }}"
-          artifacts: linkml-scala*
+          artifacts: "linkml-scala*,SHA256SUMS"
           allowUpdates: true
           replacesArtifacts: true
           omitBodyDuringUpdate: true
