@@ -49,11 +49,19 @@ jobs:
       - name: Build the CLI and put it on PATH
         run: |
           ./mill --no-server cli.jvm.assembly
+          jar="$(pwd)/out/cli/jvm/assembly.dest/out.jar"
+          test -f "$jar" || { echo "no assembly at $jar"; ls -la "$(dirname "$jar")"; exit 1; }
+          # Resolve java via JAVA_HOME: the setup action exports it but does not
+          # necessarily put java itself on PATH.
+          java="java"
+          if [ -x "$JAVA_HOME/bin/java" ]; then java="$JAVA_HOME/bin/java"; fi
           mkdir -p "$RUNNER_TEMP/bin"
-          printf '#!/bin/sh\nexec java -jar "%s" "$@"\n' \
-            "$(pwd)/out/cli/jvm/assembly.dest/out.jar" > "$RUNNER_TEMP/bin/linkml-scala"
+          printf '#!/bin/sh\nexec "%s" -jar "%s" "$@"\n' "$java" "$jar" \
+            > "$RUNNER_TEMP/bin/linkml-scala"
           chmod +x "$RUNNER_TEMP/bin/linkml-scala"
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+          # Prove the wrapper runs here, where the error is legible.
+          "$RUNNER_TEMP/bin/linkml-scala" version
 
       - name: Fetch the LinkML metamodel definitions
         run: ./mill --no-server show metamodel.definitions

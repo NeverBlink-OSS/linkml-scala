@@ -226,12 +226,18 @@ def check_examples(md: Path, tmp: Path) -> None:
             text=True,
         )
         if proc.returncode != 0:
+            output = (proc.stdout + proc.stderr).strip()
             detail = " | ".join(
                 line.strip()
-                for line in (proc.stdout + proc.stderr).splitlines()
+                for line in output.splitlines()
                 if re.search(r"FATAL|ERROR|WARNING", line)
             )
-            fail(label, f"does not validate: {detail or proc.stdout.strip()}")
+            # No severity line means the CLI never got as far as validating - a broken
+            # invocation, not a broken schema. Report what it did say, or the failure is
+            # a wall of blank "does not validate:" lines with nothing to act on.
+            if not detail:
+                detail = " ".join(output.split())[:200] or f"exited {proc.returncode}, no output"
+            fail(label, f"does not validate: {detail}")
 
 
 def main() -> int:
@@ -261,11 +267,18 @@ def main() -> int:
         else:
             print(f"warning: {missing}", file=sys.stderr)
     else:
-        with tempfile.TemporaryDirectory() as raw_tmp:
-            tmp = Path(raw_tmp)
-            for skill_dir in skill_dirs:
-                for md in sorted(skill_dir.glob("*.md")):
-                    check_examples(md, tmp)
+        # One smoke test first: a CLI that cannot start would otherwise fail every block
+        # identically, which reads like a skill full of broken schemas.
+        probe = subprocess.run(["linkml-scala", "version"], capture_output=True, text=True)
+        if probe.returncode != 0:
+            output = " ".join((probe.stdout + probe.stderr).split())[:200]
+            fail("check.py", f"`linkml-scala version` failed: {output or probe.returncode}")
+        else:
+            with tempfile.TemporaryDirectory() as raw_tmp:
+                tmp = Path(raw_tmp)
+                for skill_dir in skill_dirs:
+                    for md in sorted(skill_dir.glob("*.md")):
+                        check_examples(md, tmp)
 
     # The CI workflow templates have to be parseable, or they fail only once a user
     # copies them into their own repository.
