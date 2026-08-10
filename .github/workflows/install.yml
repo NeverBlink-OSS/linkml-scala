@@ -36,7 +36,7 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
-      # The invocation the README documents. Sourcing also puts the install dir on PATH
+      # The invocation documented in README. Sourcing also puts the install dir on PATH
       # for the rest of this step, which executing the script cannot do.
       - name: Install via install.sh
         run: |
