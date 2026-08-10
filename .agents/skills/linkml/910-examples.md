@@ -15,52 +15,52 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 
 | feature | valid | invalid | notes |
 |---|---|---|---|
-| `abstract` | 0 | 0 | SomeClass |
-| `aliases` | 8 | 5 | SomeOtherClass |
-| `anything` | 6 | 3 | SomeClass |
-| `basic` | 8 | 12 | SomeClass |
-| `basic2` | 0 | 0 | SomeOtherClass, SomeClass |
-| `cardinality` | 8 | 14 | Cardinal |
-| `constraints` | 9 | 9 | Typed |
-| `constraintsOnTypes` | 9 | 9 | Typed |
-| `curie` | 13 | 0 | SomeOtherClass, SomeClass |
-| `emitPrefixes` | 0 | 0 | SomeClass |
-| `emptyClass` | 0 | 0 | SomeClass, SomeOtherClass |
-| `enum` | 8 | 8 | SomeClass |
-| `equalsExpression` | 0 | 0 | SomeClass, Nested, Deeper, Identified |
+| `abstract` | 0 | 0 |  |
+| `aliases` | 8 | 5 |  |
+| `anything` | 6 | 3 |  |
+| `basic` | 8 | 12 |  |
+| `basic2` | 0 | 0 |  |
+| `cardinality` | 8 | 14 |  |
+| `constraints` | 9 | 9 |  |
+| `constraintsOnTypes` | 9 | 9 |  |
+| `curie` | 13 | 0 |  |
+| `emitPrefixes` | 0 | 0 |  |
+| `emptyClass` | 0 | 0 |  |
+| `enum` | 8 | 8 |  |
+| `equalsExpression` | 0 | 0 |  |
 | `externalType` | 0 | 0 | This model uses a type which has an unknown and empty 'base… |
-| `ifabsent/enums` | 0 | 0 | SomeClass |
-| `implicitPrefix` | 18 | 0 | SomeClass, SomeOtherClass, YetAnotherClass |
-| `inheritance` | 0 | 0 | BaseClass, ChildClass |
-| `inlines/explicitInline` | 6 | 3 | SomeOtherClass, SomeClass |
-| `inlines/explicitInlineImplicitlyAsCompactDict` | 9 | 6 | SomeOtherClass, SomeClass |
-| `inlines/explicitInlineImplicitlyAsList` | 9 | 8 | SomeOtherClass, SomeClass |
-| `inlines/explicitInlineImplicitlyAsSimpleDict` | 9 | 6 | SomeOtherClass, SomeClass |
-| `inlines/explicitInlineList` | 0 | 0 | SomeOtherClass, SomeClass |
-| `inlines/implicitInline` | 0 | 0 | SomeOtherClass, SomeClass |
-| `inlines/implicitInlineAsCompactDict` | 0 | 0 | SomeOtherClass, SomeClass |
-| `inlines/implicitInlineAsList` | 0 | 0 | SomeOtherClass, SomeClass |
-| `inlines/implicitInlineAsSimpleDict` | 0 | 0 | SomeOtherClass, SomeClass |
-| `inlines/inlineAbstract` | 0 | 0 | AbstractRange, MixinRange, ConcreteRange, Container |
-| `inlines/selfCompact1` | 0 | 0 | SomeClass |
-| `inlines/selfCompact3` | 0 | 0 | SomeClass |
-| `inlines/selfCompact3Required` | 0 | 0 | SomeClass |
-| `inlines/selfSimple2` | 0 | 0 | SomeClass |
-| `inlines/selfSimple2Required` | 0 | 0 | SomeClass |
+| `ifabsent/enums` | 0 | 0 |  |
+| `implicitPrefix` | 18 | 0 |  |
+| `inheritance` | 0 | 0 |  |
+| `inlines/explicitInline` | 6 | 3 |  |
+| `inlines/explicitInlineImplicitlyAsCompactDict` | 9 | 6 |  |
+| `inlines/explicitInlineImplicitlyAsList` | 9 | 8 |  |
+| `inlines/explicitInlineImplicitlyAsSimpleDict` | 9 | 6 |  |
+| `inlines/explicitInlineList` | 0 | 0 |  |
+| `inlines/implicitInline` | 0 | 0 |  |
+| `inlines/implicitInlineAsCompactDict` | 0 | 0 |  |
+| `inlines/implicitInlineAsList` | 0 | 0 |  |
+| `inlines/implicitInlineAsSimpleDict` | 0 | 0 |  |
+| `inlines/inlineAbstract` | 0 | 0 |  |
+| `inlines/selfCompact1` | 0 | 0 |  |
+| `inlines/selfCompact3` | 0 | 0 |  |
+| `inlines/selfCompact3Required` | 0 | 0 |  |
+| `inlines/selfSimple2` | 0 | 0 |  |
+| `inlines/selfSimple2Required` | 0 | 0 |  |
 | `metadata/title` | 0 | 0 | This schema is used to test the title and description metad… |
-| `mixin` | 0 | 0 | SomeOtherClass, SomeClass |
-| `multivaluedReference` | 11 | 3 | SomeOtherClass, SomeClass |
-| `nonHermetic` | 0 | 0 | SomeClass |
-| `pruning` | 0 | 0 | NotTreeRootClass, SomeClass |
-| `pruningDefaultRange` | 0 | 0 | SomeClass |
-| `reference` | 8 | 3 | SomeOtherClass, SomeClass |
-| `referenceInteger` | 5 | 3 | SomeClass, SomeOtherClass |
-| `syntheticUris` | 0 | 0 | łączony (class) |
-| `treeRootless` | 0 | 0 | SomeOtherClass, SomeClass |
-| `typeDesignator` | 6 | 6 | Thing, IntThing, StringThing |
-| `typed` | 8 | 19 | Typed |
-| `unionRange` | 6 | 3 | Union |
-| `unionRangeReference` | 8 | 3 | SomeClass, BaseClass, Child1Class, Child2Class |
-| `uri` | 13 | 0 | SomeOtherClass, SomeClass |
-| `uriImports` | 0 | 0 | SomeClass |
-| `uriOrCurie` | 22 | 0 | SomeOtherClass, SomeClass |
+| `mixin` | 0 | 0 |  |
+| `multivaluedReference` | 11 | 3 |  |
+| `nonHermetic` | 0 | 0 |  |
+| `pruning` | 0 | 0 |  |
+| `pruningDefaultRange` | 0 | 0 |  |
+| `reference` | 8 | 3 |  |
+| `referenceInteger` | 5 | 3 |  |
+| `syntheticUris` | 0 | 0 |  |
+| `treeRootless` | 0 | 0 |  |
+| `typeDesignator` | 6 | 6 |  |
+| `typed` | 8 | 19 |  |
+| `unionRange` | 6 | 3 |  |
+| `unionRangeReference` | 8 | 3 |  |
+| `uri` | 13 | 0 |  |
+| `uriImports` | 0 | 0 |  |
+| `uriOrCurie` | 22 | 0 |  |

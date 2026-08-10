@@ -43,7 +43,7 @@ classes:
 `slot_usage` may only **narrow**. Widening a range or making a required slot optional is a
 modelling error, and `InvalidSlotUsage` is reported if you name a slot the class does not
 actually have. To see the result of all this resolution, run
-`linkml-scala generate linkml --pruning-mode skip`.
+`linkml-scala generate linkml`.
 
 ## Inheritance
 

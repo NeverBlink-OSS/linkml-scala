@@ -154,10 +154,10 @@ def gen_examples() -> str:
             doc = yaml.safe_load(model.read_text()) or {}
         except yaml.YAMLError:
             continue
-        classes = list((doc.get("classes") or {}).keys())
-        note = one_line(doc.get("description"), 60) or (
-            ", ".join(classes[:4]) if classes else ""
-        )
+        # Only a real description earns a note. The class names in these test models are
+        # placeholders (`SomeClass`, `SomeOtherClass`), so listing them told the reader
+        # nothing the feature column had not already said.
+        note = one_line(doc.get("description"), 60)
         counts = []
         for kind in ("valid", "invalid"):
             d = model.parent / kind

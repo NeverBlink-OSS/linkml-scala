@@ -132,7 +132,7 @@ linkml-scala generate json-schema --to check.json schema.yaml
 
 # Sample data in: generate JSON Schema and check the samples still validate
 linkml-scala generate json-schema --to check.json schema.yaml
-# then validate the originals against check.json (see the linkml-validate-data skill)
+# then validate the originals against check.json (see 500-validate-data.md)
 ```
 
 Diffs are expected — LinkML adds structure and normalises names. What matters is that no
@@ -164,9 +164,10 @@ Verified: validate --strict clean; 1,203/1,203 sample records validate
 ## Reference material
 
 [200-limitations.md](200-limitations.md) — check before emitting anything unusual; it is what decides whether
-a construct is genuinely supported. [910-examples.md](910-examples.md) — 49 known-good schemas indexed by
+a construct is genuinely supported. [910-examples.md](910-examples.md) — known-good schemas indexed by
 feature; find one using the construct you need and copy its shape. [900-metaslots.tsv](900-metaslots.tsv) —
 grep for whether a slot exists at all. [100-authoring.md](100-authoring.md) — the built-in ranges.
 
-Once the schema exists, hand off to [100-authoring.md](100-authoring.md) for editing, `linkml-review` for a
-modelling-quality pass, and `linkml-validate-data` to check data against it.
+Once the schema exists, [100-authoring.md](100-authoring.md) covers editing it,
+[400-review.md](400-review.md) a modelling-quality pass, and
+[500-validate-data.md](500-validate-data.md) checking data against it.

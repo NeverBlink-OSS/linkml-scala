@@ -120,7 +120,7 @@ stdout; `--format ttl` gives prefixed Turtle from the RDF ones instead of N-Trip
 into attributes and prunes unused elements, showing what the schema *actually* says:
 
 ```shell
-linkml-scala generate linkml --pruning-mode skip schema.yaml
+linkml-scala generate linkml schema.yaml
 ```
 
 Reach for it whenever inheritance, `slot_usage` or imports make the effective model unclear — and
@@ -153,12 +153,13 @@ Read these when the task calls for them; do not load them up front.
 
 ### Lookup tables
 
-* [900-metaslots.tsv](900-metaslots.tsv) — every metamodel slot you may write, 236 of them.
+* [900-metaslots.tsv](900-metaslots.tsv) — every metamodel slot you may write, over 200 of them.
   **Query it, do not read it:**
   ```shell
   grep -P '^inlined\t' 900-metaslots.tsv
   awk -F'\t' '$5 ~ /min|basic/ {print $1}' 900-metaslots.tsv   # the everyday vocabulary
   ```
-* [910-examples.md](910-examples.md) — 49 known-good schemas indexed by feature, each verified
-  against every generator on every commit. When unsure how to write something, read a working one.
+* [910-examples.md](910-examples.md) — dozens of known-good schemas indexed by feature, each
+  verified against every generator on every commit. When unsure how to write something, read a
+  working one.
 * [990-install.md](990-install.md) — install options, in order of preference.

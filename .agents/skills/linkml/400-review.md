@@ -8,7 +8,7 @@ has a fatal error, and its findings frame everything else:
 
 ```shell
 linkml-scala validate --strict --format json schema.yaml
-linkml-scala generate linkml --pruning-mode skip schema.yaml   # the effective model
+linkml-scala generate linkml schema.yaml   # the effective model
 ```
 
 The second command is the one that makes a real review possible: it resolves imports and

@@ -17,14 +17,18 @@ Two independent passes:
    refer back to them; `classes:` and `enums:` do not, because consecutive blocks are
    often alternative illustrations of the same thing rather than one growing schema.
 
-Requires `linkml-scala` on PATH; skips the example pass with a warning if it is missing.
+The example pass requires `linkml-scala` on PATH. Without it the pass is skipped with a
+warning, so CI - where a silently skipped pass is indistinguishable from a passing one -
+must run with `--require-cli`.
 
 Usage:
     python3 .agents/check.py
+    python3 .agents/check.py --require-cli    # CI: a missing CLI is a failure
 """
 
 from __future__ import annotations
 
+import argparse
 import copy
 import re
 import shutil
@@ -140,9 +144,6 @@ def check_structure(skill_dir: Path) -> None:
     if lines > 500:
         fail(f"{rel}/SKILL.md", f"body is {lines} lines; the guidance is to stay under 500")
 
-    # Every referenced reference file must exist, or the skill sends the agent nowhere.
-    check_links(skill_dir / "SKILL.md")
-
 
 def check_links(md: Path) -> None:
     """Every relative link inside the skill must resolve, or it sends the agent nowhere."""
@@ -234,24 +235,37 @@ def check_examples(md: Path, tmp: Path) -> None:
 
 
 def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument(
+        "--require-cli",
+        action="store_true",
+        help="fail rather than skip when linkml-scala is not on PATH",
+    )
+    args = ap.parse_args()
+
     skill_dirs = sorted(p for p in SKILLS.iterdir() if p.is_dir() and (p / "SKILL.md").is_file())
     if not skill_dirs:
         print("no skills found", file=sys.stderr)
         return 1
 
+    # Structure and links do not need the CLI, so they always run.
     for skill_dir in skill_dirs:
         check_structure(skill_dir)
+        for md in sorted(skill_dir.glob("*.md")):
+            check_links(md)
 
     if shutil.which("linkml-scala") is None:
-        print("warning: linkml-scala not on PATH - skipping the schema example pass", file=sys.stderr)
+        missing = "linkml-scala not on PATH - the schema example pass did not run"
+        if args.require_cli:
+            fail("check.py", missing + " (--require-cli)")
+        else:
+            print(f"warning: {missing}", file=sys.stderr)
     else:
         with tempfile.TemporaryDirectory() as raw_tmp:
             tmp = Path(raw_tmp)
             for skill_dir in skill_dirs:
                 for md in sorted(skill_dir.glob("*.md")):
                     check_examples(md, tmp)
-                for md in sorted(skill_dir.glob("*.md")):
-                    check_links(md)
 
     # The CI workflow templates have to be parseable, or they fail only once a user
     # copies them into their own repository.

@@ -62,7 +62,7 @@ jobs:
         run: python3 .agents/generate.py --check
 
       - name: Check skill structure, links and every schema example
-        run: python3 .agents/check.py
+        run: python3 .agents/check.py --require-cli
 
 
   ui-check:
