@@ -32,14 +32,19 @@ jobs:
           fetch-depth: 256 # limits number of snapshots between releases
           fetch-tags: true # forces GitHub to fetch tags even on a partial history
 
+      # Keeps extracted JDKs out of the cached coursier dir. See checks.yml
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache dependencies
         uses: coursier/cache-action@v8
 
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
+      - name: Setup JVM
+        uses: actions/setup-java@v5
         with:
-          jvm: temurin:${{ matrix.java }}
-          apps: mill
+          distribution: temurin
+          java-version: ${{ matrix.java }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v6

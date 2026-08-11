@@ -16,6 +16,15 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
+      # Coursier unpacks every JDK it fetches (Temurin here, GraalVM in the release
+      # workflow) into ~/.cache/coursier/arc, so cache-action uploads each one twice:
+      # once as the downloaded archive, once extracted. That dwarfs the ~50 MB of jars
+      # we actually want cached. Park the extracted copies in the runner temp dir, which
+      # is never cached. Re-extracting is far cheaper than shipping GBs each run.
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache dependencies
         uses: coursier/cache-action@v8
 
@@ -33,14 +42,18 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
+      - name: Relocate the coursier archive cache # see scalafmt-lint
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache dependencies
         uses: coursier/cache-action@v8
 
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
+      - name: Setup JVM
+        uses: actions/setup-java@v5
         with:
-          jvm: temurin:17
-          apps: mill
+          distribution: temurin
+          java-version: 17
 
       - name: Install PyYAML
         run: pip install --quiet pyyaml
@@ -51,8 +64,7 @@ jobs:
           ./mill --no-server cli.jvm.assembly
           jar="$(pwd)/out/cli/jvm/assembly.dest/out.jar"
           test -f "$jar" || { echo "no assembly at $jar"; ls -la "$(dirname "$jar")"; exit 1; }
-          # Resolve java via JAVA_HOME: the setup action exports it but does not
-          # necessarily put java itself on PATH.
+          # Prefer JAVA_HOME over whatever java happens to be first on PATH.
           java="java"
           if [ -x "$JAVA_HOME/bin/java" ]; then java="$JAVA_HOME/bin/java"; fi
           mkdir -p "$RUNNER_TEMP/bin"
@@ -83,14 +95,18 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v7
 
+      - name: Relocate the coursier archive cache # see scalafmt-lint
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache dependencies
         uses: coursier/cache-action@v8
 
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
+      - name: Setup JVM
+        uses: actions/setup-java@v5
         with:
-          jvm: temurin:17
-          apps: mill
+          distribution: temurin
+          java-version: 17
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -115,6 +131,10 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
+
+      - name: Relocate the coursier archive cache # see scalafmt-lint
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
 
       - name: Cache dependencies
         uses: coursier/cache-action@v8
