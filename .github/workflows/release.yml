@@ -15,14 +15,19 @@ jobs:
         with:
           fetch-depth: 0 # Required so Mill can see the full Git history and tags
 
+      # Keeps extracted JDKs out of the cached coursier dir. See checks.yml
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
 
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
+      - name: Setup JVM
+        uses: actions/setup-java@v5
         with:
-          jvm: temurin:17 # The minimal JDK version for Scala Next
-          apps: mill
+          distribution: temurin
+          java-version: 17 # The minimal JDK version for Scala Next
 
       - name: Assembly Uber-JAR
         run: |
@@ -46,13 +51,20 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
 
+      # Matters most here: nativeImage pulls a ~360 MB GraalVM tarball and unpacks it
+      # to ~1 GB, and both copies used to land in the cache. See checks.yml.
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
 
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
+      - name: Setup JVM
+        uses: actions/setup-java@v5
         with:
-          jvm: temurin:17 # The minimal JDK version for Scala Next
+          distribution: temurin
+          java-version: 17 # The minimal JDK version for Scala Next
 
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
@@ -178,14 +190,19 @@ jobs:
         with:
           fetch-depth: 0 # Required so Mill can derive the version from Git tags
 
+      # Keeps extracted JDKs out of the cached coursier dir; see checks.yml
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
 
-      - name: Setup JVM and Mill
-        uses: coursier/setup-action@v3
+      - name: Setup JVM
+        uses: actions/setup-java@v5
         with:
-          jvm: temurin:25
-          apps: mill
+          distribution: temurin
+          java-version: 25
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
