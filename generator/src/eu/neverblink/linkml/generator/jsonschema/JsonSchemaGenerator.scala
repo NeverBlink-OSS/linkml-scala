@@ -6,6 +6,7 @@ import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -30,27 +31,18 @@ class JsonSchemaGenerator(using sv: SchemaView) {
   /** Translate a class name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def className(cls: ClassView): MappedClassName =
-    cls.cls.alias match {
-      case Some(a) => a
-      case _ => Case.PascalCase(cls.cls.name)
-    }
+    cls.cls.alias.getOrElseFast(Case.PascalCase(cls.cls.name))
 
   /** Translate a slot name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def slotName(slot: SlotView): MappedSlotName =
-    slot.slot.alias match {
-      case Some(a) => a
-      case _ => Case.deSpaceCase(slot.slot.name)
-    }
+    slot.slot.alias.getOrElseFast(Case.deSpaceCase(slot.slot.name))
 
-  private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] = x match {
-    case Some(v) =>
-      try new Some(BigDecimal(v.value.trim))
-      catch {
-        case ex if NonFatal(ex) => None
-      }
-    case _ => None
-  }
+  private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] =
+    try x.mapFast(v => BigDecimal(v.value.trim))
+    catch {
+      case ex if NonFatal(ex) => None
+    }
 
   /** Generate the JSON Schema, but keep it in the [[Schema]] model
     *
@@ -75,9 +67,8 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     }
     // If a tree root is defined, only include classes reachable from the tree root (pruning).
     // Otherwise, include all classes in the schema view.
-    val query = maybeTreeRoot match {
-      case Some(root) => sv.derivedReachabilityQuery(Seq(root), true, false)
-      case _ => IncludeAllReachabilityQuery()
+    val query = maybeTreeRoot.foldFast(IncludeAllReachabilityQuery()) { root =>
+      sv.derivedReachabilityQuery(Seq(root), true, false)
     }
     // Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
     // for CompactDict form inlining. The slot will be the key to omit from required fields.
@@ -117,7 +108,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
               $comment = Some(s"Reference to ${classView.name} class"),
               minimum = toBigDecimalOpt(identifierView.minimumValue),
               maximum = toBigDecimalOpt(identifierView.maximumValue),
-              pattern = identifierView.pattern.map(Pattern(_)),
+              pattern = identifierView.pattern.mapFast(new Pattern(_)),
             )
             .arrayOfIf(slotView.slot.multivalued)
         case typeAttribute: TypeAttributeView =>
@@ -125,7 +116,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
             .copy(
               minimum = toBigDecimalOpt(typeAttribute.minimumValue),
               maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-              pattern = typeAttribute.pattern.map(Pattern(_)),
+              pattern = typeAttribute.pattern.mapFast(new Pattern(_)),
             )
             .arrayOfIf(typeAttribute.slotView.slot.multivalued)
         case EnumAttributeView(slotView, _, enumView) =>
@@ -170,33 +161,31 @@ class JsonSchemaGenerator(using sv: SchemaView) {
         ),
       )
     }
-    val baseSchema = maybeTreeRoot match {
-      case Some(treeRoot) =>
-        val classSchema =
+    val baseSchema = maybeTreeRoot.foldFast(Schema.Empty) { treeRoot =>
+      val classSchema =
+        new Schema(
+          $ref = new Some("#/$defs/".concat(className(treeRoot))),
+        )
+      val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
+      inlineType match {
+        case InlineType.plain => classSchema // object (mandatory)
+        case InlineType.optional =>
+          Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
+        case InlineType.list =>
+          arraySchema.copy(items = Some(classSchema)) // array of objects
+        case InlineType.dict(CollectionForm.CompactDict(key)) =>
+          val mappedClassName = className(treeRoot)
+          needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
           new Schema(
-            $ref = new Some("#/$defs/".concat(className(treeRoot))),
-          )
-        val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
-        inlineType match {
-          case InlineType.plain => classSchema // object (mandatory)
-          case InlineType.optional =>
-            Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
-          case InlineType.list =>
-            arraySchema.copy(items = Some(classSchema)) // array of objects
-          case InlineType.dict(CollectionForm.CompactDict(key)) =>
-            val mappedClassName = className(treeRoot)
-            needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
-            new Schema(
-              $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
-            ).dictOf
-          case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-            val mappedClassName = className(treeRoot)
-            needValue.add((mappedClassName, slotName(treeRoot.derivedAttributes(value))))
-            new Schema(
-              $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
-            ).dictOf
-        }
-      case _ => Schema.Empty
+            $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
+          ).dictOf
+        case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
+          val mappedClassName = className(treeRoot)
+          needValue.add((mappedClassName, slotName(treeRoot.derivedAttributes(value))))
+          new Schema(
+            $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
+          ).dictOf
+      }
     }
     // Generate the needed keyless/value refs
     for (className, idField) <- needKeyless do {

@@ -1,11 +1,11 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.{Codec, SchemaDefinition}
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 import eu.neverblink.linkml.yaml.DecodeError
 import org.virtuslab.yaml.{ConstructError, ParseError, Range, ScannerError, YamlError, parseYaml}
 
-import scala.util.Try
 import scala.util.control.NonFatal
 
 /** Failure of reading or parsing a schema, as a structured issue from the validation model. */
@@ -43,18 +43,19 @@ trait Importer {
     *   failure
     */
   def parseSchema(yaml: String, uri: String = ""): Either[SchemaParseError, SchemaDefinition] =
-    parseYaml(yaml) match {
+    new Left(parseYaml(yaml) match {
       case Right(node) =>
         // The metamodel decoder signals structural problems by throwing DecodeError, which carries
         // the offending node's position.
-        try Right(Codec.codec.decode(node))
+        try return new Right(Codec.codec.decode(node))
         catch {
           case ex: DecodeError =>
-            Left(Importer.parseError(ex.getMessage, uri, ex.position.map(Importer.codeRegion)))
-          case NonFatal(ex) => Left(Importer.parseError(ex.getMessage, uri, None))
+            Importer.parseError(ex.getMessage, uri, ex.position.map(Importer.codeRegion))
+          case ex if NonFatal(ex) =>
+            Importer.parseError(ex.getMessage, uri, None)
         }
-      case Left(err) => Left(Importer.parseError(err.msg, uri, Importer.codeRegionOf(err)))
-    }
+      case Left(err) => Importer.parseError(err.msg, uri, Importer.codeRegionOf(err))
+    })
 }
 
 object Importer {
@@ -65,8 +66,8 @@ object Importer {
       uri: String,
       codeRegion: Option[CodeRegionImpl],
   ): SchemaParseError =
-    SchemaParseErrorImpl(
-      location = IssueLocationImpl(codeRegion = codeRegion),
+    new SchemaParseErrorImpl(
+      location = new IssueLocationImpl(codeRegion = codeRegion),
       parserMessage = parserMessage,
       sourceUri = uri,
     )
@@ -74,26 +75,26 @@ object Importer {
   /** Extract the position a [[YamlError]] reported, if it carries one.
     */
   private def codeRegionOf(error: YamlError): Option[CodeRegionImpl] = error match {
-    case e: ParseError.ExpectedTokenKind => Some(codeRegion(e.got.range))
-    case e: ScannerError.Obtained => Some(codeRegion(e.got.range))
-    case e: ScannerError.AtRange => Some(codeRegion(e.range))
-    case e: ConstructError => e.node.flatMap(_.pos).map(codeRegion)
+    case e: ParseError.ExpectedTokenKind => new Some(codeRegion(e.got.range))
+    case e: ScannerError.Obtained => new Some(codeRegion(e.got.range))
+    case e: ScannerError.AtRange => new Some(codeRegion(e.range))
+    case e: ConstructError => e.node.flatMapFast(_.pos).mapFast(codeRegion)
     // ComposerError and NoRegisteredTagDirective carry no position.
     case _ => None
   }
 
   /** Convert a YAML [[Range]], whose lines and columns are 0-based, into a 1-based code region. */
   private[schemaview] def codeRegion(range: Range): CodeRegionImpl =
-    CodeRegionImpl(
+    new CodeRegionImpl(
       startLine = range.start.line + 1,
       startColumn = range.start.column + 1,
-      endLine = range.end.map(_.line + 1),
-      endColumn = range.end.map(_.column + 1),
+      endLine = range.end.mapFast(_.line + 1),
+      endColumn = range.end.mapFast(_.column + 1),
     )
 
   /** Build a [[SchemaImportError]] for a schema text that could not be obtained at all. */
   private[schemaview] def importError(uri: String, reason: String): SchemaImportError =
-    SchemaImportErrorImpl(
+    new SchemaImportErrorImpl(
       location = IssueLocationImpl(),
       importUri = uri,
       reason = reason,
@@ -103,8 +104,10 @@ object Importer {
   private[schemaview] def readText(
       uri: String,
   )(read: => String): Either[SchemaImportError, String] =
-    Try(read).toEither.left.map(ex => importError(uri, ex.getMessage))
-
+    try new Right(read)
+    catch {
+      case ex if NonFatal(ex) => new Left(importError(uri, ex.getMessage))
+    }
 }
 
 /** A simple Importer that reads the schema text as a string and then parses it into a
@@ -115,7 +118,7 @@ trait StringImporter extends Importer {
   final override def readSchema(path: String): Either[ImportFailure, SchemaDefinition] =
     Importer.readText(path)(read(path)) match {
       case Right(text) => parseSchema(text, path)
-      case Left(failure) => Left(failure)
+      case err => err.asInstanceOf[Either[ImportFailure, SchemaDefinition]]
     }
 
   /** Read the schema text from the given path and return it as a string.

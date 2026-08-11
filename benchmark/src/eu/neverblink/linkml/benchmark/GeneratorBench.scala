@@ -45,9 +45,6 @@ class GeneratorBench extends CommonParams {
       ).serialize(),
     )
 
-  def jsonSchemaFromYaml(bh: Blackhole): Unit =
-    bh.consume(JsonSchemaGenerator(using SchemaView.loadSchemaViewFromString(yaml)).serialize())
-
   @Benchmark
   def jsonSchemaFromSchemas(bh: Blackhole): Unit =
     bh.consume(JsonSchemaGenerator(using SchemaView(schemaView.schemas)).serialize())
@@ -59,9 +56,6 @@ class GeneratorBench extends CommonParams {
   @Benchmark
   def shaclFromYaml(bh: Blackhole): Unit =
     writeShacl(bh)(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)))
-
-  def shaclFromYaml(bh: Blackhole): Unit =
-    writeShacl(bh)(using SchemaView.loadSchemaViewFromString(yaml))
 
   @Benchmark
   def shaclFromSchemas(bh: Blackhole): Unit =

@@ -2,6 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
+import eu.neverblink.linkml.runtime.FastUtils.*
 
 import java.io.{ByteArrayOutputStream, PrintStream}
 
@@ -27,20 +28,21 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     exit(1)
 
   def loadSchema(inFile: Option[String]): SchemaView =
-    inFile match {
-      case None => err("Input file is required."); null
-      case Some(inputName) =>
-        SchemaView.loadSchemaViewFromUri(inputName) match {
-          case Right(sv) => sv
-          case Left(problems) =>
-            val formatted = SchemaIssues.format(
-              problems.map(_.infer()),
-              maxProblems = 5,
-              verbose = true,
-              showLevel = false,
-            )
-            err("Cannot load schema: " + formatted); null
-        }
+    inFile.foldFast {
+      err("Input file is required.")
+      null
+    } { inputName =>
+      SchemaView.loadSchemaViewFromUri(inputName) match {
+        case Right(sv) => sv
+        case Left(problems) =>
+          val formatted = SchemaIssues.format(
+            problems.map(_.infer()),
+            maxProblems = 5,
+            verbose = true,
+            showLevel = false,
+          )
+          err("Cannot load schema: " + formatted); null
+      }
     }
 
   /** Runs the whole CLI (via [[App]]) with the given args, capturing stdout and stderr. For tests

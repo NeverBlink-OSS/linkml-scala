@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.scala
 import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
@@ -729,12 +730,11 @@ object ScalaGenerator {
         pr: PrefixResolver,
     ): ScalaDoc = {
       new ScalaDoc(
-        metadata.description.map(_.capitalize).getOrElse(""),
+        metadata.description.foldFast("")(_.capitalize),
         metadata.seeAlso.map(_.uri) ++
-          metadata.aliases.reduceOption(_ + ", " + _).map("Aliases: " + _) ++
-          Seq("From schema: " + fromSchema.uri),
-        metadata.notes.map(_.capitalize) ++
-          metadata.comments.map(_.capitalize),
+          metadata.aliases.reduceOption(_ + ", " + _).mapFast("Aliases: ".concat) ++
+          Seq("From schema: ".concat(fromSchema.uri)),
+        (metadata.notes ++ metadata.comments).map(_.capitalize),
         metadata.todos.map(_.capitalize),
         metadata.examples.flatMap(ex =>
           for
@@ -778,10 +778,7 @@ object ScalaGenerator {
   ):
     /** Generate code for a case class field string with annotations and default values */
     def generateCaseClassField: String = {
-      val field = default match {
-        case Some(defaultValue) => s"$name: $typeName = $defaultValue,"
-        case _ => s"$name: $typeName,"
-      }
+      val field = default.foldFast(s"$name: $typeName,")(dv => s"$name: $typeName = $dv,")
       s"""${annotations.mkString("\n")}
          |$field
          |""".stripMargin.strip()

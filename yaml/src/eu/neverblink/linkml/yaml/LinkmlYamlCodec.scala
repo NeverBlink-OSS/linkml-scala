@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.yaml
 
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import org.virtuslab.yaml.*
 
 import scala.annotation.nowarn
@@ -17,10 +18,8 @@ abstract class LinkmlYamlCodec[T] {
 
 object LinkmlYamlCodec {
   def decodeError(msg: String, node: Node): Nothing = throw new DecodeError(
-    node.pos match {
-      case Some(pos) =>
-        s"Expected $msg at ${pos.start.line}:${pos.start.column} but got:\n${pos.errorMsg}"
-      case _ => s"Expected $msg but got:\n$node"
+    node.pos.foldFast(s"Expected $msg but got:\n$node") { pos =>
+      s"Expected $msg at ${pos.start.line}:${pos.start.column} but got:\n${pos.errorMsg}"
     },
     node.pos,
   )
