@@ -303,10 +303,26 @@ object generator extends Module {
         PathRef(Task.dest)
       }
 
-      // Point BenchmarkSchemaSpec at the fetched datasets, so they are cloned before the tests run.
+      /** The npm project whose `validate.mjs` checks the generated ER diagrams against the real
+        * Mermaid parser, used by `ErDiagramMermaidSpec`.
+        */
+      def mermaidDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "mermaid"
+
+      /** Install the pinned Mermaid that `ErDiagramMermaidSpec` validates its output against.
+        * Requires Node.js 18+ and npm on the PATH.
+        */
+      def mermaidValidator(args: String*) = Task.Command(exclusive = true) {
+        if !os.exists(mermaidDir / "node_modules") then
+          os.call(("npm", "ci"), cwd = mermaidDir, stdout = os.Inherit, stderr = os.Inherit)
+      }
+
+      // Point BenchmarkSchemaSpec at the fetched datasets, so they are cloned before the tests run,
+      // and ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`.
       override def forkEnv = super.forkEnv() ++ Map(
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
-      )
+        "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
+      ) ++
+        sys.env.view.filterKeys(Set("PATH", "CI")).toMap
     }
   }
 

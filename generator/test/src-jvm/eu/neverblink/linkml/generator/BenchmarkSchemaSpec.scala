@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator
 
+import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdf.RdfUtils
@@ -7,6 +8,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import io.circe.parser.parse as parseJson
@@ -114,6 +116,15 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             )
           }
 
+          "ER diagram output is a well-formed Mermaid document" in {
+            assume(!skip.contains((name, "er-diagram")), skip.getOrElse((name, "er-diagram"), ""))
+            val diagram = ErDiagramGenerator(using sv).serialize(PruningMode.skip)
+            diagram should include("erDiagram")
+            withClue("output has no entities: ") {
+              diagram.linesIterator.count(_.startsWith("  ")) should be > 0
+            }
+          }
+
           "Scala output is non-empty" in {
             assume(!skip.contains((name, "scala")), skip.getOrElse((name, "scala"), ""))
             val files = ScalaGenerator(using sv).generate("eu.neverblink.linkml.generated").toSeq
@@ -160,5 +171,6 @@ object BenchmarkSchemaSpec {
     "nmdc_microbiome" -> "rdfs" -> "TODO LNK-167",
     "nmdc_microbiome" -> "linkml-yaml" -> "TODO LNK-167",
     "nmdc_microbiome" -> "linkml-json" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "er-diagram" -> "TODO LNK-167",
   )
 }

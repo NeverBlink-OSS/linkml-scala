@@ -18,8 +18,9 @@ export interface GenerateRequest {
   options: OptionValues;
 }
 
-/** How the UI should render `result`: as editor text, as the Scala file tabs, or as the report view. */
-export type ResultKind = "text" | "files" | "report";
+/** How the UI should render `result`: as editor text, as the Scala file tabs, as the report view, or
+ * as a Mermaid diagram. */
+export type ResultKind = "text" | "files" | "report" | "diagram";
 
 export type GenerateResponse =
   | {
@@ -81,7 +82,13 @@ self.onmessage = async (e: MessageEvent<GenerateRequest>) => {
     const result = target.call(api, view, options);
     const genMs = Math.round(performance.now() - t1);
 
-    const kind: ResultKind = target.view === "report" ? "report" : typeof result === "object" ? "files" : "text";
+    const kind: ResultKind = target.view === "report"
+      ? "report"
+      : target.view === "diagram"
+      ? "diagram"
+      : typeof result === "object"
+      ? "files"
+      : "text";
     reply({ id, ok: true, targetId, kind, result: kind === "report" ? plain(result) : result, loadMs, genMs });
   } catch (err) {
     reply({ id, ok: false, error: err instanceof Error ? err.toString() : String(err) });

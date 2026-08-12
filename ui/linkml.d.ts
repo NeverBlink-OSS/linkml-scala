@@ -102,6 +102,16 @@ export interface LinkMLApi {
   graphQl(schema: SchemaView, pruningMode?: string, treeRoot?: string): string;
 
   /**
+   * Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become entities, type- and enum-ranged slots become their attributes, and class-ranged slots become relationship lines.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
+   * @param optionalMarker Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands this from version 11.16 onwards, and older renderers reject the whole diagram rather than just the marker. Default: true
+   * @returns The ER diagram, serialized as Mermaid
+   */
+  erDiagram(schema: SchemaView, pruningMode?: string, treeRoot?: string, optionalMarker?: boolean): string;
+
+  /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.  TODO: consider typing the return value in TypeScript using a TypeScript generator. See: https://github.com/NeverBlink-OSS/linkml-scala/issues/127
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details` from the model's `equals_expression`s. Turn it off to get only the structured fields.
