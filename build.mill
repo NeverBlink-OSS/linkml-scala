@@ -61,8 +61,8 @@ def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
   AliasesModule.run(ev, "lint")
 }
 
-/** Bundle the TypeScript playground UI (app.ts + CodeMirror) into ui/dist via esbuild. Installs npm
-  * deps on first run. Requires Node.js and npm on the PATH.
+/** Bundle the TypeScript playground UI (app.ts + CodeMirror, plus the generation worker) into
+  * ui/dist via esbuild. Installs npm deps on first run. Requires Node.js and npm on the PATH.
   */
 def buildUiBundle(): Unit = {
   val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"

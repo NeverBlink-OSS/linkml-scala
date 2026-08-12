@@ -1,6 +1,7 @@
 // esbuild bundler for the playground UI. Invoked by `npm run build` and by the
-// Mill `ui`/`uiBundle` tasks. Bundles app.ts + CodeMirror into dist/app.js, and
-// minifies the (large, separately built) Scala.js bundle into dist/linkml.js.
+// Mill `ui`/`uiBundle` tasks. Bundles app.ts + CodeMirror into dist/app.js and the
+// generation worker into dist/worker.js, and minifies the (large, separately built)
+// Scala.js bundle into dist/linkml.js.
 import * as esbuild from "esbuild";
 import { existsSync } from "node:fs";
 
@@ -9,17 +10,19 @@ import { existsSync } from "node:fs";
 // Loaded at runtime by app.js as a sibling `dist/linkml.js`.
 const SCALA_BUNDLE = "../out/generator/js/fullLinkJS.dest/main.js";
 
+// app.ts is the page; worker.ts is the generation worker it spawns as a sibling
+// dist/worker.js. Both are emitted into dist/ by outdir.
 const appOptions = {
-  entryPoints: ["app.ts"],
+  entryPoints: ["app.ts", "worker.ts"],
   bundle: true,
   format: "esm",
   target: "es2020",
-  outfile: "dist/app.js",
+  outdir: "dist",
   sourcemap: true,
   minify: true,
   logLevel: "info",
   // Loaded at runtime from dist/linkml.js (see minifyScalaBundle); keep esbuild
-  // from trying to inline the multi-MB bundle into app.js.
+  // from trying to inline the multi-MB bundle into worker.js.
   external: ["./linkml.js"],
 };
 

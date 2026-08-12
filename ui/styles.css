@@ -416,6 +416,27 @@ body { background: var(--bg); }
   font-variant-numeric: tabular-nums;
 }
 .status-pill--error { background: var(--danger-soft); color: var(--danger); }
+.status-pill--busy { background: var(--accent-soft); color: var(--accent); animation: pill-pulse 1.1s ease-in-out infinite; }
+
+@keyframes pill-pulse {
+  50% { opacity: 0.45; }
+}
+
+/* While a generation is in flight the previous output stays put and is only dimmed, so switching
+   tabs on a large schema never blanks the panel. */
+.panel-output .editor,
+.panel-output .report,
+.panel-output .file-tabs { transition: opacity 120ms ease; }
+.panel--busy .editor,
+.panel--busy .report,
+.panel--busy .file-tabs { opacity: 0.45; }
+
+@media (prefers-reduced-motion: reduce) {
+  .status-pill--busy { animation: none; }
+  .panel-output .editor,
+  .panel-output .report,
+  .panel-output .file-tabs { transition: none; }
+}
 
 /* ── CodeMirror editor hosts (input + read-only output) ── */
 .editor {
