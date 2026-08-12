@@ -99,9 +99,9 @@ class GraphQlGenerator(using sv: SchemaView) {
           cls.aliasedName,
           cls.uriStr,
           fields,
-          cls.parents
-            .filter(cv => cv.cls.`abstract` || cv.cls.mixin)
-            .map(_.aliasedName).toSeq,
+          cls.parents.collect {
+            case cv if cv.cls.`abstract` || cv.cls.mixin => cv.aliasedName
+          },
           cls.cls.description,
         ),
       )
@@ -111,11 +111,11 @@ class GraphQlGenerator(using sv: SchemaView) {
           cls.aliasedName,
           cls.uriStr,
           fields,
-          cls.parents
-            // Break the inheritance chain on concrete -> concrete inheritance
-            // We still need to use the derived slots and interfaces and types anyway
-            .filter(cv => cv.cls.`abstract` || cv.cls.mixin)
-            .map(_.aliasedName).toSeq,
+          // Break the inheritance chain on concrete -> concrete inheritance
+          // We still need to use the derived slots and interfaces and types anyway
+          cls.parents.collect {
+            case cv if cv.cls.`abstract` || cv.cls.mixin => cv.aliasedName
+          },
           cls.cls.description,
         ),
       )

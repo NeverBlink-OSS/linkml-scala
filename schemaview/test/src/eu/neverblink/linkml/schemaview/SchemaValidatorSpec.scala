@@ -2,10 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-
 import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal}
-
-import scala.util.Success
 
 class SchemaValidatorSpec extends AnyWordSpec, Matchers {
   def load(schemaYaml: String): SchemaView =

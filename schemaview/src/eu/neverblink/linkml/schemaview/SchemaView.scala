@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
 import eu.neverblink.linkml.validation.{
@@ -12,7 +13,7 @@ import eu.neverblink.linkml.validation.{
 }
 
 import scala.annotation.unused
-import scala.collection.mutable
+import scala.collection.{immutable, mutable}
 import scala.compiletime.erasedValue
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
@@ -36,13 +37,13 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
 
   inline def resolve[T](inline ref: Reference[T]): Option[T] =
     (inline erasedValue[T] match {
-      case _: TypeDefinition => types.get(ref.value).map(_._type)
-      case _: ClassDefinition => classes.get(ref.value).map(_.cls)
-      case _: EnumDefinition => enums.get(ref.value).map(_._enum)
-      case _: SubsetDefinition => subsets.get(ref.value).map(_.subset)
+      case _: TypeDefinition => types.get(ref.value).mapFast(_._type)
+      case _: ClassDefinition => classes.get(ref.value).mapFast(_.cls)
+      case _: EnumDefinition => enums.get(ref.value).mapFast(_._enum)
+      case _: SubsetDefinition => subsets.get(ref.value).mapFast(_.subset)
       // `range` slot's `range` is underspecified as per the metamodel notes,
       // I think it should be ClassDef | TypeDef | EnumDef
-      case _: Element => getElement(ref.value).map(_.inner)
+      case _: Element => elements.get(ref.value).mapFast(_.inner)
       // And now... element views! (sigh)
       // You can cast the argument of this method to get a view instead of the raw definition.
       // I tried to make it nicer, but the Scala compiler said "no".
@@ -51,15 +52,15 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: EnumView => enums.get(ref.value)
       case _: SlotView => slotDefinitions.get(ref.value)
       case _: SubsetView => subsets.get(ref.value)
-      case _: ElementView[?, ?] => getElement(ref.value)
-      case _ => compiletime.error("SchemaView can't dereference " + compiletime.codeOf(ref))
+      case _: ElementView[?, ?] => elements.get(ref.value)
+      case _ => compiletime.error("SchemaView can't dereference ".concat(compiletime.codeOf(ref)))
     }).asInstanceOf[Option[T]]
 
   /** All types defined in the loaded schemas, as views.
     */
   lazy val types: Map[String, TypeView] =
     schemas.foldLeft(Map.newBuilder[String, TypeView]) { (acc, schema) =>
-      schema.types.foreach((k, v) => acc.addOne((k, TypeView(v, schema))))
+      schema.types.foreach((k, v) => acc.addOne((k, new TypeView(v, schema))))
       acc
     }.result()
 
@@ -83,7 +84,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   lazy val enums: Map[String, EnumView] =
     schemas.foldLeft(Map.newBuilder[String, EnumView]) { (acc, schema) =>
-      schema.enums.map((k, v) => acc.addOne((k, EnumView(v, schema))))
+      schema.enums.map((k, v) => acc.addOne((k, new EnumView(v, schema))))
       acc
     }.result()
 
@@ -91,48 +92,60 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   lazy val subsets: Map[String, SubsetView] =
     schemas.foldLeft(Map.newBuilder[String, SubsetView]) { (acc, schema) =>
-      schema.subsets.map((k, v) => acc.addOne((k, SubsetView(v, schema))))
+      schema.subsets.map((k, v) => acc.addOne((k, new SubsetView(v, schema))))
       acc
     }.result()
 
   lazy val elements: Map[String, ElementView[? <: Element, ?]] =
-    subsets ++ slotDefinitions ++ enums ++ types ++ classes
+    immutable.HashMap.newBuilder[String, ElementView[? <: Element, ?]]
+      .addAll(subsets)
+      .addAll(slotDefinitions)
+      .addAll(enums)
+      .addAll(types)
+      .addAll(classes)
+      .result()
 
   /** Cached prefix resolvers for each schema in the view.
     *
     * These should be used in ElementView instead of creating a new prefix resolver every time.
     */
   private lazy val prefixResolvers: Map[Uri, BasicPrefixResolver] =
-    schemas.map(schema => schema.id -> createPrefixResolver(schema)).toMap
+    schemas.foldLeft(Map.newBuilder[Uri, BasicPrefixResolver]) { (acc, schema) =>
+      acc.addOne((schema.id, createPrefixResolver(schema)))
+    }.result()
 
-  def getPrefixResolver(schema: SchemaDefinition): BasicPrefixResolver = {
+  def getPrefixResolver(schema: SchemaDefinition): BasicPrefixResolver =
     prefixResolvers(schema.id)
-  }
+
+  private val defaultRange = new Reference[TypeView]("string")
 
   /** Get the default range for the model, with the `string` type fallback as specified in the spec.
     *
     * @see
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata
     */
-  def getDefaultRange(schema: SchemaDefinition): Reference[TypeView] = {
-    schema.defaultRange
-      .map(_.asInstanceOf[Reference[TypeView]])
-      .getOrElse(Reference[TypeView]("string"))
-  }
+  def getDefaultRange(schema: SchemaDefinition): Reference[TypeView] =
+    schema.defaultRange.foldFast(defaultRange)(r => r.asInstanceOf[Reference[TypeView]])
 
   /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
     * (this fallback mirrors the python implementation).
     */
   def getDefaultPrefix(schema: SchemaDefinition): String = {
-    given PrefixResolver = getPrefixResolver(schema)
-    schema.defaultPrefix // NCName / CURIE prefix
-      .flatMap(schema.prefixes.get)
-      .map(_.prefixReference.uri) // URI prefix value
-      .getOrElse {
-        // fallback
-        val uri = schema.id.uri
-        if (uri.endsWith("#") || uri.endsWith("/")) uri else uri + "/"
-      }
+    val prefixResolver = prefixResolvers(schema.id)
+    val prefixRef = schema.defaultPrefix.flatMapFast { prefix =>
+      schema.prefixes.get(prefix)
+    }
+    prefixRef.foldFast {
+      val uri = schema.id.uri(using prefixResolver)
+      val len = uri.length
+      if (len > 0) {
+        val ch = uri.charAt(len - 1)
+        if (ch == '#' || ch == '/') uri
+        else uri.concat("/")
+      } else "/"
+    } { ref =>
+      ref.prefixReference.uri(using prefixResolver)
+    }
   }
 
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
@@ -143,7 +156,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   def underivedReachabilityQuery(
       from: Seq[ElementView[?, ?]],
-  ): UnderivedReachabilityQuery = UnderivedReachabilityQuery(from)
+  ): UnderivedReachabilityQuery = new UnderivedReachabilityQuery(from)
 
   /** Get all elements reachable from a given starting set, following derived attributes and other
     * reference slots. This will run the query as-if schema derivation was performed.
@@ -163,7 +176,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       from: Seq[ElementView[?, ?]],
       inlinedOnly: Boolean,
       includeClassAncestors: Boolean,
-  ): DerivedReachabilityQuery = DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
+  ): DerivedReachabilityQuery =
+    new DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
 
   /** Get a schema element by its ID
     */
@@ -183,16 +197,13 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * `Option[ClassView]`.
     */
   def treeRootWithOverride(treeRootOverride: Option[String]): Try[Option[ClassView]] =
-    treeRootOverride match {
-      case Some(className) =>
-        classes.get(className) match {
-          case Some(cls) => Success(Some(cls))
-          case _ =>
-            val msg = s"Could not find class '$className' defined as the tree root override"
-            Failure(RuntimeException(msg))
-        }
-      case _ => Try(treeRoot)
-    }
+    new Success(treeRootOverride.foldFast(treeRoot) { className =>
+      val optCv = classes.get(className)
+      if (optCv eq None) {
+        val msg = s"Could not find class '$className' defined as the tree root override"
+        return new Failure(new RuntimeException(msg))
+      } else optCv
+    })
 
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.
@@ -207,12 +218,22 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       cls: ClassDefinition,
   ): SlotDefinitionImpl = {
     var currentSlot = slot
-    def combine(s: SlotDefinitionImpl): Unit =
+    cls.slotUsage.get(slotName).foreachFast { s =>
       currentSlot = currentSlot.combineWith(s, combineRange)
-    cls.slotUsage.get(slotName).foreach(combine)
-    cls.attributes.get(slotName).foreach(combine)
-    for c <- cls.mixins.flatMap(resolve) do currentSlot = applySlotUsage(currentSlot, slotName, c)
-    for c <- cls.isA.flatMap(resolve) do currentSlot = applySlotUsage(currentSlot, slotName, c)
+    }
+    cls.attributes.get(slotName).foreachFast { s =>
+      currentSlot = currentSlot.combineWith(s, combineRange)
+    }
+    cls.mixins.foreach { r =>
+      resolve(r).foreachFast { c =>
+        currentSlot = applySlotUsage(currentSlot, slotName, c)
+      }
+    }
+    cls.isA.foreachFast { r =>
+      resolve(r).foreachFast { c =>
+        currentSlot = applySlotUsage(currentSlot, slotName, c)
+      }
+    }
     currentSlot
   }
 
@@ -225,7 +246,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   ): Reference[Element] = v1
 
   val rootPrefixResolver: BasicPrefixResolver = createPrefixResolver(root)
-  private val validator = SchemaValidator()
+  private val validator = new SchemaValidator()
 
   {
     val problems = validator.fatalProblems
@@ -316,13 +337,15 @@ object SchemaView {
       load: => Either[Seq[SchemaFatal], SchemaView],
   ): Either[Seq[SchemaFatal], SchemaView] =
     try load
-    catch { case NonFatal(ex) => Left(Seq(unexpectedError(ex))) }
+    catch { case ex if NonFatal(ex) => new Left(Seq(unexpectedError(ex))) }
 
-  private def unexpectedError(ex: Throwable): UnexpectedErrorImpl =
-    UnexpectedErrorImpl(
+  private def unexpectedError(ex: Throwable): UnexpectedErrorImpl = {
+    val msg = ex.getMessage
+    new UnexpectedErrorImpl(
       location = IssueLocationImpl(),
-      reason = Option(ex.getMessage).getOrElse(ex.toString),
+      reason = if (msg ne null) msg else ex.toString,
     )
+  }
 
   /** Loads individual schema definitions from the specified URI, optionally loading their imports.
     * Import loading is recursive.
@@ -350,11 +373,13 @@ object SchemaView {
     * into a Left rather than an exception.
     */
   private def viewOf(schemas: Seq[SchemaDefinition]): Either[Seq[SchemaFatal], SchemaView] =
-    try Right(SchemaView(schemas))
-    catch {
-      case ex: SchemaIssues.FatalSchemaException => Left(ex.problems)
-      case NonFatal(ex) => Left(Seq(unexpectedError(ex)))
-    }
+    new Left(
+      try return new Right(SchemaView(schemas))
+      catch {
+        case ex: SchemaIssues.FatalSchemaException => ex.problems
+        case ex if NonFatal(ex) => Seq(unexpectedError(ex))
+      },
+    )
 
   /** Load one of the schemas bundled as a resource, reporting a missing resource as an import
     * failure rather than letting the resource lookup throw.
@@ -366,7 +391,7 @@ object SchemaView {
   ): Either[ImportFailure, SchemaDefinition] =
     Importer.readText(uri)(Resources.read(resource)) match {
       case Right(text) => importer.parseSchema(text, uri)
-      case Left(failure) => Left(failure)
+      case err => err.asInstanceOf[Either[ImportFailure, SchemaDefinition]]
     }
 
   private def loadSchemasInternal(
@@ -377,11 +402,12 @@ object SchemaView {
   ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     // TODO LNK-154 Robust file system importing
     var normalizedUri = uri.stripSuffix(PlatformSpecificUtils.separator)
-    if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml"))
-      normalizedUri += ".yaml"
+    if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml")) {
+      normalizedUri = normalizedUri.concat(".yaml")
+    }
     // After URI normalization, check if we've already visited this URI to avoid infinite loops
     // and repeatedly loading the same schema.
-    if visited.contains(normalizedUri) then Right(Seq())
+    if visited.contains(normalizedUri) then new Right(Nil)
     else
       visited.add(normalizedUri)
       // Built-in schemas come from bundled resources, everything else from the importer. Both
@@ -390,7 +416,7 @@ object SchemaView {
         if (normalizedUri.startsWith("https://w3id.org/linkml/")) {
           builtIn(normalizedUri, normalizedUri.stripPrefix("https://w3id.org/linkml"), importer)
         } else if (normalizedUri.startsWith("linkml:")) {
-          builtIn(normalizedUri, "/" + normalizedUri.stripPrefix("linkml:"), importer)
+          builtIn(normalizedUri, "/".concat(normalizedUri.stripPrefix("linkml:")), importer)
         } else {
           importer.readSchema(normalizedUri)
         }
@@ -400,7 +426,7 @@ object SchemaView {
           val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
           if (idx > 0) baseUri = normalizedUri.substring(0, idx)
           loadImportsInternal(schema, baseUri, importer, visited).map(schema +: _)
-        } else Right(Seq(schema))
+        } else new Right(Seq(schema))
       }
   }
 

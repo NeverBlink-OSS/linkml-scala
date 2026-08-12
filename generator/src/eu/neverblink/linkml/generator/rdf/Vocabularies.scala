@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.rdf
 
 abstract class Vocabulary(val prefix: String) {
-  def get(suffix: String): Iri = Iri(prefix + suffix)
+  def get(suffix: String): Iri = new Iri(prefix.concat(suffix))
 }
 
 object XmlSchema extends Vocabulary("http://www.w3.org/2001/XMLSchema#") {

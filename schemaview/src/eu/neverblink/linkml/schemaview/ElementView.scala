@@ -3,9 +3,12 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
+
+import scala.collection.mutable.ListBuffer
 
 /** Element views provide a rich interface for working with schema elements. They require an
   * implicit [[SchemaView]] and are always linked to a defining schema, which is the schema in which
@@ -89,9 +92,10 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def inner: ClassDefinition = cls
 
   def uriOrCurie: UriOrCurie =
-    cls.classUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name)))
+    cls.classUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name)))
 
-  override def aliasedName: String = cls.alias.getOrElse(Case.PascalCase(cls.name))
+  override def aliasedName: String =
+    cls.alias.getOrElseFast(Case.PascalCase(cls.name))
 
   /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
@@ -130,9 +134,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   }
 
   /** The slot/type bundle for the identifier of this class, if it exists */
-  lazy val identifierView: Option[TypeAttributeView] = identifier.map(idSlot => {
+  lazy val identifierView: Option[TypeAttributeView] = identifier.mapFast(idSlot => {
     idSlot.derivedRange.resolve.get match {
-      case tv: TypeView => TypeAttributeView(idSlot, this, tv)
+      case tv: TypeView => new TypeAttributeView(idSlot, this, tv)
       case x =>
         throw RuntimeException(s"Invalid identifier slot: ${cls.name}.${idSlot.name} -> ${x.name}")
     }
@@ -143,21 +147,24 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   lazy val attributeViews: Map[String, AttributeView] = {
     derivedAttributes.map((k, slot) =>
-      k -> (slot.derivedRange.resolve.get match {
-        case classView: ClassView =>
-          if classView.isAny then AnyView(slot, this)
-          else if !slot.derivedInlined then
-            ClassReferenceAttributeView(
-              slot,
-              this,
-              classView,
-              classView.identifierView.get,
-            )
-          else ClassInlineAttributeView(slot, this, classView, InlineType(slot))
-        case tv: TypeView => TypeAttributeView(slot, this, tv)
-        case ev: EnumView => EnumAttributeView(slot, this, ev)
-        case x => throw RuntimeException(s"Invalid range: ${cls.name}.${slot.name} -> ${x.name}")
-      }),
+      (
+        k,
+        slot.derivedRange.resolve.get match {
+          case classView: ClassView =>
+            if classView.isAny then new AnyView(slot, this)
+            else if !slot.derivedInlined then
+              new ClassReferenceAttributeView(
+                slot,
+                this,
+                classView,
+                classView.identifierView.get,
+              )
+            else new ClassInlineAttributeView(slot, this, classView, InlineType(slot))
+          case tv: TypeView => new TypeAttributeView(slot, this, tv)
+          case ev: EnumView => new EnumAttributeView(slot, this, ev)
+          case x => throw RuntimeException(s"Invalid range: ${cls.name}.${slot.name} -> ${x.name}")
+        },
+      ),
     )
   }
 
@@ -175,18 +182,25 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * @return
     *   Direct parents of the class, mixins before inheritance
     */
-  def parents: Iterable[ClassView] = getParents(this)
+  def parents: Seq[ClassView] = getParents(this)
 
   /** Get the subject type for this class, if possible. Uses the class' identifier slot's range.
     * @return
     *   The subject type, or None if the class does not have an identifier
     */
-  def subjectType: Option[SubjectType] = identifierView.map(_.subjectType)
+  def subjectType: Option[SubjectType] = identifierView.mapFast(_.subjectType)
 
-  private def getParents(view: ClassView): Iterable[ClassView] =
-    (view.cls.mixins ++ view.cls.isA).flatMap { r =>
-      sv.resolve(r.asInstanceOf[Reference[ClassView]])
+  private def getParents(view: ClassView): Seq[ClassView] = {
+    val parents = new ListBuffer[ClassView]
+    val cls = view.cls
+    cls.mixins.foreach { r =>
+      sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast(parents.addOne)
     }
+    cls.isA.foreachFast { r =>
+      sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast(parents.addOne)
+    }
+    parents.toList
+  }
 
   /** Get and dereference all the ancestors (transitive parents) of this class.
     *
@@ -203,8 +217,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def directSlots: Seq[Reference[SlotDefinition]] = getDirectSlots(cls)
 
-  private def getDirectSlots(cls: ClassDefinition): Seq[Reference[SlotDefinition]] =
-    cls.slots ++ cls.attributes.keys.map(Reference[SlotDefinition])
+  private def getDirectSlots(cls: ClassDefinition): Seq[Reference[SlotDefinition]] = {
+    val slots = new ListBuffer[Reference[SlotDefinition]]
+    slots.addAll(cls.slots)
+    cls.attributes.keys.foreach(a => slots.addOne(Reference[SlotDefinition](a)))
+    slots.toList
+  }
 
   /** Test whether the class or its ancestors have this slot defined as an attribute.
     *
@@ -215,8 +233,10 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * @return
     *   True if the slot comes from class attributes, false otherwise
     */
-  def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean =
-    ancestors(true).exists(anc => anc.cls.attributes.keys.exists(_ == slotRef.value))
+  def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean = {
+    val name = slotRef.value
+    ancestors(true).exists(anc => anc.cls.attributes.keys.exists(_.equals(name)))
+  }
 
   /** Derive a slot for a class, taking into account the `slotUsage` and `attributes` for the class
     * and its ancestors, as well as the schema top-level slots and its ancestors.
@@ -244,9 +264,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     // Use empty slot base here to avoid an extra allocation
     var currentSlot = ClassView.emptySlotDef
     currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls)
-    sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]) match {
+    sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]).foreachFast { (resolved: SlotView) =>
       // Note this is a bit off-spec, but it's a pretty reasonable
-      case Some(resolved: SlotView) if !isSlotFromAttributes(slotRef) =>
+      if (!isSlotFromAttributes(slotRef)) {
         currentSlot =
           currentSlot.combineWith(resolved.slot.asInstanceOf[SlotDefinitionImpl], sv.combineRange)
         for slotAncestor <- resolved.ancestors(false) do {
@@ -255,7 +275,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
             sv.combineRange,
           )
         }
-      case _ =>
+      }
     }
     val finalSlot = currentSlot.copy(
       name = slotRef.value,
@@ -272,7 +292,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     )
     // Apply the original schema as the defining schema, so that default prefix / default range
     // resolution still works as defined in the original schema file.
-    SlotView(finalSlot, source.definingSchema)
+    new SlotView(finalSlot, source.definingSchema)
   }
 
   /** Test whether this class definition has an identifier slot
@@ -290,60 +310,64 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   used instead of checking the class extensions.
     */
   def treeRootInlineType(overrideType: Option[String]): InlineType =
-    val value = overrideType.orElse {
-      cls.extensions.get("tree_root_as").map(_.extensionValue.value.trim)
+    val value = overrideType.orElseFast {
+      cls.extensions.get("tree_root_as").mapFast(_.extensionValue.value.strip)
     }
-    lazy val msg =
-      s"Class '$name' has 'tree_root_as: ${value.get}', but it cannot be inlined in this form"
-    value.map(v =>
-      Case.camelCase(v).strip() match {
+    value.mapFast(v =>
+      Case.camelCase(v) match {
         case "plain" => InlineType.plain
         case "optional" => InlineType.optional
         case "list" => InlineType.list
         case "simpleDict" =>
           collectionForm match {
             case form: SimpleDict => InlineType.dict(form)
-            case _ => throw new IllegalArgumentException(msg)
+            case _ =>
+              throw new IllegalArgumentException(
+                s"Class '$name' has 'tree_root_as: $v', but it cannot be inlined in simpleDict form",
+              )
           }
         case "compactDict" =>
           collectionForm match {
             case form: DictForm =>
               // override simpledict inference to
               InlineType.dict(CompactDict(form.key))
-            case _ => throw new IllegalArgumentException(msg)
+            case _ =>
+              throw new IllegalArgumentException(
+                s"Class '$name' has 'tree_root_as: $v', but it cannot be inlined in compactDict form",
+              )
           }
-        case _ if overrideType.isEmpty =>
-          throw new IllegalArgumentException(
-            s"Class '$name' has unknown 'tree_root_as' extension value: '$v'",
-          )
         case _ =>
-          throw new IllegalArgumentException(
-            s"Class '$name' has unknown 'tree_root_as' override value: '$v'",
-          )
+          throw new IllegalArgumentException({
+            if (overrideType.isEmpty)
+              s"Class '$name' has unknown 'tree_root_as' extension value: '$v'"
+            else s"Class '$name' has unknown 'tree_root_as' override value: '$v'"
+          })
       },
-    ).getOrElse(InlineType.plain)
+    ).getOrElseFast(InlineType.plain)
 
   /** Materialize this [[ClassView]] into a derived [[ClassDefinition]]. This inlines all slots as
     * attributes, and clears any inheritance slots. Additionally, sets the class uri using
     * [[SchemaView]] logic.
     */
-  def materialize: ClassDefinitionImpl = {
+  def materialize: ClassDefinitionImpl =
     inner.asInstanceOf[ClassDefinitionImpl].copy(
-      classUri = Some(uriOrCurie),
+      classUri = new Some(uriOrCurie),
       isA = None,
-      mixins = Seq.empty,
+      mixins = Nil,
       attributes = derivedAttributes.map((slotKey, slot) =>
-        slotKey -> slot.inner.asInstanceOf[SlotDefinitionImpl].copy(
-          isA = None,
-          mixins = Seq.empty,
-          fromSchema = Some(slot.definingSchema.id),
+        (
+          slotKey,
+          slot.inner.asInstanceOf[SlotDefinitionImpl].copy(
+            isA = None,
+            mixins = Nil,
+            fromSchema = new Some(slot.definingSchema.id),
+          ),
         ),
       ),
-      slots = Seq.empty,
+      slots = Nil,
       slotUsage = Map.empty,
-      fromSchema = Some(definingSchema.id),
+      fromSchema = new Some(definingSchema.id),
     )
-  }
 }
 
 final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition)(using
@@ -353,12 +377,13 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 
   def inner: SlotDefinition = slot
 
-  override def aliasedName: String = slot.alias.getOrElse(Case.deSpaceCase(slot.name))
+  override def aliasedName: String =
+    slot.alias.getOrElseFast(Case.deSpaceCase(slot.name))
 
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
   def implicitPrefixReference: Option[String] =
-    slot.implicitPrefix.flatMap(definingPrefixResolver.resolvePrefix)
+    slot.implicitPrefix.flatMapFast(definingPrefixResolver.resolvePrefix)
 
   /** Get and dereference the direct parents (mixins + inheritance) of this slot
     *
@@ -367,8 +392,18 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     */
   def parents: Iterable[SlotDefinition] = getParents(slot)
 
-  private def getParents(slot: SlotDefinition): Iterable[SlotDefinition] =
-    (slot.mixins ++ slot.isA).flatMap(sv.resolve)
+  private def getParents(slot: SlotDefinition): Iterable[SlotDefinition] = {
+    val parents = new ListBuffer[SlotDefinition]
+    slot.mixins.foreach { r =>
+      sv.resolve(r).foreachFast(parents.addOne)
+    }
+    slot.isA.foreachFast { r =>
+      sv.resolve(r).foreachFast { cv =>
+        parents.addOne(cv)
+      }
+    }
+    parents.toList
+  }
 
   /** Get and dereference all the ancestors (transitive parents) of this slot.
     *
@@ -398,8 +433,9 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     * Make sure you use this method after class/slot derivation is performed.
     */
   def derivedRange: Reference[ElementView[?, ?]] =
-    slot.range.getOrElse(sv.getDefaultRange(definingSchema))
-      .asInstanceOf[Reference[ElementView[?, ?]]]
+    slot.range.getOrElseFast {
+      sv.getDefaultRange(definingSchema)
+    }.asInstanceOf[Reference[ElementView[?, ?]]]
 
   /** Get the default value of this slot if the `ifabsent` metaslot is defined.
     *
@@ -410,7 +446,9 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     *   The range of the slot. Obtain it from [[SlotView.derivedRange]].
     */
   def ifAbsent[R](range: ElementView[?, R]): Option[R] =
-    slot.ifabsent.flatMap(range.evaluateConstructor)
+    slot.ifabsent.flatMapFast { ia =>
+      range.evaluateConstructor(ia)
+    }
 
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
@@ -421,7 +459,9 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 private object SlotView:
   // Exposed for slot derivation in ClassView.
   def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): UriOrCurie =
-    slotUri.getOrElse(Uri.synthetic(context.defaultPrefixUri, Case.deSpaceCase(slotName)))
+    slotUri.getOrElseFast {
+      Uri.synthetic(context.defaultPrefixUri, Case.deSpaceCase(slotName))
+    }
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
@@ -433,22 +473,34 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
   override def aliasedName: String = Case.PascalCase(_enum.name)
 
   override private[schemaview] def evaluateConstructor(expr: String): Option[PermissibleValue] =
-    Some(ConstructorExpression.evaluateEnum(expr, this))
+    new Some(ConstructorExpression.evaluateEnum(expr, this))
 
   def uriOrCurie: UriOrCurie =
-    _enum.enumUri.getOrElse(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
+    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
   lazy val derivedValues: Seq[(pv: PermissibleValue, meaning: UriOrCurie)] =
-    _enum.permissibleValues.values.map(x =>
-      x -> x.meaning.getOrElse(Uri.synthetic(defaultPrefixUri, Case.deSpaceCase(x.text))),
-    ).toSeq
+    _enum.permissibleValues.values
+      .foldLeft(new ListBuffer[(pv: PermissibleValue, meaning: UriOrCurie)]) { (acc, x) =>
+        acc.addOne(
+          (
+            x,
+            x.meaning.getOrElseFast {
+              Uri.synthetic(defaultPrefixUri, Case.deSpaceCase(x.text))
+            },
+          ),
+        )
+      }.toList
 
   lazy val toMeaning: Map[String, UriOrCurie] =
-    derivedValues.map((x, meaning) => x.text -> meaning).toMap
+    derivedValues.foldLeft(Map.newBuilder[String, UriOrCurie]) { case (acc, (x, meaning)) =>
+      acc.addOne((x.text, meaning))
+    }.result()
 
   lazy val fromMeaning: Map[UriOrCurie, String] =
-    derivedValues.map((x, meaning) => meaning -> x.text).toMap
+    derivedValues.foldLeft(Map.newBuilder[UriOrCurie, String]) { case (acc, (x, meaning)) =>
+      acc.addOne((meaning, x.text))
+    }.result()
 }
 
 // TODO LNK-63:
@@ -468,18 +520,16 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     * the RDF representations.
     */
   def subjectType: SubjectType = runtimeType match {
-    case UriType => SubjectType.uri
-    case CurieType => SubjectType.curie
-    case UriOrCurieType => SubjectType.uriOrCurie
+    case _: UriType.type => SubjectType.uri
+    case _: CurieType.type => SubjectType.curie
+    case _: UriOrCurieType.type => SubjectType.uriOrCurie
     case _ =>
-      inner.implicitPrefix match {
-        case Some(prefix) =>
-          val reference =
-            definingPrefixResolver.resolvePrefix(prefix).getOrElse(
-              throw RuntimeException(s"Unknown implicit prefix for type $name: $prefix"),
-            )
-          SubjectType.implicitPrefix(reference)
-        case None => SubjectType.base
+      inner.implicitPrefix.foldFast(SubjectType.base) { prefix =>
+        val reference =
+          definingPrefixResolver.resolvePrefix(prefix).getOrElseFast {
+            throw RuntimeException(s"Unknown implicit prefix for type $name: $prefix")
+          }
+        new SubjectType.implicitPrefix(reference)
       }
   }
 
@@ -498,38 +548,33 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
     * names into the enum. Falls back to [[UnknownType]].
     */
-  def runtimeType: RuntimeType = inner.base match {
-    case Some(value) =>
-      value match {
-        case "str" => StringType
-        case "int" => IntegerType
-        case "Bool" => BooleanType
-        // thanks, python
-        case "float" if inner.typeUri.contains("xsd:double") => DoubleType
-        case "double" => DoubleType
-        case "float" => FloatType
-        case "Decimal" => DecimalType
-
-        case "URI" => UriType
-        case "Curie" => CurieType
-        case "URIorCURIE" => UriOrCurieType
-        case "NCName" => NcNameType
-
-        case "XSDDateTime" => DateTimeType
-        case "XSDDate" => DateType
-        case "XSDTime" => TimeType
-
-        case _ => UnknownType
-      }
-    case None => UnknownType
+  def runtimeType: RuntimeType = inner.base.foldFast(UnknownType) {
+    case "str" => StringType
+    case "int" => IntegerType
+    case "Bool" => BooleanType
+    case "double" => DoubleType
+    case "float" =>
+      // thanks, python
+      if (inner.typeUri.contains("xsd:double")) DoubleType
+      else FloatType
+    case "Decimal" => DecimalType
+    case "URI" => UriType
+    case "Curie" => CurieType
+    case "URIorCURIE" => UriOrCurieType
+    case "NCName" => NcNameType
+    case "XSDDateTime" => DateTimeType
+    case "XSDDate" => DateType
+    case "XSDTime" => TimeType
+    case _ => UnknownType
   }
 
   /** The [[CoreType]] representation of this type.
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uriOrCurie: UriOrCurie =
-    _type.typeUri.getOrElse(Uri.synthetic(defaultPrefixUri, _type.name))
+  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast {
+    Uri.synthetic(defaultPrefixUri, _type.name)
+  }
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using

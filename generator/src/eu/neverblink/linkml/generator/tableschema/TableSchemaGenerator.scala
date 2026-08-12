@@ -4,34 +4,34 @@ import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, WriterConfig,
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.generator.tableschema.FieldDescriptor.types
 import eu.neverblink.linkml.schemaview.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 
 class TableSchemaGenerator(using sv: SchemaView) {
 
   /** Map the [[RuntimeType]] to the appropriate Table Schema (type, format) tuple
     */
-  private def remapType(rt: RuntimeType): (String, String) =
-    rt match {
-      case StringType => (types.string, "default")
-      case IntegerType => (types.integer, "default")
-      case FloatType => (types.number, "default")
-      case DoubleType => (types.number, "default")
-      case BooleanType => (types.boolean, "default")
-      case DecimalType => (types.number, "default")
-      case AnyType => (types.any, "default")
-      case DateType => (types.date, "any")
-      case DateTimeType => (types.datetime, "any")
-      case TimeType => (types.time, "any")
-      case UriOrCurieType => (types.string, "default")
-      case UriType => (types.string, "uri")
-      case CurieType => (types.string, "default")
-      case NcNameType => (types.string, "default")
-      case UnknownType => (types.any, "default")
-    }
+  private def remapType(rt: RuntimeType): (String, String) = rt match {
+    case _: StringType.type => (types.string, "default")
+    case _: IntegerType.type => (types.integer, "default")
+    case _: FloatType.type => (types.number, "default")
+    case _: DoubleType.type => (types.number, "default")
+    case _: BooleanType.type => (types.boolean, "default")
+    case _: DecimalType.type => (types.number, "default")
+    case _: AnyType.type => (types.any, "default")
+    case _: DateType.type => (types.date, "any")
+    case _: DateTimeType.type => (types.datetime, "any")
+    case _: TimeType.type => (types.time, "any")
+    case _: UriOrCurieType.type => (types.string, "default")
+    case _: UriType.type => (types.string, "uri")
+    case _: CurieType.type => (types.string, "default")
+    case _: NcNameType.type => (types.string, "default")
+    case _: UnknownType.type => (types.any, "default")
+  }
 
   /** Get the name of the slot, respecting alias, and LinkML casing rules
     */
   def slotName(slotView: SlotView): String =
-    slotView.slot.alias.getOrElse(Case.deSpaceCase(slotView.slot.name))
+    slotView.slot.alias.getOrElseFast(Case.deSpaceCase(slotView.slot.name))
 
   /** Generate the Table Schema
     *
@@ -43,7 +43,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
     */
   def generate(treeRootOverride: Option[String] = None): TableDescriptor = {
     val root: ClassView = sv.treeRootWithOverride(treeRootOverride)
-      .get.getOrElse(throw RuntimeException("No tree root - can't generate table schema"))
+      .get.getOrElseFast(throw RuntimeException("No tree root - can't generate table schema"))
     val fields =
       for slotView <- root.derivedAttributes.values.toSeq.sortBy(s => (s.slot.rank, s.slot.name))
       yield {
@@ -51,7 +51,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
           name = slotName(slotView),
           title = slotView.slot.title,
           description = slotView.slot.description,
-          constraints = Some(Constraints(required = Some(slotView.slot.required))),
+          constraints = new Some(new Constraints(required = new Some(slotView.slot.required))),
         )
         slotView.derivedRange.resolve.get match {
           case cls: ClassView =>
@@ -65,51 +65,51 @@ class TableSchemaGenerator(using sv: SchemaView) {
               cls.identifier.get.derivedRange.resolve.get match {
                 case tv: TypeView =>
                   val (type_, format) = remapType(tv.runtimeType)
-                  base.copy(`type` = type_, rdfType = Some(cls.uriStr), format = format)
+                  base.copy(`type` = type_, rdfType = new Some(cls.uriStr), format = format)
                 case _ => throw RuntimeException("ID slot is not type")
               }
             } else
               InlineType(slotView) match {
                 case InlineType.list =>
-                  base.copy(`type` = types.array, rdfType = Some(cls.uriStr))
+                  base.copy(`type` = types.array, rdfType = new Some(cls.uriStr))
                 // plain is JSON objects, optional is JSON object or null, dict inlines are JSON objects
                 case _ =>
-                  base.copy(`type` = types.`object`, rdfType = Some(cls.uriStr))
+                  base.copy(`type` = types.`object`, rdfType = new Some(cls.uriStr))
               }
           case tv: TypeView =>
             val (type_, format) = remapType(tv.runtimeType)
             if !slotView.slot.multivalued then
               base.copy(
                 `type` = type_,
-                rdfType = Some(tv.uriStr),
+                rdfType = new Some(tv.uriStr),
                 format = format,
-                constraints = base.constraints.map(
+                constraints = base.constraints.mapFast(
                   _.copy(
-                    pattern = slotView.slot.pattern.orElse(tv._type.pattern),
-                    maximum =
-                      slotView.slot.maximumValue.orElse(tv._type.maximumValue).map(_.value.strip()),
-                    minimum =
-                      slotView.slot.minimumValue.orElse(tv._type.minimumValue).map(_.value.strip()),
+                    pattern = slotView.slot.pattern.orElseFast(tv._type.pattern),
+                    maximum = slotView.slot.maximumValue
+                      .orElseFast(tv._type.maximumValue).mapFast(_.value.strip()),
+                    minimum = slotView.slot.minimumValue
+                      .orElseFast(tv._type.minimumValue).mapFast(_.value.strip()),
                   ),
                 ),
               )
             else
               base.copy(
                 `type` = types.array,
-                rdfType = Some(tv.uriStr),
+                rdfType = new Some(tv.uriStr),
               )
           case ev: EnumView =>
-            val values = Some(ev.toMeaning.keys.toSeq)
+            val values = new Some(ev.toMeaning.keys.toSeq)
             if !slotView.slot.multivalued then
               base.copy(
                 `type` = types.string,
-                rdfType = Some(ev.uriStr),
-                constraints = base.constraints.map(_.copy(`enum` = values)),
+                rdfType = new Some(ev.uriStr),
+                constraints = base.constraints.mapFast(_.copy(`enum` = values)),
               )
             else
               base.copy(
                 `type` = types.array,
-                rdfType = Some(ev.uriStr),
+                rdfType = new Some(ev.uriStr),
                 // no multivalued enums in table schema...
               )
           case _ => throw RuntimeException(s"Couldn't map range ${slotView.derivedRange}")

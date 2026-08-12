@@ -2,6 +2,7 @@ package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.SubjectType.implicitPrefix
 import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
@@ -83,29 +84,26 @@ final case class TypeAttributeView(
   private val slot: SlotDefinition = slotView.slot
   private val _type: TypeDefinition = typeView._type
 
-  private def upgradeToImplicit(st: SubjectType): SubjectType = slot.implicitPrefix match {
-    case Some(value) =>
+  private def upgradeToImplicit(st: SubjectType): SubjectType = slot.implicitPrefix.foldFast(st) {
+    value =>
       SubjectType.implicitPrefix(
-        slotView.definingPrefixResolver.resolvePrefix(value)
-          .getOrElse(
-            throw RuntimeException(s"Unknown implicit_prefix for slot ${slot.name}: $value"),
-          ),
+        slotView.definingPrefixResolver.resolvePrefix(value).getOrElseFast(
+          throw RuntimeException(s"Unknown implicit_prefix for slot ${slot.name}: $value"),
+        ),
       )
-    case None => st
   }
 
   /** Return the RDF subject type that corresponds to this type/slot combination. This is used to
     * create subjects in the RDF representations.
     */
-  def subjectType: SubjectType = {
+  def subjectType: SubjectType =
     typeView.subjectType match {
-      case SubjectType.base => upgradeToImplicit(SubjectType.base)
-      case SubjectType.implicitPrefix(pfx) =>
+      case _: SubjectType.base.type => upgradeToImplicit(SubjectType.base)
+      case ip: SubjectType.implicitPrefix =>
         // this probably should not be allowed
-        upgradeToImplicit(SubjectType.implicitPrefix(pfx))
+        upgradeToImplicit(new SubjectType.implicitPrefix(ip.prefix))
       case st => st
     }
-  }
 
   /** @see [[slot.pattern]] */
   def pattern: Option[String] =

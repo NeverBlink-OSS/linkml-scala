@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.util
 
 import eu.neverblink.linkml.metamodel.TypeDefinition
 import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.{
   Case,
   ElementView,
@@ -34,16 +35,16 @@ enum PruningMode:
     lazy val defaultRanges = sv.schemas.map(
       _
         .defaultRange
-        .getOrElse(Reference[TypeDefinition]("string"))
+        .getOrElseFast(Reference[TypeDefinition]("string"))
         .asInstanceOf[Reference[TypeView]],
     ).flatMap(_.resolve)
 
     this match {
       case PruningMode.treeRoot(ovr) =>
-        defaultRanges ++ (sv.treeRootWithOverride(ovr).get match {
-          case Some(value) => Seq(value)
-          case None => sv.root.classes.keys.map(sv.classes.apply)
-        })
+        sv.treeRootWithOverride(ovr).get
+          .foldFast(defaultRanges ++ sv.root.classes.keys.map(sv.classes.apply)) { value =>
+            defaultRanges :+ value
+          }
       case PruningMode.schemaRoot => defaultRanges ++ sv.root.classes.keys.map(sv.classes.apply)
       case PruningMode.skip => Seq.empty
     }

@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.shacl
 
 import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.SlotExpression
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.*
 
@@ -24,25 +25,25 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
   ): Unit = {
     // TODO LNK-129 HACK: Skip the main range if any boolean slot is defined.
     if slotExpression.anyOf.isEmpty then
-      slotExpression.range.getOrElse(sv.getDefaultRange(slotView.definingSchema))
+      slotExpression.range.getOrElseFast(sv.getDefaultRange(slotView.definingSchema))
         .asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreach {
           case typeView: TypeView =>
             val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
             if !isIri then
-              sink.triple(subject, Shacl.datatype, Iri(typeView.uriStr))
+              sink.triple(subject, Shacl.datatype, new Iri(typeView.uriStr))
               sink.triple(subject, Shacl.nodeKind, Shacl.Literal)
             else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
           case classView: ClassView =>
             val cdUri = classView.uriStr
             val isLinkmlAny = cdUri == "https://w3id.org/linkml/Any"
             if (!isLinkmlAny) {
-              sink.triple(subject, Shacl.`class`, Iri(cdUri))
+              sink.triple(subject, Shacl.`class`, new Iri(cdUri))
               sink.triple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
             }
           case enumView: EnumView =>
             val permissibleValues =
               enumView.derivedValues.map(value => {
-                Iri(value.meaning.uri(using enumView.definingPrefixResolver))
+                new Iri(value.meaning.uri(using enumView.definingPrefixResolver))
               })
             val rdfListHead = addList(sink, permissibleValues)
             sink.triple(subject, Shacl.in, rdfListHead)
@@ -77,9 +78,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     val slot = s.slot
     val property = blankNode()
     sink.triple(propertyDomain, Shacl.property, property)
-    slot.description match {
-      case Some(d) => sink.triple(property, Shacl.description, Literal(d, XmlSchema.string))
-      case _ =>
+    slot.description.foreachFast { d =>
+      sink.triple(property, Shacl.description, Literal(d, XmlSchema.string))
     }
     // TODO LNK-129: N-arity has to be done on the top-level-only,
     //  as SHACL boolean operators attached to a PropertyShape have to be NodeShapes
@@ -88,7 +88,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     //  leaves PropertyShapes.
     if (!slot.multivalued) sink.triple(property, Shacl.maxCount, Literal.one)
     if (slot.required) sink.triple(property, Shacl.minCount, Literal.one)
-    sink.triple(property, Shacl.path, Iri(s.uriStr))
+    sink.triple(property, Shacl.path, new Iri(s.uriStr))
     processSlotExpr(sink, s, slot, property)
     sink.triple(property, Shacl.order, Literal(order.toString, XmlSchema.integer))
   }
@@ -124,23 +124,25 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       else sv.classes
 
     classes.values.foreach { c =>
-      val classNameIri = Iri(c.uriStr)
+      val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
-      c.cls.description match {
-        case Some(d) => sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
-        case _ =>
+      c.cls.description.foreachFast { d =>
+        sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
       }
       val closed = !(enforceOpenShapes || c.cls.`abstract` || c.cls.mixin)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       val ignoredPropertiesListHead = addList(
         sink,
-        Seq(Rdf.`type`) ++ c.identifier.map(id => Iri(id.uriStr)),
+        Seq(Rdf.`type`) ++ c.identifier.mapFast(id => new Iri(id.uriStr)),
       )
       sink.triple(classNameIri, Shacl.ignoredProperties, ignoredPropertiesListHead)
-      var order = 0
-      c.derivedAttributes.values.filter(!_.inner.identifier).foreach { x =>
-        processSlot(sink, x, order, classNameIri)
-        order += 1
+      c.derivedAttributes.values.foreach {
+        var order = 0
+        x =>
+          if (!x.inner.identifier) {
+            processSlot(sink, x, order, classNameIri)
+            order += 1
+          }
       }
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }

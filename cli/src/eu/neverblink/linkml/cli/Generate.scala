@@ -2,6 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.runtime.FastUtils.*
 
 import java.io.OutputStream
 
@@ -52,34 +53,31 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     }
 
   private def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
-    file match {
-      case Some(value) =>
-        val stream = os.write.outputStream(os.Path(value, os.pwd))
-        try write(stream)
-        finally stream.close()
-      case None =>
-        // `out` is the command's stdout (redirected in tests). Flush but never close it.
-        write(outStream)
-        outStream.flush()
+    file.foldFast {
+      // `out` is the command's stdout (redirected in tests). Flush but never close it.
+      write(outStream)
+      outStream.flush()
+    } { value =>
+      val stream = os.write.outputStream(os.Path(value, os.pwd))
+      try write(stream)
+      finally stream.close()
     }
 
   private def writeToFileOrStdout(file: Option[String], content: String): Unit =
-    file match {
-      case Some(value) => os.write(os.Path(value, os.pwd), content)
-      case None => printLine(content)
+    file.foldFast(printLine(content)) { value =>
+      os.write(os.Path(value, os.pwd), content)
     }
 
   private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
-    to match {
-      case Some(dir) =>
-        val path = os.Path(dir, os.pwd)
-        os.makeDir.all(path)
-        files.foreach((k, v) => os.write.over(path / k, v))
-      case None =>
-        files.foreach((k, v) => {
-          printLine(s"//\n// FILE $k\n//")
-          printLine(v)
-        })
+    to.foldFast {
+      files.foreach((k, v) => {
+        printLine(s"//\n// FILE $k\n//")
+        printLine(v)
+      })
+    } { dir =>
+      val path = os.Path(dir, os.pwd)
+      os.makeDir.all(path)
+      files.foreach((k, v) => os.write.over(path / k, v))
     }
 }
 

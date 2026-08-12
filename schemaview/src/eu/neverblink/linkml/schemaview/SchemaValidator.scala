@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{NcName, PrefixResolver, Reference}
+import eu.neverblink.linkml.runtime.{NcName, PrefixResolver, Reference, Uri}
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
 import java.util
@@ -14,7 +15,7 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Location of an issue that is pinned to a JSON path within the root schema. */
   private def at(jsonPath: String): IssueLocationImpl =
-    IssueLocationImpl(schemaId = Some(sv.root.id), jsonPointer = Some(jsonPath))
+    new IssueLocationImpl(schemaId = new Some(sv.root.id), jsonPointer = new Some(jsonPath))
 
   /** Location of an issue that pertains to a class of the root schema. */
   private def classLocation(className: String): IssueLocationImpl =
@@ -22,7 +23,7 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Location of an issue that pertains to the root schema as a whole. */
   private def rootLocation: IssueLocationImpl =
-    IssueLocationImpl(schemaId = Some(sv.root.id))
+    IssueLocationImpl(schemaId = new Some(sv.root.id))
 
   // TODO: warn about shadowing
 
@@ -45,7 +46,7 @@ final class SchemaValidator(using sv: SchemaView) {
       // gets its own issue type with a hint.
       if ref.referenceValue == "string" then UnknownStringReferenceImpl(location = at(ref.path))
       else
-        UnknownReferenceImpl(
+        new UnknownReferenceImpl(
           location = at(ref.path),
           referenceValue = ref.referenceValue,
         ),
@@ -54,30 +55,35 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Any usages of an undefined `default_range`. Empty if no usages found. */
   lazy val usedUndefinedDefaultRange: Seq[SchemaFatal] =
     macroResult.invalidDefaultRanges.map(range =>
-      InvalidDefaultRangeImpl(location = at(range.path)),
+      new InvalidDefaultRangeImpl(location = at(range.path)),
     )
 
   lazy val schemaIdClash: Seq[SchemaFatal] = {
-    val schemas = sv.schemas.toIndexedSeq
-    for
-      (s1, s1index) <- schemas.zipWithIndex
-      s2 <- schemas.slice(s1index + 1, schemas.size)
-      if s1.id == s2.id
-        // TODO LNK-154 Robust file system importing
-        && s1 != s2
-    yield SchemaIdClashImpl(location = IssueLocationImpl(schemaId = Some(s1.id)))
+    val clashes = Vector.newBuilder[SchemaFatal]
+    val schemas = sv.schemas
+    schemas.foreach {
+      val seen = new util.HashMap[Uri, SchemaDefinition](schemas.size << 1, 0.5f)
+      s1 =>
+        val s2 = seen.getOrDefault(s1.id, s1)
+        if (s1 != s2) { // TODO LNK-154 Robust file system importing
+          clashes.addOne(
+            new SchemaIdClashImpl(location = IssueLocationImpl(schemaId = new Some(s1.id))),
+          )
+        }
+    }
+    clashes.result()
   }
 
   /** Warning if defining a slot without a `range` will cause a fatal error, None otherwise
     */
   private lazy val undefinedDefaultRange: Option[SchemaWarning] =
     if isDefaultRangeAllowed then None
-    else Some(UndefinedDefaultRangeImpl(location = rootLocation))
+    else new Some(UndefinedDefaultRangeImpl(location = rootLocation))
 
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
-      InvalidRangeImpl(
+      new InvalidRangeImpl(
         location = at(range.path),
         rangeValue = range.value,
         actualType = range.actualType,
@@ -91,7 +97,7 @@ final class SchemaValidator(using sv: SchemaView) {
     // if len(tree_roots) > 0: # -> validation error
     val treeRoots = sv.root.classes.values.filter(_.treeRoot).toSeq
     if treeRoots.size > 1 then
-      Some(
+      new Some(
         MultipleTreeRootsImpl(
           location = rootLocation,
           classNames = treeRoots.map(_.name),
@@ -103,7 +109,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Warning when there does not exist a `tree_root` class, None otherwise */
   private lazy val noTreeRoot: Option[SchemaWarning] = {
     val treeRoots = sv.root.classes.values.filter(_.treeRoot)
-    if treeRoots.isEmpty then Some(NoTreeRootClassImpl(location = rootLocation))
+    if treeRoots.isEmpty then new Some(NoTreeRootClassImpl(location = rootLocation))
     else None
 
   }
@@ -118,20 +124,20 @@ final class SchemaValidator(using sv: SchemaView) {
         .collect { case s if s.slot.identifier || s.slot.key => s.slot }
       if (keyOrId.size > 1) {
         errors.addOne(
-          MultipleKeyOrIdSlotsImpl(
+          new MultipleKeyOrIdSlotsImpl(
             location = classLocation(derivedCls.cls.name),
             className = derivedCls.cls.name,
             slotNames = keyOrId.toSeq.map(_.name),
           ),
         )
       } else if (keyOrId.size == 1) {
-        keyOrId.head.range.flatMap(sv.resolve).orElse(sv.schemas.collectFirst {
-          case s if s.defaultRange.isDefined => s.defaultRange.flatMap(sv.resolve)
-        }.flatten).orNull match {
+        keyOrId.head.range.flatMapFast(sv.resolve).orElseFast(sv.schemas.collectFirst {
+          case s if s.defaultRange.isDefined => sv.resolve(s.defaultRange.get)
+        }.flatten).orNullFast match {
           case _: TypeDefinition | null =>
           case elem =>
             errors.addOne(
-              InvalidKeyOrIdSlotTypeImpl(
+              new InvalidKeyOrIdSlotTypeImpl(
                 location = classLocation(derivedCls.cls.name),
                 className = derivedCls.cls.name,
                 elementName = elem.name,
@@ -293,7 +299,7 @@ final class SchemaValidator(using sv: SchemaView) {
         .filter(x => !applicableSlotNames.contains(x))
       if (problemSlots.nonEmpty) {
         acc.addOne(
-          InvalidSlotUsageImpl(
+          new InvalidSlotUsageImpl(
             location = classLocation(cls.cls.name),
             className = cls.cls.name,
             slotNames = problemSlots.toSeq,
@@ -310,7 +316,7 @@ final class SchemaValidator(using sv: SchemaView) {
   ): Option[SchemaError] = {
     slotDefinition.implicitPrefix match {
       case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
-        Some(
+        new Some(
           undefinedPrefix(prefix, s"$locationPrefix/${slotDefinition.name}/implicit_prefix"),
         )
       case _ => None
@@ -323,20 +329,19 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val unknownPrefixes: Seq[SchemaError] = {
     sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
       if sv.rootPrefixResolver.resolvePrefix(prefix).isEmpty
-      then Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx"))
+      then new Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx"))
       else None,
     ) ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
           case Some(prefix) if tv.definingPrefixResolver.resolvePrefix(prefix).isEmpty =>
-            Some(undefinedPrefix(prefix, s"/types/${tv._type.name}/implicit_prefix"))
+            new Some(undefinedPrefix(prefix, s"/types/${tv._type.name}/implicit_prefix"))
           case _ => None
         }
       }) ++
       sv.slotDefinitions.values.flatMap(slotView =>
         slotImplicitPrefix(slotView.inner, slotView.definingPrefixResolver, "/slots"),
-      )
-      ++
+      ) ++
       sv.classes.values.flatMap(classView =>
         classView.cls.slotUsage.values.flatMap(
           slotImplicitPrefix(
@@ -359,9 +364,9 @@ final class SchemaValidator(using sv: SchemaView) {
     sv.elements.values.flatMap { elem =>
       if elem.uriOrCurie.isValid then None
       else
-        Some(
-          InvalidUriOrCurieImpl(
-            location = IssueLocationImpl(schemaId = Some(elem.definingSchema.id)),
+        new Some(
+          new InvalidUriOrCurieImpl(
+            location = IssueLocationImpl(schemaId = new Some(elem.definingSchema.id)),
             uriOrCurie = elem.uriOrCurie,
             elementType = elem.elementType,
             elementName = elem.inner.name,
@@ -416,18 +421,17 @@ final class SchemaValidator(using sv: SchemaView) {
     * @return
     *   None if no problems were
     */
-  def lint(maxProblems: Int = 5, verbose: Boolean = false): Option[String] = {
-    if lintProblems.isEmpty then None
-    else
-      Some(
-        s"Found ${lintProblems.size} problems in the schema:\n" + SchemaIssues.format(
-          lintProblems.map(_.infer()),
-          maxProblems,
-          verbose,
-          showLevel = true,
-        ),
+  def lint(maxProblems: Int = 5, verbose: Boolean = false): Option[String] =
+    if (lintProblems.isEmpty) None
+    else {
+      val formattedProblems = SchemaIssues.format(
+        lintProblems.map(_.infer()),
+        maxProblems,
+        verbose,
+        showLevel = true,
       )
-  }
+      new Some(s"Found ${lintProblems.size} problems in the schema:\n$formattedProblems")
+    }
 }
 
 object SchemaValidator {

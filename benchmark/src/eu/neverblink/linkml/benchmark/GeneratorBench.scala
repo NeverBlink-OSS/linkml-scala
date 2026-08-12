@@ -38,58 +38,48 @@ class GeneratorBench extends CommonParams {
   }
 
   @Benchmark
-  def jsonSchemaFromYaml(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
-    bh.consume(JsonSchemaGenerator().serialize())
-  }
+  def jsonSchemaFromYaml(bh: Blackhole): Unit =
+    bh.consume(
+      JsonSchemaGenerator(using
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
+      ).serialize(),
+    )
 
   @Benchmark
-  def jsonSchemaFromSchemas(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaView(schemaView.schemas)
-    bh.consume(JsonSchemaGenerator().serialize())
-  }
+  def jsonSchemaFromSchemas(bh: Blackhole): Unit =
+    bh.consume(JsonSchemaGenerator(using SchemaView(schemaView.schemas)).serialize())
 
   @Benchmark
-  def jsonSchemaFromSchemaView(bh: Blackhole): Unit = {
-    given sv: SchemaView = schemaView
-    bh.consume(JsonSchemaGenerator().serialize())
-  }
+  def jsonSchemaFromSchemaView(bh: Blackhole): Unit =
+    bh.consume(JsonSchemaGenerator(using schemaView).serialize())
 
   @Benchmark
-  def shaclFromYaml(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
-    writeShacl(bh)
-  }
+  def shaclFromYaml(bh: Blackhole): Unit =
+    writeShacl(bh)(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)))
 
   @Benchmark
-  def shaclFromSchemas(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaView(schemaView.schemas)
-    writeShacl(bh)
-  }
+  def shaclFromSchemas(bh: Blackhole): Unit =
+    writeShacl(bh)(using SchemaView(schemaView.schemas))
 
   @Benchmark
-  def shaclFromSchemaView(bh: Blackhole): Unit = {
-    given sv: SchemaView = schemaView
-    writeShacl(bh)
-  }
+  def shaclFromSchemaView(bh: Blackhole): Unit =
+    writeShacl(bh)(using schemaView)
 
   @Benchmark
-  def linkmlFromSchemas(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaView(schemaView.schemas)
-    bh.consume(LinkMlGenerator().serialize())
-  }
+  def linkmlFromSchemas(bh: Blackhole): Unit =
+    bh.consume(LinkMlGenerator(using SchemaView(schemaView.schemas)).serialize())
 
   @Benchmark
-  def linkmlFromSchemaView(bh: Blackhole): Unit = {
-    given sv: SchemaView = schemaView
-    bh.consume(LinkMlGenerator().serialize())
-  }
+  def linkmlFromSchemaView(bh: Blackhole): Unit =
+    bh.consume(LinkMlGenerator(using schemaView).serialize())
 
   @Benchmark
-  def linkmlFromYaml(bh: Blackhole): Unit = {
-    given sv: SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
-    bh.consume(LinkMlGenerator().serialize())
-  }
+  def linkmlFromYaml(bh: Blackhole): Unit =
+    bh.consume(
+      LinkMlGenerator(using
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
+      ).serialize(),
+    )
 
   /** Same setup for RDF sinks as in the CLI.
     */

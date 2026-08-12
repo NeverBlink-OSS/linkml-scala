@@ -1,5 +1,7 @@
 package eu.neverblink.linkml.runtime
 
+import eu.neverblink.linkml.runtime.FastUtils.*
+
 /** Thrown when a slot's value contradicts the value inferred from its `equals_expression`, or when
   * an expression references a slot that has no value.
   */
@@ -18,13 +20,13 @@ final class InferenceException(message: String) extends RuntimeException(message
   *   The inferred value if the slot was empty, otherwise its current value
   */
 def inferOptional[T](slotName: String, current: Option[T], inferred: T): Option[T] =
-  current match {
-    case None => Some(inferred)
-    case Some(value) if value == inferred => current
-    case Some(value) =>
+  current.foldFast(new Some(inferred)) { value =>
+    if (value == inferred) current
+    else {
       throw InferenceException(
         s"Slot '$slotName' is set to '$value', but its expression infers '$inferred'",
       )
+    }
   }
 
 /** Check that a required slot's value agrees with its `equals_expression`. A required slot is never
@@ -55,7 +57,7 @@ def inferRequired[T](slotName: String, current: T, inferred: T): T =
   *   The referenced slot's current value
   */
 def inferenceInput[T](slotName: String, value: Option[T]): T =
-  value.getOrElse(
+  value.getOrElseFast(
     throw InferenceException(
       s"Slot '$slotName' is referenced by an expression, but has no value",
     ),

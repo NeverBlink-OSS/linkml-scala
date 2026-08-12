@@ -3,6 +3,7 @@ package eu.neverblink.linkml.cli
 import eu.neverblink.linkml.generator.util.JsonUtil
 import org.virtuslab.yaml.Node
 import eu.neverblink.linkml.schemaview.SchemaIssues
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.{
   Codec,
   IssueSeverity,
@@ -134,23 +135,23 @@ object ValidationReport {
     format match
       case Format.Plain => s"# $text"
       case Format.Terminal =>
-        val (color, icon) = all.headOption match
-          case None => (green, "✔") // ✔
-          case Some(_) =>
-            val s = summarySeverity(all)
-            (s.color, s.icon)
+        val (color, icon) = all.headOption.foldFast((green, "✔")) { _ =>
+          val s = summarySeverity(all)
+          (s.color, s.icon)
+        }
         s"  $color$bold$icon $text$reset"
       case Format.Json => throw UnsupportedOperationException()
 
   private def renderPlain(issues: Seq[Issue]): String =
     if issues.isEmpty then "Schema is valid."
-    else
-      val lines = sorted(issues).map(i => s"${i.severity.label}: ${i.message}")
-      (lines :+ "" :+ summaryText(issues)).mkString("\n")
+    else {
+      sorted(issues).map(i => s"${i.severity.label}: ${i.message}")
+        .mkString("", "\n", "\n".concat(summaryText(issues)))
+    }
 
   private def renderTerminal(schemaName: String, issues: Seq[Issue]): String =
     import Ansi.*
-    val sb = new StringBuilder
+    val sb = new java.lang.StringBuilder
     sb.append(s"${dim}Validating $schemaName$reset\n\n")
     if issues.isEmpty then sb.append(s"$green$bold✔ Schema is valid.$reset") // ✔
     else

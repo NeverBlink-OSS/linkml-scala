@@ -66,12 +66,13 @@ object Validate extends BaseCommand[ValidateOptions] {
     catch
       // Only unexpected failures land here - a custom importer throwing, say. Reported as an import
       // failure so that every issue, including this one, is structured.
-      case NonFatal(ex) =>
+      case ex if NonFatal(ex) =>
+        val msg = ex.getMessage
         Seq(
-          SchemaImportErrorImpl(
+          new SchemaImportErrorImpl(
             location = IssueLocationImpl(),
             importUri = inputName,
-            reason = Option(ex.getMessage).getOrElse(ex.toString),
+            reason = if (msg ne null) msg else ex.toString,
           ),
         )
 }

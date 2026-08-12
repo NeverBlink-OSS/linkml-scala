@@ -6,6 +6,7 @@ import eu.neverblink.linkml
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -30,90 +31,18 @@ class JsonSchemaGenerator(using sv: SchemaView) {
   /** Translate a class name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def className(cls: ClassView): MappedClassName =
-    cls.cls.alias.getOrElse(Case.PascalCase(cls.cls.name))
+    cls.cls.alias.getOrElseFast(Case.PascalCase(cls.cls.name))
 
   /** Translate a slot name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def slotName(slot: SlotView): MappedSlotName =
-    slot.slot.alias.getOrElse(Case.deSpaceCase(slot.slot.name))
+    slot.slot.alias.getOrElseFast(Case.deSpaceCase(slot.slot.name))
 
-  /** Generate a Schema for a specific slot, which maps to a JSON Schema property.
-    * @param attributeView
-    *   The slot to define a JSON Schema property for
-    * @param needKeyless
-    *   Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
-    *   for CompactDict form inlining. The slot will be the key to omit from required fields.
-    * @param needValue
-    *   Mutable set this method will add to if it requires a value def to be defined in `$defs` for
-    *   SimpleDict form inlining. The slot will be the value to omit from required fields.
-    * @return
-    *   A tuple of the mapped slot name and the JSON [[Schema]] for the property value
-    */
-  private def generateSlotSchema(
-      attributeView: AttributeView,
-      needKeyless: mutable.Set[(MappedClassName, MappedSlotName)],
-      needValue: mutable.Set[(MappedClassName, MappedSlotName)],
-  ): (MappedSlotName, Schema) = {
-    val slot = attributeView.slotView
-    val slotSchema = attributeView match {
-      case AnyView(slotView, _) => Schema.Empty
-      case ClassInlineAttributeView(slotView, _, classView, inlineType) =>
-        val mappedClassName = className(classView)
-        inlineType match {
-          case InlineType.plain =>
-            Schema.referenceTo("#/$defs/", mappedClassName)
-          case InlineType.optional =>
-            Schema.referenceTo("#/$defs/", mappedClassName) // TODO LNK-34: or null
-          case InlineType.list =>
-            Schema.referenceTo("#/$defs/", mappedClassName).arrayOf // TODO LNK-34: or null
-          case InlineType.dict(CollectionForm.CompactDict(key)) =>
-            needKeyless.add(mappedClassName -> slotName(classView.derivedAttributes(key)))
-            Schema.referenceTo(
-              "#/$defs/",
-              mappedClassName + "__identifier_optional",
-            ).dictOf // TODO LNK-34: or null
-          case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-            needValue.add(mappedClassName -> slotName(classView.derivedAttributes(value)))
-            Schema.referenceTo(
-              "#/$defs/",
-              mappedClassName + "__simple_dict_value",
-            ).dictOf // TODO LNK-34: or null
-        }
-      case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
-        typeToRuntime(identifierView.typeView)
-          .copy(
-            $comment = Some(s"Reference to ${classView.name} class"),
-            minimum = toBigDecimalOpt(identifierView.minimumValue),
-            maximum = toBigDecimalOpt(identifierView.maximumValue),
-            pattern = identifierView.pattern.map(Pattern(_)),
-          )
-          .arrayOfIf(slotView.slot.multivalued)
-      case typeAttribute: TypeAttributeView =>
-        typeToRuntime(typeAttribute.typeView)
-          .copy(
-            minimum = toBigDecimalOpt(typeAttribute.minimumValue),
-            maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-            pattern = typeAttribute.pattern.map(Pattern(_)),
-          )
-          .arrayOfIf(typeAttribute.slotView.slot.multivalued)
-      case EnumAttributeView(slotView, _, enumView) =>
-        Schema.referenceTo("#/$defs/", enumView._enum.name)
-          .arrayOfIf(slotView.slot.multivalued)
+  private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] =
+    try x.mapFast(v => BigDecimal(v.value.trim))
+    catch {
+      case ex if NonFatal(ex) => None
     }
-    slotName(slot) -> slotSchema.copy(
-      title = slot.slot.title,
-      description = slot.slot.description,
-    )
-  }
-
-  private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] = x match {
-    case Some(v) =>
-      try Some(BigDecimal(v.value.trim))
-      catch {
-        case ex if NonFatal(ex) => None
-      }
-    case _ => None
-  }
 
   /** Generate the JSON Schema, but keep it in the [[Schema]] model
     *
@@ -136,87 +65,168 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       case Success(value) => value
       case Failure(exception) => throw exception
     }
-    val needKeyless = mutable.Set.empty[(MappedClassName, MappedSlotName)]
-    val needValue = mutable.Set.empty[(MappedClassName, MappedSlotName)]
     // If a tree root is defined, only include classes reachable from the tree root (pruning).
     // Otherwise, include all classes in the schema view.
-    val query = maybeTreeRoot match {
-      case Some(root) => sv.derivedReachabilityQuery(Seq(root), true, false)
-      case None => IncludeAllReachabilityQuery()
+    val query = maybeTreeRoot.foldFast(IncludeAllReachabilityQuery()) { root =>
+      sv.derivedReachabilityQuery(Seq(root), true, false)
     }
-    val defsClasses = for cls <- sv.classes.values if query.reachable(cls) yield {
-      val attributes = cls.attributeViews
-      val properties = for attribute <- attributes.values yield {
-        generateSlotSchema(attribute, needKeyless, needValue)
+    // Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
+    // for CompactDict form inlining. The slot will be the key to omit from required fields.
+    val needKeyless = mutable.Set.empty[(MappedClassName, MappedSlotName)]
+    // Mutable set this method will add to if it requires a value def to be defined in `$defs` for
+    // SimpleDict form inlining. The slot will be the value to omit from required fields.
+    val needValue = mutable.Set.empty[(MappedClassName, MappedSlotName)]
+
+    // Generate a Schema for a specific attribute, which maps to a JSON Schema property
+    def generateSlotSchema(attribute: AttributeView): Schema = {
+      val slotSchema = attribute match {
+        case _: AnyView => Schema.Empty
+        case ClassInlineAttributeView(_, _, classView, inlineType) =>
+          val mappedClassName = className(classView)
+          val $ref = "#/$defs/".concat(mappedClassName)
+          inlineType match {
+            case InlineType.plain =>
+              new Schema($ref = new Some($ref))
+            case InlineType.optional =>
+              new Schema($ref = new Some($ref)) // TODO LNK-34: or null
+            case InlineType.list =>
+              new Schema($ref = new Some($ref)).arrayOf // TODO LNK-34: or null
+            case InlineType.dict(CollectionForm.CompactDict(key)) =>
+              needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
+              new Schema(
+                $ref = new Some($ref.concat("__identifier_optional")),
+              ).dictOf // TODO LNK-34: or null
+            case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
+              needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
+              new Schema($ref =
+                new Some($ref.concat("__simple_dict_value")),
+              ).dictOf // TODO LNK-34: or null
+          }
+        case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
+          typeToRuntime(identifierView.typeView)
+            .copy(
+              $comment = Some(s"Reference to ${classView.name} class"),
+              minimum = toBigDecimalOpt(identifierView.minimumValue),
+              maximum = toBigDecimalOpt(identifierView.maximumValue),
+              pattern = identifierView.pattern.mapFast(new Pattern(_)),
+            )
+            .arrayOfIf(slotView.slot.multivalued)
+        case typeAttribute: TypeAttributeView =>
+          typeToRuntime(typeAttribute.typeView)
+            .copy(
+              minimum = toBigDecimalOpt(typeAttribute.minimumValue),
+              maximum = toBigDecimalOpt(typeAttribute.maximumValue),
+              pattern = typeAttribute.pattern.mapFast(new Pattern(_)),
+            )
+            .arrayOfIf(typeAttribute.slotView.slot.multivalued)
+        case EnumAttributeView(slotView, _, enumView) =>
+          new Schema(
+            $ref = new Some("#/$defs/".concat(enumView._enum.name)),
+          ).arrayOfIf(slotView.slot.multivalued)
       }
-      val requiredSlots = attributes.values.collect {
-        case s if s.slotView.slot.required => s.slotView.name
-      }
-      className(cls) -> objectSchema.copy(
-        required = requiredSlots.toList,
-        properties = properties.to(immutable.ListMap),
-        additionalProperties = Some(if (open) AnySchema.Anything else AnySchema.Nothing),
-        title = cls.cls.title,
-        description = cls.cls.description,
-      )
-    }
-    val defsEnums = for ev <- sv.enums.values yield {
-      val enum_ = ev._enum
-      enum_.name -> objectSchema.copy(
-        `type` = Some(List(SchemaType.String)),
-        `enum` = Some(enum_.permissibleValues.keys.map(ExampleSingleValue(_)).toList),
-        title = enum_.title,
-        description = enum_.description,
+      val sv = attribute.slotView
+      slotSchema.copy(
+        title = sv.slot.title,
+        description = sv.slot.description,
       )
     }
 
-    val baseSchema = maybeTreeRoot match {
-      case Some(treeRoot) =>
-        val classSchema = Schema.referenceTo("#/$defs/", className(treeRoot))
-        val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
-        inlineType match {
-          case InlineType.plain => classSchema // object (mandatory)
-          case InlineType.optional =>
-            Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
-          case InlineType.list =>
-            arraySchema.copy(items = Some(classSchema)) // array of objects
-          case InlineType.dict(CollectionForm.CompactDict(key)) =>
-            val mappedClassName = className(treeRoot)
-            needKeyless.add(mappedClassName -> slotName(treeRoot.derivedAttributes(key)))
-            Schema.referenceTo(
-              "#/$defs/",
-              mappedClassName + "__identifier_optional",
-            ).dictOf
-          case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-            val mappedClassName = className(treeRoot)
-            needValue.add(mappedClassName -> slotName(treeRoot.derivedAttributes(value)))
-            Schema.referenceTo(
-              "#/$defs/",
-              mappedClassName + "__simple_dict_value",
-            ).dictOf
-        }
-      case _ => Schema.Empty
+    // Accumulator of all schema definitions, reused to search definition for
+    // keyless classes and value definitions
+    val defs = new mutable.LinkedHashMap[String, Schema]
+    val enums = sv.enums.values
+    val classes = sv.classes.values
+    defs.sizeHint(classes.size + enums.size << 1)
+    for cls <- classes if query.reachable(cls) do {
+      val attributes = cls.attributeViews.values
+      val properties = new mutable.LinkedHashMap[MappedSlotName, Schema]
+      properties.sizeHint(attributes.knownSize) // to avoid hashmap growing
+      val requiredSlots = new mutable.ListBuffer[String]
+      attributes.foreach { a =>
+        val slotSchema = generateSlotSchema(a)
+        val sv = a.slotView
+        val name = slotName(sv)
+        properties.update(name, slotSchema)
+        if (sv.slot.required) requiredSlots.addOne(name)
+      }
+      defs.update(
+        className(cls),
+        objectSchema.copy(
+          required = requiredSlots.toList,
+          properties =
+            immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
+          additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
+          title = cls.cls.title,
+          description = cls.cls.description,
+        ),
+      )
     }
-
+    val baseSchema = maybeTreeRoot.foldFast(Schema.Empty) { treeRoot =>
+      val classSchema =
+        new Schema(
+          $ref = new Some("#/$defs/".concat(className(treeRoot))),
+        )
+      val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
+      inlineType match {
+        case InlineType.plain => classSchema // object (mandatory)
+        case InlineType.optional =>
+          Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
+        case InlineType.list =>
+          arraySchema.copy(items = Some(classSchema)) // array of objects
+        case InlineType.dict(CollectionForm.CompactDict(key)) =>
+          val mappedClassName = className(treeRoot)
+          needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
+          new Schema(
+            $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
+          ).dictOf
+        case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
+          val mappedClassName = className(treeRoot)
+          needValue.add((mappedClassName, slotName(treeRoot.derivedAttributes(value))))
+          new Schema(
+            $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
+          ).dictOf
+      }
+    }
     // Generate the needed keyless/value refs
-    val defMap = defsClasses.toMap
-    val defsKeyless = for (className, idField) <- needKeyless yield {
-      val classSchema = defMap(className)
-      className + "__identifier_optional" -> classSchema.copy(required =
-        classSchema.required.filter(_ != idField),
+    for (className, idField) <- needKeyless do {
+      val classSchema = defs(className)
+      defs.update(
+        className.concat("__identifier_optional"),
+        classSchema.copy(required = classSchema.required.filter(_ != idField)),
       )
     }
-    val defsValues = for (className, valueField) <- needValue yield {
-      val simpleDict = defMap(className)
-      className + "__simple_dict_value" -> simpleDict.properties(valueField).asInstanceOf[Schema]
+    for (className, valueField) <- needValue do {
+      val simpleDict = defs(className)
+      defs.update(
+        className.concat("__simple_dict_value"),
+        simpleDict.properties(valueField).asInstanceOf[Schema],
+      )
     }
-
+    for ev <- enums do {
+      val enum_ = ev._enum
+      val enumValues = enum_.permissibleValues.keys.foldLeft(new mutable.ListBuffer[ExampleValue]) {
+        (acc, v) => acc.addOne(new ExampleSingleValue(v))
+      }.toList
+      defs.update(
+        enum_.name,
+        objectSchema.copy(
+          `type` = new Some(List(SchemaType.String)),
+          `enum` = new Some(enumValues),
+          title = enum_.title,
+          description = enum_.description,
+        ),
+      )
+    }
     baseSchema.copy(
-      $schema = Some("https://json-schema.org/draft/2020-12/schema"),
-      $id = Some(sv.root.id.uri(using sv.rootPrefixResolver)),
-      title = Some(sv.root.title.getOrElse(sv.root.name)),
+      $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
+      $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
+      title = sv.root.title.orElse(new Some(sv.root.name)),
       description = sv.root.description,
-      $defs = Some((defsClasses ++ defsEnums ++ defsKeyless ++ defsValues).to(immutable.ListMap)),
+      $defs = new Some(
+        immutable.ListMap.newBuilder[String, SchemaLike].addAll(
+          defs,
+        ).result(), // avoids O(n^2) complexity
+      ),
     )
   }
 
@@ -249,27 +259,21 @@ object JsonSchemaGenerator {
     * Provides formats for date-times and URI/CURIE.
     */
   def typeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
-    case StringType => stringSchema
-    case IntegerType => integerSchema
-    case FloatType => numberSchema
-    case DoubleType => numberSchema
-    case BooleanType => booleanSchema
-    case DecimalType => numberSchema
-    case AnyType => Schema.Empty
-    case DateType => stringSchema.copy(format = Some(SchemaFormat.Date))
-    case DateTimeType => stringSchema.copy(format = Some(SchemaFormat.DateTime))
-    case TimeType => stringSchema.copy(format = Some("time"))
-    case UriOrCurieType =>
-      Schema.Empty.copy(anyOf =
-        List(
-          stringSchema.copy(format = Some("uri")),
-          stringSchema.copy(format = Some("curie")),
-        ),
-      )
-    case UriType => stringSchema.copy(format = Some("uri"))
-    case CurieType => stringSchema.copy(format = Some("curie"))
-    case NcNameType => stringSchema.copy(format = Some("ncname"))
-    case UnknownType => Schema.Empty
+    case _: StringType.type => stringSchema
+    case _: IntegerType.type => integerSchema
+    case _: FloatType.type => numberSchema
+    case _: DoubleType.type => numberSchema
+    case _: BooleanType.type => booleanSchema
+    case _: DecimalType.type => numberSchema
+    case _: AnyType.type => Schema.Empty
+    case _: DateType.type => dateSchema
+    case _: DateTimeType.type => datetimeSchema
+    case _: TimeType.type => timeSchema
+    case _: UriOrCurieType.type => uriOrCurieSchema
+    case _: UriType.type => uriSchema
+    case _: CurieType.type => curieSchema
+    case _: NcNameType.type => ncNameSchema
+    case _: UnknownType.type => Schema.Empty
   }
 
   type MappedClassName = String
@@ -278,15 +282,15 @@ object JsonSchemaGenerator {
   extension (schema: Schema)
     /** Wrap this Schema in an array
       */
-    def arrayOf: Schema = arraySchema.copy(items = Some(schema))
+    inline def arrayOf: Schema = arraySchema.copy(items = new Some(schema))
 
     /** Wrap this Schema in an array if the condition is true, return the schema unchanged otherwise
       */
-    def arrayOfIf(condition: Boolean): Schema = if condition then schema.arrayOf else schema
+    inline def arrayOfIf(condition: Boolean): Schema = if condition then schema.arrayOf else schema
 
     /** Wrap this Schema as a dict (object with additional properties set to this schema)
       */
-    def dictOf: Schema = objectSchema.copy(additionalProperties = Some(schema))
+    inline def dictOf: Schema = objectSchema.copy(additionalProperties = new Some(schema))
 
   private implicit lazy val codec: JsonValueCodec[Schema] = {
     implicit val schemaLikeCodec: JsonValueCodec[SchemaLike] = new JsonValueCodec {
@@ -336,4 +340,16 @@ object JsonSchemaGenerator {
   private val numberSchema: Schema = Schema(SchemaType.Number)
   private val objectSchema: Schema = Schema(SchemaType.Object)
   private val stringSchema: Schema = Schema(SchemaType.String)
+  private val dateSchema: Schema = stringSchema.copy(format = new Some(SchemaFormat.Date))
+  private val datetimeSchema: Schema = stringSchema.copy(format = new Some(SchemaFormat.DateTime))
+  private val timeSchema: Schema = stringSchema.copy(format = new Some("time"))
+  private val ncNameSchema: Schema = stringSchema.copy(format = new Some("ncname"))
+  private val uriSchema: Schema = stringSchema.copy(format = new Some("uri"))
+  private val curieSchema: Schema = stringSchema.copy(format = new Some("curie"))
+  private val uriOrCurieSchema: Schema = new Schema(anyOf =
+    List(
+      stringSchema.copy(format = new Some("uri")),
+      stringSchema.copy(format = new Some("curie")),
+    ),
+  )
 }

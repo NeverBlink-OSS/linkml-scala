@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.{IssueSeverity, SchemaFatal, SchemaIssue}
 
 /** Presentation helpers for the generated schema validation report model.
@@ -12,7 +13,7 @@ object SchemaIssues {
     *   Only populated on issues that have been through `infer()`; the validator does not do that
     *   for you.
     */
-  def description(issue: SchemaIssue): String = issue.message.getOrElse("")
+  def description(issue: SchemaIssue): String = issue.message.getOrElseFast("")
 
   /** Longer description, including hints to fix where applicable. Issues whose long form is
     * identical to the short one declare no `details`, so fall back to `message`.
@@ -20,13 +21,14 @@ object SchemaIssues {
     * @note
     *   Only populated on issues that have been through `infer()`.
     */
-  def verbose(issue: SchemaIssue): String = issue.details.orElse(issue.message).getOrElse("")
+  def verbose(issue: SchemaIssue): String =
+    issue.details.orElseFast(issue.message).getOrElseFast("")
 
   /** Human-readable severity label. */
   def level(issue: SchemaIssue): String = issue.severity match {
-    case IssueSeverity.Fatal => "Fatal"
-    case IssueSeverity.Error => "Error"
-    case IssueSeverity.Warning => "Warning"
+    case _: IssueSeverity.Fatal.type => "Fatal"
+    case _: IssueSeverity.Error.type => "Error"
+    case _: IssueSeverity.Warning.type => "Warning"
   }
 
   /** Format a collection of issues into a text representation
@@ -48,13 +50,15 @@ object SchemaIssues {
   ): String = {
     val limited = problems.take(maxProblems)
     val stringified = limited.map(x =>
-      (if showLevel then level(x) + ": " else "") +
-        (if verbose then SchemaIssues.verbose(x) else description(x)),
+      (if showLevel then level(x).concat(": ") else "").concat(
+        if verbose then SchemaIssues.verbose(x) else description(x),
+      ),
     )
     val printed = stringified.mkString("\n")
     val restCount = problems.size - maxProblems
-    val rest = if restCount > 0 then s"\nand $restCount more problems..." else ""
-    printed + rest
+    if (restCount > 0) {
+      s"$printed\nand $restCount more problems..."
+    } else printed
   }
 
   /** Exception thrown when a schema cannot be loaded at all – a parse failure, an unreadable

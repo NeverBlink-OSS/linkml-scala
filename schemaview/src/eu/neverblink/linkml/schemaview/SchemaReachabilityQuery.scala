@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import SchemaReachabilityQuery.*
 import ElementTypeTag.*
 
@@ -18,7 +19,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
     *   true if the provided [[Element]] is reachable
     */
   def reachable(element: Element): Boolean =
-    resolved.contains(ElementTypeTag(element) -> element.name)
+    resolved.contains((ElementTypeTag(element), element.name))
 
   /** @return
     *   true if the underlying [[Element]] of the provided [[ElementView]] is reachable
@@ -105,22 +106,19 @@ final class DerivedReachabilityQuery(
       case ElementTypeTag.typeDef =>
         val type_ = sv.types(name)._type
         type_.typeof.foreach { tr =>
-          tr.resolve match {
-            case Some(td) => result.addOne((typeDef, td.name))
-            case _ =>
+          tr.resolve.foreachFast { td =>
+            result.addOne((typeDef, td.name))
           }
         }
         type_.unionOf.foreach { tr =>
-          tr.resolve match {
-            case Some(td) => result.addOne((typeDef, td.name))
-            case _ =>
+          tr.resolve.foreachFast { td =>
+            result.addOne((typeDef, td.name))
           }
         }
       case ElementTypeTag.enumDef =>
         sv.enums(name)._enum.inherits.foreach { er =>
-          er.resolve match {
-            case Some(ed) => result.addOne((enumDef, ed.name))
-            case _ =>
+          er.resolve.foreachFast { ed =>
+            result.addOne((enumDef, ed.name))
           }
         }
       case _ =>
@@ -172,37 +170,32 @@ final class UnderivedReachabilityQuery(
       case ElementTypeTag.typeDef =>
         val type_ = sv.types(name)._type
         type_.typeof.foreach { tr =>
-          tr.resolve match {
-            case Some(td) => result.addOne((typeDef, td.name))
-            case _ =>
+          tr.resolve.foreachFast { td =>
+            result.addOne((typeDef, td.name))
           }
         }
         type_.unionOf.foreach { tr =>
-          tr.resolve match {
-            case Some(td) => result.addOne((typeDef, td.name))
-            case _ =>
+          tr.resolve.foreachFast { td =>
+            result.addOne((typeDef, td.name))
           }
         }
       case ElementTypeTag.slotDef =>
         val slotView = sv.slotDefinitions(name)
         slotView.slot.isA.foreach { sr =>
-          sr.resolve match {
-            case Some(sd) => result.addOne((slotDef, sd.name))
-            case _ =>
+          sr.resolve.foreachFast { sd =>
+            result.addOne((slotDef, sd.name))
           }
         }
         slotView.slot.mixins.foreach { sr =>
-          sr.resolve match {
-            case Some(sd) => result.addOne((slotDef, sd.name))
-            case _ =>
+          sr.resolve.foreachFast { sd =>
+            result.addOne((slotDef, sd.name))
           }
         }
         collectSlotRefs(slotView, result)
       case ElementTypeTag.enumDef =>
         sv.enums(name)._enum.inherits.foreach { er =>
-          er.resolve match {
-            case Some(ed) => result.addOne((enumDef, ed.name))
-            case _ =>
+          er.resolve.foreachFast { ed =>
+            result.addOne((enumDef, ed.name))
           }
         }
       case _ =>
