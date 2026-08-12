@@ -282,15 +282,15 @@ object JsonSchemaGenerator {
   extension (schema: Schema)
     /** Wrap this Schema in an array
       */
-    inline def arrayOf: Schema = arraySchema.copy(items = new Some(schema))
+    def arrayOf: Schema = arraySchema.copy(items = new Some(schema))
 
     /** Wrap this Schema in an array if the condition is true, return the schema unchanged otherwise
       */
-    inline def arrayOfIf(condition: Boolean): Schema = if condition then schema.arrayOf else schema
+    def arrayOfIf(condition: Boolean): Schema = if condition then schema.arrayOf else schema
 
     /** Wrap this Schema as a dict (object with additional properties set to this schema)
       */
-    inline def dictOf: Schema = objectSchema.copy(additionalProperties = new Some(schema))
+    def dictOf: Schema = objectSchema.copy(additionalProperties = new Some(schema))
 
   private implicit lazy val codec: JsonValueCodec[Schema] = {
     implicit val schemaLikeCodec: JsonValueCodec[SchemaLike] = new JsonValueCodec {
