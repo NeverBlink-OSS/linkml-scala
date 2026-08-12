@@ -1,20 +1,19 @@
-import type { EditorView } from "@codemirror/view";
 import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
-// LinkML API types generated from the Scala facade (`./mill uiTypes` → linkml.d.ts).
-// Type-checking the UI against these catches drift when LinkMlJsApi.scala changes.
-import type { LinkMLApi, LoadResult, SchemaView } from "./linkml";
+import {
+  TARGETS,
+  targetById,
+  type IssueLocation,
+  type OptionValues,
+  type ReportIssue,
+  type Target,
+  type ValidationReport,
+} from "./targets.js";
+import type { GenerateRequest, GenerateResponse } from "./worker.js";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
-const LINKML_BUNDLE_URL = "./linkml.js";
-
-// The Scala.js bundle expects a Node-ish `process` global.
-(globalThis as { process?: unknown }).process ??= { cwd: () => "/" };
-
-let LinkML: LinkMLApi | undefined;
-import(LINKML_BUNDLE_URL).then((m: { LinkML: LinkMLApi }) => {
-  LinkML = m.LinkML;
-  scheduleGenerate(0);
-});
+// Resolved against dist/app.js at runtime, so it lands on the sibling dist/worker.js. Built from a
+// variable rather than a literal to keep esbuild from trying to resolve it at bundle time.
+const WORKER_URL = "./worker.js";
 
 const EXAMPLE_SCHEMA = `id: https://example.org/library
 name: library
@@ -66,163 +65,30 @@ classes:
         inlined_as_list: true
 `;
 
-// ── Target definitions ──────────────────────────────────────────────────────
-
-interface Option {
-  key: string;
-  type: "checkbox" | "text" | "number" | "select";
-  label: string;
-  title?: string;
-  placeholder?: string;
-  choices?: string[];
-  default?: string | number | boolean;
-}
-
-/** Shape of the `SchemaValidationReport` that `LinkML.lint` returns.
- *
- * Hand-written because the API is untyped for now - see the TODO on `LinkMlJsApi.lint`. Everything
- * is optional: the serializer omits slots that are empty or equal to their default.
- */
-interface CodeRegion {
-  start_line?: number;
-  start_column?: number;
-}
-interface IssueLocation {
-  schema_id?: string;
-  json_pointer?: string;
-  code_region?: CodeRegion;
-}
-interface ReportIssue {
-  severity?: string;
-  message?: string;
-  details?: string;
-  location?: IssueLocation;
-}
-interface ValidationReport {
-  validation_run_id?: string;
-  issues?: ReportIssue[];
-}
-
-type TargetResult = string | Record<string, string> | ValidationReport;
-
-interface Target {
-  id: string;
-  label: string;
-  options: Option[];
-  lang: OutputLang | ((o: OptionValues) => OutputLang);
-  /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`. */
-  view?: "report";
-  call: (view: SchemaView, o: OptionValues) => TargetResult;
-}
-
-type OptionValues = Record<string, string | number | boolean>;
-
-const api = (): LinkMLApi => LinkML!;
-
-const TARGETS: Target[] = [
-  {
-    id: "jsonSchema",
-    label: "JSON Schema",
-    lang: "json",
-    options: [
-      { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
-      { key: "treeRootOverride", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
-    ],
-    call: (v, o) => api().jsonSchema(v, !!o.open, blankToUndef(o.treeRootOverride)),
-  },
-  {
-    id: "shacl",
-    label: "SHACL",
-    lang: "turtle",
-    options: [
-      { key: "open", type: "checkbox", label: "Open", title: "sh:closed false" },
-      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
-    ],
-    call: (v, o) => api().shacl(v, !!o.open, !!o.onlyClassesFromRootSchema),
-  },
-  {
-    id: "rdfs",
-    label: "RDFS",
-    lang: "turtle",
-    options: [{ key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" }],
-    call: (v, o) => api().rdfs(v, !!o.onlyClassesFromRootSchema),
-  },
-  {
-    id: "tableSchema",
-    label: "Table Schema",
-    lang: "json",
-    options: [{ key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" }],
-    call: (v, o) => api().tableSchema(v, blankToUndef(o.treeRoot)),
-  },
-  {
-    id: "graphQl",
-    label: "GraphQL",
-    lang: "graphql",
-    options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
-      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
-    ],
-    call: (v, o) => api().graphQl(v, String(o.pruningMode || "treeRoot"), blankToUndef(o.treeRoot)),
-  },
-  {
-    id: "scala",
-    label: "Scala code",
-    lang: "scala",
-    options: [{ key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" }],
-    call: (v, o) => api().scala(v, String(o.package || "eu.neverblink.linkml.metamodel")),
-  },
-  {
-    id: "linkml",
-    label: "Derived LinkML",
-    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
-    options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
-      { key: "skipDerivation", type: "checkbox", label: "Skip derivation" },
-      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
-      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
-    ],
-    call: (v, o) =>
-      api().linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
-  },
-  {
-    id: "lint",
-    label: "Lint",
-    lang: "json",
-    view: "report",
-    options: [
-      { key: "inferMessages", type: "checkbox", label: "Messages", default: true },
-    ],
-    call: (v, o) => api().lint(v, !!o.inferMessages) as ValidationReport,
-  },
-];
-
-function blankToUndef(v: string | number | boolean | undefined): string | undefined {
-  const t = String(v ?? "").trim();
-  return t === "" ? undefined : t;
-}
-
 // ── State ─────────────────────────────────────────────────────────────────
 
 let activeTargetId = TARGETS[0]!.id;
 const optionValues: Record<string, OptionValues> = Object.fromEntries(
   TARGETS.map((t) => [t.id, Object.fromEntries(t.options.map((o) => [o.key, o.default ?? (o.type === "checkbox" ? false : "")]))]),
 );
-let scalaFiles: Record<string, string> | null = null;
 let activeScalaFile: string | null = null;
 // The validation report is rendered as DOM rather than into the output editor, so keep a
 // plain-text rendition of it around for the Copy button. Non-null exactly while the report
 // is the visible view.
 let reportText: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
-// Parse the schema once and reuse the SchemaView across target/option changes,
-// only re-parse when the input text actually changes.
-let cachedSchema: { text: string; loaded: LoadResult } | null = null;
+let busyTimer: ReturnType<typeof setTimeout> | undefined;
+// Every request is numbered and only the newest one is rendered. Generation is async now, so a
+// burst of tab clicks would otherwise let a slow earlier result land on top of a fast later one.
+let requestId = 0;
+let pendingId: number | null = null;
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
 const $ = <T extends HTMLElement>(id: string): T => document.getElementById(id) as T;
 
 const $fileTabs = $("fileTabs");
+const $outputPanel = $("outputPanel");
 const $reportView = $("reportView");
 const $outputEditorHost = $("outputEditor");
 const $targetTabs = $("targetTabs");
@@ -336,7 +202,6 @@ function renderOptions(): void {
 // ── Output rendering ─────────────────────────────────────────────────────
 
 function showOutputText(text: string, lang: OutputLang): void {
-  scalaFiles = null;
   hideReport();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
@@ -345,7 +210,6 @@ function showOutputText(text: string, lang: OutputLang): void {
 }
 
 function showOutputError(text: string): void {
-  scalaFiles = null;
   hideReport();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
@@ -398,7 +262,6 @@ function hideReport(): void {
 }
 
 function showReport(report: ValidationReport): void {
-  scalaFiles = null;
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.remove("cm-output--error");
@@ -485,7 +348,6 @@ function rawSummary(issue: ReportIssue): string {
 }
 
 function showScalaFiles(dict: Record<string, string>): void {
-  scalaFiles = dict;
   hideReport();
   const names = Object.keys(dict);
   if (!activeScalaFile || !names.includes(activeScalaFile)) activeScalaFile = names[0] ?? null;
@@ -507,13 +369,62 @@ function showScalaFiles(dict: Record<string, string>): void {
   setOutput(outputView, (activeScalaFile && dict[activeScalaFile]) || "", "scala");
 }
 
-function setStatus(ok: boolean, text: string): void {
+function setStatus(ok: boolean, text: string, title = ""): void {
   $statusPill.hidden = false;
   $statusPill.textContent = text;
+  $statusPill.title = title;
+  $statusPill.classList.remove("status-pill--busy");
   $statusPill.classList.toggle("status-pill--error", !ok);
 }
 
+/** Show that work is in flight, but only once it has been running long enough to notice.
+ *
+ * The example schema generates in a few milliseconds; flashing a busy state at it would be a
+ * worse artefact than showing nothing. The previous result stays on screen throughout - it is
+ * dimmed, never cleared, so switching tabs on a big schema doesn't blank the panel. */
+const BUSY_DELAY_MS = 150;
+
+function setBusy(busy: boolean): void {
+  clearTimeout(busyTimer);
+  if (!busy) {
+    $outputPanel.classList.remove("panel--busy");
+    return;
+  }
+  busyTimer = setTimeout(() => {
+    $outputPanel.classList.add("panel--busy");
+    $statusPill.hidden = false;
+    $statusPill.textContent = "working…";
+    $statusPill.title = "";
+    $statusPill.classList.remove("status-pill--error");
+    $statusPill.classList.add("status-pill--busy");
+  }, BUSY_DELAY_MS);
+}
+
 // ── Generation ───────────────────────────────────────────────────────────
+
+// Parsing and generation run in a worker, so a multi-second SHACL doesn't
+// freeze the page. The worker owns the LinkML bundle and the parsed SchemaView. This thread only
+// sends the input text plus the chosen target and renders whatever comes back.
+let worker: Worker | null = null;
+
+function getWorker(): Worker {
+  if (worker) return worker;
+  const w = new Worker(new URL(WORKER_URL, import.meta.url), { type: "module" });
+  w.onmessage = (e: MessageEvent<GenerateResponse>) => onResult(e.data);
+  w.onerror = (e) => {
+    e.preventDefault();
+    // A worker that died (out of memory on a huge schema, say) never answers again, so drop it.
+    // The next request builds a fresh one, which also means a fresh parse.
+    w.terminate();
+    if (worker === w) worker = null;
+    pendingId = null;
+    setBusy(false);
+    showOutputError(`Generation worker failed: ${e.message || "unknown error"}`);
+    setStatus(false, "error");
+  };
+  worker = w;
+  return w;
+}
 
 function scheduleGenerate(delay = 400): void {
   if (!$autoGenerate.checked && delay > 0) return;
@@ -522,45 +433,59 @@ function scheduleGenerate(delay = 400): void {
 }
 
 function runGenerate(): void {
-  if (!LinkML) return;
-  const target = activeTarget();
   const schema = inputView.state.doc.toString();
 
   if (!schema.trim()) {
+    pendingId = null;
+    setBusy(false);
     $statusPill.hidden = true;
     showOutputText("", "text");
     return;
   }
 
-  const start = performance.now();
-  try {
-    // The empty object is the import map (filename -> YAML). The UI has no extra imports.
-    if (!cachedSchema || cachedSchema.text !== schema) {
-      cachedSchema = { text: schema, loaded: api().loadFromString(schema, {}) };
-    }
-    const { view, report } = cachedSchema.loaded;
-    const elapsed = Math.round(performance.now() - start);
+  const target = activeTarget();
+  const id = ++requestId;
+  pendingId = id;
+  setBusy(true);
+  const request: GenerateRequest = { id, schema, targetId: target.id, options: optionValues[target.id]! };
+  getWorker().postMessage(request);
+}
 
-    // Fatal problems mean there is no view to generate from, so every target shows the report.
-    if (!view) {
-      showReport(report as ValidationReport);
-      setStatus(false, `${elapsed}ms`);
-      return;
-    }
+function onResult(res: GenerateResponse): void {
+  // Superseded by a newer request - its answer is the one that should land.
+  if (res.id !== pendingId) return;
+  pendingId = null;
+  setBusy(false);
 
-    const result = target.call(view, optionValues[target.id]!);
-    if (target.view === "report") {
-      showReport(result as ValidationReport);
-    } else if (typeof result === "object") {
-      showScalaFiles(result as Record<string, string>);
-    } else {
-      showOutputText((result as string) || "Schema is clean", targetLang(target));
-    }
-    setStatus(true, `${elapsed}ms`);
-  } catch (e) {
-    showOutputError(e instanceof Error ? e.toString() : String(e));
+  if (!res.ok) {
+    showOutputError(res.error);
     setStatus(false, "error");
+    return;
   }
+
+  // Rendering is the one part still on this thread, so it counts towards what the user waited for.
+  const start = performance.now();
+  if (res.kind === "report") {
+    showReport(res.result as ValidationReport);
+  } else if (res.kind === "files") {
+    showScalaFiles(res.result as Record<string, string>);
+  } else {
+    const target = targetById(res.targetId) ?? activeTarget();
+    showOutputText((res.result as string) || "Schema is clean", targetLang(target));
+  }
+  const displayMs = Math.round(performance.now() - start);
+
+  // The pill reports the LinkML work itself: the parse when one happened, plus generation.
+  setStatus(!res.fatal, `${(res.loadMs ?? 0) + res.genMs}ms`, breakdown(res, displayMs));
+}
+
+/** Where the time went, for the pill's tooltip. Spells out when a parse was reused, which is what
+ * makes the headline number jump between a cold load and a tab switch. */
+function breakdown(res: Extract<GenerateResponse, { ok: true }>, displayMs: number): string {
+  const parts = [res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`];
+  if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+  parts.push(`display ${displayMs}ms`);
+  return parts.join(" · ");
 }
 
 $generateBtn.addEventListener("click", () => scheduleGenerate(0));
@@ -671,3 +596,6 @@ function renderRepoStats(stars: number, forks: number): void {
 
 renderTargetTabs();
 renderOptions();
+// Starts the worker, which begins loading the LinkML bundle immediately. The request waits on
+// that load inside the worker, so the page is interactive while the multi-MB bundle parses.
+scheduleGenerate(0);

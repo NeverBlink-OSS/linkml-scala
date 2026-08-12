@@ -51,7 +51,9 @@ jobs:
           cp ui/index.html ui/styles.css ui/neverblink-logo.svg site/playground/
           cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/playground/
           cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/
-          cp ui/dist/app.js ui/dist/app.js.map ui/dist/linkml.js site/playground/dist/
+          cp ui/dist/app.js ui/dist/app.js.map site/playground/dist/
+          cp ui/dist/worker.js ui/dist/worker.js.map site/playground/dist/
+          cp ui/dist/linkml.js site/playground/dist/
           cp CNAME site/CNAME
           cp pages/index.html site/index.html
 
