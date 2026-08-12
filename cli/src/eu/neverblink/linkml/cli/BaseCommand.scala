@@ -30,7 +30,6 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
   def loadSchema(inFile: Option[String]): SchemaView =
     inFile.foldFast {
       err("Input file is required.")
-      null
     } { inputName =>
       SchemaView.loadSchemaViewFromUri(inputName) match {
         case Right(sv) => sv
@@ -41,7 +40,7 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
             verbose = true,
             showLevel = false,
           )
-          err("Cannot load schema: " + formatted); null
+          err("Cannot load schema: " + formatted)
       }
     }
 

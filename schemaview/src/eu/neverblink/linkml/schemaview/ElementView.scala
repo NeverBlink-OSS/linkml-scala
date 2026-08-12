@@ -91,13 +91,11 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   def inner: ClassDefinition = cls
 
-  def uriOrCurie: UriOrCurie = cls.classUri.getOrElseFast {
-    Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name))
-  }
+  def uriOrCurie: UriOrCurie =
+    cls.classUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name)))
 
-  override def aliasedName: String = cls.alias.getOrElseFast {
-    Case.PascalCase(cls.name)
-  }
+  override def aliasedName: String =
+    cls.alias.getOrElseFast(Case.PascalCase(cls.name))
 
   /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
@@ -196,14 +194,10 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     val parents = new ListBuffer[ClassView]
     val cls = view.cls
     cls.mixins.foreach { r =>
-      sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast { cv =>
-        parents.addOne(cv)
-      }
+      sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast(parents.addOne)
     }
     cls.isA.foreachFast { r =>
-      sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast { cv =>
-        parents.addOne(cv)
-      }
+      sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast(parents.addOne)
     }
     parents.toList
   }
@@ -383,15 +377,13 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 
   def inner: SlotDefinition = slot
 
-  override def aliasedName: String = slot.alias.getOrElseFast {
-    Case.deSpaceCase(slot.name)
-  }
+  override def aliasedName: String =
+    slot.alias.getOrElseFast(Case.deSpaceCase(slot.name))
 
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
-  def implicitPrefixReference: Option[String] = slot.implicitPrefix.flatMapFast { p =>
-    definingPrefixResolver.resolvePrefix(p)
-  }
+  def implicitPrefixReference: Option[String] =
+    slot.implicitPrefix.flatMapFast(definingPrefixResolver.resolvePrefix)
 
   /** Get and dereference the direct parents (mixins + inheritance) of this slot
     *
@@ -403,9 +395,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   private def getParents(slot: SlotDefinition): Iterable[SlotDefinition] = {
     val parents = new ListBuffer[SlotDefinition]
     slot.mixins.foreach { r =>
-      sv.resolve(r).foreachFast { cv =>
-        parents.addOne(cv)
-      }
+      sv.resolve(r).foreachFast(parents.addOne)
     }
     slot.isA.foreachFast { r =>
       sv.resolve(r).foreachFast { cv =>
@@ -485,9 +475,8 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
   override private[schemaview] def evaluateConstructor(expr: String): Option[PermissibleValue] =
     new Some(ConstructorExpression.evaluateEnum(expr, this))
 
-  def uriOrCurie: UriOrCurie = _enum.enumUri.getOrElseFast {
-    Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name))
-  }
+  def uriOrCurie: UriOrCurie =
+    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
   lazy val derivedValues: Seq[(pv: PermissibleValue, meaning: UriOrCurie)] =
@@ -559,26 +548,24 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
     * names into the enum. Falls back to [[UnknownType]].
     */
-  def runtimeType: RuntimeType = inner.base.foldFast(UnknownType) { value =>
-    value match {
-      case "str" => StringType
-      case "int" => IntegerType
-      case "Bool" => BooleanType
-      case "double" => DoubleType
-      case "float" =>
-        // thanks, python
-        if (inner.typeUri.contains("xsd:double")) DoubleType
-        else FloatType
-      case "Decimal" => DecimalType
-      case "URI" => UriType
-      case "Curie" => CurieType
-      case "URIorCURIE" => UriOrCurieType
-      case "NCName" => NcNameType
-      case "XSDDateTime" => DateTimeType
-      case "XSDDate" => DateType
-      case "XSDTime" => TimeType
-      case _ => UnknownType
-    }
+  def runtimeType: RuntimeType = inner.base.foldFast(UnknownType) {
+    case "str" => StringType
+    case "int" => IntegerType
+    case "Bool" => BooleanType
+    case "double" => DoubleType
+    case "float" =>
+      // thanks, python
+      if (inner.typeUri.contains("xsd:double")) DoubleType
+      else FloatType
+    case "Decimal" => DecimalType
+    case "URI" => UriType
+    case "Curie" => CurieType
+    case "URIorCURIE" => UriOrCurieType
+    case "NCName" => NcNameType
+    case "XSDDateTime" => DateTimeType
+    case "XSDDate" => DateType
+    case "XSDTime" => TimeType
+    case _ => UnknownType
   }
 
   /** The [[CoreType]] representation of this type.
