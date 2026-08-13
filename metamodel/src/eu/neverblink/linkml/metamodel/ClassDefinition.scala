@@ -361,7 +361,7 @@ abstract class ClassDefinition extends Definition, ClassExpression {
   def unionOf: Seq[Reference[ClassDefinition]]
 
   /** A collection of named unique keys for this class. Such unique keys may be spread over several
-    * slots, which is why there are also called "compound keys". A unique key uniquely identifies
+    * slots, which is why they are also called "compound keys". A unique key uniquely identifies
     * instances of the class within a given container, meaning there cannot be two (or more)
     * instances of the class with the same values for all the slots that make up the unique key.
     *
