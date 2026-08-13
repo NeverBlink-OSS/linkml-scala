@@ -106,7 +106,7 @@ export interface LinkMLApi {
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
-   * @param optionalMarker Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands this from version 11.16 onwards, and older renderers reject the whole diagram rather than just the marker. Default: true
+   * @param optionalMarker Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands this from version 11.16 onwards, older renderers throw an error instead. Default: true
    * @returns The ER diagram, serialized as Mermaid
    */
   erDiagram(schema: SchemaView, pruningMode?: string, treeRoot?: string, optionalMarker?: boolean): string;
