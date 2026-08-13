@@ -1,6 +1,5 @@
 package eu.neverblink.linkml.generator.graphql
-        result.directives
-          .map(_.name) should contain("linkml_uri")
+
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
