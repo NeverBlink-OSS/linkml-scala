@@ -1,0 +1,10 @@
+{
+  "name": "linkml-scala-mermaid-validator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Test-only: validates generated ER diagrams against the real Mermaid parser. See validate.mjs.",
+  "dependencies": {
+    "mermaid": "11.16.1"
+  }
+}

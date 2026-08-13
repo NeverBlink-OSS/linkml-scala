@@ -426,15 +426,18 @@ body { background: var(--bg); }
    tabs on a large schema never blanks the panel. */
 .panel-output .editor,
 .panel-output .report,
+.panel-output .diagram,
 .panel-output .file-tabs { transition: opacity 120ms ease; }
 .panel--busy .editor,
 .panel--busy .report,
+.panel--busy .diagram,
 .panel--busy .file-tabs { opacity: 0.45; }
 
 @media (prefers-reduced-motion: reduce) {
   .status-pill--busy { animation: none; }
   .panel-output .editor,
   .panel-output .report,
+  .panel-output .diagram,
   .panel-output .file-tabs { transition: none; }
 }
 
@@ -454,7 +457,14 @@ body { background: var(--bg); }
   display: flex;
   gap: 2px;
   overflow-x: auto;
-  padding: 6px 8px 0;
+  /* `overflow-x: auto` on its own makes the browser compute `overflow-y: auto` too, and the tabs'
+     -1px bottom margin (see .file-tab) leaves exactly 1px hanging below the content box - enough for
+     a phantom vertical scrollbar at some zoom levels. The 1px of bottom padding takes that overhang
+     back inside the padding box, so there is nothing left to scroll; `overflow-y: hidden` then keeps
+     it that way without clipping the active tab's underline. The top padding gives up the same 1px,
+     so the bar's height does not change. */
+  overflow-y: hidden;
+  padding: 5px 8px 1px;
   border-bottom: 1px solid var(--border-subtle);
 }
 /* `hidden` alone loses to `.file-tabs { display: flex }`; hide it explicitly so
@@ -475,6 +485,53 @@ body { background: var(--bg); }
 }
 .file-tab:hover { color: var(--text); }
 .file-tab--active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Rendered Mermaid diagram ── */
+.diagram {
+  flex: 1;
+  min-height: 0;
+  /* Scrolls while showing a notice; the interactive state below takes over for a real diagram. */
+  overflow: auto;
+  padding: 12px;
+  background: var(--surface-3);
+}
+.diagram[hidden] { display: none; }
+.diagram svg { display: block; max-width: none; height: auto; }
+
+/* Set once a diagram is actually on screen: panning replaces scrolling, so the canvas can be
+   dragged past the edges and zoomed without the scrollbars fighting the transform. */
+.diagram--interactive {
+  overflow: hidden;
+  padding: 0;
+  cursor: grab;
+  /* Let the browser hand us the touch gestures instead of scrolling the panel. */
+  touch-action: none;
+}
+.diagram--interactive.diagram--panning { cursor: grabbing; }
+.diagram-canvas {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+
+/* Shown instead of a diagram that is too big to draw, and for render failures. */
+.diagram-notice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 52ch;
+  margin: 8px auto;
+  padding: 14px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.diagram-notice strong { color: var(--text); font-weight: 600; }
+.diagram-notice--error { border-color: var(--danger); }
+.diagram-notice--error strong { color: var(--danger); }
 
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }

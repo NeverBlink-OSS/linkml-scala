@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.js
 
+import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
@@ -298,6 +299,36 @@ object LinkMlJsApi {
   ): String =
     GraphQlGenerator(using schema.underlying).serialize(
       PruningMode(pruningMode, treeRoot.toOption),
+    )
+
+  /** Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become
+    * entities, type- and enum-ranged slots become their attributes, and class-ranged slots become
+    * relationship lines.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Pruning mode to use for removing unused elements (classes, types, enums). One of
+    *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
+    *   schema - remove all elements unreachable from any of the classes defined in the root schema.
+    *   skip - do not remove unused elements. Default: treeRoot
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root.
+    * @param optionalMarker
+    *   Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands
+    *   this from version 11.16 onwards, older renderers throw an error instead. Default: true
+    * @return
+    *   The ER diagram, serialized as Mermaid
+    */
+  def erDiagram(
+      schema: SchemaViewJs,
+      pruningMode: String = "treeRoot",
+      treeRoot: js.UndefOr[String] = js.undefined,
+      optionalMarker: Boolean = true,
+  ): String =
+    ErDiagramGenerator(using schema.underlying).serialize(
+      PruningMode(pruningMode, treeRoot.toOption),
+      optionalMarker,
     )
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This
