@@ -52,8 +52,9 @@ export interface Target {
   label: string;
   options: Option[];
   lang: OutputLang | ((o: OptionValues) => OutputLang);
-  /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`. */
-  view?: "report";
+  /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`.
+   * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. */
+  view?: "report" | "diagram";
   /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
    * the multi-MB Scala.js bundle, which the UI thread never loads. */
   call: (api: LinkMLApi, view: SchemaView, o: OptionValues) => TargetResult;
@@ -93,6 +94,27 @@ export const TARGETS: Target[] = [
     lang: "json",
     options: [{ key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" }],
     call: (api, v, o) => api.tableSchema(v, blankToUndef(o.treeRoot)),
+  },
+  {
+    id: "erDiagram",
+    label: "ER diagram",
+    lang: "text",
+    view: "diagram",
+    options: [
+      // Defaults to `schema` rather than `treeRoot`: a diagram is for looking at the whole model,
+      // and pruning to the tree root hides every class it cannot reach.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
+      {
+        key: "optionalMarker",
+        type: "checkbox",
+        label: "Optional ?",
+        title: "Mark optional attributes with a trailing '?' (needs Mermaid 11.16+)",
+        default: true,
+      },
+    ],
+    call: (api, v, o) =>
+        api.erDiagram(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.optionalMarker),
   },
   {
     id: "graphQl",

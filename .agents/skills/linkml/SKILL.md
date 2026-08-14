@@ -111,10 +111,21 @@ it changes the shape of every generated artifact. The decision table is in
 linkml-scala generate json-schema --to out/schema.json schema.yaml
 ```
 
-Generators: `json-schema`, `shacl`, `rdfs`, `table-schema`, `scala`, `linkml`. Omit `--to` for
-stdout; `--format ttl` gives prefixed Turtle from the RDF ones instead of N-Triples; `--open` on
-`json-schema`/`shacl` allows undeclared properties. For flags run
+Generators: `json-schema`, `shacl`, `rdfs`, `table-schema`, `scala`, `linkml`, `graphql`,
+`er-diagram`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
+instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared properties. For flags run
 `linkml-scala generate <generator> --help` — do not guess.
+
+`generate er-diagram` draws the model as a
+[Mermaid ER diagram](https://mermaid.js.org/syntax/entityRelationshipDiagram.html) — classes become
+entities, type- and enum-ranged slots their attributes, and class-ranged slots the lines between
+them. Reach for it to *show* someone a schema, and to eyeball whether the inlining came out the way
+you meant: a solid line is an inlined child, a dashed one a reference.
+
+Optional attributes get a trailing `?`, which **Mermaid only understands from 11.16 (June 2026)** —
+and an older renderer rejects the whole diagram, not just the marker. If the diagram is headed for
+somewhere that pins its own Mermaid (GitHub, GitLab, Notion, mkdocs), pass
+`--optional-marker=false`.
 
 **`generate linkml` is the debugging tool.** It resolves imports, materialises inherited slots
 into attributes and prunes unused elements, showing what the schema *actually* says:

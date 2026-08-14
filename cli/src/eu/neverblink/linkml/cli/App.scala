@@ -35,6 +35,7 @@ final class App private[cli] (
     LinkMl,
     TableSchema,
     GraphQl,
+    ErDiagram,
     Version,
   )
 

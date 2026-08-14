@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
@@ -260,5 +261,44 @@ object GraphQl extends StringGenerate[GraphQlOptions] {
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
       ("", GraphQlGenerator().serialize(options.pruning.resolvedPruningMode)),
+    )
+}
+
+// ER diagram
+
+@HelpMessage(
+  "Generate a Mermaid entity relationship diagram from a LinkML model. " +
+    "Classes become entities, type- and enum-ranged slots become their attributes, and " +
+    "class-ranged slots become relationship lines.",
+)
+@ArgsName("<input-file>")
+final case class ErDiagramOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
+    @HelpMessage(
+      "Whether to mark optional attributes with a trailing '?' on their type. " +
+        "Mermaid understands this from version 11.16 onwards, and older renderers reject the " +
+        "whole diagram rather than just the marker, so pass --optional-marker=false when the " +
+        "diagram is headed somewhere that pins an older Mermaid. Default value: true",
+    )
+    optionalMarker: Boolean = true,
+) extends HasGenerateOptions
+
+object ErDiagram extends StringGenerate[ErDiagramOptions] {
+  override protected def generatorName: String = "er-diagram"
+
+  override protected[cli] def generate(
+      options: ErDiagramOptions,
+  )(using SchemaView): Iterable[(String, String)] =
+    Seq(
+      (
+        "",
+        ErDiagramGenerator().serialize(
+          options.pruning.resolvedPruningMode,
+          options.optionalMarker,
+        ),
+      ),
     )
 }

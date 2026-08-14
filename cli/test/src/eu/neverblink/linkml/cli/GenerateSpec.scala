@@ -30,6 +30,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
     (TableSchema, "table-schema", Seq("\"fields\"", "\"name\": \"name\"")),
     (GraphQl, "graphql", Seq("type Root", "name: string")),
+    (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
   )
 
   /** A schema with a class that pruning can remove: `Other` is reachable only through the `Root`
