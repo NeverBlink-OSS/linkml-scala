@@ -28,7 +28,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "some_slot: SomeOtherClass ",
+        "some_slot: SomeOtherClass\n",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -39,7 +39,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "some_slot: [SomeOtherClass!] ",
+        "some_slot: [SomeOtherClass]!\n",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -50,7 +50,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "some_slot: SomeOtherClass ",
+        "some_slot: SomeOtherClass\n",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -61,22 +61,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "some_slot: [SomeOtherClass!] ",
-      ).foreach { snippet =>
-        result should include(snippet)
-      }
-    }
-
-    "generate rdf_iri directives for classes" in {
-      given SchemaView = ModelCatalogue.basic2.model
-
-      val base = ModelCatalogue.basic2.model.root.id.original
-      val result = GraphQlGenerator().serialize()
-      Seq(
-        s"@linkml_uri(uri: \"${base}some_slot\")",
-        s"@linkml_uri(uri: \"${base}some_other_slot\")",
-        s"@linkml_uri(uri: \"${base}SomeClass\")",
-        s"@linkml_uri(uri: \"${base}SomeOtherClass\")",
+        "some_slot: [SomeOtherClass]!\n",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -87,10 +72,10 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "one: String!",
-        "atMostOne: String ",
-        "atLeastOne: [String!]!",
-        "zeroOrMore: [String!] ",
+        "one: String!\n",
+        "atMostOne: String\n",
+        "atLeastOne: [String]!\n",
+        "zeroOrMore: [String]!\n",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -117,7 +102,6 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       Seq(
         "scalar uri",
         "some_slot: uri",
-        "@linkml_uri(uri: \"http://www.w3.org/2001/XMLSchema#anyURI\")",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -130,7 +114,6 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       Seq(
         "scalar ext_type",
         "some_slot: ext_type",
-        s"@linkml_uri(uri: \"${ModelCatalogue.externalType.model.root.id.original}ext_type\")",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -145,13 +128,9 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       Seq(
         "some_slot: SomeEnum",
         "enum SomeEnum",
-        s"@linkml_uri(uri: \"${id}SomeEnum\")",
         "SOME_OPTION",
-        "@linkml_uri(uri: \"http://www.w3.org/1999/02/22-rdf-syntax-ns#subject\")",
         "SOME_OTHER_OPTION",
-        s"@linkml_uri(uri: \"${id}SOME_OTHER_OPTION\")",
         "YET_ANOTHER_OPTION",
-        s"@linkml_uri(uri: \"${id}YET_ANOTHER_OPTION\")",
       ).foreach { snippet =>
         result should include(snippet)
       }

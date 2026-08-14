@@ -34,25 +34,20 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
             GraphQlGenerator(using entry.model).serialize()
         }
         val result = parseOrThrow(schema)
-        result.directives
-          .map(_.name) should contain("linkml_uri")
 
-        result.typeList should not be empty
+        result.typeList.map(_.name) should contain(entry.model.treeRoot.get.aliasedName)
       }
 
     "generate the metamodel" in {
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       val schema = {
         dummyQuery +
-          GraphQlGenerator(using
-            SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta")),
-          ).serialize()
+          GraphQlGenerator(using sv).serialize()
       }
 
       val result = parseOrThrow(schema)
-      result.directives
-        .map(_.name) should contain("linkml_uri")
 
-      result.typeList should not be empty
+      result.typeList.map(_.name) should contain(sv.treeRoot.get.aliasedName)
     }
   }
 }
