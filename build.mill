@@ -2,7 +2,7 @@
 //| mvnDeps:
 //| - com.goyeau::mill-scalafix::0.6.0
 //| - ch.epfl.scala:scalafix-interfaces:0.14.6
-//| - io.github.alexarchambault.mill::mill-native-image::0.2.5
+//| - io.github.alexarchambault.mill::mill-native-image::0.2.6
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
 //| - com.lihaoyi::mill-contrib-jmh:$MILL_VERSION
 //| - com.carlosedp::mill-aliases::1.1.0
