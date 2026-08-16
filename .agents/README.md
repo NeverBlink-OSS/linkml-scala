@@ -72,5 +72,15 @@ documented schema that does not validate fails CI. It also rejects frontmatter o
 Skills spec, Claude-Code-only syntax that Codex cannot interpret, and links that go nowhere. Both
 run in the `skills-check` job of [`checks.yml`](../.github/workflows/checks.yml).
 
+Version numbers are checked too. The requirement in
+[`990-install.md`](skills/linkml/990-install.md) is a feature floor, so it moves only when the
+skill starts relying on something newer — but every restatement of it, here included, has to
+move with it. The install commands deliberately name no version at all (`mise use --pin`
+resolves the newest release and records it), so there is no number left to go stale.
+
+Neither plugin manifest carries a `version`. Both Claude Code and Codex treat a declared version
+as the cache key, so a fixed one pins every user to the copy they first installed. Left out,
+Claude Code falls back to the commit SHA and picks up each change to this directory.
+
 There is deliberately **no** bundled CLI reference and no validator-issue catalogue: `--help` and
 the validator's own messages are self-describing, so a copy would only rot.

@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Check the agent skills are well-formed and that every schema example still works.
 
-Two independent passes:
+Three independent passes:
 
 1. **Structure** - each skill has a SKILL.md whose frontmatter stays inside the six fields
    of the Agent Skills spec (anything else breaks portability to Codex and to the
    claude.ai Skills API), whose `name` matches its directory, and whose body avoids
    Claude-Code-only syntax that Codex cannot interpret.
 
-2. **Examples** - every ```yaml block in every SKILL.md and reference is fed to
+2. **Versions** - the required CLI version is declared once and repeated consistently, and
+   no install command names a version older than it. See `check_versions`.
+
+3. **Examples** - every ```yaml block in every SKILL.md and reference is fed to
    `linkml-scala validate --strict`. A documented schema that does not validate teaches
    an agent to write broken schemas, so this is a hard failure.
 
@@ -86,6 +89,13 @@ STUBS = {
 errors: list[str] = []
 stats = {"files": 0, "blocks": 0, "links": 0}
 
+# `Requirement: **0.12.0 or newer**` - the one authoritative declaration, restated in prose
+# elsewhere as `0.12.0 or newer`. The last pattern catches a hardcoded install pin, which the
+# install docs deliberately no longer carry.
+REQUIREMENT_RE = re.compile(r"Requirement: \*\*(\d+\.\d+\.\d+) or newer\*\*")
+RESTATEMENT_RE = re.compile(r"(\d+\.\d+\.\d+) or newer")
+INSTALL_PIN_RE = re.compile(r"linkml-scala@v(\d+\.\d+\.\d+)")
+
 
 def fail(where: object, message: str) -> None:
     errors.append(f"{where}: {message}")
@@ -157,6 +167,52 @@ def check_links(md: Path) -> None:
         stats["links"] += 1
         if not (md.parent / target).exists():
             fail(rel, f"links to {target}, which does not exist")
+
+
+# -------------------------------------------------------------------------- versions
+
+
+def parse_version(text: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in text.split("."))
+
+
+def check_versions(texts: dict[Path, str]) -> None:
+    """The declared minimum must not disagree with itself, and nothing may install below it.
+
+    The minimum is a feature floor - `validate --format json` does not exist before it - so it
+    moves only when the skill starts relying on something newer, and every restatement of it
+    has to move at the same time.
+
+    No install command should name a version at all: `mise use --pin` resolves the newest
+    release and records it, so the docs never carry a number that can go stale. A hardcoded
+    `@vX.Y.Z` that creeps back in is caught here only if it is below the floor.
+    """
+    declared: dict[Path, str] = {}
+    for path, text in texts.items():
+        match = REQUIREMENT_RE.search(text)
+        if match:
+            declared[path] = match.group(1)
+    if len(declared) != 1:
+        where = ", ".join(str(path.relative_to(REPO)) for path in declared) or "no file"
+        fail("check.py", f"`Requirement: **X.Y.Z or newer**` must appear once; found it in {where}")
+        return
+    source, minimum = next(iter(declared.items()))
+
+    for path, text in texts.items():
+        for restated in sorted(set(RESTATEMENT_RE.findall(text))):
+            if restated != minimum:
+                fail(
+                    path.relative_to(REPO),
+                    f"says '{restated} or newer', but {source.relative_to(REPO)} requires {minimum}",
+                )
+
+    for path, text in texts.items():
+        for pin in sorted(set(INSTALL_PIN_RE.findall(text))):
+            if parse_version(pin) < parse_version(minimum):
+                fail(
+                    path.relative_to(REPO),
+                    f"installs linkml-scala@v{pin}, below the required minimum {minimum}",
+                )
 
 
 # -------------------------------------------------------------------------- examples
@@ -259,11 +315,17 @@ def main() -> int:
         print("no skills found", file=sys.stderr)
         return 1
 
-    # Structure and links do not need the CLI, so they always run.
+    # Structure, links and versions do not need the CLI, so they always run.
+    docs: list[Path] = []
     for skill_dir in skill_dirs:
         check_structure(skill_dir)
         for md in sorted(skill_dir.glob("*.md")):
             check_links(md)
+            docs.append(md)
+
+    # The README restates the requirement for a human reader, so it drifts with the skill.
+    docs.append(AGENTS / "README.md")
+    check_versions({doc: doc.read_text() for doc in docs if doc.is_file()})
 
     if shutil.which("linkml-scala") is None:
         missing = "linkml-scala not on PATH - the schema example pass did not run"

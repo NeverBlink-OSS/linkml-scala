@@ -16,11 +16,11 @@ Works on Linux, macOS and Windows, records the version in a file you commit, and
 `sudo`. Requires [mise](https://mise.jdx.dev/getting-started.html).
 
 ```shell
-mise use 'ubi:NeverBlink-OSS/linkml-scala@v0.12.0'
+mise use --pin 'ubi:NeverBlink-OSS/linkml-scala'
 ```
 
-This writes the pin into `mise.toml`. Everyone who runs `mise install` in that repo then gets
-byte-identical tooling.
+This installs the newest release and writes the exact version it resolved into `mise.toml`.
+Everyone who runs `mise install` in that repo then gets byte-identical tooling.
 
 ## Option 2 — the install script
 
