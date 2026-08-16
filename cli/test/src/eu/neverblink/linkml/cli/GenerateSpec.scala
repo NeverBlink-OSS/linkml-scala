@@ -64,6 +64,14 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     finally files.foreach(Files.deleteIfExists)
   }
 
+  /** Every file written under (or at) [[path]], keyed by its path relative to it. Generators
+    * writing a single file land on the empty key.
+    */
+  private def snapshot(path: os.Path): Map[os.SubPath, String] =
+    if os.isDir(path) then
+      os.walk(path).filter(os.isFile).map(p => p.subRelativeTo(path) -> os.read(p)).toMap
+    else Map(os.sub -> os.read(path))
+
   "a generate command" when {
     "given a single input file" should {
       for (command, name, markers) <- generators do
@@ -75,6 +83,38 @@ class GenerateSpec extends AnyWordSpec, Matchers {
               code shouldBe 0
               markers.foreach(out should include(_))
             }
+          }
+        }
+
+      // `--to` pointing at output from an earlier run is the normal case - a generator that
+      // refuses to start, or that only writes over the head of a longer old file, is broken.
+      for (command, name, markers) <- generators do
+        s"replace an existing $name output at --to" in {
+          withSchemas(1) { paths =>
+            val dir = os.temp.dir(prefix = "linkml-generate-to")
+            try {
+              def run(dest: os.Path): Unit = {
+                val (_, err, code) = command.runTestCommandWithExitCode(
+                  List("generate", name, "--to", dest.toString) ++ paths,
+                )
+                withClue(s"stderr was: $err\n")(code shouldBe 0)
+              }
+
+              // What the generator writes with nothing in its way.
+              val fresh = dir / "fresh"
+              run(fresh)
+              val expected = snapshot(fresh)
+              markers.foreach(m => expected.values.mkString should include(m))
+
+              // The same destination, but every file it writes is already there and longer.
+              val existing = dir / "existing"
+              val filler = "filler\n" * 10_000
+              expected.keys.foreach(rel =>
+                os.write.over(existing / rel, filler, createFolders = true),
+              )
+              run(existing)
+              snapshot(existing) shouldBe expected
+            } finally os.remove.all(dir)
           }
         }
 

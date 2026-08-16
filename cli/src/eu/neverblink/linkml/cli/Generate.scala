@@ -58,14 +58,14 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
       write(outStream)
       outStream.flush()
     } { value =>
-      val stream = os.write.outputStream(os.Path(value, os.pwd))
+      val stream = os.write.over.outputStream(os.Path(value, os.pwd))
       try write(stream)
       finally stream.close()
     }
 
   private def writeToFileOrStdout(file: Option[String], content: String): Unit =
     file.foldFast(printLine(content)) { value =>
-      os.write(os.Path(value, os.pwd), content)
+      os.write.over(os.Path(value, os.pwd), content)
     }
 
   private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
