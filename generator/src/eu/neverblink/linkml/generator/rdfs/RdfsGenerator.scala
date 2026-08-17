@@ -1,17 +1,45 @@
 package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
-import eu.neverblink.linkml.metamodel.CommonMetadata
-import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
+import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
 
-  private def emitCommonMetadata(sink: RdfSink, subject: Resource, cm: CommonMetadata): Unit = {
-    cm.title.foreach { t =>
+  /** Emit the RDFS metadata of every definition describing the same subject, skipping titles and
+    * descriptions repeated between them.
+    */
+  private def emitCommonMetadata(
+      sink: RdfSink,
+      subject: Resource,
+      cms: Seq[CommonMetadata],
+  ): Unit = {
+    cms.flatMap(_.title).distinct.foreach { t =>
       sink.triple(subject, Rdfs.label, Literal(t, XmlSchema.string))
     }
-    cm.description.foreach { d =>
+    cms.flatMap(_.description).distinct.foreach { d =>
       sink.triple(subject, Rdfs.comment, Literal(d, XmlSchema.string))
+    }
+  }
+
+  /** Emit a single RDFS property covering all the usages of one slot URI: the declaration and the
+    * metadata once, a domain per class using it, and each distinct range it derives to.
+    *
+    * @param usages
+    *   All (class, derived slot) pairs sharing this property URI, in class iteration order.
+    */
+  private def emitProperty(
+      sink: RdfSink,
+      propertyNameIri: Iri,
+      usages: Seq[(ClassView, SlotView)],
+  ): Unit = {
+    sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
+    emitCommonMetadata(sink, propertyNameIri, usages.map(_._2.slot))
+    usages.map(u => Iri(u._1.uriStr)).distinct.foreach { domain =>
+      sink.triple(propertyNameIri, Rdfs.domain, domain)
+    }
+    usages.flatMap(_._2.derivedRange.resolve.toList).map(e => Iri(e.uriStr)).distinct.foreach {
+      range => sink.triple(propertyNameIri, Rdfs.range, range)
     }
   }
 
@@ -38,24 +66,33 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
       if onlyClassesFromRootSchema then sv.classes.filter(_._2.definingSchema.id == sv.root.id)
       else sv.classes
 
+    // RDFS describes URIs, while LinkML definitions are keyed by name, so several definitions may
+    // describe one URI: a slot is derived once per class using it (inheritance, mixins, plain slot
+    // reuse), and a class_uri, enum_uri or meaning may be repeated across definitions. Group the
+    // definitions by the URI they describe, and emit each group once, at its first definition.
+    // This avoids emitting repeated metadata in streaming formats.
+    val classDefinitions: Map[String, Seq[ClassView]] = classes.values.toSeq.groupBy(_.uriStr)
+    val propertyUsages: Map[String, Seq[(ClassView, SlotView)]] = classes.values.toSeq
+      .flatMap(c => c.derivedAttributes.values.filterNot(_.inner.identifier).map((c, _)))
+      .groupBy(_._2.uriStr)
+
     classes.values.foreach { c =>
       val classNameIri = Iri(c.uriStr)
-      sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
-      emitCommonMetadata(sink, classNameIri, c.cls)
-      (c.cls.isA.toList ++ c.cls.mixins).foreach { m =>
-        sv.getElement(m.value).foreach { e =>
-          sink.triple(classNameIri, Rdfs.subClassOf, Iri(e.uriStr))
-        }
+      val definitions = classDefinitions(c.uriStr)
+      if (definitions.head eq c) {
+        sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
+        emitCommonMetadata(sink, classNameIri, definitions.map(_.cls))
+        definitions
+          .flatMap(d => d.cls.isA.toList ++ d.cls.mixins)
+          .flatMap(m => sv.getElement(m.value).toList)
+          .map(e => Iri(e.uriStr))
+          .distinct
+          .foreach(parent => sink.triple(classNameIri, Rdfs.subClassOf, parent))
       }
       c.derivedAttributes.values.foreach { s =>
         if (!s.inner.identifier) {
-          val propertyNameIri = Iri(s.uriStr)
-          sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-          emitCommonMetadata(sink, propertyNameIri, s.slot)
-          sink.triple(propertyNameIri, Rdfs.domain, classNameIri)
-          s.derivedRange.resolve.foreach { e =>
-            sink.triple(propertyNameIri, Rdfs.range, Iri(e.uriStr))
-          }
+          val usages = propertyUsages(s.uriStr)
+          if (usages.head._1 eq c) emitProperty(sink, Iri(s.uriStr), usages)
         }
       }
     }
@@ -64,17 +101,34 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
       if onlyClassesFromRootSchema then sv.enums.filter(_._2.definingSchema.id == sv.root.id)
       else sv.enums
 
+    val enumDefinitions: Map[String, Seq[EnumView]] = enums.values.toSeq.groupBy(_.uriStr)
+    // A permissible value may be shared between enums, which each give it their own type but
+    // possibly the same metadata, so group these by URI as well.
+    val valueUsages: Map[String, Seq[(EnumView, PermissibleValue)]] = enums.values.toSeq
+      .flatMap(e =>
+        e.derivedValues.map(v => (v.meaning.uri(using e.definingPrefixResolver), (e, v.pv))),
+      )
+      .groupMap(_._1)(_._2)
+
     // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
     // permissible values as an instance of that class.
     enums.values.foreach { e =>
       val prefixResolver = e.definingPrefixResolver
       val enumIri = Iri(e.uriStr)
-      sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
-      emitCommonMetadata(sink, enumIri, e._enum)
+      val definitions = enumDefinitions(e.uriStr)
+      if (definitions.head eq e) {
+        sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
+        emitCommonMetadata(sink, enumIri, definitions.map(_._enum))
+      }
       e.derivedValues.foreach { (pv, meaning) =>
         val pvIri = Iri(meaning.uri(using prefixResolver))
-        sink.triple(pvIri, Rdf.`type`, enumIri)
-        emitCommonMetadata(sink, pvIri, pv)
+        val usages = valueUsages(pvIri.value)
+        if ((usages.head._1 eq e) && (usages.head._2 eq pv)) {
+          usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
+            sink.triple(pvIri, Rdf.`type`, enumClass)
+          }
+          emitCommonMetadata(sink, pvIri, usages.map(_._2))
+        }
       }
     }
   }

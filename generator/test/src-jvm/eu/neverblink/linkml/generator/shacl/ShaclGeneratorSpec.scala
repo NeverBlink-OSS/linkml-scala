@@ -690,6 +690,9 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           val sink = new CollectingRdfSink
           ShaclGenerator(using entry.model).generate(sink)
           sink.triples should not be empty
+          withClue("duplicate triples in the output:") {
+            sink.triples.diff(sink.triples.distinct) shouldBe empty
+          }
         }
     }
   }

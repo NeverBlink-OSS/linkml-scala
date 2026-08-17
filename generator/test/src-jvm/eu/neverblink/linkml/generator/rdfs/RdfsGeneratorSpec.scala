@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.rdfs
 
-import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
+import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
@@ -331,12 +331,71 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
     }
 
+    "describe a URI once when several definitions share it" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  ex: https://example.org/
+           |emit_prefixes:
+           |  - ex
+           |classes:
+           |  VariantA:
+           |    class_uri: ex:Thing
+           |    title: A thing
+           |    tree_root: true
+           |    slots:
+           |    - some_slot
+           |  VariantB:
+           |    class_uri: ex:Thing
+           |    title: A thing
+           |    slots:
+           |    - some_slot
+           |slots:
+           |  some_slot:
+           |    range: FunctionsA
+           |enums:
+           |  FunctionsA:
+           |    enum_uri: ex:FunctionA
+           |    permissible_values:
+           |      cos:
+           |        meaning: ex:cos
+           |        title: Cosine
+           |  FunctionsB:
+           |    enum_uri: ex:FunctionB
+           |    permissible_values:
+           |      cos:
+           |        meaning: ex:cos
+           |        title: Cosine
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val sink = new CollectingRdfSink
+      RdfsGenerator(using schemaView).generate(sink)
+
+      sink.triples.diff(sink.triples.distinct) shouldBe empty
+      // Both class definitions describe ex:Thing, so it is typed and labelled once, and the slot
+      // they share yields one property with one domain.
+      val thing = Iri("https://example.org/Thing")
+      sink.triples.count(_ == Triple(thing, Rdf.`type`, Rdfs.Class)) shouldBe 1
+      sink.triples.count(_ == Triple(thing, Rdfs.label, Literal("A thing"))) shouldBe 1
+      val slot = Iri("https://neverblink.eu/linkml/rdfs/test/some_slot")
+      sink.triples.count(_ == Triple(slot, Rdfs.domain, thing)) shouldBe 1
+      // The permissible value shared by both enums keeps a type for each of them, but is
+      // labelled once.
+      val cos = Iri("https://example.org/cos")
+      sink.triples should contain(Triple(cos, Rdf.`type`, Iri("https://example.org/FunctionA")))
+      sink.triples should contain(Triple(cos, Rdf.`type`, Iri("https://example.org/FunctionB")))
+      sink.triples.count(_ == Triple(cos, Rdfs.label, Literal("Cosine"))) shouldBe 1
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
           val sink = new CollectingRdfSink
           RdfsGenerator(using entry.model).generate(sink)
           sink.triples should not be empty
+          withClue("duplicate triples in the output:") {
+            sink.triples.diff(sink.triples.distinct) shouldBe empty
+          }
         }
     }
   }
