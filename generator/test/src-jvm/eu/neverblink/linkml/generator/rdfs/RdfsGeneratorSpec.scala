@@ -387,6 +387,134 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       sink.triples.count(_ == Triple(cos, Rdfs.label, Literal("Cosine"))) shouldBe 1
     }
 
+    "not stack rdfs:domains" in {
+      val input =
+        s"""$schemaShared
+          |prefixes:
+          |  ex: https://example.org/
+          |emit_prefixes:
+          |  - ex
+          |default_prefix: ex
+          |
+          |classes:
+          |  Base:
+          |    abstract: true
+          |  A:
+          |    is_a: Base
+          |    slots:
+          |     - some_slot
+          |  B:
+          |    is_a: Base
+          |    slots:
+          |     - some_slot
+          |slots:
+          |  some_slot:
+          |    range: string
+          |""".stripMargin
+
+      val schemaView = loadWithImports(input)
+      val sink = CollectingRdfSink()
+      RdfsGenerator(using schemaView).generate(sink)
+      sink.triples should contain(
+        Triple(Iri("https://example.org/some_slot"), Rdfs.domain, Iri("https://example.org/Base")),
+      )
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/A"),
+      )
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/B"),
+      )
+    }
+
+    "not emit rdfs:domain if a property is reused across unrelated classes" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  ex: https://example.org/
+           |emit_prefixes:
+           |  - ex
+           |default_prefix: ex
+           |
+           |classes:
+           |  A:
+           |    slots:
+           |     - some_slot
+           |  B:
+           |    slots:
+           |     - some_slot
+           |slots:
+           |  some_slot:
+           |    range: string
+           |""".stripMargin
+
+      val schemaView = loadWithImports(input)
+      val sink = CollectingRdfSink()
+      RdfsGenerator(using schemaView).generate(sink)
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/A"),
+      )
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/B"),
+      )
+    }
+
+    "emit rdfs:domain for the lowest common ancestor" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  ex: https://example.org/
+           |emit_prefixes:
+           |  - ex
+           |default_prefix: ex
+           |
+           |classes:
+           |  Base0:
+           |  Base1:
+           |    is_a: Base0
+           |  A:
+           |    is_a: Base1
+           |    slots:
+           |     - some_slot
+           |  B:
+           |    is_a: Base1
+           |    slots:
+           |     - some_slot
+           |slots:
+           |  some_slot:
+           |    range: string
+           |""".stripMargin
+
+      val schemaView = loadWithImports(input)
+      val sink = CollectingRdfSink()
+      RdfsGenerator(using schemaView).generate(sink)
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/Base0"),
+      )
+      sink.triples should contain(
+        Triple(Iri("https://example.org/some_slot"), Rdfs.domain, Iri("https://example.org/Base1")),
+      )
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/A"),
+      )
+      sink.triples should not contain Triple(
+        Iri("https://example.org/some_slot"),
+        Rdfs.domain,
+        Iri("https://example.org/B"),
+      )
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {

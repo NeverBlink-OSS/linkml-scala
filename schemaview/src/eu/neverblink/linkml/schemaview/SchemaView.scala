@@ -205,6 +205,36 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       } else optCv
     })
 
+  /** Find the lowest common ancestors of some classes. Considers both direct `is_a` ancestors and
+    * mixins, so may find multiple common ancestors.
+    * @param views
+    *   Class views to find the lowest common ancestor for
+    * @return
+    *   Lowest common ancestors, empty collection if the classes do not share any ancestors.
+    */
+  def lowestCommonAncestors(views: Seq[ClassView]): Seq[ClassView] = {
+    // yes, it's inefficient, quadratic, whatever
+    // there is a proper algorithm for this, but I don't feel like implementing it right now, since only RDFS uses this
+    if views.isEmpty then return Seq.empty
+    var commonAncestors = views.head.ancestors(false).map(_.name).toSet
+
+    views.tail.foreach { cls =>
+      val current = cls.ancestors(false).map(_.name).toSet
+      commonAncestors = commonAncestors.intersect(current)
+    }
+
+    val lowestCommon = mutable.HashSet[String]()
+    commonAncestors.foreach(lowestCommon.add)
+    commonAncestors.foreach { commonAnc =>
+      val cls = Reference[ClassView](commonAnc).resolve.get
+      cls.ancestors(false).foreach { anc =>
+        lowestCommon.remove(anc.name)
+      }
+    }
+
+    lowestCommon.toSeq.map(Reference[ClassView](_).resolve.get)
+  }
+
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.
     *
