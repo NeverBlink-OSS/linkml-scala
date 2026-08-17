@@ -61,7 +61,7 @@ trait Importer {
 object Importer {
 
   /** Build a [[SchemaParseError]], pinning it to the position the parser or decoder reported. */
-  private[schemaview] def parseError(
+  def parseError(
       parserMessage: String,
       uri: String,
       codeRegion: Option[CodeRegionImpl],
@@ -74,7 +74,7 @@ object Importer {
 
   /** Extract the position a [[YamlError]] reported, if it carries one.
     */
-  private def codeRegionOf(error: YamlError): Option[CodeRegionImpl] = error match {
+  def codeRegionOf(error: YamlError): Option[CodeRegionImpl] = error match {
     case e: ParseError.ExpectedTokenKind => new Some(codeRegion(e.got.range))
     case e: ScannerError.Obtained => new Some(codeRegion(e.got.range))
     case e: ScannerError.AtRange => new Some(codeRegion(e.range))
@@ -84,7 +84,7 @@ object Importer {
   }
 
   /** Convert a YAML [[Range]], whose lines and columns are 0-based, into a 1-based code region. */
-  private[schemaview] def codeRegion(range: Range): CodeRegionImpl =
+  def codeRegion(range: Range): CodeRegionImpl =
     new CodeRegionImpl(
       startLine = range.start.line + 1,
       startColumn = range.start.column + 1,
@@ -93,7 +93,7 @@ object Importer {
     )
 
   /** Build a [[SchemaImportError]] for a schema text that could not be obtained at all. */
-  private[schemaview] def importError(uri: String, reason: String): SchemaImportError =
+  def importError(uri: String, reason: String): SchemaImportError =
     new SchemaImportErrorImpl(
       location = IssueLocationImpl(),
       importUri = uri,
@@ -101,7 +101,7 @@ object Importer {
     )
 
   /** Read a schema text that may throw, turning any failure into a [[SchemaImportError]]. */
-  private[schemaview] def readText(
+  def readText(
       uri: String,
   )(read: => String): Either[SchemaImportError, String] =
     try new Right(read)
