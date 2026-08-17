@@ -10,6 +10,7 @@ import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 
 class GraphQlGenerator(using sv: SchemaView) {
+  import GraphQlGenerator.*
 
   /** Generate the GraphQL definitions which use custom directives for rdf interop.
     *
@@ -67,7 +68,7 @@ class GraphQlGenerator(using sv: SchemaView) {
   /** Generate a GraphQL definition corresponding to the provided class, or None if the class is
     * linkml:Any
     */
-  private def generateClass(cls: ClassView): Option[GraphQlDefinition] = {
+  def generateClass(cls: ClassView): Option[GraphQlDefinition] = {
     lazy val fields = cls.attributeViews.values.map(av => {
       val range: String = av match {
         case AnyView(_, _) =>
@@ -123,10 +124,13 @@ class GraphQlGenerator(using sv: SchemaView) {
             |${generate(pruningMode).map(_.print.strip()).mkString("\n\n")}
             |""".stripMargin
   }
+}
+
+object GraphQlGenerator {
 
   /** Remap a runtime type to a GraphQL built-in scalar, if possible.
     */
-  private def remapToBuiltin(tv: TypeView): Option[String] =
+  def remapToBuiltin(tv: TypeView): Option[String] =
     tv.runtimeType match {
       case StringType => Some("String")
       case IntegerType => Some("Int")
@@ -139,7 +143,7 @@ class GraphQlGenerator(using sv: SchemaView) {
 
   /** Builtin remapped type or the aliased name of the type
     */
-  private def remappedType(tv: TypeView): String =
+  def remappedType(tv: TypeView): String =
     remapToBuiltin(tv).getOrElse(tv.aliasedName)
 }
 
