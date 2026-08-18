@@ -53,6 +53,9 @@ class LowestCommonAncestorSpec extends AnyWordSpec, Matchers {
     val Root: ClassView = sv.classes("Root")
     val RootMix: ClassView = sv.classes("RootMix")
 
+    "given A, get A" in {
+      sv.lowestCommonAncestors(Seq(A)) shouldBe Seq(A)
+    }
     "given A, B, get AB" in {
       sv.lowestCommonAncestors(Seq(A, B)) shouldBe Seq(AB)
     }
@@ -70,6 +73,12 @@ class LowestCommonAncestorSpec extends AnyWordSpec, Matchers {
     }
     "given A, C, D, get Root, RootMix" in {
       sv.lowestCommonAncestors(Seq(A, C, D)) should contain theSameElementsAs Seq(Root, RootMix)
+    }
+    "given A, AB, get AB" in {
+      sv.lowestCommonAncestors(Seq(A, AB)) should contain theSameElementsAs Seq(AB)
+    }
+    "given A, ABC, get ABC" in {
+      sv.lowestCommonAncestors(Seq(A, ABC)) should contain theSameElementsAs Seq(ABC)
     }
   }
 

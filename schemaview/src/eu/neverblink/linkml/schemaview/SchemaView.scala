@@ -216,10 +216,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     // yes, it's inefficient, quadratic, whatever
     // there is a proper algorithm for this, but I don't feel like implementing it right now, since only RDFS uses this
     if views.isEmpty then return Seq.empty
-    var commonAncestors = views.head.ancestors(false).map(_.name).toSet
+    var commonAncestors = views.head.ancestors(true).map(_.name).toSet
 
     views.tail.foreach { cls =>
-      val current = cls.ancestors(false).map(_.name).toSet
+      val current = cls.ancestors(true).map(_.name).toSet
       commonAncestors = commonAncestors.intersect(current)
     }
 
