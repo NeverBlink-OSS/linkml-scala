@@ -26,7 +26,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (JsonSchema, "json-schema", Seq("\"Root\"", "\"name\"")),
     (Shacl, "shacl", Seq("shacl#NodeShape", "<https://neverblink.eu/test/name>")),
     (Scala, "scala", Seq("abstract class Root", "def name: Option[String]")),
-    (Rdfs, "rdfs", Seq("rdf-schema#Class", "rdf-schema#domain")),
+    (Rdfs, "rdfs", Seq("rdf-schema#Class", "rdf-schema#range")),
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
     (TableSchema, "table-schema", Seq("\"fields\"", "\"name\": \"name\"")),
     (GraphQl, "graphql", Seq("type Root", "name: string")),

@@ -35,7 +35,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
   ): Unit = {
     sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
     emitCommonMetadata(sink, propertyNameIri, usages.map(_._2.slot))
-    usages.map(u => Iri(u._1.uriStr)).distinct.foreach { domain =>
+    sv.lowestCommonAncestors(usages.map(_._1)).map(u => Iri(u.uriStr)).distinct.foreach { domain =>
       sink.triple(propertyNameIri, Rdfs.domain, domain)
     }
     usages.flatMap(_._2.derivedRange.resolve.toList).map(e => Iri(e.uriStr)).distinct.foreach {
