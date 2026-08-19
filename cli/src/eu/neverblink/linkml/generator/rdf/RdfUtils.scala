@@ -7,7 +7,7 @@ import org.eclipse.rdf4j.model.{Value, ValueFactory, IRI as Rdf4jIri, Resource a
 import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio, WriterConfig}
 
-import java.io.{BufferedOutputStream, OutputStream, StringWriter}
+import java.io.{OutputStream, StringWriter}
 
 /** An [[RdfSink]] that collects prefixes and triples into an RDF4J [[Model]] and serializes it as
   * pretty-printed Turtle. Building the model and running the RDF4J writer is substantially slower
@@ -28,7 +28,7 @@ final class TurtleRdfSink(using vf: ValueFactory = SimpleValueFactory.getInstanc
 
   /** Serialize the collected model as Turtle straight to [[out]]. Flushes but does not close it. */
   def writeTo(out: OutputStream): Unit = {
-    val buffered = new BufferedOutputStream(out)
+    val buffered = new FastBufferedOutputStream(out)
     Rio.write(builder.build(), buffered, RDFFormat.TURTLE, TurtleRdfSink.config)
     buffered.flush()
   }
@@ -100,5 +100,48 @@ object RdfUtils {
     val sink = NTriplesRdfSink(charSink)
     write(sink)
     charSink.flush()
+  }
+}
+
+/** A fast replacement for java.io.BufferedOutputStream. Not thread-safe.
+  */
+class FastBufferedOutputStream(out: OutputStream) extends OutputStream {
+  private inline val capacity = 32768
+  private val buf: Array[Byte] = new Array[Byte](capacity)
+  private var count = 0
+
+  override def write(b: Int): Unit = {
+    val i = count
+    if (i >= buf.length) flushBuffer()
+    buf(i) = b.toByte
+    count = i + 1
+  }
+
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    var remaining = len
+    while (remaining > 0) {
+      if (remaining > capacity - count) flushBuffer()
+      val batchSize = java.lang.Math.min(capacity, remaining)
+      System.arraycopy(b, off, buf, count, batchSize)
+      count += batchSize
+      remaining -= batchSize
+    }
+  }
+
+  override def flush(): Unit = {
+    flushBuffer()
+    out.flush()
+  }
+
+  override def close(): Unit =
+    try flush()
+    finally out.close()
+
+  private def flushBuffer(): Unit = {
+    val remaining = count
+    if (remaining > 0) {
+      out.write(buf, 0, remaining)
+      count = 0
+    }
   }
 }

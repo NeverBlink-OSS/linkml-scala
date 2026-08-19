@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.benchmark
 
+import com.github.plokhotnyuk.jsoniter_scala.core.*
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink, RdfUtils}
@@ -58,7 +59,11 @@ class WarmBench extends CommonParams {
   @Benchmark
   def jsonSchema(bh: Blackhole): Unit = {
     // create SchemaView in the benchmark to not use the class cache
-    bh.consume(JsonSchemaGenerator(using SchemaView(schemaDefs)).serialize())
+    writeToStream(
+      JsonSchemaGenerator(using SchemaView(schemaDefs)).generate(),
+      new BlackholeOutputStream(bh),
+      WriterConfig.withIndentionStep(2),
+    )(using JsonSchemaGenerator.codec)
   }
 
   @Benchmark

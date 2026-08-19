@@ -19,7 +19,4 @@ enum SubjectType:
     * @return
     *   true if this type should be an RDF IRI
     */
-  def isIri: Boolean = this match {
-    case SubjectType.base => false
-    case _ => true
-  }
+  def isIri: Boolean = this ne SubjectType.base

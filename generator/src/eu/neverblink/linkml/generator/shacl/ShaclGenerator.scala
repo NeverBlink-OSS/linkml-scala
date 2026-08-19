@@ -105,20 +105,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       options: ShaclGenerator.Options = ShaclGenerator.Options(),
   ): Unit = {
     import options.{onlyClassesFromRootSchema, open}
-    addNamespaces(
-      sink,
-      Array(
-        ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-        ("sh", "http://www.w3.org/ns/shacl#"),
-        ("xsd", "http://www.w3.org/2001/XMLSchema#"),
-        ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
-      ),
-    )
-
+    addNamespaces(sink, defaultPrefixes)
     val classes =
-      if onlyClassesFromRootSchema then sv.classes.filter(_._2.definingSchema == sv.root)
+      if (onlyClassesFromRootSchema) sv.classes.filter(_._2.definingSchema == sv.root)
       else sv.classes
-
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
@@ -129,7 +119,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       val ignoredPropertiesListHead = addList(
         sink,
-        Seq(Rdf.`type`) ++ c.identifier.mapFast(id => new Iri(id.uriStr)),
+        c.identifier.foldFast(Seq(Rdf.`type`))(id => Seq(Rdf.`type`, new Iri(id.uriStr))),
       )
       sink.triple(classNameIri, Shacl.ignoredProperties, ignoredPropertiesListHead)
       c.derivedAttributes.values.foreach {
@@ -143,6 +133,13 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }
   }
+
+  private val defaultPrefixes = Array(
+    ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+    ("sh", "http://www.w3.org/ns/shacl#"),
+    ("xsd", "http://www.w3.org/2001/XMLSchema#"),
+    ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
+  )
 }
 
 object ShaclGenerator {

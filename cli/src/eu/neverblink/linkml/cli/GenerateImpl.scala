@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import com.github.plokhotnyuk.jsoniter_scala.core.*
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -67,24 +68,23 @@ final case class JsonSchemaOptions(
     treeRootInlineTypeOverride: Option[String] = None,
 ) extends HasGenerateOptions
 
-object JsonSchema extends StringGenerate[JsonSchemaOptions] {
+object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
   override protected def generatorName: String = "json-schema"
 
-  override protected[cli] def generate(
-      options: JsonSchemaOptions,
-  )(using SchemaView): Iterable[(String, String)] =
-    Seq(
-      (
-        "",
-        JsonSchemaGenerator().serialize(
-          JsonSchemaGenerator.Options(
-            open = options.open,
-            treeRoot = options.treeRootOverride,
-            treeRootInlineType = options.treeRootInlineTypeOverride,
-          ),
-        ),
+  override protected[cli] def generate(options: JsonSchemaOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    writeToStream(
+      JsonSchemaGenerator().generate(
+        JsonSchemaGenerator.Options(
+          options.open,
+          options.treeRootOverride,
+          treeRootInlineTypeOverride = options.treeRootInlineTypeOverride,
+        )
       ),
-    )
+      out,
+      WriterConfig.withIndentionStep(2),
+    )(using JsonSchemaGenerator.codec)
 }
 
 // SHACL

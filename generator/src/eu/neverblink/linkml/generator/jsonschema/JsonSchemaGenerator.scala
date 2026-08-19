@@ -224,7 +224,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     )
   }
 
-  /** Generate the JSON Schema and serialize it
+  /** Generate the JSON Schema and serialize it into a string value
     *
     * @param options
     *   What to generate. See [[JsonSchemaGenerator.Options]].
@@ -298,7 +298,7 @@ object JsonSchemaGenerator {
       */
     def dictOf: Schema = objectSchema.copy(additionalProperties = new Some(schema))
 
-  private implicit lazy val codec: JsonValueCodec[Schema] = {
+  implicit lazy val codec: JsonValueCodec[Schema] = {
     implicit val schemaLikeCodec: JsonValueCodec[SchemaLike] = new JsonValueCodec {
       override def decodeValue(in: JsonReader, default: SchemaLike): SchemaLike = ???
 

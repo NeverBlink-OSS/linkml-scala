@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.runtime.FastUtils.foreachFast
 import eu.neverblink.linkml.schemaview.SchemaView
 
 /** Base utility class for common operations of generators that output RDF.
@@ -11,7 +12,7 @@ abstract class RdfGenerator {
     */
   protected def blankNode(): BlankNode = {
     blankNodeCounter += 1
-    BlankNode(blankNodeCounter.toString)
+    new BlankNode(blankNodeCounter.toString)
   }
 
   /** Create an RDF list of the provided [[values]] and push it into the [[sink]].
@@ -23,20 +24,27 @@ abstract class RdfGenerator {
     * @return
     *   Head node of the list or `rdf:nil` if [[values]] was empty
     */
-  final def addList(sink: RdfSink, values: Seq[Node]): Resource = {
-    if values.isEmpty then return Rdf.nil
-    val start = blankNode()
-    sink.triple(start, Rdf.first, values.head)
-    var prev = start
-    values.tail.foreach { value =>
-      val cur = blankNode()
-      sink.triple(prev, Rdf.rest, cur)
-      sink.triple(cur, Rdf.first, value)
-      prev = cur
+  final def addList(sink: RdfSink, values: Seq[Node]): Resource =
+    if (values.isEmpty) Rdf.nil
+    else {
+      val start = blankNode()
+      var prev = start
+      values.foreach {
+        var i = 0
+        value =>
+          if (i == 0) {
+            sink.triple(start, Rdf.first, values.head)
+          } else {
+            val cur = blankNode()
+            sink.triple(prev, Rdf.rest, cur)
+            sink.triple(cur, Rdf.first, value)
+            prev = cur
+          }
+          i += 1
+      }
+      sink.triple(prev, Rdf.rest, Rdf.nil)
+      start
     }
-    sink.triple(prev, Rdf.rest, Rdf.nil)
-    start
-  }
 
   /** Create namespace declarations for the root schema in the implicit [[SchemaView]] and push it
     * into the [[sink]].
@@ -46,18 +54,25 @@ abstract class RdfGenerator {
     * @param additional
     *   Format-specific additional prefixes to emit
     * @param sv
-    *   Schemaview to create the namespaces for
+    *   SchemaView to create the namespaces for
     */
   final def addNamespaces(sink: RdfSink, additional: Array[(String, String)])(using
       sv: SchemaView,
   ): Unit = {
-    val toEmit = sv.root.emitPrefixes.toSet ++ sv.root.defaultPrefix
-    sv.root.prefixes.values.toArray
-      .collect {
-        case p if toEmit(p.prefixPrefix) =>
-          (p.prefixPrefix, p.prefixReference.original)
-      }
-      .appendedAll(additional)
-      .distinct.sorted.foreach(sink.namespace)
+    val root = sv.root
+    // use tree-map for sorting prefixes in an alphabetic order
+    val namespaces = new java.util.TreeMap[String, String]
+    // add placeholder value for the default prefix
+    root.defaultPrefix.foreachFast(namespaces.putIfAbsent(_, ""))
+    // add placeholder values for allowed prefixes
+    root.emitPrefixes.foreach(namespaces.putIfAbsent(_, ""))
+    // fill references only allowed to emit prefixes
+    root.prefixes.foreach { kv =>
+      namespaces.computeIfPresent(kv._1, (_, _) => kv._2.prefixReference.original)
+    }
+    // override format-specific prefixes
+    additional.foreach(kv => namespaces.put(kv._1, kv._2))
+    // emit all collected prefixes skipping place-holders
+    namespaces.forEach((k, v) => if (v.length > 0) sink.namespace(k, v))
   }
 }
