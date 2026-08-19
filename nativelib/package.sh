@@ -104,10 +104,8 @@ The library exports two functions, plus the GraalVM isolate lifecycle functions:
     void  linkml_free(graal_isolatethread_t*, char*);   // release a response
 
 Create an isolate with \`graal_create_isolate\`, attach any further threads with
-\`graal_attach_thread\`, then send JSON requests. Release every response with \`linkml_free\`.
-
-Note that the generated header declares the request parameter as \`char *\`, not \`const char *\`.
-Passing a string literal warns in C and does not compile in C++, so cast or use a mutable buffer.
+\`graal_attach_thread\`, then send JSON requests. The request is \`const\`; the response is not,
+because you own it and must release it with \`linkml_free\`.
 
 The protocol, the full API and a worked example in Python are documented at:
 

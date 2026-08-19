@@ -6,6 +6,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.c.type.CConst;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 
 /**
@@ -36,7 +37,7 @@ public final class LinkMlCApi {
      *     linkml_free}
      */
     @CEntryPoint(name = "linkml_call")
-    static CCharPointer call(IsolateThread thread, CCharPointer request) {
+    static CCharPointer call(IsolateThread thread, @CConst CCharPointer request) {
         String response;
         try {
             response = LinkMlNativeApi.call(CTypeConversion.toJavaString(request));
@@ -72,6 +73,8 @@ public final class LinkMlCApi {
     /**
      * Copy a string into unmanaged memory as NUL-terminated UTF-8, so that it stays valid after this
      * call returns and can be freed from C.
+     *
+     * TODO: direct serialize to the buffer with jsoniter?
      */
     private static CCharPointer toCString(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);

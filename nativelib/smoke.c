@@ -17,9 +17,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* An array rather than a `const char *`: native-image declares the parameter as plain `char *`, so
- * passing a const pointer warns in C and fails outright in C++. */
-static char LOAD_REQUEST[] =
+static const char *LOAD_REQUEST =
     "{\"op\":\"load\",\"schema\":\""
     "id: https://example.org/smoke\\n"
     "name: smoke\\n"
