@@ -450,6 +450,122 @@ object cli extends Module {
   }
 }
 
+/** LinkML compiled to a native shared library with a C ABI, and the Python bindings that sit on top
+  * of it. See docs/python_bindings.md.
+  *
+  * Experimental. Deliberately does not extend `CommonModule`, so it stays out of
+  * `SonatypeCentralPublishModule` (which publishes every `PublishModule` in the build) until we
+  * decide to ship it.
+  *
+  * It extends `NativeImage` only to reuse `nativeImageGraalvmHome`, which fetches GraalVM (or
+  * honours `GRAALVM_HOME`). The trait's own `nativeImage` task builds an executable and is unused
+  * here; `sharedLibrary` below runs native-image with `--shared` instead.
+  */
+object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImage {
+  def scalaVersion = scala
+
+  def moduleDeps = Seq(
+    build.generator.jvm,
+  )
+
+  /** GraalVM's `@CEntryPoint` annotations. Compile-time only: native-image puts its own copy on the
+    * image classpath, and having a second one there confuses it.
+    */
+  override def compileMvnDeps = Seq(
+    mvn"org.graalvm.sdk:nativeimage:25.0.1",
+  )
+
+  def scalacOptions = Seq(
+    "-release",
+    "17",
+    "-Wunused:all",
+  )
+
+  /** Unused: a shared library has no main class. Required by the `NativeImage` trait, whose
+    * executable-building tasks we don't call.
+    */
+  def nativeImageMainClass = ""
+
+  def nativeImageClassPath = runClasspath()
+
+  def nativeImageName = "liblinkml_scala"
+
+  def nativeImageGraalVmJvmId = "graalvm-oracle:25"
+
+  // Same as the CLI's, minus what only makes sense for an executable.
+  def nativeImageOptions = Seq(
+    "-O3", // Optimized for throughput
+    "--no-fallback",
+    "--initialize-at-build-time",
+    // os.pwd is a val, must not be initialized at build time, or we get bad PWD on runtime.
+    // See: https://github.com/com-lihaoyi/os-lib/issues/318
+    "--initialize-at-run-time=os.package$",
+    "-H:+UnlockExperimentalVMOptions",
+    "-H:+RemoveSaturatedTypeFlows",
+    "-H:+MLCallCountProfileInference",
+    "-H:IncludeLocales=en",
+    "-H:-GenLoopSafepoints",
+    "-H:-IncludeMethodData",
+  )
+
+  /** Compile the library to `liblinkml_scala.so` (`.dylib`, `.dll`) plus the C headers GraalVM
+    * generates for it. Takes a few minutes.
+    */
+  def sharedLibrary = Task {
+    // `scala` at the top of this file is the version string, so the package needs spelling out.
+    val ext = if _root_.scala.util.Properties.isWin then ".cmd" else ""
+    val nativeImage = nativeImageGraalvmHome().path / "bin" / s"native-image$ext"
+    val classPath = nativeImageClassPath()
+      .map(_.path.toString)
+      .mkString(java.io.File.pathSeparator)
+
+    os.call(
+      (
+        nativeImage.toString,
+        "--shared",
+        nativeImageOptions(),
+        s"-H:Path=${Task.dest}",
+        s"-H:Name=${nativeImageName()}",
+        "-cp",
+        classPath,
+      ),
+      cwd = mill.api.BuildCtx.workspaceRoot,
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+    PathRef(Task.dest)
+  }
+
+  /** Where the Python package looks for the library when it is not told otherwise. */
+  private def pythonLibDir = mill.api.BuildCtx.workspaceRoot / "python" / "linkml_scala" / "_lib"
+
+  /** Build the shared library and install it (with its headers) into the Python package, so
+    * `import linkml_scala` works from a source checkout.
+    */
+  def installPythonLib() = Task.Command(exclusive = true) {
+    val built = sharedLibrary().path
+    os.makeDir.all(pythonLibDir)
+    os.list(built).filter(os.isFile).foreach(os.copy.into(_, pythonLibDir, replaceExisting = true))
+    println(s"Installed the shared library into ${pythonLibDir.relativeTo(
+        mill.api.BuildCtx.workspaceRoot,
+      )}")
+  }
+
+  /** Run the Python binding's test suite against a freshly installed library. Requires Python 3.10+
+    * on the PATH.
+    */
+  def pythonTest(args: String*) = Task.Command(exclusive = true) {
+    installPythonLib()()
+    os.call(
+      ("python3", "-m", "unittest", "discover", "-s", "python", "-v"),
+      cwd = mill.api.BuildCtx.workspaceRoot,
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+    ()
+  }
+}
+
 /** JMH benchmarks for the code generators. JVM-only, not published. Run with:
   * `./mill benchmark.runJmh`
   */
