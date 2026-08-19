@@ -516,7 +516,7 @@ trait CommonModule
     organization = "eu.neverblink.linkml",
     url = "https://github.com/NeverBlink-OSS/linkml-scala",
     licenses = Seq(License.`Apache-2.0`),
-    versionControl = VersionControl.github("NeverBlink-OSS", "NeverBlink-OSS"),
+    versionControl = VersionControl.github("NeverBlink-OSS", "linkml-scala"),
     Seq(
       Developer(
         id = "NeverBlink",
