@@ -388,8 +388,6 @@ object SchemaView {
     *   The URI of the schema to load. This can be a URL starting with "https://", "http://", or a
     *   file path.
     *
-    * @param doImportLoading
-    *   A boolean flag indicating whether to load the imports of the schema. Defaults to true.
     * @param importer
     *   An importer of schema imports. Default is [[FileSystemImporter]] that reads from the file
     *   system.
