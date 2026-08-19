@@ -146,6 +146,27 @@ jobs:
             ./mill nativelib.pythonTest
           fi
 
+      # The archive is what people actually download, so build it here and check a C program can
+      # compile against it and run.
+      - name: Check the Release Archive Works from C
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          case "${{ matrix.os }}" in
+          macos-14) platform=macos-arm64 ;;
+          macos-15-intel) platform=macos-x86_64 ;;
+          ubuntu-22.04) platform=linux-x86_64 ;;
+          ubuntu-22.04-arm) platform=linux-arm64 ;;
+          windows-latest) platform=windows-x86_64 ;;
+          esac
+          nativelib/package.sh "$version" "$platform" out/nativelib/sharedLibrary.dest dist
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            unzip -q "dist/linkml-scala-lib-$platform.zip" -d dist
+          else
+            tar -xzf "dist/linkml-scala-lib-$platform.tar.gz" -C dist
+          fi
+          nativelib/smoke.sh "dist/liblinkml-scala-$version-$platform"
+
       - name: Upload Shared Library
         uses: actions/upload-artifact@v7
         with:

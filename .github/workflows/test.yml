@@ -123,11 +123,17 @@ jobs:
       - name: Build the shared library and run the Python binding tests
         run: ./mill --no-server nativelib.pythonTest
 
-      - name: Check that the release archive builds and a C program links against it
+      # Builds the release archive, then compiles and runs a C program against the unpacked copy.
+      - name: Check that the release archive works from C
         run: |
           nativelib/package.sh 0.0.0-ci linux-x86_64 out/nativelib/sharedLibrary.dest dist
           tar -xzf dist/linkml-scala-lib-linux-x86_64.tar.gz -C dist
+          nativelib/smoke.sh dist/liblinkml-scala-0.0.0-ci-linux-x86_64
+
+      - name: Check that the pkg-config file resolves
+        run: |
           prefix="$PWD/dist/liblinkml-scala-0.0.0-ci-linux-x86_64"
-          gcc nativelib/smoke.c -o dist/smoke \
-            $(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs linkml-scala)
-          LD_LIBRARY_PATH="$prefix/lib" dist/smoke    
+          flags=$(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs linkml-scala)
+          echo "pkg-config: $flags"
+          gcc nativelib/smoke.c -o dist/smoke-pc $flags
+          LD_LIBRARY_PATH="$prefix/lib" dist/smoke-pc    
