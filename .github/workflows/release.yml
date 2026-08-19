@@ -100,6 +100,58 @@ jobs:
           name: linkml-scala-${{ matrix.os }}
           path: out/cli/jvm/nativeImage.dest/*
 
+  nativelib-compile:
+    name: Build shared library on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Oldest available image per platform, so the libraries stay usable on older systems.
+        os: [macos-14, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      # See the note in aot-compile.
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache Dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17 # The minimal JDK version for Scala Next
+
+      - name: Setup MSVC (Windows only)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      # Doubles as the smoke test: pythonTest builds the library, then exercises every generator
+      # and the validator through it on this platform.
+      - name: Build Shared Library and Test the Python Bindings
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./mill.bat nativelib.pythonTest
+          else
+            ./mill nativelib.pythonTest
+          fi
+
+      - name: Upload Shared Library
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-nativelib-${{ matrix.os }}
+          path: out/nativelib/sharedLibrary.dest/*
+
   publish:
     name: Publish to Maven and GitHub
     runs-on: ubuntu-latest
@@ -109,6 +161,7 @@ jobs:
       attestations: write # Required to record the provenance attestation on the repo
     needs:
       - aot-compile
+      - nativelib-compile
       - jar-assemble
 
     steps:
@@ -144,6 +197,26 @@ jobs:
           gzip -9 -k linkml-scala-linux-arm64 &
           gzip -9 -k linkml-scala-windows-x86_64.exe &
           wait
+
+      - name: Download Shared Libraries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: linkml-nativelib-*
+          path: nativelib-builds
+
+      # Packaged here rather than on each runner so every archive is built by the same tar/zip.
+      # The layout is the usual include/ + lib/ install prefix, see nativelib/package.sh.
+      - name: Package Shared Libraries
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package() {
+            nativelib/package.sh "$version" "$2" "nativelib-builds/linkml-nativelib-$1" .
+          }
+          package macos-14          macos-arm64
+          package macos-15-intel    macos-x86_64
+          package ubuntu-22.04      linux-x86_64
+          package ubuntu-22.04-arm  linux-arm64
+          package windows-latest    windows-x86_64
 
       # See: docs/verifying_downloads.md
       - name: Generate Checksums

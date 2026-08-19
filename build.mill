@@ -552,12 +552,16 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
   }
 
   /** Run the Python binding's test suite against a freshly installed library. Requires Python 3.10+
-    * on the PATH.
+    * on the PATH, or `PYTHON` pointing at one.
     */
   def pythonTest(args: String*) = Task.Command(exclusive = true) {
     installPythonLib()()
+    val python = sys.env.getOrElse(
+      "PYTHON",
+      if _root_.scala.util.Properties.isWin then "python" else "python3",
+    )
     os.call(
-      ("python3", "-m", "unittest", "discover", "-s", "python", "-v"),
+      (python, "-m", "unittest", "discover", "-s", "python", "-v"),
       cwd = mill.api.BuildCtx.workspaceRoot,
       stdout = os.Inherit,
       stderr = os.Inherit,

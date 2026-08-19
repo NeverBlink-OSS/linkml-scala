@@ -86,4 +86,48 @@ jobs:
           MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
         run: |
-          ./mill mill.javalib.SonatypeCentralPublishModule/    
+          ./mill mill.javalib.SonatypeCentralPublishModule/
+
+  nativelib:
+    name: Shared library and Python bindings
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Matters most here: the native-image build pulls a ~360 MB GraalVM tarball and unpacks it
+      # to ~1 GB, and both copies would otherwise land in the cache. See checks.yml.
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          # The oldest Python the bindings support.
+          python-version: '3.10'
+
+      - name: Build the shared library and run the Python binding tests
+        run: ./mill --no-server nativelib.pythonTest
+
+      - name: Check that the release archive builds and a C program links against it
+        run: |
+          nativelib/package.sh 0.0.0-ci linux-x86_64 out/nativelib/sharedLibrary.dest dist
+          tar -xzf dist/linkml-scala-lib-linux-x86_64.tar.gz -C dist
+          prefix="$PWD/dist/liblinkml-scala-0.0.0-ci-linux-x86_64"
+          gcc nativelib/smoke.c -o dist/smoke \
+            $(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs linkml-scala)
+          LD_LIBRARY_PATH="$prefix/lib" dist/smoke    

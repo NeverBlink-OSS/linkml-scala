@@ -46,3 +46,6 @@ ui/dist/
 __pycache__/
 # The shared library the Python bindings load, put there by `./mill nativelib.installPythonLib`
 /python/linkml_scala/_lib/
+
+# Shared library release archives, from nativelib/package.sh
+/dist/

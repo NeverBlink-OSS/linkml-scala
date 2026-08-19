@@ -48,6 +48,10 @@ Run the tests with:
 If you keep the library somewhere else, point `LINKML_SCALA_LIB` at the file (or at the directory
 holding it).
 
+Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out
+as a normal install prefix – `include/`, `lib/` and a pkg-config file – so C, C++ and Rust callers can
+use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked example in C.
+
 ## How it works
 
 The library exports two C functions, and everything goes through them as JSON:
@@ -149,8 +153,8 @@ Python package takes 450 ms.
 
 ## TODO
 
-1. `pyproject.toml` and a wheel per platform, with the library bundled as package data, built in the
-   existing release workflow next to the native CLI binaries.
+1. `pyproject.toml` and a wheel per platform, with the library bundled as package data. The release
+   workflow already builds and attaches the library itself; only the pip side is missing.
 2. Type stubs, or type hints good enough to not need them. The reports are plain dicts today; a
    `TypedDict` generated from `validation-report.yaml` would be better, and would help the
    TypeScript bindings too (see [#127](https://github.com/NeverBlink-OSS/linkml-scala/issues/127)).
