@@ -19,11 +19,11 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Location of an issue that pertains to a class of the root schema. */
   private def classLocation(className: String): IssueLocationImpl =
-    at(s"/classes/$className")
+    at("/classes/".concat(className))
 
   /** Location of an issue that pertains to the root schema as a whole. */
   private def rootLocation: IssueLocationImpl =
-    IssueLocationImpl(schemaId = new Some(sv.root.id))
+    new IssueLocationImpl(schemaId = new Some(sv.root.id))
 
   // TODO: warn about shadowing
 
@@ -44,7 +44,7 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.unknownReferences.map(ref =>
       // A dangling 'string' reference nearly always means 'linkml:types' was not imported, so it
       // gets its own issue type with a hint.
-      if ref.referenceValue == "string" then UnknownStringReferenceImpl(location = at(ref.path))
+      if ref.referenceValue == "string" then new UnknownStringReferenceImpl(location = at(ref.path))
       else
         new UnknownReferenceImpl(
           location = at(ref.path),
@@ -64,10 +64,10 @@ final class SchemaValidator(using sv: SchemaView) {
     schemas.foreach {
       val seen = new util.HashMap[Uri, SchemaDefinition](schemas.size << 1, 0.5f)
       s1 =>
-        val s2 = seen.getOrDefault(s1.id, s1)
-        if (s1 != s2) { // TODO LNK-154 Robust file system importing
+        val s2 = seen.putIfAbsent(s1.id, s1)
+        if ((s2 ne null) && !s2.equals(s1)) { // TODO LNK-154 Robust file system importing
           clashes.addOne(
-            new SchemaIdClashImpl(location = IssueLocationImpl(schemaId = new Some(s1.id))),
+            new SchemaIdClashImpl(location = new IssueLocationImpl(schemaId = new Some(s1.id))),
           )
         }
     }
@@ -78,7 +78,7 @@ final class SchemaValidator(using sv: SchemaView) {
     */
   private lazy val undefinedDefaultRange: Option[SchemaWarning] =
     if isDefaultRangeAllowed then None
-    else new Some(UndefinedDefaultRangeImpl(location = rootLocation))
+    else new Some(new UndefinedDefaultRangeImpl(location = rootLocation))
 
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
@@ -95,24 +95,21 @@ final class SchemaValidator(using sv: SchemaView) {
     // Python implementation only looks at the root schema, not the imports:
     // tree_roots = [c for c in schema_view.all_classes(imports=False).values() if c.tree_root]
     // if len(tree_roots) > 0: # -> validation error
-    val treeRoots = sv.root.classes.values.filter(_.treeRoot).toSeq
+    val treeRoots = sv.root.classes.values.collect { case x if x.treeRoot => x.name }.toSeq
     if treeRoots.size > 1 then
       new Some(
-        MultipleTreeRootsImpl(
+        new MultipleTreeRootsImpl(
           location = rootLocation,
-          classNames = treeRoots.map(_.name),
+          classNames = treeRoots,
         ),
       )
     else None
   }
 
   /** Warning when there does not exist a `tree_root` class, None otherwise */
-  private lazy val noTreeRoot: Option[SchemaWarning] = {
-    val treeRoots = sv.root.classes.values.filter(_.treeRoot)
-    if treeRoots.isEmpty then new Some(NoTreeRootClassImpl(location = rootLocation))
-    else None
-
-  }
+  private lazy val noTreeRoot: Option[SchemaWarning] =
+    if (sv.root.classes.values.exists(_.treeRoot)) None
+    else new Some(new NoTreeRootClassImpl(location = rootLocation))
 
   /** Errors for each class with multiple identifier/key slots, empty if all classes have correct
     * identifier/key slots
@@ -152,7 +149,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Errors for classes, types, and enums that have non-unique names
     */
   private def nonUniqueName(name: String, usedFor: String): SchemaError =
-    NonUniqueNameImpl(location = rootLocation, elementName = name, usedFor = usedFor)
+    new NonUniqueNameImpl(location = rootLocation, elementName = name, usedFor = usedFor)
 
   private lazy val nonUniqueNames: Seq[SchemaError] = {
     val errors = Seq.newBuilder[SchemaError]
@@ -288,7 +285,7 @@ final class SchemaValidator(using sv: SchemaView) {
     sv.classes.values.foldLeft(Seq.newBuilder[SchemaWarning]) { (acc, cls) =>
       // Collect all slot names that are applicable to this class definition.
       val applicableSlotNames = new util.HashSet[String]
-      cls.ancestors(true).foreach { anc =>
+      cls.ancestorsWithSelf.foreach { anc =>
         val keys = anc.cls.attributes.keysIterator
         while (keys.hasNext) applicableSlotNames.add(keys.next())
         val slots = anc.cls.slots.iterator
@@ -316,9 +313,7 @@ final class SchemaValidator(using sv: SchemaView) {
   ): Option[SchemaError] = {
     slotDefinition.implicitPrefix match {
       case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
-        new Some(
-          undefinedPrefix(prefix, s"$locationPrefix/${slotDefinition.name}/implicit_prefix"),
-        )
+        new Some(undefinedPrefix(prefix, s"$locationPrefix/${slotDefinition.name}/implicit_prefix"))
       case _ => None
     }
   }

@@ -71,8 +71,8 @@ trait PrefixResolver {
 }
 
 final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
-  private val prefixToUri = new java.util.HashMap[String, String]
-  private val uriToPrefix = new java.util.HashMap[String, String]
+  private val prefixToUri = new java.util.HashMap[String, String](64, 0.5f)
+  private val uriToPrefix = new java.util.HashMap[String, String](64, 0.5f)
 
   def add(prefix: String, uri: String): Unit = {
     val u = new java.net.URI(uri)
@@ -82,6 +82,11 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
     ) normalizedUri = normalizedUri.concat("/")
     prefixToUri.put(prefix, normalizedUri)
     uriToPrefix.put(normalizedUri, prefix)
+  }
+
+  def addAll(other: BasicPrefixResolver): Unit = {
+    prefixToUri.putAll(other.prefixToUri)
+    uriToPrefix.putAll(other.uriToPrefix)
   }
 
   override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))

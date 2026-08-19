@@ -117,30 +117,34 @@ object Closure {
     *   builder.
     * @param useHashCode
     *   A flag that allows using `hashCode` calls of `T` values for the performance optimization.
+    * @param toUniqueValue
+    *   A function that transforms starting and computable values to unique ones for performance
+    *   optimization when the useHashCode is true
     * @return
     *   The computed closure, packaged in the collection type `C[T]`.
     */
-  def get[T, C[_]](
+  def get[T, C[_], K](
       start: Iterable[T],
       function: T => Iterable[T],
       reflexive: Boolean,
       resultBuilder: mutable.Builder[T, C[T]] = Vector.newBuilder[T],
       useHashCode: Boolean = false,
+      toUniqueValue: T => K = identity,
   ): C[T] = {
     // Stack for Depth-First Search traversal
     val todo = new mutable.ArrayDeque[T]
     if (useHashCode) {
       // Optimization: We can use a fast HashSet for visited checks.
-      val visited = new mutable.HashSet[T]
+      val visited = new mutable.HashSet[K]
       start.foreach { s =>
-        if (visited.add(s)) {
+        if (visited.add(toUniqueValue(s))) {
           todo.addOne(s)
           if (reflexive) resultBuilder.addOne(s)
         }
       }
       while (todo.nonEmpty) {
         function(todo.removeLast()).foreach { neighbor =>
-          if (visited.add(neighbor)) {
+          if (visited.add(toUniqueValue(neighbor))) {
             todo.addOne(neighbor)
             resultBuilder.addOne(neighbor)
           }

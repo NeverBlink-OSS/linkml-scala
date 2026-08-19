@@ -61,7 +61,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     }
     // If a tree root is defined, only include classes reachable from the tree root (pruning).
     // Otherwise, include all classes in the schema view.
-    val query = maybeTreeRoot.foldFast(IncludeAllReachabilityQuery()) { root =>
+    val query = maybeTreeRoot.foldFast(new IncludeAllReachabilityQuery()) { root =>
       sv.derivedReachabilityQuery(Seq(root), true, false)
     }
     // Mutable set this method will add to if it requires a keyless class to be defined in `$defs`

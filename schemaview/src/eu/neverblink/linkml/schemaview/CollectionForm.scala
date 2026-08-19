@@ -1,7 +1,5 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.metamodel.SlotDefinition
-
 /** Multivalued inlining form of a class, e.g. SimpleDict */
 sealed trait CollectionForm
 
@@ -39,19 +37,22 @@ object CollectionForm {
     *   The [[CollectionForm]] applicable for this specific class
     */
   def of(classView: ClassView): CollectionForm = {
-    val slots = classView.derivedAttributes.values.map(_.slot).toSeq
-
-    if !slots.exists(isIdOrKey) then return ListOnly
-    val key = slots.filter(isIdOrKey).head
-    if slots.size == 2 then {
-      val value = slots.find(_.name != key.name).get
-      return SimpleDict(key.name, value.name)
+    val slots = classView.derivedAttributes.values
+    slots.find(sv => {
+      val slot = sv.slot
+      slot.key || slot.identifier
+    }) match {
+      case Some(key) =>
+        val keyName = key.name
+        if (slots.size == 2) {
+          val value = slots.find(_.name != keyName).get
+          new SimpleDict(keyName, value.name)
+        } else if slots.count(_.slot.required) == 2 then {
+          val value = slots.find(slot => slot.name != keyName && slot.slot.required).get
+          new SimpleDict(keyName, value.name)
+        } else new CompactDict(keyName)
+      case _ => ListOnly
     }
-    if slots.count(_.required) == 2 then {
-      val value = slots.find(slot => slot.name != key.name && slot.required).get
-      return SimpleDict(key.name, value.name)
-    }
-    CompactDict(key.name)
   }
 
   /** Infer the possible collection forms of a slot's range if it is a class, or a fallback
@@ -60,9 +61,8 @@ object CollectionForm {
     * @return
     *   The [[CollectionForm]] applicable for the slot's range
     */
-  def ofRange(slot: SlotView): CollectionForm = {
-    val range = slot.derivedRange
-    range.resolve(using slot.sv).get match {
+  def ofRange(slot: SlotView): CollectionForm =
+    slot.derivedRange.resolve(using slot.sv).get match {
       case cls: ClassView => of(cls)
       case _ =>
         // Let's be lax here, `inlined:true` does not make sense on non-classes,
@@ -70,7 +70,4 @@ object CollectionForm {
         // TODO LNK-27: But we should have this as a warning if possible
         ListOnly
     }
-  }
-
-  private def isIdOrKey(slot: SlotDefinition): Boolean = slot.key || slot.identifier
 }
