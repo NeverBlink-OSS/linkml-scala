@@ -79,8 +79,8 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
         JsonSchemaGenerator.Options(
           options.open,
           options.treeRootOverride,
-          treeRootInlineTypeOverride = options.treeRootInlineTypeOverride,
-        )
+          options.treeRootInlineTypeOverride,
+        ),
       ),
       out,
       WriterConfig.withIndentionStep(2),

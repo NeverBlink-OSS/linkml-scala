@@ -7,7 +7,7 @@ import org.eclipse.rdf4j.model.{Value, ValueFactory, IRI as Rdf4jIri, Resource a
 import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio, WriterConfig}
 
-import java.io.{OutputStream, StringWriter}
+import java.io.{FilterOutputStream, OutputStream, StringWriter}
 
 /** An [[RdfSink]] that collects prefixes and triples into an RDF4J [[Model]] and serializes it as
   * pretty-printed Turtle. Building the model and running the RDF4J writer is substantially slower
@@ -105,43 +105,38 @@ object RdfUtils {
 
 /** A fast replacement for java.io.BufferedOutputStream. Not thread-safe.
   */
-class FastBufferedOutputStream(out: OutputStream) extends OutputStream {
+class FastBufferedOutputStream(out: OutputStream) extends FilterOutputStream(out) {
   private inline val capacity = 32768
-  private val buf: Array[Byte] = new Array[Byte](capacity)
+  private val buf = new Array[Byte](capacity)
   private var count = 0
 
   override def write(b: Int): Unit = {
-    val i = count
-    if (i >= buf.length) flushBuffer()
+    var i = count
+    if (i >= capacity) i = flushBuf(i)
     buf(i) = b.toByte
     count = i + 1
   }
 
   override def write(b: Array[Byte], off: Int, len: Int): Unit = {
-    var remaining = len
-    while (remaining > 0) {
-      if (remaining > capacity - count) flushBuffer()
-      val batchSize = java.lang.Math.min(capacity, remaining)
-      System.arraycopy(b, off, buf, count, batchSize)
-      count += batchSize
-      remaining -= batchSize
+    var i = count
+    if (len >= capacity) {
+      count = flushBuf(i)
+      out.write(b, off, len)
+    } else {
+      if (len > capacity - i) i = flushBuf(i)
+      System.arraycopy(b, off, buf, i, len)
+      count = i + len
     }
   }
 
   override def flush(): Unit = {
-    flushBuffer()
+    val i = count
+    if (i > 0) count = flushBuf(i)
     out.flush()
   }
 
-  override def close(): Unit =
-    try flush()
-    finally out.close()
-
-  private def flushBuffer(): Unit = {
-    val remaining = count
-    if (remaining > 0) {
-      out.write(buf, 0, remaining)
-      count = 0
-    }
+  private def flushBuf(len: Int): Int = {
+    out.write(buf, 0, len)
+    0
   }
 }

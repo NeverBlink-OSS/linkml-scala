@@ -122,8 +122,6 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
     "generate enums" in {
       given SchemaView = ModelCatalogue.`enum`.model
 
-      val id = ModelCatalogue.`enum`.model.root.id.original
-
       val result = GraphQlGenerator().serialize()
       Seq(
         "some_slot: SomeEnum",
@@ -202,7 +200,8 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
     "prune in tree_root mode if requested" in {
       given SchemaView = ModelCatalogue.pruning.model
 
-      val result = GraphQlGenerator().serialize(GraphQlGenerator.Options(PruningMode.treeRoot(None)))
+      val result =
+        GraphQlGenerator().serialize(GraphQlGenerator.Options(PruningMode.treeRoot(None)))
       Seq(
         "type SomeClass",
         "interface SomeOtherClass",
@@ -223,7 +222,9 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.pruning.model
 
       val result =
-        GraphQlGenerator().serialize(GraphQlGenerator.Options(PruningMode.treeRoot(Some("NotTreeRootClass"))))
+        GraphQlGenerator().serialize(
+          GraphQlGenerator.Options(PruningMode.treeRoot(Some("NotTreeRootClass"))),
+        )
       Seq(
         "type NotTreeRootClass",
       ).foreach { snippet =>

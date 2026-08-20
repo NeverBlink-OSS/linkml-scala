@@ -705,7 +705,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           ),
         )
 
-        JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("plain")))
+        JsonSchemaGenerator().generate(
+          JsonSchemaGenerator.Options(treeRootInlineType = Some("plain")),
+        )
           .$ref shouldBe Some("#/$defs/C1")
       }
 
@@ -716,7 +718,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           ),
         )
 
-        val schema = JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("optional")))
+        val schema = JsonSchemaGenerator().generate(
+          JsonSchemaGenerator.Options(treeRootInlineType = Some("optional")),
+        )
 
         schema.oneOf.map(
           _.asInstanceOf[Schema].$ref,
@@ -734,7 +738,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           ),
         )
 
-        val schema = JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("list")))
+        val schema = JsonSchemaGenerator().generate(
+          JsonSchemaGenerator.Options(treeRootInlineType = Some("list")),
+        )
 
         schema.`type` shouldBe Some(List(SchemaType.Array))
 
@@ -751,7 +757,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema =
-          JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("compact_dict")))
+          JsonSchemaGenerator().generate(
+            JsonSchemaGenerator.Options(treeRootInlineType = Some("compact_dict")),
+          )
 
         schema.additionalProperties.get.asInstanceOf[Schema]
           .$ref shouldBe Some("#/$defs/C1__identifier_optional")
@@ -767,7 +775,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema =
-          JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("simple_dict")))
+          JsonSchemaGenerator().generate(
+            JsonSchemaGenerator.Options(treeRootInlineType = Some("simple_dict")),
+          )
 
         schema.additionalProperties.get.asInstanceOf[Schema]
           .$ref shouldBe Some("#/$defs/C1__simple_dict_value")

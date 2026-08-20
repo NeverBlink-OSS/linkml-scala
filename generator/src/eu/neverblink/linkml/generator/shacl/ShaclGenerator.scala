@@ -26,7 +26,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     // TODO LNK-129 HACK: Skip the main range if any boolean slot is defined.
     if slotExpression.anyOf.isEmpty then
       slotExpression.range.getOrElseFast(sv.getDefaultRange(slotView.definingSchema))
-        .asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreach {
+        .asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
           case typeView: TypeView =>
             val isIri = typeView.isIri || slotExpression.implicitPrefix.isDefined
             if !isIri then
@@ -35,28 +35,27 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
             else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
           case classView: ClassView =>
             val cdUri = classView.uriStr
-            val isLinkmlAny = cdUri == "https://w3id.org/linkml/Any"
-            if (!isLinkmlAny) {
+            if (!"https://w3id.org/linkml/Any".equals(cdUri)) {
               sink.triple(subject, Shacl.`class`, new Iri(cdUri))
               sink.triple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
             }
           case enumView: EnumView =>
             val permissibleValues =
-              enumView.derivedValues.map(value => {
+              enumView.derivedValues.map { value =>
                 new Iri(value.meaning.uri(using enumView.definingPrefixResolver))
-              })
+              }
             val rdfListHead = addList(sink, permissibleValues)
             sink.triple(subject, Shacl.in, rdfListHead)
           case _ => throw RuntimeException(s"Couldn't map range ${slotExpression.range}")
         }
     // TODO LNK-129: Implement the rest of the boolean slots
     val ors = slotExpression.anyOf.map(curSlotExpression => {
-      val curNode = blankNode()
-      processSlotExpr(sink, slotView, curSlotExpression, curNode)
-      curNode
+      val currentNode = blankNode()
+      processSlotExpr(sink, slotView, curSlotExpression, currentNode)
+      currentNode
     })
     val orListHeadMaybe = addList(sink, ors)
-    if orListHeadMaybe != Rdf.nil then sink.triple(subject, Shacl.or, orListHeadMaybe)
+    if (orListHeadMaybe ne Rdf.nil) sink.triple(subject, Shacl.or, orListHeadMaybe)
   }
 
   /** Generate sh:property triples for a given slot. Produces triples of form
@@ -79,7 +78,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     val property = blankNode()
     sink.triple(propertyDomain, Shacl.property, property)
     slot.description.foreachFast { d =>
-      sink.triple(property, Shacl.description, Literal(d, XmlSchema.string))
+      sink.triple(property, Shacl.description, new Literal(d, XmlSchema.string))
     }
     // TODO LNK-129: N-arity has to be done on the top-level-only,
     //  as SHACL boolean operators attached to a PropertyShape have to be NodeShapes
@@ -90,7 +89,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     if (slot.required) sink.triple(property, Shacl.minCount, Literal.one)
     sink.triple(property, Shacl.path, new Iri(s.uriStr))
     processSlotExpr(sink, s, slot, property)
-    sink.triple(property, Shacl.order, Literal(order.toString, XmlSchema.integer))
+    sink.triple(property, Shacl.order, new Literal(order.toString, XmlSchema.integer))
   }
 
   /** Generates SHACL shapes and pushes the namespaces and triples into the provided [[RdfSink]].
@@ -107,16 +106,19 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     import options.{onlyClassesFromRootSchema, open}
     addNamespaces(sink, defaultPrefixes)
     val classes =
-      if (onlyClassesFromRootSchema) sv.classes.filter(_._2.definingSchema == sv.root)
+      if (onlyClassesFromRootSchema) sv.classes.filter {
+        val root = sv.root
+        kv => kv._2.definingSchema eq root
+      }
       else sv.classes
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
-        sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
+        sink.triple(classNameIri, Rdfs.comment, new Literal(d, XmlSchema.string))
       }
       val closed = !(open || c.cls.`abstract` || c.cls.mixin)
-      sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
+      sink.triple(classNameIri, Shacl.closed, new Literal(closed.toString, XmlSchema.boolean))
       val ignoredPropertiesListHead = addList(
         sink,
         c.identifier.foldFast(Seq(Rdf.`type`))(id => Seq(Rdf.`type`, new Iri(id.uriStr))),
@@ -124,9 +126,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       sink.triple(classNameIri, Shacl.ignoredProperties, ignoredPropertiesListHead)
       c.derivedAttributes.values.foreach {
         var order = 0
-        x =>
-          if (!x.inner.identifier) {
-            processSlot(sink, x, order, classNameIri)
+        sv =>
+          if (!sv.slot.identifier) {
+            processSlot(sink, sv, order, classNameIri)
             order += 1
           }
       }

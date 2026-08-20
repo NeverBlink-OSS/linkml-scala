@@ -32,7 +32,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
   "TableSchemaGenerator" should {
     "generate basic fields" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.basic.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.basic.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       td.fields should not be empty
       td.fields.map(_.name) should contain theSameElementsAs Seq(
         "some_slot",
@@ -49,14 +51,18 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate references" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.reference.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.reference.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "string"
       someSlot.rdfType shouldBe Some(ModelCatalogue.reference.id + "SomeOtherClass")
     }
 
     "generate types" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.typed.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.typed.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
 
       fieldMap("stringSlot").`type` shouldBe "string"
@@ -79,7 +85,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate uri format" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.uri.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.uri.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
       fieldMap("some_slot").`type` shouldBe "string"
       fieldMap("some_slot").format shouldBe "uri"
@@ -92,7 +100,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate inlines" in {
       val td =
-        TableSchemaGenerator(using ModelCatalogue.inlines.explicitInline.model).generate(TableSchemaGenerator.Options(None))
+        TableSchemaGenerator(using ModelCatalogue.inlines.explicitInline.model).generate(
+          TableSchemaGenerator.Options(None),
+        )
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "object"
       someSlot.rdfType shouldBe Some(ModelCatalogue.inlines.explicitInline.id + "SomeOtherClass")
@@ -100,7 +110,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate array inlines" in {
       val td =
-        TableSchemaGenerator(using ModelCatalogue.inlines.explicitInlineList.model).generate(TableSchemaGenerator.Options(None))
+        TableSchemaGenerator(using ModelCatalogue.inlines.explicitInlineList.model).generate(
+          TableSchemaGenerator.Options(None),
+        )
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "array"
       someSlot.rdfType shouldBe Some(
@@ -109,19 +121,25 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate any" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.anything.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.anything.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "any"
     }
 
     "generate any for unknown types" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.externalType.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.externalType.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "any"
     }
 
     "generate enum values" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.`enum`.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.`enum`.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "string"
       someSlot.constraints.get.`enum`.get should contain theSameElementsAs Seq(
@@ -132,7 +150,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate type constraints" in {
-      val td = TableSchemaGenerator(using ModelCatalogue.constraints.model).generate(TableSchemaGenerator.Options(None))
+      val td = TableSchemaGenerator(using ModelCatalogue.constraints.model).generate(
+        TableSchemaGenerator.Options(None),
+      )
 
       val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
       val intConstraints = fieldMap("intSlot").constraints.get
@@ -148,7 +168,9 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
     "allow tree root overriding" in {
       val td =
-        TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(TableSchemaGenerator.Options(Some("SomeClass")))
+        TableSchemaGenerator(using ModelCatalogue.treeRootless.model).generate(
+          TableSchemaGenerator.Options(Some("SomeClass")),
+        )
       td.fields should not be empty
       td.fields.map(_.name) should contain theSameElementsAs Seq(
         "some_slot",
@@ -174,7 +196,8 @@ class TableSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val emptyMaterialized = writeToString(TableDescriptor())
       for model <- ModelCatalogue.all do
         s"model '${model.name}'" in {
-          val res = TableSchemaGenerator(using model.model).serialize(TableSchemaGenerator.Options(None))
+          val res =
+            TableSchemaGenerator(using model.model).serialize(TableSchemaGenerator.Options(None))
           res should not be empty
           res should not be emptyMaterialized
         }
