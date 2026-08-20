@@ -23,7 +23,7 @@ A schema is parsed once and reused across generators, the same way the [JavaScri
 
 ## Building it
 
-You need JDK 17+ (Mill downloads GraalVM itself) and Python 3.10 or newer, tested on 3.13. Then:
+You need JDK 17+ (Mill downloads GraalVM itself) and Python 3.10 or newer. Then:
 
 ```shell
 ./mill nativelib.installPythonLib
@@ -102,7 +102,7 @@ not: a schema can load and still have things to say about it.
 schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, indentation_step=2)
 schema.shacl(open=False, only_classes_from_root_schema=False)
 schema.rdfs(only_classes_from_root_schema=False)
-schema.linkml(pruning_mode="treeRoot", tree_root=None, skip_class_derivation=False, output_format="yaml")
+schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, output_format="yaml")
 schema.table_schema(tree_root=None)
 schema.graphql(pruning_mode="schema", tree_root=None)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)

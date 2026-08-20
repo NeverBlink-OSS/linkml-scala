@@ -114,11 +114,18 @@ jobs:
           distribution: temurin
           java-version: 25
 
-      - name: Setup Python
+      - name: Setup the oldest supported Python
+        id: python-oldest
         uses: actions/setup-python@v6
         with:
-          # The oldest Python the bindings support.
           python-version: '3.10'
+
+      # Deliberately unpinned: test with newest Python stable
+      - name: Setup the newest Python
+        id: python-newest
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
 
       - name: Regenerate the bindings and check they are committed
         run: |
@@ -127,7 +134,14 @@ jobs:
             nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.java \
             || (echo "generated bindings are stale – run ./mill bindings and commit the result"; exit 1)
 
-      - name: Build the shared library and run the Python binding tests
+      - name: Build the shared library and test the bindings on the oldest supported Python
+        env:
+          PYTHON: ${{ steps.python-oldest.outputs.python-path }}
+        run: ./mill --no-server nativelib.pythonTest
+
+      - name: Test the bindings on the newest Python
+        env:
+          PYTHON: ${{ steps.python-newest.outputs.python-path }}
         run: ./mill --no-server nativelib.pythonTest
 
       # Builds the release archive, then compiles and runs a C program against the unpacked copy.
