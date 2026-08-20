@@ -1,5 +1,5 @@
-# AUTO-GENERATED from the generators' Options case classes.
-# Do not edit by hand - regenerate with ./mill pyBindings.
+# AUTO-GENERATED from mill-build/src/Entrypoints.scala and the generators' Options case
+# classes. Do not edit by hand - regenerate with ./mill bindings.
 """The generator methods of :class:`linkml_scala.Schema`.
 
 Each one mirrors an ``Options`` case class in the Scala sources, so the keyword arguments,
@@ -109,7 +109,7 @@ class Generators:
     def linkml(
         self,
         *,
-        pruning_mode: str = "treeRoot",
+        pruning_mode: str = "skip",
         tree_root: str | None = None,
         skip_class_derivation: bool = False,
         output_format: str = "yaml",
@@ -178,8 +178,7 @@ class Generators:
         :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
             valid with `pruning_mode="treeRoot"`.
         :param optional_marker: Whether to mark optional attributes with a trailing `?` on their
-            type. Mermaid understands this from 11.16 onwards; older renderers reject the whole
-            diagram rather than just the marker.
+            type, which requires Mermaid 11.16 or newer.
         """
         return self._document(
             "linkml_er_diagram",

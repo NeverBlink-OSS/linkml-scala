@@ -27,7 +27,7 @@ import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
-import millbuild.{NpmPackage, PyBindingsGen, TsDefsGen}
+import millbuild.{CApiGen, NpmPackage, PyBindingsGen, TsDefsGen}
 
 import java.net.InetSocketAddress
 
@@ -321,6 +321,9 @@ object generator extends Module {
       override def forkEnv = super.forkEnv() ++ Map(
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
+        // BindingCoverageSpec reads the repository's own sources to check every generator is
+        // reachable from every binding.
+        "LINKML_REPO_ROOT" -> mill.api.BuildCtx.workspaceRoot.toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
     }
@@ -450,13 +453,18 @@ object cli extends Module {
   }
 }
 
-/** Regenerate the Python bindings' generator methods from each generator's `Options` case class.
-  * Run after changing any of them. See mill-build/src/PyBindingsGen.scala.
+/** Regenerate the C and Python bindings from mill-build/src/Entrypoints.scala and each generator's
+  * `Options` case class. Run after adding a generator or an option.
   */
-def pyBindings(args: String*) = Task.Command(exclusive = true) {
+def bindings(args: String*) = Task.Command(exclusive = true) {
   val root = mill.api.BuildCtx.workspaceRoot
-  val generated = PyBindingsGen(path => os.read(root / os.RelPath(path)))
-  os.write.over(root / "python" / "linkml_scala" / "_generated.py", generated)
+  def read(path: String): String = os.read(root / os.RelPath(path))
+  os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
+  os.write.over(
+    root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
+      "LinkMlCGenerators.java",
+    CApiGen(read),
+  )
 }
 
 /** LinkML compiled to a native shared library with a C ABI, and the Python bindings that sit on top

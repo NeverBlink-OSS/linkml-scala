@@ -216,7 +216,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     "include all default_ranges when pruning" in {
       val sv = ModelCatalogue.pruningDefaultRange.model
       val schema =
-        LinkMlGenerator(using sv).generate()
+        LinkMlGenerator(using sv).generate(
+          LinkMlGenerator.Options(pruningMode = treeRoot(None)),
+        )
       schema.types.keys should contain theSameElementsAs Seq(
         "integer",
         "string",
@@ -262,7 +264,12 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           |    annotations:
           |      kb-article: "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
           |""".stripMargin))
-      LinkMlGenerator(using sv).serialize(LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.json)) shouldBe
+      LinkMlGenerator(using sv).serialize(
+        LinkMlGenerator.Options(
+          pruningMode = treeRoot(None),
+          outputFormat = LinkMlGenerator.OutputFormat.json,
+        ),
+      ) shouldBe
         """{
         |  "name": "d3fend",
         |  "id": "https://d3fend.mitre.org/ontologies/d3fend.owl",
@@ -304,7 +311,12 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           |    description: "3.14"
           |""".stripMargin))
 
-      LinkMlGenerator(using sv).serialize(LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.json)) shouldBe
+      LinkMlGenerator(using sv).serialize(
+        LinkMlGenerator.Options(
+          pruningMode = treeRoot(None),
+          outputFormat = LinkMlGenerator.OutputFormat.json,
+        ),
+      ) shouldBe
         """{
         |  "name": "numeric_strings",
         |  "id": "https://example.org/numeric-strings",

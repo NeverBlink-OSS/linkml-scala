@@ -117,76 +117,9 @@ public final class LinkMlCApi {
         }
     }
 
-    // Generators. Each returns its document, or NULL with *error set.
+    // The generator entry points are in LinkMlCGenerators, generated from
+    // mill-build/src/Entrypoints.scala. They all share the `document` helper below.
 
-    /** Generate JSON Schema. Options: {@code open}, {@code treeRoot}, {@code treeRootInlineType}. */
-    @CEntryPoint(name = "linkml_json_schema")
-    static CCharPointer jsonSchema(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::jsonSchema);
-    }
-
-    /** Generate SHACL shapes as N-Triples. Options: {@code open}, {@code onlyClassesFromRootSchema}. */
-    @CEntryPoint(name = "linkml_shacl")
-    static CCharPointer shacl(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::shacl);
-    }
-
-    /** Generate RDFS as N-Triples. Options: {@code onlyClassesFromRootSchema}. */
-    @CEntryPoint(name = "linkml_rdfs")
-    static CCharPointer rdfs(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::rdfs);
-    }
-
-    /**
-     * Materialize a derived LinkML schema. Options: {@code skipDerivation}, {@code pruningMode},
-     * {@code treeRoot}, {@code format}.
-     */
-    @CEntryPoint(name = "linkml_linkml")
-    static CCharPointer linkml(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::linkml);
-    }
-
-    /** Generate a Frictionless Table Schema as JSON. Options: {@code treeRoot}. */
-    @CEntryPoint(name = "linkml_table_schema")
-    static CCharPointer tableSchema(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::tableSchema);
-    }
-
-    /** Generate a GraphQL schema. Options: {@code pruningMode}, {@code treeRoot}. */
-    @CEntryPoint(name = "linkml_graphql")
-    static CCharPointer graphQl(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::graphQl);
-    }
-
-    /**
-     * Generate a Mermaid ER diagram. Options: {@code pruningMode}, {@code treeRoot}, {@code
-     * optionalMarker}.
-     */
-    @CEntryPoint(name = "linkml_er_diagram")
-    static CCharPointer erDiagram(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::erDiagram);
-    }
-
-    /**
-     * Generate Scala sources, as a JSON object mapping filename to source. JSON because this is the
-     * one generator producing several files. Options: {@code package}, {@code generateEmitPrefixes}.
-     */
-    @CEntryPoint(name = "linkml_scala")
-    static CCharPointer scalaFiles(
-            IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
-        return document(handle, options, error, LinkMlNativeApi::scalaFiles);
-    }
-
-    /**
-     * Lint a loaded schema, returning a validation report as JSON. Options: {@code inferMessages}.
-     */
     @CEntryPoint(name = "linkml_lint")
     static CCharPointer lint(
             IsolateThread thread, long handle, @CConst CCharPointer options, CCharPointerPointer error) {
@@ -209,14 +142,14 @@ public final class LinkMlCApi {
 
     /** One of the generator entry points on {@link LinkMlNativeApi}. */
     @FunctionalInterface
-    private interface Generator {
+    interface Generator {
         String generate(long handle, String optionsJson);
     }
 
     /**
      * Run a generator, applying the NULL-plus-message convention.
      */
-    private static CCharPointer document(
+    static CCharPointer document(
             long handle, @CConst CCharPointer options, CCharPointerPointer error, Generator work) {
         clear(error);
         try {
@@ -279,6 +212,8 @@ public final class LinkMlCApi {
     /**
      * Copy a string into unmanaged memory as NUL-terminated UTF-8, so it stays valid after the call
      * returns and can be freed from C.
+     * <p>
+     * TODO LNK-186: (perf) reduce memory copies and string re-encoding
      */
     private static CCharPointer copy(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);

@@ -120,11 +120,12 @@ jobs:
           # The oldest Python the bindings support.
           python-version: '3.10'
 
-      - name: Regenerate the Python bindings and check they are committed
+      - name: Regenerate the bindings and check they are committed
         run: |
-          ./mill --no-server pyBindings
+          ./mill --no-server bindings
           git diff --exit-code -- python/linkml_scala/_generated.py \
-            || (echo "python/linkml_scala/_generated.py is stale – run ./mill pyBindings and commit the result"; exit 1)
+            nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.java \
+            || (echo "generated bindings are stale – run ./mill bindings and commit the result"; exit 1)
 
       - name: Build the shared library and run the Python binding tests
         run: ./mill --no-server nativelib.pythonTest

@@ -180,7 +180,8 @@ const jsonSchema = LinkML.jsonSchema(view);
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
 import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
-`rdfs`, `linkml`, `scala`, `tableSchema`, or `lint` against the returned handle.
+`rdfs`, `linkml`, `scala`, `tableSchema`, `graphQl`, `erDiagram`, or `lint` against the returned
+handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
 ## JVM library

@@ -111,7 +111,7 @@ object LinkMlGenerator {
     *   Output serialization format to use.
     */
   final case class Options(
-      pruningMode: PruningMode = PruningMode.treeRoot(None),
+      pruningMode: PruningMode = PruningMode.skip,
       skipClassDerivation: Boolean = false,
       outputFormat: OutputFormat = yaml,
   )
