@@ -48,7 +48,7 @@ For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **
 
 It starts up immediately and runs fast, even on extra-large LinkML models. **[See the installation instructions.](#cli-tool-installation)**
 
-It's also possible to compile LinkML-Scala to a native shared library for use in Rust, C, C++, and other languages. [Let us know](https://github.com/NeverBlink-OSS/linkml-scala/discussions) if you would like to see this feature!
+We also have experimental [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python, C, C++, or Rust.
 
 ### 🛡️ Consistent, reliable, and with great error reporting
 

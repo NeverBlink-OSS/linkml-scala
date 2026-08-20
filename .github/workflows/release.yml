@@ -70,6 +70,11 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
       - name: Build Native Executable with Mill
         shell: bash
         run: |
@@ -100,43 +105,6 @@ jobs:
           name: linkml-scala-${{ matrix.os }}
           path: out/cli/jvm/nativeImage.dest/*
 
-  nativelib-compile:
-    name: Build shared library on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # Oldest available image per platform, so the libraries stay usable on older systems.
-        os: [macos-14, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-
-      # See the note in aot-compile.
-      - name: Relocate the coursier archive cache
-        shell: bash
-        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
-
-      - name: Cache Dependencies
-        uses: coursier/cache-action@v8
-
-      - name: Setup JVM
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17 # The minimal JDK version for Scala Next
-
-      - name: Setup MSVC (Windows only)
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
-
-      # Doubles as the smoke test: pythonTest builds the library, then exercises every generator
-      # and the validator through it on this platform.
       - name: Build Shared Library and Test the Python Bindings
         shell: bash
         run: |
@@ -147,7 +115,8 @@ jobs:
           fi
 
       # The archive is what people actually download, so build it here and check a C program can
-      # compile against it and run.
+      # compile against it and run. This is the only place the Windows import library and the
+      # macOS dylib get tested.
       - name: Check the Release Archive Works from C
         shell: bash
         run: |
@@ -182,7 +151,6 @@ jobs:
       attestations: write # Required to record the provenance attestation on the repo
     needs:
       - aot-compile
-      - nativelib-compile
       - jar-assemble
 
     steps:
