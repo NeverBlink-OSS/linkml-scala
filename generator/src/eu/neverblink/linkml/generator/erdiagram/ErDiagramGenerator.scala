@@ -16,17 +16,13 @@ final class ErDiagramGenerator(using sv: SchemaView) {
 
   /** Generate the ER diagram model.
     *
-    * @param pruningMode
-    *   How to prune the generated entities, schemaRoot by default (classes reachable from any
-    *   element defined in the root schema).
-    * @param optionalMarker
-    *   Whether to mark optional attributes with a trailing `?` on their type. Works since Mermaid
-    *   11.16.
+    * @param options
+    *   What to generate. See [[ErDiagramGenerator.Options]].
     */
   def generate(
-      pruningMode: PruningMode = schemaRoot,
-      optionalMarker: Boolean = true,
+      options: ErDiagramGenerator.Options = ErDiagramGenerator.Options(),
   ): ErDiagram = {
+    import options.{optionalMarker, pruningMode}
     val query = pruningMode.derivedQuery(false, true)
 
     val classes = sv.classes.values
@@ -47,18 +43,13 @@ final class ErDiagramGenerator(using sv: SchemaView) {
 
   /** Generate the ER diagram and serialize it as Mermaid.
     *
-    * @param pruningMode
-    *   How to prune the generated entities, schemaRoot by default (classes reachable from any
-    *   element defined in the root schema).
-    * @param optionalMarker
-    *   Whether to mark optional attributes with a trailing `?` on their type, which requires
-    *   Mermaid 11.16 or newer.
+    * @param options
+    *   What to generate. See [[ErDiagramGenerator.Options]].
     */
   def serialize(
-      pruningMode: PruningMode = schemaRoot,
-      optionalMarker: Boolean = true,
+      options: ErDiagramGenerator.Options = ErDiagramGenerator.Options(),
   ): String =
-    generate(pruningMode, optionalMarker).print
+    generate(options).print
 
   /** Slots of a class sorted by `rank`, then by name. */
   private def sortedAttributes(cv: ClassView): Seq[AttributeView] =
@@ -312,4 +303,22 @@ private[erdiagram] object ErName {
   def label(raw: String): String =
     // A `WORD` is `"[^"]*"`, so only the quote itself has to go.
     "\"" + defuseDirection(raw).replace('"', '\'').map(c => if c.isControl then ' ' else c) + "\""
+}
+
+object ErDiagramGenerator {
+
+  /** Options for [[ErDiagramGenerator]].
+    *
+    * @param pruningMode
+    *   How to prune the generated entities, schemaRoot by default (classes reachable from any
+    *   element defined in the root schema).
+    *
+    * @param optionalMarker
+    *   Whether to mark optional attributes with a trailing `?` on their type, which requires
+    *   Mermaid 11.16 or newer.
+    */
+  final case class Options(
+      pruningMode: PruningMode = schemaRoot,
+      optionalMarker: Boolean = true,
+  )
 }

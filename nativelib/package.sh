@@ -98,16 +98,21 @@ cat >"${prefix}/README.md" <<EOF
 
 LinkML schema validation and code generation as a native shared library, with a C ABI. Experimental.
 
-The library exports two functions, plus the GraalVM isolate lifecycle functions:
+See include/liblinkml_scala.h for the full API: one function per generator, plus loading, linting
+and the lifecycle. Two conventions cover all of it.
 
-    char* linkml_call(graal_isolatethread_t*, char*);   // JSON request in, JSON response out
-    void  linkml_free(graal_isolatethread_t*, char*);   // release a response
+Options are one JSON string, and may be NULL for defaults, so the common case needs no JSON:
 
-Create an isolate with \`graal_create_isolate\`, attach any further threads with
-\`graal_attach_thread\`, then send JSON requests. The request is \`const\`; the response is not,
-because you own it and must release it with \`linkml_free\`.
+    char *err = NULL;
+    char *shacl = linkml_shacl(thread, handle, NULL, &err);
 
-The protocol, the full API and a worked example in Python are documented at:
+Failure is NULL plus a message written to the error out-param. Everything the library hands back --
+documents, reports and error messages alike -- is yours, and must be released with \`linkml_free\`.
+
+Create an isolate with \`graal_create_isolate\` and attach any further threads with
+\`graal_attach_thread\` before calling in.
+
+The options each generator accepts, and a worked example in Python, are documented at:
 
   https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/python_bindings.md
 

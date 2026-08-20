@@ -27,7 +27,7 @@ import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
-import millbuild.{NpmPackage, TsDefsGen}
+import millbuild.{NpmPackage, PyBindingsGen, TsDefsGen}
 
 import java.net.InetSocketAddress
 
@@ -450,6 +450,15 @@ object cli extends Module {
   }
 }
 
+/** Regenerate the Python bindings' generator methods from each generator's `Options` case class.
+  * Run after changing any of them. See mill-build/src/PyBindingsGen.scala.
+  */
+def pyBindings(args: String*) = Task.Command(exclusive = true) {
+  val root = mill.api.BuildCtx.workspaceRoot
+  val generated = PyBindingsGen(path => os.read(root / os.RelPath(path)))
+  os.write.over(root / "python" / "linkml_scala" / "_generated.py", generated)
+}
+
 /** LinkML compiled to a native shared library with a C ABI, and the Python bindings that sit on top
   * of it. See docs/python_bindings.md.
   *
@@ -473,6 +482,8 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     */
   override def compileMvnDeps = Seq(
     mvn"org.graalvm.sdk:nativeimage:25.0.1",
+    // WordFactory, for the null pointer the C error out-params are cleared to.
+    mvn"org.graalvm.sdk:word:25.0.1",
   )
 
   def scalacOptions = Seq(

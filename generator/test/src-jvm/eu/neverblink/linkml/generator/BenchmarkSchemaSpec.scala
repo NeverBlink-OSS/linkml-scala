@@ -104,7 +104,9 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "LinkML (YAML) output parses as YAML" in {
             assume(!skip.contains((name, "linkml-yaml")), skip.getOrElse((name, "linkml-yaml"), ""))
             assertParsesAsYaml(
-              LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.yaml),
+              LinkMlGenerator(using sv).serialize(
+                LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.yaml),
+              ),
             )
           }
 
@@ -112,13 +114,15 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assume(!skip.contains((name, "linkml-json")), skip.getOrElse((name, "linkml-json"), ""))
             assertParsesAsJson(
               name,
-              LinkMlGenerator(using sv).serialize(outputFormat = LinkMlGenerator.OutputFormat.json),
+              LinkMlGenerator(using sv).serialize(
+                LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.json),
+              ),
             )
           }
 
           "ER diagram output is a well-formed Mermaid document" in {
             assume(!skip.contains((name, "er-diagram")), skip.getOrElse((name, "er-diagram"), ""))
-            val diagram = ErDiagramGenerator(using sv).serialize(PruningMode.skip)
+            val diagram = ErDiagramGenerator(using sv).serialize(ErDiagramGenerator.Options(PruningMode.skip))
             diagram should include("erDiagram")
             withClue("output has no entities: ") {
               diagram.linesIterator.count(_.startsWith("  ")) should be > 0
@@ -127,7 +131,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
 
           "Scala output is non-empty" in {
             assume(!skip.contains((name, "scala")), skip.getOrElse((name, "scala"), ""))
-            val files = ScalaGenerator(using sv).generate("eu.neverblink.linkml.generated").toSeq
+            val files = ScalaGenerator(using sv).generate(ScalaGenerator.Options("eu.neverblink.linkml.generated")).toSeq
             files should not be empty
             files.foreach { case (fileName, contents) =>
               withClue(s"generated Scala file '$fileName' is empty: ") {

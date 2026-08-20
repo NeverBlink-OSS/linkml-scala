@@ -54,23 +54,31 @@ use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked ex
 
 ## How it works
 
-The library exports two C functions, and everything goes through them as JSON:
+We export one function per operation:
 
 ```c
-char* linkml_call(graal_isolatethread_t*, char*);   // JSON request in, JSON response out
-void  linkml_free(graal_isolatethread_t*, char*);   // release a response
+char* linkml_shacl      (graal_isolatethread_t*, long long handle, const char* opts, char** err);
+char* linkml_json_schema(graal_isolatethread_t*, long long handle, const char* opts, char** err);
+/* rdfs, linkml, table_schema, graphql, er_diagram, scala, lint – same shape */
+
+long long linkml_load_file(graal_isolatethread_t*, const char* path,
+                           const char* opts, char** report, char** err);
+void      linkml_close    (graal_isolatethread_t*, long long handle);
+void      linkml_free     (graal_isolatethread_t*, char*);
 ```
 
-```json
-{"op": "generate", "handle": 7, "generator": "shacl", "options": {"open": true}}
-{"ok": true, "output": "<https://example.org/Person> <...#type> <...#NodeShape> .\n..."}
+Conventions:
+
+**Options are one JSON string, and may be NULL.** Options are the part that changes as generators grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
+
+```c
+char *shacl = linkml_shacl(thread, handle, NULL, &err);               /* defaults */
+char *open  = linkml_shacl(thread, handle, "{\"open\":true}", &err);  /* one option */
 ```
 
-The ops are `version`, `load`, `generate`, `lint` and `close`. Keeping it to one function means the C
-ABI does not change when a generator gains an option – only the JSON inside the call does. A loaded
-schema is an integer handle into a table on the Scala side.
+**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.
 
-Python creates one GraalVM isolate per process and attaches each calling thread to it on first use.
+A loaded schema is an integer handle.
 
 ## The API
 
@@ -91,19 +99,20 @@ not: a schema can load and still have things to say about it.
 ### Generating
 
 ```python
-schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None)
+schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, indentation_step=2)
 schema.shacl(open=False, only_classes_from_root_schema=False)
 schema.rdfs(only_classes_from_root_schema=False)
-schema.linkml(skip_derivation=False, pruning_mode="skip", tree_root=None, format="yaml")
+schema.linkml(pruning_mode="treeRoot", tree_root=None, skip_class_derivation=False, output_format="yaml")
 schema.table_schema(tree_root=None)
-schema.graphql(pruning_mode="skip", tree_root=None)
-schema.er_diagram(pruning_mode="skip", tree_root=None, optional_marker=True)
-schema.scala(package, generate_emit_prefixes=True)  # -> {filename: source}
+schema.graphql(pruning_mode="schema", tree_root=None)
+schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
+schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
 ```
 
-Every one of these returns a string, except `scala()`, which returns a filename-to-source dict. The
-options match the CLI's flags, including the defaults – note that `pruning_mode` defaults to `"skip"`
-here and in the CLI, but to `"treeRoot"` in the JavaScript bindings.
+All arguments are keyword-only. Every one returns a string, except `scala()`, which returns a
+filename-to-source dict.
+
+**These are generated, not written.** Each method mirrors the `Options` case class of the generator it calls – `ShaclGenerator.Options` and so on – so the names, types, defaults and docstrings are whatever the Scala declares. See [`mill-build/src/PyBindingsGen.scala`](../mill-build/src/PyBindingsGen.scala).
 
 ### Validating
 
@@ -121,35 +130,7 @@ if you are loading many schemas.
 
 ## How fast is it?
 
-Rough estimates, based on a few local runs.
-
-**Binding overhead.** On `tests/resources/models/inheritance/model.yaml`, against shelling out to the
-native CLI binary:
-
-| | Time |
-|---|---|
-| CLI subprocess, JSON Schema | 4.2 ms |
-| Bindings, JSON Schema (schema already loaded) | <0.05 ms |
-| Bindings, load + JSON Schema | 0.5 ms |
-| CLI subprocess, 6 generators (reparses each time) | 24.8 ms |
-| Bindings, 6 generators from one load | 0.9 ms |
-
-The gap is mostly process startup and reparsing the schema per invocation, both of which the bindings
-avoid. The JSON round trip does not show up at this scale.
-
-**Against LinkML (Python).** A synthetic 300-class schema, generated from scratch each time:
-
-| | LinkML (Python) | Bindings | |
-|---|---|---|---|
-| JSON Schema | 204 ms | 11 ms | 18× |
-| SHACL | 363 ms | 13 ms | 28× |
-
-In line with [the existing benchmarks](benchmarks.md), which is what you would hope for: it is the
-same generator code.
-
-**Startup.** `import linkml_scala` takes 10 ms, and the first load – which also creates the isolate –
-another 13 ms for the LinkML metamodel. For comparison, importing two generators from the `linkml`
-Python package takes 450 ms.
+TODO
 
 ## TODO
 

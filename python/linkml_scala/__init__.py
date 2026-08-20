@@ -20,6 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Mapping
 
+from ._generated import Generators
 from ._runtime import (
     LinkMlError,
     NativeLibraryNotFound,
@@ -73,7 +74,7 @@ class SchemaLoadError(LinkMlError):
         self.report = report
 
 
-class Schema:
+class Schema(Generators):
     """A loaded, import-resolved LinkML schema.
 
     Parsing a schema is the expensive part, so this holds on to the parsed form inside the library
@@ -117,130 +118,7 @@ class Schema:
         :param infer_messages: fill in each issue's human-readable ``message`` and ``details``. Turn
             it off for only the structured fields, which is a little faster.
         """
-        return self._call("lint", inferMessages=infer_messages)["report"]
-
-    # Generators
-
-    def json_schema(
-        self,
-        *,
-        open: bool = False,
-        tree_root: str | None = None,
-        tree_root_inline_type: str | None = None,
-    ) -> str:
-        """Generate a JSON Schema.
-
-        :param open: allow ``additionalProperties`` on generated classes.
-        :param tree_root: use this class as the root instead of the schema's ``tree_root``.
-        :param tree_root_inline_type: override the root class' ``tree_root_as`` extension. One of
-            ``plain``, ``optional``, ``list``, ``compact_dict``, ``simple_dict``.
-        """
-        return self._generate(
-            "json-schema",
-            open=open,
-            treeRoot=tree_root,
-            treeRootInlineType=tree_root_inline_type,
-        )
-
-    def shacl(self, *, open: bool = False, only_classes_from_root_schema: bool = False) -> str:
-        """Generate SHACL shapes, serialized as N-Triples.
-
-        :param open: emit open shapes, which allow properties the schema does not mention.
-        :param only_classes_from_root_schema: leave out classes that came in through ``imports``.
-            Useful when generating shapes per schema file.
-        """
-        return self._generate(
-            "shacl",
-            open=open,
-            onlyClassesFromRootSchema=only_classes_from_root_schema,
-        )
-
-    def rdfs(self, *, only_classes_from_root_schema: bool = False) -> str:
-        """Generate RDFS, serialized as N-Triples.
-
-        :param only_classes_from_root_schema: leave out classes that came in through ``imports``.
-        """
-        return self._generate("rdfs", onlyClassesFromRootSchema=only_classes_from_root_schema)
-
-    def linkml(
-        self,
-        *,
-        skip_derivation: bool = False,
-        pruning_mode: str = "skip",
-        tree_root: str | None = None,
-        format: str = "yaml",
-    ) -> str:
-        """Materialize a derived LinkML schema: imports resolved, slots pushed into attributes.
-
-        :param skip_derivation: copy classes as they are instead of deriving them.
-        :param pruning_mode: which unused elements to drop. ``treeRoot`` removes everything
-            unreachable from the tree root class, ``schema`` everything unreachable from any class in
-            the root schema, ``skip`` nothing.
-        :param tree_root: tree root class to prune from, instead of the schema's own.
-        :param format: ``yaml`` or ``json``.
-        """
-        return self._generate(
-            "linkml",
-            skipDerivation=skip_derivation,
-            pruningMode=pruning_mode,
-            treeRoot=tree_root,
-            format=format,
-        )
-
-    def table_schema(self, *, tree_root: str | None = None) -> str:
-        """Generate a Frictionless Table Schema, serialized as JSON.
-
-        :param tree_root: table root class, instead of the schema's ``tree_root``.
-        """
-        return self._generate("table-schema", treeRoot=tree_root)
-
-    def graphql(self, *, pruning_mode: str = "skip", tree_root: str | None = None) -> str:
-        """Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries.
-
-        :param pruning_mode: see :meth:`linkml`.
-        :param tree_root: see :meth:`linkml`.
-        """
-        return self._generate("graphql", pruningMode=pruning_mode, treeRoot=tree_root)
-
-    def er_diagram(
-        self,
-        *,
-        pruning_mode: str = "skip",
-        tree_root: str | None = None,
-        optional_marker: bool = True,
-    ) -> str:
-        """Generate a Mermaid entity relationship diagram.
-
-        :param pruning_mode: see :meth:`linkml`.
-        :param tree_root: see :meth:`linkml`.
-        :param optional_marker: mark optional attributes with a trailing ``?``. Mermaid understands
-            this from 11.16 on; older renderers reject the whole diagram, so pass ``False`` if the
-            diagram is headed somewhere that pins an older version.
-        """
-        return self._generate(
-            "er-diagram",
-            pruningMode=pruning_mode,
-            treeRoot=tree_root,
-            optionalMarker=optional_marker,
-        )
-
-    def scala(
-        self,
-        package: str = "eu.neverblink.linkml.metamodel",
-        *,
-        generate_emit_prefixes: bool = True,
-    ) -> dict[str, str]:
-        """Generate Scala classes, as a filename to source mapping.
-
-        :param package: package to put the generated classes in.
-        :param generate_emit_prefixes: also generate a ``Prefixes`` object holding the schema's
-            ``emit_prefixes``.
-        """
-        return self._call(
-            "generate",
-            generator="scala",
-            options={"package": package, "generateEmitPrefixes": generate_emit_prefixes},
-        )["files"]
+        return self._json("linkml_lint", inferMessages=infer_messages)
 
     # Lifecycle
 
@@ -248,7 +126,7 @@ class Schema:
         """Release the schema. Calling it more than once is fine."""
         handle, self._handle = self._handle, None
         if handle is not None:
-            self._runtime.call({"op": "close", "handle": handle})
+            self._runtime.close(handle)
 
     def __enter__(self) -> Schema:
         return self
@@ -267,18 +145,18 @@ class Schema:
         state = "closed" if self._handle is None else f"handle={self._handle}"
         return f"<linkml_scala.Schema {state}, {len(self._report.get('issues', []))} issue(s)>"
 
-    def _generate(self, generator: str, **options: Any) -> str:
-        return self._call(
-            "generate",
-            generator=generator,
-            # Leave unset options out entirely, so the library applies its own defaults.
-            options={key: value for key, value in options.items() if value is not None},
-        )["output"]
+    def _document(self, function: str, **options: Any) -> str:
+        """Call a generator that returns a document, by its exported name."""
+        return self._runtime.document(function, self._live(), options)
 
-    def _call(self, op: str, **fields: Any) -> dict[str, Any]:
+    def _json(self, function: str, **options: Any) -> Any:
+        """Call a generator whose result is JSON, and return it parsed."""
+        return self._runtime.json_document(function, self._live(), options)
+
+    def _live(self) -> int:
         if self._handle is None:
             raise LinkMlError("this schema is closed")
-        return self._runtime.call({"op": op, "handle": self._handle, **fields})
+        return self._handle
 
 
 def load_file(path: str | Path, *, infer_messages: bool = True) -> Schema:
@@ -291,7 +169,8 @@ def load_file(path: str | Path, *, infer_messages: bool = True) -> Schema:
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
     :raises SchemaLoadError: if fatal problems stopped the schema from loading.
     """
-    return _load({"path": str(path)}, infer_messages)
+    current = runtime()
+    return _schema(current, *current.load_file(str(path), {"inferMessages": infer_messages}))
 
 
 def load_string(
@@ -311,7 +190,11 @@ def load_string(
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
     :raises SchemaLoadError: if fatal problems stopped the schema from loading.
     """
-    return _load({"schema": schema, "imports": dict(imports or {})}, infer_messages)
+    current = runtime()
+    return _schema(
+        current,
+        *current.load_string(None, schema, imports, {"inferMessages": infer_messages}),
+    )
 
 
 def load_path(
@@ -335,13 +218,19 @@ def load_path(
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
     :raises SchemaLoadError: if fatal problems stopped the schema from loading.
     """
-    return _load({"path": path, "imports": dict(imports)}, infer_messages)
-
-
-def _load(request: dict[str, Any], infer_messages: bool) -> Schema:
     current = runtime()
-    response = current.call({"op": "load", "inferMessages": infer_messages, **request})
-    report = response["report"]
-    if "handle" not in response:
+    return _schema(
+        current,
+        *current.load_string(path, None, imports, {"inferMessages": infer_messages}),
+    )
+
+
+def _schema(current: Runtime, handle: int, report: Report) -> Schema:
+    """Wrap a load result, turning a refused load into an exception.
+
+    The library returns handle 0 when fatal problems stopped the schema loading, and a report either
+    way, so the report is what explains the failure.
+    """
+    if handle == 0:
         raise SchemaLoadError(report)
-    return Schema(current, response["handle"], report)
+    return Schema(current, handle, report)

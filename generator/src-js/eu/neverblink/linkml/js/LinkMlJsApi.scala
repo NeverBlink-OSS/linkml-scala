@@ -152,7 +152,9 @@ object LinkMlJsApi {
       open: Boolean = false,
       treeRootOverride: js.UndefOr[String] = js.undefined,
   ): String =
-    JsonSchemaGenerator(using schema.underlying).serialize(open, treeRootOverride.toOption)
+    JsonSchemaGenerator(using schema.underlying).serialize(
+      JsonSchemaGenerator.Options(open = open, treeRoot = treeRootOverride.toOption),
+    )
 
   /** Generate SHACL shapes (in N-Triples format) from a loaded LinkML schema.
     *
@@ -176,8 +178,7 @@ object LinkMlJsApi {
     val sink = new StringSink
     ShaclGenerator(using schema.underlying).generate(
       NTriplesRdfSink(sink),
-      open,
-      onlyClassesFromRootSchema,
+      ShaclGenerator.Options(open = open, onlyClassesFromRootSchema = onlyClassesFromRootSchema),
     )
     sink.result
   }
@@ -195,7 +196,10 @@ object LinkMlJsApi {
       schema: SchemaViewJs,
       `package`: String,
   ): js.Dictionary[String] =
-    ScalaGenerator(using schema.underlying).generate(`package`).toMap.toJSDictionary
+    ScalaGenerator(using schema.underlying)
+      .generate(ScalaGenerator.Options(`package` = `package`))
+      .toMap
+      .toJSDictionary
 
   /** Generate RDFS from a loaded LinkML schema.
     *
@@ -215,7 +219,7 @@ object LinkMlJsApi {
     val sink = new StringSink
     RdfsGenerator(using schema.underlying).generate(
       NTriplesRdfSink(sink),
-      onlyClassesFromRootSchema,
+      RdfsGenerator.Options(onlyClassesFromRootSchema = onlyClassesFromRootSchema),
     )
     sink.result
   }
@@ -256,9 +260,11 @@ object LinkMlJsApi {
       case s => throw RuntimeException(s"Unknown output format: $s")
     }
     LinkMlGenerator(using schema.underlying).serialize(
-      skipClassDerivation = skipDerivation,
-      pruningMode = mode,
-      outputFormat = format,
+      LinkMlGenerator.Options(
+        pruningMode = mode,
+        skipClassDerivation = skipDerivation,
+        outputFormat = format,
+      ),
     )
   }
 
@@ -275,7 +281,9 @@ object LinkMlJsApi {
       schema: SchemaViewJs,
       treeRoot: js.UndefOr[String] = js.undefined,
   ): String =
-    TableSchemaGenerator(using schema.underlying).serialize(treeRoot.toOption)
+    TableSchemaGenerator(using schema.underlying).serialize(
+      TableSchemaGenerator.Options(treeRoot.toOption),
+    )
 
   /** Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums,
     * queries must be provided for a specific implementation.
@@ -298,7 +306,7 @@ object LinkMlJsApi {
       treeRoot: js.UndefOr[String] = js.undefined,
   ): String =
     GraphQlGenerator(using schema.underlying).serialize(
-      PruningMode(pruningMode, treeRoot.toOption),
+      GraphQlGenerator.Options(PruningMode(pruningMode, treeRoot.toOption)),
     )
 
   /** Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become
@@ -327,8 +335,10 @@ object LinkMlJsApi {
       optionalMarker: Boolean = true,
   ): String =
     ErDiagramGenerator(using schema.underlying).serialize(
-      PruningMode(pruningMode, treeRoot.toOption),
-      optionalMarker,
+      ErDiagramGenerator.Options(
+        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+        optionalMarker = optionalMarker,
+      ),
     )
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This

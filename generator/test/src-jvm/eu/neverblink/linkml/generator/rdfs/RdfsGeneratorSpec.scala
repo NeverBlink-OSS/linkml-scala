@@ -264,7 +264,8 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
         SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
       )
       val turtle =
-        RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_, onlyClassesFromRootSchema = true))
+        RdfUtils.toTurtle(RdfsGenerator(using sv)
+            .generate(_, RdfsGenerator.Options(onlyClassesFromRootSchema = true)))
       turtle should include("linkml:Annotatable a rdfs:Class")
       turtle should include("linkml:Annotation a rdfs:Class")
       turtle should not include "linkml:Any a rdfs:Class"

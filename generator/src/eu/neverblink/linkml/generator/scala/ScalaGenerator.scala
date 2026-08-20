@@ -14,14 +14,18 @@ final class ScalaGenerator(using sv: SchemaView) {
   import CombineFunction.*
 
   /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums.
-    * @param pkg
-    *   Scala package to generate the classes in
+    * @param options
+    *   What to generate. See [[ScalaGenerator.Options]].
     * @return
     *   Tuples of form (file name, file content) for all elements in the LinkML model
     */
-  def generate(pkg: String, emitEmitPrefixes: Boolean = true): Iterable[(String, String)] =
+  def generate(
+      options: ScalaGenerator.Options = ScalaGenerator.Options(),
+  ): Iterable[(String, String)] = {
+    val pkg = options.`package`
     generateClasses(pkg) ++ generateEnums(pkg) ++ generateTypeDefinitions(pkg)
-      ++ (if emitEmitPrefixes then generateEmitPrefixes(pkg) else None)
+      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(pkg) else None)
+  }
 
   /** Generate Scala counterparts of LinkML classes: case classe implementations for instantiable
     * classes, abstract class interfaces for non-mixin classes, traits for mixins, with LinkML
@@ -474,6 +478,18 @@ final class ScalaGenerator(using sv: SchemaView) {
 }
 
 object ScalaGenerator {
+
+  /** Options for [[ScalaGenerator]].
+    *
+    * @param package
+    *   Scala package to generate the classes in.
+    * @param generateEmitPrefixes
+    *   Whether to generate a `Prefixes` object holding the model's `emit_prefixes`.
+    */
+  final case class Options(
+      `package`: String = "eu.neverblink.linkml.metamodel",
+      generateEmitPrefixes: Boolean = true,
+  )
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a
     * LinkML [[ClassDefinition]]

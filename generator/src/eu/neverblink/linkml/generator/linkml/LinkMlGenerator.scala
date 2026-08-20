@@ -12,17 +12,15 @@ class LinkMlGenerator(using sv: SchemaView) {
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]]. Merges imports,
     * runs class derivation and if a `tree_root` class is present, prunes the schema to only include
     * the reachable elements.
-    * @param pruningMode
-    *   Method to use for schema definition pruning
-    * @param skipClassDerivation
-    *   If true, will not derive classes and instead copy them as-is.
+    * @param options
+    *   What to generate. See [[LinkMlGenerator.Options]].
     * @return
     *   The derived [[SchemaDefinition]]
     */
   def generate(
-      pruningMode: PruningMode = PruningMode.treeRoot(None),
-      skipClassDerivation: Boolean = false,
+      options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
   ): SchemaDefinitionImpl = {
+    import options.{pruningMode, skipClassDerivation}
     val query =
       if (skipClassDerivation) pruningMode.underivedQuery()
       else pruningMode.derivedQuery(false, false)
@@ -87,27 +85,37 @@ class LinkMlGenerator(using sv: SchemaView) {
     *
     * Merges imports, runs class derivation and if a `tree_root` class is present, prunes the schema
     * to only include the reachable elements.
-    * @param pruningMode
-    *   Method to use for schema definition pruning
-    * @param skipClassDerivation
-    *   If true, will not derive classes and instead copy them as-is.
-    * @param outputFormat
-    *   Output serialization format to use
+    * @param options
+    *   What to generate. See [[LinkMlGenerator.Options]].
     * @return
     *   The derived [[SchemaDefinition]]
     */
   def serialize(
-      pruningMode: PruningMode = PruningMode.treeRoot(None),
-      skipClassDerivation: Boolean = false,
-      outputFormat: OutputFormat = yaml,
+      options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
   ): String = {
-    val node = Codec.codec.encode(generate(pruningMode, skipClassDerivation))
-    if (outputFormat == json) JsonUtil.yamlToJson(node)
+    val node = Codec.codec.encode(generate(options))
+    if (options.outputFormat == json) JsonUtil.yamlToJson(node)
     else node.asYaml
   }
 }
 
 object LinkMlGenerator {
+
+  /** Options for [[LinkMlGenerator]].
+    *
+    * @param pruningMode
+    *   Method to use for schema definition pruning.
+    * @param skipClassDerivation
+    *   If true, will not derive classes and instead copy them as-is.
+    * @param outputFormat
+    *   Output serialization format to use.
+    */
+  final case class Options(
+      pruningMode: PruningMode = PruningMode.treeRoot(None),
+      skipClassDerivation: Boolean = false,
+      outputFormat: OutputFormat = yaml,
+  )
+
   // TODO LNK-48: Don't do these horrible casts
   extension (inline classDef: ClassDefinition)
     private inline def impl: ClassDefinitionImpl = classDef.asInstanceOf

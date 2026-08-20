@@ -2,60 +2,75 @@
  * Smoke test for the packaged shared library, and a worked example of driving it from C.
  *
  * Checks the parts that only break once the library leaves the build directory: that the headers
- * and the shared object in the release archive agree, that an isolate comes up, and that a schema
- * can be loaded and generated from. Prints nothing on success beyond a summary; exits non-zero on
- * any failure.
+ * and the shared object in the release archive agree, that an isolate comes up, that a schema can
+ * be loaded and generated from, and that failures arrive as errors rather than crashes.
  *
- * Build against an unpacked release archive:
+ * Exits non-zero if any check fails. Build against an unpacked release archive:
  *
  *   gcc nativelib/smoke.c -o smoke $(PKG_CONFIG_PATH=<prefix> pkg-config --cflags --libs linkml-scala)
  *   LD_LIBRARY_PATH=<prefix>/lib ./smoke
+ *
+ * or just run nativelib/smoke.sh <prefix>, which handles the per-platform details.
  */
 
 #include <liblinkml_scala.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 
-static const char *LOAD_REQUEST =
-    "{\"op\":\"load\",\"schema\":\""
-    "id: https://example.org/smoke\\n"
-    "name: smoke\\n"
-    "imports:\\n"
-    "  - linkml:types\\n"
-    "default_range: string\\n"
-    "classes:\\n"
-    "  Person:\\n"
-    "    tree_root: true\\n"
-    "    attributes:\\n"
-    "      name:\\n"
-    "        range: string\\n"
-    "\"}";
+static const char *SCHEMA =
+    "id: https://example.org/smoke\n"
+    "name: smoke\n"
+    "imports:\n"
+    "  - linkml:types\n"
+    "default_range: string\n"
+    "classes:\n"
+    "  Person:\n"
+    "    tree_root: true\n"
+    "    attributes:\n"
+    "      name:\n"
+    "        range: string\n";
 
 static int failures = 0;
 
-/* Report whether `haystack` contains `needle`, counting a miss as a failure. */
-static void expect(const char *what, const char *haystack, const char *needle) {
-    if (haystack != NULL && strstr(haystack, needle) != NULL) {
-        printf("ok    %s\n", what);
-    } else {
-        printf("FAIL  %s: expected to find '%s' in:\n%.400s\n", what, needle,
-               haystack == NULL ? "(null)" : haystack);
-        failures++;
-    }
+static void ok(const char *what) { printf("ok    %s\n", what); }
+
+static void fail(const char *what, const char *detail) {
+    printf("FAIL  %s: %s\n", what, detail == NULL ? "(no detail)" : detail);
+    failures++;
 }
 
-/* Pull the schema handle out of a load response. Returns 0 if there is none. */
-static long long handle_of(const char *response) {
-    const char *found = response == NULL ? NULL : strstr(response, "\"handle\"");
-    long long handle = 0;
-    if (found == NULL || sscanf(found, "\"handle\" : %lld", &handle) != 1) {
-        /* The writer's spacing is not part of the protocol, so fall back to a looser scan. */
-        if (found == NULL || sscanf(found + 8, " %*[:] %lld", &handle) != 1) {
-            return 0;
-        }
+/* Check that a document came back and contains `needle`. Frees it either way. */
+static void expect(graal_isolatethread_t *thread, const char *what, char *document,
+                   char **error, const char *needle) {
+    if (document == NULL) {
+        fail(what, *error);
+    } else if (strstr(document, needle) == NULL) {
+        printf("FAIL  %s: expected '%s' in:\n%.300s\n", what, needle, document);
+        failures++;
+    } else {
+        ok(what);
     }
-    return handle;
+    linkml_free(thread, document);
+    linkml_free(thread, *error);
+    *error = NULL;
+}
+
+/* Check that a call was refused, and said why. */
+static void expect_refused(graal_isolatethread_t *thread, const char *what, char *document,
+                           char **error, const char *needle) {
+    if (document != NULL) {
+        fail(what, "the call was expected to fail, but returned a document");
+    } else if (*error == NULL) {
+        fail(what, "returned NULL without setting an error");
+    } else if (strstr(*error, needle) == NULL) {
+        printf("FAIL  %s: expected '%s' in error: %s\n", what, needle, *error);
+        failures++;
+    } else {
+        ok(what);
+    }
+    linkml_free(thread, document);
+    linkml_free(thread, *error);
+    *error = NULL;
 }
 
 int main(void) {
@@ -66,52 +81,72 @@ int main(void) {
         fprintf(stderr, "FAIL  graal_create_isolate\n");
         return 1;
     }
-    printf("ok    isolate created\n");
+    ok("isolate created");
 
-    char *version = linkml_call(thread, "{\"op\":\"version\"}");
-    expect("version", version, "\"abiVersion\"");
-    linkml_free(thread, version);
-
-    char *loaded = linkml_call(thread, LOAD_REQUEST);
-    expect("load succeeded", loaded, "\"ok\"");
-    expect("load found no issues", loaded, "\"issues\"");
-    long long handle = handle_of(loaded);
-    linkml_free(thread, loaded);
-
-    if (handle <= 0) {
-        printf("FAIL  load returned no usable handle\n");
-        failures++;
+    if (linkml_abi_version(thread) != 1) {
+        fail("abi version", "expected 1");
     } else {
-        char request[128];
-        snprintf(request, sizeof(request),
-                 "{\"op\":\"generate\",\"handle\":%lld,\"generator\":\"json-schema\"}", handle);
-        char *generated = linkml_call(thread, request);
-        /* The metamodel is compiled into the library, so `range: string` resolving at all proves
-         * that `linkml:types` survived into the native build. */
-        expect("json-schema generated", generated, "json-schema.org");
-        expect("the schema's own class is in it", generated, "Person");
-        linkml_free(thread, generated);
-
-        snprintf(request, sizeof(request), "{\"op\":\"close\",\"handle\":%lld}", handle);
-        char *closed = linkml_call(thread, request);
-        expect("close", closed, "\"ok\"");
-        linkml_free(thread, closed);
+        ok("abi version");
     }
 
-    /* A bad request has to come back as an error rather than taking the process with it. */
-    char *rejected = linkml_call(thread, "{\"op\":\"nonsense\"}");
-    expect("an unknown op is rejected", rejected, "unknown op");
-    linkml_free(thread, rejected);
+    /* Load. No import map, so the array arguments are NULL and the count is 0. */
+    char *report = NULL, *error = NULL;
+    long long handle =
+        linkml_load_string(thread, NULL, SCHEMA, NULL, NULL, 0, NULL, &report, &error);
+    if (handle <= 0) {
+        fail("load", error != NULL ? error : report);
+    } else if (report == NULL) {
+        fail("load", "no report was written");
+    } else {
+        ok("load");
+    }
+    linkml_free(thread, report);
+    linkml_free(thread, error);
 
-    char *malformed = linkml_call(thread, "not json at all");
-    expect("malformed JSON is rejected", malformed, "\"error\"");
-    linkml_free(thread, malformed);
+    if (handle > 0) {
+        char *out;
+
+        /* NULL options means defaults, so the common case needs no JSON at all. The metamodel is
+         * compiled into the library, so `range: string` resolving proves linkml:types survived. */
+        out = linkml_json_schema(thread, handle, NULL, &error);
+        expect(thread, "json-schema with default options", out, &error, "json-schema.org");
+
+        out = linkml_shacl(thread, handle, NULL, &error);
+        expect(thread, "shacl", out, &error, "shacl#NodeShape");
+
+        /* And here is the options channel being used. */
+        out = linkml_shacl(thread, handle, "{\"open\":true}", &error);
+        expect(thread, "shacl with options", out, &error, "shacl#NodeShape");
+
+        out = linkml_er_diagram(thread, handle, NULL, &error);
+        expect(thread, "er-diagram", out, &error, "erDiagram");
+
+        out = linkml_lint(thread, handle, NULL, &error);
+        expect(thread, "lint returns a report", out, &error, "issues");
+
+        out = linkml_scala(thread, handle, NULL, &error);
+        expect(thread, "scala returns a file map", out, &error, "Person.scala");
+
+        /* An option that does not exist is refused, not quietly ignored. */
+        out = linkml_json_schema(thread, handle, "{\"nonsense\":true}", &error);
+        expect_refused(thread, "an unknown option is refused", out, &error, "nonsense");
+
+        linkml_close(thread, handle);
+        ok("close");
+
+        /* Using a closed handle must be an error, not a crash. */
+        out = linkml_json_schema(thread, handle, NULL, &error);
+        expect_refused(thread, "a closed handle is refused", out, &error, "closed");
+    }
+
+    /* A handle that was never issued. */
+    char *never = linkml_shacl(thread, 999999, NULL, &error);
+    expect_refused(thread, "an unknown handle is refused", never, &error, "999999");
 
     if (graal_tear_down_isolate(thread) != 0) {
-        printf("FAIL  graal_tear_down_isolate\n");
-        failures++;
+        fail("isolate torn down", "graal_tear_down_isolate returned non-zero");
     } else {
-        printf("ok    isolate torn down\n");
+        ok("isolate torn down");
     }
 
     if (failures > 0) {

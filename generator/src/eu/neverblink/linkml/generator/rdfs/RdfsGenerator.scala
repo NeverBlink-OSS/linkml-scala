@@ -46,13 +46,14 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
   /** Generates RDF Schema and pushes the namespaces and triples into the provided [[RdfSink]].
     * @param sink
     *   The sink that receives namespace declarations and triples.
-    * @param onlyClassesFromRootSchema
-    *   Whether to include only classes and enums from the root schema (turned off by default).
+    * @param options
+    *   What to generate. See [[RdfsGenerator.Options]].
     */
   final def generate(
       sink: RdfSink,
-      onlyClassesFromRootSchema: Boolean = false,
+      options: RdfsGenerator.Options = RdfsGenerator.Options(),
   ): Unit = {
+    import options.onlyClassesFromRootSchema
     addNamespaces(
       sink,
       Array(
@@ -132,4 +133,18 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
       }
     }
   }
+}
+
+object RdfsGenerator {
+
+  /** Options for [[RdfsGenerator]].
+    *
+    * @param onlyClassesFromRootSchema
+    *   Whether to include only classes and enums from the root schema (turned off by default). This
+    *   is useful if you intend to generate RDFS for each schema file separately, and you don't need
+    *   the imported classes to be included.
+    */
+  final case class Options(
+      onlyClassesFromRootSchema: Boolean = false,
+  )
 }

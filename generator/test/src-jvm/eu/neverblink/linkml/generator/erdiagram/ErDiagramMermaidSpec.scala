@@ -151,7 +151,7 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       (
         "cardinalityWithoutOptionalMarker",
         ErDiagramGenerator(using ModelCatalogue.cardinality.model)
-          .generate(optionalMarker = false),
+          .generate(ErDiagramGenerator.Options(optionalMarker = false)),
       )
 
   /** Generated diagrams, and what Mermaid made of them. Both are computed once: Node startup costs

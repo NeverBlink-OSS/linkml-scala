@@ -14,14 +14,13 @@ class GraphQlGenerator(using sv: SchemaView) {
 
   /** Generate the GraphQL definitions which use custom directives for rdf interop.
     *
-    * @param pruningMode
-    *   How to prune the generated definitions, schemaRoot by default (elements reachable from any
-    *   root schema defined elements) to omit unnecessary linkml:types scalar definitions.
+    * @param options
+    *   What to generate. See [[GraphQlGenerator.Options]].
     */
   def generate(
-      pruningMode: PruningMode = schemaRoot,
+      options: GraphQlGenerator.Options = GraphQlGenerator.Options(),
   ): Iterable[GraphQlDefinition] = {
-    val query = pruningMode.derivedQuery(false, true)
+    val query = options.pruningMode.derivedQuery(false, true)
 
     val reachableClasses = sv.classes.values
       .filter(query.reachable)
@@ -112,21 +111,30 @@ class GraphQlGenerator(using sv: SchemaView) {
   /** Generate and serialize the GraphQL definitions, along with the linkml directives for rdf
     * interop.
     *
-    * @param pruningMode
-    *   How to prune the generated definitions, schemaRoot by default (elements reachable from any
-    *   root schema defined elements) to omit unnecessary linkml:types scalar definitions.
+    * @param options
+    *   What to generate. See [[GraphQlGenerator.Options]].
     */
   def serialize(
-      pruningMode: PruningMode = schemaRoot,
+      options: GraphQlGenerator.Options = GraphQlGenerator.Options(),
   ): String = {
     indent"""# GENERATED FROM LINKML
             |
-            |${generate(pruningMode).map(_.print.strip()).mkString("\n\n")}
+            |${generate(options).map(_.print.strip()).mkString("\n\n")}
             |""".stripMargin
   }
 }
 
 object GraphQlGenerator {
+
+  /** Options for [[GraphQlGenerator]].
+    *
+    * @param pruningMode
+    *   How to prune the generated definitions, schemaRoot by default (elements reachable from any
+    *   root schema defined elements) to omit unnecessary linkml:types scalar definitions.
+    */
+  final case class Options(
+      pruningMode: PruningMode = schemaRoot,
+  )
 
   /** Remap a runtime type to a GraphQL built-in scalar, if possible.
     */

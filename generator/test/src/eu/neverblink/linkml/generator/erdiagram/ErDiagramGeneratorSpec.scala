@@ -56,7 +56,7 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
     "omit the optional marker when asked, for renderers older than Mermaid 11.16" in {
       given SchemaView = ModelCatalogue.cardinality.model
 
-      val result = ErDiagramGenerator().serialize(optionalMarker = false)
+      val result = ErDiagramGenerator().serialize(ErDiagramGenerator.Options(optionalMarker = false))
       Seq(
         "string one",
         "string atMostOne",
@@ -216,7 +216,7 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
     "prune in tree_root mode if requested" in {
       given SchemaView = ModelCatalogue.pruning.model
 
-      val result = ErDiagramGenerator().serialize(pruningMode = PruningMode.treeRoot(None))
+      val result = ErDiagramGenerator().serialize(ErDiagramGenerator.Options(PruningMode.treeRoot(None)))
       result should include("SomeClass {")
       result should not include "NotTreeRootClass"
     }
@@ -225,7 +225,8 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.pruning.model
 
       val result =
-        ErDiagramGenerator().serialize(pruningMode = PruningMode.treeRoot(Some("NotTreeRootClass")))
+        ErDiagramGenerator()
+          .serialize(ErDiagramGenerator.Options(PruningMode.treeRoot(Some("NotTreeRootClass"))))
       result should include("NotTreeRootClass {")
       result should not include "SomeClass {"
     }

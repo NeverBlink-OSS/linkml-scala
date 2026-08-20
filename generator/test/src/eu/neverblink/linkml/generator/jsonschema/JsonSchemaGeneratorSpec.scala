@@ -705,7 +705,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           ),
         )
 
-        JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("plain"))
+        JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("plain")))
           .$ref shouldBe Some("#/$defs/C1")
       }
 
@@ -716,7 +716,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           ),
         )
 
-        val schema = JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("optional"))
+        val schema = JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("optional")))
 
         schema.oneOf.map(
           _.asInstanceOf[Schema].$ref,
@@ -734,7 +734,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           ),
         )
 
-        val schema = JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("list"))
+        val schema = JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("list")))
 
         schema.`type` shouldBe Some(List(SchemaType.Array))
 
@@ -751,7 +751,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema =
-          JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("compact_dict"))
+          JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("compact_dict")))
 
         schema.additionalProperties.get.asInstanceOf[Schema]
           .$ref shouldBe Some("#/$defs/C1__identifier_optional")
@@ -767,7 +767,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema =
-          JsonSchemaGenerator().generate(treeRootInlineTypeOverride = Some("simple_dict"))
+          JsonSchemaGenerator().generate(JsonSchemaGenerator.Options(treeRootInlineType = Some("simple_dict")))
 
         schema.additionalProperties.get.asInstanceOf[Schema]
           .$ref shouldBe Some("#/$defs/C1__simple_dict_value")
@@ -833,8 +833,8 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       given SchemaView = sv
       val generator = JsonSchemaGenerator()
-      val expected = encoderSchema(generator.generate(false, None)).noSpaces
-      val result = generator.serialize(indentationStep = 0)
+      val expected = encoderSchema(generator.generate(JsonSchemaGenerator.Options())).noSpaces
+      val result = generator.serialize(JsonSchemaGenerator.Options(indentationStep = 0))
       result shouldBe expected
     }
 
@@ -843,8 +843,8 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         s"model '${entry.model.root.name}'" in {
           assume(!skipModels.contains(entry.model.root.name))
           val generator = JsonSchemaGenerator(using entry.model)
-          val expected = encoderSchema(generator.generate(false, None)).noSpaces
-          val result = generator.serialize(indentationStep = 0)
+          val expected = encoderSchema(generator.generate(JsonSchemaGenerator.Options())).noSpaces
+          val result = generator.serialize(JsonSchemaGenerator.Options(indentationStep = 0))
           result shouldBe expected
         }
     }

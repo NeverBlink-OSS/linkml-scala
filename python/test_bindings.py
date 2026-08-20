@@ -181,7 +181,7 @@ class LoadTest(unittest.TestCase):
 
     def test_load_needs_a_schema_or_a_path(self):
         with self.assertRaises(LinkMlError):
-            linkml_scala.runtime().call({"op": "load"})
+            linkml_scala.runtime().load_string(None, None)
 
 
 class GeneratorTest(unittest.TestCase):
@@ -226,7 +226,7 @@ class GeneratorTest(unittest.TestCase):
     def test_linkml(self):
         # Deriving pushes inherited and referenced slots down into each class' attributes.
         self.assertIn("attributes:", self.schema.linkml())
-        self.assertIn('"attributes"', self.schema.linkml(format="json"))
+        self.assertIn('"attributes"', self.schema.linkml(output_format="json"))
 
     def test_linkml_pruning_drops_unreachable_classes(self):
         unreachable = schema(
@@ -264,14 +264,15 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn('Person ||--o| Animal : "pet"', generated)
 
     def test_scala(self):
-        files = self.schema.scala("com.example.model")
+        files = self.schema.scala(package="com.example.model")
         self.assertIn("Person.scala", files)
         self.assertIn("package com.example.model", files["Person.scala"])
 
-    def test_unknown_generator(self):
-        with self.assertRaises(LinkMlError) as caught:
-            self.schema._generate("cuneiform")
-        self.assertIn("cuneiform", str(caught.exception))
+    def test_an_unexported_function_cannot_be_called(self):
+        # Each generator is its own exported symbol now, so a name that does not exist fails at the
+        # ctypes layer rather than being dispatched and rejected by the library.
+        with self.assertRaises(AttributeError):
+            linkml_scala.runtime().document("linkml_cuneiform", self.schema._handle)
 
     def test_unknown_pruning_mode(self):
         with self.assertRaises(LinkMlError) as caught:
@@ -280,13 +281,8 @@ class GeneratorTest(unittest.TestCase):
 
     def test_an_unknown_option_is_rejected_rather_than_ignored(self):
         with self.assertRaises(LinkMlError) as caught:
-            linkml_scala.runtime().call(
-                {
-                    "op": "generate",
-                    "handle": self.schema._handle,
-                    "generator": "json-schema",
-                    "options": {"opne": True},
-                }
+            linkml_scala.runtime().document(
+                "linkml_json_schema", self.schema._handle, {"opne": True}
             )
         self.assertIn("opne", str(caught.exception))
 
@@ -345,12 +341,13 @@ class HandleTest(unittest.TestCase):
 
     def test_an_unknown_handle_raises(self):
         with self.assertRaises(LinkMlError) as caught:
-            linkml_scala.runtime().call({"op": "lint", "handle": 999_999})
+            linkml_scala.runtime().document("linkml_lint", 999_999)
         self.assertIn("999999", str(caught.exception))
 
-    def test_a_missing_handle_raises(self):
+    def test_handle_zero_raises(self):
+        # 0 is what loading returns when it refused, so it must never be usable.
         with self.assertRaises(LinkMlError):
-            linkml_scala.runtime().call({"op": "lint"})
+            linkml_scala.runtime().document("linkml_lint", 0)
 
     def test_handles_are_independent(self):
         with linkml_scala.load_string(PERSON) as first:
