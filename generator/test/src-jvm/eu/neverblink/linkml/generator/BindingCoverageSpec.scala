@@ -11,7 +11,7 @@ import org.scalatest.wordspec.AnyWordSpec
 class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
   private val repoRoot: Option[os.Path] =
-    sys.env.get("LINKML_REPO_ROOT").map(os.Path(_)).filter(os.exists)
+    sys.env.get("MILL_WORKSPACE_ROOT").map(os.Path(_)).filter(os.exists)
 
   /** Every generator in the generator module: a `*Generator.scala` declaring an `Options` case
     * class. The `Options` is what makes it a public generator rather than an internal helper.
@@ -61,7 +61,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
   "every generator" should {
     "be registered as a CLI command" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val registered = cliCommands(root)
       // The CLI names its commands after the generator, minus the suffix: ShaclGenerator -> Shacl.
       val missing = generators(root).map(_.stripSuffix("Generator")).filterNot(registered)
@@ -69,7 +69,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be offered by the playground" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val targets = playgroundTargets(root)
       // The playground drives the JS API, so its target ids are the facade's method names.
       val missing = jsMethods(root).filterNot(targets)
@@ -77,7 +77,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be listed in the shared entry-point table" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val table = os.read(root / "mill-build" / "src" / "Entrypoints.scala")
       val missing = generators(root).filterNot(name => table.contains(s"\"$name\""))
       withClue(
@@ -86,7 +86,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be exposed by the JavaScript facade" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val facade =
         os.read(
           root / "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
@@ -98,7 +98,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be exposed by the native library's Scala facade" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val facade = os.read(
         root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
           "LinkMlNativeApi.scala",
@@ -108,7 +108,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be exposed as a C entry point" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val generated = os.read(
         root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
           "LinkMlCGenerators.java",
@@ -121,7 +121,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be exposed as a Python method" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val generated = os.read(root / "python" / "linkml_scala" / "_generated.py")
       val methods = "\\n    def (\\w+)\\(".r.findAllMatchIn(generated).size
       withClue("run ./mill bindings and commit the result: ")(
@@ -130,7 +130,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be documented in the npm module's README" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val readme = os.read(root / "generator" / "npm" / "README.md")
       // Taken from the facade rather than derived from the generator names, because the JS spelling
       // is not mechanical: LinkMlGenerator is `linkml`, not `linkMl`. This also covers `lint`.
@@ -139,7 +139,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     }
 
     "be documented in the Python bindings guide" in {
-      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val docs = os.read(root / "docs" / "python_bindings.md")
       // The doc lists the Python method names, so check those rather than the Scala class names.
       val pythonNames = "\\n    def (\\w+)\\(".r

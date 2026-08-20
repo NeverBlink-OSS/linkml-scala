@@ -139,4 +139,3 @@ TODO
 2. Type stubs, or type hints good enough to not need them. The reports are plain dicts today; a
    `TypedDict` generated from `validation-report.yaml` would be better, and would help the
    TypeScript bindings too (see [#127](https://github.com/NeverBlink-OSS/linkml-scala/issues/127)).
-3. A raw path for large outputs that skips JSON string escaping, if it ever shows up in a profile. Or a custom simple serialization format with prepended length (pseudo-Protobuf).

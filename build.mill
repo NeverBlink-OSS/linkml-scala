@@ -321,9 +321,6 @@ object generator extends Module {
       override def forkEnv = super.forkEnv() ++ Map(
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
-        // BindingCoverageSpec reads the repository's own sources to check every generator is
-        // reachable from every binding.
-        "LINKML_REPO_ROOT" -> mill.api.BuildCtx.workspaceRoot.toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
     }
