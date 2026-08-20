@@ -66,7 +66,7 @@ abstract class RdfGenerator {
     root.defaultPrefix.foreachFast(namespaces.putIfAbsent(_, ""))
     // add placeholder values for allowed prefixes
     root.emitPrefixes.foreach(namespaces.putIfAbsent(_, ""))
-    // fill references only allowed to emit prefixes
+    // fill in names for allowed prefixes only
     root.prefixes.foreach { kv =>
       namespaces.computeIfPresent(kv._1, (_, _) => kv._2.prefixReference.original)
     }
