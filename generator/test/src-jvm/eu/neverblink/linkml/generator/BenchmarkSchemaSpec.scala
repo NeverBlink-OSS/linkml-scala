@@ -179,6 +179,5 @@ object BenchmarkSchemaSpec {
     "nmdc_microbiome" -> "linkml-yaml" -> "TODO LNK-167",
     "nmdc_microbiome" -> "linkml-json" -> "TODO LNK-167",
     "nmdc_microbiome" -> "er-diagram" -> "TODO LNK-167",
-    "cdm" -> "linkml-yaml" -> "LNK-185: unpruned output does not parse back with scala-yaml",
   )
 }
