@@ -130,7 +130,25 @@ if you are loading many schemas.
 
 ## How fast is it?
 
-TODO
+Note: these are rough numbers on a Ryzen 7900 workstation. Full benchmark is still pending. See: [benchmark code](../benchmark/src), [datasets](../benchmark/resources/schemas).
+
+Here we measured only the time to generate the output, not the time to load the schema. The Python side is LinkML 1.11.1, and the Scala side is LinkML-Scala 975f65a, v0.13.1-15-g975f65a.
+
+### JSON Schema
+
+| Dataset          | Size   | linkml (Python) | linkml_scala |  Speedup |
+|------------------|--------|----------------:|-------------:|---------:|
+| `TC57CIM`        | 2.9 MB |        7,413 ms |      55.2 ms | **134×** |
+| `cgmes-dynamics` | 812 KB |          952 ms |       5.5 ms | **174×** |
+| `cgmes-core`     | 196 KB |          471 ms |       3.7 ms | **126×** |
+
+### SHACL
+
+| Dataset          | Size   | linkml (Python) | linkml_scala | Speedup |
+|------------------|--------|----------------:|-------------:|--------:|
+| `TC57CIM`        | 2.9 MB |       17,699 ms |       188 ms | **94×** |
+| `cgmes-dynamics` | 812 KB |        2,039 ms |      20.8 ms | **98×** |
+| `cgmes-core`     | 196 KB |        1,196 ms |      15.0 ms | **80×** |
 
 ## TODO
 
