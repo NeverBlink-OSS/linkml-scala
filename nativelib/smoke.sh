@@ -20,7 +20,7 @@ fi
 prefix="$(cd "$1" && pwd)"
 here="$(cd "$(dirname "$0")" && pwd)"
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+echo "building in ${work}" >&2
 
 if [ ! -d "${prefix}/include" ]; then
   echo "error: ${prefix} has no include/ directory" >&2

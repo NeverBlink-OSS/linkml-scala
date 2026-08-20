@@ -37,7 +37,7 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 prefix_name="liblinkml-scala-${version}-${platform}"
 staging="$(mktemp -d)"
 prefix="${staging}/${prefix_name}"
-trap 'rm -rf "$staging"' EXIT
+echo "staging in ${staging}" >&2
 
 # Windows keeps DLLs in bin/ and the import library in lib/; everywhere else the shared object
 # goes in lib/.
@@ -125,12 +125,13 @@ out_dir="$(cd "$out_dir" && pwd)"
 case "$platform" in
 windows-*)
   archive="${out_dir}/linkml-scala-lib-${platform}.zip"
+  # zip adds to an existing archive rather than replacing it, so a rerun would otherwise keep
+  # entries from the previous one.
   rm -f "$archive"
   (cd "$staging" && zip -q -r -9 "$archive" "$prefix_name")
   ;;
 *)
   archive="${out_dir}/linkml-scala-lib-${platform}.tar.gz"
-  rm -f "$archive"
   tar -czf "$archive" -C "$staging" "$prefix_name"
   ;;
 esac
