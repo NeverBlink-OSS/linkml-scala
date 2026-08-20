@@ -86,4 +86,75 @@ jobs:
           MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
         run: |
-          ./mill mill.javalib.SonatypeCentralPublishModule/    
+          ./mill mill.javalib.SonatypeCentralPublishModule/
+
+  nativelib:
+    name: Shared library and Python bindings
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Matters most here: the native-image build pulls a ~360 MB GraalVM tarball and unpacks it
+      # to ~1 GB, and both copies would otherwise land in the cache. See checks.yml.
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Setup the oldest supported Python
+        id: python-oldest
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      # Deliberately unpinned: test with newest Python stable
+      - name: Setup the newest Python
+        id: python-newest
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+
+      - name: Regenerate the bindings and check they are committed
+        run: |
+          ./mill --no-server bindings
+          git diff --exit-code -- python/linkml_scala/_generated.py \
+            nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.java \
+            || (echo "generated bindings are stale – run ./mill bindings and commit the result"; exit 1)
+
+      - name: Build the shared library and test the bindings on the oldest supported Python
+        env:
+          PYTHON: ${{ steps.python-oldest.outputs.python-path }}
+        run: ./mill --no-server nativelib.pythonTest
+
+      - name: Test the bindings on the newest Python
+        env:
+          PYTHON: ${{ steps.python-newest.outputs.python-path }}
+        run: ./mill --no-server nativelib.pythonTest
+
+      # Builds the release archive, then compiles and runs a C program against the unpacked copy.
+      - name: Check that the release archive works from C
+        run: |
+          nativelib/package.sh 0.0.0-ci linux-x86_64 out/nativelib/sharedLibrary.dest dist
+          tar -xzf dist/linkml-scala-lib-linux-x86_64.tar.gz -C dist
+          nativelib/smoke.sh dist/liblinkml-scala-0.0.0-ci-linux-x86_64
+
+      - name: Check that the pkg-config file resolves
+        run: |
+          prefix="$PWD/dist/liblinkml-scala-0.0.0-ci-linux-x86_64"
+          flags=$(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs linkml-scala)
+          echo "pkg-config: $flags"
+          gcc nativelib/smoke.c -o dist/smoke-pc $flags
+          LD_LIBRARY_PATH="$prefix/lib" dist/smoke-pc    

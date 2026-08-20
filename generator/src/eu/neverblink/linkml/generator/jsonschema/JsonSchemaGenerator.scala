@@ -46,22 +46,16 @@ class JsonSchemaGenerator(using sv: SchemaView) {
 
   /** Generate the JSON Schema, but keep it in the [[Schema]] model
     *
-    * @param open
-    *   Whether the generated JSON Schema should allow `additionalProperties` for classes
-    * @param treeRootOverride
-    *   If defined, override the schema `tree_root` class with the one provided
-    * @param treeRootInlineTypeOverride
-    *   If defined, override the `tree_root_as` extension of the tree root class with the one
-    *   provided.
+    * @param options
+    *   What to generate. See [[JsonSchemaGenerator.Options]].
     * @return
     *   JSON Schema in the [[Schema]] model
     */
   final def generate(
-      open: Boolean = false,
-      treeRootOverride: Option[String] = None,
-      treeRootInlineTypeOverride: Option[String] = None,
+      options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
   ): Schema = {
-    val maybeTreeRoot = sv.treeRootWithOverride(treeRootOverride) match {
+    import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
+    val maybeTreeRoot = sv.treeRootWithOverride(options.treeRoot) match {
       case Success(value) => value
       case Failure(exception) => throw exception
     }
@@ -232,28 +226,40 @@ class JsonSchemaGenerator(using sv: SchemaView) {
 
   /** Generate the JSON Schema and serialize it
     *
-    * @param open
-    *   Whether the generated JSON Schema should allow `additionalProperties` for classes
-    * @param treeRootOverride
-    *   If defined, override the schema `tree_root` class with the one provided
-    * @param indentationStep
-    *   number of spaces in pretty print indentation of JSON Schema
+    * @param options
+    *   What to generate. See [[JsonSchemaGenerator.Options]].
     * @return
     *   Serialized JSON Schema
     */
   final def serialize(
-      open: Boolean = false,
-      treeRootOverride: Option[String] = None,
-      indentationStep: Int = 2,
-      treeRootInlineTypeOverride: Option[String] = None,
+      options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
   ): String =
     writeToString(
-      generate(open, treeRootOverride, treeRootInlineTypeOverride),
-      WriterConfig.withIndentionStep(indentationStep),
+      generate(options),
+      WriterConfig.withIndentionStep(options.indentationStep),
     )
 }
 
 object JsonSchemaGenerator {
+
+  /** Options for [[JsonSchemaGenerator]].
+    *
+    * @param open
+    *   Whether the generated JSON Schema should allow `additionalProperties` for classes.
+    * @param treeRoot
+    *   If defined, override the schema `tree_root` class with the one provided.
+    * @param treeRootInlineType
+    *   If defined, override the `tree_root_as` extension of the tree root class with the one
+    *   provided. One of `plain`, `optional`, `list`, `compact_dict`, `simple_dict`.
+    * @param indentationStep
+    *   Number of spaces in pretty print indentation of the serialized JSON Schema.
+    */
+  final case class Options(
+      open: Boolean = false,
+      treeRoot: Option[String] = None,
+      treeRootInlineType: Option[String] = None,
+      indentationStep: Int = 2,
+  )
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
     * Provides formats for date-times and URI/CURIE.

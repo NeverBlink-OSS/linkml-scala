@@ -97,18 +97,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     *
     * @param sink
     *   The sink that receives namespace declarations and triples.
-    * @param enforceOpenShapes
-    *   A flag that enforces all shapes to be open (turned off by default)
-    * @param onlyClassesFromRootSchema
-    *   Whether to include only classes from the root schema (turned off by default). This is useful
-    *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
-    *   the imported classes to be included in the generated SHACL shapes.
+    * @param options
+    *   What to generate. See [[ShaclGenerator.Options]].
     */
   final def generate(
       sink: RdfSink,
-      enforceOpenShapes: Boolean = false,
-      onlyClassesFromRootSchema: Boolean = false,
+      options: ShaclGenerator.Options = ShaclGenerator.Options(),
   ): Unit = {
+    import options.{onlyClassesFromRootSchema, open}
     addNamespaces(
       sink,
       Array(
@@ -129,7 +125,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       c.cls.description.foreachFast { d =>
         sink.triple(classNameIri, Rdfs.comment, Literal(d, XmlSchema.string))
       }
-      val closed = !(enforceOpenShapes || c.cls.`abstract` || c.cls.mixin)
+      val closed = !(open || c.cls.`abstract` || c.cls.mixin)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       val ignoredPropertiesListHead = addList(
         sink,
@@ -147,4 +143,22 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }
   }
+}
+
+object ShaclGenerator {
+
+  /** Options for [[ShaclGenerator]].
+    *
+    * @param open
+    *   Whether the generated shapes should be open, allowing properties the schema does not mention
+    *   (turned off by default).
+    * @param onlyClassesFromRootSchema
+    *   Whether to include only classes from the root schema (turned off by default). This is useful
+    *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
+    *   the imported classes to be included in the generated SHACL shapes.
+    */
+  final case class Options(
+      open: Boolean = false,
+      onlyClassesFromRootSchema: Boolean = false,
+  )
 }

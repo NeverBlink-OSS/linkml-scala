@@ -82,6 +82,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `scala(view, packageName)`                                           | `Record<string, string>` | filename → generated Scala                                   |
 | `tableSchema(view, treeRoot?)`                                       | `string` | Frictionless Table Schema (JSON)                             |
 | `graphQl(view, pruningMode?, treeRoot?)`                             | `string` | GraphQL                                                      |
+| `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`          | `string` | Mermaid entity relationship diagram                          |
 | `lint(view, inferMessages?)`                                         | `object` | `SchemaValidationReport` (JSON)                              |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.

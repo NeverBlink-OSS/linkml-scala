@@ -35,14 +35,15 @@ class TableSchemaGenerator(using sv: SchemaView) {
 
   /** Generate the Table Schema
     *
-    * @param treeRootOverride
-    *   If defined, override the schema `tree_root` class with the one provided
-    *
+    * @param options
+    *   What to generate. See [[TableSchemaGenerator.Options]].
     * @return
     *   Generated Table Schema (Table Descriptor)
     */
-  def generate(treeRootOverride: Option[String] = None): TableDescriptor = {
-    val root: ClassView = sv.treeRootWithOverride(treeRootOverride)
+  def generate(
+      options: TableSchemaGenerator.Options = TableSchemaGenerator.Options(),
+  ): TableDescriptor = {
+    val root: ClassView = sv.treeRootWithOverride(options.treeRoot)
       .get.getOrElseFast(throw RuntimeException("No tree root - can't generate table schema"))
     val fields =
       for slotView <- root.derivedAttributes.values.toSeq.sortBy(s => (s.slot.rank, s.slot.name))
@@ -123,19 +124,31 @@ class TableSchemaGenerator(using sv: SchemaView) {
 
   /** Generate the Table Schema and serialize
     *
-    * @param treeRootOverride
-    *   If defined, override the schema `tree_root` class with the one provided
+    * @param options
+    *   What to generate. See [[TableSchemaGenerator.Options]].
     * @return
     *   Generated Table Schema (Table Descriptor)
     */
-  def serialize(treeRootOverride: Option[String] = None): String =
+  def serialize(
+      options: TableSchemaGenerator.Options = TableSchemaGenerator.Options(),
+  ): String =
     writeToString(
-      generate(treeRootOverride),
+      generate(options),
       WriterConfig.withIndentionStep(2),
     )(using TableSchemaGenerator.tableDescriptorCodec)
 }
 
 object TableSchemaGenerator {
+
+  /** Options for [[TableSchemaGenerator]].
+    *
+    * @param treeRoot
+    *   If defined, override the schema `tree_root` class with the one provided.
+    */
+  final case class Options(
+      treeRoot: Option[String] = None,
+  )
+
   private[tableschema] implicit val tableDescriptorCodec: JsonValueCodec[TableDescriptor] =
     JsonCodecMaker.make(
       CodecMakerConfig.withEncodingOnly(true)

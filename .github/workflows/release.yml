@@ -70,6 +70,11 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
 
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
       - name: Build Native Executable with Mill
         shell: bash
         run: |
@@ -99,6 +104,43 @@ jobs:
         with:
           name: linkml-scala-${{ matrix.os }}
           path: out/cli/jvm/nativeImage.dest/*
+
+      - name: Build Shared Library and Test the Python Bindings
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./mill.bat nativelib.pythonTest
+          else
+            ./mill nativelib.pythonTest
+          fi
+
+      # The archive is what people actually download, so build it here and check a C program can
+      # compile against it and run. This is the only place the Windows import library and the
+      # macOS dylib get tested.
+      - name: Check the Release Archive Works from C
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          case "${{ matrix.os }}" in
+          macos-14) platform=macos-arm64 ;;
+          macos-15-intel) platform=macos-x86_64 ;;
+          ubuntu-22.04) platform=linux-x86_64 ;;
+          ubuntu-22.04-arm) platform=linux-arm64 ;;
+          windows-latest) platform=windows-x86_64 ;;
+          esac
+          nativelib/package.sh "$version" "$platform" out/nativelib/sharedLibrary.dest dist
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            unzip -q "dist/linkml-scala-lib-$platform.zip" -d dist
+          else
+            tar -xzf "dist/linkml-scala-lib-$platform.tar.gz" -C dist
+          fi
+          nativelib/smoke.sh "dist/liblinkml-scala-$version-$platform"
+
+      - name: Upload Shared Library
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-nativelib-${{ matrix.os }}
+          path: out/nativelib/sharedLibrary.dest/*
 
   publish:
     name: Publish to Maven and GitHub
@@ -144,6 +186,26 @@ jobs:
           gzip -9 -k linkml-scala-linux-arm64 &
           gzip -9 -k linkml-scala-windows-x86_64.exe &
           wait
+
+      - name: Download Shared Libraries
+        uses: actions/download-artifact@v8
+        with:
+          pattern: linkml-nativelib-*
+          path: nativelib-builds
+
+      # Packaged here rather than on each runner so every archive is built by the same tar/zip.
+      # The layout is the usual include/ + lib/ install prefix, see nativelib/package.sh.
+      - name: Package Shared Libraries
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          package() {
+            nativelib/package.sh "$version" "$2" "nativelib-builds/linkml-nativelib-$1" .
+          }
+          package macos-14          macos-arm64
+          package macos-15-intel    macos-x86_64
+          package ubuntu-22.04      linux-x86_64
+          package ubuntu-22.04-arm  linux-arm64
+          package windows-latest    windows-x86_64
 
       # See: docs/verifying_downloads.md
       - name: Generate Checksums

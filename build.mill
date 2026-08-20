@@ -27,7 +27,7 @@ import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
-import millbuild.{NpmPackage, TsDefsGen}
+import millbuild.{CApiGen, NpmPackage, PyBindingsGen, TsDefsGen}
 
 import java.net.InetSocketAddress
 
@@ -450,6 +450,20 @@ object cli extends Module {
   }
 }
 
+/** Regenerate the C and Python bindings from mill-build/src/Entrypoints.scala and each generator's
+  * `Options` case class. Run after adding a generator or an option.
+  */
+def bindings(args: String*) = Task.Command(exclusive = true) {
+  val root = mill.api.BuildCtx.workspaceRoot
+  def read(path: String): String = os.read(root / os.RelPath(path))
+  os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
+  os.write.over(
+    root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
+      "LinkMlCGenerators.java",
+    CApiGen(read),
+  )
+}
+
 /** LinkML compiled to a native shared library with a C ABI, and the Python bindings that sit on top
   * of it. See docs/python_bindings.md.
   *
@@ -473,6 +487,8 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     */
   override def compileMvnDeps = Seq(
     mvn"org.graalvm.sdk:nativeimage:25.0.1",
+    // WordFactory, for the null pointer the C error out-params are cleared to.
+    mvn"org.graalvm.sdk:word:25.0.1",
   )
 
   def scalacOptions = Seq(
@@ -552,12 +568,16 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
   }
 
   /** Run the Python binding's test suite against a freshly installed library. Requires Python 3.10+
-    * on the PATH.
+    * on the PATH, or `PYTHON` pointing at one.
     */
   def pythonTest(args: String*) = Task.Command(exclusive = true) {
     installPythonLib()()
+    val python = sys.env.getOrElse(
+      "PYTHON",
+      if _root_.scala.util.Properties.isWin then "python" else "python3",
+    )
     os.call(
-      ("python3", "-m", "unittest", "discover", "-s", "python", "-v"),
+      (python, "-m", "unittest", "discover", "-s", "python", "-v"),
       cwd = mill.api.BuildCtx.workspaceRoot,
       stdout = os.Inherit,
       stderr = os.Inherit,

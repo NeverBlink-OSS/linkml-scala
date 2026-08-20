@@ -102,7 +102,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val schemaView = loadWithImports(input)
       val turtle =
-        RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_, enforceOpenShapes = true))
+        RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_, ShaclGenerator.Options(open = true)))
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
           |@prefix sh: <http://www.w3.org/ns/shacl#> .
@@ -487,7 +487,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
         SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/annotations"),
       )
       val turtle =
-        RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_, onlyClassesFromRootSchema = true))
+        RdfUtils.toTurtle(ShaclGenerator(using sv)
+            .generate(_, ShaclGenerator.Options(onlyClassesFromRootSchema = true)))
       turtle should include("linkml:Annotatable a sh:NodeShape")
       turtle should include("linkml:Annotation a sh:NodeShape")
       turtle should not include "linkml:Any a sh:NodeShape"

@@ -37,7 +37,12 @@ object Scala extends StringGenerate[ScalaOptions] {
   override protected[cli] def generate(
       options: ScalaOptions,
   )(using SchemaView): Iterable[(String, String)] =
-    ScalaGenerator().generate(options.`package`, options.generateEmitPrefixes)
+    ScalaGenerator().generate(
+      ScalaGenerator.Options(
+        `package` = options.`package`,
+        generateEmitPrefixes = options.generateEmitPrefixes,
+      ),
+    )
 }
 
 // JSON Schema
@@ -72,9 +77,11 @@ object JsonSchema extends StringGenerate[JsonSchemaOptions] {
       (
         "",
         JsonSchemaGenerator().serialize(
-          options.open,
-          options.treeRootOverride,
-          treeRootInlineTypeOverride = options.treeRootInlineTypeOverride,
+          JsonSchemaGenerator.Options(
+            open = options.open,
+            treeRoot = options.treeRootOverride,
+            treeRootInlineType = options.treeRootInlineTypeOverride,
+          ),
         ),
       ),
     )
@@ -110,7 +117,13 @@ object Shacl extends StreamGenerate[ShaclOptions] {
     if !RdfOutput.write(
         out,
         options.format,
-        ShaclGenerator().generate(_, options.open, options.onlyClassesFromRootSchema),
+        ShaclGenerator().generate(
+          _,
+          ShaclGenerator.Options(
+            open = options.open,
+            onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
+          ),
+        ),
       )
     then err(RdfOutput.unknownFormat(options.format))
 }
@@ -141,7 +154,10 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
     if !RdfOutput.write(
         out,
         options.format,
-        RdfsGenerator().generate(_, options.onlyClassesFromRootSchema),
+        RdfsGenerator().generate(
+          _,
+          RdfsGenerator.Options(onlyClassesFromRootSchema = options.onlyClassesFromRootSchema),
+        ),
       )
     then err(RdfOutput.unknownFormat(options.format))
 }
@@ -207,9 +223,11 @@ object LinkMl extends StringGenerate[LinkMlOptions] {
       (
         "",
         LinkMlGenerator().serialize(
-          skipClassDerivation = options.skipDerivation,
-          pruningMode = options.pruning.resolvedPruningMode,
-          outputFormat = format,
+          LinkMlGenerator.Options(
+            pruningMode = options.pruning.resolvedPruningMode,
+            skipClassDerivation = options.skipDerivation,
+            outputFormat = format,
+          ),
         ),
       ),
     )
@@ -234,7 +252,7 @@ object TableSchema extends StringGenerate[TableSchemaOptions] {
       options: TableSchemaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", TableSchemaGenerator().serialize(options.treeRoot)),
+      ("", TableSchemaGenerator().serialize(TableSchemaGenerator.Options(options.treeRoot))),
     )
 }
 
@@ -260,7 +278,12 @@ object GraphQl extends StringGenerate[GraphQlOptions] {
       options: GraphQlOptions,
   )(using SchemaView): Iterable[(String, String)] =
     Seq(
-      ("", GraphQlGenerator().serialize(options.pruning.resolvedPruningMode)),
+      (
+        "",
+        GraphQlGenerator().serialize(
+          GraphQlGenerator.Options(options.pruning.resolvedPruningMode),
+        ),
+      ),
     )
 }
 
@@ -296,8 +319,10 @@ object ErDiagram extends StringGenerate[ErDiagramOptions] {
       (
         "",
         ErDiagramGenerator().serialize(
-          options.pruning.resolvedPruningMode,
-          options.optionalMarker,
+          ErDiagramGenerator.Options(
+            pruningMode = options.pruning.resolvedPruningMode,
+            optionalMarker = options.optionalMarker,
+          ),
         ),
       ),
     )

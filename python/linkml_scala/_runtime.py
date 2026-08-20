@@ -1,6 +1,10 @@
-"""Loading the shared library, and talking to it.
+"""Loading the shared library, and calling into it.
 
-Everything ctypes-shaped lives here. The public API in ``__init__`` only deals in dicts.
+Everything ctypes-shaped lives here. The public API in ``__init__`` deals in strings and dicts.
+
+The library exports one function per operation. Options travel as one JSON string, which may be NULL
+for defaults, so the common case never builds any JSON at all. Documents come back as plain strings,
+so a multi-megabyte SHACL graph is not escaped into JSON and parsed straight back out.
 """
 
 from __future__ import annotations
@@ -11,7 +15,9 @@ import os
 import sys
 import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
+
+from ._generated import DOCUMENT_FUNCTIONS
 
 __all__ = ["Runtime", "LinkMlError", "NativeLibraryNotFound", "library_path", "runtime"]
 
@@ -21,8 +27,13 @@ _EXPECTED_ABI_VERSION = 1
 _LIB_STEM = "liblinkml_scala"
 
 
+# char*, kept as POINTER(c_char) rather than c_char_p: ctypes turns the latter into bytes and
+# discards the pointer, leaving nothing to hand to linkml_free.
+_Chars = ctypes.POINTER(ctypes.c_char)
+
+
 class LinkMlError(Exception):
-    """The library rejected a request, or failed while handling it."""
+    """The library rejected a call, or failed while handling it."""
 
 
 class NativeLibraryNotFound(LinkMlError):
@@ -33,7 +44,6 @@ def _library_filename() -> str:
     if sys.platform == "darwin":
         return f"{_LIB_STEM}.dylib"
     if sys.platform == "win32":
-        # native-image keeps the lib prefix on Windows too.
         return f"{_LIB_STEM}.dll"
     return f"{_LIB_STEM}.so"
 
@@ -52,7 +62,7 @@ def _candidates() -> list[Path]:
     # Installed by `./mill nativelib.installPythonLib`.
     found.append(Path(__file__).parent / "_lib" / filename)
 
-    # A source checkout that has run `./mill nativelib.sharedLibrary` but not installed it.
+    # A source checkout that built the library but did not install it.
     repo_root = Path(__file__).resolve().parents[2]
     found.append(repo_root / "out" / "nativelib" / "sharedLibrary.dest" / filename)
 
@@ -75,12 +85,26 @@ def library_path() -> Path:
     )
 
 
+def _options(options: Mapping[str, Any] | None) -> bytes | None:
+    """Encode an options mapping, dropping unset values.
+
+    Returns None, which reaches C as NULL, when there is nothing to say. The library then applies
+    its own defaults and no JSON is built or parsed on either side.
+    """
+    if not options:
+        return None
+    present = {key: value for key, value in options.items() if value is not None}
+    if not present:
+        return None
+    return json.dumps(present).encode("utf-8")
+
+
 class Runtime:
     """One GraalVM isolate, and the calls into it.
 
-    An isolate is a self-contained heap: the library can hold several, but one is all we need, and
-    schema handles are scoped to it. Threads have to attach to an isolate before calling in, which
-    happens on demand and is remembered per thread.
+    An isolate is a self-contained heap. Schema handles only mean anything within the isolate that
+    made them. Threads have to attach before calling in, which happens on demand and is remembered
+    per thread.
 
     Thread-safe. Prefer the process-wide instance from :func:`runtime` over building your own.
     """
@@ -100,7 +124,7 @@ class Runtime:
         self._threads = threading.local()
         self._threads.handle = main_thread
 
-        version = self.call({"op": "version"})["abiVersion"]
+        version = self._lib.linkml_abi_version(self._thread())
         if version != _EXPECTED_ABI_VERSION:
             raise LinkMlError(
                 f"{self._path} speaks ABI version {version}, but this package expects "
@@ -112,24 +136,108 @@ class Runtime:
         """The library file backing this runtime."""
         return self._path
 
-    def call(self, request: dict[str, Any]) -> dict[str, Any]:
-        """Send one request and return its response, minus the ``ok`` flag.
+    # Loading
 
-        :raises LinkMlError: if the library reports a failure.
+    def load_file(
+        self, path: str, options: Mapping[str, Any] | None = None
+    ) -> tuple[int, dict[str, Any]]:
+        """Load a schema from the file system.
+
+        :return: the schema handle, 0 if the schema had fatal problems, and the validation report.
         """
-        payload = json.dumps(request).encode("utf-8")
-        pointer = self._lib.linkml_call(self._thread(), payload)
+        report, error = _Chars(), _Chars()
+        handle = self._lib.linkml_load_file(
+            self._thread(),
+            path.encode("utf-8"),
+            _options(options),
+            ctypes.byref(report),
+            ctypes.byref(error),
+        )
+        return self._loaded(handle, report, error)
+
+    def load_string(
+        self,
+        path: str | None,
+        schema: str | None,
+        imports: Mapping[str, str] | None = None,
+        options: Mapping[str, Any] | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        """Load a schema from memory, resolving imports against ``imports``.
+
+        :param path: the root schema's own key in ``imports``, or None to load ``schema`` directly.
+        :param schema: the root schema as YAML. Ignored when ``path`` is given.
+        :return: the schema handle, 0 if the schema had fatal problems, and the validation report.
+        """
+        # The map goes over as two parallel arrays rather than JSON: it holds whole schemas, and
+        # escaping megabytes of YAML only to parse it back out would undo the point of the split.
+        entries = dict(imports or {})
+        count = len(entries)
+        names = (ctypes.c_char_p * count)(*(key.encode("utf-8") for key in entries))
+        bodies = (ctypes.c_char_p * count)(*(value.encode("utf-8") for value in entries.values()))
+
+        report, error = _Chars(), _Chars()
+        handle = self._lib.linkml_load_string(
+            self._thread(),
+            None if path is None else path.encode("utf-8"),
+            None if schema is None else schema.encode("utf-8"),
+            names if count else None,
+            bodies if count else None,
+            count,
+            _options(options),
+            ctypes.byref(report),
+            ctypes.byref(error),
+        )
+        return self._loaded(handle, report, error)
+
+    def close(self, handle: int) -> None:
+        """Release a schema handle. Releasing one that is already gone does nothing."""
+        self._lib.linkml_close(self._thread(), handle)
+
+    # Generating
+
+    def document(
+        self, function: str, handle: int, options: Mapping[str, Any] | None = None
+    ) -> str:
+        """Call a generator and return its document.
+
+        :param function: the exported name, e.g. ``linkml_shacl``.
+        :raises LinkMlError: if the library reported a failure.
+        """
+        error = _Chars()
+        result = getattr(self._lib, function)(
+            self._thread(), handle, _options(options), ctypes.byref(error)
+        )
+        # Take both, so neither leaks whichever way the call went.
+        message = self._take(error)
+        text = self._take(result)
+        if text is None:
+            raise LinkMlError(message or f"{function} failed without saying why")
+        return text
+
+    def json_document(
+        self, function: str, handle: int, options: Mapping[str, Any] | None = None
+    ) -> Any:
+        """Call a generator whose result is JSON, and return it parsed."""
+        return json.loads(self.document(function, handle, options))
+
+    # Internals
+
+    def _loaded(self, handle: int, report: Any, error: Any) -> tuple[int, dict[str, Any]]:
+        message = self._take(error)
+        report_json = self._take(report)
+        if message is not None:
+            raise LinkMlError(message)
+        return handle, json.loads(report_json) if report_json else {}
+
+    def _take(self, pointer: Any) -> str | None:
+        """Read a string the library allocated, and release it. None if the pointer was NULL."""
         if not pointer:
-            raise LinkMlError("linkml_call returned NULL")
+            return None
         try:
             raw = ctypes.cast(pointer, ctypes.c_char_p).value
         finally:
             self._lib.linkml_free(self._thread(), pointer)
-
-        response = json.loads(raw.decode("utf-8"))
-        if not response.pop("ok", False):
-            raise LinkMlError(response.get("error", "the native library reported no reason"))
-        return response
+        return None if raw is None else raw.decode("utf-8")
 
     def _thread(self) -> ctypes.c_void_p:
         """This thread's isolate thread, attaching it to the isolate on first use."""
@@ -144,20 +252,56 @@ class Runtime:
 
     def _declare_signatures(self) -> None:
         void_p = ctypes.c_void_p
-        # Returned as POINTER(c_char) rather than c_char_p: ctypes would turn the latter into bytes
-        # and throw the pointer away, leaving us nothing to hand to linkml_free.
-        char_p = ctypes.POINTER(ctypes.c_char)
+        handle = ctypes.c_longlong
+        chars_out = ctypes.POINTER(_Chars)
+        strings = ctypes.POINTER(ctypes.c_char_p)
 
-        self._lib.graal_create_isolate.argtypes = [void_p, ctypes.POINTER(void_p), ctypes.POINTER(void_p)]
+        self._lib.graal_create_isolate.argtypes = [
+            void_p,
+            ctypes.POINTER(void_p),
+            ctypes.POINTER(void_p),
+        ]
         self._lib.graal_create_isolate.restype = ctypes.c_int
 
         self._lib.graal_attach_thread.argtypes = [void_p, ctypes.POINTER(void_p)]
         self._lib.graal_attach_thread.restype = ctypes.c_int
 
-        self._lib.linkml_call.argtypes = [void_p, ctypes.c_char_p]
-        self._lib.linkml_call.restype = char_p
+        self._lib.linkml_abi_version.argtypes = [void_p]
+        self._lib.linkml_abi_version.restype = ctypes.c_int
 
-        self._lib.linkml_free.argtypes = [void_p, char_p]
+        self._lib.linkml_load_file.argtypes = [
+            void_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            chars_out,
+            chars_out,
+        ]
+        self._lib.linkml_load_file.restype = handle
+
+        self._lib.linkml_load_string.argtypes = [
+            void_p,
+            ctypes.c_char_p,
+            ctypes.c_char_p,
+            strings,
+            strings,
+            ctypes.c_int,
+            ctypes.c_char_p,
+            chars_out,
+            chars_out,
+        ]
+        self._lib.linkml_load_string.restype = handle
+
+        self._lib.linkml_close.argtypes = [void_p, handle]
+        self._lib.linkml_close.restype = None
+
+        # linkml_lint has the same shape but is not a generator, so it is not in the generated
+        # list and gets declared alongside it.
+        for name in (*DOCUMENT_FUNCTIONS, "linkml_lint"):
+            function = getattr(self._lib, name)
+            function.argtypes = [void_p, handle, ctypes.c_char_p, chars_out]
+            function.restype = _Chars
+
+        self._lib.linkml_free.argtypes = [void_p, _Chars]
         self._lib.linkml_free.restype = None
 
 

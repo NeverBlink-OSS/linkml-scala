@@ -189,7 +189,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
     "include unused linkml:types elements if requested" in {
       given SchemaView = ModelCatalogue.reference.model
 
-      val result = GraphQlGenerator().serialize(pruningMode = skip)
+      val result = GraphQlGenerator().serialize(GraphQlGenerator.Options(skip))
       Seq(
         "scalar uri",
         "scalar uriorcurie",
@@ -202,7 +202,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
     "prune in tree_root mode if requested" in {
       given SchemaView = ModelCatalogue.pruning.model
 
-      val result = GraphQlGenerator().serialize(pruningMode = PruningMode.treeRoot(None))
+      val result = GraphQlGenerator().serialize(GraphQlGenerator.Options(PruningMode.treeRoot(None)))
       Seq(
         "type SomeClass",
         "interface SomeOtherClass",
@@ -223,7 +223,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.pruning.model
 
       val result =
-        GraphQlGenerator().serialize(pruningMode = PruningMode.treeRoot(Some("NotTreeRootClass")))
+        GraphQlGenerator().serialize(GraphQlGenerator.Options(PruningMode.treeRoot(Some("NotTreeRootClass"))))
       Seq(
         "type NotTreeRootClass",
       ).foreach { snippet =>
