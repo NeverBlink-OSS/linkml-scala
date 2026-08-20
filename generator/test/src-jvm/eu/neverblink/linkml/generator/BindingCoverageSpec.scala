@@ -52,6 +52,14 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     block.split(',').map(_.trim).filter(_.nonEmpty).toSet
   }
 
+  /** The Python method names on `linkml_scala.Schema`, read from the generated bindings.
+    */
+  private def pythonMethods(root: os.Path): Seq[String] =
+    "\\n    def (\\w+)\\(".r
+      .findAllMatchIn(os.read(root / "python" / "linkml_scala" / "_generated.py"))
+      .map(_.group(1))
+      .toSeq
+
   /** The generator ids offered by the playground's target list. */
   private def playgroundTargets(root: os.Path): Set[String] =
     "id: \"(\\w+)\"".r
@@ -141,15 +149,17 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     "be documented in the Python bindings guide" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val docs = os.read(root / "docs" / "python_bindings.md")
-      // The doc lists the Python method names, so check those rather than the Scala class names.
-      val pythonNames = "\\n    def (\\w+)\\(".r
-        .findAllMatchIn(os.read(root / "python" / "linkml_scala" / "_generated.py"))
-        .map(_.group(1))
-        .toSeq
-      val missing = pythonNames.filterNot(name => docs.contains(s"schema.$name("))
+      val missing = pythonMethods(root).filterNot(name => docs.contains(s"schema.$name("))
       withClue("add it to the Generating section of docs/python_bindings.md: ")(
         missing shouldBe empty,
       )
+    }
+
+    "be documented in the PyPI package's README" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val readme = os.read(root / "python" / "README.md")
+      val missing = pythonMethods(root).filterNot(name => readme.contains(s"$name()"))
+      withClue("add it to the generator list in python/README.md: ")(missing shouldBe empty)
     }
   }
 }

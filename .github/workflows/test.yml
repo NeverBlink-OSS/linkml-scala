@@ -153,9 +153,6 @@ jobs:
           "$PYTHON" -m pip install --quiet build
           ./mill --no-server nativelib.pythonWheelTest
 
-      # The wheel Linux users actually get: linked inside manylinux2014 so it runs on far older
-      # distributions than this runner. Exercised here so that a release is not the first time it
-      # runs. See nativelib/build-shared.sh.
       - name: Build the manylinux wheel and test the installed package
         env:
           PYTHON: ${{ steps.python-oldest.outputs.python-path }}
