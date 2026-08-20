@@ -40,7 +40,42 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       .sorted
   }
 
+  /** The commands the CLI actually registers. A `generate` command that exists but is not in this
+    * list cannot be run, so the list is what matters rather than the file defining it.
+    */
+  private def cliCommands(root: os.Path): Set[String] = {
+    val app = os.read(root / "cli" / "src" / "eu" / "neverblink" / "linkml" / "cli" / "App.scala")
+    val block = "override def commands: Seq\\[Command\\[\\?\\]\\] = Seq\\(([^)]*)\\)".r
+      .findFirstMatchIn(app)
+      .map(_.group(1))
+      .getOrElse(fail("could not find the command list in App.scala"))
+    block.split(',').map(_.trim).filter(_.nonEmpty).toSet
+  }
+
+  /** The generator ids offered by the playground's target list. */
+  private def playgroundTargets(root: os.Path): Set[String] =
+    "id: \"(\\w+)\"".r
+      .findAllMatchIn(os.read(root / "ui" / "targets.ts"))
+      .map(_.group(1))
+      .toSet
+
   "every generator" should {
+    "be registered as a CLI command" in {
+      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val registered = cliCommands(root)
+      // The CLI names its commands after the generator, minus the suffix: ShaclGenerator -> Shacl.
+      val missing = generators(root).map(_.stripSuffix("Generator")).filterNot(registered)
+      withClue("add a Generate command and register it in App.scala: ")(missing shouldBe empty)
+    }
+
+    "be offered by the playground" in {
+      val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
+      val targets = playgroundTargets(root)
+      // The playground drives the JS API, so its target ids are the facade's method names.
+      val missing = jsMethods(root).filterNot(targets)
+      withClue("add a target to ui/targets.ts, then run ./mill uiCheck: ")(missing shouldBe empty)
+    }
+
     "be listed in the shared entry-point table" in {
       val root = repoRoot.getOrElse(cancel("LINKML_REPO_ROOT is not set"))
       val table = os.read(root / "mill-build" / "src" / "Entrypoints.scala")
