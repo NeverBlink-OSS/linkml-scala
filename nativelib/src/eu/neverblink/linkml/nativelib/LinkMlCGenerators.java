@@ -11,9 +11,9 @@ import org.graalvm.nativeimage.c.type.CConst;
 /**
  * The generator entry points of the C ABI, one per generator.
  *
- * <p>All of them share the same shape: a schema handle, an options JSON that may be NULL for
+ * <p>All of them have the same shape: a schema handle, an options JSON that may be NULL for
  * defaults, and an error out-param. They return the generated document, or NULL with {@code
- * *error} set. Release whatever comes back with {@code linkml_free}.
+ * *error} set. Release returned strings with {@code linkml_free}.
  *
  * <p>See {@link LinkMlCApi} for loading, linting and the lifecycle.
  */
