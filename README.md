@@ -5,6 +5,7 @@
 [![GitHub stars](https://img.shields.io/github/stars/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=stars&color=yellow)](https://github.com/NeverBlink-OSS/linkml-scala/stargazers)
 [![Maven Central](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3?style=flat-square&logo=apachemaven&logoColor=white&label=maven%20central)](https://central.sonatype.com/namespace/eu.neverblink.linkml)
 [![npm](https://img.shields.io/npm/v/@neverblink/linkml?style=flat-square&logo=npm&logoColor=white&label=npm)](https://www.npmjs.com/package/@neverblink/linkml)
+[![PyPI](https://img.shields.io/pypi/v/neverblink-linkml?style=flat-square&logo=pypi&logoColor=white&label=pypi)](https://pypi.org/project/neverblink-linkml/)
 [![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=CLI%20release&color=blue)](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest)
 
 [![Platforms](https://img.shields.io/badge/platforms-JVM_·_JS_·_native-4B8BBE?style=flat-square)](#-quick-start-installation)
@@ -48,7 +49,7 @@ For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **
 
 It starts up immediately and runs fast, even on extra-large LinkML models. **[See the installation instructions.](#cli-tool-installation)**
 
-We also have experimental [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python, C, C++, or Rust.
+We also have experimental [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
 
 ### 🛡️ Consistent, reliable, and with great error reporting
 
@@ -183,6 +184,24 @@ import map, immune to cyclic imports involving the root), then run `jsonSchema`,
 `rdfs`, `linkml`, `scala`, `tableSchema`, `graphQl`, `erDiagram`, or `lint` against the returned
 handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
+
+## Python library (experimental)
+
+Install it:
+
+```shell
+pip install neverblink-linkml
+```
+
+```python
+import linkml_scala
+
+with linkml_scala.load_file("model.yaml") as schema:
+    print(schema.json_schema())
+    print(schema.shacl())
+```
+
+See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and for the C ABI for C, C++ and Rust.
 
 ## JVM library
 

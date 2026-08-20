@@ -114,6 +114,23 @@ jobs:
             ./mill nativelib.pythonTest
           fi
 
+      - name: Pick the Shared Library This Platform Ships
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            echo "LIB_MODULE=nativelib.linux.glibc" >> "$GITHUB_ENV"
+            echo "LIB_DEST=out/nativelib/linux/glibc/sharedLibrary.dest" >> "$GITHUB_ENV"
+            echo "WHEEL_DEST=out/nativelib/linux/glibc/pythonWheel.dest/dist" >> "$GITHUB_ENV"
+          else
+            echo "LIB_MODULE=nativelib" >> "$GITHUB_ENV"
+            echo "LIB_DEST=out/nativelib/sharedLibrary.dest" >> "$GITHUB_ENV"
+            echo "WHEEL_DEST=out/nativelib/pythonWheel.dest/dist" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build the Shipped Shared Library (Linux only)
+        if: runner.os == 'Linux'
+        run: ./mill nativelib.linux.glibc.sharedLibrary
+
       # The archive is what people actually download, so build it here and check a C program can
       # compile against it and run. This is the only place the Windows import library and the
       # macOS dylib get tested.
@@ -128,7 +145,7 @@ jobs:
           ubuntu-22.04-arm) platform=linux-arm64 ;;
           windows-latest) platform=windows-x86_64 ;;
           esac
-          nativelib/package.sh "$version" "$platform" out/nativelib/sharedLibrary.dest dist
+          nativelib/package.sh "$version" "$platform" "$LIB_DEST" dist
           if [ "$RUNNER_OS" == "Windows" ]; then
             unzip -q "dist/linkml-scala-lib-$platform.zip" -d dist
           else
@@ -140,7 +157,52 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: linkml-nativelib-${{ matrix.os }}
-          path: out/nativelib/sharedLibrary.dest/*
+          path: ${{ env.LIB_DEST }}/*
+
+      - name: Build the Python Wheel and Test the Installed Package
+        shell: bash
+        env:
+          PYTHON: python # so `pip install build` and Mill use the same interpreter on every OS
+        run: |
+          python -m pip install --quiet build
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./mill.bat "$LIB_MODULE.pythonWheelTest"
+          else
+            ./mill "$LIB_MODULE.pythonWheelTest"
+          fi
+
+      - name: Upload Python Wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-wheel-${{ matrix.os }}
+          path: ${{ env.WHEEL_DEST }}/*.whl
+
+      # musl is cross-compiled on Linux
+      - name: Build the musl Wheel (Linux only)
+        if: runner.os == 'Linux'
+        env:
+          PYTHON: python
+        run: |
+          sudo nativelib/install-musl-toolchain.sh
+          ./mill nativelib.linux.musl.pythonWheel
+
+      # we must run musl binary in a musl container
+      - name: Test the musl Wheel in Alpine (Linux only)
+        if: runner.os == 'Linux'
+        run: |
+          wheel="$(ls out/nativelib/linux/musl/pythonWheel.dest/dist/*.whl)"
+          docker run --rm -v "$PWD:/work:ro" -e LINKML_SCALA_REPO=/work python:3.12-alpine sh -c "
+            set -e
+            pip install --quiet '/work/$wheel'
+            cp /work/python/test_bindings.py /tmp/
+            cd /tmp && python -m unittest test_bindings -v"
+
+      - name: Upload musl Python Wheel
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-wheel-musl-${{ matrix.os }}
+          path: out/nativelib/linux/musl/pythonWheel.dest/dist/*.whl
 
   publish:
     name: Publish to Maven and GitHub
@@ -236,6 +298,30 @@ jobs:
           MILL_PGP_SECRET_BASE64: ${{ secrets.MILL_PGP_SECRET_BASE64 }}
           MILL_PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
         run: ./mill mill.javalib.SonatypeCentralPublishModule/
+
+  pypi-publish:
+    name: Publish Python wheels to PyPI
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write # Required for PyPI trusted publishing (OIDC)
+    steps:
+      - name: Download Wheels
+        uses: actions/download-artifact@v8
+        with:
+          pattern: linkml-wheel-*
+          path: wheels
+          merge-multiple: true
+
+      - name: List Wheels
+        run: ls -l wheels
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: wheels
+          skip-existing: true
 
   npm-publish:
     # Independent of the JVM/native jobs: publishes the Scala.js library to npm.

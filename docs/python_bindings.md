@@ -4,8 +4,25 @@ LinkML-Scala compiled to a native shared library, called from Python through `ct
 subprocess per schema, and no dependency on the `linkml` Python package.
 
 > [!WARNING]
-> This is an experiment. Nothing here is published to PyPI yet and the API is not stable. 
+> This is an experiment.
 > Feedback is welcome in [Discussions](https://github.com/NeverBlink-OSS/linkml-scala/discussions).
+
+## Installation
+
+```shell
+pip install neverblink-linkml
+```
+
+The wheels on [PyPI](https://pypi.org/project/neverblink-linkml/) bundle the native library, so there is nothing else to install – no JVM, no compiler.
+
+| OS            | Architectures        |
+|---------------|----------------------|
+| Linux (glibc) | x86-64, ARM64        |
+| Linux (musl)  | x86-64, ARM64        |
+| macOS         | Apple silicon, Intel |
+| Windows       | x86-64               |
+
+Python 3.10 or newer, 64-bit only.
 
 ## Usage
 
@@ -20,65 +37,6 @@ with linkml_scala.load_file("model.yaml") as schema:
 ```
 
 A schema is parsed once and reused across generators, the same way the [JavaScript bindings](../generator/npm/README.md) work. All eight generators are available, plus the schema validator.
-
-## Building it
-
-You need JDK 17+ (Mill downloads GraalVM itself) and Python 3.10 or newer. Then:
-
-```shell
-./mill nativelib.installPythonLib
-```
-
-That runs `native-image --shared` over the `nativelib` module and copies the result into
-`python/linkml_scala/_lib/`, where the Python package looks for it. Takes about half a minute on a
-recent laptop, and produces a 22 MB `liblinkml_scala.so`.
-
-To use the package, put `python/` on your path:
-
-```shell
-PYTHONPATH=python python3 -c "import linkml_scala; print(linkml_scala.library_path())"
-```
-
-Run the tests with:
-
-```shell
-./mill nativelib.pythonTest
-```
-
-If you keep the library somewhere else, point `LINKML_SCALA_LIB` at the file (or at the directory
-holding it).
-
-Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out
-as a normal install prefix – `include/`, `lib/` and a pkg-config file – so C, C++ and Rust callers can
-use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked example in C.
-
-## How it works
-
-We export one function per operation:
-
-```c
-char* linkml_shacl      (graal_isolatethread_t*, long long handle, const char* opts, char** err);
-char* linkml_json_schema(graal_isolatethread_t*, long long handle, const char* opts, char** err);
-/* rdfs, linkml, table_schema, graphql, er_diagram, scala, lint – same shape */
-
-long long linkml_load_file(graal_isolatethread_t*, const char* path,
-                           const char* opts, char** report, char** err);
-void      linkml_close    (graal_isolatethread_t*, long long handle);
-void      linkml_free     (graal_isolatethread_t*, char*);
-```
-
-Conventions:
-
-**Options are one JSON string, and may be NULL.** Options are the part that changes as generators grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
-
-```c
-char *shacl = linkml_shacl(thread, handle, NULL, &err);               /* defaults */
-char *open  = linkml_shacl(thread, handle, "{\"open\":true}", &err);  /* one option */
-```
-
-**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.
-
-A loaded schema is an integer handle.
 
 ## The API
 
@@ -150,10 +108,83 @@ Here we measured only the time to generate the output, not the time to load the 
 | `cgmes-dynamics` | 812 KB |        2,039 ms |      20.8 ms | **98×** |
 | `cgmes-core`     | 196 KB |        1,196 ms |      15.0 ms | **80×** |
 
+## How it works
+
+We export one function per operation:
+
+```c
+char* linkml_shacl      (graal_isolatethread_t*, long long handle, const char* opts, char** err);
+char* linkml_json_schema(graal_isolatethread_t*, long long handle, const char* opts, char** err);
+/* rdfs, linkml, table_schema, graphql, er_diagram, scala, lint – same shape */
+
+long long linkml_load_file(graal_isolatethread_t*, const char* path,
+                           const char* opts, char** report, char** err);
+void      linkml_close    (graal_isolatethread_t*, long long handle);
+void      linkml_free     (graal_isolatethread_t*, char*);
+```
+
+Conventions:
+
+**Options are one JSON string, and may be NULL.** Options are the part that changes as generators grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
+
+```c
+char *shacl = linkml_shacl(thread, handle, NULL, &err);               /* defaults */
+char *open  = linkml_shacl(thread, handle, "{\"open\":true}", &err);  /* one option */
+```
+
+**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.
+
+A loaded schema is an integer handle.
+
+## Building it yourself
+
+You need JDK 17+ (Mill downloads GraalVM itself) and Python 3.10 or newer. Then:
+
+```shell
+./mill nativelib.installPythonLib
+```
+
+That runs `native-image --shared` over the `nativelib` module and copies the result into
+`python/linkml_scala/_lib/`, where the Python package looks for it. Takes about half a minute on a
+recent laptop, and produces a 22 MB `liblinkml_scala.so`.
+
+To use the package, put `python/` on your path:
+
+```shell
+PYTHONPATH=python python3 -c "import linkml_scala; print(linkml_scala.library_path())"
+```
+
+Run the tests with:
+
+```shell
+./mill nativelib.pythonTest
+```
+
+If you keep the library somewhere else, point `LINKML_SCALA_LIB` at the file (or at the directory
+holding it).
+
+### Building a wheel
+
+```shell
+pip install build
+./mill nativelib.pythonWheel      # writes out/nativelib/pythonWheel.dest/dist/*.whl
+./mill nativelib.pythonWheelTest  # installs it in a throwaway virtualenv and runs the tests there
+```
+
+For Linux, we support both glibc and musl. The glibc build is done inside a manylinux2014 container, so it can be used on any Linux distribution. The musl build is done on the host, but requires a musl toolchain to be installed first. This can be done with these scripts:
+
+```shell
+./mill nativelib.linux.glibc.pythonWheelTest  # glibc, built inside manylinux2014
+sudo nativelib/install-musl-toolchain.sh      # once, for the musl build
+./mill nativelib.linux.musl.pythonWheel       # musl, for Alpine
+```
+
+Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out
+as a normal install prefix – `include/`, `lib/` and a pkg-config file – so C, C++ and Rust callers can
+use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked example in C.
+
 ## TODO
 
-1. `pyproject.toml` and a wheel per platform, with the library bundled as package data. The release
-   workflow already builds and attaches the library itself; only the pip side is missing.
-2. Type stubs, or type hints good enough to not need them. The reports are plain dicts today; a
+1. Type stubs, or type hints good enough to not need them. The reports are plain dicts today; a
    `TypedDict` generated from `validation-report.yaml` would be better, and would help the
    TypeScript bindings too (see [#127](https://github.com/NeverBlink-OSS/linkml-scala/issues/127)).

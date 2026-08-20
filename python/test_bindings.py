@@ -3,6 +3,10 @@
 Run them with ``./mill nativelib.pythonTest``, which rebuilds the shared library first. To run them
 against a library you already have, ``python -m unittest discover -s python``.
 
+``./mill nativelib.pythonWheelTest`` runs this same file against an installed wheel, from a copy in
+a temporary directory so that the sources here cannot shadow the package under test. That is what
+``LINKML_SCALA_REPO`` is for: from there, the fixtures are no longer two directories up.
+
 These check the binding, not the generators: that every call reaches the library, comes back with
 plausible output, and that failures surface as exceptions rather than crashes. The generators
 themselves are covered by the Scala test suite.
@@ -11,6 +15,7 @@ themselves are covered by the Scala test suite.
 from __future__ import annotations
 
 import json
+import os
 import textwrap
 import threading
 import unittest
@@ -19,7 +24,7 @@ from pathlib import Path
 import linkml_scala
 from linkml_scala import LinkMlError, SchemaLoadError
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(os.environ.get("LINKML_SCALA_REPO") or Path(__file__).resolve().parents[1])
 
 
 def schema(name: str, body: str) -> str:

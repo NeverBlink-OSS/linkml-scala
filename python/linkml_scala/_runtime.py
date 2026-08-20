@@ -59,12 +59,13 @@ def _candidates() -> list[Path]:
         path = Path(explicit)
         found.append(path / filename if path.is_dir() else path)
 
-    # Installed by `./mill nativelib.installPythonLib`.
+    # Shipped inside the wheel, or put there by `./mill nativelib.installPythonLib`.
     found.append(Path(__file__).parent / "_lib" / filename)
 
     # A source checkout that built the library but did not install it.
-    repo_root = Path(__file__).resolve().parents[2]
-    found.append(repo_root / "out" / "nativelib" / "sharedLibrary.dest" / filename)
+    built = Path(__file__).resolve().parents[2] / "out" / "nativelib" / "sharedLibrary.dest"
+    if built.is_dir():
+        found.append(built / filename)
 
     return found
 
@@ -81,7 +82,8 @@ def library_path() -> Path:
     listed = "\n  ".join(str(candidate) for candidate in candidates)
     raise NativeLibraryNotFound(
         f"Could not find {_library_filename()}. Looked in:\n  {listed}\n"
-        "Build it with `./mill nativelib.installPythonLib`, or point LINKML_SCALA_LIB at it."
+        "Install a wheel with `pip install neverblink-linkml`, build the library with "
+        "`./mill nativelib.installPythonLib`, or point LINKML_SCALA_LIB at one you already have."
     )
 
 
