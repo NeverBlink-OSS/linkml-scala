@@ -182,9 +182,3 @@ sudo nativelib/install-musl-toolchain.sh      # once, for the musl build
 Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out
 as a normal install prefix – `include/`, `lib/` and a pkg-config file – so C, C++ and Rust callers can
 use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked example in C.
-
-## TODO
-
-1. Type stubs, or type hints good enough to not need them. The reports are plain dicts today; a
-   `TypedDict` generated from `validation-report.yaml` would be better, and would help the
-   TypeScript bindings too (see [#127](https://github.com/NeverBlink-OSS/linkml-scala/issues/127)).
