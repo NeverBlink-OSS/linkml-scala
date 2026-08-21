@@ -48,9 +48,9 @@ MINGW* | MSYS* | CYGWIN* | Windows_NT)
     exit 1
   fi
   # _CRT_SECURE_NO_WARNINGS: MSVC deprecates sscanf, which smoke.c uses to read the handle back.
-  # The // prefixes stop MSYS bash rewriting /flags into Windows paths.
-  cl //nologo //D_CRT_SECURE_NO_WARNINGS "//I${prefix}/include" "${here}/smoke.c" \
-    "//Fe:${work}/smoke.exe" //link "${import_libs[0]}"
+  cl -nologo -D_CRT_SECURE_NO_WARNINGS "-I$(cygpath -m "${prefix}/include")" \
+    "$(cygpath -m "${here}/smoke.c")" "-Fe:$(cygpath -m "${work}/smoke.exe")" \
+    -link "$(cygpath -m "${import_libs[0]}")"
   # The loader finds a DLL through PATH.
   PATH="${prefix}/bin:${PATH}" "${work}/smoke.exe"
   ;;
