@@ -177,7 +177,7 @@ import map, immune to cyclic imports involving the root), then run `jsonSchema`,
 handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
-## Python library (experimental)
+## Python library
 
 Install it:
 
