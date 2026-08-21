@@ -179,8 +179,8 @@ jobs:
           name: linkml-wheel-${{ matrix.os }}
           path: ${{ env.WHEEL_DEST }}/*.whl
 
-      # musl is cross-compiled on Linux, x86-64 only: GraalVM ships the static JDK libraries musl
-      # needs for x64 alone, and native-image looks for a compiler named x86_64-linux-musl-gcc.
+      # musl is cross-compiled on Linux, x86-64 only.
+      # native-image does not support ARM64 musl yet.
       - name: Build the musl Wheel (x86-64 Linux only)
         if: matrix.os == 'ubuntu-22.04'
         env:
