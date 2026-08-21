@@ -77,8 +77,6 @@ glibc)
   ;;
 
 musl)
-  # GraalVM ships the static JDK libraries a musl link needs for x64 only (lib/static/linux-amd64/
-  # musl), and native-image looks for a compiler called x86_64-linux-musl-gcc whatever it runs on.
   if [ "$arch" != "x86_64" ]; then
     echo "error: GraalVM cannot build against musl on ${arch}, only on x86_64" >&2
     exit 1
