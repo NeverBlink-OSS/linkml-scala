@@ -103,7 +103,13 @@ object RdfUtils {
   }
 }
 
-/** A fast replacement for java.io.BufferedOutputStream. Not thread-safe.
+/** A high-performance, non-thread-safe alternative to `java.io.BufferedOutputStream`.
+  *
+  * This class improves throughput by eliminating synchronization overhead and using a fixed-size
+  * buffer to avoid reallocation.
+  *
+  * @param out
+  *   the underlying output stream to write to.
   */
 class FastBufferedOutputStream(out: OutputStream) extends FilterOutputStream(out) {
   private inline val capacity = 32768
