@@ -147,7 +147,9 @@ jobs:
           esac
           nativelib/package.sh "$version" "$platform" "$LIB_DEST" dist
           if [ "$RUNNER_OS" == "Windows" ]; then
-            unzip -q "dist/linkml-scala-lib-$platform.zip" -d dist
+            # Git Bash ships neither zip nor unzip. Windows' own tar is bsdtar, which reads zip;
+            # the GNU tar Git Bash puts on PATH does not, hence the full path.
+            /c/Windows/System32/tar.exe -xf "dist/linkml-scala-lib-$platform.zip" -C dist
           else
             tar -xzf "dist/linkml-scala-lib-$platform.tar.gz" -C dist
           fi

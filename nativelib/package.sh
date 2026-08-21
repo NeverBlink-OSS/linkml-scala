@@ -128,7 +128,25 @@ windows-*)
   # zip adds to an existing archive rather than replacing it, so a rerun would otherwise keep
   # entries from the previous one.
   rm -f "$archive"
-  (cd "$staging" && zip -q -r -9 "$archive" "$prefix_name")
+  if command -v zip >/dev/null 2>&1; then
+    (cd "$staging" && zip -q -r -9 "$archive" "$prefix_name")
+  else
+    # Git Bash, which is where this runs on Windows, ships no zip. Windows itself has bsdtar as
+    # System32\tar.exe, and that does write zip, unlike the GNU tar Git Bash puts on PATH -- so
+    # name it by path rather than trusting which of the two comes first.
+    system_tar=""
+    for candidate in "${SYSTEMROOT:-}/System32/tar.exe" /c/Windows/System32/tar.exe; do
+      if [ -x "$candidate" ]; then
+        system_tar="$candidate"
+        break
+      fi
+    done
+    if [ -z "$system_tar" ]; then
+      echo "error: need zip, or the bsdtar Windows ships as System32\\tar.exe, to write ${archive}" >&2
+      exit 1
+    fi
+    (cd "$staging" && "$system_tar" --format=zip -cf "$archive" "$prefix_name")
+  fi
   ;;
 *)
   archive="${out_dir}/linkml-scala-lib-${platform}.tar.gz"

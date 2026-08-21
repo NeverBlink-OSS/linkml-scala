@@ -1,0 +1,87 @@
+name: Windows shared library
+
+# The Windows half of the shared library: the DLL and its import library, the zip archive, and the
+# wheel. None of it is covered by the Linux nativelib job in test.yml, and until this existed the
+# first time any of it ran was on a release tag -- where a missing `zip` in Git Bash broke the
+# v0.14.0 release.
+#
+# Only runs when the native build itself changes: it costs a full native-image build, and the Scala
+# sources that go into the library are already tested on Linux.
+#
+# The two path lists have to stay in step; Actions does not support YAML anchors.
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'nativelib/**'
+      - 'python/**'
+      - 'build.mill'
+      - 'mill-build/**'
+      - '.github/workflows/nativelib-windows.yml'
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'nativelib/**'
+      - 'python/**'
+      - 'build.mill'
+      - 'mill-build/**'
+      - '.github/workflows/nativelib-windows.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  nativelib-windows:
+    name: Shared library and wheel on Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Matters most here: the native-image build pulls a ~360 MB GraalVM tarball and unpacks it
+      # to ~1 GB, and both copies would otherwise land in the cache. See checks.yml.
+      - name: Relocate the coursier archive cache
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      # The same JDK and Python as the release build, so this job fails where a release would.
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1 # native-image needs cl.exe here, and so does the C smoke test
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Build the shared library and test the Python bindings
+        run: ./mill.bat nativelib.pythonTest
+
+      # Builds the release archive, then compiles and runs a C program against the unpacked copy.
+      # This is the only place the Windows zip, the import library and the DLL get tested.
+      - name: Check that the release archive works from C
+        run: |
+          nativelib/package.sh 0.0.0-ci windows-x86_64 out/nativelib/sharedLibrary.dest dist
+          # Git Bash ships neither zip nor unzip. Windows' own tar is bsdtar, which reads zip; the
+          # GNU tar Git Bash puts on PATH does not, hence the full path.
+          /c/Windows/System32/tar.exe -xf dist/linkml-scala-lib-windows-x86_64.zip -C dist
+          nativelib/smoke.sh dist/liblinkml-scala-0.0.0-ci-windows-x86_64
+
+      - name: Build the Python wheel and test the installed package
+        env:
+          PYTHON: python # so `pip install build` and Mill use the same interpreter
+        run: |
+          python -m pip install --quiet build
+          ./mill.bat nativelib.pythonWheelTest
