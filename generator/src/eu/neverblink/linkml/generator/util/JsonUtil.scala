@@ -28,9 +28,9 @@ object JsonUtil {
         } else if ((tag eq Tag.int) || (tag eq Tag.float)) {
           val value = s.value.trim
           // some valid YAML numbers cannot be serialized as JSON numbers
-          val bytes = s.value.getBytes
-          if (isJsonNumber(bytes)) out.writeRawVal(bytes)
-          else out.writeVal(value)
+          val bytes = value.getBytes
+          if (isJsonNumber(bytes)) out.writeRawVal(bytes) // serialize as JSON number
+          else out.writeVal(value) // serialize as JSON string
         } else out.writeVal(s.value)
       case m: Node.MappingNode =>
         out.writeObjectStart()
