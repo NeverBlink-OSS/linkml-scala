@@ -35,7 +35,7 @@ LinkML-Scala was built to work great with large schemas. In our benchmarks it's 
 
 [**📊 See the benchmarks.**](docs/benchmarks.md)
 
-### 🌐 Works in the browser, Node.js, and in the JVM
+### 🌐 Works in the browser, Node.js, JVM, Python, and C/C++/Rust
 
 LinkML-Scala compiles to pure JavaScript (zero dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.neverblink.eu/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
 
@@ -43,13 +43,13 @@ For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **
 
 [![Web playground screenshot](./docs/img/playground.png)](https://linkml.neverblink.eu/playground)
 
+We also have [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
+
 ### ⚡ Natively compiled binaries for Linux, macOS, and Windows
 
 `linkml-scala` is a self-contained binary that runs natively on Linux, macOS, and Windows. You don't need Python, Java, or anything else installed.
 
 It starts up immediately and runs fast, even on extra-large LinkML models. **[See the installation instructions.](#cli-tool-installation)**
-
-We also have experimental [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
 
 ### 🛡️ Consistent, reliable, and with great error reporting
 
@@ -78,18 +78,10 @@ Read the script before running it: [install.sh](cli/install.sh).
 
 ### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (cross-platform)
 
-You can install `linkml-scala` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html)
-environment manager:
+You can install `linkml-scala` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html) environment manager:
 
 ```shell
-mise use 'ubi:NeverBlink-OSS/linkml-scala'
-linkml-scala
-```
-
-Or pin a specific version (recommended for reproducible setups, e.g. in a project's `mise.toml`):
-
-```shell
-mise use 'ubi:NeverBlink-OSS/linkml-scala@v0.12.0'
+mise use ubi:NeverBlink-OSS/linkml-scala
 linkml-scala
 ```
 
@@ -174,7 +166,7 @@ npm install @neverblink/linkml
 import { LinkML } from "@neverblink/linkml";
 
 // Parse once into a reusable SchemaView handle. The second argument is an
-// import map (filename -> YAML) for `imports:`; pass {} when there are none.
+// import map (filename -> YAML) for `imports:`.
 const view = LinkML.loadFromString(mySchemaYaml, {});
 const jsonSchema = LinkML.jsonSchema(view);
 ```
@@ -185,7 +177,7 @@ import map, immune to cyclic imports involving the root), then run `jsonSchema`,
 handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
-## Python library (experimental)
+## Python library
 
 Install it:
 
