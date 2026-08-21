@@ -18,7 +18,7 @@ The wheels on [PyPI](https://pypi.org/project/neverblink-linkml/) bundle the nat
 | OS            | Architectures        |
 |---------------|----------------------|
 | Linux (glibc) | x86-64, ARM64        |
-| Linux (musl)  | x86-64, ARM64        |
+| Linux (musl)  | x86-64               |
 | macOS         | Apple silicon, Intel |
 | Windows       | x86-64               |
 
@@ -171,7 +171,7 @@ pip install build
 ./mill nativelib.pythonWheelTest  # installs it in a throwaway virtualenv and runs the tests there
 ```
 
-For Linux, we support both glibc and musl. The glibc build is done inside a manylinux2014 container, so it can be used on any Linux distribution. The musl build is done on the host, but requires a musl toolchain to be installed first. This can be done with these scripts:
+For Linux, we support both glibc and musl. The glibc build is done inside a manylinux2014 container, so it can be used on any Linux distribution. The musl build is done on the host, but requires a musl toolchain to be installed first. It only works on x86-64: GraalVM ships the static JDK libraries a musl link needs for x64 alone. This can be done with these scripts:
 
 ```shell
 ./mill nativelib.linux.glibc.pythonWheelTest  # glibc, built inside manylinux2014
