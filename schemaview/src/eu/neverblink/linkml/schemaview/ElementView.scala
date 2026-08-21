@@ -171,7 +171,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   /** @return
     *   true if this class should be treated as an `Any`
     */
-  def isAny: Boolean = uriStr == "https://w3id.org/linkml/Any"
+  def isAny: Boolean = "https://w3id.org/linkml/Any".equals(uriStr)
 
   /** The collection form of this class, checking whether dict inlines are applicable.
     */

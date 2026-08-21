@@ -34,9 +34,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
               sink.triple(subject, Shacl.nodeKind, Shacl.Literal)
             else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
           case classView: ClassView =>
-            val cdUri = classView.uriStr
-            if (!"https://w3id.org/linkml/Any".equals(cdUri)) {
-              sink.triple(subject, Shacl.`class`, new Iri(cdUri))
+            if (!classView.isAny) {
+              sink.triple(subject, Shacl.`class`, new Iri(classView.uriStr))
               sink.triple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
             }
           case enumView: EnumView =>
