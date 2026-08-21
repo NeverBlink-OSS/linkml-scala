@@ -179,9 +179,10 @@ jobs:
           name: linkml-wheel-${{ matrix.os }}
           path: ${{ env.WHEEL_DEST }}/*.whl
 
-      # musl is cross-compiled on Linux
-      - name: Build the musl Wheel (Linux only)
-        if: runner.os == 'Linux'
+      # musl is cross-compiled on Linux, x86-64 only.
+      # native-image does not support ARM64 musl yet.
+      - name: Build the musl Wheel (x86-64 Linux only)
+        if: matrix.os == 'ubuntu-22.04'
         env:
           PYTHON: python
         run: |
@@ -189,8 +190,8 @@ jobs:
           ./mill nativelib.linux.musl.pythonWheel
 
       # we must run musl binary in a musl container
-      - name: Test the musl Wheel in Alpine (Linux only)
-        if: runner.os == 'Linux'
+      - name: Test the musl Wheel in Alpine (x86-64 Linux only)
+        if: matrix.os == 'ubuntu-22.04'
         run: |
           wheel="$(ls out/nativelib/linux/musl/pythonWheel.dest/dist/*.whl)"
           docker run --rm -v "$PWD:/work:ro" -e LINKML_SCALA_REPO=/work python:3.12-alpine sh -c "
@@ -200,7 +201,7 @@ jobs:
             cd /tmp && python -m unittest test_bindings -v"
 
       - name: Upload musl Python Wheel
-        if: runner.os == 'Linux'
+        if: matrix.os == 'ubuntu-22.04'
         uses: actions/upload-artifact@v7
         with:
           name: linkml-wheel-musl-${{ matrix.os }}

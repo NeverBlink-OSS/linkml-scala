@@ -43,7 +43,7 @@ schema = linkml_scala.load_path("model.yaml", {
 | OS            | Architectures        |
 |---------------|----------------------|
 | Linux (glibc) | x86-64, ARM64        |
-| Linux (musl)  | x86-64, ARM64        |
+| Linux (musl)  | x86-64               |
 | macOS         | Apple silicon, Intel |
 | Windows       | x86-64               |
 

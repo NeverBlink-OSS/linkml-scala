@@ -77,6 +77,11 @@ glibc)
   ;;
 
 musl)
+  if [ "$arch" != "x86_64" ]; then
+    echo "error: GraalVM cannot build against musl on ${arch}, only on x86_64" >&2
+    exit 1
+  fi
+
   compiler="${arch}-linux-musl-gcc"
   if ! command -v "$compiler" >/dev/null; then
     echo "error: $compiler is not on PATH. Run nativelib/install-musl-toolchain.sh first." >&2
