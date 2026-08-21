@@ -11,8 +11,8 @@ Load a schema once, then run as many generators over it as you like::
         print(schema.json_schema())
         print(schema.shacl())
 
-See docs/python_bindings.md in the LinkML-Scala repository for the whole story, including how to
-build the library.
+Install it with ``pip install neverblink-linkml``. See docs/python_bindings.md in the LinkML-Scala
+repository for more information, including how to build the library yourself.
 """
 
 from __future__ import annotations
@@ -28,11 +28,13 @@ from ._runtime import (
     library_path,
     runtime,
 )
+from ._version import __version__
 
 __all__ = [
     "FATAL",
     "ERROR",
     "WARNING",
+    "__version__",
     "LinkMlError",
     "NativeLibraryNotFound",
     "Runtime",

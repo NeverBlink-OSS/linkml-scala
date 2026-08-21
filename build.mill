@@ -27,7 +27,7 @@ import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
 import com.sun.net.httpserver.SimpleFileServer
 import mill.api.Evaluator
-import millbuild.{CApiGen, NpmPackage, PyBindingsGen, TsDefsGen}
+import millbuild.*
 
 import java.net.InetSocketAddress
 
@@ -468,8 +468,8 @@ def bindings(args: String*) = Task.Command(exclusive = true) {
   * of it. See docs/python_bindings.md.
   *
   * Experimental. Deliberately does not extend `CommonModule`, so it stays out of
-  * `SonatypeCentralPublishModule` (which publishes every `PublishModule` in the build) until we
-  * decide to ship it.
+  * `SonatypeCentralPublishModule` (which publishes every `PublishModule` in the build). The wheel
+  * goes to PyPI instead, see `pythonWheel`.
   *
   * It extends `NativeImage` only to reuse `nativeImageGraalvmHome`, which fetches GraalVM (or
   * honours `GRAALVM_HOME`). The trait's own `nativeImage` task builds an executable and is unused
@@ -504,7 +504,7 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
 
   def nativeImageClassPath = runClasspath()
 
-  def nativeImageName = "liblinkml_scala"
+  def nativeImageName = NativeLib.name
 
   def nativeImageGraalVmJvmId = "graalvm-oracle:25"
 
@@ -528,29 +528,28 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     * generates for it. Takes a few minutes.
     */
   def sharedLibrary = Task {
-    // `scala` at the top of this file is the version string, so the package needs spelling out.
-    val ext = if _root_.scala.util.Properties.isWin then ".cmd" else ""
-    val nativeImage = nativeImageGraalvmHome().path / "bin" / s"native-image$ext"
-    val classPath = nativeImageClassPath()
-      .map(_.path.toString)
-      .mkString(java.io.File.pathSeparator)
-
-    os.call(
-      (
-        nativeImage.toString,
-        "--shared",
+    PathRef(
+      NativeLib.build(
+        Task.dest,
+        nativeImageGraalvmHome().path,
+        nativeImageClassPath().map(_.path),
         nativeImageOptions(),
-        s"-H:Path=${Task.dest}",
-        s"-H:Name=${nativeImageName()}",
-        "-cp",
-        classPath,
+        mill.api.BuildCtx.workspaceRoot,
       ),
-      cwd = mill.api.BuildCtx.workspaceRoot,
-      stdout = os.Inherit,
-      stderr = os.Inherit,
     )
-    PathRef(Task.dest)
   }
+
+  /** The image classpath written to a file, so we can safely pass it to scripts.
+    */
+  def nativeImageClassPathFile = Task {
+    PathRef(NativeLib.classPathFile(Task.dest, nativeImageClassPath().map(_.path)))
+  }
+
+  /** The Python package: the sources, packaging metadata and tests. */
+  def pythonDir = Task.Source(mill.api.BuildCtx.workspaceRoot / "python")
+
+  /** Shipped inside the wheel. */
+  def licenseFile = Task.Source(mill.api.BuildCtx.workspaceRoot / "LICENSE")
 
   /** Where the Python package looks for the library when it is not told otherwise. */
   private def pythonLibDir = mill.api.BuildCtx.workspaceRoot / "python" / "linkml_scala" / "_lib"
@@ -559,9 +558,7 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     * `import linkml_scala` works from a source checkout.
     */
   def installPythonLib() = Task.Command(exclusive = true) {
-    val built = sharedLibrary().path
-    os.makeDir.all(pythonLibDir)
-    os.list(built).filter(os.isFile).foreach(os.copy.into(_, pythonLibDir, replaceExisting = true))
+    Python.installLibrary(sharedLibrary().path, pythonLibDir)
     println(s"Installed the shared library into ${pythonLibDir.relativeTo(
         mill.api.BuildCtx.workspaceRoot,
       )}")
@@ -572,17 +569,113 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     */
   def pythonTest(args: String*) = Task.Command(exclusive = true) {
     installPythonLib()()
-    val python = sys.env.getOrElse(
-      "PYTHON",
-      if _root_.scala.util.Properties.isWin then "python" else "python3",
+    Python.runTests(mill.api.BuildCtx.workspaceRoot)
+  }
+
+  /** Build the `neverblink-linkml` wheel for this platform.
+    */
+  def pythonWheel = Task {
+    PathRef(
+      Python.buildWheel(
+        Task.dest,
+        sharedLibrary().path,
+        pythonDir().path,
+        licenseFile().path,
+        wheelVersion(),
+      ),
     )
-    os.call(
-      (python, "-m", "unittest", "discover", "-s", "python", "-v"),
-      cwd = mill.api.BuildCtx.workspaceRoot,
-      stdout = os.Inherit,
-      stderr = os.Inherit,
+  }
+
+  /** The wheel's version in the PEP 440 format. */
+  def wheelVersion = Task {
+    PyPackage.version(build.generator.jvm.publishVersion())
+  }
+
+  /** Build the wheel, install it into a throwaway virtualenv and check the installed package works.
+    *
+    * Runs python/test_bindings.py from a temporary directory, so the import can only come from the
+    * wheel and never from `python/`.
+    */
+  def pythonWheelTest(args: String*) = Task.Command(exclusive = true) {
+    Python.testWheel(
+      Task.dest,
+      pythonWheel().path,
+      pythonDir().path,
+      mill.api.BuildCtx.workspaceRoot,
     )
-    ()
+  }
+
+  object linux extends Module {
+
+    /** glibc, built inside manylinux2014. */
+    object glibc extends Module {
+      def sharedLibrary = Task {
+        PathRef(
+          NativeLib.buildForLinux(
+            "glibc",
+            Task.dest,
+            build.nativelib.nativeImageGraalvmHome().path,
+            build.nativelib.nativeImageClassPathFile().path,
+            build.nativelib.nativeImageOptions(),
+            mill.api.BuildCtx.workspaceRoot,
+          ),
+        )
+      }
+
+      def pythonWheel = Task {
+        PathRef(
+          Python.buildWheel(
+            Task.dest,
+            sharedLibrary().path,
+            build.nativelib.pythonDir().path,
+            build.nativelib.licenseFile().path,
+            build.nativelib.wheelVersion(),
+          ),
+        )
+      }
+
+      /** Run it against the host's libc (usually much newer). */
+      def pythonWheelTest(args: String*) = Task.Command(exclusive = true) {
+        Python.testWheel(
+          Task.dest,
+          pythonWheel().path,
+          build.nativelib.pythonDir().path,
+          mill.api.BuildCtx.workspaceRoot,
+        )
+      }
+    }
+
+    /** musl, cross-linked for Alpine. Needs nativelib/install-musl-toolchain.sh first.
+      *
+      * There is deliberately no `pythonWheelTest` here: the wheel only loads under musl, so testing
+      * requires running it in an Alpine container. The release workflow does that.
+      */
+    object musl extends Module {
+      def sharedLibrary = Task {
+        PathRef(
+          NativeLib.buildForLinux(
+            "musl",
+            Task.dest,
+            build.nativelib.nativeImageGraalvmHome().path,
+            build.nativelib.nativeImageClassPathFile().path,
+            build.nativelib.nativeImageOptions(),
+            mill.api.BuildCtx.workspaceRoot,
+          ),
+        )
+      }
+
+      def pythonWheel = Task {
+        PathRef(
+          Python.buildWheel(
+            Task.dest,
+            sharedLibrary().path,
+            build.nativelib.pythonDir().path,
+            build.nativelib.licenseFile().path,
+            build.nativelib.wheelVersion(),
+          ),
+        )
+      }
+    }
   }
 }
 
