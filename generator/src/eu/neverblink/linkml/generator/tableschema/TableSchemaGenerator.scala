@@ -135,7 +135,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
     writeToString(
       generate(options),
       WriterConfig.withIndentionStep(2),
-    )(using TableSchemaGenerator.tableDescriptorCodec)
+    )(using TableSchemaGenerator.codec)
 }
 
 object TableSchemaGenerator {
@@ -149,7 +149,7 @@ object TableSchemaGenerator {
       treeRoot: Option[String] = None,
   )
 
-  private[tableschema] implicit val tableDescriptorCodec: JsonValueCodec[TableDescriptor] =
+  implicit val codec: JsonValueCodec[TableDescriptor] =
     JsonCodecMaker.make(
       CodecMakerConfig.withEncodingOnly(true)
         .withDiscriminatorFieldName(None)
