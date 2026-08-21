@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
-import com.github.plokhotnyuk.jsoniter_scala.core.*
+import com.github.plokhotnyuk.jsoniter_scala.core.{writeToStream, *}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -245,15 +245,17 @@ final case class TableSchemaOptions(
     treeRoot: Option[String] = None,
 ) extends HasGenerateOptions
 
-object TableSchema extends StringGenerate[TableSchemaOptions] {
+object TableSchema extends StreamGenerate[TableSchemaOptions] {
   override protected def generatorName: String = "table-schema"
 
-  override protected[cli] def generate(
-      options: TableSchemaOptions,
-  )(using SchemaView): Iterable[(String, String)] =
-    Seq(
-      ("", TableSchemaGenerator().serialize(TableSchemaGenerator.Options(options.treeRoot))),
-    )
+  override protected[cli] def generate(options: TableSchemaOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    writeToStream(
+      TableSchemaGenerator().generate(TableSchemaGenerator.Options(options.treeRoot)),
+      out,
+      WriterConfig.withIndentionStep(2),
+    )(using TableSchemaGenerator.codec)
 }
 
 // GraphQL
