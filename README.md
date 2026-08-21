@@ -166,7 +166,7 @@ npm install @neverblink/linkml
 import { LinkML } from "@neverblink/linkml";
 
 // Parse once into a reusable SchemaView handle. The second argument is an
-// import map (filename -> YAML) for `imports:`; pass {} when there are none.
+// import map (filename -> YAML) for `imports:`.
 const view = LinkML.loadFromString(mySchemaYaml, {});
 const jsonSchema = LinkML.jsonSchema(view);
 ```
