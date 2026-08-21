@@ -41,12 +41,13 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
       s"generate compilable code for model '${entry.name}'" in {
         processSkip(entry.name, "")
         val dir = os.temp.dir(prefix = "linkml-scala-src")
-        val sources = ScalaGenerator(using entry.model).generate(ScalaGenerator.Options("generated")).map {
-          (name, content) =>
-            val file = dir / name
-            os.write(file, content)
-            file
-        }.toSeq
+        val sources =
+          ScalaGenerator(using entry.model).generate(ScalaGenerator.Options("generated")).map {
+            (name, content) =>
+              val file = dir / name
+              os.write(file, content)
+              file
+          }.toSeq
         sources should not be empty
         val failure = compileScala(sources)
         withClue(s"compiler output:\n${failure.getOrElse("")}\n")(failure shouldBe None)

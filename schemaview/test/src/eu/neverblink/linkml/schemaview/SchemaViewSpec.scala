@@ -94,20 +94,9 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "find the ancestors of a class" in {
-      Reference[ClassView]("class_child").resolve.get
-        .ancestors(false).map(_.cls).toSeq should contain theSameElementsInOrderAs Seq(
-        mixin,
-        classParent,
-        parentMixin1,
-        parentMixin2,
-        classGrandparent,
-      )
-    }
-
     "find the ancestors of a class (reflexive)" in {
       Reference[ClassView]("class_child").resolve.get
-        .ancestors(true).map(_.cls).toSeq should contain theSameElementsInOrderAs Seq(
+        .ancestorsWithSelf.map(_.cls).toSeq should contain theSameElementsInOrderAs Seq(
         classChild,
         mixin,
         classParent,
@@ -119,7 +108,8 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
 
     "find the ancestors of a class in correct order" in {
       Reference[ClassView]("class_mixin_inheritance").resolve.get
-        .ancestors(false).map(_.cls).toSeq should contain theSameElementsInOrderAs Seq(
+        .ancestorsWithSelf.map(_.cls).toSeq should contain theSameElementsInOrderAs Seq(
+        classWithMixinInheritance, // self
         mixinChild, // .mixins[0]
         classParent, // .is_a
         parentMixin1, // is_a.mixins[0]
@@ -131,22 +121,14 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
 
     "find the parents of a slot" in {
       Reference[SlotView]("slot3").resolve.get
-        .parents.toSeq should contain theSameElementsInOrderAs Seq(
+        .parents.map(_.slot).toSeq should contain theSameElementsInOrderAs Seq(
         slotParent,
-      )
-    }
-
-    "find the ancestors of a slot" in {
-      Reference[SlotView]("slot3").resolve.get
-        .ancestors(false).toSeq should contain theSameElementsInOrderAs Seq(
-        slotParent,
-        slotGrandparent,
       )
     }
 
     "find the ancestors of a slot (reflexive)" in {
       Reference[SlotView]("slot3").resolve.get
-        .ancestors(true).toSeq should contain theSameElementsInOrderAs Seq(
+        .ancestorsWithSelf.map(_.slot).toSeq should contain theSameElementsInOrderAs Seq(
         slot3,
         slotParent,
         slotGrandparent,

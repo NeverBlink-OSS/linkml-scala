@@ -13,7 +13,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     "inline imports into the schema" in {
       val sv = ModelCatalogue.pruning.model
       val schema =
-        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = skip, skipClassDerivation = true))
+        LinkMlGenerator(using sv).generate(
+          LinkMlGenerator.Options(pruningMode = skip, skipClassDerivation = true),
+        )
       schema.classes.keys should contain theSameElementsAs Seq(
         "NotTreeRootClass",
         "SomeClass",
@@ -70,7 +72,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     "prune unused elements from the schema (root schema)" in {
       val sv = ModelCatalogue.pruning.model
       val schema =
-        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = schemaRoot, skipClassDerivation = true))
+        LinkMlGenerator(using sv).generate(
+          LinkMlGenerator.Options(pruningMode = schemaRoot, skipClassDerivation = true),
+        )
       schema.classes.keys should contain theSameElementsAs Seq(
         "NotTreeRootClass",
         "SomeClass",
@@ -109,7 +113,8 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
 
     "derive classes and prune the schema (tree_root)" in {
       val sv = ModelCatalogue.pruning.model
-      val schema = LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = treeRoot(None)))
+      val schema =
+        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = treeRoot(None)))
       schema.classes.keys should contain theSameElementsAs Seq(
         "SomeClass",
       )
@@ -128,7 +133,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     "derive classes and prune the schema (tree_root override)" in {
       val sv = ModelCatalogue.pruning.model
       val schema =
-        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = treeRoot(Some("NotTreeRootClass"))))
+        LinkMlGenerator(using sv).generate(
+          LinkMlGenerator.Options(pruningMode = treeRoot(Some("NotTreeRootClass"))),
+        )
       schema.classes.keys should contain theSameElementsAs Seq(
         "NotTreeRootClass",
       )
@@ -207,7 +214,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     "prune using tree_root override if no schema tree root" in {
       val sv = ModelCatalogue.treeRootless.model
       val schema =
-        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = treeRoot(Some("SomeClass"))))
+        LinkMlGenerator(using sv).generate(
+          LinkMlGenerator.Options(pruningMode = treeRoot(Some("SomeClass"))),
+        )
       schema.classes.keys should contain theSameElementsAs Seq(
         "SomeClass",
       )
@@ -334,7 +343,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
 
       // The same nodes feed the YAML output, which must quote them for the same reason.
       val yaml =
-        LinkMlGenerator(using sv).serialize(LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.yaml))
+        LinkMlGenerator(using sv).serialize(
+          LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.yaml),
+        )
       yaml should include("""title: "123"""")
       yaml should include("""description: "true"""")
       yaml should include("""license: "null"""")
@@ -352,7 +363,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           SchemaView.single(LinkMlGenerator(using entry.model).generate())
             .lint() shouldBe empty
           SchemaView.single(
-            LinkMlGenerator(using entry.model).generate(LinkMlGenerator.Options(skipClassDerivation = true)),
+            LinkMlGenerator(using entry.model).generate(
+              LinkMlGenerator.Options(skipClassDerivation = true),
+            ),
           ).lint() shouldBe empty
         }
     }

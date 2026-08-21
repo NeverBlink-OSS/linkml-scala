@@ -7,7 +7,7 @@ import org.eclipse.rdf4j.model.{Value, ValueFactory, IRI as Rdf4jIri, Resource a
 import org.eclipse.rdf4j.rio.helpers.BasicWriterSettings
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio, WriterConfig}
 
-import java.io.{BufferedOutputStream, OutputStream, StringWriter}
+import java.io.{FilterOutputStream, OutputStream, StringWriter}
 
 /** An [[RdfSink]] that collects prefixes and triples into an RDF4J [[Model]] and serializes it as
   * pretty-printed Turtle. Building the model and running the RDF4J writer is substantially slower
@@ -28,7 +28,7 @@ final class TurtleRdfSink(using vf: ValueFactory = SimpleValueFactory.getInstanc
 
   /** Serialize the collected model as Turtle straight to [[out]]. Flushes but does not close it. */
   def writeTo(out: OutputStream): Unit = {
-    val buffered = new BufferedOutputStream(out)
+    val buffered = new FastBufferedOutputStream(out)
     Rio.write(builder.build(), buffered, RDFFormat.TURTLE, TurtleRdfSink.config)
     buffered.flush()
   }
@@ -100,5 +100,49 @@ object RdfUtils {
     val sink = NTriplesRdfSink(charSink)
     write(sink)
     charSink.flush()
+  }
+}
+
+/** A high-performance, non-thread-safe alternative to `java.io.BufferedOutputStream`.
+  *
+  * This class improves throughput by eliminating synchronization overhead and using a fixed-size
+  * buffer to avoid reallocation.
+  *
+  * @param out
+  *   the underlying output stream to write to.
+  */
+class FastBufferedOutputStream(out: OutputStream) extends FilterOutputStream(out) {
+  private inline val capacity = 32768
+  private val buf = new Array[Byte](capacity)
+  private var count = 0
+
+  override def write(b: Int): Unit = {
+    var i = count
+    if (i >= capacity) i = flushBuf(i)
+    buf(i) = b.toByte
+    count = i + 1
+  }
+
+  override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+    var i = count
+    if (len >= capacity) {
+      count = flushBuf(i)
+      out.write(b, off, len)
+    } else {
+      if (len > capacity - i) i = flushBuf(i)
+      System.arraycopy(b, off, buf, i, len)
+      count = i + len
+    }
+  }
+
+  override def flush(): Unit = {
+    val i = count
+    if (i > 0) count = flushBuf(i)
+    out.flush()
+  }
+
+  private def flushBuf(len: Int): Int = {
+    out.write(buf, 0, len)
+    0
   }
 }

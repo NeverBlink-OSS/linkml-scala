@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.benchmark
 
+import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, writeToStream}
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
@@ -39,19 +40,15 @@ class GeneratorBench extends CommonParams {
 
   @Benchmark
   def jsonSchemaFromYaml(bh: Blackhole): Unit =
-    bh.consume(
-      JsonSchemaGenerator(using
-        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
-      ).serialize(),
-    )
+    writeJsonSchema(bh)(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)))
 
   @Benchmark
   def jsonSchemaFromSchemas(bh: Blackhole): Unit =
-    bh.consume(JsonSchemaGenerator(using SchemaView(schemaView.schemas)).serialize())
+    writeJsonSchema(bh)(using SchemaView(schemaView.schemas))
 
   @Benchmark
   def jsonSchemaFromSchemaView(bh: Blackhole): Unit =
-    bh.consume(JsonSchemaGenerator(using schemaView).serialize())
+    writeJsonSchema(bh)(using schemaView)
 
   @Benchmark
   def shaclFromYaml(bh: Blackhole): Unit =
@@ -80,6 +77,15 @@ class GeneratorBench extends CommonParams {
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)),
       ).serialize(),
     )
+
+  /** Same setup for JSON schema sinks as in the CLI.
+    */
+  private def writeJsonSchema(bh: Blackhole)(using SchemaView): Unit =
+    writeToStream(
+      JsonSchemaGenerator().generate(),
+      new BlackholeOutputStream(bh),
+      WriterConfig.withIndentionStep(2),
+    )(using JsonSchemaGenerator.codec)
 
   /** Same setup for RDF sinks as in the CLI.
     */

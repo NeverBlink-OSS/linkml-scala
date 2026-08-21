@@ -70,7 +70,7 @@ class CodecCoverageSpec extends AnyWordSpec, Matchers {
 
       val stale = (inCodec -- inSchema).toSeq.sorted
       withClue(
-        s"Codec.issueCodec dispatches on types that the schema no longer declares: " +
+        "Codec.issueCodec dispatches on types that the schema no longer declares: " +
           s"${stale.mkString(", ")}. ",
       )(stale shouldBe empty)
     }

@@ -108,7 +108,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     // a SlotView (if the slot is defined as a top-level slot). The source is used
     // for default prefix and range resolution according to the original schema file.
     // See: https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#function-applicable-slots
-    ancestors(true).foreach { anc =>
+    ancestorsWithSelf.foreach { anc =>
       val keys = anc.cls.attributes.keysIterator
       while (keys.hasNext) {
         val name = keys.next()
@@ -171,28 +171,16 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   /** @return
     *   true if this class should be treated as an `Any`
     */
-  def isAny: Boolean = uriStr == "https://w3id.org/linkml/Any"
+  def isAny: Boolean = "https://w3id.org/linkml/Any".equals(uriStr)
 
   /** The collection form of this class, checking whether dict inlines are applicable.
     */
   lazy val collectionForm: CollectionForm = CollectionForm.of(this)
 
-  /** Get and dereference the direct parents (mixins + inheritance) of this class
-    *
-    * @return
-    *   Direct parents of the class, mixins before inheritance
+  /** Direct parents (mixins + inheritance) of this class
     */
-  def parents: Seq[ClassView] = getParents(this)
-
-  /** Get the subject type for this class, if possible. Uses the class' identifier slot's range.
-    * @return
-    *   The subject type, or None if the class does not have an identifier
-    */
-  def subjectType: Option[SubjectType] = identifierView.mapFast(_.subjectType)
-
-  private def getParents(view: ClassView): Seq[ClassView] = {
+  lazy val parents: Seq[ClassView] = {
     val parents = new ListBuffer[ClassView]
-    val cls = view.cls
     cls.mixins.foreach { r =>
       sv.resolve(r.asInstanceOf[Reference[ClassView]]).foreachFast(parents.addOne)
     }
@@ -202,16 +190,17 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     parents.toList
   }
 
-  /** Get and dereference all the ancestors (transitive parents) of this class.
-    *
-    * @param reflexive
-    *   Whether to include the class itself in the result
-    * @return
-    *   Ancestors of the class in LinkML's "depth-first" order -
-    *   `ancestors(x) = x.mixins, x.isA, ancestors(x.isA), ancestors(x.mixins)`
+  /** Ancestors of the class in LinkML's "depth-first" order, starting from self:
+    * `ancestors(x) = x, x.mixins, x.isA, ancestors(x.isA), ancestors(x.mixins)`
     */
-  def ancestors(reflexive: Boolean): Iterable[ClassView] =
-    Closure.get(this, getParents, reflexive)
+  lazy val ancestorsWithSelf: Iterable[ClassView] =
+    Closure.get(Seq(this), _.parents, true, Vector.newBuilder, true, _.cls.name)
+
+  /** Get the subject type for this class, if possible. Uses the class' identifier slot's range.
+    * @return
+    *   The subject type, or None if the class does not have an identifier
+    */
+  def subjectType: Option[SubjectType] = identifierView.mapFast(_.subjectType)
 
   /** Get the slots that are directly defined in this class.
     */
@@ -233,10 +222,11 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * @return
     *   True if the slot comes from class attributes, false otherwise
     */
-  def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean = {
-    val name = slotRef.value
-    ancestors(true).exists(anc => anc.cls.attributes.keys.exists(_.equals(name)))
-  }
+  def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean =
+    ancestorsWithSelf.exists {
+      val name = slotRef.value
+      anc => anc.cls.attributes.contains(name)
+    }
 
   /** Derive a slot for a class, taking into account the `slotUsage` and `attributes` for the class
     * and its ancestors, as well as the schema top-level slots and its ancestors.
@@ -267,19 +257,20 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]).foreachFast { (resolved: SlotView) =>
       // Note this is a bit off-spec, but it's a pretty reasonable
       if (!isSlotFromAttributes(slotRef)) {
-        currentSlot =
-          currentSlot.combineWith(resolved.slot.asInstanceOf[SlotDefinitionImpl], sv.combineRange)
-        for slotAncestor <- resolved.ancestors(false) do {
-          currentSlot = currentSlot.combineInherited(
-            slotAncestor.asInstanceOf[SlotDefinitionImpl],
-            sv.combineRange,
-          )
+        resolved.ancestorsWithSelf.foreach {
+          var i = 0
+          ancestorSlotView =>
+            currentSlot =
+              val slotDef = ancestorSlotView.slot.asInstanceOf[SlotDefinitionImpl]
+              if (i > 0) currentSlot.combineInherited(slotDef, sv.combineRange)
+              else currentSlot.combineWith(slotDef, sv.combineRange)
+            i += 1
         }
       }
     }
     val finalSlot = currentSlot.copy(
       name = slotRef.value,
-      slotUri = Some(
+      slotUri = new Some(
         SlotView.uri(
           currentSlot.slotUri,
           slotRef.value,
@@ -310,10 +301,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   used instead of checking the class extensions.
     */
   def treeRootInlineType(overrideType: Option[String]): InlineType =
-    val value = overrideType.orElseFast {
+    overrideType.orElseFast {
       cls.extensions.get("tree_root_as").mapFast(_.extensionValue.value.strip)
-    }
-    value.mapFast(v =>
+    }.mapFast { v =>
       Case.camelCase(v) match {
         case "plain" => InlineType.plain
         case "optional" => InlineType.optional
@@ -342,8 +332,8 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
               s"Class '$name' has unknown 'tree_root_as' extension value: '$v'"
             else s"Class '$name' has unknown 'tree_root_as' override value: '$v'"
           })
-      },
-    ).getOrElseFast(InlineType.plain)
+      }
+    }.getOrElseFast(InlineType.plain)
 
   /** Materialize this [[ClassView]] into a derived [[ClassDefinition]]. This inlines all slots as
     * attributes, and clears any inheritance slots. Additionally, sets the class uri using
@@ -385,36 +375,24 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   def implicitPrefixReference: Option[String] =
     slot.implicitPrefix.flatMapFast(definingPrefixResolver.resolvePrefix)
 
-  /** Get and dereference the direct parents (mixins + inheritance) of this slot
-    *
-    * @return
-    *   Direct parents of the slot, mixins before inheritance
+  /** Direct parents (mixins + inheritance) of this slot
     */
-  def parents: Iterable[SlotDefinition] = getParents(slot)
-
-  private def getParents(slot: SlotDefinition): Iterable[SlotDefinition] = {
-    val parents = new ListBuffer[SlotDefinition]
+  lazy val parents: Iterable[SlotView] = {
+    val parents = new ListBuffer[SlotView]
     slot.mixins.foreach { r =>
-      sv.resolve(r).foreachFast(parents.addOne)
+      sv.resolve(r.asInstanceOf[Reference[SlotView]]).foreachFast(parents.addOne)
     }
     slot.isA.foreachFast { r =>
-      sv.resolve(r).foreachFast { cv =>
-        parents.addOne(cv)
-      }
+      sv.resolve(r.asInstanceOf[Reference[SlotView]]).foreachFast(parents.addOne)
     }
     parents.toList
   }
 
-  /** Get and dereference all the ancestors (transitive parents) of this slot.
-    *
-    * @param reflexive
-    *   Whether to include the slot itself in the result
-    * @return
-    *   Ancestors of the slot in LinkML's "depth-first" order -
-    *   `ancestors(x) = x.mixins, x.isA, ancestors(x.isA), ancestors(x.mixins)`
+  /** Ancestors of the slot in LinkML's "depth-first" order, starting from self:
+    * `ancestors(x) = x, x.mixins, x.isA, ancestors(x.isA), ancestors(x.mixins)`
     */
-  def ancestors(reflexive: Boolean): Iterable[SlotDefinition] =
-    Closure.get(slot, getParents, reflexive)
+  lazy val ancestorsWithSelf: Iterable[SlotView] =
+    Closure.get(Seq(this), _.parents, true, Vector.newBuilder, true, _.slot.name)
 
   /** Test whether this slot is declared as inlined, or is implicitly inlined as its range is a
     * type, enum, or class without an identifier

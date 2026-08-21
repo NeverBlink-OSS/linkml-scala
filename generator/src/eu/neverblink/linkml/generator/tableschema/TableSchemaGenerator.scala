@@ -56,7 +56,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
         )
         slotView.derivedRange.resolve.get match {
           case cls: ClassView =>
-            if cls.uriStr == "https://w3id.org/linkml/Any" then
+            if cls.isAny then
               base.copy(
                 `type` = types.any,
                 format = "any",

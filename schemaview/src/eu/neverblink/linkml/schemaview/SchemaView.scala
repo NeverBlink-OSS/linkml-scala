@@ -132,10 +132,9 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   def getDefaultPrefix(schema: SchemaDefinition): String = {
     val prefixResolver = prefixResolvers(schema.id)
-    val prefixRef = schema.defaultPrefix.flatMapFast { prefix =>
+    schema.defaultPrefix.flatMapFast { prefix =>
       schema.prefixes.get(prefix)
-    }
-    prefixRef.foldFast {
+    }.foldFast {
       val uri = schema.id.uri(using prefixResolver)
       val len = uri.length
       if (len > 0) {
@@ -216,22 +215,22 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     // yes, it's inefficient, quadratic, whatever
     // there is a proper algorithm for this, but I don't feel like implementing it right now, since only RDFS uses this
     if views.isEmpty then return Seq.empty
-    var commonAncestors = views.head.ancestors(true).map(_.name).toSet
-
+    var commonAncestors = views.head.ancestorsWithSelf.map(_.name).toSet
     views.tail.foreach { cls =>
-      val current = cls.ancestors(true).map(_.name).toSet
+      val current = cls.ancestorsWithSelf.map(_.name).toSet
       commonAncestors = commonAncestors.intersect(current)
     }
-
     val lowestCommon = mutable.HashSet[String]()
     commonAncestors.foreach(lowestCommon.add)
     commonAncestors.foreach { commonAnc =>
       val cls = Reference[ClassView](commonAnc).resolve.get
-      cls.ancestors(false).foreach { anc =>
-        lowestCommon.remove(anc.name)
+      cls.ancestorsWithSelf.foreach {
+        var i = 0
+        anc =>
+          if (i > 0) lowestCommon.remove(anc.name)
+          i += 1
       }
     }
-
     lowestCommon.toSeq.map(Reference[ClassView](_).resolve.get)
   }
 
@@ -324,9 +323,11 @@ object SchemaView {
     * @param uri
     *   The URI of the schema to load. This can be a URL starting with "https://", "http://", or a
     *   file path.
+    *
     * @param importer
     *   An importer of schema imports. Default is [[FileSystemImporter]] that reads from the file
     *   system.
+    *
     * @return
     *   The schema view loaded from the specified URI.
     */
@@ -347,6 +348,7 @@ object SchemaView {
     *   system. Note that the importer will be used with an empty base URI, so it should be able to
     *   handle absolute URIs in imports, or you should provide a custom importer that can handle
     *   them.
+    *
     * @return
     */
   def loadSchemaViewFromString(
@@ -367,7 +369,9 @@ object SchemaView {
       load: => Either[Seq[SchemaFatal], SchemaView],
   ): Either[Seq[SchemaFatal], SchemaView] =
     try load
-    catch { case ex if NonFatal(ex) => new Left(Seq(unexpectedError(ex))) }
+    catch {
+      case ex if NonFatal(ex) => new Left(Seq(unexpectedError(ex)))
+    }
 
   private def unexpectedError(ex: Throwable): UnexpectedErrorImpl = {
     val msg = ex.getMessage
@@ -383,11 +387,11 @@ object SchemaView {
     * @param uri
     *   The URI of the schema to load. This can be a URL starting with "https://", "http://", or a
     *   file path.
-    * @param doImportLoading
-    *   A boolean flag indicating whether to load the imports of the schema. Defaults to true.
+    *
     * @param importer
     *   An importer of schema imports. Default is [[FileSystemImporter]] that reads from the file
     *   system.
+    *
     * @return
     *   The sequence of schema definitions loaded from the specified URI, with the main schema first
     *   followed by imports in the order they are declared in the schema, with imports of imports
@@ -470,6 +474,7 @@ object SchemaView {
     * @param importer
     *   An importer of schema imports. Default is [[FileSystemImporter]] that reads from the file
     *   system.
+    *
     * @return
     *   The schema definition combined with loaded imports.
     */
@@ -486,12 +491,12 @@ object SchemaView {
       importer: Importer,
       visited: mutable.Set[String],
   ): Either[ImportFailure, Seq[SchemaDefinition]] = {
-    given PrefixResolver = createPrefixResolver(schema)
+    val prefixResolver = createPrefixResolver(schema)
     // Short-circuits on the first import that cannot be loaded.
-    schema.imports.foldLeft[Either[ImportFailure, Seq[SchemaDefinition]]](Right(Seq())) {
+    schema.imports.foldLeft[Either[ImportFailure, Seq[SchemaDefinition]]](new Right(Nil)) {
       (acc, uoc) =>
         acc.flatMap { loadedSoFar =>
-          var sUri = uoc.uri.stripPrefix("./")
+          var sUri = uoc.uri(using prefixResolver).stripPrefix("./")
           if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
             sUri = baseUri + PlatformSpecificUtils.separator + sUri
           loadSchemasInternal(sUri, true, importer, visited).map(loadedSoFar ++ _)
@@ -504,31 +509,33 @@ object SchemaView {
     */
   private def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
     val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
-    Prefixes.map.foreach { (prefix, uri) => prefixResolver.add(prefix, uri) }
-    if (forSchema.defaultCuriMaps.contains("semweb_context")) {
-      Array(
-        ("rdf", "http://www.w3.org/1999/02/22-rdf-syntax-ns#"),
-        ("rdfs", "http://www.w3.org/2000/01/rdf-schema#"),
-        ("owl", "http://www.w3.org/2002/07/owl#"),
-        ("xsd", "http://www.w3.org/2001/XMLSchema#"),
-        ("dc", "http://purl.org/dc/terms/"),
-        ("dcterms", "http://purl.org/dc/terms/"),
-        ("faldo", "http://biohackathon.org/resource/faldo#"),
-        ("foaf", "http://xmlns.com/foaf/0.1/"),
-        ("oa", "http://www.w3.org/ns/oa#"),
-        ("idot", "http://identifiers.org/"),
-        ("void", "http://rdfs.org/ns/void#"),
-        ("prov", "http://www.w3.org/ns/prov#"),
-        ("dcat", "http://www.w3.org/ns/dcat#"),
-      ).foreach { case (prefix, uri) =>
-        prefixResolver.add(prefix, uri)
-      }
+    prefixResolver.addAll {
+      if (forSchema.defaultCuriMaps.contains("semweb_context")) {
+        linkmlWithSemWebContextPrefixResolver
+      } else linkmlPrefixResolver
     }
+    forSchema.prefixes.values.foreach { prefix =>
+      prefixResolver.add(prefix.prefixPrefix, prefix.prefixReference.original)
+    }
+    prefixResolver
+  }
 
-    forSchema.prefixes.values.foreach(prefix =>
-      prefixResolver.add(prefix.prefixPrefix, prefix.prefixReference.original),
-    )
-
+  private lazy val linkmlPrefixResolver = {
+    val prefixResolver = new BasicPrefixResolver("emit_prefixes")
+    Prefixes.map.foreach((prefix, uri) => prefixResolver.add(prefix, uri))
+    prefixResolver
+  }
+  private lazy val linkmlWithSemWebContextPrefixResolver = {
+    val prefixResolver = new BasicPrefixResolver("emit_prefixes+semweb_context")
+    prefixResolver.addAll(linkmlPrefixResolver)
+    prefixResolver.add("dc", "http://purl.org/dc/terms/")
+    prefixResolver.add("faldo", "http://biohackathon.org/resource/faldo#")
+    prefixResolver.add("foaf", "http://xmlns.com/foaf/0.1/")
+    prefixResolver.add("oa", "http://www.w3.org/ns/oa#")
+    prefixResolver.add("idot", "http://identifiers.org/")
+    prefixResolver.add("void", "http://rdfs.org/ns/void#")
+    prefixResolver.add("prov", "http://www.w3.org/ns/prov#")
+    prefixResolver.add("dcat", "http://www.w3.org/ns/dcat#")
     prefixResolver
   }
 }

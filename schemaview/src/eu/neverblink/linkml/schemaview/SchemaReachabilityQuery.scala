@@ -30,7 +30,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
   /** Lazily computed set of [[TaggedReference]]s that are reachable for the default implementation
     * of [[reachable()]]
     */
-  protected lazy val resolved: Set[TaggedReference]
+  protected def resolved: Set[TaggedReference]
 
   /** Shared method for collecting the [[TaggedReference]]s for a slot's range/domains.
     */
@@ -39,16 +39,16 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
       results: mutable.ArrayBuffer[TaggedReference],
   ): Unit = {
     slot.slot.anyOf.foreach { anyOfNode =>
-      anyOfNode.range.foreach { rangeNode =>
-        rangeNode.resolve.foreach(el => results.addOne((ElementTypeTag(el), el.name)))
+      anyOfNode.range.foreachFast { rangeNode =>
+        rangeNode.resolve.foreachFast(el => results.addOne((ElementTypeTag(el), el.name)))
       }
     }
-    slot.derivedRange.resolve.foreach { resolvedRange =>
+    slot.derivedRange.resolve.foreachFast { resolvedRange =>
       val el = resolvedRange.inner
       results.addOne((ElementTypeTag(el), el.name))
     }
-    slot.slot.domain.foreach { domainNode =>
-      domainNode.resolve.foreach(el => results.addOne((ElementTypeTag(el), el.name)))
+    slot.slot.domain.foreachFast { domainNode =>
+      domainNode.resolve.foreachFast(el => results.addOne((ElementTypeTag(el), el.name)))
     }
   }
 }
@@ -58,7 +58,7 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
 final class IncludeAllReachabilityQuery(using SchemaView) extends SchemaReachabilityQuery {
   override def reachable(element: Element): Boolean = true
   override def reachable(element: ElementView[?, ?]): Boolean = true
-  protected lazy val resolved: Set[TaggedReference] = Set.empty
+  protected val resolved: Set[TaggedReference] = Set.empty
 }
 
 /** Reachability query for a derived schema (resolved inheritance, all slots inlined to class
@@ -89,39 +89,31 @@ final class DerivedReachabilityQuery(
   )
 
   private def walk(current: TaggedReference): Iterable[TaggedReference] = {
-    val tag = current.tag
-    val name = current.value
     val result = new mutable.ArrayBuffer[TaggedReference]
-    tag match {
-      case ElementTypeTag.classDef =>
-        val classView = sv.classes(name)
-        classView.derivedAttributes.values.foreach {
-          // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
-          case sv if !inlinedOnly || sv.derivedInlined => collectSlotRefs(sv, result)
-          case _ =>
-        }
-        if (includeClassAncestors) {
-          classView.parents.foreach(anc => result.addOne((classDef, anc.name)))
-        }
-      case ElementTypeTag.typeDef =>
-        val type_ = sv.types(name)._type
-        type_.typeof.foreach { tr =>
-          tr.resolve.foreachFast { td =>
-            result.addOne((typeDef, td.name))
-          }
-        }
-        type_.unionOf.foreach { tr =>
-          tr.resolve.foreachFast { td =>
-            result.addOne((typeDef, td.name))
-          }
-        }
-      case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.foreach { er =>
-          er.resolve.foreachFast { ed =>
-            result.addOne((enumDef, ed.name))
-          }
-        }
-      case _ =>
+    val name = current.value
+    val tag = current.tag
+    if (tag eq ElementTypeTag.classDef) {
+      val classView = sv.classes(name)
+      classView.derivedAttributes.values.foreach {
+        // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
+        case sv if !inlinedOnly || sv.derivedInlined => collectSlotRefs(sv, result)
+        case _ =>
+      }
+      if (includeClassAncestors) {
+        classView.parents.foreach(anc => result.addOne((classDef, anc.name)))
+      }
+    } else if (tag eq ElementTypeTag.typeDef) {
+      val type_ = sv.types(name)._type
+      type_.typeof.foreach { tr =>
+        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
+      }
+      type_.unionOf.foreach { tr =>
+        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
+      }
+    } else if (tag eq ElementTypeTag.enumDef) {
+      sv.enums(name)._enum.inherits.foreach { er =>
+        er.resolve.foreachFast(ed => result.addOne((enumDef, ed.name)))
+      }
     }
     result
   }
@@ -148,57 +140,48 @@ final class UnderivedReachabilityQuery(
   )
 
   private def walk(current: TaggedReference): Iterable[TaggedReference] =
-    val tag = current.tag
-    val name = current.value
     val result = new mutable.ArrayBuffer[TaggedReference]
-    tag match {
-      case ElementTypeTag.classDef =>
-        val classView = sv.classes(name)
-        classView.ancestors(reflexive = false).foreach { anc =>
-          result.addOne((classDef, anc.cls.name))
-        }
-        val cls = classView.cls
-        cls.slots.foreach(sr => result.addOne((slotDef, sr.value)))
-        // The *ranges* of class-defined slots (attributes, slot_usage)
-        val definingSchema = classView.definingSchema
-        cls.attributes.values.foreach { sd =>
-          collectSlotRefs(SlotView(sd, definingSchema), result)
-        }
-        cls.slotUsage.values.foreach { sd =>
-          collectSlotRefs(SlotView(sd, definingSchema), result)
-        }
-      case ElementTypeTag.typeDef =>
-        val type_ = sv.types(name)._type
-        type_.typeof.foreach { tr =>
-          tr.resolve.foreachFast { td =>
-            result.addOne((typeDef, td.name))
-          }
-        }
-        type_.unionOf.foreach { tr =>
-          tr.resolve.foreachFast { td =>
-            result.addOne((typeDef, td.name))
-          }
-        }
-      case ElementTypeTag.slotDef =>
-        val slotView = sv.slotDefinitions(name)
-        slotView.slot.isA.foreach { sr =>
-          sr.resolve.foreachFast { sd =>
-            result.addOne((slotDef, sd.name))
-          }
-        }
-        slotView.slot.mixins.foreach { sr =>
-          sr.resolve.foreachFast { sd =>
-            result.addOne((slotDef, sd.name))
-          }
-        }
-        collectSlotRefs(slotView, result)
-      case ElementTypeTag.enumDef =>
-        sv.enums(name)._enum.inherits.foreach { er =>
-          er.resolve.foreachFast { ed =>
-            result.addOne((enumDef, ed.name))
-          }
-        }
-      case _ =>
+    val name = current.value
+    val tag = current.tag
+    if (tag eq ElementTypeTag.classDef) {
+      val classView = sv.classes(name)
+      classView.ancestorsWithSelf.foreach {
+        var i = 0
+        anc =>
+          if (i > 0) result.addOne((classDef, anc.cls.name))
+          i += 1
+      }
+      val cls = classView.cls
+      cls.slots.foreach(sr => result.addOne((slotDef, sr.value)))
+      // The *ranges* of class-defined slots (attributes, slot_usage)
+      val definingSchema = classView.definingSchema
+      cls.attributes.values.foreach { sd =>
+        collectSlotRefs(new SlotView(sd, definingSchema), result)
+      }
+      cls.slotUsage.values.foreach { sd =>
+        collectSlotRefs(new SlotView(sd, definingSchema), result)
+      }
+    } else if (tag eq ElementTypeTag.typeDef) {
+      val type_ = sv.types(name)._type
+      type_.typeof.foreach { tr =>
+        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
+      }
+      type_.unionOf.foreach { tr =>
+        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
+      }
+    } else if (tag eq ElementTypeTag.slotDef) {
+      val slotView = sv.slotDefinitions(name)
+      slotView.slot.isA.foreach { sr =>
+        sr.resolve.foreachFast(sd => result.addOne((slotDef, sd.name)))
+      }
+      slotView.slot.mixins.foreach { sr =>
+        sr.resolve.foreachFast(sd => result.addOne((slotDef, sd.name)))
+      }
+      collectSlotRefs(slotView, result)
+    } else if (tag eq ElementTypeTag.enumDef) {
+      sv.enums(name)._enum.inherits.foreach { er =>
+        er.resolve.foreachFast(ed => result.addOne((enumDef, ed.name)))
+      }
     }
     result
 }

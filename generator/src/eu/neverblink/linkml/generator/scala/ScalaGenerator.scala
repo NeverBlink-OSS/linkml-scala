@@ -49,7 +49,7 @@ final class ScalaGenerator(using sv: SchemaView) {
         (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(slotName).toSet
       val prefixResolver = classView.definingPrefixResolver
       className.concat(".scala") -> (
-        if classView.uriStr == "https://w3id.org/linkml/Any" then
+        if classView.isAny then
           typeDef(
             pkg,
             Case.PascalCase(cls.name),
