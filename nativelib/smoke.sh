@@ -48,12 +48,6 @@ MINGW* | MSYS* | CYGWIN* | Windows_NT)
     exit 1
   fi
   # _CRT_SECURE_NO_WARNINGS: MSVC deprecates sscanf, which smoke.c uses to read the handle back.
-  #
-  # cl takes - as well as / for options, and MSYS leaves an argument starting with - alone, so
-  # written this way the flags need no escaping. //flag would work too, but only for a flag with
-  # no path in it: MSYS passes //I/d/a/... through as-is, and cl then ignores the whole option as
-  # unknown. Hence cygpath -m for every path, which gives cl a path it understands (drive letter,
-  # forward slashes, so no second round of escaping here).
   cl -nologo -D_CRT_SECURE_NO_WARNINGS "-I$(cygpath -m "${prefix}/include")" \
     "$(cygpath -m "${here}/smoke.c")" "-Fe:$(cygpath -m "${work}/smoke.exe")" \
     -link "$(cygpath -m "${import_libs[0]}")"
