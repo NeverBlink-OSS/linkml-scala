@@ -6,17 +6,16 @@ import org.scalatest.wordspec.AnyWordSpec
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 
-/** JVM-specific tests for [[NTriplesOutput]]: the optimized buffered byte path must produce exactly
-  * the same bytes as the cross-platform [[NTriplesWriter.writeToString]] path (UTF-8 encoded),
-  * regardless of buffer boundaries.
+/** Tests for [[NTriplesWriter.writeTo]]: the buffered byte path must produce exactly the same bytes
+  * as the [[NTriplesWriter.writeToString]] path (UTF-8 encoded), regardless of buffer boundaries.
   */
-class NTriplesOutputSpec extends AnyWordSpec, Matchers {
+class NTriplesWriterStreamSpec extends AnyWordSpec, Matchers {
 
   private def cp(c: Int): String = new String(Character.toChars(c))
 
   private def bytes(triples: Seq[Triple], bufferSize: Int = 8 * 1024): Array[Byte] = {
     val out = new ByteArrayOutputStream
-    NTriplesOutput.writeTo(out, triples, bufferSize)
+    NTriplesWriter.writeTo(out, triples, bufferSize)
     out.toByteArray
   }
 
@@ -26,7 +25,7 @@ class NTriplesOutputSpec extends AnyWordSpec, Matchers {
   private val s = Iri("http://example.org/s")
   private val p = Iri("http://example.org/p")
 
-  "NTriplesOutput.writeTo" should {
+  "NTriplesWriter.writeTo" should {
     "match the string writer for plain ASCII triples" in {
       val triples = Seq(
         Triple(s, p, Iri("http://example.org/o")),

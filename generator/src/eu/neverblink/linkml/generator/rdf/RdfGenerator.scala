@@ -1,11 +1,31 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.DocumentGenerator
+import eu.neverblink.linkml.generator.util.{StringSink, Utf8ByteSink}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
 import eu.neverblink.linkml.schemaview.SchemaView
 
-/** Base utility class for common operations of generators that output RDF.
+import java.io.OutputStream
+
+/** Base class for the generators that output RDF.
   */
-abstract class RdfGenerator {
+abstract class RdfGenerator[O] extends DocumentGenerator[O] {
+
+  /** Push the generated triples into [[sink]]. */
+  def generate(sink: RdfSink, options: O = defaultOptions): Unit
+
+  final def writeTo(out: OutputStream, options: O = defaultOptions): Unit = {
+    val sink = new Utf8ByteSink(out)
+    generate(NTriplesRdfSink(sink), options)
+    sink.flush()
+  }
+
+  final def serialize(options: O = defaultOptions): String = {
+    val sink = new StringSink
+    generate(NTriplesRdfSink(sink), options)
+    sink.result
+  }
+
   private var blankNodeCounter = 0
 
   /** Create a new simple blank node.
@@ -73,6 +93,6 @@ abstract class RdfGenerator {
     // override format-specific prefixes
     additional.foreach(kv => namespaces.put(kv._1, kv._2))
     // emit all collected prefixes skipping place-holders
-    namespaces.forEach((k, v) => if (v.length > 0) sink.namespace(k, v))
+    namespaces.forEach((k, v) => if (v.nonEmpty) sink.namespace(k, v))
   }
 }

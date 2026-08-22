@@ -6,7 +6,9 @@ import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.*
 
-class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
+class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.Options] {
+
+  override protected def defaultOptions: ShaclGenerator.Options = ShaclGenerator.Options()
 
   /** Process a slot expression, including some support for boolean slot expressions.
     *
@@ -98,9 +100,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     * @param options
     *   What to generate. See [[ShaclGenerator.Options]].
     */
-  final def generate(
+  override final def generate(
       sink: RdfSink,
-      options: ShaclGenerator.Options = ShaclGenerator.Options(),
+      options: ShaclGenerator.Options,
   ): Unit = {
     import options.{onlyClassesFromRootSchema, open}
     addNamespaces(sink, defaultPrefixes)

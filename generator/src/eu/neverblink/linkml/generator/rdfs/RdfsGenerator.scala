@@ -4,7 +4,9 @@ import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
-class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
+class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Options] {
+
+  override protected def defaultOptions: RdfsGenerator.Options = RdfsGenerator.Options()
 
   /** Emit the RDFS metadata of every definition describing the same subject, skipping titles and
     * descriptions repeated between them.
@@ -49,9 +51,9 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator {
     * @param options
     *   What to generate. See [[RdfsGenerator.Options]].
     */
-  final def generate(
+  override final def generate(
       sink: RdfSink,
-      options: RdfsGenerator.Options = RdfsGenerator.Options(),
+      options: RdfsGenerator.Options,
   ): Unit = {
     import options.onlyClassesFromRootSchema
     addNamespaces(

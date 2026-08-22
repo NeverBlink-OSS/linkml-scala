@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.generator.erdiagram
 
+import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{Printable, PruningMode, indent}
+import eu.neverblink.linkml.generator.util.{CharSink, PruningMode, StringSink}
 import eu.neverblink.linkml.schemaview.*
 
 /** Generator for
@@ -12,7 +13,11 @@ import eu.neverblink.linkml.schemaview.*
   * on the type for slots that are not `required`. Slots whose range is a class (inlined or
   * referenced) become relationship lines instead of rows.
   */
-final class ErDiagramGenerator(using sv: SchemaView) {
+final class ErDiagramGenerator(using sv: SchemaView)
+    extends CharDocumentGenerator[ErDiagramGenerator.Options] {
+
+  override protected def defaultOptions: ErDiagramGenerator.Options =
+    ErDiagramGenerator.Options()
 
   /** Generate the ER diagram model.
     *
@@ -41,15 +46,16 @@ final class ErDiagramGenerator(using sv: SchemaView) {
     ErDiagram(entities, relationships)
   }
 
-  /** Generate the ER diagram and serialize it as Mermaid.
+  /** Generate the ER diagram and write it as Mermaid.
     *
     * @param options
     *   What to generate. See [[ErDiagramGenerator.Options]].
     */
-  def serialize(
-      options: ErDiagramGenerator.Options = ErDiagramGenerator.Options(),
-  ): String =
-    generate(options).print
+  override protected def writeChars(
+      sink: CharSink,
+      options: ErDiagramGenerator.Options,
+  ): Unit =
+    generate(options).writeTo(sink)
 
   /** Slots of a class sorted by `rank`, then by name. */
   private def sortedAttributes(cv: ClassView): Seq[AttributeView] =
@@ -115,23 +121,59 @@ final class ErDiagramGenerator(using sv: SchemaView) {
 }
 
 /** A whole Mermaid ER diagram. */
-final case class ErDiagram(entities: Seq[ErEntity], relationships: Seq[ErRelationship])
-    extends Printable:
-  override def print: String = {
-    // Indent explicitly instead of through `indent`, so that the blank line separating the entities
-    // from the relationships stays empty rather than becoming trailing whitespace.
-    val body = Seq(entities, relationships)
-      .filter(_.nonEmpty)
-      .map(_.map(_.print.strip()).mkString("\n"))
-      .mkString("\n\n")
-      .linesIterator
-      .map(line => if line.isEmpty then line else "  " + line)
-      .mkString("\n")
-    s"""%% GENERATED FROM LINKML
-       |erDiagram
-       |$body
-       |""".stripMargin
+final case class ErDiagram(entities: Seq[ErEntity], relationships: Seq[ErRelationship]):
+
+  /** Write the diagram as Mermaid. */
+  def writeTo(sink: CharSink): Unit = {
+    sink.append("%% GENERATED FROM LINKML\nerDiagram\n")
+    val body = new ErBody(sink)
+    entities.foreach(_.writeTo(body))
+    // A blank line separates the two groups, but only when there are two groups to separate.
+    if entities.nonEmpty && relationships.nonEmpty then body.startBlankLine()
+    relationships.foreach(_.writeTo(body))
+    sink.append('\n')
   }
+
+  /** The whole diagram as one string. Prefer [[writeTo]] where a sink is available. */
+  def print: String = {
+    val sink = new StringSink
+    writeTo(sink)
+    sink.result
+  }
+
+/** Writes the indented body of a diagram, line by line.
+  *
+  * Newlines go *between* lines, so nothing follows the last one and [[ErDiagram]] stays in charge
+  * of how the document ends. Empty lines are written without indentation, which is what keeps the
+  * blank line between the entities and the relationships genuinely empty instead of trailing
+  * whitespace.
+  */
+private final class ErBody(sink: CharSink) {
+  private var started = false
+
+  /** Start a line, indented one level for the `erDiagram` block plus [[extra]] spaces of nesting.
+    */
+  def startLine(extra: Int = 0): Unit = {
+    newline()
+    var spaces = 2 + extra
+    while spaces > 0 do {
+      sink.append(' ')
+      spaces -= 1
+    }
+  }
+
+  /** Start an empty line. */
+  def startBlankLine(): Unit = newline()
+
+  def append(s: String): Unit = sink.append(s)
+
+  def append(c: Char): Unit = sink.append(c)
+
+  private def newline(): Unit = {
+    if started then sink.append('\n')
+    started = true
+  }
+}
 
 /** An entity, i.e. a LinkML class.
   *
@@ -140,14 +182,21 @@ final case class ErDiagram(entities: Seq[ErEntity], relationships: Seq[ErRelatio
   * @param attributes
   *   Attribute rows to list in the entity's block
   */
-final case class ErEntity(name: String, attributes: Seq[ErAttribute]) extends Printable:
-  override def print: String =
+final case class ErEntity(name: String, attributes: Seq[ErAttribute]):
+  private[erdiagram] def writeTo(body: ErBody): Unit = {
+    body.startLine()
+    body.append(name)
     // An attribute-less entity is written bare: `Foo { }` renders the same empty box with more ink.
-    if attributes.isEmpty then name
-    else indent"""$name {
-              |  ${attributes.map(_.print).mkString("\n")}
-              |}
-              |""".stripMargin
+    if attributes.nonEmpty then {
+      body.append(" {")
+      attributes.foreach { attribute =>
+        body.startLine(2)
+        attribute.writeTo(body)
+      }
+      body.startLine()
+      body.append('}')
+    }
+  }
 
 /** An attribute row of an entity.
   *
@@ -168,12 +217,27 @@ final case class ErAttribute(
     keys: Seq[ErKey],
     multivalued: Boolean,
     optional: Boolean,
-) extends Printable:
-  override def print: String = {
+):
+  /** Written into a line that [[ErEntity]] has already started, since an attribute row only exists
+    * inside an entity's block.
+    */
+  private[erdiagram] def writeTo(body: ErBody): Unit = {
     // Mermaid hangs both markers off the *type*: `string[]?`, never `string? []` or `string x?`.
-    val typeExpr = dataType + (if multivalued then "[]" else "") + (if optional then "?" else "")
-    val keyList = if keys.isEmpty then "" else keys.mkString(", ")
-    s"$typeExpr $name $keyList".stripTrailing()
+    body.append(dataType)
+    if multivalued then body.append("[]")
+    if optional then body.append('?')
+    body.append(' ')
+    body.append(name)
+    // The key list is last, so with no keys the row simply ends after the name.
+    if keys.nonEmpty then {
+      body.append(' ')
+      var first = true
+      keys.foreach { key =>
+        if !first then body.append(", ")
+        body.append(key.toString)
+        first = false
+      }
+    }
   }
 
 /** A key constraint on an attribute.
@@ -203,7 +267,7 @@ enum ErCardinality(val fromGlyph: String, val toGlyph: String):
   * @param identifying
   *   Whether the range end is owned by the owning end (solid line) or independent (dashed line)
   * @param label
-  *   The slot's name, escaped by [[ErName.label]] when printed
+  *   The slot's name, escaped by [[ErName.label]] when written
   */
 case class ErRelationship(
     from: String,
@@ -212,11 +276,18 @@ case class ErRelationship(
     toCardinality: ErCardinality,
     identifying: Boolean,
     label: String,
-) extends Printable:
-  override def print: String = {
-    val line = if identifying then "--" else ".."
-    val spec = fromCardinality.fromGlyph + line + toCardinality.toGlyph
-    s"$from $spec $to : ${ErName.label(label)}"
+):
+  private[erdiagram] def writeTo(body: ErBody): Unit = {
+    body.startLine()
+    body.append(from)
+    body.append(' ')
+    body.append(fromCardinality.fromGlyph)
+    body.append(if identifying then "--" else "..")
+    body.append(toCardinality.toGlyph)
+    body.append(' ')
+    body.append(to)
+    body.append(" : ")
+    body.append(ErName.label(label))
   }
 
 /** Escaping of LinkML names into Mermaid ER tokens.

@@ -3,11 +3,9 @@ package eu.neverblink.linkml.benchmark
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
-import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink, RdfUtils}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.schemaview.SchemaView
-import org.apache.jena.sparql.resultset.RDFOutput
 import org.openjdk.jmh.annotations.*
 import org.openjdk.jmh.infra.Blackhole
 import os.Path
@@ -69,7 +67,6 @@ class WarmBench extends CommonParams {
   @Benchmark
   def shacl(bh: Blackhole): Unit = {
     // create SchemaView in the benchmark to not use the class cache
-    ShaclGenerator(using SchemaView(schemaDefs))
-      .generate(NTriplesRdfSink(BufferedByteSink(BlackholeOutputStream(bh))))
+    ShaclGenerator(using SchemaView(schemaDefs)).writeTo(BlackholeOutputStream(bh))
   }
 }
