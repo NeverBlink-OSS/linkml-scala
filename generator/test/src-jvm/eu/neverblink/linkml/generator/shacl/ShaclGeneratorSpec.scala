@@ -88,6 +88,145 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
+    "generate sh:name, sh:group and rank-based sh:order" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - some_slot
+           |    - some_other_slot
+           |slots:
+           |  contact_info:
+           |    title: Contact information
+           |    description: Slots describing how to reach someone.
+           |    rank: 5
+           |  some_slot:
+           |    range: string
+           |    title: Some Slot
+           |    slot_group: contact_info
+           |    rank: 2
+           |  some_other_slot:
+           |    range: integer
+           |    rank: 1
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:string;
+          |      sh:group <https://neverblink.eu/linkml/shacl/test/contact_info>;
+          |      sh:maxCount 1;
+          |      sh:name "Some Slot";
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 2;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/some_slot>
+          |    ], [
+          |      sh:datatype xsd:integer;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 1;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/some_other_slot>
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/contact_info> a sh:PropertyGroup;
+          |  rdfs:label "Contact information";
+          |  rdfs:comment "Slots describing how to reach someone.";
+          |  sh:order 5 .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "order unranked slots after ranked ones" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - unranked_slot
+           |    - ranked_slot
+           |    - another_unranked_slot
+           |slots:
+           |  unranked_slot:
+           |    range: string
+           |  ranked_slot:
+           |    range: string
+           |    rank: 10
+           |  another_unranked_slot:
+           |    range: string
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 11;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/unranked_slot>
+          |    ], [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 10;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/ranked_slot>
+          |    ], [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 12;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/another_unranked_slot>
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "declare a shared sh:PropertyGroup only once" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - some_slot
+           |  SomeOtherClass:
+           |    slots:
+           |    - some_slot
+           |slots:
+           |  contact_info: {}
+           |  some_slot:
+           |    range: string
+           |    slot_group: contact_info
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val sink = new CollectingRdfSink
+      ShaclGenerator(using schemaView).generate(sink)
+      withClue("duplicate triples in the output:") {
+        sink.triples.diff(sink.triples.distinct) shouldBe empty
+      }
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      "sh:PropertyGroup".r.findAllMatchIn(turtle).size shouldBe 1
+      "sh:group ".r.findAllMatchIn(turtle).size shouldBe 2
+      // falls back to the slot name when the group slot has no title
+      turtle should include("rdfs:label \"contact_info\"")
+    }
+
     "enforce open shapes" in {
       val input =
         s"""$schemaShared
