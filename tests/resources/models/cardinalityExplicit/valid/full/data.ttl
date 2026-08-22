@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/cardinalityExplicit/> .
+
+_:b1 a :Cardinal;
+    :exactlyTwo "a", "b" ;
+    :oneToThree "x", "y", "z" .

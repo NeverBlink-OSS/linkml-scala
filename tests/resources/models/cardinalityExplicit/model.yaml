@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/cardinalityExplicit/
+name: cardinalityExplicit
+imports:
+  - linkml:types
+
+# Companion to the `cardinality` model, which only covers `required` / `multivalued`.
+# This one covers the explicit cardinality metaslots.
+
+classes:
+  Cardinal:
+    tree_root: true
+    slots:
+      - exactlyTwo
+      - oneToThree
+
+slots:
+  exactlyTwo:
+    rank: 1
+    range: string
+    multivalued: true
+    exact_cardinality: 2
+  oneToThree:
+    rank: 2
+    range: string
+    multivalued: true
+    minimum_cardinality: 1
+    maximum_cardinality: 3
