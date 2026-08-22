@@ -96,6 +96,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           out should include("\"element_name\": \"SomeClass\"")
           out should include("\"element_type\": \"class\"")
           out should include("\"schema_id\": \"https://neverblink.eu/test/\"")
+          // The type designator names the concrete issue type.
+          out should include("\"issue_type\": \"InvalidUriOrCurie\"")
+          out should include("\"issue_type\": \"NoTreeRootClass\"")
           // No display chrome
           out should not include "ERROR:"
           out should not include "1 error, 1 warning"

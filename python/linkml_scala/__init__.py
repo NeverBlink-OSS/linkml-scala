@@ -54,8 +54,8 @@ WARNING = "WARNING"
 Report = dict[str, Any]
 """A validation report, following the `validation-report.yaml` LinkML model.
 
-``report["issues"]`` is a list of issues, each with at least a ``type``, a ``severity`` (one of
-:data:`FATAL`, :data:`ERROR`, :data:`WARNING`) and a ``location``.
+``report["issues"]`` is a list of issues, each with at least an ``issue_type``, a ``severity``
+(one of :data:`FATAL`, :data:`ERROR`, :data:`WARNING`) and a ``location``.
 """
 
 

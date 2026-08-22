@@ -1,45 +1,13 @@
 package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import org.virtuslab.yaml.Node
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec.TypeDesignatorEntry
 
-/** Codec for serializing a [[SchemaValidationReport]].
-  *
-  * Only encoding is supported: a report has no type designator, so the concrete issue type cannot
-  * be recovered when reading one back.
+/** Codec for serializing and deserializing a [[SchemaValidationReport]].
   *
   * TODO LNK-???: auto-generate this codec from the schema
   */
 object Codec {
-
-  private given issueCodec: LinkmlYamlCodec[SchemaIssue] = new LinkmlYamlCodec[SchemaIssue] {
-    override def decode(node: Node, id: Option[Any]): SchemaIssue =
-      throw UnsupportedOperationException("Reading a validation report back is not supported")
-
-    override def encode(issue: SchemaIssue, skipId: Boolean): Node = issue match {
-      case i: InvalidDefaultRangeImpl => invalidDefaultRange.encode(i, skipId)
-      case i: InvalidKeyOrIdSlotTypeImpl => invalidKeyOrIdSlotType.encode(i, skipId)
-      case i: InvalidRangeImpl => invalidRange.encode(i, skipId)
-      case i: InvalidSlotUsageImpl => invalidSlotUsage.encode(i, skipId)
-      case i: InvalidUriOrCurieImpl => invalidUriOrCurie.encode(i, skipId)
-      case i: MultipleKeyOrIdSlotsImpl => multipleKeyOrIdSlots.encode(i, skipId)
-      case i: MultipleTreeRootsImpl => multipleTreeRoots.encode(i, skipId)
-      case i: NoTreeRootClassImpl => noTreeRootClass.encode(i, skipId)
-      case i: NonUniqueNameImpl => nonUniqueName.encode(i, skipId)
-      case i: SchemaIdClashImpl => schemaIdClash.encode(i, skipId)
-      case i: SchemaImportErrorImpl => schemaImportError.encode(i, skipId)
-      case i: SchemaParseErrorImpl => schemaParseError.encode(i, skipId)
-      case i: UndefinedDefaultRangeImpl => undefinedDefaultRange.encode(i, skipId)
-      case i: UnexpectedErrorImpl => unexpectedError.encode(i, skipId)
-      case i: UndefinedPrefixImpl => undefinedPrefix.encode(i, skipId)
-      case i: UnknownReferenceImpl => unknownReference.encode(i, skipId)
-      case i: UnknownStringReferenceImpl => unknownStringReference.encode(i, skipId)
-      case other =>
-        throw UnsupportedOperationException(
-          s"No codec for issue type '${other.getClass.getName}'. Add it to Codec.issueCodec.",
-        )
-    }
-  }
 
   private val invalidDefaultRange: LinkmlYamlCodec[InvalidDefaultRangeImpl] =
     LinkmlYamlCodec.derived
@@ -63,6 +31,50 @@ object Codec {
   private val unknownReference: LinkmlYamlCodec[UnknownReferenceImpl] = LinkmlYamlCodec.derived
   private val unknownStringReference: LinkmlYamlCodec[UnknownStringReferenceImpl] =
     LinkmlYamlCodec.derived
+
+  private given issueCodec: LinkmlYamlCodec[SchemaIssue] =
+    LinkmlYamlCodec.typeDesignatorCodec(
+      "issue_type",
+      Seq(
+        TypeDesignatorEntry(
+          "InvalidDefaultRange",
+          classOf[InvalidDefaultRangeImpl],
+          invalidDefaultRange,
+        ),
+        TypeDesignatorEntry(
+          "InvalidKeyOrIdSlotType",
+          classOf[InvalidKeyOrIdSlotTypeImpl],
+          invalidKeyOrIdSlotType,
+        ),
+        TypeDesignatorEntry("InvalidRange", classOf[InvalidRangeImpl], invalidRange),
+        TypeDesignatorEntry("InvalidSlotUsage", classOf[InvalidSlotUsageImpl], invalidSlotUsage),
+        TypeDesignatorEntry("InvalidUriOrCurie", classOf[InvalidUriOrCurieImpl], invalidUriOrCurie),
+        TypeDesignatorEntry(
+          "MultipleKeyOrIdSlots",
+          classOf[MultipleKeyOrIdSlotsImpl],
+          multipleKeyOrIdSlots,
+        ),
+        TypeDesignatorEntry("MultipleTreeRoots", classOf[MultipleTreeRootsImpl], multipleTreeRoots),
+        TypeDesignatorEntry("NoTreeRootClass", classOf[NoTreeRootClassImpl], noTreeRootClass),
+        TypeDesignatorEntry("NonUniqueName", classOf[NonUniqueNameImpl], nonUniqueName),
+        TypeDesignatorEntry("SchemaIdClash", classOf[SchemaIdClashImpl], schemaIdClash),
+        TypeDesignatorEntry("SchemaImportError", classOf[SchemaImportErrorImpl], schemaImportError),
+        TypeDesignatorEntry("SchemaParseError", classOf[SchemaParseErrorImpl], schemaParseError),
+        TypeDesignatorEntry(
+          "UndefinedDefaultRange",
+          classOf[UndefinedDefaultRangeImpl],
+          undefinedDefaultRange,
+        ),
+        TypeDesignatorEntry("UndefinedPrefix", classOf[UndefinedPrefixImpl], undefinedPrefix),
+        TypeDesignatorEntry("UnexpectedError", classOf[UnexpectedErrorImpl], unexpectedError),
+        TypeDesignatorEntry("UnknownReference", classOf[UnknownReferenceImpl], unknownReference),
+        TypeDesignatorEntry(
+          "UnknownStringReference",
+          classOf[UnknownStringReferenceImpl],
+          unknownStringReference,
+        ),
+      ),
+    )
 
   implicit val codec: LinkmlYamlCodec[SchemaValidationReportImpl] = LinkmlYamlCodec.derived
 }

@@ -79,10 +79,15 @@ classes:
         description: Longer, human-readable message describing the issue in more detail.
         notes:
           - This field is inferred using equals_expression and is present only if the consumer of the report wishes to include it.
-      # TODO LNK-172: type designators
-#      issue_type: # for now skip this
-#        designates_type: true
-#        range: string # this would be automatically filled with the class name on serialization
+      issue_type:
+        designates_type: true
+        range: string
+        required: true
+        title: issue type
+        description: >-
+          The type of the issue: name of the concrete issue class (e.g. `InvalidRange`).
+          Filled automatically with the class name on serialization, and used to recover the
+          concrete issue type when reading a report back.
 
   # Abstract subclasses of SchemaIssue for different severities of issues.
   SchemaWarning:

@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class InvalidDefaultRangeImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "InvalidDefaultRange",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault
@@ -18,11 +21,6 @@ final case class InvalidDefaultRangeImpl(
 
   override def infer(): InvalidDefaultRangeImpl =
     copy(
-      message = inferOptional(
-        "message",
-        message,
-        "Undefined range at " + inferenceInput("location.json_pointer", location.jsonPointer),
-      ),
       details = inferOptional(
         "details",
         details,
@@ -30,6 +28,11 @@ final case class InvalidDefaultRangeImpl(
           "location.json_pointer",
           location.jsonPointer,
         ) + ", schema 'default_range' is undefined, and the fallback 'string' type is not available. Define the 'range' of the slot, add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.",
+      ),
+      message = inferOptional(
+        "message",
+        message,
+        "Undefined range at " + inferenceInput("location.json_pointer", location.jsonPointer),
       ),
     )
 }
