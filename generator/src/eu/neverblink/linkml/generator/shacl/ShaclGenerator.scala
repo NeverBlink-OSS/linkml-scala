@@ -150,8 +150,17 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
     //  and NodeShapes don't allow max/min count. To do this properly we would have
     //  to roll-down slots to the leaves of the boolean op tree and add make the
     //  leaves PropertyShapes.
-    if (!slot.multivalued) sink.triple(property, Shacl.maxCount, Literal.one)
-    if (slot.required) sink.triple(property, Shacl.minCount, Literal.one)
+    // The explicit cardinality metaslots take precedence over `required` / `multivalued`.
+    slot.minimumCardinality.orElseFast(slot.exactCardinality)
+      .orElseFast(if (slot.required) ShaclGenerator.one else None)
+      .foreachFast { c =>
+        sink.triple(property, Shacl.minCount, new Literal(c.toString, XmlSchema.integer))
+      }
+    slot.maximumCardinality.orElseFast(slot.exactCardinality)
+      .orElseFast(if (slot.multivalued) None else ShaclGenerator.one)
+      .foreachFast { c =>
+        sink.triple(property, Shacl.maxCount, new Literal(c.toString, XmlSchema.integer))
+      }
     sink.triple(property, Shacl.path, new Iri(s.uriStr))
     processSlotExpr(sink, s, slot, property)
     processConstraints(sink, attributeView, property)
@@ -241,6 +250,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator {
 }
 
 object ShaclGenerator {
+
+  /** The implied cardinality of a `required` / single-valued slot. */
+  private val one: Option[Int] = new Some(1)
 
   /** Options for [[ShaclGenerator]].
     *

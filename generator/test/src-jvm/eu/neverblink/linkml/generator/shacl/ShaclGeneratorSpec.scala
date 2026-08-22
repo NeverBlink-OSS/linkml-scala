@@ -88,6 +88,69 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
+    "generate counts from the explicit cardinality metaslots" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - exact_slot
+           |    - bounded_slot
+           |    - overridden_slot
+           |slots:
+           |  exact_slot:
+           |    range: string
+           |    multivalued: true
+           |    exact_cardinality: 3
+           |  bounded_slot:
+           |    range: string
+           |    multivalued: true
+           |    minimum_cardinality: 1
+           |    maximum_cardinality: 5
+           |  overridden_slot:
+           |    range: string
+           |    required: true
+           |    multivalued: false
+           |    minimum_cardinality: 2
+           |    maximum_cardinality: 4
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 3;
+          |      sh:minCount 3;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/exact_slot>
+          |    ], [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 5;
+          |      sh:minCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 1;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/bounded_slot>
+          |    ], [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 4;
+          |      sh:minCount 2;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 2;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/overridden_slot>
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
     "generate sh:pattern and inclusive bounds from slots" in {
       val input =
         s"""$schemaShared
