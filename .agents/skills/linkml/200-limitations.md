@@ -18,7 +18,8 @@ The following features are not yet supported or are partially supported in LinkM
   - Only enum defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
-- Type designators (`type_designator`)
+- Partial support for type designators (`designates_type`)
+  - Supported in the Scala generator and in YAML/JSON serialization. Not yet in JSON Schema or SHACL.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Rules (`rules`)
 - Null semantics (see below)
