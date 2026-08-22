@@ -1,0 +1,11 @@
+{
+  "name": "designator says Circle, but the slots are a Rectangle's",
+  "shapes": [
+    {
+      "shape_type": "Circle",
+      "label": "c1",
+      "width": 4,
+      "height": 5
+    }
+  ]
+}

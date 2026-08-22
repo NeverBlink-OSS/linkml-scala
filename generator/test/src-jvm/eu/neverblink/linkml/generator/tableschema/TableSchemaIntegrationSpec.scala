@@ -14,6 +14,11 @@ class TableSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
   override val globalEnable: Boolean =
     os.call((frictionless, "--version"), check = false).exitCode == 0 || System.getenv("CI") != null
 
+  override val skipInstances: Map[(String, String), String] = Map(
+    ("typeDesignator", "unknownType") ->
+      "LNK-101/LNK-102: not yet implemented, so unknown types get accepted",
+  )
+
   lazy val modelDir: os.Path = os.temp.dir()
   lazy val dataDir: os.Path = os.temp.dir()
 

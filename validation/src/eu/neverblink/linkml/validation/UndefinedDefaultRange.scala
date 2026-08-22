@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UndefinedDefaultRangeImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "UndefinedDefaultRange",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault
@@ -18,12 +21,12 @@ final case class UndefinedDefaultRangeImpl(
 
   override def infer(): UndefinedDefaultRangeImpl =
     copy(
-      message = inferOptional("message", message, "No 'default_range' is defined in the schema"),
       details = inferOptional(
         "details",
         details,
         "The 'default_range' of the schema is not defined and could not find a 'string' type to use as a fallback. This will become a fatal error if any slots in the schema omit their 'range'. Add a 'default_range' to the schema, import 'linkml:types', or define a 'string' type to fix.",
       ),
+      message = inferOptional("message", message, "No 'default_range' is defined in the schema"),
     )
 }
 

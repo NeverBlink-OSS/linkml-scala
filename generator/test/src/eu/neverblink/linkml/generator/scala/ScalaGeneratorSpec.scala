@@ -68,6 +68,55 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate type designator fields with the class name as an always-serialized default" in {
+      given SchemaView = ModelCatalogue.typeDesignator.model
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      // The class declaring the designator, and each subclass, get their own name as the default.
+      Seq(
+        "@serializeDefault",
+        "`type`: String = \"Thing\"",
+        "def `type`: String",
+      ).foreach { snippet =>
+        files("Thing.scala") should include(snippet)
+      }
+      Seq(
+        "@serializeDefault",
+        "`type`: String = \"IntThing\"",
+      ).foreach { snippet =>
+        files("IntThing.scala") should include(snippet)
+      }
+      // The designator is inherited: the subclass interface does not redeclare it.
+      files("IntThing.scala") should not include "def `type`"
+    }
+
+    "generate type designators on classes that have slots of their own" in {
+      given SchemaView = ModelCatalogue.typeDesignator2.model
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      // The abstract base declares the designator, and gets no implementation to pin it in.
+      files("Shape.scala") should include("def shapeType: String")
+      files("Shape.scala") should not include "case class"
+      // Each concrete subclass pins the designator to its own name, next to its own slots.
+      Seq(
+        "@named(\"shape_type\")",
+        "@serializeDefault",
+        "shapeType: String = \"Circle\"",
+        "radius: Int",
+      ).foreach { snippet =>
+        files("Circle.scala") should include(snippet)
+      }
+      Seq(
+        "shapeType: String = \"Rectangle\"",
+        "width: Int",
+        "height: Int",
+      ).foreach { snippet =>
+        files("Rectangle.scala") should include(snippet)
+      }
+      // The designator is not a constructor argument the caller has to supply.
+      files("Circle.scala") should not include "shapeType: String,"
+    }
+
     "generate trait interfaces for mixin classes" in {
       given SchemaView = ModelCatalogue.mixin.model
 

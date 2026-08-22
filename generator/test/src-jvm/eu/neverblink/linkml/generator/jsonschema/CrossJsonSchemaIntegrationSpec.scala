@@ -18,6 +18,7 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
   override val skipModels: Map[String, String] = Map(
     "anything" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
     "typeDesignator" -> "Type designators seem to be very broken in LinkML-py",
+    "typeDesignator2" -> "Type designators seem to be very broken in LinkML-py",
     "unionRange" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
   )
 

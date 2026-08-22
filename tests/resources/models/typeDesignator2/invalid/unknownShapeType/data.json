@@ -1,0 +1,9 @@
+{
+  "name": "designator names no class in the schema",
+  "shapes": [
+    {
+      "shape_type": "Triangle",
+      "label": "t1"
+    }
+  ]
+}
