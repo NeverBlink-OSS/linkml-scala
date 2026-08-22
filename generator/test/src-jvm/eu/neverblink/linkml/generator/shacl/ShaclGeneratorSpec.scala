@@ -88,6 +88,153 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
+    "generate sh:pattern and inclusive bounds from slots" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - int_slot
+           |    - string_slot
+           |slots:
+           |  int_slot:
+           |    range: integer
+           |    minimum_value: -1
+           |    maximum_value: 10
+           |  string_slot:
+           |    range: string
+           |    pattern: "^[0-9]{3}-[0-9]{4}$$"
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:integer;
+          |      sh:maxCount 1;
+          |      sh:maxInclusive 10;
+          |      sh:minInclusive -1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/int_slot>
+          |    ], [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 1;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/string_slot>;
+          |      sh:pattern "^[0-9]{3}-[0-9]{4}$"
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "take sh:pattern and inclusive bounds from the range type" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - int_slot
+           |    - string_slot
+           |slots:
+           |  int_slot:
+           |    range: small_int
+           |  string_slot:
+           |    range: patterned_string
+           |types:
+           |  small_int:
+           |    base: int
+           |    minimum_value: -1
+           |    maximum_value: 10
+           |  patterned_string:
+           |    base: str
+           |    pattern: "^[0-9]{3}-[0-9]{4}$$"
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      // The bounds are tagged with the XSD type the base maps to, not the synthetic URI of the
+      // custom type, so that a validator can actually compare them.
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype <https://neverblink.eu/linkml/shacl/test/small_int>;
+          |      sh:maxCount 1;
+          |      sh:maxInclusive 10;
+          |      sh:minInclusive -1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/int_slot>
+          |    ], [
+          |      sh:datatype <https://neverblink.eu/linkml/shacl/test/patterned_string>;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 1;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/string_slot>;
+          |      sh:pattern "^[0-9]{3}-[0-9]{4}$"
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "prefer the slot's own constraints over the range type's" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - int_slot
+           |slots:
+           |  int_slot:
+           |    range: small_int
+           |    minimum_value: 5
+           |types:
+           |  small_int:
+           |    base: int
+           |    minimum_value: -1
+           |    maximum_value: 10
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      turtle should include("sh:minInclusive 5")
+      turtle should not include "sh:minInclusive -1"
+      // the type still supplies the bound the slot doesn't override
+      turtle should include("sh:maxInclusive 10")
+    }
+
+    "not emit bounds for ranges that have no ordering" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - uri_slot
+           |slots:
+           |  uri_slot:
+           |    range: uriorcurie
+           |    minimum_value: 1
+           |    maximum_value: 10
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      turtle should not include "sh:minInclusive"
+      turtle should not include "sh:maxInclusive"
+    }
+
     "generate sh:name, sh:group and rank-based sh:order" in {
       val input =
         s"""$schemaShared

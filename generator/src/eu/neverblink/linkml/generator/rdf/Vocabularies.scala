@@ -8,6 +8,12 @@ object XmlSchema extends Vocabulary("http://www.w3.org/2001/XMLSchema#") {
   val string: Iri = get("string")
   val integer: Iri = get("integer")
   val boolean: Iri = get("boolean")
+  val decimal: Iri = get("decimal")
+  val double: Iri = get("double")
+  val float: Iri = get("float")
+  val date: Iri = get("date")
+  val dateTime: Iri = get("dateTime")
+  val time: Iri = get("time")
 }
 
 object Rdf extends Vocabulary("http://www.w3.org/1999/02/22-rdf-syntax-ns#") {
@@ -33,12 +39,15 @@ object Shacl extends Vocabulary("http://www.w3.org/ns/shacl#") {
   val ignoredProperties: Iri = get("ignoredProperties")
   val in: Iri = get("in")
   val maxCount: Iri = get("maxCount")
+  val maxInclusive: Iri = get("maxInclusive")
   val minCount: Iri = get("minCount")
+  val minInclusive: Iri = get("minInclusive")
   val name: Iri = get("name")
   val nodeKind: Iri = get("nodeKind")
   val or: Iri = get("or")
   val order: Iri = get("order")
   val path: Iri = get("path")
+  val pattern: Iri = get("pattern")
   val property: Iri = get("property")
   val targetClass: Iri = get("targetClass")
 }
