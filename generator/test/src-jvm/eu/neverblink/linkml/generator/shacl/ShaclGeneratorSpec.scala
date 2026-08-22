@@ -706,5 +706,6 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 object ShaclGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "typeDesignator" -> "Not yet implemented: LNK-102",
+    "typeDesignator2" -> "Not yet implemented: LNK-102",
   )
 }

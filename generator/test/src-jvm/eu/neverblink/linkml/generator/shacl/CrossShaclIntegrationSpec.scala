@@ -20,6 +20,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "enum" -> "We went with a different approach to Linkml-py for enums",
     "anything" -> "Metamodel extended_types.yaml is not bundled",
     "typeDesignator" -> "Metamodel extended_types.yaml is not bundled",
+    "typeDesignator2" -> "Metamodel extended_types.yaml is not bundled",
     "unionRange" -> "Metamodel extended_types.yaml is not bundled",
     "explicitInlineImplicitlyAsSimpleDict" -> "LinkML-py SHACL generator omits constraints on default-ranges",
     "curie" -> "LinkML-py treats CURIEs as literals instead of expanding them",

@@ -5,7 +5,7 @@ import eu.neverblink.linkml.yaml.LinkmlYamlCodec.TypeDesignatorEntry
 
 /** Codec for serializing and deserializing a [[SchemaValidationReport]].
   *
-  * TODO LNK-???: auto-generate this codec from the schema
+  * TODO LNK-187: auto-generate this codec from the schema
   */
 object Codec {
 

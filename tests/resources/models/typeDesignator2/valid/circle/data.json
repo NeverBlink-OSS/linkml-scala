@@ -1,0 +1,11 @@
+{
+  "name": "one circle",
+  "shapes": [
+    {
+      "shape_type": "Circle",
+      "label": "c1",
+      "visible": true,
+      "radius": 3
+    }
+  ]
+}

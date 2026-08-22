@@ -1,0 +1,11 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
+
+# Typed as a Circle, but carries a Rectangle's slots and no radius.
+_:c a :Container;
+  :name "designator says Circle, but the slots are a Rectangle's";
+  :shapes [
+    a :Circle;
+    :label "c1";
+    :width 4;
+    :height 5
+  ] .

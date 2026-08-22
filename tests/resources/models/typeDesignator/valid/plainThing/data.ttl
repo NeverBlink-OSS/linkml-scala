@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator/> .
+
+# A bare Thing: the designator names the tree root class itself, which is allowed.
+_:b a :Thing .
+# TODO LNK-102: Do we include the designator here too?
+# _:b :type :Thing .

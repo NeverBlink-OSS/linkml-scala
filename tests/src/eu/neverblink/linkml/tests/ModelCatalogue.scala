@@ -152,6 +152,7 @@ object ModelCatalogue {
   val syntheticUris: Entry = Entry("/models/syntheticUris/")
   val treeRootless: Entry = Entry("/models/treeRootless/")
   val typeDesignator: Entry = Entry("/models/typeDesignator/")
+  val typeDesignator2: Entry = Entry("/models/typeDesignator2/")
   val typed: Entry = Entry("/models/typed/")
   val unionRange: Entry = Entry("/models/unionRange/")
   val unionRangeReference: Entry = Entry("/models/unionRangeReference/")
