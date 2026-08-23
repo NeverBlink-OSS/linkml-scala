@@ -33,7 +33,7 @@ import java.net.InetSocketAddress
 
 val scala = "3.8.4"
 val scalaJS = "1.22.0"
-val rdf4j = "6.0.0"
+val rdf4j = "6.0.1"
 
 object LinkMlAliases extends Aliases {
   def lint: Seq[String] = alias(
