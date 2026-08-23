@@ -486,9 +486,9 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     * image classpath, and having a second one there confuses it.
     */
   override def compileMvnDeps = Seq(
-    mvn"org.graalvm.sdk:nativeimage:25.0.1",
+    mvn"org.graalvm.sdk:nativeimage:25.0.4.1",
     // WordFactory, for the null pointer the C error out-params are cleared to.
-    mvn"org.graalvm.sdk:word:25.0.1",
+    mvn"org.graalvm.sdk:word:25.0.4.1",
   )
 
   def scalacOptions = Seq(
