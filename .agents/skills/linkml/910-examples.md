@@ -3,7 +3,7 @@
 
 # Known-good example schemas
 
-50 schemas from the linkml-scala test suite. Each exercises one feature and is
+Dozens of schemas from the linkml-scala test suite. Each exercises one feature and is
 verified against every generator on every commit, so when you are unsure how something is
 written, read the matching `model.yaml` instead of guessing.
 
