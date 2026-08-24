@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/constraints/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+_:b a :Typed;
+    :intSlot -1;
+    :floatSlot "2.0"^^xsd:float;
+    :stringSlot "890123-4567" .

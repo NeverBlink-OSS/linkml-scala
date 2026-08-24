@@ -4,16 +4,16 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.generator.util.{JsonUtil, StringSink}
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
 import org.virtuslab.yaml.{Node, StringNode}
 
+import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -88,58 +88,72 @@ object LinkMlNativeApi {
     ()
   }
 
-  // Generators returning a single document
+  // Generators writing a single document
+  //
+  // These generators write directly into off-heap buffers.
 
-  def jsonSchema(handle: Long, optionsJson: String): String = {
+  def jsonSchema(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    JsonSchemaGenerator().serialize(Options.jsonSchema(optionsJson))
+    JsonSchemaGenerator().writeTo(out, Options.jsonSchema(optionsJson))
   }
 
-  def shacl(handle: Long, optionsJson: String): String = {
+  /** SHACL as N-Triples. Turtle is not available here: it would pull in RDF4J, which the shared
+    * library deliberately leaves out.
+    */
+  def shacl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    nTriples(ShaclGenerator().generate(_, Options.shacl(optionsJson)))
+    ShaclGenerator().writeTo(out, Options.shacl(optionsJson))
   }
 
-  def rdfs(handle: Long, optionsJson: String): String = {
+  /** RDFS as N-Triples, for the same reason as [[shacl]]. */
+  def rdfs(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    nTriples(RdfsGenerator().generate(_, Options.rdfs(optionsJson)))
+    RdfsGenerator().writeTo(out, Options.rdfs(optionsJson))
   }
 
-  def linkml(handle: Long, optionsJson: String): String = {
+  def linkml(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    LinkMlGenerator().serialize(Options.linkml(optionsJson))
+    LinkMlGenerator().writeTo(out, Options.linkml(optionsJson))
   }
 
-  def tableSchema(handle: Long, optionsJson: String): String = {
+  def tableSchema(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    TableSchemaGenerator().serialize(Options.tableSchema(optionsJson))
+    TableSchemaGenerator().writeTo(out, Options.tableSchema(optionsJson))
   }
 
-  def graphQl(handle: Long, optionsJson: String): String = {
+  def graphQl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    GraphQlGenerator().serialize(Options.graphQl(optionsJson))
+    GraphQlGenerator().writeTo(out, Options.graphQl(optionsJson))
   }
 
-  def erDiagram(handle: Long, optionsJson: String): String = {
+  def erDiagram(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    ErDiagramGenerator().serialize(Options.erDiagram(optionsJson))
+    ErDiagramGenerator().writeTo(out, Options.erDiagram(optionsJson))
   }
 
   // Results that are structured, and so come back as JSON
 
   /** Generate Scala sources, as a JSON object mapping filename to source. */
-  def scalaFiles(handle: Long, optionsJson: String): String = {
+  def scalaFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     val generated = ScalaGenerator().generate(Options.scala(optionsJson))
-    JsonUtil.yamlToJson(
+    JsonUtil.writeJson(
       Node.MappingNode(generated.map((name, text) => entry(name, StringNode(text))).toMap),
+      out,
     )
   }
 
   /** Lint a loaded schema, as a `SchemaValidationReport` in JSON. */
-  def lint(handle: Long, optionsJson: String): String = {
+  def lint(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     val sv = view(handle)
-    report(SchemaValidator(using sv).lintProblems, None, Options.load(optionsJson).inferMessages)
+    JsonUtil.writeJson(
+      reportNode(
+        SchemaValidator(using sv).lintProblems,
+        None,
+        Options.load(optionsJson).inferMessages,
+      ),
+      out,
+    )
   }
 
   /** Turn an exception into the message that goes into the C error out-param.
@@ -183,28 +197,24 @@ object LinkMlNativeApi {
     sv
   }
 
-  /** Run an RDF generator into an N-Triples string. Turtle is not available here: it would pull in
-    * RDF4J, which the shared library deliberately leaves out.
-    */
-  private def nTriples(generate: NTriplesRdfSink => Unit): String = {
-    val sink = new StringSink
-    generate(NTriplesRdfSink(sink))
-    sink.result
-  }
+  private def reportNode(
+      issues: Seq[SchemaIssue],
+      runId: Option[String],
+      inferMessages: Boolean,
+  ): Node =
+    Codec.codec.encode(
+      SchemaValidationReportImpl(
+        issues = if inferMessages then issues.map(_.infer()) else issues,
+        validationRunId = runId,
+      ),
+    )
 
   private def report(
       issues: Seq[SchemaIssue],
       runId: Option[String],
       inferMessages: Boolean,
   ): String =
-    JsonUtil.yamlToJson(
-      Codec.codec.encode(
-        SchemaValidationReportImpl(
-          issues = if inferMessages then issues.map(_.infer()) else issues,
-          validationRunId = runId,
-        ),
-      ),
-    )
+    JsonUtil.yamlToJson(reportNode(issues, runId, inferMessages))
 
   private def entry(name: String, value: Node): (Node, Node) = StringNode(name) -> value
 

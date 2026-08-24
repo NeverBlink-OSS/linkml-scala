@@ -392,7 +392,10 @@ class RuntimeTest(unittest.TestCase):
         self.assertEqual(1, len(set(results)), "the same schema should generate the same output")
 
     def test_non_ascii_survives_the_round_trip(self):
-        # The response travels as UTF-8 inside JSON, through C, and back into Python.
+        # The generators UTF-8 encode straight into unmanaged memory, so this covers the encoder as
+        # well as the trip through C. 🐍 is outside the BMP, which means a surrogate pair in the
+        # generator's char data and a four-byte sequence on the wire -- encode that as two
+        # three-byte sequences (CESU-8) and Python would refuse to decode it.
         unicode_schema = schema(
             "unicode",
             """
@@ -400,16 +403,20 @@ class RuntimeTest(unittest.TestCase):
               Terrarium:
                 tree_root: true
                 attributes:
-                  wąż:
+                  wąż🐍:
                     description: "grzegorz brzęczyszczykiewicz 🐍"
                     range: string
             """,
         )
+        # The emoji is in the slot name, not just the description, because the ER diagram renders
+        # names and types but no descriptions.
         with linkml_scala.load_string(unicode_schema) as loaded:
-            generated = loaded.linkml()
-            # TODO LNK-159: update this test to be in-line with whatever we think up
-            # self.assertIn("wąż", generated)
-            self.assertIn("🐍", generated)
+            for name in ("linkml", "graphql", "er_diagram", "json_schema"):
+                with self.subTest(generator=name):
+                    generated = getattr(loaded, name)()
+                    # TODO LNK-159: update this test to be in-line with whatever we think up
+                    # self.assertIn("wąż", generated)
+                    self.assertIn("🐍", generated)
 
     def test_a_large_output_comes_back_whole(self):
         # Responses are copied into unmanaged memory as UTF-8 and read back through a pointer, so a

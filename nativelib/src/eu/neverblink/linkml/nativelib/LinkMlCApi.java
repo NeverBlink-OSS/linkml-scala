@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.nativelib;
 
+import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import org.graalvm.nativeimage.IsolateThread;
@@ -140,21 +141,37 @@ public final class LinkMlCApi {
 
     // Plumbing
 
-    /** One of the generator entry points on {@link LinkMlNativeApi}. */
+    /**
+     * One of the generator entry points on {@link LinkMlNativeApi}.
+     *
+     * <p>None of the parameters is a word type, because native-image does not support passing those
+     * into a lambda or a method reference.
+     */
     @FunctionalInterface
     interface Generator {
-        String generate(long handle, String optionsJson);
+        void generate(long handle, String optionsJson, OutputStream out);
     }
 
     /**
      * Run a generator, applying the NULL-plus-message convention.
+     *
+     * <p>The generator writes into unmanaged memory as it goes, so the document is never held on the
+     * Java heap. The stream owns that memory until {@code take} hands it to the caller.
      */
     static CCharPointer document(
             long handle, @CConst CCharPointer options, CCharPointerPointer error, Generator work) {
         clear(error);
+        UnmanagedOutputStream out = null;
         try {
-            return copy(work.generate(handle, string(options)));
+            out = new UnmanagedOutputStream();
+            work.generate(handle, string(options), out);
+            return out.take();
         } catch (Throwable failure) {
+            // Release the partial document before describing the failure: when the failure is
+            // "I'm running out of memory", the message needs a few bytes of it back.
+            if (out != null) {
+                out.discard();
+            }
             report(error, failure);
             return WordFactory.nullPointer();
         }
@@ -175,7 +192,13 @@ public final class LinkMlCApi {
             // Getting here means something like a StackOverflowError, which may break the reply too.
             message = "unrecoverable error in the LinkML native library";
         }
-        write(error, message);
+        try {
+            write(error, message);
+        } catch (Throwable ignored) {
+            // Out of memory even for the message. Leaving *error NULL beats letting this escape:
+            // an exception out of a @CEntryPoint aborts the process, and the callers already treat
+            // "NULL with no message" as a failure.
+        }
     }
 
     private static void clear(CCharPointerPointer out) {
@@ -213,7 +236,8 @@ public final class LinkMlCApi {
      * Copy a string into unmanaged memory as NUL-terminated UTF-8, so it stays valid after the call
      * returns and can be freed from C.
      * <p>
-     * TODO LNK-186: (perf) reduce memory copies and string re-encoding
+     * Only used for the small strings: error messages and the load functions' validation report.
+     * Documents go through {@link UnmanagedOutputStream} instead, which never builds a string.
      */
     private static CCharPointer copy(String value) {
         byte[] bytes = value.getBytes(StandardCharsets.UTF_8);

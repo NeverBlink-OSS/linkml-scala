@@ -21,7 +21,8 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `basic` | 8 | 12 |  |
 | `basic2` | 0 | 0 |  |
 | `cardinality` | 8 | 14 |  |
-| `constraints` | 9 | 9 |  |
+| `cardinalityExplicit` | 4 | 8 |  |
+| `constraints` | 12 | 12 |  |
 | `constraintsOnTypes` | 9 | 9 |  |
 | `curie` | 13 | 0 |  |
 | `emitPrefixes` | 0 | 0 |  |

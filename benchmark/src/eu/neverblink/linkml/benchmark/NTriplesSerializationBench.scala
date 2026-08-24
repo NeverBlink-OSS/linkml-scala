@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.generator.rdf.*
-import eu.neverblink.linkml.generator.rdf.NTriplesOutput
+import eu.neverblink.linkml.generator.rdf.NTriplesWriter as LinkMlNTriplesWriter
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaIssues
@@ -63,7 +63,7 @@ class NTriplesSerializationBench extends CommonParams {
 
   @Benchmark
   def linkml(bh: Blackhole): Unit =
-    NTriplesOutput.writeTo(new BlackholeOutputStream(bh), linkmlTriples)
+    LinkMlNTriplesWriter.writeTo(new BlackholeOutputStream(bh), linkmlTriples)
 
   @Benchmark
   def jena(bh: Blackhole): Unit = {
