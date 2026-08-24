@@ -81,12 +81,12 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
 
           "SHACL output parses as RDF" in {
             assume(!skip.contains((name, "shacl")), skip.getOrElse((name, "shacl"), ""))
-            assertParsesAsRdf(RdfUtils.toNTriples(ShaclGenerator(using sv).generate(_)))
+            assertParsesAsRdf(ShaclGenerator(using sv).serialize())
           }
 
           "RDFS output parses as RDF" in {
             assume(!skip.contains((name, "rdfs")), skip.getOrElse((name, "rdfs"), ""))
-            assertParsesAsRdf(RdfUtils.toNTriples(RdfsGenerator(using sv).generate(_)))
+            assertParsesAsRdf(RdfsGenerator(using sv).serialize())
           }
 
           "Table Schema output parses as JSON" in {

@@ -4,14 +4,6 @@ import Printable.PrintableOrSimple
 
 import java.lang
 
-class Indent(spaces: Int = 2)(inner: lang.StringBuilder => Unit) {
-  override def toString: String = {
-    val stringBuilder = new lang.StringBuilder()
-    inner(stringBuilder)
-    stringBuilder.toString.indent(spaces)
-  }
-}
-
 /** Base trait for classes that have a code-gen representation, to be used with the [[indent]]
   * interpolator
   */
@@ -29,7 +21,6 @@ object Printable {
       case _: Unit => ""
       case anyVal: AnyVal => anyVal.toString
     }
-  extension (seq: Seq[PrintableOrSimple]) def lines: String = seq.map(_.print).mkString("\n")
 }
 
 extension (sc: StringContext)

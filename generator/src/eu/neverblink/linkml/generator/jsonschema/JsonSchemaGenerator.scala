@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.jsonschema
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml
+import eu.neverblink.linkml.generator.JsonDocumentGenerator
 import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
@@ -25,8 +26,16 @@ import scala.collection.mutable
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
-class JsonSchemaGenerator(using sv: SchemaView) {
+class JsonSchemaGenerator(using sv: SchemaView)
+    extends JsonDocumentGenerator[JsonSchemaGenerator.Options, Schema] {
   import JsonSchemaGenerator.*
+
+  override protected def defaultOptions: Options = Options()
+
+  override protected def codec: JsonValueCodec[Schema] = JsonSchemaGenerator.codec
+
+  override protected def writerConfig(options: Options): WriterConfig =
+    WriterConfig.withIndentionStep(options.indentationStep)
 
   /** Translate a class name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
@@ -51,7 +60,7 @@ class JsonSchemaGenerator(using sv: SchemaView) {
     * @return
     *   JSON Schema in the [[Schema]] model
     */
-  final def generate(
+  override final def generate(
       options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
   ): Schema = {
     import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
@@ -223,21 +232,6 @@ class JsonSchemaGenerator(using sv: SchemaView) {
       ),
     )
   }
-
-  /** Generate the JSON Schema and serialize it into a string value
-    *
-    * @param options
-    *   What to generate. See [[JsonSchemaGenerator.Options]].
-    * @return
-    *   Serialized JSON Schema
-    */
-  final def serialize(
-      options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
-  ): String =
-    writeToString(
-      generate(options),
-      WriterConfig.withIndentionStep(options.indentationStep),
-    )
 }
 
 object JsonSchemaGenerator {

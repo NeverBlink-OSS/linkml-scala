@@ -2,15 +2,19 @@ package eu.neverblink.linkml.generator.graphql
 
 import eu.neverblink
 import eu.neverblink.linkml
+import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{Printable, PruningMode, indent}
+import eu.neverblink.linkml.generator.util.{CharSink, Printable, PruningMode, indent}
 import eu.neverblink.linkml.metamodel.PermissibleValue
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 
-class GraphQlGenerator(using sv: SchemaView) {
+class GraphQlGenerator(using sv: SchemaView)
+    extends CharDocumentGenerator[GraphQlGenerator.Options] {
   import GraphQlGenerator.*
+
+  override protected def defaultOptions: Options = Options()
 
   /** Generate the GraphQL definitions which use custom directives for rdf interop.
     *
@@ -108,19 +112,17 @@ class GraphQlGenerator(using sv: SchemaView) {
       )
   }
 
-  /** Generate and serialize the GraphQL definitions, along with the linkml directives for rdf
-    * interop.
-    *
-    * @param options
-    *   What to generate. See [[GraphQlGenerator.Options]].
+  /** Write the GraphQL definitions.
     */
-  def serialize(
-      options: GraphQlGenerator.Options = GraphQlGenerator.Options(),
-  ): String = {
-    indent"""# GENERATED FROM LINKML
-            |
-            |${generate(options).map(_.print.strip()).mkString("\n\n")}
-            |""".stripMargin
+  override protected def writeChars(sink: CharSink, options: GraphQlGenerator.Options): Unit = {
+    sink.append("# GENERATED FROM LINKML\n\n")
+    var first = true
+    generate(options).foreach { definition =>
+      if !first then sink.append("\n\n")
+      sink.append(definition.print.strip())
+      first = false
+    }
+    sink.append('\n')
   }
 }
 
