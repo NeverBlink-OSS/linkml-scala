@@ -3,8 +3,10 @@ package eu.neverblink.linkml.generator.shacl
 import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.SlotExpression
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview.*
+
+import scala.collection.mutable
 
 class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.Options] {
 
@@ -59,39 +61,135 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     if (orListHeadMaybe ne Rdf.nil) sink.triple(subject, Shacl.or, orListHeadMaybe)
   }
 
+  /** Emit the value constraints of an attribute: `pattern`, `minimum_value` and `maximum_value`.
+    *
+    * @param attributeView
+    *   The attribute to generate triples for
+    * @param subject
+    *   The subject to generate triples for
+    */
+  private def processConstraints(
+      sink: RdfSink,
+      attributeView: AttributeView,
+      subject: Resource,
+  ): Unit = attributeView match {
+    case typeAttribute: TypeAttributeView =>
+      typeAttribute.pattern.foreachFast { p =>
+        sink.triple(subject, Shacl.pattern, new Literal(p, XmlSchema.string))
+      }
+      // Bounds (min / max values) only make sense for ordered literal ranges.
+      if (typeAttribute.implicitPrefix.isEmpty)
+        datatypeForValueBound(typeAttribute.typeView).foreachFast { datatype =>
+          typeAttribute.minimumValue.foreachFast { v =>
+            sink.triple(subject, Shacl.minInclusive, new Literal(v.value.strip, datatype))
+          }
+          typeAttribute.maximumValue.foreachFast { v =>
+            sink.triple(subject, Shacl.maxInclusive, new Literal(v.value.strip, datatype))
+          }
+        }
+    case _ => ()
+  }
+
+  /** The datatype to tag `minimum_value` / `maximum_value` bounds with.
+    *
+    * SHACL compares the value bound against the data, and it needs one of the XSD datatypes to do
+    * that validation. The type's own URI is no good here, as the validator does not know how to
+    * validate it. We must coerce it to a base XSD type.
+    *
+    * @return
+    *   The datatype to use, or None if this type has no meaningful ordering.
+    */
+  private def datatypeForValueBound(typeView: TypeView): Option[Iri] = typeView.runtimeType match {
+    case IntegerType => new Some(XmlSchema.integer)
+    case FloatType => new Some(XmlSchema.float)
+    case DoubleType => new Some(XmlSchema.double)
+    case DecimalType => new Some(XmlSchema.decimal)
+    case DateType => new Some(XmlSchema.date)
+    case DateTimeType => new Some(XmlSchema.dateTime)
+    case TimeType => new Some(XmlSchema.time)
+    case StringType => new Some(XmlSchema.string)
+    case _ => None
+  }
+
   /** Generate sh:property triples for a given slot. Produces triples of form
     * `propertyDomain sh:property [ ... ] .`
     *
-    * @param s
-    *   Slot to generate SHACL triples for.
+    * @param attributeView
+    *   Attribute to generate SHACL triples for.
     * @param order
-    *   sh:order to use for the slot
+    *   Fallback sh:order to use for the slot, if it has no `rank`
     * @param propertyDomain
     *   The RDF subject to add this sh:property to.
+    * @param groups
+    *   Collects the slots referenced via `slot_group`, so that their sh:PropertyGroup declarations
+    *   can be emitted once at the end.
     */
   private def processSlot(
       sink: RdfSink,
-      s: SlotView,
+      attributeView: AttributeView,
       order: Int,
       propertyDomain: Resource,
+      groups: mutable.Map[String, SlotView],
   ): Unit = {
+    val s = attributeView.slotView
     val slot = s.slot
     val property = blankNode()
     sink.triple(propertyDomain, Shacl.property, property)
+    slot.title.foreachFast { t =>
+      sink.triple(property, Shacl.name, new Literal(t, XmlSchema.string))
+    }
     slot.description.foreachFast { d =>
       sink.triple(property, Shacl.description, new Literal(d, XmlSchema.string))
+    }
+    slot.slotGroup.foreachFast { groupRef =>
+      sv.resolve(groupRef.asInstanceOf[Reference[SlotView]]).foreachFast { groupView =>
+        groups.getOrElseUpdate(groupView.uriStr, groupView)
+        sink.triple(property, Shacl.group, new Iri(groupView.uriStr))
+      }
     }
     // TODO LNK-129: N-arity has to be done on the top-level-only,
     //  as SHACL boolean operators attached to a PropertyShape have to be NodeShapes
     //  and NodeShapes don't allow max/min count. To do this properly we would have
     //  to roll-down slots to the leaves of the boolean op tree and add make the
     //  leaves PropertyShapes.
-    if (!slot.multivalued) sink.triple(property, Shacl.maxCount, Literal.one)
-    if (slot.required) sink.triple(property, Shacl.minCount, Literal.one)
+    // The explicit cardinality metaslots take precedence over `required` / `multivalued`.
+    slot.minimumCardinality.orElseFast(slot.exactCardinality)
+      .orElseFast(if (slot.required) ShaclGenerator.one else None)
+      .foreachFast { c =>
+        sink.triple(property, Shacl.minCount, new Literal(c.toString, XmlSchema.integer))
+      }
+    slot.maximumCardinality.orElseFast(slot.exactCardinality)
+      .orElseFast(if (slot.multivalued) None else ShaclGenerator.one)
+      .foreachFast { c =>
+        sink.triple(property, Shacl.maxCount, new Literal(c.toString, XmlSchema.integer))
+      }
     sink.triple(property, Shacl.path, new Iri(s.uriStr))
     processSlotExpr(sink, s, slot, property)
-    sink.triple(property, Shacl.order, new Literal(order.toString, XmlSchema.integer))
+    processConstraints(sink, attributeView, property)
+    // Use rank if possible. Other slots are put at the end.
+    val rank = slot.rank.getOrElseFast(order)
+    sink.triple(property, Shacl.order, new Literal(rank.toString, XmlSchema.integer))
   }
+
+  /** Declare the slots used as `slot_group` targets as sh:PropertyGroup instances, so that the
+    * sh:group references made by property shapes point at well-typed, labeled nodes.
+    */
+  private def processGroups(sink: RdfSink, groups: mutable.Map[String, SlotView]): Unit =
+    groups.values.foreach { g =>
+      val groupIri = new Iri(g.uriStr)
+      sink.triple(groupIri, Rdf.`type`, Shacl.PropertyGroup)
+      sink.triple(
+        groupIri,
+        Rdfs.label,
+        new Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
+      )
+      g.slot.description.foreachFast { d =>
+        sink.triple(groupIri, Rdfs.comment, new Literal(d, XmlSchema.string))
+      }
+      g.slot.rank.foreachFast { r =>
+        sink.triple(groupIri, Shacl.order, new Literal(r.toString, XmlSchema.integer))
+      }
+    }
 
   /** Generates SHACL shapes and pushes the namespaces and triples into the provided [[RdfSink]].
     *
@@ -112,6 +210,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
         kv => kv._2.definingSchema eq root
       }
       else sv.classes
+    val groups = mutable.LinkedHashMap.empty[String, SlotView]
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
@@ -125,16 +224,23 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
         c.identifier.foldFast(Seq(Rdf.`type`))(id => Seq(Rdf.`type`, new Iri(id.uriStr))),
       )
       sink.triple(classNameIri, Shacl.ignoredProperties, ignoredPropertiesListHead)
-      c.derivedAttributes.values.foreach {
-        var order = 0
-        sv =>
-          if (!sv.slot.identifier) {
-            processSlot(sink, sv, order, classNameIri)
-            order += 1
-          }
+      // LinkML's `rank` gives slots an explicit order. Slots without one keep their
+      // declaration order, but start after the highest rank in the class.
+      var order = 0
+      c.attributeViews.values.foreach { av =>
+        val slot = av.slotView.slot
+        if (!slot.identifier) slot.rank.foreachFast(r => if (r >= order) order = r + 1)
+      }
+      c.attributeViews.values.foreach { av =>
+        val slot = av.slotView.slot
+        if (!slot.identifier) {
+          processSlot(sink, av, order, classNameIri, groups)
+          if (slot.rank.isEmpty) order += 1
+        }
       }
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
     }
+    processGroups(sink, groups)
   }
 
   private val defaultPrefixes = Array(
@@ -146,6 +252,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
 }
 
 object ShaclGenerator {
+
+  /** The implied cardinality of a `required` / single-valued slot. */
+  private val one: Option[Int] = new Some(1)
 
   /** Options for [[ShaclGenerator]].
     *
