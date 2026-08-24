@@ -31,7 +31,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
   /** Get the name of the slot, respecting alias, and LinkML casing rules
     */
   def slotName(slotView: SlotView): String =
-    slotView.slot.alias.getOrElseFast(Case.deSpaceCase(slotView.slot.name))
+    slotView.slot.alias.getOrElseFast(Case.escaped(slotView.slot.name))
 
   /** Generate the Table Schema
     *

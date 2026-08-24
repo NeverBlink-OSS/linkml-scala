@@ -4,9 +4,20 @@ import java.lang.Character._
 
 object Case {
 
-  /** Remove space case nonsense.
+  /** Enforces the name format as described by regex `[A-Za-z_][A-Za-z0-9_]*`, escaping other
+    * characters with underscores `_`. Leading digits are escaped by prepending the string with an
+    * underscore.
     */
-  def deSpaceCase(name: String): String = name.replace(' ', '_')
+  def escaped(name: String): String = {
+    val res = name.map { c =>
+      if c >= 'A' && c <= 'Z' then c
+      else if c >= 'a' && c <= 'z' then c
+      else if c >= '0' && c <= '9' then c
+      else '_'
+    }
+    if res.head >= '0' && res.head <= '9' then res.prepended('_')
+    else res
+  }
 
   /** Enforces snake_case format.
     *

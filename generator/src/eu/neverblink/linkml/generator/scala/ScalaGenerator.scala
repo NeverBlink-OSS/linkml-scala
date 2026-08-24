@@ -506,7 +506,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     val aliasAnnotation =
       slot.alias
         .orElse(if slot.name != name then Some(slot.name) else None)
-        .map(s => s"@named(\"${Case.deSpaceCase(s)}\")")
+        .map(s => s"@named(\"${Case.escaped(s)}\")")
     val typedDefault = {
       val fromRange = makeTypedDefault(attribute)
       if slot.designatesType then designatorDefault(attribute, owner, fromRange) else fromRange
