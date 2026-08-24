@@ -8,12 +8,7 @@ import org.scalatest.wordspec.AnyWordSpec
   * compiler over it. JVM-only, as it needs the compiler and the file system.
   */
 class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
-  override val skipModels: Map[String, String] = Map(
-    "syntheticUris" ->
-      "LNK-169: element names that are not valid Scala identifiers are emitted without escaping",
-    "nonHermetic" ->
-      "LNK-169: a type whose base has the same name generates a cyclic alias (`type Int = Int`)",
-  )
+  override val skipModels: Map[String, String] = ScalaGeneratorCompileSpec.skipModels
 
   /** Compile the given Scala sources with the Scala 3 compiler. The test classpath is reused, so
     * the generated code is checked against the real `runtime` module it depends on.
@@ -53,4 +48,13 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         withClue(s"compiler output:\n${failure.getOrElse("")}\n")(failure shouldBe None)
       }
   }
+}
+
+object ScalaGeneratorCompileSpec {
+  val skipModels: Map[String, String] = Map(
+    "syntheticUris" ->
+      "LNK-169: element names that are not valid Scala identifiers are emitted without escaping",
+    "nonHermetic" ->
+      "LNK-169: a type whose base has the same name generates a cyclic alias (`type Int = Int`)",
+  )
 }

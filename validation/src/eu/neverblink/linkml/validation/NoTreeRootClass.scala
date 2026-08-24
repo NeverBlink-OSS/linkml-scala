@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class NoTreeRootClassImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "NoTreeRootClass",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault

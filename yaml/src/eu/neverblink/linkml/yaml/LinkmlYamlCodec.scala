@@ -44,6 +44,78 @@ object LinkmlYamlCodec {
     override def encode(x: UriOrCurie, skipId: Boolean): Node = StringNode(x.original)
   }
 
+  /** One concrete implementation handled by [[LinkmlYamlCodec.typeDesignatorCodec]].
+    *
+    * @param designatorValue
+    *   Value that selects this implementation: the LinkML class name for a `string`-ranged
+    *   designator, or the class URI / CURIE for uri-ranged ones.
+    * @param cls
+    *   Runtime class of the implementation, used to pick the codec when encoding.
+    * @param codec
+    *   Codec of the implementation.
+    * @param aliases
+    *   Additional accepted designator values, e.g. the class URI when [[designatorValue]] is the
+    *   class name. The alias is kept during decoding, so we can round-trip a designator exactly.
+    */
+  final case class TypeDesignatorEntry[T](
+      designatorValue: String,
+      cls: Class[?],
+      codec: LinkmlYamlCodec[? <: T],
+      aliases: Seq[String] = Seq(),
+  )
+
+  /** Codec for an abstract class whose concrete implementations are told apart by a type designator
+    * slot (LinkML `designates_type: true`).
+    *
+    * @see
+    *   https://linkml.io/linkml/schemas/type-designators.html
+    */
+  def typeDesignatorCodec[T](
+      designatorField: String,
+      entries: Seq[TypeDesignatorEntry[T]],
+  ): LinkmlYamlCodec[T] = new LinkmlYamlCodec[T] {
+    private val byValue = {
+      val m = new java.util.HashMap[String, LinkmlYamlCodec[? <: T]](entries.size << 2, 0.5f)
+      for (e <- entries; v <- e.designatorValue +: e.aliases) {
+        require(m.put(v, e.codec) eq null, s"Duplicate type designator value '$v'")
+      }
+      m
+    }
+    private val byClass = {
+      val m = new java.util.HashMap[Class[?], LinkmlYamlCodec[? <: T]](entries.size << 1, 0.5f)
+      entries.foreach { e =>
+        require(m.put(e.cls, e.codec) eq null, s"Duplicate type designator class '${e.cls}'")
+      }
+      m
+    }
+
+    override def decode(node: Node, id: Option[Any]): T = node match {
+      case n: Node.MappingNode =>
+        n.mappings.collectFirst {
+          case (k: Node.ScalarNode, v) if (Tag.str eq k.tag) && k.value == designatorField => v
+        } match {
+          case Some(v: Node.ScalarNode) if Tag.str eq v.tag =>
+            val codec = byValue.get(v.value)
+            if (codec ne null) codec.decode(node, id)
+            else decodeError(s"a known value of type designator '$designatorField'", v)
+          case Some(v) => decodeError(s"string value for type designator '$designatorField'", v)
+          case None => decodeError(s"map value with type designator field '$designatorField'", n)
+        }
+      case n => decodeError(s"map value with type designator field '$designatorField'", n)
+    }
+
+    override def encode(x: T, skipId: Boolean): Node = {
+      val codec = byClass.get(x.getClass)
+      if (codec eq null) {
+        throw new IllegalArgumentException(
+          s"No codec registered for class '${x.getClass.getName}'. " +
+            "Add a TypeDesignatorEntry for it.",
+        )
+      }
+      codec.asInstanceOf[LinkmlYamlCodec[T]].encode(x, skipId)
+    }
+  }
+
   inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make }
 
   def getFields(n: Node.MappingNode): java.util.HashMap[String, Node] = {

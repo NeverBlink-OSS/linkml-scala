@@ -458,6 +458,58 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "decode and encode polymorphic classes via a type designator" in {
+      abstract class Shape { def kind: String }
+      case class Circle(@serializeDefault kind: String = "Circle", radius: Int) extends Shape
+      case class Square(@serializeDefault kind: String = "Square", side: Int) extends Shape
+      case class Blob(@serializeDefault kind: String = "Blob") extends Shape
+
+      val circleCodec: LinkmlYamlCodec[Circle] = LinkmlYamlCodec.derived
+      val squareCodec: LinkmlYamlCodec[Square] = LinkmlYamlCodec.derived
+      implicit val codec: LinkmlYamlCodec[Shape] = LinkmlYamlCodec.typeDesignatorCodec(
+        "kind",
+        Seq(
+          LinkmlYamlCodec.TypeDesignatorEntry("Circle", classOf[Circle], circleCodec),
+          LinkmlYamlCodec.TypeDesignatorEntry(
+            "Square",
+            classOf[Square],
+            squareCodec,
+            aliases = Seq("https://example.org/Square"),
+          ),
+        ),
+      )
+
+      roundTrip(Circle(radius = 3): Shape, "kind: Circle\nradius: 3\n")
+      roundTrip(Square(side = 5): Shape, "kind: Square\nside: 5\n")
+      // The designator does not have to come first in the mapping.
+      decode[Shape]("radius: 3\nkind: Circle\n", Circle(radius = 3))
+      // An alias decodes to the same implementation and is kept.
+      roundTrip(
+        Square(kind = "https://example.org/Square", side = 5): Shape,
+        "kind: https://example.org/Square\nside: 5\n",
+      )
+      decodeError[Shape](
+        "kind: Wedge\nradius: 3\n",
+        "Expected a known value of type designator 'kind' at 0:6 but got:",
+      )
+      decodeError[Shape](
+        "radius: 3\n",
+        "Expected map value with type designator field 'kind' at 0:0 but got:",
+      )
+      decodeError[Shape](
+        "kind:\n  nested: true\nradius: 3\n",
+        "Expected string value for type designator 'kind' at 1:2 but got:",
+      )
+      decodeError[Shape](
+        "Circle\n",
+        "Expected map value with type designator field 'kind' at 0:0 but got:",
+      )
+      // Encoding an implementation that was not registered is a bug in the registration.
+      intercept[IllegalArgumentException](codec.encode(Blob())).getMessage should include(
+        "No codec registered for class",
+      )
+    }
+
     "decode and encode Scala 3 enums" in {
       enum Enum {
         case Case1, Case2, Case3

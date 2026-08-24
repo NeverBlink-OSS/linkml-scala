@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class SchemaParseErrorImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "SchemaParseError",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @named("parser_message")

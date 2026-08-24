@@ -12,6 +12,9 @@ final case class InvalidSlotUsageImpl(
     @named("class_name")
     className: String,
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "InvalidSlotUsage",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault

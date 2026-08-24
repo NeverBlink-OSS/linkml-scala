@@ -48,7 +48,7 @@ class CodecCoverageSpec extends AnyWordSpec, Matchers {
 
   /** Issue classes the codec dispatches on, read back out of its source. */
   private def issueClassesInCodec: Set[String] =
-    """case i: (\w+)Impl =>""".r
+    """classOf\[(\w+)Impl\]""".r
       .findAllMatchIn(read("validation/src/eu/neverblink/linkml/validation/Codec.scala"))
       .map(_.group(1))
       .toSet
@@ -65,7 +65,8 @@ class CodecCoverageSpec extends AnyWordSpec, Matchers {
       val missing = (inSchema -- inCodec).toSeq.sorted
       withClue(
         s"Codec.issueCodec is missing a case for: ${missing.mkString(", ")}. " +
-          "Add `case i: <Name>Impl => <name>.encode(i, skipId)` and the matching derived codec. ",
+          "Add `TypeDesignatorEntry(\"<Name>\", classOf[<Name>Impl], <name>)` and the matching " +
+          "derived codec. ",
       )(missing shouldBe empty)
 
       val stale = (inCodec -- inSchema).toSeq.sorted

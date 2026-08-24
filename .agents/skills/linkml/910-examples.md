@@ -3,7 +3,7 @@
 
 # Known-good example schemas
 
-49 schemas from the linkml-scala test suite. Each exercises one feature and is
+50 schemas from the linkml-scala test suite. Each exercises one feature and is
 verified against every generator on every commit, so when you are unsure how something is
 written, read the matching `model.yaml` instead of guessing.
 
@@ -57,7 +57,8 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `referenceInteger` | 5 | 3 |  |
 | `syntheticUris` | 0 | 0 |  |
 | `treeRootless` | 0 | 0 |  |
-| `typeDesignator` | 6 | 6 |  |
+| `typeDesignator` | 10 | 12 |  |
+| `typeDesignator2` | 9 | 7 | Type designators on classes with different attributes. This… |
 | `typed` | 8 | 19 |  |
 | `unionRange` | 6 | 3 |  |
 | `unionRangeReference` | 8 | 3 |  |
