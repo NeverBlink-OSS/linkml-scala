@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UnexpectedErrorImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "UnexpectedError",
     location: IssueLocationImpl,
     message: Option[String] = None,
     reason: String,

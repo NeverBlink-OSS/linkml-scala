@@ -1,0 +1,17 @@
+{
+  "name": "a circle and a rectangle",
+  "shapes": [
+    {
+      "shape_type": "Circle",
+      "label": "c1",
+      "radius": 3
+    },
+    {
+      "shape_type": "Rectangle",
+      "label": "r1",
+      "visible": false,
+      "width": 4,
+      "height": 5
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+id: https://neverblink.eu/linkml/tests/typeDesignator2/
+name: typeDesignator2
+description: >-
+  Type designators on classes with different attributes.
+  This tests whether the type designator is correctly used to determine the class 
+  of an object when deserializing or validating the data.
+imports:
+  - linkml:types
+
+classes:
+  Container:
+    tree_root: true
+    attributes:
+      name:
+        rank: 1
+        range: string
+        required: true
+      shapes:
+        rank: 2
+        range: Shape
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+
+  Shape:
+    abstract: true
+    description: Base class holding the type designator and the slots every shape has.
+    attributes:
+      shape_type:
+        designates_type: true
+        range: string
+        required: true
+      label:
+        range: string
+        required: true
+      visible:
+        range: boolean
+
+  Circle:
+    is_a: Shape
+    attributes:
+      radius:
+        range: integer
+        required: true
+
+  Rectangle:
+    is_a: Shape
+    attributes:
+      width:
+        range: integer
+        required: true
+      height:
+        range: integer
+        required: true

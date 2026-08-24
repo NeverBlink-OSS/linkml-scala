@@ -12,6 +12,9 @@ final case class MultipleTreeRootsImpl(
     @named("class_names")
     classNames: Seq[String],
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "MultipleTreeRoots",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault

@@ -12,6 +12,9 @@ final case class SchemaImportErrorImpl(
     details: Option[String] = None,
     @named("import_uri")
     importUri: String,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "SchemaImportError",
     location: IssueLocationImpl,
     message: Option[String] = None,
     reason: String,

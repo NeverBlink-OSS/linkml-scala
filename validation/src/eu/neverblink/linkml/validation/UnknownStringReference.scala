@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UnknownStringReferenceImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "UnknownStringReference",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault
@@ -18,14 +21,6 @@ final case class UnknownStringReferenceImpl(
 
   override def infer(): UnknownStringReferenceImpl =
     copy(
-      message = inferOptional(
-        "message",
-        message,
-        "Unknown reference 'string' at " + inferenceInput(
-          "location.json_pointer",
-          location.jsonPointer,
-        ),
-      ),
       details = inferOptional(
         "details",
         details,
@@ -33,6 +28,14 @@ final case class UnknownStringReferenceImpl(
           "location.json_pointer",
           location.jsonPointer,
         ) + ". Make sure you have 'linkml:types' imported.",
+      ),
+      message = inferOptional(
+        "message",
+        message,
+        "Unknown reference 'string' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ),
       ),
     )
 }

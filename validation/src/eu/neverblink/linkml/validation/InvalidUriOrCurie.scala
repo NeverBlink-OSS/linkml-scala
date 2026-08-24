@@ -14,6 +14,9 @@ final case class InvalidUriOrCurieImpl(
     elementName: String,
     @named("element_type")
     elementType: String,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "InvalidUriOrCurie",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault

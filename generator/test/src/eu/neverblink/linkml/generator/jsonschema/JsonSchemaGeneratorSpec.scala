@@ -864,6 +864,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 object JsonSchemaGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "typeDesignator" -> "Not yet implemented: LNK-101",
+    "typeDesignator2" -> "Not yet implemented: LNK-101",
     "unionRange" -> "Not yet implemented: LNK-100",
   )
 }

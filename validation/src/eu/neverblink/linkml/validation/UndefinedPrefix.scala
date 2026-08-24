@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UndefinedPrefixImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "UndefinedPrefix",
     location: IssueLocationImpl,
     message: Option[String] = None,
     prefix: NcName,

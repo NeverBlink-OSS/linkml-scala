@@ -1,0 +1,9 @@
+{
+  "name": "the required designator is absent",
+  "shapes": [
+    {
+      "label": "c1",
+      "radius": 3
+    }
+  ]
+}

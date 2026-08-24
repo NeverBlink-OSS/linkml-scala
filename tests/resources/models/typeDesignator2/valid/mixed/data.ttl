@@ -1,0 +1,18 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
+
+_:c a :Container;
+  :name "a circle and a rectangle";
+  :shapes [
+    a :Circle;
+    # TODO LNK-102: Do we include the designator here too?
+    # :shape_type "Circle";
+    :label "c1";
+    :radius 3
+  ], [
+    a :Rectangle;
+    # :shape_type "Rectangle";
+    :label "r1";
+    :visible false;
+    :width 4;
+    :height 5
+  ] .

@@ -40,7 +40,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
       val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
-        makeScalaField(attribute, collectionForm)
+        makeScalaField(attribute, collectionForm, classView)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
       val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
@@ -297,6 +297,48 @@ final class ScalaGenerator(using sv: SchemaView) {
     }
   }
 
+  /** Rewrite the [[TypedDefault]] of a type designator slot (`designates_type: true`). Its value is
+    * fixed to the identifier of the containing class.
+    *
+    * @param attribute
+    *   The type designator attribute
+    * @param owner
+    *   The class the field is generated into (not necessarily where the slot is declared)
+    * @param fromRange
+    *   The [[TypedDefault]] inferred from the range alone, returned unchanged when the designator
+    *   gets no special handling
+    * @see
+    *   https://linkml.io/linkml/schemas/type-designators.html
+    */
+  private def designatorDefault(
+      attribute: AttributeView,
+      owner: ClassView,
+      fromRange: TypedDefault,
+  ): TypedDefault = {
+    val literal = attribute match {
+      case TypeAttributeView(_, _, typeView) =>
+        given PrefixResolver = owner.definingPrefixResolver
+        typeView.runtimeType match {
+          case StringType => Some(scalaStringLiteral(owner.cls.name))
+          case UriType => Some(s"Uri(${scalaStringLiteral(owner.uriOrCurie.uri)})")
+          case CurieType => Some(s"Curie(${scalaStringLiteral(owner.uriOrCurie.curie)})")
+          case UriOrCurieType =>
+            Some(s"UriOrCurie(${scalaStringLiteral(owner.uriOrCurie.original)})")
+          case _ => None
+        }
+      case _ => None
+    }
+    literal.fold(fromRange) { value =>
+      InlineType(attribute.slotView) match {
+        case InlineType.plain =>
+          fromRange.copy(default = Some(value), annotations = Seq("@serializeDefault"))
+        case InlineType.optional =>
+          fromRange.copy(default = Some(s"Some($value)"), annotations = Seq("@serializeDefault"))
+        case _ => fromRange
+      }
+    }
+  }
+
   /** Remap the [[CombineFunction]] if necessary, handles special metamodel slots.
     *
     * @param slot
@@ -379,6 +421,7 @@ final class ScalaGenerator(using sv: SchemaView) {
           renderExpression(classView, attribute, expression),
         )
       }
+      .sortBy(_.name) // sort to minimize diffs
 
   /** Render a parsed interpolation expression as a Scala string-concatenation expression.
     *
@@ -442,10 +485,13 @@ final class ScalaGenerator(using sv: SchemaView) {
     *   Attribute to construct the [[ScalaField]] instance for
     * @param collectionForm
     *   Collection form of the owner class
+    * @param owner
+    *   The containing class for the field
     */
   private def makeScalaField(
       attribute: AttributeView,
       collectionForm: CollectionForm,
+      owner: ClassView,
   ): ScalaField = {
     val v = attribute.slotView
     val slot = v.slot
@@ -461,7 +507,10 @@ final class ScalaGenerator(using sv: SchemaView) {
       slot.alias
         .orElse(if slot.name != name then Some(slot.name) else None)
         .map(s => s"@named(\"${Case.deSpaceCase(s)}\")")
-    val typedDefault = makeTypedDefault(attribute)
+    val typedDefault = {
+      val fromRange = makeTypedDefault(attribute)
+      if slot.designatesType then designatorDefault(attribute, owner, fromRange) else fromRange
+    }
     ScalaField(
       name,
       typedDefault.typeName,

@@ -27,6 +27,15 @@ abstract class SchemaIssue {
     */
   def details: Option[String]
 
+  /** The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+    * automatically with the class name on serialization, and used to recover the concrete issue
+    * type when reading a report back.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/validation-report
+    */
+  def issueType: String
+
   /** The location in the schema where the issue was found.
     *
     * @see

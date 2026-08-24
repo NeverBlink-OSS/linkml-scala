@@ -12,6 +12,9 @@ final case class InvalidRangeImpl(
     @named("actual_type")
     actualType: String,
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "InvalidRange",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @named("range_value")

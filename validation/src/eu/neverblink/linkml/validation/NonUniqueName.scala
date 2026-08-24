@@ -12,6 +12,9 @@ final case class NonUniqueNameImpl(
     details: Option[String] = None,
     @named("element_name")
     elementName: String,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "NonUniqueName",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault

@@ -167,7 +167,7 @@ def gen_examples() -> str:
     return "\n".join([
         BANNER,
         "# Known-good example schemas\n",
-        f"{len(rows)} schemas from the linkml-scala test suite. Each exercises one feature and is",
+        "Dozens of schemas from the linkml-scala test suite. Each exercises one feature and is",
         "verified against every generator on every commit, so when you are unsure how something is",
         "written, read the matching `model.yaml` instead of guessing.\n",
         "Paths are relative to `tests/resources/models/`:",

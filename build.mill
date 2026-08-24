@@ -33,7 +33,7 @@ import java.net.InetSocketAddress
 
 val scala = "3.8.4"
 val scalaJS = "1.22.0"
-val rdf4j = "6.0.0"
+val rdf4j = "6.0.1"
 
 object LinkMlAliases extends Aliases {
   def lint: Seq[String] = alias(
@@ -280,7 +280,7 @@ object generator extends Module {
       override def mvnDeps = super.mvnDeps() ++ Seq(
         mvn"org.eclipse.rdf4j:rdf4j-shacl:$rdf4j",
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
-        mvn"com.networknt:json-schema-validator:3.0.6",
+        mvn"com.networknt:json-schema-validator:3.0.7",
         mvn"org.sangria-graphql::sangria:4.2.19",
         mvn"org.scala-lang::scala3-compiler:$scala",
       )
@@ -486,9 +486,9 @@ object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImag
     * image classpath, and having a second one there confuses it.
     */
   override def compileMvnDeps = Seq(
-    mvn"org.graalvm.sdk:nativeimage:25.0.1",
+    mvn"org.graalvm.sdk:nativeimage:25.0.4.1",
     // WordFactory, for the null pointer the C error out-params are cleared to.
-    mvn"org.graalvm.sdk:word:25.0.1",
+    mvn"org.graalvm.sdk:word:25.0.4.1",
   )
 
   def scalacOptions = Seq(

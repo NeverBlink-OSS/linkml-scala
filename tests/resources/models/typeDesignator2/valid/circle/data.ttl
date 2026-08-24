@@ -1,0 +1,12 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
+
+_:c a :Container;
+  :name "one circle";
+  :shapes [
+    a :Circle;
+    # TODO LNK-102: Do we include the designator here too?
+    # :shape_type "Circle";
+    :label "c1";
+    :visible true;
+    :radius 3
+  ] .

@@ -14,6 +14,9 @@ final case class InvalidKeyOrIdSlotTypeImpl(
     details: Option[String] = None,
     @named("element_name")
     elementName: String,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "InvalidKeyOrIdSlotType",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @serializeDefault

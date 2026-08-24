@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
+
+_:c a :Container;
+  :name "nothing in here" .

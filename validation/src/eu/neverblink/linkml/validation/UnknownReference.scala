@@ -10,6 +10,9 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class UnknownReferenceImpl(
     details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "UnknownReference",
     location: IssueLocationImpl,
     message: Option[String] = None,
     @named("reference_value")
