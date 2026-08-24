@@ -1,12 +1,11 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
-import com.github.plokhotnyuk.jsoniter_scala.core.{writeToStream, *}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.rdf.{RdfSink, RdfUtils}
+import eu.neverblink.linkml.generator.rdf.{RdfGenerator, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -32,7 +31,7 @@ final case class ScalaOptions(
     generateEmitPrefixes: Boolean = true,
 ) extends HasGenerateOptions
 
-object Scala extends StringGenerate[ScalaOptions] {
+object Scala extends ManyFilesGenerate[ScalaOptions] {
   override protected def generatorName: String = "scala"
 
   override protected[cli] def generate(
@@ -74,17 +73,14 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
   override protected[cli] def generate(options: JsonSchemaOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    writeToStream(
-      JsonSchemaGenerator().generate(
-        JsonSchemaGenerator.Options(
-          options.open,
-          options.treeRootOverride,
-          options.treeRootInlineTypeOverride,
-        ),
-      ),
+    JsonSchemaGenerator().writeTo(
       out,
-      WriterConfig.withIndentionStep(2),
-    )(using JsonSchemaGenerator.codec)
+      JsonSchemaGenerator.Options(
+        options.open,
+        options.treeRootOverride,
+        options.treeRootInlineTypeOverride,
+      ),
+    )
 }
 
 // SHACL
@@ -117,12 +113,10 @@ object Shacl extends StreamGenerate[ShaclOptions] {
     if !RdfOutput.write(
         out,
         options.format,
-        ShaclGenerator().generate(
-          _,
-          ShaclGenerator.Options(
-            open = options.open,
-            onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
-          ),
+        ShaclGenerator(),
+        ShaclGenerator.Options(
+          open = options.open,
+          onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
         ),
       )
     then err(RdfOutput.unknownFormat(options.format))
@@ -154,10 +148,8 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
     if !RdfOutput.write(
         out,
         options.format,
-        RdfsGenerator().generate(
-          _,
-          RdfsGenerator.Options(onlyClassesFromRootSchema = options.onlyClassesFromRootSchema),
-        ),
+        RdfsGenerator(),
+        RdfsGenerator.Options(onlyClassesFromRootSchema = options.onlyClassesFromRootSchema),
       )
     then err(RdfOutput.unknownFormat(options.format))
 }
@@ -173,16 +165,19 @@ private object RdfOutput {
   def unknownFormat(format: String): String =
     s"Unknown RDF format '$format'. Supported formats: nt, ttl."
 
-  /** Stream the generator output (pushed via [[gen]]) to [[out]] in the requested format. Returns
-    * `false` if the format is not recognized (nothing is written).
+  /** Stream [[gen]]'s output to [[out]] in the requested format. Returns `false` if the format is
+    * not recognized, in which case nothing is written.
+    *
+    * N-Triples is the generator's own business. Turtle is not: it needs RDF4J, which only this
+    * module has, so it is layered on by handing the generator a different sink.
     */
-  def write(out: OutputStream, format: String, gen: RdfSink => Unit): Boolean =
+  def write[O](out: OutputStream, format: String, gen: RdfGenerator[O], options: O): Boolean =
     format.toLowerCase match {
       case "nt" | "ntriples" =>
-        RdfUtils.streamNTriples(out, gen)
+        gen.writeTo(out, options)
         true
       case "ttl" | "turtle" =>
-        RdfUtils.streamTurtle(out, gen)
+        RdfUtils.streamTurtle(out, gen.generate(_, options))
         true
       case _ => false
     }
@@ -206,12 +201,12 @@ final case class LinkMlOptions(
     format: String = "yaml",
 ) extends HasGenerateOptions
 
-object LinkMl extends StringGenerate[LinkMlOptions] {
+object LinkMl extends StreamGenerate[LinkMlOptions] {
   override protected def generatorName: String = "linkml"
 
-  override protected[cli] def generate(
-      options: LinkMlOptions,
-  )(using SchemaView): Iterable[(String, String)] = {
+  override protected[cli] def generate(options: LinkMlOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit = {
     val format = options.format.toLowerCase match {
       case "yaml" => LinkMlGenerator.OutputFormat.yaml
       case "yml" => LinkMlGenerator.OutputFormat.yaml
@@ -219,16 +214,12 @@ object LinkMl extends StringGenerate[LinkMlOptions] {
       case s => err(s"Unknown output format: $s")
     }
 
-    Seq(
-      (
-        "",
-        LinkMlGenerator().serialize(
-          LinkMlGenerator.Options(
-            pruningMode = options.pruning.resolvedPruningMode,
-            skipClassDerivation = options.skipDerivation,
-            outputFormat = format,
-          ),
-        ),
+    LinkMlGenerator().writeTo(
+      out,
+      LinkMlGenerator.Options(
+        pruningMode = options.pruning.resolvedPruningMode,
+        skipClassDerivation = options.skipDerivation,
+        outputFormat = format,
       ),
     )
   }
@@ -251,11 +242,7 @@ object TableSchema extends StreamGenerate[TableSchemaOptions] {
   override protected[cli] def generate(options: TableSchemaOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    writeToStream(
-      TableSchemaGenerator().generate(TableSchemaGenerator.Options(options.treeRoot)),
-      out,
-      WriterConfig.withIndentionStep(2),
-    )(using TableSchemaGenerator.codec)
+    TableSchemaGenerator().writeTo(out, TableSchemaGenerator.Options(options.treeRoot))
 }
 
 // GraphQL
@@ -273,19 +260,15 @@ final case class GraphQlOptions(
     pruning: PruningOptions = PruningOptions(),
 ) extends HasGenerateOptions
 
-object GraphQl extends StringGenerate[GraphQlOptions] {
+object GraphQl extends StreamGenerate[GraphQlOptions] {
   override protected def generatorName: String = "graphql"
 
-  override protected[cli] def generate(
-      options: GraphQlOptions,
-  )(using SchemaView): Iterable[(String, String)] =
-    Seq(
-      (
-        "",
-        GraphQlGenerator().serialize(
-          GraphQlGenerator.Options(options.pruning.resolvedPruningMode),
-        ),
-      ),
+  override protected[cli] def generate(options: GraphQlOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    GraphQlGenerator().writeTo(
+      out,
+      GraphQlGenerator.Options(options.pruning.resolvedPruningMode),
     )
 }
 
@@ -311,21 +294,17 @@ final case class ErDiagramOptions(
     optionalMarker: Boolean = true,
 ) extends HasGenerateOptions
 
-object ErDiagram extends StringGenerate[ErDiagramOptions] {
+object ErDiagram extends StreamGenerate[ErDiagramOptions] {
   override protected def generatorName: String = "er-diagram"
 
-  override protected[cli] def generate(
-      options: ErDiagramOptions,
-  )(using SchemaView): Iterable[(String, String)] =
-    Seq(
-      (
-        "",
-        ErDiagramGenerator().serialize(
-          ErDiagramGenerator.Options(
-            pruningMode = options.pruning.resolvedPruningMode,
-            optionalMarker = options.optionalMarker,
-          ),
-        ),
+  override protected[cli] def generate(options: ErDiagramOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    ErDiagramGenerator().writeTo(
+      out,
+      ErDiagramGenerator.Options(
+        pruningMode = options.pruning.resolvedPruningMode,
+        optionalMarker = options.optionalMarker,
       ),
     )
 }

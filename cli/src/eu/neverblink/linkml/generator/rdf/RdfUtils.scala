@@ -1,6 +1,5 @@
 package eu.neverblink.linkml.generator.rdf
 
-import eu.neverblink.linkml.generator.util.StringSink
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.model.util.ModelBuilder
 import org.eclipse.rdf4j.model.{Value, ValueFactory, IRI as Rdf4jIri, Resource as Rdf4jResource}
@@ -61,6 +60,11 @@ object TurtleRdfSink {
   }
 }
 
+/** Support for Turtle output, which only this module can offer: Turtle needs RDF4J.
+  *
+  * N-Triples is built into the generators themselves - see
+  * [[eu.neverblink.linkml.generator.rdf.RdfGenerator.writeTo]].
+  */
 object RdfUtils {
 
   /** Serialize into a Turtle string whatever [[write]] pushes into a [[TurtleRdfSink]]. Prefer
@@ -80,27 +84,6 @@ object RdfUtils {
     write(sink)
     sink.writeTo(out)
   }
-
-  /** Serialize into an N-Triples string whatever [[write]] pushes into a [[NTriplesRdfSink]].
-    * Prefer [[streamNTriples]] where an output stream is available – this materializes the whole
-    * document.
-    */
-  def toNTriples(write: RdfSink => Unit): String = {
-    val charSink = StringSink()
-    val sink = NTriplesRdfSink(charSink)
-    write(sink)
-    charSink.result
-  }
-
-  /** Serialize straight to [[out]] whatever [[write]] pushes into a [[NTriplesRdfSink]], skipping
-    * the intermediate string. Typically `RdfUtils.streamNTriples(out, generator.generate(_))`.
-    */
-  def streamNTriples(out: OutputStream, write: RdfSink => Unit): Unit = {
-    val charSink = new BufferedByteSink(out)
-    val sink = NTriplesRdfSink(charSink)
-    write(sink)
-    charSink.flush()
-  }
 }
 
 /** A high-performance, non-thread-safe alternative to `java.io.BufferedOutputStream`.
@@ -108,10 +91,13 @@ object RdfUtils {
   * This class improves throughput by eliminating synchronization overhead and using a fixed-size
   * buffer to avoid reallocation.
   *
+  * Currently used only for the Turtle serializer. The N-Triples serializer writes via Utf8ByteSink,
+  * which is already buffered and optimized for the N-Triples case.
+  *
   * @param out
   *   the underlying output stream to write to.
   */
-class FastBufferedOutputStream(out: OutputStream) extends FilterOutputStream(out) {
+private final class FastBufferedOutputStream(out: OutputStream) extends FilterOutputStream(out) {
   private inline val capacity = 32768
   private val buf = new Array[Byte](capacity)
   private var count = 0

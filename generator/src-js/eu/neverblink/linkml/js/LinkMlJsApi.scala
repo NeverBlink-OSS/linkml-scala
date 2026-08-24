@@ -8,8 +8,6 @@ import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
-import eu.neverblink.linkml.generator.rdf.NTriplesRdfSink
-import eu.neverblink.linkml.generator.util.StringSink
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
 import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReportImpl}
@@ -174,14 +172,10 @@ object LinkMlJsApi {
       schema: SchemaViewJs,
       open: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
-  ): String = {
-    val sink = new StringSink
-    ShaclGenerator(using schema.underlying).generate(
-      NTriplesRdfSink(sink),
+  ): String =
+    ShaclGenerator(using schema.underlying).serialize(
       ShaclGenerator.Options(open = open, onlyClassesFromRootSchema = onlyClassesFromRootSchema),
     )
-    sink.result
-  }
 
   /** Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
     *
@@ -215,14 +209,10 @@ object LinkMlJsApi {
   def rdfs(
       schema: SchemaViewJs,
       onlyClassesFromRootSchema: Boolean = false,
-  ): String = {
-    val sink = new StringSink
-    RdfsGenerator(using schema.underlying).generate(
-      NTriplesRdfSink(sink),
+  ): String =
+    RdfsGenerator(using schema.underlying).serialize(
       RdfsGenerator.Options(onlyClassesFromRootSchema = onlyClassesFromRootSchema),
     )
-    sink.result
-  }
 
   /** Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes
     * unreachable elements.

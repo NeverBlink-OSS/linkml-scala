@@ -1,12 +1,22 @@
 package eu.neverblink.linkml.generator.tableschema
 
-import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, WriterConfig, writeToString}
+import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, WriterConfig}
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
+import eu.neverblink.linkml.generator.JsonDocumentGenerator
 import eu.neverblink.linkml.generator.tableschema.FieldDescriptor.types
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
 
-class TableSchemaGenerator(using sv: SchemaView) {
+class TableSchemaGenerator(using sv: SchemaView)
+    extends JsonDocumentGenerator[TableSchemaGenerator.Options, TableDescriptor] {
+
+  override protected def defaultOptions: TableSchemaGenerator.Options =
+    TableSchemaGenerator.Options()
+
+  override protected def codec: JsonValueCodec[TableDescriptor] = TableSchemaGenerator.codec
+
+  override protected def writerConfig(options: TableSchemaGenerator.Options): WriterConfig =
+    WriterConfig.withIndentionStep(2)
 
   /** Map the [[RuntimeType]] to the appropriate Table Schema (type, format) tuple
     */
@@ -40,7 +50,7 @@ class TableSchemaGenerator(using sv: SchemaView) {
     * @return
     *   Generated Table Schema (Table Descriptor)
     */
-  def generate(
+  override def generate(
       options: TableSchemaGenerator.Options = TableSchemaGenerator.Options(),
   ): TableDescriptor = {
     val root: ClassView = sv.treeRootWithOverride(options.treeRoot)
@@ -122,20 +132,6 @@ class TableSchemaGenerator(using sv: SchemaView) {
     )
   }
 
-  /** Generate the Table Schema and serialize
-    *
-    * @param options
-    *   What to generate. See [[TableSchemaGenerator.Options]].
-    * @return
-    *   Generated Table Schema (Table Descriptor)
-    */
-  def serialize(
-      options: TableSchemaGenerator.Options = TableSchemaGenerator.Options(),
-  ): String =
-    writeToString(
-      generate(options),
-      WriterConfig.withIndentionStep(2),
-    )(using TableSchemaGenerator.codec)
 }
 
 object TableSchemaGenerator {

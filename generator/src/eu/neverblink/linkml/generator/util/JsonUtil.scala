@@ -4,6 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import org.virtuslab.yaml.{Node, Tag}
 
+import java.io.OutputStream
 import scala.util.control.NonFatal
 
 object JsonUtil {
@@ -12,6 +13,10 @@ object JsonUtil {
     */
   def yamlToJson(yaml: Node): String =
     writeToString(yaml, WriterConfig.withIndentionStep(2))
+
+  /** Serialize scala-yaml [[Node]] as pretty JSON straight to [[out]], skipping the string. */
+  def writeJson(yaml: Node, out: OutputStream): Unit =
+    writeToStream(yaml, out, WriterConfig.withIndentionStep(2))
 
   private implicit val yamlCodec: JsonValueCodec[Node] = new JsonValueCodec[Node] {
     override def decodeValue(in: JsonReader, default: Node): Node = ???

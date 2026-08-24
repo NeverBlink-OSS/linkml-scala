@@ -1,10 +1,8 @@
 package eu.neverblink.linkml.benchmark
 
-import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, writeToStream}
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.rdf.{BufferedByteSink, NTriplesRdfSink}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -81,17 +79,11 @@ class GeneratorBench extends CommonParams {
   /** Same setup for JSON schema sinks as in the CLI.
     */
   private def writeJsonSchema(bh: Blackhole)(using SchemaView): Unit =
-    writeToStream(
-      JsonSchemaGenerator().generate(),
-      new BlackholeOutputStream(bh),
-      WriterConfig.withIndentionStep(2),
-    )(using JsonSchemaGenerator.codec)
+    JsonSchemaGenerator().writeTo(new BlackholeOutputStream(bh))
 
   /** Same setup for RDF sinks as in the CLI.
     */
   private def writeShacl(bh: Blackhole)(using SchemaView): Unit = {
-    val byteSink = new BufferedByteSink(new BlackholeOutputStream(bh))
-    ShaclGenerator().generate(NTriplesRdfSink(byteSink))
-    byteSink.flush()
+    ShaclGenerator().writeTo(new BlackholeOutputStream(bh))
   }
 }

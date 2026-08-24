@@ -5,6 +5,13 @@ package eu.neverblink.linkml.generator.util
 trait CharSink {
   def append(c: Char): Unit
   def append(s: String): Unit
+
+  /** Append a character the caller has already established is ASCII, i.e. `c < 0x80`. This allows
+    * us to take a fast path and append the byte directly.
+    *
+    * Using this with a non-ASCII character will result in corrupted output.
+    */
+  def appendAscii(c: Char): Unit = append(c)
 }
 
 /** A [[CharSink]] backed by a growable string buffer. */

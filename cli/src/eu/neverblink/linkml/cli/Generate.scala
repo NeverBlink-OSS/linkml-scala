@@ -41,12 +41,9 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
       )
     val sv = loadSchema(inputs.headOption)
     this match {
-      case g: StringGenerate[T @unchecked] =>
+      case g: ManyFilesGenerate[T @unchecked] =>
         val files = g.generate(options)(using sv)
         if files.isEmpty then err("No files generated.")
-        else if files.size == 1 && files.head._1.isEmpty then
-          // A single unnamed file goes to the destination file or stdout.
-          writeToFileOrStdout(options.common.to, files.head._2)
         else writeManyFiles(options.common.to, files)
       case g: StreamGenerate[T @unchecked] =>
         writeToFileOrStdout(options.common.to, out => g.generate(options, out)(using sv))
@@ -63,11 +60,6 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
       finally stream.close()
     }
 
-  private def writeToFileOrStdout(file: Option[String], content: String): Unit =
-    file.foldFast(printLine(content)) { value =>
-      os.write.over(os.Path(value, os.pwd), content)
-    }
-
   private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
     to.foldFast {
       files.foreach((k, v) => {
@@ -81,12 +73,14 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     }
 }
 
-/** A generate command producing one or more named string files (or a single unnamed one). */
-abstract class StringGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
+/** A generate command producing several named files, written into a destination directory.
+  *
+  * Only the Scala generator works this way. Everything that produces one document is a
+  * [[StreamGenerate]].
+  */
+abstract class ManyFilesGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
 
-  /** Returns pairs of (filename, content). Leave the filename empty if filenames are not relevant
-    * (a single file or stdout output).
-    */
+  /** Returns pairs of (filename, content). */
   protected[cli] def generate(options: T)(using sv: SchemaView): Iterable[(String, String)]
 }
 

@@ -1,6 +1,8 @@
 package eu.neverblink.linkml.generator.rdf
 
-import eu.neverblink.linkml.generator.util.{CharSink, StringSink}
+import eu.neverblink.linkml.generator.util.{CharSink, StringSink, Utf8ByteSink}
+
+import java.io.OutputStream
 
 /** N-Triples serializer that works directly on [[Triple]] instances.
   *
@@ -13,6 +15,21 @@ object NTriplesWriter {
     val sink = new StringSink
     writeAll(sink, triples)
     sink.result
+  }
+
+  /** Serialize all [[triples]] to [[out]]. Flushes at the end but does not close [[out]].
+    *
+    * Because everything is escaped to US-ASCII, the common path writes one byte per character with
+    * no charset encoding at all.
+    */
+  def writeTo(
+      out: OutputStream,
+      triples: IterableOnce[Triple],
+      bufferSize: Int = 8 * 1024,
+  ): Unit = {
+    val sink = new Utf8ByteSink(out, bufferSize)
+    writeAll(sink, triples)
+    sink.flush()
   }
 
   /** Format a single node as its N-Triples term (IRI, blank node or literal). */
@@ -35,9 +52,9 @@ object NTriplesWriter {
   /** Write a triple from its components, without materializing a [[Triple]]. */
   def writeTriple(sink: CharSink, subj: Resource, pred: Iri, obj: Node): Unit = {
     writeNode(sink, subj)
-    sink.append(' ')
+    sink.appendAscii(' ')
     writeNode(sink, pred)
-    sink.append(' ')
+    sink.appendAscii(' ')
     writeNode(sink, obj)
     sink.append(" .\n")
   }
@@ -45,22 +62,22 @@ object NTriplesWriter {
   /** Write a single node to [[sink]] as an N-Triples term. */
   private def writeNode(sink: CharSink, node: Node): Unit = node match {
     case Iri(value) =>
-      sink.append('<')
+      sink.appendAscii('<')
       NTriplesEscape.escapeIri(sink, value)
-      sink.append('>')
+      sink.appendAscii('>')
     case BlankNode(id) =>
       sink.append("_:")
       sink.append(id)
     case Literal(value, datatype) =>
-      sink.append('"')
+      sink.appendAscii('"')
       NTriplesEscape.escapeString(sink, value)
-      sink.append('"')
+      sink.appendAscii('"')
       // Reference equality because generators use the constant anyway.
       // Equality miss here is safe (still valid RDF)
       if (!(datatype eq XmlSchema.string)) {
         sink.append("^^<")
         NTriplesEscape.escapeIri(sink, datatype.value)
-        sink.append('>')
+        sink.appendAscii('>')
       }
   }
 }
@@ -103,7 +120,7 @@ private object NTriplesEscape {
     var i = 0
     while (i < len) {
       val c = s.charAt(i)
-      if (c < 0x80 && safe(c)) sink.append(c)
+      if (c < 0x80 && safe(c)) sink.appendAscii(c)
       else
         c match {
           case '\\' => sink.append("\\\\")
@@ -124,7 +141,7 @@ private object NTriplesEscape {
     var i = 0
     while (i < len) {
       val c = s.charAt(i)
-      if (c < 0x80 && safe(c)) sink.append(c)
+      if (c < 0x80 && safe(c)) sink.appendAscii(c)
       else i = escapeHex(sink, s, i, c)
       i += 1
     }
@@ -150,7 +167,7 @@ private object NTriplesEscape {
   private def appendHex(sink: CharSink, value: Int, digits: Int): Unit = {
     var shift = (digits - 1) * 4
     while (shift >= 0) {
-      sink.append(Hex((value >>> shift) & 0xf))
+      sink.appendAscii(Hex((value >>> shift) & 0xf))
       shift -= 4
     }
   }
