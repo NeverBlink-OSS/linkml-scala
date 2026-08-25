@@ -11,6 +11,8 @@ import {
 import type { GenerateRequest, GenerateResponse } from "./worker.js";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
+// Query parameter holding the link the schema was loaded from, so the address bar is a share link.
+const URL_PARAM = "url";
 // Resolved against dist/app.js at runtime, so it lands on the sibling dist/worker.js. Built from a
 // variable rather than a literal to keep esbuild from trying to resolve it at bundle time.
 const WORKER_URL = "./worker.js";
@@ -92,6 +94,9 @@ let busyTimer: ReturnType<typeof setTimeout> | undefined;
 // burst of tab clicks would otherwise let a slow earlier result land on top of a fast later one.
 let requestId = 0;
 let pendingId: number | null = null;
+// The schema as the link served it, while one is loaded. The change listener compares against it
+// to tell "this is what the link gives you" apart from "the user has edited it since".
+let remoteText: string | null = null;
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
@@ -109,6 +114,7 @@ const $statusPill = $("statusPill");
 const $autoGenerate = $<HTMLInputElement>("autoGenerate");
 const $copyOutput = $<HTMLButtonElement>("copyOutput");
 const $loadExample = $<HTMLButtonElement>("loadExample");
+const $loadUrl = $<HTMLButtonElement>("loadUrl");
 const $clearInput = $<HTMLButtonElement>("clearInput");
 const $themeToggle = $<HTMLButtonElement>("themeToggle");
 const $themeIconMoon = $("themeIconMoon");
@@ -119,6 +125,9 @@ const $themeIconSun = $("themeIconSun");
 const storedInput = localStorage.getItem(INPUT_STORAGE_KEY);
 const inputView = createInput($("inputEditor"), storedInput ?? EXAMPLE_SCHEMA, (value) => {
   localStorage.setItem(INPUT_STORAGE_KEY, value);
+  // Once the text on screen differs from what the link serves, a shared address would hand the
+  // other person something other than what you are looking at, so drop the link.
+  if (value !== remoteText) clearUrlParam();
   scheduleGenerate();
 });
 const outputView = createOutput($("outputEditor"));
@@ -852,6 +861,125 @@ $copyOutput.addEventListener("click", async () => {
   }
 });
 
+// ── Load from URL ────────────────────────────────────────────────────────
+
+const $urlDialog = $<HTMLDialogElement>("urlDialog");
+const $urlForm = $<HTMLFormElement>("urlForm");
+const $urlInput = $<HTMLInputElement>("urlInput");
+const $urlError = $("urlError");
+const $urlSubmit = $<HTMLButtonElement>("urlSubmit");
+
+function sharedLink(): string | null {
+  return new URL(location.href).searchParams.get(URL_PARAM);
+}
+
+function setUrlParam(link: string): void {
+  const here = new URL(location.href);
+  here.searchParams.set(URL_PARAM, link);
+  history.replaceState(null, "", here);
+}
+
+function clearUrlParam(): void {
+  const here = new URL(location.href);
+  if (!here.searchParams.has(URL_PARAM)) return;
+  here.searchParams.delete(URL_PARAM);
+  history.replaceState(null, "", here);
+}
+
+/** Turns a link to a file's web page into a link to the file itself. Copying what is in the
+ * address bar is the obvious thing to do, and on GitHub or GitLab that address serves HTML. */
+function rawFileUrl(u: URL): URL {
+  const parts = u.pathname.split("/").filter(Boolean);
+  if (u.hostname === "github.com" && parts[2] === "blob" && parts.length > 3) {
+    // /owner/repo/blob/ref/path -> raw.githubusercontent.com/owner/repo/ref/path
+    return new URL(`https://raw.githubusercontent.com/${parts[0]}/${parts[1]}/${parts.slice(3).join("/")}`);
+  }
+  // Matched on the path rather than the host, so that self-hosted GitLab instances work too.
+  if (u.pathname.includes("/-/blob/")) {
+    const raw = new URL(u.href);
+    raw.pathname = u.pathname.replace("/-/blob/", "/-/raw/");
+    raw.search = "";
+    return raw;
+  }
+  return u;
+}
+
+type LoadResult = { ok: true } | { ok: false; error: string };
+
+/** Downloads a schema and puts it in the input pane. The link, as pasted, goes into the address
+ * bar rather than the schema itself: it stays short enough to paste anywhere. */
+async function loadFromUrl(link: string): Promise<LoadResult> {
+  let target: URL;
+  try {
+    target = rawFileUrl(new URL(link));
+  } catch {
+    return { ok: false, error: "That is not a URL. It has to start with https://" };
+  }
+  if (target.protocol !== "https:" && target.protocol !== "http:") {
+    return { ok: false, error: "Only http and https links can be loaded." };
+  }
+  // The deployed playground is https, and a browser refuses to fetch http from an https page
+  // (mixed content). That refusal looks exactly like a CORS block, so name the real reason.
+  if (target.protocol === "http:" && location.protocol === "https:") {
+    return { ok: false, error: "This page is served over HTTPS, so the browser will not load an http:// link. Try https:// instead." };
+  }
+
+  let text: string;
+  try {
+    const res = await fetch(target.href);
+    if (!res.ok) return { ok: false, error: `The server answered ${res.status} ${res.statusText}.` };
+    text = await res.text();
+  } catch {
+    // A cross-origin block and being offline both surface as the same detail-free TypeError.
+    return {
+      ok: false,
+      error: "Could not fetch that link. The server may not allow being read from other sites (CORS), or you may be offline.",
+    };
+  }
+  if (/^\s*<(!doctype|html)/i.test(text)) {
+    return { ok: false, error: "That link returned a web page, not a schema. Link straight to the raw file." };
+  }
+
+  // Set before the change lands, so the listener sees an unedited document either way.
+  remoteText = text;
+  setDoc(inputView, text);
+  setUrlParam(link);
+  scheduleGenerate(0);
+  return { ok: true };
+}
+
+function showUrlError(message: string): void {
+  $urlError.textContent = message;
+  $urlError.hidden = false;
+}
+
+$loadUrl.addEventListener("click", () => {
+  $urlInput.value = sharedLink() ?? "";
+  $urlError.hidden = true;
+  $urlDialog.showModal();
+  $urlInput.select();
+});
+
+$urlForm.addEventListener("submit", async (e) => {
+  // Handled here rather than by the browser: the dialog stays open when the fetch fails.
+  e.preventDefault();
+  const link = $urlInput.value.trim();
+  if (!link) return;
+  $urlSubmit.disabled = true;
+  $urlSubmit.textContent = "Loading…";
+  const res = await loadFromUrl(link);
+  $urlSubmit.disabled = false;
+  $urlSubmit.textContent = "Load";
+  if (res.ok) $urlDialog.close();
+  else showUrlError(res.error);
+});
+
+$urlDialog.querySelector<HTMLButtonElement>(".modal-close")!.addEventListener("click", () => $urlDialog.close());
+$urlDialog.querySelector<HTMLButtonElement>(".url-cancel")!.addEventListener("click", () => $urlDialog.close());
+$urlDialog.addEventListener("click", (e) => {
+  if (e.target === $urlDialog) $urlDialog.close();
+});
+
 // ── Theme ──────────────────────────────────────────────────────────────────
 
 function applyTheme(theme: string): void {
@@ -882,7 +1010,7 @@ const $faqDialog = $<HTMLDialogElement>("faqDialog");
 const openFaq = () => $faqDialog.showModal();
 $<HTMLButtonElement>("helpToggle").addEventListener("click", openFaq);
 $<HTMLButtonElement>("aboutLink").addEventListener("click", openFaq);
-$faqDialog.querySelector<HTMLButtonElement>(".faq-close")!.addEventListener("click", () => $faqDialog.close());
+$faqDialog.querySelector<HTMLButtonElement>(".modal-close")!.addEventListener("click", () => $faqDialog.close());
 // Click on the backdrop (the dialog element itself, since content fills it) closes it.
 $faqDialog.addEventListener("click", (e) => {
   if (e.target === $faqDialog) $faqDialog.close();
@@ -928,6 +1056,22 @@ function renderRepoStats(stars: number, forks: number): void {
 
 renderTargetTabs();
 renderOptions();
-// Starts the worker, which begins loading the LinkML bundle immediately. The request waits on
-// that load inside the worker, so the page is interactive while the multi-MB bundle parses.
-scheduleGenerate(0);
+
+const initialLink = sharedLink();
+if (initialLink === null) {
+  // Starts the worker, which begins loading the LinkML bundle immediately. The request waits on
+  // that load inside the worker, so the page is interactive while the multi-MB bundle parses.
+  scheduleGenerate(0);
+} else {
+  // Same warm-up, minus the request: the download generates once it lands, so asking for a
+  // generation here as well would parse the previous session's schema for nothing.
+  getWorker();
+  void loadFromUrl(initialLink).then((res) => {
+    if (res.ok) return;
+    // Nothing on screen would explain a link that failed, so hand it back in the dialog to fix.
+    $urlInput.value = initialLink;
+    showUrlError(res.error);
+    $urlDialog.showModal();
+    scheduleGenerate(0);
+  });
+}

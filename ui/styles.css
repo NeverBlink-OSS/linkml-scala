@@ -169,13 +169,11 @@ body { background: var(--bg); }
 .theme-toggle:hover,
 .help-toggle:hover { background: var(--accent-soft); border-color: var(--accent-border); color: var(--text); }
 
-/* ── Help / FAQ dialog ── */
-.faq-dialog {
+/* ── Dialogs ── */
+.modal {
   /* `* { margin: 0 }` in the reset kills the UA margin:auto that centres a modal
      dialog, pinning it top-left – restore it. */
   margin: auto;
-  width: min(640px, calc(100vw - 32px));
-  max-height: min(80vh, 720px);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -183,8 +181,8 @@ body { background: var(--bg); }
   color: var(--text);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
-.faq-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
-.faq-head {
+.modal::backdrop { background: rgba(0, 0, 0, 0.5); }
+.modal-head {
   position: sticky;
   top: 0;
   display: flex;
@@ -194,9 +192,48 @@ body { background: var(--bg); }
   background: var(--surface);
   border-bottom: 1px solid var(--border-subtle);
 }
-.faq-head h2 { font-size: 16px; font-weight: 700; }
-.faq-close { width: 32px; height: 32px; color: var(--text-secondary); }
-.faq-close:hover { background: var(--accent-soft); color: var(--text); }
+.modal-head h2 { font-size: 16px; font-weight: 700; }
+.modal-close { width: 32px; height: 32px; color: var(--text-secondary); }
+.modal-close:hover { background: var(--accent-soft); color: var(--text); }
+
+/* ── Load from URL dialog ── */
+.url-dialog { width: min(520px, calc(100vw - 32px)); }
+.url-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
+.url-label { font-size: 13px; font-weight: 600; }
+.url-input {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+}
+.url-input:focus { border-color: var(--accent); }
+.url-hint { font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.url-error {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--danger);
+  background: var(--danger-soft);
+  border: 1px solid var(--danger-border);
+  border-radius: var(--radius-sm);
+  padding: 7px 9px;
+}
+.url-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 20px 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ── Help / FAQ dialog ── */
+.faq-dialog {
+  width: min(640px, calc(100vw - 32px));
+  max-height: min(80vh, 720px);
+}
 .faq-body { padding: 8px 20px 20px; overflow-y: auto; }
 .faq-body section { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
 .faq-body h3 { font-size: 13.5px; font-weight: 600; color: var(--text); margin-bottom: 5px; }

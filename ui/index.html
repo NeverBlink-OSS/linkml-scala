@@ -69,6 +69,7 @@
           <span class="panel-title">Input <span class="panel-title-sub">LinkML YAML</span></span>
           <div class="panel-actions">
             <button id="loadExample" class="btn btn-secondary btn-sm">Load example</button>
+            <button id="loadUrl" class="btn btn-secondary btn-sm" aria-haspopup="dialog">Load from URL</button>
             <button id="clearInput" class="btn btn-secondary btn-sm">Clear</button>
           </div>
         </div>
@@ -107,10 +108,33 @@
   </footer>
 </div>
 
-<dialog id="faqDialog" class="faq-dialog" aria-labelledby="faqTitle">
-  <div class="faq-head">
+<dialog id="urlDialog" class="modal url-dialog" aria-labelledby="urlTitle">
+  <form id="urlForm">
+    <div class="modal-head">
+      <h2 id="urlTitle">Load schema from URL</h2>
+      <button type="button" class="modal-close icon-btn" aria-label="Close">
+        <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="url-body">
+      <label class="url-label" for="urlInput">Link to a LinkML schema (YAML)</label>
+      <input id="urlInput" class="url-input" type="url" inputmode="url" spellcheck="false"
+             placeholder="https://raw.githubusercontent.com/&hellip;/schema.yaml" required>
+      <p class="url-hint">A GitHub link to a file is turned into a raw link for you. Other hosts have
+        to allow being read from another site (CORS).</p>
+      <p class="url-error" id="urlError" hidden></p>
+    </div>
+    <div class="url-foot">
+      <button type="button" class="btn btn-secondary url-cancel">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="urlSubmit">Load</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="faqDialog" class="modal faq-dialog" aria-labelledby="faqTitle">
+  <div class="modal-head">
     <h2 id="faqTitle">Help &amp; FAQ</h2>
-    <button class="faq-close icon-btn" aria-label="Close help">
+    <button class="modal-close icon-btn" aria-label="Close help">
       <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
     </button>
   </div>
@@ -142,6 +166,8 @@
       <h3>Where is my data processed?</h3>
       <p><strong>Entirely on your device.</strong> Your schema is never uploaded &ndash; all generation
         happens locally in this browser tab. There is no server, no account, and no analytics.</p>
+      <p>This app make on your behalf one request in <em>Load from URL</em>: it downloads the
+        file from the link you paste, so that server sees the request. Your schema still stays here.</p>
     </section>
     <section>
       <h3>Where is the code?</h3>
