@@ -79,7 +79,15 @@ jobs:
           ./mill --no-server metamodel.jvm.fix
           ./mill --no-server metamodel.jvm.reformat
           diff -r metamodel metamodel_prev
-          
+
+      - name: Re-generate the model-derived sources and check they are committed
+        run: |
+          ./mill --no-server validation.regenerate
+          ./mill --no-server schemaview.regenerate
+          git diff --exit-code -- validation/src/eu/neverblink/linkml/validation/ \
+            schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ \
+            || (echo "generated sources are stale – run ./mill validation.regenerate and ./mill schemaview.regenerate, then commit the result"; exit 1)
+
       - name: Publish Snapshot to Sonatype Central
         if: matrix.java == 17 && github.ref == 'refs/heads/main' && github.event_name == 'push'
         env:

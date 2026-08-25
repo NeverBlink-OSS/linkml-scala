@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.schemaview.buildinfo
 
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
 
 /** The build metadata of the LinkML-Scala distribution this code is part of.
@@ -10,6 +11,8 @@ import org.virtuslab.yaml.Node
   * `abiVersion`.
   */
 object CurrentBuild {
+
+  private val codec: LinkmlYamlCodec[BuildInfoImpl] = LinkmlYamlCodec.derived
 
   /** Everything this module can tell about the current distribution. */
   def info: BuildInfoImpl = BuildInfoImpl(
@@ -22,10 +25,6 @@ object CurrentBuild {
   )
 
   /** Build metadata as a YAML node, ready to be written out as JSON or YAML.
-    *
-    * Encoding lives here rather than in each caller so that every surface reports the same shape.
-    * Turning the node into JSON needs the generator module, which sits above this one, so that last
-    * step stays with the caller.
     */
-  def node(build: BuildInfoImpl = info): Node = Codec.codec.encode(build)
+  def node(build: BuildInfoImpl = info): Node = codec.encode(build)
 }
