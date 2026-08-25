@@ -15,6 +15,20 @@ import scala.util.matching.Regex
 
 class GraphQlGenerator(using sv: SchemaView)
     extends CharDocumentGenerator[GraphQlGenerator.Options] {
+
+  /** Set of classes that are instantiable and have child classes. They need to have a split
+    * interface/implementation, with the implementation only inheriting from the interface.
+    */
+  lazy val concreteInheritance: Map[String, ClassView] = {
+    val builder = Map.newBuilder[String, ClassView]
+    sv.classes.foreach { (_, child) =>
+      child.parents.foreach { cls =>
+        if !cls.cls.`abstract` && !cls.cls.mixin then builder.addOne((cls.name, cls))
+      }
+    }
+    builder.result()
+  }
+
   import GraphQlGenerator.*
 
   override protected def defaultOptions: Options = Options()
@@ -74,13 +88,13 @@ class GraphQlGenerator(using sv: SchemaView)
   /** Generate a GraphQL definition corresponding to the provided class, or None if the class is
     * linkml:Any
     */
-  def generateClass(cls: ClassView): Option[GraphQlDefinition] = {
+  def generateClass(cls: ClassView): Iterable[GraphQlDefinition] = {
     lazy val fields = cls.attributeViews.values.map(av => {
       val range: String = av match {
         case AnyView(_, _) =>
           "Any"
         case classAttributeView: ClassAttributeView =>
-          classAttributeView.classView.aliasedName
+          getInterfaceName(classAttributeView.classView)
         case tav: TypeAttributeView =>
           remappedType(tav.typeView)
         case EnumAttributeView(_, _, enumView) => enumView.aliasedName
@@ -90,30 +104,54 @@ class GraphQlGenerator(using sv: SchemaView)
         range,
       )
     })
-    if cls.isAny then None
+    if cls.isAny then Seq.empty
     else if cls.cls.`abstract` || cls.cls.mixin then
-      Some(
+      Seq(
         GraphQlInterfaceDefinition(
           cls,
           fields,
-          cls.parents.collect {
-            case cv if cv.cls.`abstract` || cv.cls.mixin => escaped(cv.aliasedName)
-          },
+          cls.parents.map(getInterfaceName),
         ),
       )
-    else
-      Some(
+    else if concreteInheritance.contains(cls.name) then
+      Seq(
+        GraphQlInterfaceDefinition(
+          cls,
+          fields,
+          cls.parents.map(getInterfaceName),
+          Some(splitInterfaceName(cls)),
+        ),
         GraphQlTypeDefinition(
           cls,
           fields,
-          // Break the inheritance chain on concrete -> concrete inheritance
-          // We still need to use the derived slots and interfaces and types anyway
-          cls.parents.collect {
-            case cv if cv.cls.`abstract` || cv.cls.mixin => escaped(cv.aliasedName)
-          },
+          Seq(splitInterfaceName(cls)),
+        ),
+      )
+    else
+      Seq(
+        GraphQlTypeDefinition(
+          cls,
+          fields,
+          cls.parents.map(getInterfaceName),
         ),
       )
   }
+
+  /** Get the interface name for a class' interface, if it has an interface/implementation split.
+    * Otherwise, gets the class' GraphQL name.
+    */
+  def getInterfaceName(cls: ClassView): String = {
+    // Class is split, we need to refer to the interface instead
+    if concreteInheritance.contains(cls.name) then splitInterfaceName(cls)
+    // Class is interface-only, we can refer to it directly
+    else escaped(cls.aliasedName)
+  }
+
+  /** Get the interface name of a split class. Assumes [[cls]] is a split class:
+    * `concreteInheritance.contains(cls.name)` is true.
+    */
+  def splitInterfaceName(cls: ClassView): String =
+    escaped(cls.aliasedName) + "Interface"
 
   /** Write the GraphQL definitions.
     */
@@ -188,11 +226,14 @@ trait GraphQlDefinition extends GraphQlElement
   *   Field definitions to include
   * @param inherits
   *   Aliased names to use for inheritance
+  * @param nameOverride
+  *   Name of the interface, if it should be different (like when generating split classes)
   */
 case class GraphQlInterfaceDefinition(
     classView: ClassView,
     fields: Iterable[GraphQlField],
     inherits: Seq[String],
+    nameOverride: Option[String] = None,
 ) extends GraphQlDefinition:
   val inheritsList: String =
     if inherits.isEmpty then "" else "implements " + inherits.mkString(" & ")
@@ -210,9 +251,11 @@ case class GraphQlInterfaceDefinition(
               |""".stripMargin
   }
 
+  val name: String = nameOverride.getOrElse(escaped(classView.aliasedName))
+
   override def print: String =
     indent"""${wrapDescription(classView.cls.description)}
-            |interface ${escaped(classView.aliasedName)} $inheritsList $body
+            |interface $name $inheritsList $body
             |""".stripMargin
 
 /** Container for information needed to generate an object ("type") definition

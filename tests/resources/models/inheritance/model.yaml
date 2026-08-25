@@ -1,11 +1,6 @@
 id: https://neverblink.eu/linkml/tests/inheritance/
 name: inheritance
 
-instantiates:
-  - https://neverblink.eu/linkml/tests/Metadata
-extensions:
-  derived_equals: basic
-
 imports:
   - linkml:types
 
@@ -18,6 +13,13 @@ classes:
     is_a: BaseClass
     slots:
       - some_slot
+      - yet_another_slot
+  BaseRefClass:
+    attributes:
+      id:
+        identifier: true
+  RefClass:
+    is_a: BaseRefClass
 slots:
   some_slot:
     rank: 1
@@ -25,4 +27,8 @@ slots:
   some_other_slot:
     rank: 2
     range: integer
+    required: true
+  yet_another_slot:
+    rank: 3
+    range: BaseRefClass
     required: true

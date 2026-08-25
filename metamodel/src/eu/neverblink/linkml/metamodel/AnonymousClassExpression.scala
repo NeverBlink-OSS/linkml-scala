@@ -12,7 +12,7 @@ final case class AnonymousClassExpressionImpl(
     title: Option[String] = None,
     description: Option[String] = None,
     @named("is_a")
-    isA: Option[Reference[Definition]] = None,
+    isA: Option[Reference[ClassDefinition]] = None,
     rank: Option[Int] = None,
     @named("any_of")
     anyOf: Seq[AnonymousClassExpressionImpl] = Seq(),
@@ -89,17 +89,12 @@ final case class AnonymousClassExpressionImpl(
   */
 abstract class AnonymousClassExpression extends AnonymousExpression, ClassExpression {
 
-  /** A primary parent class or slot from which inheritable metaslots are propagated from. While
-    * multiple inheritance is not allowed, mixins can be provided effectively providing the same
-    * thing. The semantics are the same when translated to formalisms that allow MI (e.g. RDFS/OWL).
-    * When translating to a SI framework (e.g. java classes, python classes) then is a is used. When
-    * translating a framework without polymorphism (e.g. json-schema, solr document schema) then is
-    * a and mixins are recursively unfolded
+  /** A class that any instance satisfying this expression must also be an instance of
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def isA: Option[Reference[Definition]]
+  def isA: Option[Reference[ClassDefinition]]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -171,6 +171,33 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate split interface/implementation when concrete inheritance" in {
+      given SchemaView = ModelCatalogue.inheritance.model
+
+      val result = GraphQlGenerator().serialize()
+      Seq(
+        "interface BaseClassInterface",
+        "type BaseClass implements BaseClassInterface",
+        "type ChildClass implements BaseClassInterface",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
+    }
+
+    "generate interface ranges when concrete inheritance" in {
+      given SchemaView = ModelCatalogue.inheritance.model
+
+      val result = GraphQlGenerator().serialize()
+      Seq(
+        "interface BaseRefClassInterface",
+        "type BaseRefClass implements BaseRefClassInterface",
+        "yet_another_slot: BaseRefClassInterface!",
+        "type RefClass implements BaseRefClassInterface",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
+    }
+
     "prune unused linkml:types elements by default" in {
       given SchemaView = ModelCatalogue.reference.model
 
