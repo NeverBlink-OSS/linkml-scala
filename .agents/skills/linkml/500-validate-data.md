@@ -151,7 +151,7 @@ running:
 Generation belongs in CI via the action; the validation step is then whatever tool you chose:
 
 ```yaml
-- uses: NeverBlink-OSS/linkml-scala-action@v1
+- uses: NeverBlink-OSS/linkml-scala-action@v0.14.0
   with:
     command: generate
     generator: json-schema

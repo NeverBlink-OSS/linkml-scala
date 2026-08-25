@@ -6,6 +6,9 @@
 #     holding the imported files, keyed by the path used in `imports:`.
 #   - `strict`: recommended for published schemas. Warnings such as a missing `tree_root`
 #     degrade every generated artifact, so failing on them is usually right.
+#   - the action's version tag: it matches the linkml-scala release it bundles.
+#     Check the latest at
+#     https://github.com/NeverBlink-OSS/linkml-scala-action/releases
 #
 # Problems are posted as annotations on the pull request's "Files changed" tab.
 name: Validate schemas
@@ -31,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: NeverBlink-OSS/linkml-scala-action@v1
+      - uses: NeverBlink-OSS/linkml-scala-action@v0.14.0
         with:
           files: "schemas/**/*.yaml"
           # imports: "schemas"

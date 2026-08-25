@@ -76,7 +76,7 @@ Full verification procedure, including checksums and the Maven and npm channels:
 Don't install the binary. Use the action, which bundles the engine as pure Node:
 
 ```yaml
-- uses: NeverBlink-OSS/linkml-scala-action@v1
+- uses: NeverBlink-OSS/linkml-scala-action@v0.14.0
   with:
     files: "schemas/**/*.yaml"
 ```

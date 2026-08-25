@@ -6,6 +6,9 @@
 #   - the `generator` matrix: drop anything nobody consumes. `linkml` is worth keeping -
 #     it emits a single self-contained schema with imports resolved and slots
 #     materialised, which downstream consumers can read without any LinkML tooling.
+#   - the action's version tag: it matches the linkml-scala release it bundles.
+#     Check the latest at
+#     https://github.com/NeverBlink-OSS/linkml-scala-action/releases
 #
 # Trigger with:  git tag v1.0.0 && git push origin v1.0.0
 name: Release
@@ -25,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: NeverBlink-OSS/linkml-scala-action@v1
+      - uses: NeverBlink-OSS/linkml-scala-action@v0.14.0
         with:
           files: "schemas/**/*.yaml"
           # imports: "schemas"
@@ -42,7 +45,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: NeverBlink-OSS/linkml-scala-action@v1
+      - uses: NeverBlink-OSS/linkml-scala-action@v0.14.0
         with:
           command: generate
           generator: ${{ matrix.generator }}
