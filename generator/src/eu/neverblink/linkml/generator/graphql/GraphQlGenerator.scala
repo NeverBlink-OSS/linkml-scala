@@ -23,7 +23,7 @@ class GraphQlGenerator(using sv: SchemaView)
     val builder = Map.newBuilder[String, ClassView]
     sv.classes.foreach { (_, child) =>
       child.parents.foreach { cls =>
-        if !cls.cls.`abstract` || !cls.cls.mixin then builder.addOne((cls.name, cls))
+        if !cls.cls.`abstract` && !cls.cls.mixin then builder.addOne((cls.name, cls))
       }
     }
     builder.result()
