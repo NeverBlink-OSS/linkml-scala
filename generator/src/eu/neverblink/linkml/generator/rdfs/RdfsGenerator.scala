@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
+import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Options] {
@@ -37,11 +38,21 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
   ): Unit = {
     sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
     emitCommonMetadata(sink, propertyNameIri, usages.map(_._2.slot))
-    sv.lowestCommonAncestors(usages.map(_._1)).map(u => Iri(u.uriStr)).distinct.foreach { domain =>
+
+    sv.lowestCommonAncestors(
+      usages
+        .flatMap(_._2.slot.domain)
+        .flatMap(_.asInstanceOf[Reference[ClassView]].resolve),
+    ).map(u => Iri(u.uriStr)).distinct.foreach { domain =>
       sink.triple(propertyNameIri, Rdfs.domain, domain)
     }
+
     usages.flatMap(_._2.derivedRange.resolve.toList).map(e => Iri(e.uriStr)).distinct.foreach {
       range => sink.triple(propertyNameIri, Rdfs.range, range)
+    }
+
+    usages.flatMap(_._2.parents).map(_.uriStr).distinct.foreach { parentUriStr =>
+      sink.triple(propertyNameIri, Rdfs.subPropertyOf, Iri(parentUriStr))
     }
   }
 

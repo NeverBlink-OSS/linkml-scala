@@ -34,6 +34,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |    - some_yet_another_slot
            |slots:
            |  some_slot:
+           |    domain: SomeClass
            |    range: string
            |  some_other_slot:
            |    range: integer
@@ -54,11 +55,9 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |  rdfs:range xsd:string .
           |
           |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeClass>;
           |  rdfs:range xsd:integer .
           |
           |<https://neverblink.eu/linkml/rdfs/test/some_yet_another_slot> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeClass>;
           |  rdfs:range xsd:boolean .
           |""".stripMargin
     }
@@ -97,17 +96,14 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property;
           |  rdfs:label "String";
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeClass>;
           |  rdfs:range xsd:string .
           |
           |<https://neverblink.eu/linkml/rdfs/test/some_yet_another_slot> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeClass>;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/SomeAnotherClass> .
           |
           |<https://neverblink.eu/linkml/rdfs/test/SomeAnotherClass> a rdfs:Class .
           |
           |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeAnotherClass>;
           |  rdfs:range xsd:integer .
           |""".stripMargin
     }
@@ -158,7 +154,6 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |<https://neverblink.eu/linkml/rdfs/test/worksFor> a rdf:Property;
           |  rdfs:comment "Property indicating who an employee works for.";
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/Employee>;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/Person> .
           |
           |<https://neverblink.eu/linkml/rdfs/test/Professor> a rdfs:Class;
@@ -167,7 +162,6 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |<https://neverblink.eu/linkml/rdfs/test/teaches> a rdf:Property;
           |  rdfs:comment "Property indicating which course a professor teaches.";
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/Professor>;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/Course> .
           |""".stripMargin
     }
@@ -184,6 +178,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |        range: time
            |      children:
            |        # SimpleDict form = { name1: Node1, name2: Node2 }
+           |        domain: Node
            |        range: Node
            |        multivalued: true
            |""".stripMargin
@@ -197,7 +192,6 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |<https://neverblink.eu/linkml/rdfs/test/Node> a rdfs:Class .
           |
           |<https://neverblink.eu/linkml/rdfs/test/name> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/Node>;
           |  rdfs:range xsd:time .
           |
           |<https://neverblink.eu/linkml/rdfs/test/children> a rdf:Property;
@@ -411,10 +405,16 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |    is_a: Base
           |    slots:
           |     - some_slot
+          |    slot_usage:
+          |      some_slot:
+          |        domain: A
           |  B:
           |    is_a: Base
           |    slots:
           |     - some_slot
+          |    slot_usage:
+          |      some_slot:
+          |        domain: B
           |slots:
           |  some_slot:
           |    range: string
@@ -451,9 +451,15 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |  A:
            |    slots:
            |     - some_slot
+           |    slot_usage:
+           |      some_slot:
+           |        domain: A
            |  B:
            |    slots:
            |     - some_slot
+           |    slot_usage:
+           |      some_slot:
+           |        domain: B
            |slots:
            |  some_slot:
            |    range: string
@@ -491,10 +497,16 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
            |    is_a: Base1
            |    slots:
            |     - some_slot
+           |    slot_usage:
+           |      some_slot:
+           |        domain: A
            |  B:
            |    is_a: Base1
            |    slots:
            |     - some_slot
+           |    slot_usage:
+           |      some_slot:
+           |        domain: B
            |slots:
            |  some_slot:
            |    range: string
@@ -520,6 +532,49 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
         Iri("https://example.org/some_slot"),
         Rdfs.domain,
         Iri("https://example.org/B"),
+      )
+    }
+
+    "emit subPropertyOf for slot inheritance" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  ex: https://example.org/
+           |emit_prefixes:
+           |  - ex
+           |default_prefix: ex
+           |
+           |classes:
+           |  SomeClass:
+           |    slots: [ some_slot ]
+           |slots:
+           |  some_base_slot:
+           |    abstract: true
+           |  some_mixin_slot:
+           |    mixin: true
+           |  some_slot:
+           |    is_a: some_base_slot
+           |    mixins: [ some_mixin_slot ]
+           |    range: string
+           |""".stripMargin
+
+      val schemaView = loadWithImports(input)
+      val sink = CollectingRdfSink()
+      RdfsGenerator(using schemaView).generate(sink)
+
+      sink.triples should contain(
+        Triple(
+          Iri("https://example.org/some_slot"),
+          Rdfs.subPropertyOf,
+          Iri("https://example.org/some_base_slot"),
+        ),
+      )
+      sink.triples should contain(
+        Triple(
+          Iri("https://example.org/some_slot"),
+          Rdfs.subPropertyOf,
+          Iri("https://example.org/some_mixin_slot"),
+        ),
       )
     }
 
