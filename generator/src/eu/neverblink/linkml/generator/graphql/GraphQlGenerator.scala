@@ -94,7 +94,7 @@ class GraphQlGenerator(using sv: SchemaView)
         case AnyView(_, _) =>
           "Any"
         case classAttributeView: ClassAttributeView =>
-          classAttributeView.classView.aliasedName
+          getInterfaceName(classAttributeView.classView)
         case tav: TypeAttributeView =>
           remappedType(tav.typeView)
         case EnumAttributeView(_, _, enumView) => enumView.aliasedName
@@ -137,8 +137,8 @@ class GraphQlGenerator(using sv: SchemaView)
       )
   }
 
-  /** Get the interface name for a class, for inheritance. Handles classes split into
-    * interface/implementation.
+  /** Get the interface name for a class' interface, if it has an interface/implementation split.
+    * Otherwise, gets the class' GraphQL name.
     */
   def getInterfaceName(cls: ClassView): String = {
     // Class is split, we need to refer to the interface instead
