@@ -29,9 +29,7 @@ object LinkMlNativeApi {
   /** Bumped whenever a change to the exported functions or to the options JSON breaks existing
     * callers.
     *
-    * 2 added `linkml_build_info`. Adding a function does not break a caller that ignores it, but
-    * the bindings check for an exact match, so a new binding paired with an older library has to
-    * fail with a version message rather than a missing-symbol error.
+    *   - 2 added `linkml_build_info`.
     */
   final val abiVersion: Int = 2
 
@@ -154,7 +152,10 @@ object LinkMlNativeApi {
     * shared library and means nothing in the other distributions.
     */
   def buildInfo(out: OutputStream): Unit =
-    JsonUtil.writeJson(CurrentBuild.node(CurrentBuild.info.copy(abiVersion = Some(abiVersion))), out)
+    JsonUtil.writeJson(
+      CurrentBuild.node(CurrentBuild.info.copy(abiVersion = Some(abiVersion))),
+      out,
+    )
 
   /** Lint a loaded schema, as a `SchemaValidationReport` in JSON. */
   def lint(handle: Long, optionsJson: String, out: OutputStream): Unit = {
