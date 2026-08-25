@@ -35,11 +35,13 @@ __all__ = [
     "ERROR",
     "WARNING",
     "__version__",
+    "BuildInfo",
     "LinkMlError",
     "NativeLibraryNotFound",
     "Runtime",
     "Schema",
     "SchemaLoadError",
+    "build_info",
     "library_path",
     "load_file",
     "load_path",
@@ -56,6 +58,14 @@ Report = dict[str, Any]
 
 ``report["issues"]`` is a list of issues, each with at least an ``issue_type``, a ``severity``
 (one of :data:`FATAL`, :data:`ERROR`, :data:`WARNING`) and a ``location``.
+"""
+
+BuildInfo = dict[str, Any]
+"""Build metadata, following the `build-info.yaml` LinkML model.
+
+Always has ``linkml_scala_version``, ``metamodel_version``, ``scala_version`` and ``platform``.
+Here ``platform`` is always ``"NATIVE"`` and ``abi_version`` is filled in as well. There is no
+``rdf4j_version``: the shared library leaves RDF4J out. See :func:`build_info`.
 """
 
 
@@ -225,6 +235,17 @@ def load_path(
         current,
         *current.load_string(path, None, imports, {"inferMessages": infer_messages}),
     )
+
+
+def build_info() -> BuildInfo:
+    """Version and build metadata for the native library these bindings loaded.
+
+    Note that ``__version__`` is the version of this Python package, while
+    ``build_info()["linkml_scala_version"]`` is the version of the library it is talking to. They
+    match in a released wheel, but not when you point ``$LINKML_SCALA_LIB`` at a library you built
+    yourself. Worth quoting both in a bug report.
+    """
+    return runtime().build_info()
 
 
 def _schema(current: Runtime, handle: int, report: Report) -> Schema:

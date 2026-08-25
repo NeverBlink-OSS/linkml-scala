@@ -47,6 +47,21 @@ export interface ValidationReport {
 
 export type TargetResult = string | Record<string, string> | ValidationReport;
 
+/** Shape of the `BuildInfo` that `LinkML.buildInfo` returns, following model/build-info.yaml.
+ *
+ * Hand-written for the same reason as `ValidationReport`, and optional throughout for the same
+ * reason too. Slots the JavaScript build never fills - `rdf4j_version`, `abi_version` - are left
+ * out entirely rather than typed as always-absent.
+ */
+export interface BuildInfo {
+  linkml_scala_version?: string;
+  metamodel_version?: string;
+  scala_version?: string;
+  scala_js_version?: string;
+  platform?: string;
+  runtime?: string;
+}
+
 export interface Target {
   id: string;
   label: string;

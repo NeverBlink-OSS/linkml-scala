@@ -1,11 +1,19 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.util.JsonUtil
+import eu.neverblink.linkml.schemaview.buildinfo.{BuildInfoImpl, CurrentBuild}
 
 import java.time.Year
 
 @HelpMessage("Print the version of linkml-scala and its key components.")
-final case class VersionOptions()
+final case class VersionOptions(
+    @HelpMessage(
+      "Output format. One of terminal|json. 'terminal' is human-friendly (default); " +
+        "'json' is a BuildInfo serialized as JSON.",
+    )
+    format: String = "terminal",
+)
 
 object Version extends BaseCommand[VersionOptions] {
   override def names: List[List[String]] = List(
@@ -14,15 +22,27 @@ object Version extends BaseCommand[VersionOptions] {
     List("--version"),
   )
 
-  override def run(options: VersionOptions, remainingArgs: RemainingArgs): Unit = {
-    val jvm = System.getProperty("java.vm.name") + " " + System.getProperty("java.vm.version")
+  /** What this build is, with the components only the CLI links in filled out. */
+  private def buildInfo: BuildInfoImpl =
+    CurrentBuild.info.copy(rdf4jVersion = Some(BuildInfo.rdf4jVersion))
+
+  override def run(options: VersionOptions, remainingArgs: RemainingArgs): Unit =
+    options.format.toLowerCase match {
+      case "json" => printLine(JsonUtil.yamlToJson(CurrentBuild.node(buildInfo)))
+      case "terminal" => printTerminal()
+      case other => err(s"Unknown format '$other'. Supported formats: terminal|json.")
+    }
+
+  private def printTerminal(): Unit = {
+    val info = buildInfo
     printLine(
       s"""
-         |linkml-scala   ${BuildInfo.version}
+         |linkml-scala   ${info.linkmlScalaVersion}
          |-------------------------------------------------------------
-         |Scala          ${BuildInfo.scalaVersion}
-         |RDF4J          ${BuildInfo.rdf4jVersion}
-         |JVM            $jvm
+         |Metamodel      ${info.metamodelVersion}
+         |Scala          ${info.scalaVersion}
+         |RDF4J          ${info.rdf4jVersion.getOrElse("-")}
+         |Runtime        ${info.runtime.getOrElse("-")}
          |-------------------------------------------------------------""".stripMargin.trim,
     )
     printLine(

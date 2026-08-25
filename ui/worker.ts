@@ -1,5 +1,5 @@
 // Generation worker. Owns the LinkML API, the parsed `SchemaView` and all generator calls.
-import { targetById, type OptionValues, type TargetResult, type ValidationReport } from "./targets.js";
+import { targetById, type BuildInfo, type OptionValues, type TargetResult, type ValidationReport } from "./targets.js";
 import type { LinkMLApi, LoadResult } from "./linkml";
 
 const LINKML_BUNDLE_URL = "./linkml.js";
@@ -38,13 +38,30 @@ export type GenerateResponse =
     }
   | { id: number; ok: false; error: string };
 
+/** Sent once, unprompted, when the bundle finishes loading. Every other message answers a request,
+ * so the UI tells the two apart by looking for `build`. */
+export interface BuildMessage {
+  build: BuildInfo;
+}
+
+export type WorkerMessage = GenerateResponse | BuildMessage;
+
 // The UI tsconfig ships the DOM lib rather than webworker, and pulling lib.webworker in here would
 // collide with it. Only these two globals are used, so declare them exactly - which also types
 // both ends of the protocol instead of leaving them as `any`.
 declare const self: {
   onmessage: ((e: MessageEvent<GenerateRequest>) => void) | null;
-  postMessage: (message: GenerateResponse) => void;
+  postMessage: (message: WorkerMessage) => void;
 };
+
+// Announced rather than asked for: there is nothing to ask about, and the page wants the version
+// whether or not anyone has generated anything yet. Already plain data - `buildInfo` hands back a
+// parsed JSON object - so unlike a report it needs no normalizing before it crosses the boundary.
+apiPromise
+  .then((api) => self.postMessage({ build: api.buildInfo() as BuildInfo }))
+  .catch(() => {
+    // A bundle that failed to load reports itself through the first generation request.
+  });
 
 // Parse the schema once and reuse it across target/option changes; only re-parse when the input
 // text actually changes.

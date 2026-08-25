@@ -39,6 +39,24 @@ public final class LinkMlCApi {
     }
 
     /**
+     * Version and build metadata for this library, as a JSON {@code BuildInfo}. Needs no schema.
+     *
+     * <p>Goes through {@code document} like everything else that returns a string, so the memory
+     * handling stays in one place; the handle and options it takes are unused here.
+     *
+     * @param error receives the reason the call could not be made
+     * @return JSON describing this build, or NULL on failure
+     */
+    @CEntryPoint(name = "linkml_build_info")
+    static CCharPointer buildInfo(IsolateThread thread, CCharPointerPointer error) {
+        return document(
+                0L,
+                WordFactory.nullPointer(),
+                error,
+                (handle, options, out) -> LinkMlNativeApi.buildInfo(out));
+    }
+
+    /**
      * Load a schema from the file system, resolving its imports from disk.
      *
      * @param path the schema file to read
