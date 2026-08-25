@@ -9,10 +9,6 @@ import sangria.schema.Schema
 import sangria.parser.{ParserConfig, QueryParser}
 
 class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
-  override val skipModels: Map[String, String] = Map(
-    "syntheticUris" -> "LNK-159: Full escaping not implemented",
-  )
-
   // dummy query object to make the generated types a valid graphql schema
   val dummyQuery: String =
     """type Query {

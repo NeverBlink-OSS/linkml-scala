@@ -45,7 +45,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
   /** Translate a slot name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def slotName(slot: SlotView): MappedSlotName =
-    slot.slot.alias.getOrElseFast(Case.deSpaceCase(slot.slot.name))
+    slot.slot.alias.getOrElseFast(Case.escaped(slot.slot.name))
 
   private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] =
     try x.mapFast(v => BigDecimal(v.value.trim))

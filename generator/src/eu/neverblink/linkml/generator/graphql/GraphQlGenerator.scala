@@ -9,6 +9,9 @@ import eu.neverblink.linkml.metamodel.PermissibleValue
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
+import GraphQlGenerator.escaped
+
+import scala.util.matching.Regex
 
 class GraphQlGenerator(using sv: SchemaView)
     extends CharDocumentGenerator[GraphQlGenerator.Options] {
@@ -94,7 +97,7 @@ class GraphQlGenerator(using sv: SchemaView)
           cls,
           fields,
           cls.parents.collect {
-            case cv if cv.cls.`abstract` || cv.cls.mixin => cv.aliasedName
+            case cv if cv.cls.`abstract` || cv.cls.mixin => escaped(cv.aliasedName)
           },
         ),
       )
@@ -106,7 +109,7 @@ class GraphQlGenerator(using sv: SchemaView)
           // Break the inheritance chain on concrete -> concrete inheritance
           // We still need to use the derived slots and interfaces and types anyway
           cls.parents.collect {
-            case cv if cv.cls.`abstract` || cv.cls.mixin => cv.aliasedName
+            case cv if cv.cls.`abstract` || cv.cls.mixin => escaped(cv.aliasedName)
           },
         ),
       )
@@ -155,6 +158,16 @@ object GraphQlGenerator {
     */
   def remappedType(tv: TypeView): String =
     remapToBuiltin(tv).getOrElse(tv.aliasedName)
+
+  private val leadingUnderscores: Regex = "^_+".r
+
+  /** Process the escapes and reduce the leading underscores to at most one to avoid clashes with
+    * the GraphQL reserved names.
+    */
+  def escaped(text: String): String = {
+    val res = Case.escaped(text)
+    leadingUnderscores.replaceAllIn(res, "_")
+  }
 }
 
 /** ADT for different kinds of GraphQL definitions (type/interface/enum/scalar) */
@@ -199,7 +212,7 @@ case class GraphQlInterfaceDefinition(
 
   override def print: String =
     indent"""${wrapDescription(classView.cls.description)}
-            |interface ${classView.aliasedName} $inheritsList $body
+            |interface ${escaped(classView.aliasedName)} $inheritsList $body
             |""".stripMargin
 
 /** Container for information needed to generate an object ("type") definition
@@ -234,7 +247,7 @@ case class GraphQlTypeDefinition(
 
   override def print: String = {
     indent"""${wrapDescription(classView.cls.description)}
-            |type ${classView.aliasedName} $inheritsList $body
+            |type ${escaped(classView.aliasedName)} $inheritsList $body
             |""".stripMargin
   }
 
@@ -252,7 +265,7 @@ case class GraphQlEnumDefinition(
   override def print: String = {
     val serializedValues = values.map(_.print.strip())
     indent"""${wrapDescription(enumView._enum.description)}
-            |enum ${enumView.aliasedName} {
+            |enum ${escaped(enumView.aliasedName)} {
             |  ${serializedValues.mkString("\n")}
             |}
             |""".stripMargin
@@ -274,7 +287,7 @@ case class GraphQlEnumValueDefinition(
 ) extends GraphQlElement:
   override def print: String =
     indent"""${wrapDescription(pv.description)}
-            |${pv.text}
+            |${escaped(pv.text)}
             |""".stripMargin
 
 /** Container for information needed to generate a scalar definition
@@ -287,7 +300,7 @@ case class GraphQlScalarDefinition(
 ) extends GraphQlDefinition:
   override def print: String = {
     indent"""${wrapDescription(typeView._type.description)}
-            |scalar ${typeView.aliasedName}
+            |scalar ${escaped(typeView.aliasedName)}
             |""".stripMargin
   }
 
@@ -309,7 +322,7 @@ case class GraphQlField(
   val slotView: SlotView = attributeView.slotView
 
   /** Aliased name to use in the range of the field */
-  val name: String = slotView.aliasedName
+  val name: String = escaped(slotView.aliasedName)
 
   /** Whether the [[range]] should be declared non-null ("Range!") */
   val nonNull: Boolean = slotView.slot.required

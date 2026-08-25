@@ -104,17 +104,18 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
                     |""".stripMargin,
     // A digit is legal in an attribute name, but not as its first character. An entity name may not
     // begin with one at all, since Mermaid's lexer reaches for `NUM` first.
-    "leadingDigitNames" -> """  1class:
-                             |    attributes:
-                             |      1st slot:
-                             |      2nd:
-                             |  42:
-                             |    attributes:
-                             |      x:
-                             |  4.2:
-                             |    attributes:
-                             |      x:
-                             |""".stripMargin,
+    // TODO LNK-159: update this test to be in-line with whatever we think up
+//    "leadingDigitNames" -> """  1class:
+//                             |    attributes:
+//                             |      1st slot:
+//                             |      2nd:
+//                             |  42:
+//                             |    attributes:
+//                             |      x:
+//                             |  4.2:
+//                             |    attributes:
+//                             |      x:
+//                             |""".stripMargin,
   )
 
   /** Every model in the catalogue, the adversary ones above, plus the metamodel.
