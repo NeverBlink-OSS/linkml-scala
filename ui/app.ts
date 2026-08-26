@@ -2,13 +2,14 @@ import { createInput, createOutput, setDoc, setOutput, type OutputLang } from ".
 import {
   TARGETS,
   targetById,
+  type BuildInfo,
   type IssueLocation,
   type OptionValues,
   type ReportIssue,
   type Target,
   type ValidationReport,
 } from "./targets.js";
-import type { GenerateRequest, GenerateResponse } from "./worker.js";
+import type { GenerateRequest, GenerateResponse, WorkerMessage } from "./worker.js";
 
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 // Resolved against dist/app.js at runtime, so it lands on the sibling dist/worker.js. Built from a
@@ -736,7 +737,11 @@ let worker: Worker | null = null;
 function getWorker(): Worker {
   if (worker) return worker;
   const w = new Worker(new URL(WORKER_URL, import.meta.url), { type: "module" });
-  w.onmessage = (e: MessageEvent<GenerateResponse>) => onResult(e.data);
+  w.onmessage = (e: MessageEvent<WorkerMessage>) => {
+    // Everything except the one-off build announcement is an answer to a request.
+    if ("build" in e.data) showBuildInfo(e.data.build);
+    else onResult(e.data);
+  };
   w.onerror = (e) => {
     e.preventDefault();
     // A worker that died (out of memory on a huge schema, say) never answers again, so drop it.
@@ -876,12 +881,42 @@ $themeToggle.addEventListener("click", () => {
   }
 });
 
+// ── Build info ───────────────────────────────────────────────────────────
+
+const $footerVersion = $<HTMLButtonElement>("footerVersion");
+
+/** Fill in the version rows once the worker reports what it loaded.
+ *
+ * Every slot is treated as optional: this mirrors an API that hands back plain JSON, and the
+ * serializer leaves out slots that are empty. A missing one shows the same dash it started with.
+ */
+function showBuildInfo(info: BuildInfo): void {
+  const set = (id: string, value: string | undefined) => {
+    if (value) $(id).textContent = value;
+  };
+  set("biVersion", info.linkml_scala_version);
+  set("biMetamodel", info.metamodel_version);
+  set("biScala", info.scala_version);
+  set("biScalaJs", info.scala_js_version);
+  set("biRuntime", info.runtime);
+
+  if (info.linkml_scala_version) {
+    $footerVersion.textContent = `v${info.linkml_scala_version}`;
+    $footerVersion.hidden = false;
+  }
+}
+
 // ── Help / FAQ dialog ────────────────────────────────────────────────────
 
 const $faqDialog = $<HTMLDialogElement>("faqDialog");
 const openFaq = () => $faqDialog.showModal();
 $<HTMLButtonElement>("helpToggle").addEventListener("click", openFaq);
 $<HTMLButtonElement>("aboutLink").addEventListener("click", openFaq);
+// The version in the footer is the short form; the dialog has the rest, so send people there.
+$footerVersion.addEventListener("click", () => {
+  openFaq();
+  $("buildSection").scrollIntoView({ block: "nearest" });
+});
 $faqDialog.querySelector<HTMLButtonElement>(".faq-close")!.addEventListener("click", () => $faqDialog.close());
 // Click on the backdrop (the dialog element itself, since content fills it) closes it.
 $faqDialog.addEventListener("click", (e) => {

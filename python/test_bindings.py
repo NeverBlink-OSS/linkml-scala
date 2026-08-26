@@ -79,6 +79,27 @@ BROKEN = schema(
 FIXED = BROKEN.replace("NoSuchThing", "string")
 
 
+class BuildInfoTest(unittest.TestCase):
+    def test_build_info_describes_the_library(self):
+        info = linkml_scala.build_info()
+        # The versions depend on which library was built, so only their shape is checked.
+        self.assertTrue(info["linkml_scala_version"])
+        self.assertRegex(info["metamodel_version"], r"^\d+\.\d+\.\d+$")
+        self.assertTrue(info["scala_version"].startswith("3."))
+        self.assertEqual("NATIVE", info["platform"])
+
+    def test_build_info_reports_the_abi_it_was_checked_against(self):
+        from linkml_scala._runtime import _EXPECTED_ABI_VERSION
+
+        self.assertEqual(_EXPECTED_ABI_VERSION, linkml_scala.build_info()["abi_version"])
+
+    def test_build_info_does_not_claim_components_the_library_lacks(self):
+        info = linkml_scala.build_info()
+        # The shared library leaves RDF4J out, and it is not a Scala.js build.
+        self.assertNotIn("rdf4j_version", info)
+        self.assertNotIn("scala_js_version", info)
+
+
 class LoadTest(unittest.TestCase):
     def test_load_string(self):
         with linkml_scala.load_string(PERSON) as loaded:

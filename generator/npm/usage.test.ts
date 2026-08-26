@@ -6,6 +6,10 @@ import { LinkML, type LoadResult, type SchemaView } from "@neverblink/linkml";
 const schema = "id: https://example.org/s\nname: s";
 const importMap: Record<string, string> = {};
 
+// Build metadata needs no schema.
+const build: any = LinkML.buildInfo();
+const buildVersion: string = build.linkml_scala_version;
+
 // Loading always yields a report; `view` is absent when the schema has fatal problems.
 const loaded: LoadResult = LinkML.loadFromString(schema, importMap);
 const loadReport: unknown = loaded.report;
@@ -35,6 +39,8 @@ const lintIssues: unknown[] = lint.issues;
 const lintNoMessages: any = LinkML.lint(view, false);
 
 void [
+  build,
+  buildVersion,
   loadReport,
   jsonSchema,
   jsonSchemaFull,

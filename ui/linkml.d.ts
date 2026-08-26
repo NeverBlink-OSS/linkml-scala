@@ -22,6 +22,12 @@ export interface LoadResult {
 
 export interface LinkMLApi {
   /**
+   * Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML metamodel it was built against, and what it is running on.  Useful in bug reports, and for checking that the version you loaded is the one you meant to.
+   * @returns A `BuildInfo` object, as described by https://linkml.neverblink.eu/model/build-info
+   */
+  buildInfo(): any;
+
+  /**
    * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the schema's YAML text.  The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of its imports (transitively) imports the main schema back by filename, that import cannot be matched against the root and the main schema will be loaded a second time. Use [[loadFromPath]] instead when the root schema takes part in an import cycle.
    * @param mainSchema Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all imports must be made available in the [[importMap]].
    * @param importMap JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)

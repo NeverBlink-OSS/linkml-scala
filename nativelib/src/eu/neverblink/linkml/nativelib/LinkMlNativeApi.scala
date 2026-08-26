@@ -10,6 +10,7 @@ import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
 import org.virtuslab.yaml.{Node, StringNode}
 
@@ -27,8 +28,10 @@ object LinkMlNativeApi {
 
   /** Bumped whenever a change to the exported functions or to the options JSON breaks existing
     * callers.
+    *
+    *   - 2 added `linkml_build_info`.
     */
-  final val abiVersion: Int = 1
+  final val abiVersion: Int = 2
 
   private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
 
@@ -142,6 +145,17 @@ object LinkMlNativeApi {
       out,
     )
   }
+
+  /** Version and build metadata for this library, as a `BuildInfo` in JSON.
+    *
+    * The ABI version is added here rather than in the shared code, because it is a fact about the
+    * shared library and means nothing in the other distributions.
+    */
+  def buildInfo(out: OutputStream): Unit =
+    JsonUtil.writeJson(
+      CurrentBuild.node(CurrentBuild.info.copy(abiVersion = Some(abiVersion))),
+      out,
+    )
 
   /** Lint a loaded schema, as a `SchemaValidationReport` in JSON. */
   def lint(handle: Long, optionsJson: String, out: OutputStream): Unit = {

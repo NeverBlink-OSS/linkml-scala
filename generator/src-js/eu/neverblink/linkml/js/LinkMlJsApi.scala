@@ -10,6 +10,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
 import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReportImpl}
 
 import scala.scalajs.js
@@ -40,6 +41,17 @@ object LinkMlJsApi {
     override def read(path: String): String =
       map.get(path).getOrElse(sys.error(s"Could not read from import map: $path"))
   }
+
+  /** Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML
+    * metamodel it was built against, and what it is running on.
+    *
+    * Useful in bug reports, and for checking that the version you loaded is the one you meant to.
+    *
+    * @return
+    *   A `BuildInfo` object, as described by https://linkml.neverblink.eu/model/build-info
+    */
+  def buildInfo(): js.Any =
+    js.JSON.parse(JsonUtil.yamlToJson(CurrentBuild.node()))
 
   /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the
     * schema's YAML text.

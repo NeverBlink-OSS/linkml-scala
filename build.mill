@@ -55,6 +55,13 @@ object LinkMlAliases extends Aliases {
     "validation.jvm.fix",
     "validation.jvm.reformat",
   )
+
+  def regenerateBuildInfo: Seq[String] = alias(
+    "cli.jvm.run generate scala --to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
+      "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
+    "schemaview.jvm.fix",
+    "schemaview.jvm.reformat",
+  )
 }
 
 def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
@@ -163,6 +170,16 @@ object metamodel extends Module {
     PathRef(Task.dest)
   }
 
+  /** The version of the LinkML metamodel we build against, so it can be reported at runtime.
+    */
+  def metamodelVersion = Task {
+    val meta = os.read(definitions().path / "meta.yaml")
+    raw"(?m)^metamodel_version:\s*(\S+)\s*$$".r.findFirstMatchIn(meta) match {
+      case Some(m) => m.group(1)
+      case None => Task.fail("meta.yaml has no metamodel_version")
+    }
+  }
+
   object jvm extends CommonModule, ResourcesAsStrings("metamodel") {
     def moduleDeps = Seq(
       build.yaml.jvm,
@@ -227,6 +244,11 @@ object validation extends Module {
 }
 
 object schemaview extends Module {
+  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
+    Task.Command(exclusive = true) {
+      AliasesModule.run(ev, "regenerateBuildInfo")
+    }
+
   object jvm extends SchemaViewModule {
     def moduleDeps = Seq(
       build.metamodel.jvm,
@@ -245,9 +267,26 @@ object schemaview extends Module {
     object test extends ScalaJSTests, CommonTestModule
   }
 
-  trait SchemaViewModule extends CommonModule {
+  trait SchemaViewModule extends CommonModule, BuildInfo {
     def mvnDeps = Seq(
       mvn"com.lihaoyi::fastparse::3.1.1",
+    )
+
+    def buildInfoPackageName = "eu.neverblink.linkml.schemaview.buildinfo"
+
+    // `BuildInfo` is the LinkML-generated class in that package, so the constants need another name.
+    override def buildInfoObjectName = "BuildConstants"
+
+    // Compile the values into the class file instead of reading them from a properties resource.
+    // Scala.js has no resources at all, and on the JVM side the native image would otherwise need
+    // the properties file registered by hand.
+    override def buildInfoStaticCompiled = true
+
+    def buildInfoMembers = Seq(
+      BuildInfo.Value("version", publishVersion()),
+      BuildInfo.Value("scalaVersion", scalaVersion()),
+      BuildInfo.Value("scalaJsVersion", scalaJS),
+      BuildInfo.Value("metamodelVersion", build.metamodel.metamodelVersion()),
     )
 
     // fastparse's `rep`/`StringIn` macros trip -Xcheck-macros ("Expression created in a splice was
@@ -402,9 +441,10 @@ object cli extends Module {
 
     def buildInfoPackageName = "eu.neverblink.linkml.cli"
 
+    // Everything else the `version` command prints comes from
+    // `eu.neverblink.linkml.schemaview.buildinfo.BuildConstants`, which every distribution shares.
+    // RDF4J is only linked into the CLI and the JVM library, so its version is added here.
     def buildInfoMembers = Seq(
-      BuildInfo.Value("version", publishVersion()),
-      BuildInfo.Value("scalaVersion", scalaVersion()),
       BuildInfo.Value("rdf4jVersion", rdf4j),
     )
 
