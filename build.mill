@@ -163,7 +163,7 @@ object metamodel extends Module {
     if Task.offline then Task.fail("Can't fetch linkml-model offline")
     val cloneDir = os.temp.dir()
     val cloneResult = os.call(
-      ("git", "clone", "--depth=1", "https://github.com/linkml/linkml-model"),
+      ("git", "clone", "--depth=1", "https://github.com/NeverBlink-OSS/linkml-model"),
       cwd = cloneDir,
     )
     os.copy.over(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema", Task.dest)
