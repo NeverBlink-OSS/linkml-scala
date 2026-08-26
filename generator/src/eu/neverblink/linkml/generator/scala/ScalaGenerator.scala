@@ -518,9 +518,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
       remapMetamodelCombineFunctions(v, typedDefault.combineFunc),
       order,
-      // TODO LNK-124: remove when resolved in linkml-model
-      // Patch to allow for the slot rank to be inherited.
-      slot.inherited || slot.name == "rank",
+      slot.inherited,
       ScalaDoc(slot, v.definingSchema.id)(using v.definingPrefixResolver),
     )
   }
