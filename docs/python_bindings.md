@@ -121,6 +121,9 @@ long long linkml_load_file(graal_isolatethread_t*, const char* path,
                            const char* opts, char** report, char** err);
 void      linkml_close    (graal_isolatethread_t*, long long handle);
 void      linkml_free     (graal_isolatethread_t*, char*);
+
+int       linkml_abi_version(graal_isolatethread_t*);
+char*     linkml_build_info (graal_isolatethread_t*, char** err);
 ```
 
 Conventions:

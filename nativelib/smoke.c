@@ -83,10 +83,17 @@ int main(void) {
     }
     ok("isolate created");
 
-    if (linkml_abi_version(thread) != 1) {
-        fail("abi version", "expected 1");
+    if (linkml_abi_version(thread) != 2) {
+        fail("abi version", "expected 2");
     } else {
         ok("abi version");
+    }
+
+    /* Build metadata needs no schema, so it goes before loading one. */
+    {
+        char *error = NULL;
+        char *out = linkml_build_info(thread, &error);
+        expect(thread, "build info", out, &error, "linkml_scala_version");
     }
 
     /* Load. No import map, so the array arguments are NULL and the count is 0. */

@@ -22,7 +22,7 @@ from ._generated import DOCUMENT_FUNCTIONS
 __all__ = ["Runtime", "LinkMlError", "NativeLibraryNotFound", "library_path", "runtime"]
 
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
-_EXPECTED_ABI_VERSION = 1
+_EXPECTED_ABI_VERSION = 2
 
 _LIB_STEM = "liblinkml_scala"
 
@@ -222,6 +222,20 @@ class Runtime:
         """Call a generator whose result is JSON, and return it parsed."""
         return json.loads(self.document(function, handle, options))
 
+    def build_info(self) -> dict[str, Any]:
+        """Version and build metadata for the loaded library, parsed from its JSON.
+
+        :raises LinkMlError: if the library reported a failure.
+        """
+        error = _Chars()
+        result = self._lib.linkml_build_info(self._thread(), ctypes.byref(error))
+        # Take both, so neither leaks whichever way the call went.
+        message = self._take(error)
+        text = self._take(result)
+        if text is None:
+            raise LinkMlError(message or "linkml_build_info failed without saying why")
+        return json.loads(text)
+
     # Internals
 
     def _loaded(self, handle: int, report: Any, error: Any) -> tuple[int, dict[str, Any]]:
@@ -295,6 +309,10 @@ class Runtime:
 
         self._lib.linkml_close.argtypes = [void_p, handle]
         self._lib.linkml_close.restype = None
+
+        # Takes no schema, so it does not fit the generator shape below.
+        self._lib.linkml_build_info.argtypes = [void_p, chars_out]
+        self._lib.linkml_build_info.restype = _Chars
 
         # linkml_lint has the same shape but is not a generator, so it is not in the generated
         # list and gets declared alongside it.

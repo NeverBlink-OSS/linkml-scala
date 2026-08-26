@@ -84,6 +84,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `graphQl(view, pruningMode?, treeRoot?)`                             | `string` | GraphQL                                                      |
 | `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`          | `string` | Mermaid entity relationship diagram                          |
 | `lint(view, inferMessages?)`                                         | `object` | `SchemaValidationReport` (JSON)                              |
+| `buildInfo()`                                                        | `object` | `BuildInfo` (JSON) – version and build metadata |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

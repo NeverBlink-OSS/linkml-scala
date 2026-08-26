@@ -1,0 +1,92 @@
+id: https://linkml.neverblink.eu/model/build-info
+name: build-info
+title: Schema for LinkML-Scala build metadata
+description: >-
+  A schema describing the version and build metadata of a LinkML-Scala distribution. Reported by the
+  LinkML-Scala CLI (`linkml-scala version --format json`), the JavaScript API, the C ABI and the
+  Python API.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  build: https://linkml.neverblink.eu/model/build-info#
+default_prefix: build
+imports:
+  - linkml:types
+
+classes:
+  BuildInfo:
+    title: Build info
+    tree_root: true
+    description: >-
+      Version and build metadata of the LinkML-Scala distribution that produced this report.
+    notes:
+      - >-
+        Some slots are optional, because not every distribution contains
+        every component. An absent slot means "this build does not include that component".
+    attributes:
+      linkml_scala_version:
+        range: string
+        required: true
+        title: LinkML-Scala version
+        description: >-
+          The SemVer version of LinkML-Scala itself. Releases are plain versions like `1.2.3`. Builds made
+          between releases include the commit they were built from, like `1.2.3-4-abcdef1-SNAPSHOT`.
+
+      metamodel_version:
+        range: string
+        required: true
+        title: metamodel version
+        description: >-
+          The version of the LinkML metamodel this distribution was built against, taken from
+          `metamodel_version` in the LinkML `meta` schema.
+
+      scala_version:
+        range: string
+        required: true
+        title: Scala version
+        description: The version of the Scala compiler this distribution was built with.
+
+      platform:
+        range: Platform
+        required: true
+        title: platform
+        description: The kind of build this is, and therefore which of the optional slots can appear.
+
+      runtime:
+        range: string
+        recommended: true
+        title: runtime
+        description: >-
+          Human-readable description of the virtual machine or engine currently executing the code,
+          for example `OpenJDK 64-Bit Server VM 25.0.1` or `Node.js v24.2.0`. Useful for bug reports.
+
+      scala_js_version:
+        range: string
+        title: Scala.js version
+        description: The version of Scala.js this distribution was compiled with. JavaScript builds only.
+
+      rdf4j_version:
+        range: string
+        title: RDF4J version
+        description: >-
+          The version of RDF4J this distribution bundles, which is what serializes RDF to formats
+          other than N-Triples. Present in the CLI and the JVM library only.
+
+      abi_version:
+        range: integer
+        minimum_value: 1
+        title: ABI version
+        description: >-
+          The version of the C ABI exported by the shared library, matching what `linkml_abi_version`
+          returns. Present in the native library and its Python bindings only.
+
+enums:
+  Platform:
+    title: Platform
+    description: The kind of build a LinkML-Scala distribution is.
+    permissible_values:
+      JVM:
+        description: Running on a Java virtual machine.
+      NATIVE:
+        description: A GraalVM native image -- the standalone CLI executable or the shared library.
+      JS:
+        description: Compiled to JavaScript with Scala.js, running under Node.js or in a browser.

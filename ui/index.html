@@ -105,6 +105,9 @@
       <a href="https://pypi.org/project/neverblink-linkml/" target="_blank" rel="noopener">PyPI</a>
       <a href="https://central.sonatype.com/namespace/eu.neverblink.linkml" target="_blank" rel="noopener">Maven Central</a>
       <button type="button" id="aboutLink">About</button>
+      <!-- Last in the row on purpose: it stays hidden until the bundle reports its version, and a
+           hidden first child would hand the left border to whatever follows it. -->
+      <button type="button" id="footerVersion" title="Which version is this?" hidden></button>
     </nav>
   </footer>
 </div>
@@ -162,6 +165,16 @@
         editors are powered by <a href="https://codemirror.net/" target="_blank" rel="noopener">CodeMirror</a>.
         See the <a href="https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">contributing guide</a>
         for how it is built.</p>
+    </section>
+    <section id="buildSection">
+      <h3>Software version</h3>
+      <dl class="build-info">
+        <dt>LinkML-Scala</dt><dd id="biVersion">&ndash;</dd>
+        <dt>LinkML metamodel</dt><dd id="biMetamodel">&ndash;</dd>
+        <dt>Scala</dt><dd id="biScala">&ndash;</dd>
+        <dt>Scala.js</dt><dd id="biScalaJs">&ndash;</dd>
+        <dt>Runtime</dt><dd id="biRuntime">&ndash;</dd>
+      </dl>
     </section>
     <section>
       <h3>Where is my data processed?</h3>
