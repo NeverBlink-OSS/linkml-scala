@@ -540,6 +540,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case "Curie" => CurieType
     case "URIorCURIE" => UriOrCurieType
     case "NCName" => NcNameType
+    case "LocalizedText" => LocalizedTextType
     case "XSDDateTime" => DateTimeType
     case "XSDDate" => DateType
     case "XSDTime" => TimeType

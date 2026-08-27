@@ -202,6 +202,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     case UriType => "Uri"
     case CurieType => "Curie"
     case NcNameType => "NcName"
+    case LocalizedTextType => "LocalizedText"
     case UnknownType => tv.inner.base.getOrElse("Unknown")
   }
 

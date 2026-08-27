@@ -1,0 +1,16 @@
+id: https://neverblink.eu/linkml/tests/langString/
+name: langString
+
+extensions:
+  opt_in: true
+
+types:
+  langstring:
+    base: LocalizedText
+
+classes:
+  SomeClass:
+    attributes:
+      some_slot:
+        range: langstring
+        required: true
