@@ -44,6 +44,31 @@ object LinkmlYamlCodec {
     override def encode(x: UriOrCurie, skipId: Boolean): Node = StringNode(x.original)
   }
 
+  implicit val localizedTextCodec: LinkmlYamlCodec[LocalizedText] =
+    new LinkmlYamlCodec[LocalizedText] {
+      override def decode(node: Node, id: Option[Any]): LocalizedText = node match {
+        case scalar: Node.ScalarNode if Tag.str eq scalar.tag => new PlainText(scalar.value)
+        case mapping: Node.MappingNode =>
+          new MultilingualText(mapping.mappings.map {
+            case (k: Node.ScalarNode, v: Node.ScalarNode)
+                if (Tag.str eq k.tag) && (Tag.str eq v.tag) =>
+              k.value -> v.value
+            case (k: Node.ScalarNode, v) if Tag.str eq k.tag =>
+              decodeError("A string in a language specified by the lang tag", v)
+            case (k, _) =>
+              decodeError("A langauge tag string (key of multilingual string mapping)", k)
+          })
+        case other =>
+          decodeError("Localized string (plain string or language to string mapping)", other)
+      }
+
+      override def encode(x: LocalizedText, skipId: Boolean): Node = x match {
+        case plain: PlainText => StringNode(plain.value)
+        case lang: MultilingualText =>
+          Node.MappingNode(lang.mapping.map(StringNode(_) -> StringNode(_)))
+      }
+    }
+
   /** One concrete implementation handled by [[LinkmlYamlCodec.typeDesignatorCodec]].
     *
     * @param designatorValue

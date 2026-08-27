@@ -68,13 +68,17 @@ object NTriplesWriter {
     case BlankNode(id) =>
       sink.append("_:")
       sink.append(id)
-    case Literal(value, datatype) =>
+    case Literal(value, datatype, languageTag) =>
       sink.appendAscii('"')
       NTriplesEscape.escapeString(sink, value)
       sink.appendAscii('"')
+      if (datatype == Rdf.langString && languageTag.isDefined) {
+        sink.appendAscii('@')
+        sink.append(languageTag.get)
+      }
       // Reference equality because generators use the constant anyway.
       // Equality miss here is safe (still valid RDF)
-      if (!(datatype eq XmlSchema.string)) {
+      else if (!(datatype eq XmlSchema.string)) {
         sink.append("^^<")
         NTriplesEscape.escapeIri(sink, datatype.value)
         sink.appendAscii('>')

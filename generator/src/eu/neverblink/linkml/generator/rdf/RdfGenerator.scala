@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.rdf
 import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.generator.util.{StringSink, Utf8ByteSink}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
+import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
@@ -95,4 +96,22 @@ abstract class RdfGenerator[O] extends DocumentGenerator[O] {
     // emit all collected prefixes skipping place-holders
     namespaces.forEach((k, v) => if (v.nonEmpty) sink.namespace(k, v))
   }
+
+  /** Create triples for a [[LocalizedText]]. Sinks triples with xsd:string literals for
+    * [[PlainText]] or rdf:langString literals for [[MultilingualText]]
+    */
+  final def langStringProperty(
+      sink: RdfSink,
+      subject: Resource,
+      predicate: Iri,
+      localizedText: LocalizedText,
+  ): Unit =
+    localizedText match {
+      case plain: PlainText => sink.triple(subject, predicate, Literal(plain.value))
+      case lang: MultilingualText =>
+        lang.mapping.foreach { (tag, value) =>
+          sink.triple(subject, predicate, Literal(value, tag))
+        }
+    }
+
 }

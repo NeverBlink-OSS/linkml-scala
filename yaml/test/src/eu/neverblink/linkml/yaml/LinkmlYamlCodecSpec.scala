@@ -703,6 +703,73 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "support LocalizedText" when {
+      case class LocTest(
+          field: LocalizedText,
+          x: Option[String] = None,
+      )
+
+      val codec = LinkmlYamlCodec.derived[LocTest]
+
+      "plain string decode" in {
+        val yaml =
+          """field: not actually localized
+            |""".stripMargin
+        parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(
+          LocTest(
+            PlainText("not actually localized"),
+          ),
+        )
+      }
+
+      "plain string encode" in {
+        val yaml =
+          """field: not actually localized
+            |""".stripMargin.strip()
+        codec.encode(
+          LocTest(
+            PlainText("not actually localized"),
+          ),
+        ).asYaml.strip() shouldBe yaml
+      }
+
+      "multilingual string decode" in {
+        val yaml =
+          """field:
+            |  en: some value
+            |  pl: jakaś wartość
+            |""".stripMargin
+        parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(
+          LocTest(
+            MultilingualText(
+              Map(
+                "en" -> "some value",
+                "pl" -> "jakaś wartość",
+              ),
+            ),
+          ),
+        )
+      }
+
+      "multilingual string encode" in {
+        val yaml =
+          """field:
+            |  en: some value
+            |  pl: jakaś wartość
+            |""".stripMargin
+        codec.encode(
+          LocTest(
+            MultilingualText(
+              Map(
+                "en" -> "some value",
+                "pl" -> "jakaś wartość",
+              ),
+            ),
+          ),
+        ).asYaml.strip() shouldBe yaml.strip()
+      }
+    }
+
     "don't generate codecs for classes with private fields in the primary constructor" in {
       assert(intercept[TestFailedException](assertCompiles {
         """class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""

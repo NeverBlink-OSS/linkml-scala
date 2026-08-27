@@ -41,7 +41,8 @@ final class TurtleRdfSink(using vf: ValueFactory = SimpleValueFactory.getInstanc
 
   private def toRdf4jValue(node: Node): Value = node match {
     case r: Resource => toRdf4jResource(r)
-    case l: Literal => vf.createLiteral(l.value, toRdf4jIri(l.datatype))
+    case l: Literal if l.languageTag eq None => vf.createLiteral(l.value, toRdf4jIri(l.datatype))
+    case l: Literal => vf.createLiteral(l.value, l.languageTag.get)
   }
 
   private def toRdf4jResource(res: Resource): Rdf4jResource = res match {
