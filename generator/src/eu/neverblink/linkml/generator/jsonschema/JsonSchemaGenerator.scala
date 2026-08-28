@@ -8,8 +8,17 @@ import eu.neverblink.linkml.metamodel.Anything
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
-import sttp.apispec.{AnySchema, ExampleMultipleValue, ExampleSingleValue, ExampleValue, Pattern, Schema, SchemaFormat, SchemaLike, SchemaType}
+import sttp.apispec.{
+  AnySchema,
+  ExampleMultipleValue,
+  ExampleSingleValue,
+  ExampleValue,
+  Pattern,
+  Schema,
+  SchemaFormat,
+  SchemaLike,
+  SchemaType,
+}
 
 import java.lang
 import scala.collection.immutable

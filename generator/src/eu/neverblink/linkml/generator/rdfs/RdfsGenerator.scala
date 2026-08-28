@@ -21,7 +21,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       sink.triple(subject, Rdfs.label, Literal(t, XmlSchema.string))
     }
     cms.flatMap(_.description).distinct.foreach { d =>
-      sink.triple(subject, Rdfs.comment, Literal(d, XmlSchema.string))
+      langStringProperty(sink, subject, Rdfs.comment, d)
     }
   }
 

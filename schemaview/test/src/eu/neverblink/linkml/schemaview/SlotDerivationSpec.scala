@@ -12,7 +12,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "inherit slot slots from class ancestors" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
@@ -36,13 +36,13 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.description shouldBe Some("Base description")
+      result.description shouldBe Some(PlainText("Base description"))
     }
 
     "override slot slots from class ancestors with child class slot usage" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
@@ -54,7 +54,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val child = ClassDefinitionImpl(
         name = "child",
         isA = Some(base.reference),
-        slotUsage = Map(slot.copy(description = Some("Child description")).compact),
+        slotUsage = Map(slot.copy(description = Some(PlainText("Child description"))).compact),
       )
 
       val sv = SchemaView.single(
@@ -67,7 +67,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.description shouldBe Some("Child description")
+      result.description shouldBe Some(PlainText("Child description"))
     }
 
     "ignore schema-level slots if slot comes from an attribute" in {
@@ -82,7 +82,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         attributes = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            description = Some("Attribute description"),
+            description = Some(PlainText("Attribute description")),
             range = Some(Reference("child")),
           ).compact,
         ),
@@ -99,7 +99,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
       result.identifier shouldBe false
-      result.description shouldBe Some("Attribute description")
+      result.description shouldBe Some(PlainText("Attribute description"))
     }
 
     "override is_a with mixins" in {
@@ -108,7 +108,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         attributes = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            description = Some("Base description"),
+            description = Some(PlainText("Base description")),
             range = Some(Reference("base")),
           ).compact,
         ),
@@ -120,7 +120,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         attributes = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            description = Some("Mixin description"),
+            description = Some(PlainText("Mixin description")),
             range = Some(Reference("base")),
           ).compact,
         ),
@@ -141,7 +141,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.description shouldBe Some("Mixin description")
+      result.description shouldBe Some(PlainText("Mixin description"))
     }
 
     "override attributes with slot_usage" in {
@@ -150,7 +150,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         attributes = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            description = Some("Base description"),
+            description = Some(PlainText("Base description")),
             range = Some(Reference("base")),
           ).compact,
         ),
@@ -162,7 +162,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         slotUsage = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            description = Some("Slot usage description"),
+            description = Some(PlainText("Slot usage description")),
             range = Some(Reference("base")),
           ).compact,
         ),
@@ -177,7 +177,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.description shouldBe Some("Slot usage description")
+      result.description shouldBe Some(PlainText("Slot usage description"))
     }
 
     "merge Seq slots" in {
@@ -382,7 +382,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "not inherit non-inheritable values from parent slots " in {
       val slotParent = SlotDefinitionImpl(
         name = "slotParent",
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("base")),
       )
 
@@ -498,7 +498,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
           ).compact,
           SlotDefinitionImpl(
             name = "slot2",
-            description = Some("desc"),
+            description = Some(PlainText("desc")),
             range = Some(Reference("child")),
           ).compact,
         ),
@@ -520,7 +520,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
       val result2 = sv.classes("child").derivedAttributes("slot2").slot
       result2.identifier shouldBe false
-      result2.description shouldBe Some("desc")
+      result2.description shouldBe Some(PlainText("desc"))
       result2.title shouldBe Some("Slot 2")
     }
 

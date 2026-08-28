@@ -22,25 +22,22 @@ final class ScalaGenerator(using sv: SchemaView) {
   def generate(
       options: ScalaGenerator.Options = ScalaGenerator.Options(),
   ): Iterable[(String, String)] = {
-    val pkg = options.`package`
-    generateClasses(pkg) ++ generateEnums(pkg) ++ generateTypeDefinitions(pkg)
-      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(pkg) else None)
+    generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
+      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`) else None)
   }
 
   /** Generate Scala counterparts of LinkML classes: case classe implementations for instantiable
     * classes, abstract class interfaces for non-mixin classes, traits for mixins, with LinkML
     * inheritance modeled in abstract classes and traits.
-    * @param pkg
-    *   Scala package to generate the classes in
     * @return
     *   Tuples of form (file name, file content) for all LinkML classes
     */
-  private def generateClasses(pkg: String): Iterable[(String, String)] = {
+  private def generateClasses(options: Options): Iterable[(String, String)] = {
     for classView <- sv.classes.values yield {
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
       val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
-        makeScalaField(attribute, collectionForm, classView)
+        makeScalaField(attribute, collectionForm, classView, options)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
       val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
@@ -51,15 +48,15 @@ final class ScalaGenerator(using sv: SchemaView) {
       className.concat(".scala") -> (
         if classView.isAny then
           typeDef(
-            pkg,
+            options.`package`,
             Case.PascalCase(cls.name),
             "LinkmlAny",
-            ScalaDoc(cls, classView.definingSchema.id)(using prefixResolver),
+            ScalaDoc(cls, classView.definingSchema.id, options)(using prefixResolver),
           )
         else
           ScalaClassInfo(
             className,
-            pkg,
+            options.`package`,
             scalaFields.sortBy(x => (x.order, x.name)),
             (cls.isA ++ cls.mixins).map(ref => Case.PascalCase(ref.value)).toSeq,
             interfaceFields,
@@ -67,19 +64,19 @@ final class ScalaGenerator(using sv: SchemaView) {
             shouldBeTrait,
             isSlotDefinitionClass,
             makeInferredFields(classView),
-            ScalaDoc(classView.materialize, classView.definingSchema.id)(using prefixResolver),
+            ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
+              prefixResolver,
+            ),
           ).print
       )
     }
   }
 
   /** Generate Scala counterparts of regular (static) LinkML enums.
-    * @param pkg
-    *   Scala package to generate the classes in
     * @return
     *   Tuples of form (file name, file content) for all LinkML classes
     */
-  private def generateEnums(pkg: String): Iterable[(String, String)] =
+  private def generateEnums(options: Options): Iterable[(String, String)] =
     sv.enums.values.flatMap { ev =>
       val en = ev._enum
       if (en.permissibleValues.isEmpty) None
@@ -91,17 +88,17 @@ final class ScalaGenerator(using sv: SchemaView) {
             caseName = v.text,
             objectName = Case.PascalCase(v.text),
             enumName = enumName,
-            doc = ScalaDoc(v, ev.definingSchema.id)(using prefixResolver),
+            doc = ScalaDoc(v, ev.definingSchema.id, options)(using prefixResolver),
           ),
         ).toSeq
         val enumInfo =
           ScalaEnumInfo(
             enumName,
-            pkg,
+            options.`package`,
             enumCases,
             !en.`abstract`,
             en.mixin,
-            ScalaDoc(en, ev.definingSchema.id)(using prefixResolver),
+            ScalaDoc(en, ev.definingSchema.id, options)(using prefixResolver),
           )
             .generate()
         Some(enumName.concat(".scala") -> enumInfo)
@@ -133,16 +130,19 @@ final class ScalaGenerator(using sv: SchemaView) {
     )
   }
 
-  private def generateTypeDefinitions(pkg: String): Iterable[(String, String)] = {
+  /** Generate type aliases for schema type definitions. Skips aliases for types defined in
+    * linkml:types and points to the runtime classes directly.
+    */
+  private def generateTypeDefinitions(options: Options): Iterable[(String, String)] = {
     sv.types.values.collect {
       case tv if !tv.isPrimitive =>
         val name = Case.PascalCase(tv._type.name)
         val prefixResolver = tv.definingPrefixResolver
         s"$name.scala" -> typeDef(
-          pkg,
+          options.`package`,
           name,
           typeToRuntime(tv),
-          ScalaDoc(tv._type, tv.definingSchema.id)(using prefixResolver),
+          ScalaDoc(tv._type, tv.definingSchema.id, options)(using prefixResolver),
         )
     }
   }
@@ -493,6 +493,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       attribute: AttributeView,
       collectionForm: CollectionForm,
       owner: ClassView,
+      options: Options,
   ): ScalaField = {
     val v = attribute.slotView
     val slot = v.slot
@@ -520,7 +521,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       remapMetamodelCombineFunctions(v, typedDefault.combineFunc),
       order,
       slot.inherited,
-      ScalaDoc(slot, v.definingSchema.id)(using v.definingPrefixResolver),
+      ScalaDoc(slot, v.definingSchema.id, options)(using v.definingPrefixResolver),
     )
   }
 }
@@ -533,10 +534,13 @@ object ScalaGenerator {
     *   Scala package to generate the classes in.
     * @param generateEmitPrefixes
     *   Whether to generate a `Prefixes` object holding the model's `emit_prefixes`.
+    * @param metadataLanguage
+    *   Which language to use for metadata fields (description etc.) in ScalaDocs.
     */
   final case class Options(
       `package`: String = "eu.neverblink.linkml.metamodel",
       generateEmitPrefixes: Boolean = true,
+      metadataLanguage: String = "en",
   )
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a
@@ -790,11 +794,14 @@ object ScalaGenerator {
     }
 
   object ScalaDoc {
-    def apply(metadata: CommonMetadata, fromSchema: Uri)(using
+    def apply(metadata: CommonMetadata, fromSchema: Uri, options: ScalaGenerator.Options)(using
         pr: PrefixResolver,
     ): ScalaDoc = {
       new ScalaDoc(
-        metadata.description.foldFast("")(_.capitalize),
+        metadata.description
+          .flatMapFast(_.inLanguage(options.metadataLanguage))
+          .mapFast(_.capitalize)
+          .getOrElseFast(""),
         metadata.seeAlso.map(_.uri) ++
           metadata.aliases.reduceOption(_ + ", " + _).mapFast("Aliases: ".concat) ++
           Seq("From schema: ".concat(fromSchema.uri)),

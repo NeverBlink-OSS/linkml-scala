@@ -139,7 +139,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       sink.triple(property, Shacl.name, Literal(t))
     }
     slot.description.foreachFast { d =>
-      sink.triple(property, Shacl.description, Literal(d))
+      langStringProperty(sink, property, Shacl.description, d)
     }
     slot.slotGroup.foreachFast { groupRef =>
       sv.resolve(groupRef.asInstanceOf[Reference[SlotView]]).foreachFast { groupView =>
@@ -184,7 +184,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
         Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
       )
       g.slot.description.foreachFast { d =>
-        sink.triple(groupIri, Rdfs.comment, Literal(d))
+        langStringProperty(sink, groupIri, Rdfs.comment, d)
       }
       g.slot.rank.foreachFast { r =>
         sink.triple(groupIri, Shacl.order, Literal(r.toString, XmlSchema.integer))
@@ -215,7 +215,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
-        sink.triple(classNameIri, Rdfs.comment, Literal(d))
+        langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
       val closed = !(open || c.cls.`abstract` || c.cls.mixin)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))

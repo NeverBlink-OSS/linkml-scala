@@ -62,7 +62,8 @@ class TableSchemaGenerator(using sv: SchemaView)
         val base = FieldDescriptor(
           name = slotName(slotView),
           title = slotView.slot.title,
-          description = slotView.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+          description =
+            slotView.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
           constraints = new Some(new Constraints(required = new Some(slotView.slot.required))),
         )
         slotView.derivedRange.resolve.get match {
