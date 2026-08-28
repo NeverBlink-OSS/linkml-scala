@@ -4,17 +4,19 @@ import eu.neverblink
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{CharSink, Printable, PruningMode, indent}
+import eu.neverblink.linkml.generator.util.{CharSink, Printable, PruningMode, Renames, indent}
 import eu.neverblink.linkml.metamodel.PermissibleValue
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
-import GraphQlGenerator.escaped
+import GraphQlGenerator.{escaped, leadingUnderscores}
 
 import scala.util.matching.Regex
 
 class GraphQlGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[GraphQlGenerator.Options] {
+    extends CharDocumentGenerator[GraphQlGenerator.Options],
+      GraphQlRenames {
+  import GraphQlGenerator.*
 
   /** Set of classes that are instantiable and have child classes. They need to have a split
     * interface/implementation, with the implementation only inheriting from the interface.
@@ -28,8 +30,6 @@ class GraphQlGenerator(using sv: SchemaView)
     }
     builder.result()
   }
-
-  import GraphQlGenerator.*
 
   override protected def defaultOptions: Options = Options()
 
@@ -144,14 +144,14 @@ class GraphQlGenerator(using sv: SchemaView)
     // Class is split, we need to refer to the interface instead
     if concreteInheritance.contains(cls.name) then splitInterfaceName(cls)
     // Class is interface-only, we can refer to it directly
-    else escaped(cls.aliasedName)
+    else className(cls)
   }
 
   /** Get the interface name of a split class. Assumes [[cls]] is a split class:
     * `concreteInheritance.contains(cls.name)` is true.
     */
   def splitInterfaceName(cls: ClassView): String =
-    escaped(cls.aliasedName) + "Interface"
+    className(cls) + "Interface"
 
   /** Write the GraphQL definitions.
     */
@@ -167,7 +167,30 @@ class GraphQlGenerator(using sv: SchemaView)
   }
 }
 
-object GraphQlGenerator {
+trait GraphQlRenames extends Renames {
+
+  private val leadingUnderscores: Regex = "^_+".r
+
+  /** Process the escapes and reduce the leading underscores to at most one to avoid clashes with
+    * the GraphQL reserved names.
+    */
+  def escaped(text: String): String = {
+    val res = Case.escaped(text)
+    leadingUnderscores.replaceAllIn(res, "_")
+  }
+
+  override def className(cls: ClassView): String = escaped(cls.aliasedName)
+
+  override def slotName(slot: SlotView): String = escaped(slot.aliasedName)
+
+  override def typeName(tv: TypeView): String = escaped(tv.aliasedName)
+
+  override def enumName(ev: EnumView): String = escaped(ev.aliasedName)
+
+  override def permissibleValueName(ev: EnumView, pv: PermissibleValue): String = escaped(pv.text)
+}
+
+object GraphQlGenerator extends GraphQlRenames {
 
   /** Options for [[GraphQlGenerator]].
     *
@@ -197,15 +220,6 @@ object GraphQlGenerator {
   def remappedType(tv: TypeView): String =
     remapToBuiltin(tv).getOrElse(tv.aliasedName)
 
-  private val leadingUnderscores: Regex = "^_+".r
-
-  /** Process the escapes and reduce the leading underscores to at most one to avoid clashes with
-    * the GraphQL reserved names.
-    */
-  def escaped(text: String): String = {
-    val res = Case.escaped(text)
-    leadingUnderscores.replaceAllIn(res, "_")
-  }
 }
 
 /** ADT for different kinds of GraphQL definitions (type/interface/enum/scalar) */

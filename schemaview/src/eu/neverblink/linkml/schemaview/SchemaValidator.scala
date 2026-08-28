@@ -25,8 +25,6 @@ final class SchemaValidator(using sv: SchemaView) {
   private def rootLocation: IssueLocationImpl =
     new IssueLocationImpl(schemaId = new Some(sv.root.id))
 
-  // TODO: warn about shadowing
-
   /** Whether omitting `range` will result in a valid reference */
   private lazy val isDefaultRangeAllowed: Boolean =
     sv.root.defaultRange.isDefined || sv.types.contains("string")
