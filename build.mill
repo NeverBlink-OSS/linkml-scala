@@ -167,15 +167,15 @@ object metamodel extends Module {
         "git",
         "clone",
         "--depth=1",
-        "--no-single-branch",
+//        "--no-single-branch",
         "https://github.com/NeverBlink-OSS/linkml-model",
       ),
       cwd = cloneDir,
     )
-    os.call(
-      ("git", "checkout", "LNK-96/multilingual-text"),
-      cwd = cloneDir / "linkml-model",
-    )
+//    os.call(
+//      ("git", "checkout", ???),
+//      cwd = cloneDir / "linkml-model",
+//    )
     os.copy.over(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema", Task.dest)
     PathRef(Task.dest)
   }
