@@ -12,7 +12,7 @@ final case class PermissibleValueImpl(
     @id
     text: String,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     @named("is_a")
     isA: Option[Reference[PermissibleValue]] = None,
     mixins: Seq[Reference[PermissibleValue]] = Seq(),
@@ -108,7 +108,7 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def description: Option[String]
+  def description: Option[LocalizedText]
 
   /** A primary parent class or slot from which inheritable metaslots are propagated from. While
     * multiple inheritance is not allowed, mixins can be provided effectively providing the same

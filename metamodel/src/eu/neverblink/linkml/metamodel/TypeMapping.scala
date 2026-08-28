@@ -13,7 +13,7 @@ final case class TypeMappingImpl(
     @named("framework")
     frameworkKey: String,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     aliases: Seq[String] = Seq(),
     @named("alt_descriptions")

@@ -55,14 +55,14 @@ class TableSchemaGenerator(using sv: SchemaView)
       options: TableSchemaGenerator.Options = TableSchemaGenerator.Options(),
   ): TableDescriptor = {
     val root: ClassView = sv.treeRootWithOverride(options.treeRoot)
-      .get.getOrElseFast(throw RuntimeException("No tree root - can't generate table schema"))
+      .get.getOrElse(throw RuntimeException("No tree root - can't generate table schema"))
     val fields =
       for slotView <- root.derivedAttributes.values.toSeq.sortBy(s => (s.slot.rank, s.slot.name))
       yield {
         val base = FieldDescriptor(
           name = slotName(slotView),
           title = slotView.slot.title,
-          description = slotView.slot.description,
+          description = slotView.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
           constraints = new Some(new Constraints(required = new Some(slotView.slot.required))),
         )
         slotView.derivedRange.resolve.get match {
@@ -141,9 +141,12 @@ object TableSchemaGenerator {
     *
     * @param treeRoot
     *   If defined, override the schema `tree_root` class with the one provided.
+    * @param metadataLanguage
+    *   Which language to use for metadata fields (description) in the generated Table Schema.
     */
   final case class Options(
       treeRoot: Option[String] = None,
+      metadataLanguage: String = "en",
   )
 
   implicit val codec: JsonValueCodec[TableDescriptor] =

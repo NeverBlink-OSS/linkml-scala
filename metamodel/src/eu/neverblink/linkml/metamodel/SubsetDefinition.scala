@@ -12,7 +12,7 @@ final case class SubsetDefinitionImpl(
     @id
     name: String,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     aliases: Seq[String] = Seq(),
     @named("alt_descriptions")

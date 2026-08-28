@@ -14,7 +14,7 @@ final case class SlotDefinitionImpl(
     @named("slot_uri")
     slotUri: Option[UriOrCurie] = None,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     identifier: Boolean = false,
     alias: Option[String] = None,
     multivalued: Boolean = false,

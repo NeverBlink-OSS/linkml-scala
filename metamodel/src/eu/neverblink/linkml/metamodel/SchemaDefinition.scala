@@ -19,7 +19,7 @@ final case class SchemaDefinitionImpl(
     @named("slots")
     @compactDict
     slotDefinitions: Map[String, SlotDefinitionImpl] = Map(),
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     @compactDict
     enums: Map[String, EnumDefinitionImpl] = Map(),
     @compactDict

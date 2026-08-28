@@ -28,7 +28,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def description: Option[String]
+  def description: Option[LocalizedText]
 
   /** The relative order in which the element occurs, lower values are given precedence
     *

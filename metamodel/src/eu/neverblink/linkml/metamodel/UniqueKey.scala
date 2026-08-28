@@ -16,7 +16,7 @@ final case class UniqueKeyImpl(
     @named("unique_key_slots")
     uniqueKeySlots: Seq[Reference[SlotDefinition]],
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     aliases: Seq[String] = Seq(),
     @named("alt_descriptions")

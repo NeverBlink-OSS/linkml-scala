@@ -14,7 +14,7 @@ final case class ClassDefinitionImpl(
     @named("class_uri")
     classUri: Option[UriOrCurie] = None,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     alias: Option[String] = None,
     @named("is_a")
     isA: Option[Reference[ClassDefinition]] = None,

@@ -12,7 +12,7 @@ final case class EnumDefinitionImpl(
     @id
     name: String,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     @named("is_a")
     isA: Option[Reference[Definition]] = None,
     mixins: Seq[Reference[Definition]] = Seq(),

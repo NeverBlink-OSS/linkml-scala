@@ -14,7 +14,7 @@ final case class TypeDefinitionImpl(
     @named("uri")
     typeUri: Option[UriOrCurie] = None,
     title: Option[String] = None,
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     typeof: Option[Reference[TypeDefinition]] = None,
     base: Option[String] = None,
     repr: Option[String] = None,
