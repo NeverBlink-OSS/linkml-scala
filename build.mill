@@ -37,10 +37,10 @@ val rdf4j = "6.0.1"
 
 object LinkMlAliases extends Aliases {
   def lint: Seq[String] = alias(
-    "__.jvm.fix",
-    "__.jvm.reformat",
-    "__.js.fix",
-    "__.js.reformat",
+    "__.jvm.__.fix",
+    "__.jvm.__.reformat",
+    "__.js.__.fix",
+    "__.js.__.reformat",
   )
 
   def regenerateMetamodel: Seq[String] = alias(
