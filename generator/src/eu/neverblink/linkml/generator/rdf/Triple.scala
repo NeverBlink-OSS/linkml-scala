@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.rdf
 
-import eu.neverblink.linkml.runtime.LangTag
+import eu.neverblink.linkml.runtime.LanguageTag
 
 /** An RDF term. Serialize with [[NTriplesWriter]]. */
 sealed trait Node
@@ -16,20 +16,19 @@ final case class BlankNode(id: String) extends Resource
   * @param datatype
   *   The datatype of the literal
   */
-final case class Literal private (
+final case class Literal(
     value: String,
-    datatype: Iri,
-    languageTag: Option[LangTag],
+    datatype: Iri = XmlSchema.string,
 ) extends Node
+
+final case class LanguageLiteral(
+    value: String,
+    language: LanguageTag,
+) extends Node:
+  def datatype: Iri = Rdf.langString
 
 object Literal {
   val one: Literal = Literal("1", XmlSchema.integer)
-  def apply(value: String): Literal =
-    new Literal(value, XmlSchema.string, None)
-  def apply(value: String, datatype: Iri): Literal =
-    new Literal(value, datatype, None)
-  def apply(value: String, languageTag: LangTag): Literal =
-    new Literal(value, Rdf.langString, Some(languageTag))
 }
 
 final case class Triple(subj: Resource, pred: Iri, obj: Node)

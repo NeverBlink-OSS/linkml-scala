@@ -10,8 +10,8 @@ sealed trait LocalizedText
 case class PlainText(value: String) extends LocalizedText
 
 /** */
-type LangTag = String
+type LanguageTag = String
 
 /** Multi-language text - a mapping of the language tag to the localized text
   */
-case class MultilingualText(mapping: Map[LangTag, String]) extends LocalizedText
+case class MultilingualText(mapping: Map[LanguageTag, String]) extends LocalizedText

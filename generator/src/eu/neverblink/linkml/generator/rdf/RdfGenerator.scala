@@ -110,7 +110,7 @@ abstract class RdfGenerator[O] extends DocumentGenerator[O] {
       case plain: PlainText => sink.triple(subject, predicate, Literal(plain.value))
       case lang: MultilingualText =>
         lang.mapping.foreach { (tag, value) =>
-          sink.triple(subject, predicate, Literal(value, tag))
+          sink.triple(subject, predicate, LanguageLiteral(value, tag))
         }
     }
 

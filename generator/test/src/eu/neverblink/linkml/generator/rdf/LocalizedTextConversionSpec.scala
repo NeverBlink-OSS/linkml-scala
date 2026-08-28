@@ -19,7 +19,8 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
     "convert to a single xsd:string rdf literal" in {
       val sink = CollectingRdfSink()
       testGenerator.generate(
-        sink, PlainText("hello")
+        sink,
+        PlainText("hello"),
       )
       sink.triples shouldBe Seq(Triple(s, p, Literal("hello")))
     }
@@ -27,19 +28,21 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
     "convert to a single rdf:langString literal" in {
       val sink = CollectingRdfSink()
       testGenerator.generate(
-        sink, MultilingualText(Map("en" -> "hello"))
+        sink,
+        MultilingualText(Map("en" -> "hello")),
       )
-      sink.triples shouldBe Seq(Triple(s, p, Literal("hello", "en")))
+      sink.triples shouldBe Seq(Triple(s, p, LanguageLiteral("hello", "en")))
     }
 
     "convert to multiple rdf:langString literals" in {
       val sink = CollectingRdfSink()
       testGenerator.generate(
-        sink, MultilingualText(Map("en" -> "hello", "pl" -> "cześć"))
+        sink,
+        MultilingualText(Map("en" -> "hello", "pl" -> "cześć")),
       )
-      sink.triples should contain theSameElementsAs  Seq(
-        Triple(s, p, Literal("hello", "en")),
-        Triple(s, p, Literal("cześć", "pl"))
+      sink.triples should contain theSameElementsAs Seq(
+        Triple(s, p, LanguageLiteral("hello", "en")),
+        Triple(s, p, LanguageLiteral("cześć", "pl")),
       )
     }
   }
