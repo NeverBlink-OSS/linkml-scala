@@ -33,6 +33,8 @@ case object UriType extends RuntimeType
 case object CurieType extends RuntimeType
 case object NcNameType extends RuntimeType
 
+case object LocalizedTextType extends RuntimeType
+
 /** Unknown base type */
 case object UnknownType extends RuntimeType:
   override def repr: CoreType = AnyType

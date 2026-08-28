@@ -29,7 +29,9 @@ jobs:
         uses: coursier/cache-action@v8
 
       - name: Run scalafmt
-        run: ./mill --no-server __.jvm.checkFormat
+        run: |
+          ./mill --no-server __.jvm.__.checkFormat
+          ./mill --no-server __.js.__.checkFormat
 
 
   skills-check:
@@ -140,7 +142,9 @@ jobs:
         uses: coursier/cache-action@v8
 
       - name: Run scalafix
-        run: ./mill --no-server __.jvm.fix --check
+        run: | 
+          ./mill --no-server __.jvm.__.fix --check
+          ./mill --no-server __.js.__.fix --check
 
   git-lint:
     name: Git lint

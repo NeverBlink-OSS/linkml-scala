@@ -1090,6 +1090,19 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("UnknownType.scala") should include("type UnknownType = Unknown")
     }
 
+    "generate LocalizedText fields" in {
+      given SchemaView = ModelCatalogue.langString.model
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files.keys should contain theSameElementsAs Seq(
+        "SomeClass.scala",
+        // emitted a type alias because it's not defined in linkml:types yet.
+        "Langstring.scala",
+      )
+      files("SomeClass.scala") should include("someSlot: Langstring")
+      files("Langstring.scala") should include("type Langstring = LocalizedText")
+    }
+
     "generate the metamodel" in {
       val sv =
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))

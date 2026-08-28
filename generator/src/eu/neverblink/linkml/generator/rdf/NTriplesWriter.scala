@@ -79,6 +79,12 @@ object NTriplesWriter {
         NTriplesEscape.escapeIri(sink, datatype.value)
         sink.appendAscii('>')
       }
+    case LanguageLiteral(value, languageTag) =>
+      sink.appendAscii('"')
+      NTriplesEscape.escapeString(sink, value)
+      sink.appendAscii('"')
+      sink.appendAscii('@')
+      sink.append(languageTag)
   }
 }
 

@@ -273,6 +273,7 @@ object JsonSchemaGenerator {
     case _: UriType.type => uriSchema
     case _: CurieType.type => curieSchema
     case _: NcNameType.type => ncNameSchema
+    case _: LocalizedTextType.type => stringSchema // TODO LNK-195
     case _: UnknownType.type => Schema.Empty
   }
 

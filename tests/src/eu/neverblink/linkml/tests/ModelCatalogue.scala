@@ -126,7 +126,7 @@ object ModelCatalogue {
       ).contains(true),
     )
 
-  // TODO: generate this automatically maybe
+  // TODO LNK-122: generate this automatically maybe
   val `abstract`: Entry = Entry("/models/abstract/")
   val aliases: Entry = Entry("/models/aliases/")
   val anything: Entry = Entry("/models/anything/")
@@ -144,6 +144,7 @@ object ModelCatalogue {
   val externalType: Entry = Entry("/models/externalType/")
   val implicitPrefix: Entry = Entry("/models/implicitPrefix/")
   val inheritance: Entry = Entry("/models/inheritance/")
+  val langString: Entry = Entry("/models/langString/")
   val mixin: Entry = Entry("/models/mixin/")
   val multivaluedReference: Entry = Entry("/models/multivaluedReference/")
   val pruning: Entry = Entry("/models/pruning/")

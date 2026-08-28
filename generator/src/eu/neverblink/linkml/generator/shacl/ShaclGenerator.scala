@@ -75,16 +75,16 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
   ): Unit = attributeView match {
     case typeAttribute: TypeAttributeView =>
       typeAttribute.pattern.foreachFast { p =>
-        sink.triple(subject, Shacl.pattern, new Literal(p, XmlSchema.string))
+        sink.triple(subject, Shacl.pattern, Literal(p))
       }
       // Bounds (min / max values) only make sense for ordered literal ranges.
       if (typeAttribute.implicitPrefix.isEmpty)
         datatypeForValueBound(typeAttribute.typeView).foreachFast { datatype =>
           typeAttribute.minimumValue.foreachFast { v =>
-            sink.triple(subject, Shacl.minInclusive, new Literal(v.value.strip, datatype))
+            sink.triple(subject, Shacl.minInclusive, Literal(v.value.strip, datatype))
           }
           typeAttribute.maximumValue.foreachFast { v =>
-            sink.triple(subject, Shacl.maxInclusive, new Literal(v.value.strip, datatype))
+            sink.triple(subject, Shacl.maxInclusive, Literal(v.value.strip, datatype))
           }
         }
     case _ => ()
@@ -136,10 +136,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     val property = blankNode()
     sink.triple(propertyDomain, Shacl.property, property)
     slot.title.foreachFast { t =>
-      sink.triple(property, Shacl.name, new Literal(t, XmlSchema.string))
+      sink.triple(property, Shacl.name, Literal(t))
     }
     slot.description.foreachFast { d =>
-      sink.triple(property, Shacl.description, new Literal(d, XmlSchema.string))
+      sink.triple(property, Shacl.description, Literal(d))
     }
     slot.slotGroup.foreachFast { groupRef =>
       sv.resolve(groupRef.asInstanceOf[Reference[SlotView]]).foreachFast { groupView =>
@@ -156,19 +156,19 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     slot.minimumCardinality.orElseFast(slot.exactCardinality)
       .orElseFast(if (slot.required) ShaclGenerator.one else None)
       .foreachFast { c =>
-        sink.triple(property, Shacl.minCount, new Literal(c.toString, XmlSchema.integer))
+        sink.triple(property, Shacl.minCount, Literal(c.toString, XmlSchema.integer))
       }
     slot.maximumCardinality.orElseFast(slot.exactCardinality)
       .orElseFast(if (slot.multivalued) None else ShaclGenerator.one)
       .foreachFast { c =>
-        sink.triple(property, Shacl.maxCount, new Literal(c.toString, XmlSchema.integer))
+        sink.triple(property, Shacl.maxCount, Literal(c.toString, XmlSchema.integer))
       }
     sink.triple(property, Shacl.path, new Iri(s.uriStr))
     processSlotExpr(sink, s, slot, property)
     processConstraints(sink, attributeView, property)
     // Use rank if possible. Other slots are put at the end.
     val rank = slot.rank.getOrElseFast(order)
-    sink.triple(property, Shacl.order, new Literal(rank.toString, XmlSchema.integer))
+    sink.triple(property, Shacl.order, Literal(rank.toString, XmlSchema.integer))
   }
 
   /** Declare the slots used as `slot_group` targets as sh:PropertyGroup instances, so that the
@@ -181,13 +181,13 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       sink.triple(
         groupIri,
         Rdfs.label,
-        new Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
+        Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
       )
       g.slot.description.foreachFast { d =>
-        sink.triple(groupIri, Rdfs.comment, new Literal(d, XmlSchema.string))
+        sink.triple(groupIri, Rdfs.comment, Literal(d))
       }
       g.slot.rank.foreachFast { r =>
-        sink.triple(groupIri, Shacl.order, new Literal(r.toString, XmlSchema.integer))
+        sink.triple(groupIri, Shacl.order, Literal(r.toString, XmlSchema.integer))
       }
     }
 
@@ -215,10 +215,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
-        sink.triple(classNameIri, Rdfs.comment, new Literal(d, XmlSchema.string))
+        sink.triple(classNameIri, Rdfs.comment, Literal(d))
       }
       val closed = !(open || c.cls.`abstract` || c.cls.mixin)
-      sink.triple(classNameIri, Shacl.closed, new Literal(closed.toString, XmlSchema.boolean))
+      sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       val ignoredPropertiesListHead = addList(
         sink,
         c.identifier.foldFast(Seq(Rdf.`type`))(id => Seq(Rdf.`type`, new Iri(id.uriStr))),

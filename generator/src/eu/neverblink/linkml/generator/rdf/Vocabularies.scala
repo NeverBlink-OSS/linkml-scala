@@ -20,6 +20,7 @@ object Rdf extends Vocabulary("http://www.w3.org/1999/02/22-rdf-syntax-ns#") {
   val Property: Iri = get("Property")
   val first: Iri = get("first")
   val nil: Iri = get("nil")
+  val langString: Iri = get("langString")
   val rest: Iri = get("rest")
   val `type`: Iri = get("type")
 }

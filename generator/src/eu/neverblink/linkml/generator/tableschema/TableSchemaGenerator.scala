@@ -35,6 +35,7 @@ class TableSchemaGenerator(using sv: SchemaView)
     case _: UriType.type => (types.string, "uri")
     case _: CurieType.type => (types.string, "default")
     case _: NcNameType.type => (types.string, "default")
+    case _: LocalizedTextType.type => (types.string, "default") // TODO LNK-195
     case _: UnknownType.type => (types.any, "default")
   }
 
