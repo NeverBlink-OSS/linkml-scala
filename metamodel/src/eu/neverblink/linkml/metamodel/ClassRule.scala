@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class ClassRuleImpl(
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     preconditions: Option[AnonymousClassExpressionImpl] = None,

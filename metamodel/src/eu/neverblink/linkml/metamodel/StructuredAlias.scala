@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class StructuredAliasImpl(
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     @named("contexts")

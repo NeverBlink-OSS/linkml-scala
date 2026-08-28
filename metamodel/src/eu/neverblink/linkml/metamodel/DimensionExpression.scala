@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class DimensionExpressionImpl(
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     alias: Option[String] = None,
     rank: Option[Int] = None,

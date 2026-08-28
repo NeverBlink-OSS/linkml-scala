@@ -129,7 +129,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
       }
       val sv = attribute.slotView
       slotSchema.copy(
-        title = sv.slot.title,
+        title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+          Some(sv.slot.name),
+        ),
         description = sv.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       )
     }
@@ -159,7 +161,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
           properties =
             immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
-          title = cls.cls.title,
+          title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+            Some(cls.cls.name),
+          ),
           description = cls.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
       )
@@ -215,7 +219,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),
-          title = enum_.title,
+          title = enum_.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+            Some(enum_.name),
+          ),
           description = enum_.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
       )
@@ -223,7 +229,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
-      title = sv.root.title.orElse(new Some(sv.root.name)),
+      title = sv.root.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+        Some(sv.root.name),
+      ),
       description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       $defs = new Some(
         immutable.ListMap.newBuilder[String, SchemaLike].addAll(

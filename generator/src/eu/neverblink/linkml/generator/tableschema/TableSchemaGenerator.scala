@@ -61,7 +61,7 @@ class TableSchemaGenerator(using sv: SchemaView)
       yield {
         val base = FieldDescriptor(
           name = slotName(slotView),
-          title = slotView.slot.title,
+          title = slotView.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)),
           description =
             slotView.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
           constraints = new Some(new Constraints(required = new Some(slotView.slot.required))),

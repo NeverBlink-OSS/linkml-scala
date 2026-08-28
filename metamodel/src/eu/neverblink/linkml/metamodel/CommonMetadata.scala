@@ -19,7 +19,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def title: Option[String]
+  def title: Option[LocalizedText]
 
   /** A textual description of the element's purpose and use
     *

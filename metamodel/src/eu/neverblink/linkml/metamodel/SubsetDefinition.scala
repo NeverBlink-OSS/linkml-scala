@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.*
 final case class SubsetDefinitionImpl(
     @id
     name: String,
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     aliases: Seq[String] = Seq(),

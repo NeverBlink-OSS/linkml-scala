@@ -13,7 +13,7 @@ final case class TypeDefinitionImpl(
     name: String,
     @named("uri")
     typeUri: Option[UriOrCurie] = None,
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     typeof: Option[Reference[TypeDefinition]] = None,
     base: Option[String] = None,

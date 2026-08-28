@@ -477,13 +477,13 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "not apply slot usages to slots with different ids" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        title = Some("Slot 1"),
+        title = Some(PlainText("Slot 1")),
         range = Some(Reference("child")),
       )
 
       val slot2 = SlotDefinitionImpl(
         name = "slot2",
-        title = Some("Slot 2"),
+        title = Some(PlainText("Slot 2")),
         range = Some(Reference("child")),
       )
 
@@ -516,18 +516,18 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val result = sv.classes("child").derivedAttributes("slot1").slot
       result.identifier shouldBe true
       result.description shouldBe None
-      result.title shouldBe Some("Slot 1")
+      result.title shouldBe Some(PlainText("Slot 1"))
 
       val result2 = sv.classes("child").derivedAttributes("slot2").slot
       result2.identifier shouldBe false
       result2.description shouldBe Some(PlainText("desc"))
-      result2.title shouldBe Some("Slot 2")
+      result2.title shouldBe Some(PlainText("Slot 2"))
     }
 
     "infer the slot's URI" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        title = Some("Slot 1"),
+        title = Some(PlainText("Slot 1")),
         range = Some(Reference("child")),
       )
       val child = ClassDefinitionImpl(

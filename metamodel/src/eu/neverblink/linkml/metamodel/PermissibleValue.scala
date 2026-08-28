@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.*
 final case class PermissibleValueImpl(
     @id
     text: String,
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     @named("is_a")
     isA: Option[Reference[PermissibleValue]] = None,

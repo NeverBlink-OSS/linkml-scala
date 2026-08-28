@@ -136,7 +136,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     val property = blankNode()
     sink.triple(propertyDomain, Shacl.property, property)
     slot.title.foreachFast { t =>
-      sink.triple(property, Shacl.name, Literal(t))
+      langStringProperty(sink, property, Shacl.name, t)
     }
     slot.description.foreachFast { d =>
       langStringProperty(sink, property, Shacl.description, d)
@@ -178,10 +178,11 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     groups.values.foreach { g =>
       val groupIri = new Iri(g.uriStr)
       sink.triple(groupIri, Rdf.`type`, Shacl.PropertyGroup)
-      sink.triple(
+      langStringProperty(
+        sink,
         groupIri,
         Rdfs.label,
-        Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
+        g.slot.title.getOrElseFast(PlainText(g.name)),
       )
       g.slot.description.foreachFast { d =>
         langStringProperty(sink, groupIri, Rdfs.comment, d)

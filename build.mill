@@ -173,7 +173,7 @@ object metamodel extends Module {
       cwd = cloneDir,
     )
     os.call(
-      ("git", "checkout", "LNK-96/mulitlingual-string"),
+      ("git", "checkout", "LNK-96/multilingual-text"),
       cwd = cloneDir / "linkml-model",
     )
     os.copy.over(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema", Task.dest)
