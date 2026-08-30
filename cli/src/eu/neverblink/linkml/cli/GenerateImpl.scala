@@ -9,7 +9,7 @@ import eu.neverblink.linkml.generator.rdf.{RdfGenerator, RdfUtils}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
@@ -227,22 +227,47 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
 
 // Table Schema
 
-@HelpMessage("Generate a Frictionless Table Schema from a LinkML model.")
+@HelpMessage(
+  "Generate a Frictionless Data Package from a LinkML model. " +
+    "Every class becomes a CSV table, described by its own Table Schema, and references between " +
+    "classes become foreign keys between the tables.\n" +
+    "If --to is a directory, the package is written as a datapackage.json file plus one " +
+    "schemas/<table>.json per table. If --to is a .json file, or with no --to at all, it is " +
+    "written as a single descriptor with every table schema inlined.",
+)
 @ArgsName("<input-file>")
-final case class TableSchemaOptions(
+final case class FrictionlessOptions(
     @Recurse
     common: GenerateOptions,
-    @HelpMessage("Tree root class name to use instead of the schema defined tree_root.")
-    treeRoot: Option[String] = None,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
+    @HelpMessage(
+      "Whether to skip classes that have no identifier slot. Such a table gets no primary key and " +
+        "nothing can reference it, so it is often not useful. Default: false",
+    )
+    skipClassesWithoutIdentifier: Boolean = false,
 ) extends HasGenerateOptions
 
-object TableSchema extends StreamGenerate[TableSchemaOptions] {
-  override protected def generatorName: String = "table-schema"
+object Frictionless extends SplitGenerate[FrictionlessOptions] {
+  override protected def generatorName: String = "frictionless"
 
-  override protected[cli] def generate(options: TableSchemaOptions, out: OutputStream)(using
+  override protected def singleFileExtension: String = ".json"
+
+  private def generator(options: FrictionlessOptions): FrictionlessGenerator.Options =
+    FrictionlessGenerator.Options(
+      pruningMode = options.pruning.resolvedPruningMode,
+      skipClassesWithoutIdentifier = options.skipClassesWithoutIdentifier,
+    )
+
+  override protected[cli] def generateSingle(options: FrictionlessOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    TableSchemaGenerator().writeTo(out, TableSchemaGenerator.Options(options.treeRoot))
+    FrictionlessGenerator().writeTo(out, generator(options))
+
+  override protected[cli] def generateFiles(options: FrictionlessOptions)(using
+      SchemaView,
+  ): Iterable[(String, String)] =
+    FrictionlessGenerator().generateFiles(generator(options))
 }
 
 // GraphQL

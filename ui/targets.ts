@@ -104,11 +104,23 @@ export const TARGETS: Target[] = [
     call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema),
   },
   {
-    id: "tableSchema",
-    label: "Table Schema",
+    id: "frictionless",
+    label: "Frictionless",
     lang: "json",
-    options: [{ key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" }],
-    call: (api, v, o) => api.tableSchema(v, blankToUndef(o.treeRoot)),
+    options: [
+      // Defaults to `skip`: narrower modes can leave the package empty, because a root schema may
+      // only import its classes rather than define any.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
+      {
+        key: "skipClassesWithoutIdentifier",
+        type: "checkbox",
+        label: "Identified only",
+        title: "Skip classes that have no identifier slot",
+      },
+    ],
+    call: (api, v, o) =>
+      api.frictionless(v, String(o.pruningMode), blankToUndef(o.treeRoot), !!o.skipClassesWithoutIdentifier),
   },
   {
     id: "erDiagram",

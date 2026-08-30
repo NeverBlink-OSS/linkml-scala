@@ -61,14 +61,14 @@ schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, inden
 schema.shacl(open=False, only_classes_from_root_schema=False)
 schema.rdfs(only_classes_from_root_schema=False)
 schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, output_format="yaml")
-schema.table_schema(tree_root=None)
+schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_identifier=False)
 schema.graphql(pruning_mode="schema", tree_root=None)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
 ```
 
-All arguments are keyword-only. Every one returns a string, except `scala()`, which returns a
-filename-to-source dict.
+All arguments are keyword-only. Every one returns a string, except `scala()` and `frictionless()`,
+which return a filename-to-content dict.
 
 **These are generated, not written.** Each method mirrors the `Options` case class of the generator it calls – `ShaclGenerator.Options` and so on – so the names, types, defaults and docstrings are whatever the Scala declares. See [`mill-build/src/PyBindingsGen.scala`](../mill-build/src/PyBindingsGen.scala).
 
@@ -115,7 +115,7 @@ We export one function per operation:
 ```c
 char* linkml_shacl      (graal_isolatethread_t*, long long handle, const char* opts, char** err);
 char* linkml_json_schema(graal_isolatethread_t*, long long handle, const char* opts, char** err);
-/* rdfs, linkml, table_schema, graphql, er_diagram, scala, lint – same shape */
+/* rdfs, linkml, frictionless, graphql, er_diagram, scala, lint – same shape */
 
 long long linkml_load_file(graal_isolatethread_t*, const char* path,
                            const char* opts, char** report, char** err);

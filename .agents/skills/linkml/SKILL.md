@@ -1,13 +1,13 @@
 ---
 name: linkml
-description: Author, validate, review and release LinkML schemas using the linkml-scala CLI. Auto-load for any task involving a LinkML schema - writing or editing classes, slots, attributes, enums, ranges, identifiers, inheritance, inlining, imports or prefixes; debugging a schema that fails to validate; generating JSON Schema, SHACL, RDFS, Frictionless Table Schema or Scala; converting an RDFS/OWL ontology, SHACL shapes, JSON Schema, XSD or sample data into LinkML; validating instance data against a schema; or setting up GitHub Actions for schema validation and releases.
+description: Author, validate, review and release LinkML schemas using the linkml-scala CLI. Auto-load for any task involving a LinkML schema - writing or editing classes, slots, attributes, enums, ranges, identifiers, inheritance, inlining, imports or prefixes; debugging a schema that fails to validate; generating JSON Schema, SHACL, RDFS, a Frictionless data package or Scala; converting an RDFS/OWL ontology, SHACL shapes, JSON Schema, XSD or sample data into LinkML; validating instance data against a schema; or setting up GitHub Actions for schema validation and releases.
 license: Apache-2.0
 ---
 
 # LinkML schemas with linkml-scala
 
 [LinkML](https://linkml.io) is a YAML data-modelling language: write the model once, generate
-JSON Schema, SHACL, RDFS, table schemas and code from it. This skill drives
+JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skill drives
 [linkml-scala](https://github.com/NeverBlink-OSS/linkml-scala).
 
 ## Rules
@@ -111,9 +111,10 @@ it changes the shape of every generated artifact. The decision table is in
 linkml-scala generate json-schema --to out/schema.json schema.yaml
 ```
 
-Generators: `json-schema`, `shacl`, `rdfs`, `table-schema`, `scala`, `linkml`, `graphql`,
+Generators: `json-schema`, `shacl`, `rdfs`, `frictionless`, `scala`, `linkml`, `graphql`,
 `er-diagram`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
-instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared properties. For flags run
+instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared properties. `scala` and
+`frictionless` write several files, so point their `--to` at a directory. For flags run
 `linkml-scala generate <generator> --help` — do not guess.
 
 `generate er-diagram` draws the model as a

@@ -77,7 +77,8 @@ let activeTargetId = TARGETS[0]!.id;
 const optionValues: Record<string, OptionValues> = Object.fromEntries(
   TARGETS.map((t) => [t.id, Object.fromEntries(t.options.map((o) => [o.key, o.default ?? (o.type === "checkbox" ? false : "")]))]),
 );
-let activeScalaFile: string | null = null;
+// Which file tab is open, per target.
+const activeFile: Record<string, string | null> = {};
 // The validation report is rendered as DOM rather than into the output editor, so keep a
 // plain-text rendition of it around for the Copy button. Non-null exactly while the report
 // is the visible view.
@@ -682,27 +683,29 @@ function rawSummary(issue: ReportIssue): string {
   return slots.length ? slots.join(", ") : "(no message)";
 }
 
-function showScalaFiles(dict: Record<string, string>): void {
+function showFiles(target: Target, dict: Record<string, string>): void {
   hideReport();
   hideDiagram();
   const names = Object.keys(dict);
-  if (!activeScalaFile || !names.includes(activeScalaFile)) activeScalaFile = names[0] ?? null;
+  let active = activeFile[target.id] ?? null;
+  if (!active || !names.includes(active)) active = names[0] ?? null;
+  activeFile[target.id] = active;
 
   $fileTabs.hidden = names.length <= 1;
   $fileTabs.innerHTML = "";
   for (const name of names) {
     const btn = document.createElement("button");
-    btn.className = "file-tab" + (name === activeScalaFile ? " file-tab--active" : "");
+    btn.className = "file-tab" + (name === active ? " file-tab--active" : "");
     btn.textContent = name;
     btn.addEventListener("click", () => {
-      activeScalaFile = name;
-      showScalaFiles(dict);
+      activeFile[target.id] = name;
+      showFiles(target, dict);
     });
     $fileTabs.appendChild(btn);
   }
 
   outputView.dom.classList.remove("cm-output--error");
-  setOutput(outputView, (activeScalaFile && dict[activeScalaFile]) || "", "scala");
+  setOutput(outputView, (active && dict[active]) || "", targetLang(target));
 }
 
 function setStatus(ok: boolean, text: string, title = ""): void {
@@ -808,7 +811,7 @@ function onResult(res: GenerateResponse): void {
   if (res.kind === "report") {
     showReport(res.result as ValidationReport);
   } else if (res.kind === "files") {
-    showScalaFiles(res.result as Record<string, string>);
+    showFiles(targetById(res.targetId) ?? activeTarget(), res.result as Record<string, string>);
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else {

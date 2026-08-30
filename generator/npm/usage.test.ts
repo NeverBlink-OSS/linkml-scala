@@ -30,8 +30,8 @@ const rdfsFull: string = LinkML.rdfs(view, false);
 const linkml: string = LinkML.linkml(view);
 const linkmlFull: string = LinkML.linkml(view, "skip", true, "Person", "json");
 const scala: Record<string, string> = LinkML.scala(view, "com.example");
-const tableSchema: string = LinkML.tableSchema(view);
-const tableSchemaRoot: string = LinkML.tableSchema(view, "Person");
+const frictionless: Record<string, string> = LinkML.frictionless(view);
+const frictionlessRoot: Record<string, string> = LinkML.frictionless(view, "treeRoot", "Person", true);
 const erDiagram: string = LinkML.erDiagram(view);
 const erDiagramFull: string = LinkML.erDiagram(view, "skip", "Person", false);
 const lint: any = LinkML.lint(view);
@@ -51,8 +51,8 @@ void [
   linkml,
   linkmlFull,
   scala,
-  tableSchema,
-  tableSchemaRoot,
+  frictionless,
+  frictionlessRoot,
   erDiagram,
   erDiagramFull,
   lint,

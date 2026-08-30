@@ -14,7 +14,7 @@ Pick by data format:
 |---|---|---|
 | JSON, YAML | `json-schema` | `check-jsonschema`, `ajv`, or Python `jsonschema` |
 | RDF (Turtle, N-Triples, JSON-LD) | `shacl` | `pyshacl` or Apache Jena `shacl` |
-| CSV, TSV | `table-schema` | `frictionless validate` |
+| CSV, TSV | `frictionless` | `frictionless validate` |
 
 ## Step 1 — always lint the schema first
 
@@ -30,17 +30,22 @@ linkml-scala validate --format json schema.yaml
 ```shell
 linkml-scala generate json-schema  --to build/schema.json  schema.yaml
 linkml-scala generate shacl --format ttl --to build/shapes.ttl  schema.yaml
-linkml-scala generate table-schema --to build/table.json  schema.yaml
+linkml-scala generate frictionless --to build/package  schema.yaml
 ```
+
+`frictionless` emits a Frictionless **data package**, one CSV table per class. Where you send it
+decides its shape: `--to` naming a directory writes `datapackage.json` plus one
+`schemas/<table>.json` per table, which is what you want. `--to` naming a `.json` file, or no
+`--to` at all, writes a single descriptor with every table schema inlined.
 
 Two flags change the outcome materially:
 
 - **`--open`** (json-schema, shacl) allows properties the schema does not declare. Without it,
   output is **closed** — an undeclared field is a violation. If the user expects extra fields to
   be tolerated, they need `--open`; if they expect typos to be caught, they must not use it.
-- **`--tree-root-override`** (json-schema) / **`--tree-root`** (table-schema) validate against a
-  class other than the schema's `tree_root`. This is how you check a fragment rather than a whole
-  document.
+- **`--tree-root-override`** (json-schema) validates against a class other than the schema's
+  `tree_root`. This is how you check a fragment rather than a whole document. For `frictionless`
+  every class already gets its own table, so you pick the table instead of the root.
 
 Whether the root is a single object, a list or a dict comes from the root class's `tree_root_as`
 extension — so a JSON array of records needs `extensions: {tree_root_as: list}`, or validation of
@@ -98,8 +103,20 @@ process the report.
 
 ### CSV
 
+One file at a time, against the table for the class it holds — the table name is the class name,
+lowercased:
+
 ```shell
-frictionless validate --schema build/table.json data/records.csv
+frictionless validate --schema build/package/schemas/person.json data/records.csv
+```
+
+Or the whole package at once. The generated descriptor expects each table's CSV at
+`data/<table>.csv` relative to `datapackage.json`, and nothing writes those files for you — put
+them there first, or `frictionless` reports every one as missing. This is the mode that checks
+foreign keys between tables:
+
+```shell
+frictionless validate build/package/datapackage.json
 ```
 
 ## Ask before installing
@@ -128,7 +145,7 @@ When data fails, decide which side is wrong before proposing a fix — and say w
   means the schema's inlining inference does not match reality. Generate JSON Schema and read
   what it expects.
 - **Type narrowing.** `"42"` failing an `integer` range is a real data problem if the source is
-  JSON, but expected if it came from CSV, where everything is a string. `table-schema` is the
+  JSON, but expected if it came from CSV, where everything is a string. `frictionless` is the
   right artifact for CSV, not `json-schema`.
 - **Missing formats.** A `date` that passes when it should not usually means the validator lacks
   format support rather than that the data is correct.

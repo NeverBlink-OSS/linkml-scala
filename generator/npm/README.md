@@ -80,7 +80,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `rdfs(view, onlyClassesFromRootSchema?)`                             | `string` | RDFS in N-Triples                                            |
 | `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)` | `string` | derived/pruned LinkML schema                                 |
 | `scala(view, packageName)`                                           | `Record<string, string>` | filename → generated Scala                                   |
-| `tableSchema(view, treeRoot?)`                                       | `string` | Frictionless Table Schema (JSON)                             |
+| `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
 | `graphQl(view, pruningMode?, treeRoot?)`                             | `string` | GraphQL                                                      |
 | `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`          | `string` | Mermaid entity relationship diagram                          |
 | `lint(view, inferMessages?)`                                         | `object` | `SchemaValidationReport` (JSON)                              |

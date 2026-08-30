@@ -274,8 +274,20 @@ class GeneratorTest(unittest.TestCase):
             self.assertIn("Orphan", loaded.linkml(pruning_mode="skip"))
             self.assertNotIn("Orphan", loaded.linkml(pruning_mode="treeRoot"))
 
-    def test_table_schema(self):
-        self.assertIn("fields", json.loads(self.schema.table_schema()))
+    def test_frictionless(self):
+        files = self.schema.frictionless()
+        self.assertIn("datapackage.json", files)
+        self.assertIn("resources", json.loads(files["datapackage.json"]))
+        schemas = [name for name in files if name.startswith("schemas/")]
+        self.assertTrue(schemas, f"no table schemas in {sorted(files)}")
+        self.assertIn("fields", json.loads(files[schemas[0]]))
+
+    def test_frictionless_skips_classes_without_identifier(self):
+        # Person is the tree root, so it stays a table even without an identifier slot.
+        # Animal has neither, so it goes.
+        files = self.schema.frictionless(skip_classes_without_identifier=True)
+        self.assertIn("schemas/person.json", files)
+        self.assertNotIn("schemas/animal.json", files)
 
     def test_graphql(self):
         self.assertIn("type Person", self.schema.graphql())

@@ -1,4 +1,4 @@
-package eu.neverblink.linkml.generator.tableschema
+package eu.neverblink.linkml.generator.frictionless
 
 /** Frictionless Table Schema field descriptor model.
   *

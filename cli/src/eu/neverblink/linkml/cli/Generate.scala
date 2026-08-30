@@ -40,13 +40,15 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
           "Generate one schema at a time, or point at a schema that `imports` the others.",
       )
     val sv = loadSchema(inputs.headOption)
+    val to = options.common.to
     this match {
       case g: ManyFilesGenerate[T @unchecked] =>
-        val files = g.generate(options)(using sv)
-        if files.isEmpty then err("No files generated.")
-        else writeManyFiles(options.common.to, files)
+        writeManyFiles(to, g.generate(options)(using sv))
       case g: StreamGenerate[T @unchecked] =>
-        writeToFileOrStdout(options.common.to, out => g.generate(options, out)(using sv))
+        writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
+      case g: SplitGenerate[T @unchecked] =>
+        if g.writesDirectory(to) then writeManyFiles(to, g.generateFiles(options)(using sv))
+        else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
     }
 
   private def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
@@ -61,6 +63,7 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     }
 
   private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
+    if files.isEmpty then err("No files generated.")
     to.foldFast {
       files.foreach((k, v) => {
         printLine(s"//\n// FILE $k\n//")
@@ -69,14 +72,15 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     } { dir =>
       val path = os.Path(dir, os.pwd)
       os.makeDir.all(path)
-      files.foreach((k, v) => os.write.over(path / k, v))
+      files.foreach((k, v) => os.write.over(path / os.SubPath(k), v, createFolders = true))
     }
 }
 
 /** A generate command producing several named files, written into a destination directory.
   *
-  * Only the Scala generator works this way. Everything that produces one document is a
-  * [[StreamGenerate]].
+  * Only the Scala generator works this way - it has no single-document form to fall back on. Most
+  * generators produce one document and are a [[StreamGenerate]]. If a generator can do either it's
+  * a [[SplitGenerate]].
   */
 abstract class ManyFilesGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
 
@@ -91,4 +95,27 @@ abstract class StreamGenerate[T <: HasGenerateOptions: {Parser, Help}] extends G
 
   /** Write the output to [[outStream]]. Must not close [[outStream]]. */
   protected[cli] def generate(options: T, out: OutputStream)(using sv: SchemaView): Unit
+}
+
+/** A generate command producing one self-contained document, or - when `--to` names a directory -
+  * the same content spread over several files inside it.
+  */
+abstract class SplitGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
+
+  /** The file extension in `--to` that implies that the user wants a single file on the output.
+    * Anything else is assumed to be a directory.
+    */
+  protected def singleFileExtension: String
+
+  /** Write the whole thing as one document. Must not close [[out]]. */
+  protected[cli] def generateSingle(options: T, out: OutputStream)(using sv: SchemaView): Unit
+
+  /** The same content as several files, keyed by path relative to the destination directory.
+    */
+  protected[cli] def generateFiles(options: T)(using sv: SchemaView): Iterable[(String, String)]
+
+  /** Whether `--to` corresponds to a directory.
+    */
+  private[cli] final def writesDirectory(to: Option[String]): Boolean =
+    to.exists(!_.toLowerCase.endsWith(singleFileExtension))
 }
