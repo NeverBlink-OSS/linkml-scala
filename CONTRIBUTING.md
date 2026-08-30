@@ -16,7 +16,7 @@ Common tasks with mill:
 - Start the browser UI: `./mill ui`
 - Scan the mill project structure: `./mill resolve _`
 - Compile all modules: `./mill __.compile`
-- Run all tests: `./mill __.test` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`)
+- Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project: `./mill lint` (scalafix + scalafmt)
 - Re-generate the metamodel classes: `./mill metamodel.regenerate`
