@@ -60,11 +60,35 @@ trait Importer {
 
 object Importer {
 
+  /** Both path separators, recognized everywhere regardless of the host OS. Import paths are not
+    * always file system paths – they are also URLs and keys into a caller-supplied map, where `/`
+    * is the separator whatever the host – so import resolution reads both and writes [[separator]].
+    */
+  private val separators = "/\\"
+
+  /** The separator to fall back on when a path uses none. Windows file APIs accept `/` too, so it
+    * is a safe default for file system paths, URLs, and map keys.
+    */
+  val separator: String = "/"
+
+  private def isSeparator(c: Char): Boolean = separators.indexOf(c.toInt) >= 0
+
+  /** The index of the last path separator in `path`, or -1 if it has none. */
+  def lastSeparator(path: String): Int = path.lastIndexOf('/').max(path.lastIndexOf('\\'))
+
+  /** Find the separator used in a path, or return the default [[separator]] if it has none.
+    */
+  def separatorFor(base: String): String = {
+    val idx = lastSeparator(base)
+    if (idx >= 0) base.substring(idx, idx + 1) else separator
+  }
+
   /** Normalize a schema URI the way import resolution does: drop a trailing separator, and add the
     * `.yaml` extension unless the URI already ends in `.yaml` or `.yml`.
     */
   def normalizeUri(uri: String): String = {
-    val trimmed = uri.stripSuffix(PlatformSpecificUtils.separator)
+    val trimmed =
+      if (uri.nonEmpty && isSeparator(uri.last)) uri.substring(0, uri.length - 1) else uri
     if (trimmed.endsWith(".yaml") || trimmed.endsWith(".yml")) trimmed
     else trimmed.concat(".yaml")
   }

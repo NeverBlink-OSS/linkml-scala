@@ -454,7 +454,7 @@ object SchemaView {
       loaded.flatMap { schema =>
         if (doImportLoading) {
           var baseUri = ""
-          val idx = normalizedUri.lastIndexOf(PlatformSpecificUtils.separator)
+          val idx = Importer.lastSeparator(normalizedUri)
           if (idx > 0) baseUri = normalizedUri.substring(0, idx)
           loadImportsInternal(schema, baseUri, importer, visited).map(schema +: _)
         } else new Right(Seq(schema))
@@ -495,7 +495,7 @@ object SchemaView {
         acc.flatMap { loadedSoFar =>
           var sUri = uoc.uri(using prefixResolver).stripPrefix("./")
           if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
-            sUri = baseUri + PlatformSpecificUtils.separator + sUri
+            sUri = baseUri + Importer.separatorFor(baseUri) + sUri
           loadSchemasInternal(sUri, true, importer, visited).map(loadedSoFar ++ _)
         }
     }

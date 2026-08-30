@@ -156,6 +156,35 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
     }
   }
 
+  "a relative import" should {
+    def importing(dir: String, sep: String): MapImporter = MapImporter(
+      s"$dir${sep}main.yaml" ->
+        """id: https://neverblink.eu/linkml/importer/main/
+          |name: main
+          |imports:
+          |  - core
+          |""".stripMargin,
+      s"$dir${sep}core.yaml" -> validSchema,
+    )
+
+    def loadsBoth(dir: String, sep: String): Unit =
+      inside(SchemaView.loadSchemaViewFromUri(s"$dir${sep}main.yaml", importing(dir, sep))) {
+        case Right(view) => view.schemas.map(_.name) should contain allOf ("main", "test")
+      }
+
+    "resolve against a directory written with forward slashes" in {
+      loadsBoth("schemas", "/")
+    }
+
+    "resolve against a directory written with backslashes" in {
+      loadsBoth("C:\\schemas", "\\")
+    }
+
+    "resolve against the directory part of a URL" in {
+      loadsBoth("https://example.org/schemas", "/")
+    }
+  }
+
   "SchemaView loading" should {
     "return the parse issue rather than throwing" in {
       inside(SchemaView.loadSchemaViewFromString("classes: [a, b")) { case Left(problems) =>
