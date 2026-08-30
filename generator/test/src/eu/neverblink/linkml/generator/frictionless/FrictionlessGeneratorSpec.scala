@@ -167,8 +167,9 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
 
     "date, time and datetime columns use the ISO 8601 format" in {
       // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
-      val td = rootTable(load(
-        """id: https://neverblink.eu/test/
+      val td = rootTable(
+        load(
+          """id: https://neverblink.eu/test/
           |name: test
           |default_range: string
           |prefixes:
@@ -186,7 +187,8 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
           |      dt:
           |        range: datetime
           |""".stripMargin,
-      ))
+        ),
+      )
       val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
       fieldMap("d").`type` shouldBe "date"
       fieldMap("t").`type` shouldBe "time"
@@ -195,8 +197,9 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "order columns by rank, then by name" in {
-      val td = rootTable(load(
-        """id: https://neverblink.eu/test/
+      val td = rootTable(
+        load(
+          """id: https://neverblink.eu/test/
           |name: test
           |default_range: string
           |types:
@@ -212,7 +215,8 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
           |      unranked_b:
           |      unranked_a:
           |""".stripMargin,
-      ))
+        ),
+      )
       // Ranked slots come first, in rank order. The rest follow, by name.
       td.fields.map(_.name) shouldBe Seq("zulu", "alpha", "unranked_a", "unranked_b")
     }
