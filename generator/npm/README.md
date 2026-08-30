@@ -67,6 +67,13 @@ const { view } = LinkML.loadFromPath("model.yaml", {
 });
 ```
 
+An `imports` entry is resolved before the map is consulted, and the result is then looked up as a
+plain string, so each key has to be what its import resolves to. A relative import is joined to the
+directory of the schema that imported it, so a `person` imported by `nested/model.yaml` needs the
+key `"nested/person.yaml"`. A CURIE is expanded through the prefix map, so `ex:person` needs the
+full URI it expands to. `.yaml` is appended to keys that lack it, so `"person"` and `"person.yaml"`
+are interchangeable.
+
 ### Available functions
 
 Load a schema into a `SchemaView` handle (see above), then pass that handle to any generator:

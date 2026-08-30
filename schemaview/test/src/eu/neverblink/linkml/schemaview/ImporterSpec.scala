@@ -12,6 +12,11 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
       |name: test
       |""".stripMargin
 
+  private val exactSchema =
+    """id: https://neverblink.eu/linkml/importer/exact/
+      |name: exact
+      |""".stripMargin
+
   "Importer.parseSchema" should {
     "return the schema for parseable YAML" in {
       FileSystemImporter.parseSchema(validSchema).map(_.name) shouldBe Right("test")
@@ -115,6 +120,39 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
     "return the schema when the text is readable and parseable" in {
       val importer = MapImporter("ok.yaml" -> validSchema)
       importer.readSchema("ok.yaml").map(_.name) shouldBe Right("test")
+    }
+  }
+
+  "an import map" should {
+    "find a key that was written without the .yaml extension" in {
+      val importer = MapImporter("ok" -> validSchema)
+      importer.readSchema("ok.yaml").map(_.name) shouldBe Right("test")
+    }
+
+    "leave a key that already ends in .yml alone" in {
+      val importer = MapImporter("ok.yml" -> validSchema)
+      importer.readSchema("ok.yml").map(_.name) shouldBe Right("test")
+      importer.readSchema("ok.yaml") should matchPattern { case Left(_: SchemaImportError) => }
+    }
+
+    "prefer the key spelled exactly as it is looked up" in {
+      val importer = MapImporter("core" -> validSchema, "core.yaml" -> exactSchema)
+      importer.readSchema("core.yaml").map(_.name) shouldBe Right("exact")
+    }
+
+    "resolve an import written without the .yaml extension against such a key" in {
+      val importer = MapImporter(
+        "main" ->
+          """id: https://neverblink.eu/linkml/importer/main/
+            |name: main
+            |imports:
+            |  - core
+            |""".stripMargin,
+        "core" -> validSchema,
+      )
+      inside(SchemaView.loadSchemaViewFromUri("main", importer = importer)) { case Right(view) =>
+        view.schemas.map(_.name) should contain allOf ("main", "test")
+      }
     }
   }
 

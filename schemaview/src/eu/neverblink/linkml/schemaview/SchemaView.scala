@@ -435,10 +435,7 @@ object SchemaView {
       visited: mutable.Set[String],
   ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     // TODO LNK-154 Robust file system importing
-    var normalizedUri = uri.stripSuffix(PlatformSpecificUtils.separator)
-    if (!normalizedUri.endsWith(".yaml") && !normalizedUri.endsWith(".yml")) {
-      normalizedUri = normalizedUri.concat(".yaml")
-    }
+    val normalizedUri = Importer.normalizeUri(uri)
     // After URI normalization, check if we've already visited this URI to avoid infinite loops
     // and repeatedly loading the same schema.
     if visited.contains(normalizedUri) then new Right(Nil)
