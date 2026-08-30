@@ -47,9 +47,11 @@ class FrictionlessGenerator(using sv: SchemaView)
     case _: BooleanType.type => (types.boolean, "default")
     case _: DecimalType.type => (types.number, "default")
     case _: AnyType.type => (types.any, "default")
-    case _: DateType.type => (types.date, "any")
-    case _: DateTimeType.type => (types.datetime, "any")
-    case _: TimeType.type => (types.time, "any")
+    // `default` is ISO 8601, which is what these LinkML types already are. The `any` format would
+    // also let through things like 01/02/2020, which the model does not allow.
+    case _: DateType.type => (types.date, "default")
+    case _: DateTimeType.type => (types.datetime, "default")
+    case _: TimeType.type => (types.time, "default")
     case _: UriOrCurieType.type => (types.string, "default")
     case _: UriType.type => (types.string, "uri")
     case _: CurieType.type => (types.string, "default")
@@ -115,9 +117,10 @@ class FrictionlessGenerator(using sv: SchemaView)
   def tableSchema(cv: ClassView, resources: Map[String, String] = Map.empty): TableDescriptor = {
     val foreignKeys = mutable.ListBuffer.empty[ForeignKey]
 
+    // TODO LNK-198: factor this out
     val fields =
       for av <- cv.attributeViews.values.toSeq
-          .sortBy(av => (av.slotView.slot.rank, av.slotView.slot.name))
+          .sortBy(av => (av.slotView.slot.rank.getOrElseFast(Int.MaxValue), av.slotView.slot.name))
       yield {
         val slotView = av.slotView
         val name = slotName(slotView)
@@ -129,7 +132,7 @@ class FrictionlessGenerator(using sv: SchemaView)
         )
         av match {
           case _: AnyView =>
-            base.copy(`type` = types.any, format = "any")
+            base.copy(`type` = types.any)
 
           case inline: ClassInlineAttributeView =>
             val kind = inline.inlineType match {

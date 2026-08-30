@@ -24,7 +24,7 @@ package eu.neverblink.linkml.generator.frictionless
   * @param unique
   *   When true, each value for the property MUST be unique.
   */
-case class Constraints(
+final case class Constraints(
     `enum`: Option[Seq[String]] = None,
     maxLength: Option[Int] = None,
     maximum: Option[String] = None,

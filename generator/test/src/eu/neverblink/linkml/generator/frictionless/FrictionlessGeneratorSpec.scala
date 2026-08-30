@@ -129,6 +129,8 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       val td = rootTable(ModelCatalogue.anything.model)
       val someSlot = td.fields.head
       someSlot.`type` shouldBe "any"
+      // The `any` type accepts any format, so there is nothing to name.
+      someSlot.format shouldBe "default"
     }
 
     "generate any for unknown types" in {
@@ -161,6 +163,58 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
 
       val stringConstraints = fieldMap("stringSlot").constraints.get
       stringConstraints.pattern shouldBe Some("^([0-9]{3})?[0-9]{3}-[0-9]{4}$")
+    }
+
+    "date, time and datetime columns use the ISO 8601 format" in {
+      // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
+      val td = rootTable(load(
+        """id: https://neverblink.eu/test/
+          |name: test
+          |default_range: string
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    attributes:
+          |      d:
+          |        range: date
+          |      t:
+          |        range: time
+          |      dt:
+          |        range: datetime
+          |""".stripMargin,
+      ))
+      val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
+      fieldMap("d").`type` shouldBe "date"
+      fieldMap("t").`type` shouldBe "time"
+      fieldMap("dt").`type` shouldBe "datetime"
+      td.fields.map(_.format).distinct shouldBe Seq("default")
+    }
+
+    "order columns by rank, then by name" in {
+      val td = rootTable(load(
+        """id: https://neverblink.eu/test/
+          |name: test
+          |default_range: string
+          |types:
+          |  string:
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    attributes:
+          |      zulu:
+          |        rank: 1
+          |      alpha:
+          |        rank: 2
+          |      unranked_b:
+          |      unranked_a:
+          |""".stripMargin,
+      ))
+      // Ranked slots come first, in rank order. The rest follow, by name.
+      td.fields.map(_.name) shouldBe Seq("zulu", "alpha", "unranked_a", "unranked_b")
     }
 
     "allow tree root overriding" in {
@@ -216,6 +270,8 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
         |classes:
         |  Person:
         |    tree_root: true
+        |    title: A person
+        |    description: Someone with a home and a manager.
         |    attributes:
         |      id:
         |        identifier: true
@@ -263,6 +319,24 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       p.resources.map(_.profile).distinct shouldBe Seq("tabular-data-resource")
       p.resources.map(_.path) shouldBe
         Seq("data/address.csv", "data/note.csv", "data/person.csv")
+    }
+
+    "carry the class title and description onto its resource" in {
+      val person = pkg().resources.find(_.name == "person").get
+      person.title shouldBe Some("A person")
+      person.description shouldBe Some("Someone with a home and a manager.")
+      // Address has neither, and the spec has no place for an empty one.
+      val address = pkg().resources.find(_.name == "address").get
+      address.title shouldBe None
+      address.description shouldBe None
+    }
+
+    "keep the class metadata in the split output too" in {
+      val files = FrictionlessGenerator(using load(schema)).generateFiles().toMap
+      files("datapackage.json") should include("\"title\": \"A person\"")
+      files("datapackage.json") should include(
+        "\"description\": \"Someone with a home and a manager.\"",
+      )
     }
 
     "point foreign keys at the other tables, and at itself by empty name" in {
