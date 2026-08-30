@@ -69,7 +69,7 @@ deprecated	common_metadata	string	single	basic	Description of why and when this 
 deprecated element has exact replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be automatically replaced by this uri or curie
 deprecated element has possible replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be potentially replaced by this uri or curie
 derivation	UnitOfMeasure	string	single	-	Expression for deriving this unit from other units
-description	common_metadata,permissible_value	string	single	basic	a textual description of the element's purpose and use
+description	common_metadata,permissible_value	langstring	single	basic	a textual description of the element's purpose and use
 descriptive_name	UnitOfMeasure	string	single	-	the spelled out name of the unit, for example, meter
 designates_type	slot_definition	boolean	single	spec	True means that the key slot(s) is used to determine the instantiation (types) relation b…
 dimensions	array_expression	dimension_expression	multi	-	definitions of each axis in the array
@@ -230,7 +230,7 @@ symbol	UnitOfMeasure	string	single	-	name of the unit encoded as a symbol
 symmetric	slot_definition	string	single	spec	If s is symmetric, and i.s=v, then v.s=i
 syntax	pattern_expression	string	single	spec	the string value of the slot must conform to this regular expression expressed in the str…
 text	permissible_value	string	single	spec,basic	The actual permissible value itself
-title	common_metadata	string	single	basic	A concise human-readable display label for the element. The title should mirror the name,…
+title	common_metadata	langstring	single	basic	A concise human-readable display label for the element. The title should mirror the name,…
 todos	common_metadata	string	multi	basic	Outstanding issues that needs resolution
 transitive	slot_definition	string	single	spec	If s is transitive, and i.s=z, and s.s=j, then i.s=j
 transitive_form_of	slot_definition	slot_definition	single	spec	If s transitive_form_of d, then (1) s holds whenever d holds (2) s is transitive (3) d ho…
