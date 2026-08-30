@@ -26,6 +26,9 @@ name: library
 description: A tiny example schema, showing classes, slots, enums and a tree root.
 prefixes:
   linkml: https://w3id.org/linkml/
+  library: https://example.org/library/
+emit_prefixes:
+  - library
 default_range: string
 imports:
   - linkml:types

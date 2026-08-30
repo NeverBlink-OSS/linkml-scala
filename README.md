@@ -246,6 +246,10 @@ LinkML-Scala is licensed under the Apache License 2.0. See the LICENSE file for 
 
 This project is being developed and maintained by [NeverBlink](https://neverblink.eu). For any inquiries, please reach out to us via [email](mailto:contact@neverblink.eu).
 
+License exceptions:
+
+- `generator/test/resources/turtle-w3c/` – contains result files from the W3C Turtle test suite under the W3C Test Suite License and the W3C 3-clause BSD License. They are test fixtures and are not part of any published artifact.
+
 ----
 
 *This work has been supported by the HEDGE-IoT project grant number 101136216 funded by the European Commission as part of the Horizon Europe Framework Programme. However, views and opinions expressed are those of the authors only and do not necessarily reflect those of the European Union or the European Climate, Infrastructure and Environment Executive Agency. Neither the European Union nor the granting authority can be held responsible for them.*

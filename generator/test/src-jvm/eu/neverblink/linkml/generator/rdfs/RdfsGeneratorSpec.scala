@@ -44,20 +44,20 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
-        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           |
           |<https://neverblink.eu/linkml/rdfs/test/SomeClass> a rdfs:Class .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeClass>;
+          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property ;
+          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/SomeClass> ;
           |  rdfs:range xsd:string .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property;
+          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property ;
           |  rdfs:range xsd:integer .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_yet_another_slot> a rdf:Property;
+          |<https://neverblink.eu/linkml/rdfs/test/some_yet_another_slot> a rdf:Property ;
           |  rdfs:range xsd:boolean .
           |""".stripMargin
     }
@@ -87,23 +87,23 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
-        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           |
-          |<https://neverblink.eu/linkml/rdfs/test/SomeClass> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/SomeClass> a rdfs:Class ;
           |  rdfs:label "Some class" .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property;
-          |  rdfs:label "String";
+          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property ;
+          |  rdfs:label "String" ;
           |  rdfs:range xsd:string .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_yet_another_slot> a rdf:Property;
+          |<https://neverblink.eu/linkml/rdfs/test/some_yet_another_slot> a rdf:Property ;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/SomeAnotherClass> .
           |
           |<https://neverblink.eu/linkml/rdfs/test/SomeAnotherClass> a rdfs:Class .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property;
+          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property ;
           |  rdfs:range xsd:integer .
           |""".stripMargin
     }
@@ -138,30 +138,30 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
-        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Person> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/Person> a rdfs:Class ;
           |  rdfs:comment "Represents a person." .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Course> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/Course> a rdfs:Class ;
           |  rdfs:comment "Represents a course." .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Employee> a rdfs:Class;
-          |  rdfs:comment "Represents an employee.";
+          |<https://neverblink.eu/linkml/rdfs/test/Employee> a rdfs:Class ;
+          |  rdfs:comment "Represents an employee." ;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/Person> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/worksFor> a rdf:Property;
-          |  rdfs:comment "Property indicating who an employee works for.";
+          |<https://neverblink.eu/linkml/rdfs/test/worksFor> a rdf:Property ;
+          |  rdfs:comment "Property indicating who an employee works for." ;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/Person> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Professor> a rdfs:Class;
-          |  rdfs:comment "Represents a professor.";
+          |<https://neverblink.eu/linkml/rdfs/test/Professor> a rdfs:Class ;
+          |  rdfs:comment "Represents a professor." ;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/Employee> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/teaches> a rdf:Property;
-          |  rdfs:comment "Property indicating which course a professor teaches.";
+          |<https://neverblink.eu/linkml/rdfs/test/teaches> a rdf:Property ;
+          |  rdfs:comment "Property indicating which course a professor teaches." ;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/Course> .
           |""".stripMargin
     }
@@ -185,17 +185,17 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
-        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           |
           |<https://neverblink.eu/linkml/rdfs/test/Node> a rdfs:Class .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/name> a rdf:Property;
+          |<https://neverblink.eu/linkml/rdfs/test/name> a rdf:Property ;
           |  rdfs:range xsd:time .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/children> a rdf:Property;
-          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/Node>;
+          |<https://neverblink.eu/linkml/rdfs/test/children> a rdf:Property ;
+          |  rdfs:domain <https://neverblink.eu/linkml/rdfs/test/Node> ;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/Node> .
           |""".stripMargin
     }
@@ -219,22 +219,22 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
-        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           |
-          |<https://neverblink.eu/linkml/rdfs/test/PassengerVehicle> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/PassengerVehicle> a rdfs:Class ;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
           |
           |<https://neverblink.eu/linkml/rdfs/test/MotorVehicle> a rdfs:Class .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Truck> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/Truck> a rdfs:Class ;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/MiniVan> a rdfs:Class;
-          |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/PassengerVehicle>, <https://neverblink.eu/linkml/rdfs/test/Van> .
+          |<https://neverblink.eu/linkml/rdfs/test/MiniVan> a rdfs:Class ;
+          |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/PassengerVehicle> , <https://neverblink.eu/linkml/rdfs/test/Van> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/Van> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/Van> a rdfs:Class ;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/MotorVehicle> .
           |""".stripMargin
     }

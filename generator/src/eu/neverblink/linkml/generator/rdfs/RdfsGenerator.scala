@@ -156,8 +156,12 @@ object RdfsGenerator {
     *   Whether to include only classes and enums from the root schema (turned off by default). This
     *   is useful if you intend to generate RDFS for each schema file separately, and you don't need
     *   the imported classes to be included.
+    * @param format
+    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     */
   final case class Options(
       onlyClassesFromRootSchema: Boolean = false,
-  )
+      format: RdfFormat = RdfFormat.ttl,
+  ) extends RdfOptions
 }

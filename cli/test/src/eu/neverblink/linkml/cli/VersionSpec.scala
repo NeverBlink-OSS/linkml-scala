@@ -11,7 +11,6 @@ class VersionSpec extends AnyWordSpec, Matchers {
         out should startWith("linkml-scala")
         out should include("Metamodel")
         out should include("Scala")
-        out should include("RDF4J")
         out should include("Runtime")
       }
 
@@ -34,7 +33,6 @@ class VersionSpec extends AnyWordSpec, Matchers {
         out should include("\"scala_version\"")
         out should include("\"runtime\"")
         out should include("\"platform\": \"JVM\"")
-        out should include("\"rdf4j_version\"")
         // Scala.js and the C ABI are not part of a CLI build, so they must not be claimed.
         out should not include "scala_js_version"
         out should not include "abi_version"

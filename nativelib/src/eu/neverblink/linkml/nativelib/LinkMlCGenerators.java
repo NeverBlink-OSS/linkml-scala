@@ -31,7 +31,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::jsonSchema);
     }
 
-    /** Generate SHACL shapes as N-Triples. Options: {@code open}, {@code onlyClassesFromRootSchema}. */
+    /** Generate SHACL shapes as RDF. Options: {@code open}, {@code onlyClassesFromRootSchema}, {@code format}. */
     @CEntryPoint(name = "linkml_shacl")
     static CCharPointer shacl(
             IsolateThread thread,
@@ -41,7 +41,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::shacl);
     }
 
-    /** Generate RDFS as N-Triples. Options: {@code onlyClassesFromRootSchema}. */
+    /** Generate RDFS as RDF. Options: {@code onlyClassesFromRootSchema}, {@code format}. */
     @CEntryPoint(name = "linkml_rdfs")
     static CCharPointer rdfs(
             IsolateThread thread,
@@ -73,7 +73,7 @@ public final class LinkMlCGenerators {
 
     /** Generate a GraphQL schema. Options: {@code pruningMode}. */
     @CEntryPoint(name = "linkml_graphql")
-    static CCharPointer graphql(
+    static CCharPointer graphQl(
             IsolateThread thread,
             long handle,
             @CConst CCharPointer options,
@@ -93,7 +93,7 @@ public final class LinkMlCGenerators {
 
     /** Generate Scala sources, as a JSON object mapping filename to source. Options: {@code package}, {@code generateEmitPrefixes}. */
     @CEntryPoint(name = "linkml_scala")
-    static CCharPointer scala(
+    static CCharPointer scalaFiles(
             IsolateThread thread,
             long handle,
             @CConst CCharPointer options,

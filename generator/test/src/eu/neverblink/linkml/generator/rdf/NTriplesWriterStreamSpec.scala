@@ -1,13 +1,14 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.util.Utf8ByteSink
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets.UTF_8
 
-/** Tests for [[NTriplesWriter.writeTo]]: the buffered byte path must produce exactly the same bytes
-  * as the [[NTriplesWriter.writeToString]] path (UTF-8 encoded), regardless of buffer boundaries.
+/** Tests for [[NTriplesWriter]] over a [[Utf8ByteSink]]: the buffered byte path must produce
+  * exactly the same bytes as writing to a string (UTF-8 encoded), regardless of buffer boundaries.
   */
 class NTriplesWriterStreamSpec extends AnyWordSpec, Matchers {
 
@@ -15,17 +16,22 @@ class NTriplesWriterStreamSpec extends AnyWordSpec, Matchers {
 
   private def bytes(triples: Seq[Triple], bufferSize: Int = 8 * 1024): Array[Byte] = {
     val out = new ByteArrayOutputStream
-    NTriplesWriter.writeTo(out, triples, bufferSize)
+    val sink = new Utf8ByteSink(out, bufferSize)
+    val writer = new NTriplesWriter(sink)
+    triples.foreach(t => writer.triple(t.subj, t.pred, t.obj))
+    writer.finish()
+    sink.flush()
     out.toByteArray
   }
 
   private def expected(triples: Seq[Triple]): Array[Byte] =
-    NTriplesWriter.writeToString(triples).getBytes(UTF_8)
+    RdfUtils.toNTriples(sink => triples.foreach(t => sink.triple(t.subj, t.pred, t.obj)))
+      .getBytes(UTF_8)
 
   private val s = Iri("http://example.org/s")
   private val p = Iri("http://example.org/p")
 
-  "NTriplesWriter.writeTo" should {
+  "NTriplesWriter, over a byte sink," should {
     "match the string writer for plain ASCII triples" in {
       val triples = Seq(
         Triple(s, p, Iri("http://example.org/o")),

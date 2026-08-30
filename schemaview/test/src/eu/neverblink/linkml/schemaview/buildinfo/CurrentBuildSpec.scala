@@ -26,9 +26,7 @@ class CurrentBuildSpec extends AnyWordSpec, Matchers {
     }
 
     "leave the slots it cannot know about empty" in {
-      // The CLI fills in RDF4J and the shared library fills in the ABI version. Nothing shared
-      // knows either, so reporting them here would be a guess.
-      CurrentBuild.info.rdf4jVersion shouldBe None
+      // Only the shared library knows the ABI version, so reporting it here would be a guess.
       CurrentBuild.info.abiVersion shouldBe None
     }
 
@@ -42,7 +40,7 @@ class CurrentBuildSpec extends AnyWordSpec, Matchers {
       keys should contain allOf ("linkml_scala_version", "metamodel_version", "scala_version")
       keys should not contain "linkmlScalaVersion"
       // Absent optionals are left out rather than written as null.
-      keys should not contain "rdf4j_version"
+      keys should not contain "abi_version"
     }
   }
 

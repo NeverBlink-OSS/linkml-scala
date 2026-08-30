@@ -1,30 +1,49 @@
 package eu.neverblink.linkml.generator.rdf
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.{StringSink, Utf8ByteSink}
+import eu.neverblink.linkml.generator.util.{CharSink, StringSink, Utf8ByteSink}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
 import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
 
+/** Serialization format for RDF documents. */
+enum RdfFormat:
+  case nt
+  case ttl
+
+trait RdfOptions {
+  def format: RdfFormat
+}
+
 /** Base class for the generators that output RDF.
   */
-abstract class RdfGenerator[O] extends DocumentGenerator[O] {
+abstract class RdfGenerator[O <: RdfOptions] extends DocumentGenerator[O] {
 
-  /** Push the generated triples into [[sink]]. */
+  /** Push the generated triples into `sink`. */
   def generate(sink: RdfSink, options: O = defaultOptions): Unit
 
   final def writeTo(out: OutputStream, options: O = defaultOptions): Unit = {
     val sink = new Utf8ByteSink(out)
-    generate(NTriplesRdfSink(sink), options)
+    write(sink, options)
     sink.flush()
   }
 
+  /** The whole document as a string, in the format the options name. */
   final def serialize(options: O = defaultOptions): String = {
     val sink = new StringSink
-    generate(NTriplesRdfSink(sink), options)
+    write(sink, options)
     sink.result
+  }
+
+  private def write(sink: CharSink, options: O): Unit = {
+    val rdf = options.format match {
+      case RdfFormat.nt => NTriplesWriter(sink)
+      case RdfFormat.ttl => TurtleWriter(sink)
+    }
+    generate(rdf, options)
+    rdf.finish()
   }
 
   private var blankNodeCounter = 0
@@ -36,39 +55,16 @@ abstract class RdfGenerator[O] extends DocumentGenerator[O] {
     new BlankNode(blankNodeCounter.toString)
   }
 
-  /** Create an RDF list of the provided [[values]] and push it into the [[sink]].
-    *
-    * @param sink
-    *   Sink to add the list to
-    * @param values
-    *   Values to include in the RDF list
-    * @return
-    *   Head node of the list or `rdf:nil` if [[values]] was empty
+  /** Create a new blank node to be inlined into the one triple that references it. See
+    * [[InlineBlankNode]] for the ordering this obliges the caller to keep to.
     */
-  final def addList(sink: RdfSink, values: Seq[Node]): Resource =
-    if (values.isEmpty) Rdf.nil
-    else {
-      val start = blankNode()
-      var prev = start
-      values.foreach {
-        var i = 0
-        value =>
-          if (i == 0) {
-            sink.triple(start, Rdf.first, values.head)
-          } else {
-            val cur = blankNode()
-            sink.triple(prev, Rdf.rest, cur)
-            sink.triple(cur, Rdf.first, value)
-            prev = cur
-          }
-          i += 1
-      }
-      sink.triple(prev, Rdf.rest, Rdf.nil)
-      start
-    }
+  protected def inlineBlankNode(): InlineBlankNode = {
+    blankNodeCounter += 1
+    new InlineBlankNode(blankNodeCounter.toString)
+  }
 
   /** Create namespace declarations for the root schema in the implicit [[SchemaView]] and push it
-    * into the [[sink]].
+    * into the `sink`.
     *
     * @param sink
     *   Sink to emit the prefixes to
