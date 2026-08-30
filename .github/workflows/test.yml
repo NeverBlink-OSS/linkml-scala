@@ -65,8 +65,9 @@ jobs:
         run: ./mill --no-server generator.jvm.test.mermaidValidator
 
       - name: Build and test
+        # testForked, not test: otherwise tests in the `tests` module don't run...
         run: |
-          ./mill --no-server -j 0 __.test
+          ./mill --no-server -j 0 __.testForked
 
       - name: Verify npm package (examples run + types compile)
         if: matrix.java == 17

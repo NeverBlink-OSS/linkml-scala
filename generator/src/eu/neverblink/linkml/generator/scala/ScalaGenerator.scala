@@ -794,7 +794,7 @@ object ScalaGenerator {
         pr: PrefixResolver,
     ): ScalaDoc = {
       new ScalaDoc(
-        metadata.description.foldFast("")(_.capitalize),
+        metadata.description.foldFast("")(_.plain.capitalize),
         metadata.seeAlso.map(_.uri) ++
           metadata.aliases.reduceOption(_ + ", " + _).mapFast("Aliases: ".concat) ++
           Seq("From schema: ".concat(fromSchema.uri)),

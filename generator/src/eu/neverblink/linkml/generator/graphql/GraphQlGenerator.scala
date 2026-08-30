@@ -6,7 +6,7 @@ import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.{CharSink, Printable, PruningMode, indent}
 import eu.neverblink.linkml.metamodel.PermissibleValue
-import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
+import eu.neverblink.linkml.runtime.{LocalizedText, PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import GraphQlGenerator.escaped
@@ -212,8 +212,8 @@ object GraphQlGenerator {
 trait GraphQlElement extends Printable:
   /** Process an optional description into a proper graphql description
     */
-  final def wrapDescription(in: Option[String]): String = {
-    in.map("\"\"\"\n" + _ + "\n\"\"\"").getOrElse("")
+  final def wrapDescription(in: Option[LocalizedText]): String = {
+    in.map("\"\"\"\n" + _.plain + "\n\"\"\"").getOrElse("")
   }
 
 trait GraphQlDefinition extends GraphQlElement
@@ -374,7 +374,7 @@ case class GraphQlField(
   val multivalued: Boolean = slotView.slot.multivalued
 
   /** Description of the field */
-  val description: Option[String] = slotView.slot.description
+  val description: Option[LocalizedText] = slotView.slot.description
 
   /** Stringy expression to put in the type position of the GraphQL field definition */
   val typeExpr: String = {

@@ -129,8 +129,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
       }
       val sv = attribute.slotView
       slotSchema.copy(
-        title = sv.slot.title,
-        description = sv.slot.description,
+        title = sv.slot.title.mapFast(_.plain),
+        description = sv.slot.description.mapFast(_.plain),
       )
     }
 
@@ -159,8 +159,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
           properties =
             immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
-          title = cls.cls.title,
-          description = cls.cls.description,
+          title = cls.cls.title.mapFast(_.plain),
+          description = cls.cls.description.mapFast(_.plain),
         ),
       )
     }
@@ -215,16 +215,16 @@ class JsonSchemaGenerator(using sv: SchemaView)
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),
-          title = enum_.title,
-          description = enum_.description,
+          title = enum_.title.mapFast(_.plain),
+          description = enum_.description.mapFast(_.plain),
         ),
       )
     }
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
-      title = sv.root.title.orElse(new Some(sv.root.name)),
-      description = sv.root.description,
+      title = sv.root.title.mapFast(_.plain).orElse(new Some(sv.root.name)),
+      description = sv.root.description.mapFast(_.plain),
       $defs = new Some(
         immutable.ListMap.newBuilder[String, SchemaLike].addAll(
           defs,

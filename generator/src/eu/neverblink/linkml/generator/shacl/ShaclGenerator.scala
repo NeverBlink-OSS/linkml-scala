@@ -136,10 +136,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     val property = blankNode()
     sink.triple(propertyDomain, Shacl.property, property)
     slot.title.foreachFast { t =>
-      sink.triple(property, Shacl.name, Literal(t))
+      langStringProperty(sink, property, Shacl.name, t)
     }
     slot.description.foreachFast { d =>
-      sink.triple(property, Shacl.description, Literal(d))
+      langStringProperty(sink, property, Shacl.description, d)
     }
     slot.slotGroup.foreachFast { groupRef =>
       sv.resolve(groupRef.asInstanceOf[Reference[SlotView]]).foreachFast { groupView =>
@@ -178,13 +178,12 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     groups.values.foreach { g =>
       val groupIri = new Iri(g.uriStr)
       sink.triple(groupIri, Rdf.`type`, Shacl.PropertyGroup)
-      sink.triple(
-        groupIri,
-        Rdfs.label,
-        Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
-      )
+      g.slot.title match {
+        case Some(t) => langStringProperty(sink, groupIri, Rdfs.label, t)
+        case None => sink.triple(groupIri, Rdfs.label, Literal(g.name, XmlSchema.string))
+      }
       g.slot.description.foreachFast { d =>
-        sink.triple(groupIri, Rdfs.comment, Literal(d))
+        langStringProperty(sink, groupIri, Rdfs.comment, d)
       }
       g.slot.rank.foreachFast { r =>
         sink.triple(groupIri, Shacl.order, Literal(r.toString, XmlSchema.integer))
@@ -215,7 +214,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
-        sink.triple(classNameIri, Rdfs.comment, Literal(d))
+        langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
       val closed = !(open || c.cls.`abstract` || c.cls.mixin)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))

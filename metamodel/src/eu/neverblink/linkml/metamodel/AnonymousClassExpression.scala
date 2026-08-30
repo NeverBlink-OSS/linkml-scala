@@ -9,8 +9,8 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class AnonymousClassExpressionImpl(
-    title: Option[String] = None,
-    description: Option[String] = None,
+    title: Option[LocalizedText] = None,
+    description: Option[LocalizedText] = None,
     @named("is_a")
     isA: Option[Reference[ClassDefinition]] = None,
     rank: Option[Int] = None,
