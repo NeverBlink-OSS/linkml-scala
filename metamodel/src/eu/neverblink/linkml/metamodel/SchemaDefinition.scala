@@ -15,11 +15,11 @@ final case class SchemaDefinitionImpl(
     id: Uri,
     @compactDict
     classes: Map[String, ClassDefinitionImpl] = Map(),
-    title: Option[String] = None,
+    title: Option[LocalizedText] = None,
     @named("slots")
     @compactDict
     slotDefinitions: Map[String, SlotDefinitionImpl] = Map(),
-    description: Option[String] = None,
+    description: Option[LocalizedText] = None,
     @compactDict
     enums: Map[String, EnumDefinitionImpl] = Map(),
     @compactDict

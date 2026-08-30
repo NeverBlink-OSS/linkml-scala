@@ -13,8 +13,8 @@ final case class SlotDefinitionImpl(
     name: String,
     @named("slot_uri")
     slotUri: Option[UriOrCurie] = None,
-    title: Option[String] = None,
-    description: Option[String] = None,
+    title: Option[LocalizedText] = None,
+    description: Option[LocalizedText] = None,
     identifier: Boolean = false,
     alias: Option[String] = None,
     multivalued: Boolean = false,

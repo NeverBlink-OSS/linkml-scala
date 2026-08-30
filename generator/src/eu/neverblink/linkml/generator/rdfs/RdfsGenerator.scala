@@ -18,10 +18,10 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       cms: Seq[CommonMetadata],
   ): Unit = {
     cms.flatMap(_.title).distinct.foreach { t =>
-      sink.triple(subject, Rdfs.label, Literal(t, XmlSchema.string))
+      langStringProperty(sink, subject, Rdfs.label, t)
     }
     cms.flatMap(_.description).distinct.foreach { d =>
-      sink.triple(subject, Rdfs.comment, Literal(d, XmlSchema.string))
+      langStringProperty(sink, subject, Rdfs.comment, d)
     }
   }
 

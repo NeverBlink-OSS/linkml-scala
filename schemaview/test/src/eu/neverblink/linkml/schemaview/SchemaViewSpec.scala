@@ -285,7 +285,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         )
       sv.classes.size shouldBe 2
       sv.slotDefinitions.size shouldBe 4
-      sv.types.size shouldBe 21
+      sv.types.size shouldBe 22
       sv.enums.size shouldBe 2
       sv.classes("main_class").uriStr shouldBe "https://neverblink.eu/main#MainClass"
       sv.classes("imported_class").uriStr shouldBe "https://neverblink.eu/imported#ImportedClass"
@@ -614,7 +614,7 @@ object SchemaViewSpec:
 
   val class1: ClassDefinitionImpl = ClassDefinitionImpl(
     name = "class1",
-    description = Some("This is a first class"),
+    description = Some(PlainText("This is a first class")),
     slots = Seq(
       Reference("slot2"),
       Reference("slot_e1"),
@@ -627,7 +627,7 @@ object SchemaViewSpec:
   val class2: ClassDefinitionImpl = ClassDefinitionImpl(
     name = "class2",
     classUri = Some(UriOrCurie("https://neverblink.eu/example#classNumberTwo")),
-    description = Some("This is a second class"),
+    description = Some(PlainText("This is a second class")),
     slots = Seq(
       Reference("slot1"),
       Reference("slot_t1"),
@@ -638,7 +638,7 @@ object SchemaViewSpec:
   val class3: ClassDefinitionImpl = ClassDefinitionImpl(
     name = "class3",
     classUri = Some(UriOrCurie("https://neverblink.eu/example#classNumber3")),
-    description = Some("This is a third class"),
+    description = Some(PlainText("This is a third class")),
     slots = Seq(
       Reference("slot3"),
     ),
@@ -715,52 +715,52 @@ object SchemaViewSpec:
 
   val slot1: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot1",
-    description = Some("This is a slot pointing to class 1"),
+    description = Some(PlainText("This is a slot pointing to class 1")),
     range = Some(Reference("class1")),
   )
 
   val slot2: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot2",
     slotUri = Some(UriOrCurie("https://neverblink.eu/example#slotNumberTwo")),
-    description = Some("This is a slot pointing to class 2"),
+    description = Some(PlainText("This is a slot pointing to class 2")),
     range = Some(Reference("class2")),
   )
 
   val slotGrandparent: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot_grandparent",
-    description = Some("This is a slot pointing to class grandparent"),
+    description = Some(PlainText("This is a slot pointing to class grandparent")),
     range = Some(classGrandparent.reference),
   )
 
   val slotParent: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot_parent",
     isA = Some(slotGrandparent.reference),
-    description = Some("This is a slot pointing to class parent"),
+    description = Some(PlainText("This is a slot pointing to class parent")),
     range = Some(classParent.reference),
   )
 
   val slot3: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot3",
     isA = Some(slotParent.reference),
-    description = Some("This is a slot pointing to class 3"),
+    description = Some(PlainText("This is a slot pointing to class 3")),
     range = Some(Reference("class3")),
   )
 
   val slot_t1: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot_t1",
-    description = Some("This is a slot pointing to type 1"),
+    description = Some(PlainText("This is a slot pointing to type 1")),
     range = Some(Reference("type1")),
   )
 
   val slot_e1: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot_e1",
-    description = Some("This is a slot pointing to enum 1"),
+    description = Some(PlainText("This is a slot pointing to enum 1")),
     range = Some(Reference("enum1")),
   )
 
   val slotRangeless: SlotDefinitionImpl = SlotDefinitionImpl(
     name = "slot_rangeless",
-    description = Some("This slot should use the default range of the schema."),
+    description = Some(PlainText("This slot should use the default range of the schema.")),
   )
 
   val slots: Map[String, SlotDefinitionImpl] = Map(
@@ -777,7 +777,7 @@ object SchemaViewSpec:
 
   val type1: TypeDefinitionImpl = TypeDefinitionImpl(
     name = "type1",
-    description = Some("Type 1"),
+    description = Some(PlainText("Type 1")),
   )
 
   val types: Map[String, TypeDefinitionImpl] = Map(
@@ -786,13 +786,13 @@ object SchemaViewSpec:
 
   val enum1: EnumDefinitionImpl = EnumDefinitionImpl(
     name = "enum1",
-    description = Some("Enum 1"),
+    description = Some(PlainText("Enum 1")),
   )
 
   val enum2: EnumDefinitionImpl = EnumDefinitionImpl(
     name = "enum2",
     enumUri = Some(UriOrCurie("https://neverblink.eu/example#enumNumberTwo")),
-    description = Some("Enum 2"),
+    description = Some(PlainText("Enum 2")),
   )
 
   val enums: Map[String, EnumDefinitionImpl] = Map(
@@ -802,7 +802,7 @@ object SchemaViewSpec:
 
   val subset1: SubsetDefinitionImpl = SubsetDefinitionImpl(
     name = "subset1",
-    description = Some("Subset 1"),
+    description = Some(PlainText("Subset 1")),
   )
 
   val subsets: Map[String, SubsetDefinitionImpl] = Map(
