@@ -73,7 +73,7 @@ public final class LinkMlCGenerators {
 
     /** Generate a GraphQL schema. Options: {@code pruningMode}. */
     @CEntryPoint(name = "linkml_graphql")
-    static CCharPointer graphQl(
+    static CCharPointer graphql(
             IsolateThread thread,
             long handle,
             @CConst CCharPointer options,
@@ -93,7 +93,7 @@ public final class LinkMlCGenerators {
 
     /** Generate Scala sources, as a JSON object mapping filename to source. Options: {@code package}, {@code generateEmitPrefixes}. */
     @CEntryPoint(name = "linkml_scala")
-    static CCharPointer scalaFiles(
+    static CCharPointer scala(
             IsolateThread thread,
             long handle,
             @CConst CCharPointer options,
