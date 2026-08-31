@@ -244,8 +244,8 @@ abstract class SchemaDefinition extends Element {
   def license: Option[String]
 
   /** A collection of enum bindings that specify how a slot can be bound to a permissible value from
-    * an enumeration.\nLinkML provides enums to allow string values to be restricted to one of a set
-    * of permissible values (specified statically or dynamically).\nEnum bindings allow enums to be
+    * an enumeration. LinkML provides enums to allow string values to be restricted to one of a set
+    * of permissible values (specified statically or dynamically). Enum bindings allow enums to be
     * bound to any object, including complex nested objects. For example, given a (generic) class
     * Concept with slots id and label, it may be desirable to restrict the values the id takes on in
     * a given context. For example, a HumanSample class may have a slot for representing sample

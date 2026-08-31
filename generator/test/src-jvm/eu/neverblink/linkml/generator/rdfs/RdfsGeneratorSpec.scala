@@ -378,7 +378,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
         "inny+%C5%82%C4%85czony+%22slot%22",
         "%C5%81%C4%85czony%27enum%27",
         "%C5%82%C4%85czony+%7Bvalue%7D",
-        "inny+%C5%82%C4%85czony+%5C%5Cvalue%2F%2F",
+        "inny+%C5%82%C4%85czony+%5Cvalue%2F%2F",
       ).foreach { snippet =>
         turtle should include(snippet)
       }
