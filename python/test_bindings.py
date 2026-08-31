@@ -141,6 +141,36 @@ class LoadTest(unittest.TestCase):
             self.assertIn("Drawing", generated)
             self.assertIn("Square", generated)
 
+    def test_load_string_finds_keys_written_without_the_yaml_extension(self):
+        # `- shapes` is looked up as "shapes.yaml", and keys get the same extension treatment, so
+        # both spellings work.
+        root = schema(
+            "root",
+            """
+            imports:
+              - linkml:types
+              - shapes
+            classes:
+              Drawing:
+                attributes:
+                  shape:
+                    range: Square
+            """,
+        )
+        shapes = schema(
+            "shapes",
+            """
+            classes:
+              Square:
+                attributes:
+                  side:
+                    range: string
+            """,
+        )
+        with linkml_scala.load_string(root, {"shapes": shapes}) as loaded:
+            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+            self.assertIn("Square", loaded.json_schema())
+
     def test_load_path_survives_an_import_cycle_through_the_root(self):
         # `load_string` would load the root a second time here, because the root it was handed has no
         # path to match `- root` against. `load_path` reads the root through the map, so it does.

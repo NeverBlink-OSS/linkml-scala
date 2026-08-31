@@ -10,7 +10,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
-import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReportImpl}
 
@@ -39,8 +39,10 @@ final class LoadResult private[js] (
 @JSExportAll
 object LinkMlJsApi {
   private case class JsImporter(map: js.Dictionary[String]) extends StringImporter {
+    private val lookup = Importer.normalizedMap(map)
+
     override def read(path: String): String =
-      map.get(path).getOrElse(sys.error(s"Could not read from import map: $path"))
+      lookup.getOrElse(path, sys.error(s"Could not read from import map: $path"))
   }
 
   /** Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML
@@ -61,6 +63,8 @@ object LinkMlJsApi {
     * its imports (transitively) imports the main schema back by filename, that import cannot be
     * matched against the root and the main schema will be loaded a second time. Use
     * [[loadFromPath]] instead when the root schema takes part in an import cycle.
+    *
+    * See [[loadFromPath]] for the correct key format.
     *
     * @param mainSchema
     *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
@@ -92,10 +96,17 @@ object LinkMlJsApi {
     * involving the root schema: an import that (transitively) references the root back by path
     * resolves to the already-loaded root instead of loading it again.
     *
-    * Paths behave like file paths: a `.yaml` extension is appended when missing, and relative
-    * imports are resolved against the directory of their importing schema. The [[importMap]] keys
-    * must therefore be the paths as seen from the root (e.g. `"model.yaml"`,
-    * `"nested/person.yaml"`).
+    * Keys in the ``imports`` parameter must match the expanded form of the ``imports`` entries in
+    * the schema. In particular:
+    *
+    *   - A CURIE is expanded through the schema's prefix map, so ``imports: [ex:core]`` has to be
+    *     keyed here by the full URI, such as ``"https://example.org/core.yaml"``.
+    *   - A relative import is joined to the directory of the schema that imported it, so a ``core``
+    *     imported by ``nested/model.yaml`` has to be keyed ``"nested/core.yaml"``. Keys are
+    *     therefore paths as seen from the root.
+    *   - ``.yaml`` is appended unless the path already ends in ``.yaml`` or ``.yml``. Therefore,
+    *     ``"core"`` and ``"core.yaml"`` are interchangeable, and a key that ends in ``.yml`` is
+    *     only found by an import that explicitly asks for ``.yml``.
     *
     * @param path
     *   Path of the main LinkML model within the [[importMap]] (e.g. `"model.yaml"`).
