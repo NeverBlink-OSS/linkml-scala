@@ -30,7 +30,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_shacl",
     "linkml_rdfs",
     "linkml_linkml",
-    "linkml_table_schema",
+    "linkml_frictionless",
     "linkml_graphql",
     "linkml_er_diagram",
     "linkml_scala",
@@ -138,19 +138,26 @@ class Generators:
             outputFormat=output_format,
         )
 
-    def table_schema(
+    def frictionless(
         self,
         *,
+        pruning_mode: str = "skip",
         tree_root: str | None = None,
-    ) -> str:
-        """Generate a Frictionless Table Schema, serialized as JSON.
+        skip_classes_without_identifier: bool = False,
+    ) -> dict[str, str]:
+        """Generate a Frictionless Data Package, as a filename to content mapping.
 
-        :param tree_root: If defined, override the schema `tree_root` class with the one
-            provided.
+        :param pruning_mode: Which classes to turn into tables.
+        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
+            valid with `pruning_mode="treeRoot"`.
+        :param skip_classes_without_identifier: Whether to skip classes that have no identifier
+            slot. Such a table gets no primary key and nothing can reference it, so it is often
+            not useful.
         """
-        return self._document(
-            "linkml_table_schema",
-            treeRoot=tree_root,
+        return self._json(
+            "linkml_frictionless",
+            pruningMode=_pruning(pruning_mode, tree_root),
+            skipClassesWithoutIdentifier=skip_classes_without_identifier,
         )
 
     def graphql(

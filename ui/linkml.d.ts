@@ -93,12 +93,14 @@ export interface LinkMLApi {
   linkml(schema: SchemaView, pruningMode?: string, skipDerivation?: boolean, treeRoot?: string, outFormat?: string): string;
 
   /**
-   * Generate a Frictionless Table Schema from a loaded LinkML schema.
+   * Generate a Frictionless Data Package from a loaded LinkML schema. Every class becomes a CSV table, described by its own Table Schema, and references between classes become foreign keys between the tables.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
-   * @returns Table Schema, serialized as a JSON
+   * @param pruningMode Pruning mode to use for choosing which classes become tables. One of treeRoot|schema|skip. treeRoot - only classes reachable from the tree_root class. schema - only classes reachable from any of the classes defined in the root schema. skip - every class. Default: skip
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
+   * @param skipClassesWithoutIdentifier Whether to skip classes that have no identifier slot. Such a table gets no primary key and nothing can reference it, so it is often not useful. Default: false
+   * @returns JS dictionary (object) containing a mapping from filename to file content: a `datapackage.json` plus one `schemas/<table>.json` per table.
    */
-  tableSchema(schema: SchemaView, treeRoot?: string): string;
+  frictionless(schema: SchemaView, pruningMode?: string, treeRoot?: string, skipClassesWithoutIdentifier?: boolean): Record<string, string>;
 
   /**
    * Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums, queries must be provided for a specific implementation.

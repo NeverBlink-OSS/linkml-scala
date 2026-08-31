@@ -41,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        generator: [json-schema, shacl, rdfs, table-schema, linkml]
+        generator: [json-schema, shacl, rdfs, frictionless, linkml]
     steps:
       - uses: actions/checkout@v7
 

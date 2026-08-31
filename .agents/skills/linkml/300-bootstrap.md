@@ -20,7 +20,7 @@ you dropped. A schema that silently loses constraints is worse than one that adm
 4. **Validate** — `linkml-scala validate --strict --format json schema.yaml` — and iterate until
    clean.
 5. **Round-trip** — generate the source formalism back out and diff it against the input, where
-   a generator exists for it (`rdfs`, `shacl`, `json-schema`, `table-schema`).
+   a generator exists for it (`rdfs`, `shacl`, `json-schema`, `frictionless`).
 6. **Report** the inventory versus what you produced, and everything dropped and why.
 
 Never skip 4–6. An unvalidated bootstrap is a draft, and saying so is part of the job.
@@ -118,8 +118,8 @@ Inference from examples, so state your confidence and get it confirmed.
 - A plausible unique key suggests `identifier: true`. Verify uniqueness across the whole sample
   before asserting it, and prefer no identifier over a wrong one — it changes inlining
   behaviour everywhere.
-- For CSV, `linkml-scala generate table-schema` round-trips back to Frictionless, so you can
-  check your work.
+- For CSV, `linkml-scala generate frictionless` round-trips back to Frictionless as a data
+  package, so you can check your work.
 
 ## Round-tripping
 

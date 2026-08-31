@@ -69,6 +69,27 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       result should not include "?"
     }
 
+    "order attribute rows by rank, then by name" in {
+      given SchemaView = schemaOf("""  Root:
+                                    |    attributes:
+                                    |      zulu:
+                                    |        rank: 1
+                                    |      alpha:
+                                    |        rank: 2
+                                    |      unranked_b:
+                                    |      unranked_a:
+                                    |""".stripMargin)
+
+      // Ranked slots come first, in rank order. The rest follow, by name.
+      ErDiagramGenerator().serialize() should include(
+        """  Root {
+          |    string? zulu
+          |    string? alpha
+          |    string? unranked_a
+          |    string? unranked_b""".stripMargin,
+      )
+    }
+
     "mark identifiers as primary keys" in {
       given SchemaView = ModelCatalogue.reference.model
 

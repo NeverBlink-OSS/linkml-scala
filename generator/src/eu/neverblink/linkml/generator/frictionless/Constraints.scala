@@ -1,4 +1,4 @@
-package eu.neverblink.linkml.generator.tableschema
+package eu.neverblink.linkml.generator.frictionless
 
 /** Frictionless Table Schema constraints model.
   *
@@ -24,7 +24,7 @@ package eu.neverblink.linkml.generator.tableschema
   * @param unique
   *   When true, each value for the property MUST be unique.
   */
-case class Constraints(
+final case class Constraints(
     `enum`: Option[Seq[String]] = None,
     maxLength: Option[Int] = None,
     maximum: Option[String] = None,

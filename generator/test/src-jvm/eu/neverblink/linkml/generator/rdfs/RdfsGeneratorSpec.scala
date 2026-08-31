@@ -142,24 +142,24 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
       turtle shouldBe
-        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
-          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        """PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+          |PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+          |PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
           |
-          |<https://neverblink.eu/linkml/rdfs/test/SomeClass> a rdfs:Class;
-          |  rdfs:seeAlso <https://example.org/docs/some-class>, <http://schema.org/Thing> .
+          |<https://neverblink.eu/linkml/rdfs/test/SomeClass> a rdfs:Class ;
+          |  rdfs:seeAlso <https://example.org/docs/some-class> , <http://schema.org/Thing> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property;
-          |  rdfs:seeAlso <http://schema.org/name>;
+          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property ;
+          |  rdfs:seeAlso <http://schema.org/name> ;
           |  rdfs:range xsd:string .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property;
+          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property ;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/SomeEnum> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/SomeEnum> a rdfs:Class;
+          |<https://neverblink.eu/linkml/rdfs/test/SomeEnum> a rdfs:Class ;
           |  rdfs:seeAlso <http://schema.org/Enumeration> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/SOME_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum>;
+          |<https://neverblink.eu/linkml/rdfs/test/SOME_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> ;
           |  rdfs:seeAlso <https://example.org/docs/some-value> .
           |
           |<https://neverblink.eu/linkml/rdfs/test/SOME_OTHER_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> .

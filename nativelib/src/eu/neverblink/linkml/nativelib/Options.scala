@@ -10,7 +10,7 @@ import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.util.PruningMode
 
 import scala.util.control.NonFatal
@@ -105,7 +105,7 @@ private object Options {
   private given linkmlOptions: JsonValueCodec[LinkMlGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
-  private given tableSchemaOptions: JsonValueCodec[TableSchemaGenerator.Options] =
+  private given frictionlessOptions: JsonValueCodec[FrictionlessGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
   private given graphQlOptions: JsonValueCodec[GraphQlGenerator.Options] =
@@ -140,8 +140,8 @@ private object Options {
 
   def linkml(json: String): LinkMlGenerator.Options = apply(json, LinkMlGenerator.Options())
 
-  def tableSchema(json: String): TableSchemaGenerator.Options =
-    apply(json, TableSchemaGenerator.Options())
+  def frictionless(json: String): FrictionlessGenerator.Options =
+    apply(json, FrictionlessGenerator.Options())
 
   def graphQl(json: String): GraphQlGenerator.Options = apply(json, GraphQlGenerator.Options())
 

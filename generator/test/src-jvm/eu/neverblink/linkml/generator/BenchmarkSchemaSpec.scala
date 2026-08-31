@@ -6,7 +6,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -88,16 +88,14 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assertParsesAsRdf(RdfsGenerator(using sv).serialize())
           }
 
-          "Table Schema output parses as JSON" in {
+          "data package output parses as JSON" in {
             assume(
-              !skip.contains((name, "table-schema")),
-              skip.getOrElse((name, "table-schema"), ""),
+              !skip.contains((name, "frictionless")),
+              skip.getOrElse((name, "frictionless"), ""),
             )
-            // Table Schema describes a single rooted table, so it requires a tree_root.
-            try assertParsesAsJson(name, TableSchemaGenerator(using sv).serialize())
-            catch
-              case e: RuntimeException if Option(e.getMessage).exists(_.contains("No tree root")) =>
-                cancel("schema has no tree_root, so a Table Schema cannot be generated")
+            // Every class becomes a table, so unlike the other generators this one does not care
+            // whether the schema declares a tree_root.
+            assertParsesAsJson(name, FrictionlessGenerator(using sv).serialize())
           }
 
           "LinkML (YAML) output parses as YAML" in {
@@ -172,7 +170,7 @@ object BenchmarkSchemaSpec {
     // A generated Scala file is empty.
     ("nmdc_microbiome", "scala") -> "Known bug: a generated Scala file is empty",
     "nmdc_microbiome" -> "json-schema" -> "TODO LNK-167",
-    "nmdc_microbiome" -> "table-schema" -> "TODO LNK-167",
+    "nmdc_microbiome" -> "frictionless" -> "TODO LNK-167",
     "nmdc_microbiome" -> "shacl" -> "TODO LNK-167",
     "nmdc_microbiome" -> "rdfs" -> "TODO LNK-167",
     "nmdc_microbiome" -> "linkml-yaml" -> "TODO LNK-167",

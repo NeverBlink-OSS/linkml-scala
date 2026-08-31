@@ -7,7 +7,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
@@ -29,7 +29,8 @@ object LinkMlNativeApi {
   /** Bumped whenever a change to the exported functions or to the options JSON breaks existing
     * callers.
     *
-    *   - 2 added `linkml_build_info`.
+    *   - 1: initial ABI version.
+    *   - 2: added `linkml_build_info`; replaced `tableSchema` with `frictionless`.
     */
   final val abiVersion: Int = 2
 
@@ -117,11 +118,6 @@ object LinkMlNativeApi {
     LinkMlGenerator().writeTo(out, Options.linkml(optionsJson))
   }
 
-  def tableSchema(handle: Long, optionsJson: String, out: OutputStream): Unit = {
-    given SchemaView = view(handle)
-    TableSchemaGenerator().writeTo(out, Options.tableSchema(optionsJson))
-  }
-
   def graphQl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     GraphQlGenerator().writeTo(out, Options.graphQl(optionsJson))
@@ -137,12 +133,25 @@ object LinkMlNativeApi {
   /** Generate Scala sources, as a JSON object mapping filename to source. */
   def scalaFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    val generated = ScalaGenerator().generate(Options.scala(optionsJson))
+    writeFiles(ScalaGenerator().generate(Options.scala(optionsJson)), out)
+  }
+
+  /** Generate a Frictionless data package, as a JSON object mapping filename to content: the
+    * `datapackage.json` descriptor plus a `schemas/<table>.json` for each table.
+    */
+  def frictionlessFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    writeFiles(FrictionlessGenerator().generateFiles(Options.frictionless(optionsJson)), out)
+  }
+
+  /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the
+    * generators that produce more than one file.
+    */
+  private def writeFiles(files: Iterable[(String, String)], out: OutputStream): Unit =
     JsonUtil.writeJson(
-      Node.MappingNode(generated.map((name, text) => entry(name, StringNode(text))).toMap),
+      Node.MappingNode(files.map((name, text) => entry(name, StringNode(text))).toMap),
       out,
     )
-  }
 
   /** Version and build metadata for this library, as a `BuildInfo` in JSON.
     *

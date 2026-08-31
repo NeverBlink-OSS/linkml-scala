@@ -1,11 +1,12 @@
-package eu.neverblink.linkml.generator.tableschema
+package eu.neverblink.linkml.generator.frictionless
 
+import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, writeToString}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import os.Path
 
-class TableSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
+class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   val cwd: Path = Option(System.getenv("MILL_WORKSPACE_ROOT"))
     .map(Path(_))
     .getOrElse(os.pwd)
@@ -21,16 +22,57 @@ class TableSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
 
   lazy val modelDir: os.Path = os.temp.dir()
   lazy val dataDir: os.Path = os.temp.dir()
+  lazy val packageDir: os.Path = os.temp.dir()
 
-  "TableSchemaGenerator" should {
+  "FrictionlessGenerator" should {
     for entry <- ModelCatalogue.all do
       s"work for model '${entry.name}'" when {
+        lazy val generator = FrictionlessGenerator(using entry.model)
+
+        // The catalogue's CSVs are instances of the tree root, so they are checked against the
+        // tree root's own table schema rather than the package as a whole.
+        // TODO LNK-197: add test cases for multiple tables and foreign keys
         lazy val tableSchemaPath = {
-          val jsonStr = TableSchemaGenerator(using entry.model).serialize()
+          val root = entry.model.treeRoot.getOrElse(
+            throw RuntimeException(s"model '${entry.name}' has no tree root"),
+          )
+          val json = writeToString(
+            generator.tableSchema(root),
+            WriterConfig.withIndentionStep(2),
+          )
           val path = modelDir / (entry.name + ".json")
-          os.write(path, jsonStr)
+          os.write(path, json)
           path
         }
+
+        "the whole data package" in {
+          processSkip(entry.name, "")
+          val tables = generator.generate().resources.map(resource =>
+            resource.path -> (resource.schema match {
+              case SchemaRef.Inline(table) => table
+              case other => fail(s"expected an inline schema, got $other")
+            }),
+          )
+          assume(
+            tables.forall((_, table) => table.fields.nonEmpty),
+            "a class in this model has no slots, so its table would have no columns",
+          )
+
+          val dir = packageDir / entry.name
+          generator.generateFiles().foreach((name, content) =>
+            os.write.over(dir / os.SubPath(name), content, createFolders = true),
+          )
+          // Create dummy CSV files for each table, so that frictionless validate can run without error.
+          tables.foreach((path, table) =>
+            os.write.over(
+              dir / os.SubPath(path),
+              table.fields.map(_.name).mkString("", ",", "\n"),
+              createFolders = true,
+            ),
+          )
+          os.call((frictionless, "validate", "--trusted", dir / "datapackage.json"))
+        }
+
         for valid <- entry.validInstances.filter(_.csv.isDefined) do {
           s"valid instance '${valid.name}'" in {
             processSkip(entry, valid)
