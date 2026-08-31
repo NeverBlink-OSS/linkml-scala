@@ -298,7 +298,7 @@ object FrictionlessGenerator {
   final case class Options(
       pruningMode: PruningMode = PruningMode.skip,
       skipClassesWithoutIdentifier: Boolean = false,
-      metadataLanguage: LanguageTag = "en",
+      metadataLanguage: String = "en",
   )
 
   private def schemaPath(resource: String): String = s"schemas/$resource.json"

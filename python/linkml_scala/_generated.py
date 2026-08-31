@@ -148,7 +148,7 @@ class Generators:
         pruning_mode: str = "skip",
         tree_root: str | None = None,
         skip_classes_without_identifier: bool = False,
-        metadata_language: str = ""en"",
+        metadata_language: str = "en",
     ) -> dict[str, str]:
         """Generate a Frictionless Data Package, as a filename to content mapping.
 
