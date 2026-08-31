@@ -64,8 +64,8 @@ BuildInfo = dict[str, Any]
 """Build metadata, following the `build-info.yaml` LinkML model.
 
 Always has ``linkml_scala_version``, ``metamodel_version``, ``scala_version`` and ``platform``.
-Here ``platform`` is always ``"NATIVE"`` and ``abi_version`` is filled in as well. There is no
-``rdf4j_version``: the shared library leaves RDF4J out. See :func:`build_info`.
+Here ``platform`` is always ``"NATIVE"`` and ``abi_version`` is filled in as well. See
+:func:`build_info`.
 """
 
 

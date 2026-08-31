@@ -100,15 +100,13 @@ object LinkMlNativeApi {
     JsonSchemaGenerator().writeTo(out, Options.jsonSchema(optionsJson))
   }
 
-  /** SHACL as N-Triples. Turtle is not available here: it would pull in RDF4J, which the shared
-    * library deliberately leaves out.
-    */
+  /** SHACL, as N-Triples or Turtle depending on the `format` option. */
   def shacl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     ShaclGenerator().writeTo(out, Options.shacl(optionsJson))
   }
 
-  /** RDFS as N-Triples, for the same reason as [[shacl]]. */
+  /** RDFS, as N-Triples or Turtle depending on the `format` option. */
   def rdfs(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     RdfsGenerator().writeTo(out, Options.rdfs(optionsJson))

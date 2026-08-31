@@ -15,7 +15,7 @@ import scala.util.Using
   */
 class SchemaViewBench extends CommonParams {
 
-  @Param(Array("dummy.yml", "cgmes-core.yml", "cgmes-dynamics.yml"))
+  @Param(Array("cgmes-core.yml", "cgmes-dynamics.yml", "TC57CIM.yml"))
   var schema: String = uninitialized
 
   private var schemas: Seq[SchemaDefinition] = uninitialized

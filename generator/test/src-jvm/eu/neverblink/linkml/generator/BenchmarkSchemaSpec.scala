@@ -42,8 +42,8 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
   }
 
   private def assertParsesAsRdf(rdf: String): Unit =
-    withClue(s"output did not parse as N-Triples:\n$rdf\n") {
-      noException should be thrownBy Rio.parse(StringReader(rdf), RDFFormat.NTRIPLES)
+    withClue(s"output did not parse as Turtle:\n$rdf\n") {
+      noException should be thrownBy Rio.parse(StringReader(rdf), RDFFormat.TURTLE)
     }
 
   private def assertParsesAsYaml(s: String): Unit = {

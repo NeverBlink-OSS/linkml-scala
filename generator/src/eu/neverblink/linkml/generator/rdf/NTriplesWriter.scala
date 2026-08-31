@@ -1,90 +1,52 @@
 package eu.neverblink.linkml.generator.rdf
 
-import eu.neverblink.linkml.generator.util.{CharSink, StringSink, Utf8ByteSink}
+import eu.neverblink.linkml.generator.util.CharSink
 
-import java.io.OutputStream
-
-/** N-Triples serializer that works directly on [[Triple]] instances.
+/** Streaming N-Triples serializer: one `subject predicate object .` line per triple.
   *
-  * In general written to be as simple and fast as possible. Escapes ALL non-ASCII characters.
+  * In general written to be as simple and fast as possible.
   */
-object NTriplesWriter {
+final class NTriplesWriter(out: CharSink) extends RdfSink {
 
-  /** Serialize all [[triples]] to a single N-Triples string. */
-  def writeToString(triples: IterableOnce[Triple]): String = {
-    val sink = new StringSink
-    writeAll(sink, triples)
-    sink.result
+  /** N-Triples has no prefix mechanism, so this is dropped. */
+  def namespace(prefix: String, name: String): Unit = ()
+
+  def triple(subj: Resource, pred: Iri, obj: Node): Unit = {
+    writeNode(subj)
+    out.appendAscii(' ')
+    writeNode(pred)
+    out.appendAscii(' ')
+    writeNode(obj)
+    out.append(" .\n")
   }
 
-  /** Serialize all [[triples]] to [[out]]. Flushes at the end but does not close [[out]].
-    *
-    * Because everything is escaped to US-ASCII, the common path writes one byte per character with
-    * no charset encoding at all.
-    */
-  def writeTo(
-      out: OutputStream,
-      triples: IterableOnce[Triple],
-      bufferSize: Int = 8 * 1024,
-  ): Unit = {
-    val sink = new Utf8ByteSink(out, bufferSize)
-    writeAll(sink, triples)
-    sink.flush()
-  }
-
-  /** Format a single node as its N-Triples term (IRI, blank node or literal). */
-  def format(node: Node): String = {
-    val sink = new StringSink
-    writeNode(sink, node)
-    sink.result
-  }
-
-  /** Write all [[triples]] to [[sink]], one terminated line each. */
-  def writeAll(sink: CharSink, triples: IterableOnce[Triple]): Unit = {
-    val it = triples.iterator
-    while (it.hasNext) writeTriple(sink, it.next())
-  }
-
-  /** Write a single triple to [[sink]] as `subject predicate object .` followed by a line feed. */
-  def writeTriple(sink: CharSink, triple: Triple): Unit =
-    writeTriple(sink, triple.subj, triple.pred, triple.obj)
-
-  /** Write a triple from its components, without materializing a [[Triple]]. */
-  def writeTriple(sink: CharSink, subj: Resource, pred: Iri, obj: Node): Unit = {
-    writeNode(sink, subj)
-    sink.appendAscii(' ')
-    writeNode(sink, pred)
-    sink.appendAscii(' ')
-    writeNode(sink, obj)
-    sink.append(" .\n")
-  }
-
-  /** Write a single node to [[sink]] as an N-Triples term. */
-  private def writeNode(sink: CharSink, node: Node): Unit = node match {
+  /** Write a single node as an N-Triples term. */
+  private def writeNode(node: Node): Unit = node match {
     case Iri(value) =>
-      sink.appendAscii('<')
-      NTriplesEscape.escapeIri(sink, value)
-      sink.appendAscii('>')
-    case BlankNode(id) =>
-      sink.append("_:")
-      sink.append(id)
+      out.appendAscii('<')
+      NTriplesEscape.escapeIri(out, value)
+      out.appendAscii('>')
+    // Both blank node flavours are labeled here: only Turtle can inline one.
+    case b: AnyBlankNode =>
+      out.append("_:")
+      out.append(b.id)
     case Literal(value, datatype) =>
-      sink.appendAscii('"')
-      NTriplesEscape.escapeString(sink, value)
-      sink.appendAscii('"')
+      out.appendAscii('"')
+      NTriplesEscape.escapeString(out, value)
+      out.appendAscii('"')
       // Reference equality because generators use the constant anyway.
       // Equality miss here is safe (still valid RDF)
       if (!(datatype eq XmlSchema.string)) {
-        sink.append("^^<")
-        NTriplesEscape.escapeIri(sink, datatype.value)
-        sink.appendAscii('>')
+        out.append("^^<")
+        NTriplesEscape.escapeIri(out, datatype.value)
+        out.appendAscii('>')
       }
     case LanguageLiteral(value, languageTag) =>
-      sink.appendAscii('"')
-      NTriplesEscape.escapeString(sink, value)
-      sink.appendAscii('"')
-      sink.appendAscii('@')
-      sink.append(languageTag)
+      out.appendAscii('"')
+      NTriplesEscape.escapeString(out, value)
+      out.appendAscii('"')
+      out.appendAscii('@')
+      out.append(languageTag)
   }
 }
 
@@ -99,7 +61,7 @@ private object NTriplesEscape {
   /** `Safe(c)` is true for the ASCII characters that may appear verbatim in a string literal's
     * lexical form: printable ASCII (0x20..0x7E) except `"` and `\\`.
     */
-  private val StringSafe: Array[Boolean] = {
+  val StringSafe: Array[Boolean] = {
     val a = new Array[Boolean](0x80)
     var c = 0x20
     while (c <= 0x7e) { a(c) = true; c += 1 }
@@ -111,7 +73,7 @@ private object NTriplesEscape {
   /** `Safe(c)` is true for the ASCII characters that may appear verbatim in an IRIREF: printable
     * ASCII above space (0x21..0x7E) except the delimiters `<>"{}|^`\\` and backtick.
     */
-  private val IriSafe: Array[Boolean] = {
+  val IriSafe: Array[Boolean] = {
     val a = new Array[Boolean](0x80)
     var c = 0x21 // space (0x20) is not allowed in an IRIREF
     while (c <= 0x7e) { a(c) = true; c += 1 }
@@ -153,9 +115,9 @@ private object NTriplesEscape {
     }
   }
 
-  /** Write a `\\uXXXX` or `\\UXXXXXXXX` escape for the character at index [[i]]. If it is a high
+  /** Write a `\\uXXXX` or `\\UXXXXXXXX` escape for the character at index `i`. If it is a high
     * surrogate forming a valid pair, the pair is encoded as one `\\U` escape and the index of the
-    * consumed low surrogate is returned; otherwise [[i]] is returned unchanged.
+    * consumed low surrogate is returned; otherwise `i` is returned unchanged.
     */
   private def escapeHex(sink: CharSink, s: String, i: Int, c: Char): Int =
     if (

@@ -3,6 +3,7 @@ package eu.neverblink.linkml.js
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -166,7 +167,7 @@ object LinkMlJsApi {
       JsonSchemaGenerator.Options(open = open, treeRoot = treeRootOverride.toOption),
     )
 
-  /** Generate SHACL shapes (in N-Triples format) from a loaded LinkML schema.
+  /** Generate SHACL shapes from a loaded LinkML schema.
     *
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
@@ -177,16 +178,24 @@ object LinkMlJsApi {
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
+    * @param format
+    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     * @return
-    *   SHACL shapes in N-Triples format
+    *   SHACL shapes in the requested format
     */
   def shacl(
       schema: SchemaViewJs,
       open: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
+      format: String = "ttl",
   ): String =
     ShaclGenerator(using schema.underlying).serialize(
-      ShaclGenerator.Options(open = open, onlyClassesFromRootSchema = onlyClassesFromRootSchema),
+      ShaclGenerator.Options(
+        open = open,
+        onlyClassesFromRootSchema = onlyClassesFromRootSchema,
+        format = rdfFormat(format),
+      ),
     )
 
   /** Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
@@ -215,16 +224,30 @@ object LinkMlJsApi {
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
+    * @param format
+    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     * @return
-    *   RDFS in N-Triples format
+    *   RDFS in the requested format
     */
   def rdfs(
       schema: SchemaViewJs,
       onlyClassesFromRootSchema: Boolean = false,
+      format: String = "ttl",
   ): String =
     RdfsGenerator(using schema.underlying).serialize(
-      RdfsGenerator.Options(onlyClassesFromRootSchema = onlyClassesFromRootSchema),
+      RdfsGenerator.Options(
+        onlyClassesFromRootSchema = onlyClassesFromRootSchema,
+        format = rdfFormat(format),
+      ),
     )
+
+  /** The RDF format the caller named, as the generators spell it. */
+  private def rdfFormat(format: String): RdfFormat = format.toLowerCase match {
+    case "nt" | "ntriples" => RdfFormat.nt
+    case "ttl" | "turtle" => RdfFormat.ttl
+    case other => throw RuntimeException(s"Unknown RDF format: $other. Supported formats: nt, ttl.")
+  }
 
   /** Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes
     * unreachable elements.

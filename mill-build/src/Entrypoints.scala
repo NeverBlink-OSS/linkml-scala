@@ -59,8 +59,8 @@ object Entrypoints {
       "shacl",
       "ShaclGenerator",
       "str",
-      "Generate SHACL shapes, serialized as N-Triples.",
-      "Generate SHACL shapes as N-Triples.",
+      "Generate SHACL shapes, serialized as N-Triples or Turtle.",
+      "Generate SHACL shapes as RDF.",
     ),
     Entrypoint(
       "rdfs",
@@ -68,8 +68,8 @@ object Entrypoints {
       "rdfs",
       "RdfsGenerator",
       "str",
-      "Generate RDFS, serialized as N-Triples.",
-      "Generate RDFS as N-Triples.",
+      "Generate RDFS, serialized as N-Triples or Turtle.",
+      "Generate RDFS as RDF.",
     ),
     Entrypoint(
       "linkml",

@@ -6,6 +6,7 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
+import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -77,6 +78,19 @@ private object Options {
 
       override def nullValue: LinkMlGenerator.OutputFormat = null
     }
+
+  private given rdfFormatCodec: JsonValueCodec[RdfFormat] = new JsonValueCodec[RdfFormat] {
+    override def decodeValue(in: JsonReader, default: RdfFormat): RdfFormat =
+      in.readString(null) match {
+        case "nt" | "ntriples" => RdfFormat.nt
+        case "ttl" | "turtle" => RdfFormat.ttl
+        case other => in.decodeError(s"unknown RDF format '$other', expected nt or ttl")
+      }
+
+    override def encodeValue(x: RdfFormat, out: JsonWriter): Unit = out.writeVal(x.toString)
+
+    override def nullValue: RdfFormat = null
+  }
 
   // Unknown fields are rejected rather than skipped.
   private given jsonSchemaOptions: JsonValueCodec[JsonSchemaGenerator.Options] =

@@ -55,13 +55,14 @@ export interface LinkMLApi {
   jsonSchema(schema: SchemaView, open?: boolean, treeRootOverride?: string): string;
 
   /**
-   * Generate SHACL shapes (in N-Triples format) from a loaded LinkML schema.
+   * Generate SHACL shapes from a loaded LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param open Whether the SHACL shapes should be open (`_:b sh:closed false .`, allowing additional properties).
    * @param onlyClassesFromRootSchema Whether to include only classes from the root schema (turned off by default). This is useful if you intend to generate SHACL shapes for each schema file separately, and you don't need the imported classes to be included in the generated SHACL shapes.
-   * @returns SHACL shapes in N-Triples format
+   * @param format RDF serialization format: `ttl` for Turtle (the default), which is prefixed and pretty-printed, or `nt` for N-Triples.
+   * @returns SHACL shapes in the requested format
    */
-  shacl(schema: SchemaView, open?: boolean, onlyClassesFromRootSchema?: boolean): string;
+  shacl(schema: SchemaView, open?: boolean, onlyClassesFromRootSchema?: boolean, format?: string): string;
 
   /**
    * Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
@@ -75,9 +76,10 @@ export interface LinkMLApi {
    * Generate RDFS from a loaded LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param onlyClassesFromRootSchema Whether to include only classes from the root schema (turned off by default). This is useful if you intend to generate SHACL shapes for each schema file separately, and you don't need the imported classes to be included in the generated SHACL shapes.
-   * @returns RDFS in N-Triples format
+   * @param format RDF serialization format: `ttl` for Turtle (the default), which is prefixed and pretty-printed, or `nt` for N-Triples.
+   * @returns RDFS in the requested format
    */
-  rdfs(schema: SchemaView, onlyClassesFromRootSchema?: boolean): string;
+  rdfs(schema: SchemaView, onlyClassesFromRootSchema?: boolean, format?: string): string;
 
   /**
    * Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes unreachable elements.

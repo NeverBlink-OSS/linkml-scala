@@ -980,7 +980,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val turtle =
         RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.reference.model).generate(_))
       turtle should include(
-        "sh:ignoredProperties (rdf:type <https://neverblink.eu/linkml/tests/reference/id>)",
+        "sh:ignoredProperties ( rdf:type <https://neverblink.eu/linkml/tests/reference/id> )",
       )
     }
 
@@ -1047,6 +1047,9 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           withClue("duplicate triples in the output:") {
             sink.triples.diff(sink.triples.distinct) shouldBe empty
           }
+          // Turtle too, which has some extra edge cases around blank nodes and lists
+          val turtle = RdfUtils.toTurtle(ShaclGenerator(using entry.model).generate(_))
+          Rio.parse(StringReader(turtle), RDFFormat.TURTLE) should not be empty
         }
     }
   }
