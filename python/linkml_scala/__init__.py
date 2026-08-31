@@ -64,8 +64,8 @@ BuildInfo = dict[str, Any]
 """Build metadata, following the `build-info.yaml` LinkML model.
 
 Always has ``linkml_scala_version``, ``metamodel_version``, ``scala_version`` and ``platform``.
-Here ``platform`` is always ``"NATIVE"`` and ``abi_version`` is filled in as well. There is no
-``rdf4j_version``: the shared library leaves RDF4J out. See :func:`build_info`.
+Here ``platform`` is always ``"NATIVE"`` and ``abi_version`` is filled in as well. See
+:func:`build_info`.
 """
 
 
@@ -197,6 +197,8 @@ def load_string(
     filename cannot be matched to it and loads a second copy. Use :func:`load_path` when the root
     takes part in an import cycle.
 
+    See :func:`load_path` for the correct key format.
+
     :param schema: the schema, as YAML.
     :param imports: filename to YAML text, covering everything the schema imports.
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
@@ -221,9 +223,17 @@ def load_path(
     tracked from the start of import resolution and cyclic imports involving the root resolve back
     to it.
 
-    Keys behave like file paths: a missing ``.yaml`` extension is added, and relative imports resolve
-    against the directory of the schema that imported them. So keys are paths as seen from the root,
-    such as ``"model.yaml"`` or ``"nested/person.yaml"``.
+    Keys in the ``imports`` parameter must match the expanded form of the ``imports`` entries in the
+    schema. In particular:
+
+    * A CURIE is expanded through the schema's prefix map, so ``imports: [ex:core]`` has to be keyed
+      here by the full URI, such as ``"https://example.org/core.yaml"``.
+    * A relative import is joined to the directory of the schema that imported it, so a ``core``
+      imported by ``nested/model.yaml`` has to be keyed ``"nested/core.yaml"``. Keys are therefore
+      paths as seen from the root.
+    * ``.yaml`` is appended unless the path already ends in ``.yaml`` or ``.yml``. Therefore,
+      ``"core"`` and ``"core.yaml"`` are interchangeable, and a key that ends in
+      ``.yml`` is only found by an import that explicitly asks for ``.yml``.
 
     :param path: the root schema's key in ``imports``.
     :param imports: path to YAML text, including the root schema itself.

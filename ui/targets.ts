@@ -50,8 +50,8 @@ export type TargetResult = string | Record<string, string> | ValidationReport;
 /** Shape of the `BuildInfo` that `LinkML.buildInfo` returns, following model/build-info.yaml.
  *
  * Hand-written for the same reason as `ValidationReport`, and optional throughout for the same
- * reason too. Slots the JavaScript build never fills - `rdf4j_version`, `abi_version` - are left
- * out entirely rather than typed as always-absent.
+ * reason too. Slots the JavaScript build never fills - `abi_version` - are left out entirely
+ * rather than typed as always-absent.
  */
 export interface BuildInfo {
   linkml_scala_version?: string;
@@ -89,26 +89,43 @@ export const TARGETS: Target[] = [
   {
     id: "shacl",
     label: "SHACL",
+    // N-Triples is a subset of Turtle, so one mode highlights both formats.
     lang: "turtle",
     options: [
       { key: "open", type: "checkbox", label: "Open", title: "sh:closed false" },
       { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) => api.shacl(v, !!o.open, !!o.onlyClassesFromRootSchema),
+    call: (api, v, o) => api.shacl(v, !!o.open, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
   },
   {
     id: "rdfs",
     label: "RDFS",
     lang: "turtle",
-    options: [{ key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" }],
-    call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema),
+    options: [
+      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
+    ],
+    call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
   },
   {
-    id: "tableSchema",
-    label: "Table Schema",
+    id: "frictionless",
+    label: "Frictionless",
     lang: "json",
-    options: [{ key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" }],
-    call: (api, v, o) => api.tableSchema(v, blankToUndef(o.treeRoot)),
+    options: [
+      // Defaults to `skip`: narrower modes can leave the package empty, because a root schema may
+      // only import its classes rather than define any.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
+      {
+        key: "skipClassesWithoutIdentifier",
+        type: "checkbox",
+        label: "Identified only",
+        title: "Skip classes that have no identifier slot",
+      },
+    ],
+    call: (api, v, o) =>
+      api.frictionless(v, String(o.pruningMode), blankToUndef(o.treeRoot), !!o.skipClassesWithoutIdentifier),
   },
   {
     id: "erDiagram",

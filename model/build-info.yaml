@@ -64,13 +64,6 @@ classes:
         title: Scala.js version
         description: The version of Scala.js this distribution was compiled with. JavaScript builds only.
 
-      rdf4j_version:
-        range: string
-        title: RDF4J version
-        description: >-
-          The version of RDF4J this distribution bundles, which is what serializes RDF to formats
-          other than N-Triples. Present in the CLI and the JVM library only.
-
       abi_version:
         range: integer
         minimum_value: 1

@@ -16,8 +16,6 @@ final case class BuildInfoImpl(
     @named("metamodel_version")
     metamodelVersion: String,
     platform: Platform,
-    @named("rdf4j_version")
-    rdf4jVersion: Option[String] = None,
     runtime: Option[String] = None,
     @named("scala_js_version")
     scalaJsVersion: Option[String] = None,
@@ -70,14 +68,6 @@ abstract class BuildInfo {
     *   From schema: https://linkml.neverblink.eu/model/build-info
     */
   def platform: Platform
-
-  /** The version of RDF4J this distribution bundles, which is what serializes RDF to formats other
-    * than N-Triples. Present in the CLI and the JVM library only.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/build-info
-    */
-  def rdf4jVersion: Option[String]
 
   /** Human-readable description of the virtual machine or engine currently executing the code, for
     * example `OpenJDK 64-Bit Server VM 25.0.1` or `Node.js v24.2.0`. Useful for bug reports.

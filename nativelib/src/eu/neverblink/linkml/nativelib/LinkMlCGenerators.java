@@ -31,7 +31,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::jsonSchema);
     }
 
-    /** Generate SHACL shapes as N-Triples. Options: {@code open}, {@code onlyClassesFromRootSchema}. */
+    /** Generate SHACL shapes as RDF. Options: {@code open}, {@code onlyClassesFromRootSchema}, {@code format}. */
     @CEntryPoint(name = "linkml_shacl")
     static CCharPointer shacl(
             IsolateThread thread,
@@ -41,7 +41,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::shacl);
     }
 
-    /** Generate RDFS as N-Triples. Options: {@code onlyClassesFromRootSchema}. */
+    /** Generate RDFS as RDF. Options: {@code onlyClassesFromRootSchema}, {@code format}. */
     @CEntryPoint(name = "linkml_rdfs")
     static CCharPointer rdfs(
             IsolateThread thread,
@@ -61,14 +61,14 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::linkml);
     }
 
-    /** Generate a Frictionless Table Schema as JSON. Options: {@code treeRoot}. */
-    @CEntryPoint(name = "linkml_table_schema")
-    static CCharPointer tableSchema(
+    /** Generate a Frictionless Data Package, as a JSON object mapping filename to content. Options: {@code pruningMode}, {@code skipClassesWithoutIdentifier}. */
+    @CEntryPoint(name = "linkml_frictionless")
+    static CCharPointer frictionless(
             IsolateThread thread,
             long handle,
             @CConst CCharPointer options,
             CCharPointerPointer error) {
-        return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::tableSchema);
+        return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::frictionlessFiles);
     }
 
     /** Generate a GraphQL schema. Options: {@code pruningMode}. */
