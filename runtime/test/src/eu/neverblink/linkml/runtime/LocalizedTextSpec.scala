@@ -24,9 +24,21 @@ class LocalizedTextSpec extends AnyWordSpec, Matchers {
       val other = MultilingualText(Map("de" -> "hallo", "pl" -> "cześć"))
       one.plain shouldBe other.plain
     }
+  }
 
-    "return an empty string when there is no text at all" in {
-      MultilingualText(Map()).plain shouldBe ""
+  "inLanguage" should {
+    "return the value of a plain text" in {
+      PlainText("hello").inLanguage("en") shouldBe Some("hello")
+    }
+
+    "return the selected language text" in {
+      MultilingualText(
+        Map("pl" -> "cześć", "en" -> "hello", "de" -> "hallo"),
+      ).inLanguage("en") shouldBe Some("hello")
+    }
+
+    "return None if the language is missing from the map" in {
+      MultilingualText(Map("pl" -> "cześć", "de" -> "hallo")).inLanguage("en") shouldBe None
     }
   }
 }

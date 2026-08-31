@@ -48,7 +48,7 @@ object LinkmlYamlCodec {
     new LinkmlYamlCodec[LocalizedText] {
       override def decode(node: Node, id: Option[Any]): LocalizedText = node match {
         case scalar: Node.ScalarNode if Tag.str eq scalar.tag => new PlainText(scalar.value)
-        case mapping: Node.MappingNode =>
+        case mapping: Node.MappingNode if mapping.mappings.nonEmpty =>
           new MultilingualText(mapping.mappings.map {
             case (k: Node.ScalarNode, v: Node.ScalarNode)
                 if (Tag.str eq k.tag) && (Tag.str eq v.tag) =>
@@ -58,6 +58,8 @@ object LinkmlYamlCodec {
             case (k, _) =>
               decodeError("A langauge tag string (key of multilingual string mapping)", k)
           })
+        case mapping: Node.MappingNode =>
+          decodeError("At least one language entry in the language mapping", mapping)
         case other =>
           decodeError("Localized string (plain string or language to string mapping)", other)
       }
