@@ -83,8 +83,8 @@ object Importer {
     if (idx >= 0) base.substring(idx, idx + 1) else separator
   }
 
-  /** Normalize a schema URI: drop a trailing separator, and add the
-    * `.yaml` extension unless the URI already ends in `.yaml` or `.yml`.
+  /** Normalize a schema URI: drop a trailing separator, and add the `.yaml` extension unless the
+    * URI already ends in `.yaml` or `.yml`.
     */
   def normalizeUri(uri: String): String = {
     val trimmed =
