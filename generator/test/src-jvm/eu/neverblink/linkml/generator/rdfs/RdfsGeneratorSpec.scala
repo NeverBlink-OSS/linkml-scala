@@ -108,6 +108,64 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin
     }
 
+    "emit RDFS seeAlso for LinkML see_also, expanding CURIEs" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  schema: http://schema.org/
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    see_also:
+           |    - https://example.org/docs/some-class
+           |    - schema:Thing
+           |    slots:
+           |    - some_slot
+           |    - some_other_slot
+           |slots:
+           |  some_slot:
+           |    range: string
+           |    see_also:
+           |    - schema:name
+           |  some_other_slot:
+           |    range: SomeEnum
+           |enums:
+           |  SomeEnum:
+           |    see_also:
+           |    - schema:Enumeration
+           |    permissible_values:
+           |      SOME_VALUE:
+           |        see_also:
+           |        - https://example.org/docs/some-value
+           |      SOME_OTHER_VALUE: {}
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
+      turtle shouldBe
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/SomeClass> a rdfs:Class;
+          |  rdfs:seeAlso <https://example.org/docs/some-class>, <http://schema.org/Thing> .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/some_slot> a rdf:Property;
+          |  rdfs:seeAlso <http://schema.org/name>;
+          |  rdfs:range xsd:string .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/some_other_slot> a rdf:Property;
+          |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/SomeEnum> .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/SomeEnum> a rdfs:Class;
+          |  rdfs:seeAlso <http://schema.org/Enumeration> .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/SOME_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum>;
+          |  rdfs:seeAlso <https://example.org/docs/some-value> .
+          |
+          |<https://neverblink.eu/linkml/rdfs/test/SOME_OTHER_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> .
+          |""".stripMargin
+    }
+
     "classes with inheritance" in {
       val input =
         s"""$schemaShared
