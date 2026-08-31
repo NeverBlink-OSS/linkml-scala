@@ -78,9 +78,8 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
 
 /** A generate command producing several named files, written into a destination directory.
   *
-  * Only the Scala generator works this way - it has no single-document form to fall back on. Most
-  * generators produce one document and are a [[StreamGenerate]]. If a generator can do either it's
-  * a [[SplitGenerate]].
+  * Most generators produce one document and use [[StreamGenerate]]. If a generator can do either it
+  * should use [[SplitGenerate]].
   */
 abstract class ManyFilesGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Generate[T] {
 
