@@ -148,7 +148,7 @@ object yaml extends Module {
 
   trait YamlModule extends CommonModule {
     def mvnDeps = Seq(
-      mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.15",
+      mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.16",
     )
   }
 }

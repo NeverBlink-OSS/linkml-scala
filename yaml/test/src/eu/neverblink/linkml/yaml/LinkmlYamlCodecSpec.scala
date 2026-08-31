@@ -26,6 +26,18 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       roundTrip("123", "\"123\"\n")
       roundTrip("123.456", "\"123.456\"\n")
       roundTrip("", "\"\"\n")
+      // Handing escaped chars
+      decode[String](""""x\ny"""", "x\ny")
+      decode[String](""""x\ry"""", "x\ry")
+      decode[String](""""x\ty"""", "x\ty")
+      decode[String](""""x\\y"""", "x\\y")
+      decode[String](""""x\"y"""", "x\"y")
+      decode[String]("""'x\ny'""", "x\\ny")
+      decode[String](""""x\u0041y"""", "xAy")
+      decode[String](""""x\u263Ay"""", "x☺y")
+      decode[String]("""x\ny""", "x\\ny")
+      decode[String]("""x\ry""", "x\\ry")
+      decode[String]("""x\ty""", "x\\ty")
       // Unquoted scalars still decode as strings.
       decode[String]("true\n", "true")
       decode[String]("123\n", "123")
