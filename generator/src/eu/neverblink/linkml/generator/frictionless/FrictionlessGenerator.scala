@@ -114,7 +114,9 @@ class FrictionlessGenerator(using sv: SchemaView)
     * @return
     *   The Table Schema (Table Descriptor) for [[cv]].
     */
-  def tableSchema(cv: ClassView, resources: Map[String, String] = Map.empty): TableDescriptor = {
+  def tableSchema(cv: ClassView, resources: Map[String, String] = Map.empty)(using
+      options: FrictionlessGenerator.Options,
+  ): TableDescriptor = {
     val foreignKeys = mutable.ListBuffer.empty[ForeignKey]
 
     // TODO LNK-198: factor this out
@@ -126,8 +128,9 @@ class FrictionlessGenerator(using sv: SchemaView)
         val name = slotName(slotView)
         val base = FieldDescriptor(
           name = name,
-          title = slotView.slot.title.mapFast(_.plain),
-          description = slotView.slot.description.mapFast(_.plain),
+          title = slotView.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)),
+          description =
+            slotView.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
           constraints = new Some(new Constraints(required = new Some(slotView.slot.required))),
         )
         av match {
@@ -214,6 +217,7 @@ class FrictionlessGenerator(using sv: SchemaView)
     *   The whole package as one self-contained descriptor.
     */
   override def generate(options: Options = Options()): DataPackageDescriptor = {
+    given Options = options
     val ts = tables(options)
     val byName = resources(ts)
     descriptor(ts, t => SchemaRef.Inline(tableSchema(t.cv, byName)))
@@ -228,6 +232,7 @@ class FrictionlessGenerator(using sv: SchemaView)
     *   Pairs of (path relative to the package directory, file content).
     */
   def generateFiles(options: Options = Options()): Iterable[(String, String)] = {
+    given Options = options
     val ts = tables(options)
     val byName = resources(ts)
     val config = writerConfig(options)
@@ -286,10 +291,13 @@ object FrictionlessGenerator {
     * @param skipClassesWithoutIdentifier
     *   Whether to skip classes that have no identifier slot. Such a table gets no primary key and
     *   nothing can reference it, so it is often not useful.
+    * @param metadataLanguage
+    *   Which language to use for metadata fields (description) in the generated Table Schema.
     */
   final case class Options(
       pruningMode: PruningMode = PruningMode.skip,
       skipClassesWithoutIdentifier: Boolean = false,
+      metadataLanguage: String = "en",
   )
 
   private def schemaPath(resource: String): String = s"schemas/$resource.json"

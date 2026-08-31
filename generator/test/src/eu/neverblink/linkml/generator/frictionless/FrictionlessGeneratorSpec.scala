@@ -13,7 +13,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
   private def rootTable(sv: SchemaView, treeRoot: Option[String] = None): TableDescriptor = {
     val root = sv.treeRootWithOverride(treeRoot).get
       .getOrElse(fail("the model has no tree root"))
-    FrictionlessGenerator(using sv).tableSchema(root)
+    FrictionlessGenerator(using sv).tableSchema(root)(using FrictionlessGenerator.Options())
   }
 
   private def load(yaml: String): SchemaView =

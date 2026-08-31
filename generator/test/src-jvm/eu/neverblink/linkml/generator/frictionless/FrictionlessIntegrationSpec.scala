@@ -37,7 +37,7 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
             throw RuntimeException(s"model '${entry.name}' has no tree root"),
           )
           val json = writeToString(
-            generator.tableSchema(root),
+            generator.tableSchema(root)(using FrictionlessGenerator.Options()),
             WriterConfig.withIndentionStep(2),
           )
           val path = modelDir / (entry.name + ".json")

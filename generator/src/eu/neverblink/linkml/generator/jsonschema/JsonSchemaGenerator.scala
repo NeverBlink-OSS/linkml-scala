@@ -129,8 +129,10 @@ class JsonSchemaGenerator(using sv: SchemaView)
       }
       val sv = attribute.slotView
       slotSchema.copy(
-        title = sv.slot.title.mapFast(_.plain),
-        description = sv.slot.description.mapFast(_.plain),
+        title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+          Some(sv.slot.name),
+        ),
+        description = sv.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       )
     }
 
@@ -159,8 +161,10 @@ class JsonSchemaGenerator(using sv: SchemaView)
           properties =
             immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
-          title = cls.cls.title.mapFast(_.plain),
-          description = cls.cls.description.mapFast(_.plain),
+          title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+            Some(cls.cls.name),
+          ),
+          description = cls.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
       )
     }
@@ -215,16 +219,20 @@ class JsonSchemaGenerator(using sv: SchemaView)
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),
-          title = enum_.title.mapFast(_.plain),
-          description = enum_.description.mapFast(_.plain),
+          title = enum_.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+            Some(enum_.name),
+          ),
+          description = enum_.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
       )
     }
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
-      title = sv.root.title.mapFast(_.plain).orElse(new Some(sv.root.name)),
-      description = sv.root.description.mapFast(_.plain),
+      title = sv.root.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
+        Some(sv.root.name),
+      ),
+      description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       $defs = new Some(
         immutable.ListMap.newBuilder[String, SchemaLike].addAll(
           defs,
@@ -247,12 +255,15 @@ object JsonSchemaGenerator {
     *   provided. One of `plain`, `optional`, `list`, `compact_dict`, `simple_dict`.
     * @param indentationStep
     *   Number of spaces in pretty print indentation of the serialized JSON Schema.
+    * @param metadataLanguage
+    *   Which language to use for metadata fields (description, title) in the generated JSON Schema.
     */
   final case class Options(
       open: Boolean = false,
       treeRoot: Option[String] = None,
       treeRootInlineType: Option[String] = None,
       indentationStep: Int = 2,
+      metadataLanguage: String = "en",
   )
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.

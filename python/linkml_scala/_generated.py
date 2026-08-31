@@ -47,6 +47,7 @@ class Generators:
         tree_root: str | None = None,
         tree_root_inline_type: str | None = None,
         indentation_step: int = 2,
+        metadata_language: str = "en",
     ) -> str:
         """Generate a JSON Schema.
 
@@ -59,6 +60,8 @@ class Generators:
             `compact_dict`, `simple_dict`.
         :param indentation_step: Number of spaces in pretty print indentation of the serialized
             JSON Schema.
+        :param metadata_language: Which language to use for metadata fields (description, title)
+            in the generated JSON Schema.
         """
         return self._document(
             "linkml_json_schema",
@@ -66,6 +69,7 @@ class Generators:
             treeRoot=tree_root,
             treeRootInlineType=tree_root_inline_type,
             indentationStep=indentation_step,
+            metadataLanguage=metadata_language,
         )
 
     def shacl(
@@ -144,6 +148,7 @@ class Generators:
         pruning_mode: str = "skip",
         tree_root: str | None = None,
         skip_classes_without_identifier: bool = False,
+        metadata_language: str = "en",
     ) -> dict[str, str]:
         """Generate a Frictionless Data Package, as a filename to content mapping.
 
@@ -153,11 +158,14 @@ class Generators:
         :param skip_classes_without_identifier: Whether to skip classes that have no identifier
             slot. Such a table gets no primary key and nothing can reference it, so it is often
             not useful.
+        :param metadata_language: Which language to use for metadata fields (description) in the
+            generated Table Schema.
         """
         return self._json(
             "linkml_frictionless",
             pruningMode=_pruning(pruning_mode, tree_root),
             skipClassesWithoutIdentifier=skip_classes_without_identifier,
+            metadataLanguage=metadata_language,
         )
 
     def graphql(
@@ -165,6 +173,7 @@ class Generators:
         *,
         pruning_mode: str = "schema",
         tree_root: str | None = None,
+        metadata_language: str = "en",
     ) -> str:
         """Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries.
 
@@ -173,10 +182,13 @@ class Generators:
             linkml:types scalar definitions.
         :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
             valid with `pruning_mode="treeRoot"`.
+        :param metadata_language: Which language to use for metadata fields (description etc.)
+            in the output GraphQL.
         """
         return self._document(
             "linkml_graphql",
             pruningMode=_pruning(pruning_mode, tree_root),
+            metadataLanguage=metadata_language,
         )
 
     def er_diagram(
@@ -206,15 +218,19 @@ class Generators:
         *,
         package: str = "eu.neverblink.linkml.metamodel",
         generate_emit_prefixes: bool = True,
+        metadata_language: str = "en",
     ) -> dict[str, str]:
         """Generate Scala classes, as a filename to source mapping.
 
         :param package: Scala package to generate the classes in.
         :param generate_emit_prefixes: Whether to generate a `Prefixes` object holding the
             model's `emit_prefixes`.
+        :param metadata_language: Which language to use for metadata fields (description etc.)
+            in ScalaDocs.
         """
         return self._json(
             "linkml_scala",
             package=package,
             generateEmitPrefixes=generate_emit_prefixes,
+            metadataLanguage=metadata_language,
         )

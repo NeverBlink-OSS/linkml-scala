@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{PlainText, Reference, UriOrCurie, Uri}
+import eu.neverblink.linkml.runtime.{PlainText, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.schemaview.SchemaViewSpec.{compact, reference}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
