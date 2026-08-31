@@ -9,7 +9,7 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.util.JsonUtil
-import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
 import org.virtuslab.yaml.{Node, StringNode}
@@ -101,15 +101,13 @@ object LinkMlNativeApi {
     JsonSchemaGenerator().writeTo(out, Options.jsonSchema(optionsJson))
   }
 
-  /** SHACL as N-Triples. Turtle is not available here: it would pull in RDF4J, which the shared
-    * library deliberately leaves out.
-    */
+  /** SHACL, as N-Triples or Turtle depending on the `format` option. */
   def shacl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     ShaclGenerator().writeTo(out, Options.shacl(optionsJson))
   }
 
-  /** RDFS as N-Triples, for the same reason as [[shacl]]. */
+  /** RDFS, as N-Triples or Turtle depending on the `format` option. */
   def rdfs(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     RdfsGenerator().writeTo(out, Options.rdfs(optionsJson))
@@ -242,9 +240,11 @@ object LinkMlNativeApi {
   private def entry(name: String, value: Node): (Node, Node) = StringNode(name) -> value
 
   /** A schema importer backed by the caller-supplied filename to YAML map. */
-  private final case class ImportMap(map: Map[String, String]) extends StringImporter {
+  private final case class ImportMap(entries: Map[String, String]) extends StringImporter {
+    private val lookup = Importer.normalizedMap(entries)
+
     override def read(path: String): String =
-      map.getOrElse(path, throw BadRequest(s"could not read from the import map: $path"))
+      lookup.getOrElse(path, throw BadRequest(s"could not read from the import map: $path"))
   }
 
 }

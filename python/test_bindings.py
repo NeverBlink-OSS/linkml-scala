@@ -95,8 +95,7 @@ class BuildInfoTest(unittest.TestCase):
 
     def test_build_info_does_not_claim_components_the_library_lacks(self):
         info = linkml_scala.build_info()
-        # The shared library leaves RDF4J out, and it is not a Scala.js build.
-        self.assertNotIn("rdf4j_version", info)
+        # The shared library is not a Scala.js build.
         self.assertNotIn("scala_js_version", info)
 
 
@@ -141,6 +140,36 @@ class LoadTest(unittest.TestCase):
             generated = loaded.json_schema()
             self.assertIn("Drawing", generated)
             self.assertIn("Square", generated)
+
+    def test_load_string_finds_keys_written_without_the_yaml_extension(self):
+        # `- shapes` is looked up as "shapes.yaml", and keys get the same extension treatment, so
+        # both spellings work.
+        root = schema(
+            "root",
+            """
+            imports:
+              - linkml:types
+              - shapes
+            classes:
+              Drawing:
+                attributes:
+                  shape:
+                    range: Square
+            """,
+        )
+        shapes = schema(
+            "shapes",
+            """
+            classes:
+              Square:
+                attributes:
+                  side:
+                    range: string
+            """,
+        )
+        with linkml_scala.load_string(root, {"shapes": shapes}) as loaded:
+            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+            self.assertIn("Square", loaded.json_schema())
 
     def test_load_path_survives_an_import_cycle_through_the_root(self):
         # `load_string` would load the root a second time here, because the root it was handed has no
@@ -236,6 +265,14 @@ class GeneratorTest(unittest.TestCase):
 
     def test_shacl(self):
         generated = self.schema.shacl()
+        # Turtle by default: prefixed, with the property shapes inlined as `[ ... ]`.
+        self.assertIn("PREFIX sh: <http://www.w3.org/ns/shacl#>", generated)
+        self.assertIn("a sh:NodeShape", generated)
+        self.assertIn("sh:property [", generated)
+        self.assertIn("<https://example.org/person/Person>", generated)
+
+    def test_shacl_ntriples(self):
+        generated = self.schema.shacl(format="nt")
         self.assertIn("http://www.w3.org/ns/shacl#NodeShape", generated)
         self.assertIn("https://example.org/person/Person", generated)
         # N-Triples: one statement per line, each ending in a dot.
@@ -243,11 +280,32 @@ class GeneratorTest(unittest.TestCase):
             self.assertTrue(line.endswith("."), line)
 
     def test_shacl_open_drops_the_closed_constraint(self):
-        self.assertIn("shacl#closed", self.schema.shacl())
-        self.assertNotIn('shacl#closed> "true"', self.schema.shacl(open=True))
+        self.assertIn("sh:closed true", self.schema.shacl())
+        self.assertNotIn("sh:closed true", self.schema.shacl(open=True))
+
+    def test_options_still_apply_alongside_an_explicit_format(self):
+        self.assertIn('shacl#closed> "true"', self.schema.shacl(format="nt"))
+        self.assertNotIn('shacl#closed> "true"', self.schema.shacl(open=True, format="nt"))
 
     def test_rdfs(self):
-        self.assertIn("rdf-schema#Class", self.schema.rdfs())
+        generated = self.schema.rdfs()
+        self.assertIn("PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>", generated)
+        self.assertIn("a rdfs:Class", generated)
+
+    def test_rdfs_ntriples(self):
+        self.assertIn("rdf-schema#Class", self.schema.rdfs(format="nt"))
+
+    def test_rdf_format_aliases(self):
+        # The long spellings the CLI accepts work here too, and the default is Turtle.
+        self.assertEqual(self.schema.shacl(), self.schema.shacl(format="ttl"))
+        self.assertEqual(self.schema.shacl(format="ttl"), self.schema.shacl(format="turtle"))
+        self.assertEqual(self.schema.shacl(format="nt"), self.schema.shacl(format="ntriples"))
+
+    def test_unknown_rdf_format_is_rejected(self):
+        for generator in (self.schema.shacl, self.schema.rdfs):
+            with self.assertRaises(linkml_scala.LinkMlError) as raised:
+                generator(format="n3")
+            self.assertIn("n3", str(raised.exception))
 
     def test_linkml(self):
         # Deriving pushes inherited and referenced slots down into each class' attributes.
@@ -466,7 +524,9 @@ class RuntimeTest(unittest.TestCase):
             for index in range(count)
         )
         with linkml_scala.load_string(schema("big", f"classes:\n{classes}")) as loaded:
-            generated = loaded.shacl()
+            # N-Triples rather than the default, because one complete statement per line is what
+            # makes a truncated copy detectable at all.
+            generated = loaded.shacl(format="nt")
         self.assertGreater(len(generated), 1_000_000)
         # Every line is a complete statement, so nothing was cut short mid-copy.
         self.assertTrue(all(line.endswith(".") for line in generated.splitlines()))

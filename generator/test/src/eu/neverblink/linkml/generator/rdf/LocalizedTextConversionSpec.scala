@@ -5,11 +5,13 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
+  import LocalizedTextConversionSpec.TextOptions
+
   val s: Iri = Iri("urn:subject")
   val p: Iri = Iri("urn:property")
-  val testGenerator: RdfGenerator[LocalizedText] = new RdfGenerator[LocalizedText] {
-    override def generate(sink: RdfSink, text: LocalizedText): Unit = {
-      langStringProperty(sink, s, p, text)
+  val testGenerator: RdfGenerator[TextOptions] = new RdfGenerator[TextOptions] {
+    override def generate(sink: RdfSink, options: TextOptions): Unit = {
+      langStringProperty(sink, s, p, options.text)
     }
 
     override protected def defaultOptions: Nothing = fail()
@@ -20,7 +22,7 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
       val sink = CollectingRdfSink()
       testGenerator.generate(
         sink,
-        PlainText("hello"),
+        TextOptions(PlainText("hello")),
       )
       sink.triples shouldBe Seq(Triple(s, p, Literal("hello")))
     }
@@ -29,7 +31,7 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
       val sink = CollectingRdfSink()
       testGenerator.generate(
         sink,
-        MultilingualText(Map("en" -> "hello")),
+        TextOptions(MultilingualText(Map("en" -> "hello"))),
       )
       sink.triples shouldBe Seq(Triple(s, p, LanguageLiteral("hello", "en")))
     }
@@ -38,7 +40,7 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
       val sink = CollectingRdfSink()
       testGenerator.generate(
         sink,
-        MultilingualText(Map("en" -> "hello", "pl" -> "cześć")),
+        TextOptions(MultilingualText(Map("en" -> "hello", "pl" -> "cześć"))),
       )
       sink.triples should contain theSameElementsAs Seq(
         Triple(s, p, LanguageLiteral("hello", "en")),
@@ -46,4 +48,13 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
       )
     }
   }
+}
+
+object LocalizedTextConversionSpec {
+
+  /** The text to convert, wrapped as the options an [[RdfGenerator]] takes. */
+  private[rdf] final case class TextOptions(
+      text: LocalizedText,
+      format: RdfFormat = RdfFormat.nt,
+  ) extends RdfOptions
 }

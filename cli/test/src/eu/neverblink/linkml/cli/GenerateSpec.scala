@@ -24,9 +24,10 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     */
   private val generators: Seq[(BaseCommand[?], String, Seq[String])] = Seq(
     (JsonSchema, "json-schema", Seq("\"Root\"", "\"name\"")),
-    (Shacl, "shacl", Seq("shacl#NodeShape", "<https://neverblink.eu/test/name>")),
+    // The RDF generators default to Turtle, so their vocabularies come out prefixed.
+    (Shacl, "shacl", Seq("a sh:NodeShape", "<https://neverblink.eu/test/name>")),
     (Scala, "scala", Seq("abstract class Root", "def name: Option[String]")),
-    (Rdfs, "rdfs", Seq("rdf-schema#Class", "rdf-schema#range")),
+    (Rdfs, "rdfs", Seq("a rdfs:Class", "rdfs:range")),
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
     (Frictionless, "frictionless", Seq("\"fields\"", "\"name\": \"name\"")),
     (GraphQl, "graphql", Seq("type Root", "name: string")),

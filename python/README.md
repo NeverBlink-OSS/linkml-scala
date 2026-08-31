@@ -34,7 +34,7 @@ To work from memory instead of the file system, use `load_string()` for a single
 ```python
 schema = linkml_scala.load_path("model.yaml", {
     "model.yaml": "...",
-    "person.yaml": "...",
+    "person.yaml": "...",  # referenced via `imports: - person`
 })
 ```
 

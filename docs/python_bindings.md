@@ -58,8 +58,8 @@ not: a schema can load and still have things to say about it.
 
 ```python
 schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, indentation_step=2)
-schema.shacl(open=False, only_classes_from_root_schema=False)
-schema.rdfs(only_classes_from_root_schema=False)
+schema.shacl(open=False, only_classes_from_root_schema=False, format="ttl")
+schema.rdfs(only_classes_from_root_schema=False, format="ttl")
 schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, output_format="yaml")
 schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_identifier=False)
 schema.graphql(pruning_mode="schema", tree_root=None)
@@ -69,6 +69,9 @@ schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=Tr
 
 All arguments are keyword-only. Every one returns a string, except `scala()` and `frictionless()`,
 which return a filename-to-content dict.
+
+`shacl()` and `rdfs()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
+pretty-printed, or `"nt"` for N-Triples.
 
 **These are generated, not written.** Each method mirrors the `Options` case class of the generator it calls – `ShaclGenerator.Options` and so on – so the names, types, defaults and docstrings are whatever the Scala declares. See [`mill-build/src/PyBindingsGen.scala`](../mill-build/src/PyBindingsGen.scala).
 

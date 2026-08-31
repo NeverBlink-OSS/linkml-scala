@@ -10,8 +10,6 @@ private[schemaview] object FS extends js.Object {
 }
 
 private[schemaview] object PlatformSpecificUtils {
-  val separator: String = System.getProperty("file.separator")
-
   val cwd: String = js.Dynamic.global.process.cwd().asInstanceOf[String]
 
   def getEnv(name: String): Option[String] =

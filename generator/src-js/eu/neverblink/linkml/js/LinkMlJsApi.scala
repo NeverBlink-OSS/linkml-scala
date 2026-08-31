@@ -3,13 +3,14 @@ package eu.neverblink.linkml.js
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
-import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReportImpl}
 
@@ -38,8 +39,10 @@ final class LoadResult private[js] (
 @JSExportAll
 object LinkMlJsApi {
   private case class JsImporter(map: js.Dictionary[String]) extends StringImporter {
+    private val lookup = Importer.normalizedMap(map)
+
     override def read(path: String): String =
-      map.get(path).getOrElse(sys.error(s"Could not read from import map: $path"))
+      lookup.getOrElse(path, sys.error(s"Could not read from import map: $path"))
   }
 
   /** Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML
@@ -60,6 +63,8 @@ object LinkMlJsApi {
     * its imports (transitively) imports the main schema back by filename, that import cannot be
     * matched against the root and the main schema will be loaded a second time. Use
     * [[loadFromPath]] instead when the root schema takes part in an import cycle.
+    *
+    * See [[loadFromPath]] for the correct key format.
     *
     * @param mainSchema
     *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
@@ -91,10 +96,17 @@ object LinkMlJsApi {
     * involving the root schema: an import that (transitively) references the root back by path
     * resolves to the already-loaded root instead of loading it again.
     *
-    * Paths behave like file paths: a `.yaml` extension is appended when missing, and relative
-    * imports are resolved against the directory of their importing schema. The [[importMap]] keys
-    * must therefore be the paths as seen from the root (e.g. `"model.yaml"`,
-    * `"nested/person.yaml"`).
+    * Keys in the ``imports`` parameter must match the expanded form of the ``imports`` entries in
+    * the schema. In particular:
+    *
+    *   - A CURIE is expanded through the schema's prefix map, so ``imports: [ex:core]`` has to be
+    *     keyed here by the full URI, such as ``"https://example.org/core.yaml"``.
+    *   - A relative import is joined to the directory of the schema that imported it, so a ``core``
+    *     imported by ``nested/model.yaml`` has to be keyed ``"nested/core.yaml"``. Keys are
+    *     therefore paths as seen from the root.
+    *   - ``.yaml`` is appended unless the path already ends in ``.yaml`` or ``.yml``. Therefore,
+    *     ``"core"`` and ``"core.yaml"`` are interchangeable, and a key that ends in ``.yml`` is
+    *     only found by an import that explicitly asks for ``.yml``.
     *
     * @param path
     *   Path of the main LinkML model within the [[importMap]] (e.g. `"model.yaml"`).
@@ -166,7 +178,7 @@ object LinkMlJsApi {
       JsonSchemaGenerator.Options(open = open, treeRoot = treeRootOverride.toOption),
     )
 
-  /** Generate SHACL shapes (in N-Triples format) from a loaded LinkML schema.
+  /** Generate SHACL shapes from a loaded LinkML schema.
     *
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
@@ -177,16 +189,24 @@ object LinkMlJsApi {
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
+    * @param format
+    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     * @return
-    *   SHACL shapes in N-Triples format
+    *   SHACL shapes in the requested format
     */
   def shacl(
       schema: SchemaViewJs,
       open: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
+      format: String = "ttl",
   ): String =
     ShaclGenerator(using schema.underlying).serialize(
-      ShaclGenerator.Options(open = open, onlyClassesFromRootSchema = onlyClassesFromRootSchema),
+      ShaclGenerator.Options(
+        open = open,
+        onlyClassesFromRootSchema = onlyClassesFromRootSchema,
+        format = rdfFormat(format),
+      ),
     )
 
   /** Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
@@ -215,16 +235,30 @@ object LinkMlJsApi {
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
+    * @param format
+    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     * @return
-    *   RDFS in N-Triples format
+    *   RDFS in the requested format
     */
   def rdfs(
       schema: SchemaViewJs,
       onlyClassesFromRootSchema: Boolean = false,
+      format: String = "ttl",
   ): String =
     RdfsGenerator(using schema.underlying).serialize(
-      RdfsGenerator.Options(onlyClassesFromRootSchema = onlyClassesFromRootSchema),
+      RdfsGenerator.Options(
+        onlyClassesFromRootSchema = onlyClassesFromRootSchema,
+        format = rdfFormat(format),
+      ),
     )
+
+  /** The RDF format the caller named, as the generators spell it. */
+  private def rdfFormat(format: String): RdfFormat = format.toLowerCase match {
+    case "nt" | "ntriples" => RdfFormat.nt
+    case "ttl" | "turtle" => RdfFormat.ttl
+    case other => throw RuntimeException(s"Unknown RDF format: $other. Supported formats: nt, ttl.")
+  }
 
   /** Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes
     * unreachable elements.

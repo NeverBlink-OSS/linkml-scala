@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.rdf.{RdfGenerator, RdfUtils}
+import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -110,16 +110,15 @@ object Shacl extends StreamGenerate[ShaclOptions] {
   override protected[cli] def generate(options: ShaclOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    if !RdfOutput.write(
-        out,
-        options.format,
-        ShaclGenerator(),
-        ShaclGenerator.Options(
-          open = options.open,
-          onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
-        ),
-      )
-    then err(RdfOutput.unknownFormat(options.format))
+    ShaclGenerator().writeTo(
+      out,
+      ShaclGenerator.Options(
+        open = options.open,
+        onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
+        format =
+          RdfOutput.parse(options.format).getOrElse(err(RdfOutput.unknownFormat(options.format))),
+      ),
+    )
 }
 
 // RDFS
@@ -145,42 +144,33 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
   override protected[cli] def generate(options: RdfsOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    if !RdfOutput.write(
-        out,
-        options.format,
-        RdfsGenerator(),
-        RdfsGenerator.Options(onlyClassesFromRootSchema = options.onlyClassesFromRootSchema),
-      )
-    then err(RdfOutput.unknownFormat(options.format))
+    RdfsGenerator().writeTo(
+      out,
+      RdfsGenerator.Options(
+        onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
+        format =
+          RdfOutput.parse(options.format).getOrElse(err(RdfOutput.unknownFormat(options.format))),
+      ),
+    )
 }
 
-/** Shared RDF serialization dispatch for the SHACL and RDFS generate commands. */
+/** The `--format` flag the SHACL and RDFS generate commands share. */
 private object RdfOutput {
-  val defaultFormat: String = "nt"
+  val defaultFormat: String = "ttl"
 
   val formatHelp: String =
-    "RDF serialization format: 'nt' (N-Triples – fast, streamed, the default) or " +
-      "'ttl' (Turtle – slower, but prefixed and pretty-printed). Default: nt"
+    "RDF serialization format: 'ttl' (Turtle – prefixed and pretty-printed, the default) " +
+      "or 'nt' (N-Triples – one statement per line). Default: ttl"
+
+  /** The format named on the command line, or None if it is not one this tool writes. */
+  def parse(format: String): Option[RdfFormat] = format.toLowerCase match {
+    case "nt" | "ntriples" => Some(RdfFormat.nt)
+    case "ttl" | "turtle" => Some(RdfFormat.ttl)
+    case _ => None
+  }
 
   def unknownFormat(format: String): String =
     s"Unknown RDF format '$format'. Supported formats: nt, ttl."
-
-  /** Stream [[gen]]'s output to [[out]] in the requested format. Returns `false` if the format is
-    * not recognized, in which case nothing is written.
-    *
-    * N-Triples is the generator's own business. Turtle is not: it needs RDF4J, which only this
-    * module has, so it is layered on by handing the generator a different sink.
-    */
-  def write[O](out: OutputStream, format: String, gen: RdfGenerator[O], options: O): Boolean =
-    format.toLowerCase match {
-      case "nt" | "ntriples" =>
-        gen.writeTo(out, options)
-        true
-      case "ttl" | "turtle" =>
-        RdfUtils.streamTurtle(out, gen.generate(_, options))
-        true
-      case _ => false
-    }
 }
 
 // LinkML -> LinkML

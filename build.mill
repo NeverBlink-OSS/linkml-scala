@@ -297,6 +297,12 @@ object schemaview extends Module {
   }
 }
 
+/** A JDK 25, for the test modules that pull in RDF4J 6.x.
+  */
+object jdk25 extends JavaHomeModule {
+  override def jvmVersion = "25"
+}
+
 object generator extends Module {
   object jvm extends CommonModule, GeneratorDeps {
     override def mvnDeps = super.mvnDeps() ++ Seq(
@@ -307,12 +313,12 @@ object generator extends Module {
       build.schemaview.jvm,
     )
 
-    // Tests render generator output as Turtle (RdfUtils) and cross-validate with
-    // rdf4j-shacl, so they depend on cli and both compile and run on JDK 25.
+    // Tests parse the generated RDF back and cross-validate it with rdf4j-shacl, so they compile
+    // and run on JDK 25.
     object test extends ScalaTests, CommonTestModule {
       override def jvmVersion = "25"
 
-      override def javaHome = build.cli.jvm.javaHome
+      override def javaHome = build.jdk25.javaHome
 
       override def moduleDeps = super.moduleDeps ++ Seq(build.tests.jvm, build.cli.jvm)
 
@@ -435,19 +441,7 @@ object generator extends Module {
 }
 
 object cli extends Module {
-  object jvm extends CommonModule, NativeImage, BuildInfo {
-    // RDF4J 6.x requires JDK 25
-    override def jvmVersion = "25"
-
-    def buildInfoPackageName = "eu.neverblink.linkml.cli"
-
-    // Everything else the `version` command prints comes from
-    // `eu.neverblink.linkml.schemaview.buildinfo.BuildConstants`, which every distribution shares.
-    // RDF4J is only linked into the CLI and the JVM library, so its version is added here.
-    def buildInfoMembers = Seq(
-      BuildInfo.Value("rdf4jVersion", rdf4j),
-    )
-
+  object jvm extends CommonModule, NativeImage {
     override def mainClass = Some(nativeImageMainClass())
 
     def nativeImageMainClass = "eu.neverblink.linkml.cli.Main"
@@ -476,8 +470,6 @@ object cli extends Module {
 
     override def mvnDeps = super.mvnDeps() ++ Seq(
       mvn"com.github.alexarchambault::case-app:2.1.0",
-      mvn"org.eclipse.rdf4j:rdf4j-model:$rdf4j",
-      mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:$rdf4j",
     )
 
     override def moduleDeps = Seq(
@@ -734,11 +726,11 @@ object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule 
     build.cli.jvm,
   )
 
-  // RDF4J Rio N-Triples (cli only brings rio-turtle) and Jena ARQ/RIOT,
-  // for the N-Triples streaming-serializer benchmark.
+  // RDF4J Rio and Jena ARQ/RIOT, to compare against in the streaming-serializer benchmark.
   override def mvnDeps = super.mvnDeps() ++ Seq(
     mvn"dev.zio::zio-blocks-schema-yaml::0.0.51",
     mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:$rdf4j",
+    mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:$rdf4j",
     mvn"org.apache.jena:jena-arq:6.2.0",
   )
 
@@ -774,7 +766,6 @@ trait CommonModule
       ScalafixModule,
       ScalafmtModule,
       ScoverageModule {
-  // Non-final so JDK 25 modules (anything touching RDF4J 6.x) can bump it.
   def jvmVersion = "17"
 
   final def scoverageVersion = "2.5.2"

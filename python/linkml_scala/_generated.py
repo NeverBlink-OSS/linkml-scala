@@ -73,8 +73,9 @@ class Generators:
         *,
         open: bool = False,
         only_classes_from_root_schema: bool = False,
+        format: str = "ttl",
     ) -> str:
-        """Generate SHACL shapes, serialized as N-Triples.
+        """Generate SHACL shapes, serialized as N-Triples or Turtle.
 
         :param open: Whether the generated shapes should be open, allowing properties the schema
             does not mention (turned off by default).
@@ -82,28 +83,35 @@ class Generators:
             schema (turned off by default). This is useful if you intend to generate SHACL
             shapes for each schema file separately, and you don't need the imported classes to
             be included in the generated SHACL shapes.
+        :param format: Which RDF serialization to write: `ttl` for Turtle (the default), which
+            is prefixed and pretty-printed, or `nt` for N-Triples.
         """
         return self._document(
             "linkml_shacl",
             open=open,
             onlyClassesFromRootSchema=only_classes_from_root_schema,
+            format=format,
         )
 
     def rdfs(
         self,
         *,
         only_classes_from_root_schema: bool = False,
+        format: str = "ttl",
     ) -> str:
-        """Generate RDFS, serialized as N-Triples.
+        """Generate RDFS, serialized as N-Triples or Turtle.
 
         :param only_classes_from_root_schema: Whether to include only classes and enums from the
             root schema (turned off by default). This is useful if you intend to generate RDFS
             for each schema file separately, and you don't need the imported classes to be
             included.
+        :param format: Which RDF serialization to write: `ttl` for Turtle (the default), which
+            is prefixed and pretty-printed, or `nt` for N-Triples.
         """
         return self._document(
             "linkml_rdfs",
             onlyClassesFromRootSchema=only_classes_from_root_schema,
+            format=format,
         )
 
     def linkml(
