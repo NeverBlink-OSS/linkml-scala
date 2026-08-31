@@ -6,7 +6,6 @@ import eu.neverblink.linkml.generator.frictionless.FieldDescriptor.types
 import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.LanguageTag
 
 import scala.collection.mutable
 
