@@ -800,7 +800,7 @@ object ScalaGenerator {
       new ScalaDoc(
         metadata.description
           .flatMapFast(_.inLanguage(options.metadataLanguage))
-          .mapFast(_.capitalize)
+          .mapFast(_.plain.capitalize)
           .getOrElseFast(""),
         metadata.seeAlso.map(_.uri) ++
           metadata.aliases.reduceOption(_ + ", " + _).mapFast("Aliases: ".concat) ++

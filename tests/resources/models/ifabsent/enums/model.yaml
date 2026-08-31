@@ -9,18 +9,23 @@ classes:
     tree_root: true
     attributes:
       some_slot:
+        rank: 1
         range: SomeEnum
         ifabsent: SomeEnum(SOME_OPTION)
       some_other_slot:
+        rank: 2
         range: SomeEnum
         ifabsent: SomeEnum(SOME_OTHER_OPTION)
       yet_another_slot:
+        rank: 3
         range: SomeEnum
         ifabsent: SomeEnum(YET_ANOTHER_OPTION)
       with_spaces:
+        rank: 4
         range: SomeEnum
         ifabsent: SomeEnum(option with spaces)
       no_ifabsent:
+        rank: 5
         range: SomeEnum
 
 enums:
