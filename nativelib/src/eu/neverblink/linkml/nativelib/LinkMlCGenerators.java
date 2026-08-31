@@ -21,7 +21,7 @@ public final class LinkMlCGenerators {
 
     private LinkMlCGenerators() {}
 
-    /** Generate JSON Schema. Options: {@code open}, {@code treeRoot}, {@code treeRootInlineType}, {@code indentationStep}. */
+    /** Generate JSON Schema. Options: {@code open}, {@code treeRoot}, {@code treeRootInlineType}, {@code indentationStep}, {@code metadataLanguage}. */
     @CEntryPoint(name = "linkml_json_schema")
     static CCharPointer jsonSchema(
             IsolateThread thread,
@@ -61,7 +61,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::linkml);
     }
 
-    /** Generate a Frictionless Data Package, as a JSON object mapping filename to content. Options: {@code pruningMode}, {@code skipClassesWithoutIdentifier}. */
+    /** Generate a Frictionless Data Package, as a JSON object mapping filename to content. Options: {@code pruningMode}, {@code skipClassesWithoutIdentifier}, {@code metadataLanguage}. */
     @CEntryPoint(name = "linkml_frictionless")
     static CCharPointer frictionless(
             IsolateThread thread,
@@ -71,7 +71,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::frictionlessFiles);
     }
 
-    /** Generate a GraphQL schema. Options: {@code pruningMode}. */
+    /** Generate a GraphQL schema. Options: {@code pruningMode}, {@code metadataLanguage}. */
     @CEntryPoint(name = "linkml_graphql")
     static CCharPointer graphql(
             IsolateThread thread,
@@ -91,7 +91,7 @@ public final class LinkMlCGenerators {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::erDiagram);
     }
 
-    /** Generate Scala sources, as a JSON object mapping filename to source. Options: {@code package}, {@code generateEmitPrefixes}. */
+    /** Generate Scala sources, as a JSON object mapping filename to source. Options: {@code package}, {@code generateEmitPrefixes}, {@code metadataLanguage}. */
     @CEntryPoint(name = "linkml_scala")
     static CCharPointer scala(
             IsolateThread thread,
