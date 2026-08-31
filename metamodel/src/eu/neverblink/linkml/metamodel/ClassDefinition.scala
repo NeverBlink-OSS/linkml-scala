@@ -377,7 +377,7 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   Not to be confused with a "singular unique key", which is defined by means of the `key`
     *   slot, or with an "identifier", which is defined by means of the "identifier" slot. Compound
     *   keys, singular unique keys, and identifiers all create a unicity constraint, but singular
-    *   unique keys and identifiers have additional effects that compound keys do not have.\n
+    *   unique keys and identifiers have additional effects that compound keys do not have.
     */
   def uniqueKeys: Map[String, UniqueKeyImpl]
 
