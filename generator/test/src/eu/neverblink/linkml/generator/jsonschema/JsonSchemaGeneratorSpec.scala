@@ -566,6 +566,80 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someEnum.`enum`.get should contain(ExampleSingleValue("YET_ANOTHER_OPTION"))
     }
 
+    "emit minItems and maxItems for explicit cardinality" in {
+      given SchemaView = ModelCatalogue.cardinalityExplicit.model
+
+      val schema = JsonSchemaGenerator().generate()
+      val c = schema.$defs.get("Cardinal").asInstanceOf[Schema]
+
+      val exactlyTwo = c.properties("exactlyTwo").asInstanceOf[Schema]
+      exactlyTwo.`type` shouldBe Some(List(SchemaType.Array))
+      exactlyTwo.minItems shouldBe Some(2)
+      exactlyTwo.maxItems shouldBe Some(2)
+
+      val oneToThree = c.properties("oneToThree").asInstanceOf[Schema]
+      oneToThree.`type` shouldBe Some(List(SchemaType.Array))
+      oneToThree.minItems shouldBe Some(1)
+      oneToThree.maxItems shouldBe Some(3)
+    }
+
+    "emit minProperties and maxProperties for explicit cardinality on inlined dicts" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Root:
+           |    tree_root: true
+           |    attributes:
+           |      people:
+           |        range: Person
+           |        multivalued: true
+           |        inlined: true
+           |        minimum_cardinality: 1
+           |        maximum_cardinality: 5
+           |  Person:
+           |    attributes:
+           |      id:
+           |        identifier: true
+           |        range: string
+           |      name:
+           |        range: string
+           |      age:
+           |        range: integer
+           |""".stripMargin
+
+      given SchemaView = load(input)
+      val schema = JsonSchemaGenerator().generate()
+      val people = schema.$defs.get("Root").asInstanceOf[Schema]
+        .properties("people").asInstanceOf[Schema]
+      people.`type` shouldBe Some(List(SchemaType.Object))
+      people.minProperties shouldBe Some(1)
+      people.maxProperties shouldBe Some(5)
+    }
+
+    "ignore explicit cardinality on single-valued slots" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    attributes:
+           |      some_slot:
+           |        range: string
+           |        exact_cardinality: 3
+           |""".stripMargin
+
+      given SchemaView = load(input)
+      val schema = JsonSchemaGenerator().generate()
+      // There is no collection to size here, so the metaslots do not apply.
+      val someSlot = schema.$defs.get("SomeClass").asInstanceOf[Schema]
+        .properties("some_slot").asInstanceOf[Schema]
+      someSlot.`type` shouldBe Some(List(SchemaType.String))
+      someSlot.minItems shouldBe None
+      someSlot.maxItems shouldBe None
+      someSlot.minProperties shouldBe None
+      someSlot.maxProperties shouldBe None
+    }
+
     "look at the identifier type when generating references" in {
       given SchemaView = ModelCatalogue.referenceInteger.model
 
