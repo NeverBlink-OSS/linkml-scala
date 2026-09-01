@@ -1,0 +1,19 @@
+name: basic
+schema: conformance/basic/model.yaml
+entries:
+- action:
+    type: JsonSchemaGenerate
+  assertion:
+    type: JsonSchemaRejects
+    instance: conformance/basic/invalid/missing/data.json
+- action:
+    type: JsonSchemaGenerate
+  assertion:
+    type: JsonSchemaAccepts
+    instance: conformance/basic/valid/full/data.json
+- action:
+    type: JsonSchemaGenerate
+  assertion:
+    type: JsonPathAssertion
+    path: $defs/SomeClass/description
+    value: Some text that describes the class

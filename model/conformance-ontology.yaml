@@ -1,0 +1,143 @@
+id: https://linkml.neverblink.eu/model/conformance#
+name: conformance
+title: Schema for LinkML conformance tests
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  conformance: https://linkml.neverblink.eu/model/conformance#
+  linkml: https://w3id.org/linkml/
+
+imports:
+  - linkml:types
+
+in_language: en
+
+slots:
+  type:
+    range: string
+    designates_type: true
+  title:
+    range: string
+  description:
+    range: string
+
+classes:
+  Any:
+    class_uri: linkml:Any
+
+  # Base
+
+  Manifest:
+    tree_root: true
+    attributes:
+      name:
+        range: string
+        required: true
+      schema:
+        title: Path to the schema that is being tested
+        range: string
+        required: true
+      entries:
+        range: Test
+        multivalued: true
+    slots:
+      - title
+      - description
+
+  Test:
+    title: Superclass for all LinkML tests
+    attributes:
+      action:
+        title:
+        range: Action
+        required: true
+        inlined: true
+      assertion:
+        range: Assertion
+        required: true
+        inlined: true
+    slots:
+      - title
+      - description
+
+  Action:
+    abstract: true
+    title: Superclass for all LinkML actions
+    slots:
+      - type
+      - title
+      - description
+
+  Assertion:
+    abstract: true
+    title: Superclass for all LinkML assertions
+    slots:
+      - type
+      - title
+      - description
+
+  ExpectedFailure:
+    mixin: true
+    title: Mixin for Tests that should fail
+    attributes:
+      message_assertion:
+        range: StringAssertion
+
+
+  # ACTIONS
+
+  LoadAction:
+    is_a: Action
+
+  DeriveAction:
+    is_a: Action
+
+  LintAction:
+    is_a: Action
+
+
+  GenerateAction:
+    abstract: true
+    is_a: Action
+    title: Base action class for generating
+
+  JsonSchemaGenerate:
+    is_a: GenerateAction
+
+  # ASSERTIONS
+
+  LoadsAssertion:
+    is_a: Assertion
+    title: Schema can be loaded
+
+  StringAssertion:
+    is_a: Assertion
+    title: Assertion on the string output
+    attributes:
+      includes:
+        title: Includes substrings
+        range: string
+        multivalued: true
+
+  JsonPathAssertion:
+    is_a: Assertion
+    attributes:
+      path:
+        range: string
+        required: true
+      value:
+        range: Any
+        required: true
+
+  JsonSchemaAccepts:
+    is_a: Assertion
+    attributes:
+      instance:
+        range: string
+        required: true
+
+  JsonSchemaRejects:
+    is_a: Assertion
+    attributes:
+      instance:
+        range: string
+        required: true
