@@ -2,32 +2,32 @@ package eu.neverblink.linkml.generator.conformance
 
 // GENERATED FROM LINKML
 
-import eu.neverblink.linkml.runtime.*
-/** 
-  *
-  * @see
+/** @see
   *   From schema: https://linkml.neverblink.eu/model/conformance#
   */
-abstract class Assertion  {
-  /** 
-    *
-    * @see
+abstract class Assertion {
+
+  /** @see
     *   From schema: https://linkml.neverblink.eu/model/conformance#
     */
   def `type`: Option[String]
-  /** 
-    *
-    * @see
+
+  /** @see
     *   From schema: https://linkml.neverblink.eu/model/conformance#
     */
-  def ignore: Option[String]
+  def description: Option[String]
 
-  /** Fill in the slots that have an `equals_expression` with their computed values, and
-    * check that the values already present agree with what their expressions infer.
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/conformance#
+    */
+  def title: Option[String]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
     *
     * @throws eu.neverblink.linkml.runtime.InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression
-    *   references a slot that has no value
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
     */
   def infer(): Assertion
 }

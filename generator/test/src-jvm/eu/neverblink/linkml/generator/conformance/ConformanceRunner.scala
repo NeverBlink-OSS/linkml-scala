@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.conformance
 
 import org.scalatest.wordspec.AnyWordSpec
-import org.virtuslab.yaml.{Node, parseYaml}
+import org.virtuslab.yaml.parseYaml
 import Codec.manifestCodec
 import com.networknt.schema.{InputFormat, SchemaRegistry}
 import com.networknt.schema.dialect.Dialects
@@ -12,10 +12,11 @@ import eu.neverblink.linkml.schemaview.SchemaView
 import io.circe.ACursor
 import org.scalatest.matchers.should.Matchers
 import io.circe.parser.parse as parseJson
-import eu.neverblink.linkml.schemaview.{yaml, yamlAs}
+import eu.neverblink.linkml.schemaview.yaml
+import os.Path
 
 class ConformanceRunner extends AnyWordSpec, Matchers {
-  val resources = os.Path("/home/kacper/NeverBlink/linkml-scala/generator/test/resources")
+  val resources: Path = os.Path("/home/kacper/NeverBlink/linkml-scala/generator/test/resources")
   val mfStr: String = os.read(resources / "conformance/manifest.yaml")
   val manifest: ManifestImpl = manifestCodec.decode(
     parseYaml(mfStr).getOrElse(
@@ -29,7 +30,7 @@ class ConformanceRunner extends AnyWordSpec, Matchers {
     lazy val sv = SchemaView.loadSchemaViewFromUri(
       resources.toString + "/" + manifest.schema,
     ).getOrElse(fail("couldn't load schema"))
-    
+
     for (test <- manifest.entries) {
       s"run $test" in {
         val result = test.action match {
