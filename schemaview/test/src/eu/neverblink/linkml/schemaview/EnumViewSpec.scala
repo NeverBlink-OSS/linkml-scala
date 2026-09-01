@@ -15,8 +15,12 @@ class EnumViewSpec extends AnyWordSpec, Matchers {
     }
     "provide fallback with default prefix for missing meanings" in {
       val pv_formula_options = sv.enums("pv_formula_options")
-      pv_formula_options.toMeaning("CODE") shouldBe Uri("https://w3id.org/linkml/CODE")
-      pv_formula_options.fromMeaning(Uri("https://w3id.org/linkml/CODE")) shouldBe "CODE"
+      pv_formula_options.toMeaning("CODE") shouldBe Uri(
+        "https://w3id.org/linkml/PvFormulaOptions.CODE",
+      )
+      pv_formula_options.fromMeaning(
+        Uri("https://w3id.org/linkml/PvFormulaOptions.CODE"),
+      ) shouldBe "CODE"
     }
   }
 }

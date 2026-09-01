@@ -3,13 +3,13 @@ package eu.neverblink.linkml.generator.graphql
 import eu.neverblink
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.CharDocumentGenerator
+import eu.neverblink.linkml.generator.graphql.GraphQlGenerator.escaped
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{CharSink, Printable, PruningMode, Renames, indent}
+import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.metamodel.PermissibleValue
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
-import GraphQlGenerator.{escaped, leadingUnderscores}
 
 import scala.util.matching.Regex
 

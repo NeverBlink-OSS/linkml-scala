@@ -5,7 +5,7 @@ import eu.neverblink.linkml.runtime.{NcName, PrefixResolver, Reference, Uri}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
-import java.util
+import java.{lang, util}
 
 /** Performs validation for a [[SchemaView]], most importantly checking whether all references are
   * correct.
@@ -146,8 +146,13 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Errors for classes, types, and enums that have non-unique names
     */
-  private def nonUniqueName(name: String, usedFor: String): SchemaError =
-    new NonUniqueNameImpl(location = rootLocation, elementName = name, usedFor = usedFor)
+  private def nonUniqueName(name: String, renamed: String, usedFor: String): SchemaError =
+    new NonUniqueNameImpl(
+      location = rootLocation,
+      elementName = name,
+      transformedName = renamed,
+      usedFor = usedFor,
+    )
 
   private lazy val nonUniqueNames: Seq[SchemaError] = {
     val errors = Seq.newBuilder[SchemaError]
@@ -155,11 +160,13 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.enums.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.enums.foreach { (enumName, _) =>
-        val enumSchemaName = enumNames.put(enumName, s.name)
+        val renamed = Case.base(enumName)
+        val enumSchemaName = enumNames.put(renamed, s.name)
         if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               enumName,
+              renamed,
               s"enum from '$enumSchemaName' and '${s.name}' schemas",
             ),
           )
@@ -170,12 +177,14 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.types.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.types.foreach { (typeName, _) =>
-        val typeSchemaName = typeNames.put(typeName, s.name)
-        val enumSchemaName = enumNames.get(typeName)
+        val renamed = Case.base(typeName)
+        val typeSchemaName = typeNames.put(renamed, s.name)
+        val enumSchemaName = enumNames.get(renamed)
         if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               typeName,
+              renamed,
               if (typeSchemaName ne null) {
                 s"type from '$typeSchemaName' and '${s.name}' schemas, and enum from '$enumSchemaName' schema"
               } else {
@@ -187,6 +196,7 @@ final class SchemaValidator(using sv: SchemaView) {
           errors.addOne(
             nonUniqueName(
               typeName,
+              renamed,
               s"type from '$typeSchemaName' and '${s.name}' schemas",
             ),
           )
@@ -197,13 +207,15 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.classes.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.classes.foreach { (className, _) =>
-        val classSchemaName = classNames.put(className, s.name)
-        val typeSchemaName = typeNames.get(className)
-        val enumSchemaName = enumNames.get(className)
+        val renamed = Case.base(className)
+        val classSchemaName = classNames.put(renamed, s.name)
+        val typeSchemaName = typeNames.get(renamed)
+        val enumSchemaName = enumNames.get(renamed)
         if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
-              className, {
+              className,
+              renamed, {
                 if (typeSchemaName ne null) {
                   if (classSchemaName ne null) {
                     s"class from '${s.name}' and '$classSchemaName' schemas, enum from '$enumSchemaName' schema, and type from '$typeSchemaName' schema"
@@ -221,7 +233,8 @@ final class SchemaValidator(using sv: SchemaView) {
         } else if (typeSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
-              className, {
+              className,
+              renamed, {
                 if (classSchemaName ne null) {
                   s"class from '${s.name}' schema, class from '$classSchemaName' schema and type from '$typeSchemaName' schema"
                 } else {
@@ -234,6 +247,7 @@ final class SchemaValidator(using sv: SchemaView) {
           errors.addOne(
             nonUniqueName(
               className,
+              renamed,
               s"class from '${s.name}' and '$classSchemaName' schemas",
             ),
           )
@@ -247,11 +261,13 @@ final class SchemaValidator(using sv: SchemaView) {
       )
     sv.schemas.foreach(s =>
       s.slotDefinitions.foreach { (slotName, _) =>
-        val slotSchemaName = slotNames.put(slotName, s.name)
+        val renamed = Case.base(slotName)
+        val slotSchemaName = slotNames.put(renamed, s.name)
         if (slotSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               slotName,
+              renamed,
               s"slot from '${s.name}' and '$slotSchemaName' schemas",
             ),
           )
@@ -262,11 +278,13 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.subsets.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.subsets.foreach { (subsetName, _) =>
-        val subsetSchemaName = subsetNames.put(subsetName, s.name)
+        val renamed = Case.base(subsetName)
+        val subsetSchemaName = subsetNames.put(renamed, s.name)
         if (subsetSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               subsetName,
+              renamed,
               s"subset from '${s.name}' and '$subsetSchemaName' schemas",
             ),
           )

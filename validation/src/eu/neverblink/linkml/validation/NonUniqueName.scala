@@ -19,6 +19,8 @@ final case class NonUniqueNameImpl(
     message: Option[String] = None,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
+    @named("transformed_name")
+    transformedName: String,
     @named("used_for")
     usedFor: String,
 ) extends NonUniqueName {
@@ -28,12 +30,12 @@ final case class NonUniqueNameImpl(
       message = inferOptional(
         "message",
         message,
-        "Non-unique name '" + elementName + "' used for " + usedFor,
+        "Non-unique name '" + elementName + "' (renamed internally to '" + transformedName + "') used for " + usedFor,
       ),
     )
 }
 
-/** The same name is used by more than one element.
+/** There is a name clash after name mangling
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
@@ -56,6 +58,13 @@ abstract class NonUniqueName extends SchemaError {
     *   report wishes to include it.
     */
   def message: Option[String]
+
+  /** Formatted description of the elements that share the name.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def transformedName: String
 
   /** Formatted description of the elements that share the name.
     *

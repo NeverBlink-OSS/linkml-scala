@@ -137,7 +137,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
 
     "infer URIs" in {
       sv.classes("class1").uriStr shouldBe "https://neverblink.eu/example#Class1"
-      sv.slotDefinitions("slot1").uriStr shouldBe "https://neverblink.eu/example#slot1"
+      sv.slotDefinitions("slot1").uriStr shouldBe "https://neverblink.eu/example#slot_1"
       sv.enums("enum1").uriStr shouldBe "https://neverblink.eu/example#Enum1"
     }
 
@@ -285,7 +285,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         )
       sv.classes.size shouldBe 2
       sv.slotDefinitions.size shouldBe 4
-      sv.types.size shouldBe 21
+      sv.types.size shouldBe 22
       sv.enums.size shouldBe 2
       sv.classes("main_class").uriStr shouldBe "https://neverblink.eu/main#MainClass"
       sv.classes("imported_class").uriStr shouldBe "https://neverblink.eu/imported#ImportedClass"

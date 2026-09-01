@@ -205,16 +205,6 @@ classes:
 
   NonUniqueName:
     is_a: SchemaError
-    description: The same name is used by more than one element.
-    slots:
-      - element_name
-      - used_for
-    slot_usage:
-      message:
-        equals_expression: "Non-unique name '{element_name}' used for {used_for}"
-
-  NonUniqueInternalName:
-    is_a: SchemaError
     description: There is a name clash after name mangling
     slots:
       - element_name
@@ -227,7 +217,7 @@ classes:
         description: Formatted description of the elements that share the name.
     slot_usage:
       message:
-        equals_expression: "Element with name '{element_name}' is renamed internally to '{transformed_name}' which clashes with {used_for}"
+        equals_expression: "Non-unique name '{element_name}' (renamed internally to '{transformed_name}') used for {used_for}"
 
   NonAsciiName:
     is_a: SchemaError

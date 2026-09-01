@@ -157,11 +157,11 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val msg = validationFailure(sv)
 
       Seq(
-        """Non-unique name 'some4' used for enum from 'test' schema and type from 'test' schema
-          |Non-unique name 'some5' used for enum from 'test' schema and type from 'test' schema
-          |Non-unique name 'some1' used for class from 'test' schema and type from 'test' schema
-          |Non-unique name 'some2' used for class from 'test' schema and enum from 'test' schema
-          |Non-unique name 'some4' used for class from 'test' schema, enum from 'test' schema, and type from 'test' schema""".stripMargin,
+        """Non-unique name 'some4' (renamed internally to 'some_4') used for enum from 'test' schema and type from 'test' schema
+          |Non-unique name 'some5' (renamed internally to 'some_5') used for enum from 'test' schema and type from 'test' schema
+          |Non-unique name 'some1' (renamed internally to 'some_1') used for class from 'test' schema and type from 'test' schema
+          |Non-unique name 'some2' (renamed internally to 'some_2') used for class from 'test' schema and enum from 'test' schema
+          |Non-unique name 'some4' (renamed internally to 'some_4') used for class from 'test' schema, enum from 'test' schema, and type from 'test' schema""".stripMargin,
       ) foreach { part =>
         msg should include(part)
       }
@@ -194,11 +194,11 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val msg = validationFailure(sv)
 
       Seq(
-        """Non-unique name 'pv_formula_options' used for enum from 'test' and 'meta' schemas
-          |Non-unique name 'string' used for type from 'test' and 'types' schemas
-          |Non-unique name 'UnitOfMeasure' used for class from 'units' and 'test' schemas
-          |Non-unique name 'name' used for slot from 'meta' and 'test' schemas
-          |Non-unique name 'MinimalSubset' used for subset from 'meta' and 'test' schemas""".stripMargin,
+        """Non-unique name 'pv_formula_options' (renamed internally to 'pv_formula_options') used for enum from 'test' and 'meta' schemas
+          |Non-unique name 'string' (renamed internally to 'string') used for type from 'test' and 'types' schemas
+          |Non-unique name 'UnitOfMeasure' (renamed internally to 'unit_of_measure') used for class from 'units' and 'test' schemas
+          |Non-unique name 'name' (renamed internally to 'name') used for slot from 'meta' and 'test' schemas
+          |Non-unique name 'MinimalSubset' (renamed internally to 'minimal_subset') used for subset from 'meta' and 'test' schemas""".stripMargin,
       ) foreach { part =>
         msg should include(part)
       }
