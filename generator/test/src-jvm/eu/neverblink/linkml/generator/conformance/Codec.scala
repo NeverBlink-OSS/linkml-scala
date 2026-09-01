@@ -20,6 +20,16 @@ object Codec {
         classOf[LoadActionImpl],
         LinkmlYamlCodec.derived[LoadActionImpl],
       ),
+      TypeDesignatorEntry(
+        "DeriveAction",
+        classOf[DeriveActionImpl],
+        LinkmlYamlCodec.derived[DeriveActionImpl],
+      ),
+      TypeDesignatorEntry(
+        "LintAction",
+        classOf[LintActionImpl],
+        LinkmlYamlCodec.derived[LintActionImpl],
+      ),
     ),
   )
 

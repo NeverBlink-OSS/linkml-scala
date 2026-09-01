@@ -73,7 +73,9 @@ class ConformanceRunner extends AnyWordSpec, Matchers {
             ) should not be empty
           case _: LoadsAssertion =>
           case assertion: StringAssertion =>
-            assertion.includes.foreach { part => }
+            assertion.includes.foreach { part =>
+              result should include(part)
+            }
         }
       }
     }
