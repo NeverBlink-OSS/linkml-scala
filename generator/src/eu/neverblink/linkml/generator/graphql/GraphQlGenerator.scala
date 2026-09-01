@@ -169,7 +169,7 @@ class GraphQlGenerator(using sv: SchemaView)
 
 trait GraphQlRenames extends Renames {
 
-  private val leadingUnderscores: Regex = "^_+".r
+  val leadingUnderscores: Regex = "^_+".r
 
   /** Process the escapes and reduce the leading underscores to at most one to avoid clashes with
     * the GraphQL reserved names.
