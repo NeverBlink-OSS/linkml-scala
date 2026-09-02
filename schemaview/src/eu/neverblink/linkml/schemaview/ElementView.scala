@@ -454,6 +454,7 @@ private object SlotView:
   def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): UriOrCurie =
     slotUri.getOrElseFast {
       Uri.synthetic(
+        // TODO LNK-159: make it by spec and migrate triples instead
         context.defaultPrefixUri,
         if slotName.forall(Case.isAlphanumeric) then Case.baseToCamel(Case.base(slotName))
         else Case.base(slotName),
@@ -475,7 +476,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
     new Some(ConstructorExpression.evaluateEnum(expr, this))
 
   def uriOrCurie: UriOrCurie =
-    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
+    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.baseToPascal(canonicalName)))
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
   lazy val derivedValues: Seq[(pv: PermissibleValue, meaning: UriOrCurie)] =

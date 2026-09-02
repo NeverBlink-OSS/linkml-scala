@@ -159,10 +159,10 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |<https://neverblink.eu/linkml/rdfs/test/SomeEnum> a rdfs:Class ;
           |  rdfs:seeAlso <http://schema.org/Enumeration> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/SOME_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> ;
+          |<https://neverblink.eu/linkml/rdfs/test/SomeEnum.SOME_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> ;
           |  rdfs:seeAlso <https://example.org/docs/some-value> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/SOME_OTHER_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> .
+          |<https://neverblink.eu/linkml/rdfs/test/SomeEnum.SOME_OTHER_VALUE> a <https://neverblink.eu/linkml/rdfs/test/SomeEnum> .
           |""".stripMargin
     }
 
@@ -362,23 +362,23 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should include("""rdfs:comment "Computes the cosine."""")
       // A permissible value without a meaning falls back to defaultPrefix + text.
       turtle should include(
-        """<https://neverblink.eu/linkml/rdfs/test/noMeaning> a sd:Function""",
+        """<https://neverblink.eu/linkml/rdfs/test/Functions.noMeaning> a sd:Function""",
       )
       turtle should include("""rdfs:label "No meaning"""")
     }
 
-    "emit valid, urlencoded synthetic URIs" in {
+    "emit valid, mangled URIs" in {
       val sv = ModelCatalogue.syntheticUris.model
       val turtle = RdfUtils.toTurtle(RdfsGenerator(using sv).generate(_))
 
       Seq(
-        "%C5%81%C4%85czony%28class%29",
-        "%C5%82%C4%85czony+%3Ctyp%3E",
-        "%C5%82%C4%85czony+%5Bslot%5D",
-        "inny+%C5%82%C4%85czony+%22slot%22",
-        "%C5%81%C4%85czony%27enum%27",
-        "%C5%82%C4%85czony+%7Bvalue%7D",
-        "inny+%C5%82%C4%85czony+%5Cvalue%2F%2F",
+        "CzonyClass",
+        "czony_typ",
+        "czony_slot",
+        "inny_czony_slot",
+        "CzonyEnum",
+        "CZONY_VALUE",
+        "INNY_CZONY_VALUE",
       ).foreach { snippet =>
         turtle should include(snippet)
       }
