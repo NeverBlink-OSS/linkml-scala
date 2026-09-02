@@ -1,5 +1,5 @@
 # Auto generated from conformance-ontology.yaml by pythongen.py version: 0.0.1
-# Generation date: 2026-09-02T14:33:51
+# Generation date: 2026-09-02T14:37:55
 # Schema: conformance
 #
 # id: https://linkml.neverblink.eu/model/conformance#
@@ -92,7 +92,7 @@ class Manifest(YAMLRoot):
     name: Union[str, ManifestName] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    entries: Optional[Union[Union[str, TestName], list[Union[str, TestName]]]] = empty_list()
+    entries: Optional[Union[dict[Union[str, TestName], Union[dict, "Test"]], list[Union[dict, "Test"]]]] = empty_dict()
 
     def __post_init__(self, *_: str, **kwargs: Any):
         if self._is_empty(self.name):
@@ -106,9 +106,7 @@ class Manifest(YAMLRoot):
         if self.description is not None and not isinstance(self.description, str):
             self.description = str(self.description)
 
-        if not isinstance(self.entries, list):
-            self.entries = [self.entries] if self.entries is not None else []
-        self.entries = [v if isinstance(v, TestName) else TestName(v) for v in self.entries]
+        self._normalize_inlined_as_dict(slot_name="entries", slot_type=Test, key_name="name", keyed=True)
 
         super().__post_init__(**kwargs)
 
@@ -437,7 +435,7 @@ slots.name = Slot(uri=CONFORMANCE.name, name="name", curie=CONFORMANCE.curie('na
                    model_uri=CONFORMANCE.name, domain=None, range=URIRef)
 
 slots.manifest__entries = Slot(uri=CONFORMANCE.entries, name="manifest__entries", curie=CONFORMANCE.curie('entries'),
-                   model_uri=CONFORMANCE.manifest__entries, domain=None, range=Optional[Union[Union[str, TestName], list[Union[str, TestName]]]])
+                   model_uri=CONFORMANCE.manifest__entries, domain=None, range=Optional[Union[dict[Union[str, TestName], Union[dict, Test]], list[Union[dict, Test]]]])
 
 slots.test__action = Slot(uri=CONFORMANCE.action, name="test__action", curie=CONFORMANCE.curie('action'),
                    model_uri=CONFORMANCE.test__action, domain=None, range=Union[dict, Action])
