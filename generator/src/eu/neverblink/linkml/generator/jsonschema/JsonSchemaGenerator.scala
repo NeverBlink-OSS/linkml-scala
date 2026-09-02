@@ -4,7 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
-import eu.neverblink.linkml.metamodel.Anything
+import eu.neverblink.linkml.metamodel.{Anything, SlotDefinition}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -128,7 +128,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
           ).arrayOfIf(slotView.slot.multivalued)
       }
       val sv = attribute.slotView
-      slotSchema.copy(
+      withCardinality(slotSchema, sv.slot).copy(
         title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
           Some(sv.slot.name),
         ),
@@ -286,6 +286,21 @@ object JsonSchemaGenerator {
     case _: NcNameType.type => ncNameSchema
     case _: LocalizedTextType.type => stringSchema // TODO LNK-195
     case _: UnknownType.type => Schema.Empty
+  }
+
+  /** Apply the explicit cardinality metaslots to a slot's schema.
+    */
+  private def withCardinality(schema: Schema, slot: SlotDefinition): Schema = {
+    val min = slot.minimumCardinality.orElseFast(slot.exactCardinality)
+    val max = slot.maximumCardinality.orElseFast(slot.exactCardinality)
+    if (min.isEmpty && max.isEmpty) schema
+    else
+      schema.`type` match {
+        case Some(SchemaType.Array :: Nil) => schema.copy(minItems = min, maxItems = max)
+        case Some(SchemaType.Object :: Nil) =>
+          schema.copy(minProperties = min, maxProperties = max)
+        case _ => schema
+      }
   }
 
   type MappedClassName = String
