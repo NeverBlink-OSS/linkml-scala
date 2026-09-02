@@ -3,17 +3,13 @@ package eu.neverblink.linkml.generator.graphql
 import eu.neverblink
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.graphql.GraphQlGenerator.escaped
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
-import GraphQlGenerator.escaped
 import eu.neverblink.linkml.runtime.FastUtils.flatMapFast
-
-import scala.util.matching.Regex
 
 class GraphQlGenerator(using sv: SchemaView)
     extends CharDocumentGenerator[GraphQlGenerator.Options],
@@ -172,13 +168,13 @@ class GraphQlGenerator(using sv: SchemaView)
 }
 
 trait GraphQlRenames extends Renames {
-  override def className(el: ClassView): String = Case.baseToCamel(el.baseName, true)
+  override def className(el: ClassView): String = Case.baseToPascal(el.baseName)
 
-  override def slotName(el: SlotView): String = Case.baseToCamel(el.aliasedName, false)
+  override def slotName(el: SlotView): String = el.canonicalName
 
-  override def typeName(el: TypeView): String = Case.baseToCamel(el.baseName, true)
+  override def typeName(el: TypeView): String = Case.baseToPascal(el.baseName)
 
-  override def enumName(el: EnumView): String = Case.baseToCamel(el.baseName, true)
+  override def enumName(el: EnumView): String = Case.baseToPascal(el.baseName)
 
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
     Case.baseToScreamingSnake(Case.base(pv.text))
@@ -220,7 +216,7 @@ object GraphQlGenerator extends GraphQlRenames {
   /** Builtin remapped type or the aliased name of the type
     */
   def remappedType(tv: TypeView): String =
-    remapToBuiltin(tv).getOrElse(tv.aliasedName)
+    remapToBuiltin(tv).getOrElse(typeName(tv))
 
 }
 
@@ -309,9 +305,11 @@ case class GraphQlTypeDefinition(
               |""".stripMargin
   }
 
+  val name: String = GraphQlRenames.className(classView)
+
   override def print: String = {
     indent"""${descriptionFor(classView.cls)}
-            |type ${GraphQlRenames.className(classView)} $inheritsList $body
+            |type $name $inheritsList $body
             |""".stripMargin
   }
 
@@ -327,10 +325,11 @@ case class GraphQlEnumDefinition(
     values: Iterable[GraphQlEnumValueDefinition],
 )(using GraphQlGenerator.Options)
     extends GraphQlDefinition:
+  val name: String = GraphQlRenames.enumName(enumView)
   override def print: String = {
     val serializedValues = values.map(_.print.strip())
     indent"""${descriptionFor(enumView._enum)}
-            |enum ${GraphQlRenames.enumName(enumView)} {
+            |enum $name {
             |  ${serializedValues.mkString("\n")}
             |}
             |""".stripMargin
@@ -351,9 +350,10 @@ case class GraphQlEnumValueDefinition(
     prefixResolver: PrefixResolver,
 )(using opt: GraphQlGenerator.Options)
     extends GraphQlElement:
+  val name: String = GraphQlRenames.permissibleValueName(pv)
   override def print: String =
     indent"""${descriptionFor(pv)}
-            |${GraphQlRenames.permissibleValueName(pv)}
+            |$name
             |""".stripMargin
 
 /** Container for information needed to generate a scalar definition
@@ -391,7 +391,7 @@ case class GraphQlField(
   val slotView: SlotView = attributeView.slotView
 
   /** Aliased name to use in the range of the field */
-  val name: String = escaped(slotView.aliasedName)
+  val name: String = GraphQlRenames.slotName(attributeView.slotView)
 
   /** Whether the [[range]] should be declared non-null ("Range!") */
   val nonNull: Boolean = slotView.slot.required

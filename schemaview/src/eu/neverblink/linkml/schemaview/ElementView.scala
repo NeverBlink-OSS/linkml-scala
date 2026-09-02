@@ -378,7 +378,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   def inner: SlotDefinition = slot
 
   override def canonicalName: String = {
-    if name.forall(Case.isAlphanumeric) then Case.baseToCamel(baseName, false)
+    if name.forall(Case.isAlphanumeric) then Case.baseToCapital(baseName, false)
     else baseName
   }
 
@@ -573,9 +573,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast {
-    modelUri
-  }
+  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast(modelUri)
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using

@@ -103,7 +103,13 @@ object Case {
   def baseToScreamingSnake(input: String): String =
     input.toUpperCase()
 
-  def baseToCamel(input: String, pascal: Boolean): String = {
+  def baseToPascal(input: String): String =
+    baseToCapital(input, true)
+
+  def baseToCamel(input: String): String =
+    baseToCapital(input, false)
+
+  def baseToCapital(input: String, pascal: Boolean): String = {
     val sb = lang.StringBuilder(input.length)
     var capitalize = pascal
     for i <- 0 until input.length do {

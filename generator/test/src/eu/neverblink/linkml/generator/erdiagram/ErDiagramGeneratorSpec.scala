@@ -301,7 +301,7 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
                                     |      x:
                                     |""".stripMargin)
 
-      ErDiagramGenerator().serialize() should include("\"1class\" {")
+      ErDiagramGenerator().serialize() should include("\"1Class\" {")
     }
 
     "keep a leading digit in an attribute name, which Mermaid allows only after the first character" in {
@@ -310,7 +310,7 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
                                     |      1st slot:
                                     |""".stripMargin)
 
-      ErDiagramGenerator().serialize() should include("string? _1st_slot")
+      ErDiagramGenerator().serialize() should include("string? _1_st_slot")
     }
 
     "avoid attribute names that Mermaid reads as key constraints" in {

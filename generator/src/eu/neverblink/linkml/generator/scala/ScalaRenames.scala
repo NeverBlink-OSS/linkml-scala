@@ -12,13 +12,13 @@ trait ScalaRenames extends Renames {
   ).split(' ').toSet
 
   protected def scalaPascal(baseName: String): String = {
-    val name = Case.baseToCamel(baseName, true)
+    val name = Case.baseToCapital(baseName, true)
     if Case.isNumeric(name.head) then "_" + name
     else name
   }
 
   protected def scalaCamel(baseName: String): String = {
-    val name = Case.baseToCamel(baseName, false)
+    val name = Case.baseToCapital(baseName, false)
     if Case.isNumeric(name.head) then "_" + name
     else if scalaKeywords.contains(name) then s"`$name`"
     else name

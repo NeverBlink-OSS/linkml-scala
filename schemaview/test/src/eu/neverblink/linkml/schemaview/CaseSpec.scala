@@ -117,21 +117,21 @@ class CaseSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
     }
 
     "convert base to pascal" in {
-      Case.baseToCamel("abc_def", true) shouldBe "AbcDef"
-      Case.baseToCamel("abc", true) shouldBe "Abc"
-      Case.baseToCamel("123", true) shouldBe "123"
-      Case.baseToCamel("123_abc", true) shouldBe "123Abc"
-      Case.baseToCamel("def_123", true) shouldBe "Def123"
-      Case.baseToCamel("abc_123_def", true) shouldBe "Abc123Def"
+      Case.baseToCapital("abc_def", true) shouldBe "AbcDef"
+      Case.baseToCapital("abc", true) shouldBe "Abc"
+      Case.baseToCapital("123", true) shouldBe "123"
+      Case.baseToCapital("123_abc", true) shouldBe "123Abc"
+      Case.baseToCapital("def_123", true) shouldBe "Def123"
+      Case.baseToCapital("abc_123_def", true) shouldBe "Abc123Def"
     }
 
     "convert base to camel" in {
-      Case.baseToCamel("abc_def", false) shouldBe "abcDef"
-      Case.baseToCamel("abc", false) shouldBe "abc"
-      Case.baseToCamel("123", false) shouldBe "123"
-      Case.baseToCamel("123_abc", false) shouldBe "123Abc"
-      Case.baseToCamel("def_123", false) shouldBe "def123"
-      Case.baseToCamel("abc_123_def", false) shouldBe "abc123Def"
+      Case.baseToCapital("abc_def", false) shouldBe "abcDef"
+      Case.baseToCapital("abc", false) shouldBe "abc"
+      Case.baseToCapital("123", false) shouldBe "123"
+      Case.baseToCapital("123_abc", false) shouldBe "123Abc"
+      Case.baseToCapital("def_123", false) shouldBe "def123"
+      Case.baseToCapital("abc_123_def", false) shouldBe "abc123Def"
     }
   }
 }
