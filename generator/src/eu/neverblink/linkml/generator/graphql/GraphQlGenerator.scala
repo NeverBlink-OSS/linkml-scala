@@ -168,27 +168,22 @@ class GraphQlGenerator(using sv: SchemaView)
 }
 
 trait GraphQlRenames extends Renames {
+  override def className(el: ClassView): String = Case.baseToCamel(el.baseName, true)
 
-  val leadingUnderscores: Regex = "^_+".r
+  override def slotName(el: SlotView): String = Case.baseToCamel(el.aliasedName, false)
 
-  /** Process the escapes and reduce the leading underscores to at most one to avoid clashes with
-    * the GraphQL reserved names.
-    */
-  def escaped(text: String): String = {
-    val res = Case.escaped(text)
-    leadingUnderscores.replaceAllIn(res, "_")
-  }
+  override def typeName(el: TypeView): String = Case.baseToCamel(el.baseName, true)
 
-  override def className(cls: ClassView): String = escaped(cls.aliasedName)
+  override def enumName(el: EnumView): String = Case.baseToCamel(el.baseName, true)
 
-  override def slotName(slot: SlotView): String = escaped(slot.aliasedName)
+  override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
+    Case.baseToScreamingSnake(Case.base(pv.text))
 
-  override def typeName(tv: TypeView): String = escaped(tv.aliasedName)
-
-  override def enumName(ev: EnumView): String = escaped(ev.aliasedName)
-
-  override def permissibleValueName(ev: EnumView, pv: PermissibleValue): String = escaped(pv.text)
+  def permissibleValueName(pv: PermissibleValue): String =
+    Case.baseToScreamingSnake(Case.base(pv.text))
 }
+
+object GraphQlRenames extends GraphQlRenames
 
 object GraphQlGenerator extends GraphQlRenames {
 
@@ -265,7 +260,7 @@ case class GraphQlInterfaceDefinition(
               |""".stripMargin
   }
 
-  val name: String = nameOverride.getOrElse(escaped(classView.aliasedName))
+  val name: String = nameOverride.getOrElse(GraphQlRenames.className(classView))
 
   override def print: String =
     indent"""${wrapDescription(classView.cls.description)}
@@ -304,7 +299,7 @@ case class GraphQlTypeDefinition(
 
   override def print: String = {
     indent"""${wrapDescription(classView.cls.description)}
-            |type ${escaped(classView.aliasedName)} $inheritsList $body
+            |type ${GraphQlRenames.className(classView)} $inheritsList $body
             |""".stripMargin
   }
 
@@ -322,7 +317,7 @@ case class GraphQlEnumDefinition(
   override def print: String = {
     val serializedValues = values.map(_.print.strip())
     indent"""${wrapDescription(enumView._enum.description)}
-            |enum ${escaped(enumView.aliasedName)} {
+            |enum ${GraphQlRenames.enumName(enumView)} {
             |  ${serializedValues.mkString("\n")}
             |}
             |""".stripMargin
@@ -344,7 +339,7 @@ case class GraphQlEnumValueDefinition(
 ) extends GraphQlElement:
   override def print: String =
     indent"""${wrapDescription(pv.description)}
-            |${escaped(pv.text)}
+            |${GraphQlRenames.permissibleValueName(pv)}
             |""".stripMargin
 
 /** Container for information needed to generate a scalar definition
@@ -355,9 +350,10 @@ case class GraphQlEnumValueDefinition(
 case class GraphQlScalarDefinition(
     typeView: TypeView,
 ) extends GraphQlDefinition:
+  val name: String = GraphQlRenames.typeName(typeView)
   override def print: String = {
     indent"""${wrapDescription(typeView._type.description)}
-            |scalar ${escaped(typeView.aliasedName)}
+            |scalar $name
             |""".stripMargin
   }
 

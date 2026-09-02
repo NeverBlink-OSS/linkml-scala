@@ -4,9 +4,9 @@ import eu.neverblink.linkml.metamodel.PermissibleValue
 import eu.neverblink.linkml.schemaview.*
 
 trait Renames {
-  def className(cls: ClassView): String
-  def slotName(cls: SlotView): String
-  def typeName(cls: TypeView): String
-  def enumName(cls: EnumView): String
-  def permissibleValueName(ev: EnumView, pv: PermissibleValue): String
+  def className(el: ClassView): String
+  def slotName(el: SlotView): String
+  def typeName(el: TypeView): String
+  def enumName(el: EnumView): String
+  def permissibleValueName(el: EnumView, pv: PermissibleValue): String
 }

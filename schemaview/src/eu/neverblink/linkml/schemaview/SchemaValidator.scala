@@ -6,6 +6,7 @@ import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
 import java.{lang, util}
+import scala.util.matching.Regex
 
 /** Performs validation for a [[SchemaView]], most importantly checking whether all references are
   * correct.
@@ -421,7 +422,7 @@ final class SchemaValidator(using sv: SchemaView) {
       else
         new Some(
           new InvalidUriOrCurieImpl(
-            location = IssueLocationImpl(schemaId = new Some(elem.definingSchema.id)),
+            location = elementLocation(elem),
             uriOrCurie = elem.uriOrCurie,
             elementType = elem.elementType,
             elementName = elem.inner.name,
@@ -430,11 +431,39 @@ final class SchemaValidator(using sv: SchemaView) {
     }.toSeq
   }
 
-  private lazy val nameChecks: Seq[SchemaIssue] = {
+  private val repeatedSeparatorRegex: Regex = "[^A-Za-z0-9]{2,}".r.unanchored
+
+  locally {
     val builder = Seq.newBuilder[SchemaIssue]
     sv.elements.values.foreach { el =>
-      if el.name.nonEmpty then {
-        lazy val location = elementLocation(el)
+      lazy val location = elementLocation(el)
+
+      if el.name.isEmpty then
+        builder.addOne(
+          EmptyNameImpl(elementName = el.name, transformedName = el.name, location = location),
+        )
+      else {
+        // chain of complaining: complain about non-ASCII first, then about empty transformed name, then about non-standard separators
+        if el.name.exists(!Case.isAllowedAscii(_)) then
+          builder.addOne(
+            NonAsciiNameImpl(
+              elementName = el.name,
+              location = location,
+            ),
+          )
+        else if el.baseName.isEmpty then
+          builder.addOne(
+            EmptyNameImpl(elementName = el.name, transformedName = el.baseName, location = location),
+          )
+        else if el.name.exists(!Case.isStandard(_)) then
+          builder.addOne(
+            NonStandardSeparatorImpl(
+              elementName = el.name,
+              location = location,
+              separators = el.name.collect { case c if !Case.isStandard(c) => c.toString },
+            ),
+          )
+
         if !Case.isAlphanumeric(el.name.head) || !Case.isAlphanumeric(el.name.last) then
           builder.addOne(
             FlankingSeparatorImpl(
@@ -442,16 +471,10 @@ final class SchemaValidator(using sv: SchemaView) {
               location = location,
             ),
           )
-        if el.name.exists(!Case.(_)) then
+
+        if repeatedSeparatorRegex.matches(el.name) then
           builder.addOne(
-            NonAsciiNameImpl(
-              elementName = el.name,
-              location = location,
-            ),
-          )
-        if el.name.exists(!Case.isAllowedAscii(_)) then
-          builder.addOne(
-            NonAsciiNameImpl(
+            RepeatedSeparatorImpl(
               elementName = el.name,
               location = location,
             ),

@@ -36,6 +36,12 @@ slots:
     title: used for
     description: Formatted description of the elements that share the name.
 
+  transformed_name:
+    range: string
+    required: true
+    title: used for
+    description: Formatted description of the elements that share the name.
+
 classes:
   # ---- Fatal ------------------------------------------------------------------------------------
 
@@ -208,13 +214,8 @@ classes:
     description: There is a name clash after name mangling
     slots:
       - element_name
+      - transformed_name
       - used_for
-    attributes:
-      transformed_name:
-        range: string
-        required: true
-        title: used for
-        description: Formatted description of the elements that share the name.
     slot_usage:
       message:
         equals_expression: "Non-unique name '{element_name}' (renamed internally to '{transformed_name}') used for {used_for}"
@@ -227,6 +228,16 @@ classes:
     slot_usage:
       message:
         equals_expression: "Element '{element_name}' uses non-ASCII characters in its name"
+
+  EmptyName:
+    is_a: SchemaError
+    description: An element has an empty name after renaming
+    slots:
+      - element_name
+      - transformed_name
+    slot_usage:
+      message:
+        equals_expression: "Element '{element_name}' has an empty name after internal renaming: '{transformed_name}'"
 
   UndefinedPrefix:
     is_a: SchemaError

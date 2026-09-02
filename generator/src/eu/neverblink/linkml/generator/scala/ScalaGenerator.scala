@@ -9,7 +9,7 @@ import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
 import java.lang
 
-final class ScalaGenerator(using sv: SchemaView) {
+final class ScalaGenerator(using sv: SchemaView) extends ScalaRenames {
   import ScalaGenerator.*
   import CombineFunction.*
 
@@ -44,24 +44,26 @@ final class ScalaGenerator(using sv: SchemaView) {
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
       val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
-      val className = Case.PascalCase(cls.name)
+      val name = className(classView)
       val interfaceFields =
-        (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(slotName).toSet
+        (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(name =>
+          scalaCamel(Case.base(name)),
+        ).toSet
       val prefixResolver = classView.definingPrefixResolver
-      className.concat(".scala") -> (
+      name.concat(".scala") -> (
         if classView.isAny then
           typeDef(
             pkg,
-            Case.PascalCase(cls.name),
+            name,
             "LinkmlAny",
             ScalaDoc(cls, classView.definingSchema.id)(using prefixResolver),
           )
         else
           ScalaClassInfo(
-            className,
+            name,
             pkg,
             scalaFields.sortBy(x => (x.order, x.name)),
-            (cls.isA ++ cls.mixins).map(ref => Case.PascalCase(ref.value)).toSeq,
+            (cls.isA ++ cls.mixins).map(ref => scalaPascal(ref.value)).toSeq,
             interfaceFields,
             cls.`abstract` || cls.mixin,
             shouldBeTrait,
@@ -85,18 +87,18 @@ final class ScalaGenerator(using sv: SchemaView) {
       if (en.permissibleValues.isEmpty) None
       else {
         val prefixResolver = ev.definingPrefixResolver
-        val enumName = Case.PascalCase(en.name)
+        val name = enumName(ev)
         val enumCases = en.permissibleValues.values.map(v =>
           ScalaEnumCase(
             caseName = v.text,
-            objectName = Case.PascalCase(v.text),
-            enumName = enumName,
+            objectName = permissibleValueName(ev, v),
+            enumName = name,
             doc = ScalaDoc(v, ev.definingSchema.id)(using prefixResolver),
           ),
         ).toSeq
         val enumInfo =
           ScalaEnumInfo(
-            enumName,
+            name,
             pkg,
             enumCases,
             !en.`abstract`,
@@ -104,7 +106,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             ScalaDoc(en, ev.definingSchema.id)(using prefixResolver),
           )
             .generate()
-        Some(enumName.concat(".scala") -> enumInfo)
+        Some(name.concat(".scala") -> enumInfo)
       }
     }
 
@@ -136,7 +138,7 @@ final class ScalaGenerator(using sv: SchemaView) {
   private def generateTypeDefinitions(pkg: String): Iterable[(String, String)] = {
     sv.types.values.collect {
       case tv if !tv.isPrimitive =>
-        val name = Case.PascalCase(tv._type.name)
+        val name = typeName(tv)
         val prefixResolver = tv.definingPrefixResolver
         s"$name.scala" -> typeDef(
           pkg,
@@ -167,23 +169,6 @@ final class ScalaGenerator(using sv: SchemaView) {
        |type $typeName = $typeRange
        |""".stripMargin
   }
-
-  /** Translate a `snake_case` slot name into a Scala `lowerCamelCase` name and quote Scala keywords
-    * in backticks.
-    * @param snakeCase
-    *   name of a slot in `snake_case`
-    */
-  private def slotName(snakeCase: String): String = {
-    val camel = Case.camelCase(snakeCase)
-    if (scalaKeywords.contains(camel)) s"`$camel`"
-    else camel
-  }
-
-  private val scalaKeywords: Set[String] = (
-    "abstract case catch class def do else extends final finally for " +
-      "forSome if implicit import lazy match new object override package protected return sealed super " +
-      "this throw trait try type val var while with yield inline derives end extension using as"
-  ).split(' ').toSet
 
   def typeToRuntime(tv: TypeView): String = tv.runtimeType match {
     case StringType => "String"
@@ -220,29 +205,28 @@ final class ScalaGenerator(using sv: SchemaView) {
       // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
       // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
       // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
-      case AnyView(slotView, _) =>
-        (Case.PascalCase(slotView.derivedRange.resolve.get.name), None)
+      case AnyView(slotView, classView) =>
+        (className(classView), None)
       case ClassInlineAttributeView(_, _, classView, _) =>
         // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
         // one has to be typed as the interface instead.
-        val className = Case.PascalCase(classView.cls.name)
+        val name = className(classView)
         val hasImpl = !classView.cls.`abstract` && !classView.cls.mixin
-        (if hasImpl then s"${className}Impl" else className, None)
+        (if hasImpl then s"${name}Impl" else name, None)
       case ClassReferenceAttributeView(_, _, classView, _) =>
-        (s"Reference[${Case.PascalCase(classView.cls.name)}]", None)
+        val name = className(classView)
+        (s"Reference[$name]", None)
       case TypeAttributeView(_, _, typeView) =>
         if typeView.isPrimitive then (typeToRuntime(typeView), None)
-        else (Case.PascalCase(typeView._type.name), None)
-      // True enum support would require working around the dynamic "enums" of LinkML, which I'm sure
-      // were a really convenient idea for the biologists, but it adds a lot of complexity for us
+        else (typeName(typeView), None)
       case EnumAttributeView(slotView, _, enumView) =>
         val enumDef = enumView._enum
         if (enumDef.permissibleValues.isEmpty)
           ("String", None) // fallback to String for dynamic enums
         else {
-          val enumName = Case.PascalCase(enumDef.name)
+          val name = enumName(enumView)
           val default: Option[PermissibleValue] = slotView.ifAbsent(enumView)
-          (enumName, default.map(p => s"$enumName.${Case.PascalCase(p.text)}"))
+          (name, default.map(p => s"$name.${permissibleValueName(enumView, p)}"))
         }
     }
   }
@@ -406,7 +390,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       .filter(isSingleValuedString)
       .flatMap(attribute => attribute.equalsExpression.map(attribute -> _))
       .map { (attribute, parsed) =>
-        val slot = attribute.slotView.slot
+        val slot = attribute.slotView
         val expression = parsed match {
           case Parsed.Success(value, _) => value
           case f: Parsed.Failure =>
@@ -416,7 +400,7 @@ final class ScalaGenerator(using sv: SchemaView) {
             )
         }
         InferredField(
-          slotName(slot.name),
+          slotName(slot),
           slot.name,
           isOptionField(attribute),
           renderExpression(classView, attribute, expression),
@@ -459,7 +443,7 @@ final class ScalaGenerator(using sv: SchemaView) {
       val name = attribute.slotView.slot.name
       val qualified = if prefix.isEmpty then name else s"$prefix.$name"
       val field =
-        if expression.isEmpty then slotName(name) else s"$expression.${slotName(name)}"
+        if expression.isEmpty then scalaCamel(name) else s"$expression.${scalaCamel(name)}"
       val unwrapped =
         if isOptionField(attribute) then s"""inferenceInput("$qualified", $field)"""
         else field
@@ -494,9 +478,9 @@ final class ScalaGenerator(using sv: SchemaView) {
       collectionForm: CollectionForm,
       owner: ClassView,
   ): ScalaField = {
-    val v = attribute.slotView
-    val slot = v.slot
-    val name = slotName(slot.name)
+    val view = attribute.slotView
+    val slot = view.slot
+    val name = slotName(view)
     // Move id / value to the front, regardless of rank
     val (thisAnnotation, order) = collectionForm match {
       case CollectionForm.SimpleDict(key, value) if slot.name == key => (Some("@id"), -2)
@@ -505,9 +489,8 @@ final class ScalaGenerator(using sv: SchemaView) {
       case _ => (None, slot.rank.getOrElse(10_000))
     }
     val aliasAnnotation =
-      slot.alias
-        .orElse(if slot.name != name then Some(slot.name) else None)
-        .map(s => s"@named(\"${Case.escaped(s)}\")")
+      if view.aliasedName != name then Some(s"@named(${scalaStringLiteral(view.aliasedName)})")
+      else None
     val typedDefault = {
       val fromRange = makeTypedDefault(attribute)
       if slot.designatesType then designatorDefault(attribute, owner, fromRange) else fromRange
@@ -517,10 +500,10 @@ final class ScalaGenerator(using sv: SchemaView) {
       typedDefault.typeName,
       typedDefault.default,
       Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
-      remapMetamodelCombineFunctions(v, typedDefault.combineFunc),
+      remapMetamodelCombineFunctions(view, typedDefault.combineFunc),
       order,
       slot.inherited,
-      ScalaDoc(slot, v.definingSchema.id)(using v.definingPrefixResolver),
+      ScalaDoc(slot, view.definingSchema.id)(using view.definingPrefixResolver),
     )
   }
 }
