@@ -453,11 +453,12 @@ private object SlotView:
   // Exposed for slot derivation in ClassView.
   def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): UriOrCurie =
     slotUri.getOrElseFast {
-      modelUri(context.defaultPrefixUri, Case.base(slotName))
+      Uri.synthetic(
+        context.defaultPrefixUri,
+        if slotName.forall(Case.isAlphanumeric) then Case.baseToCamel(Case.base(slotName))
+        else Case.base(slotName),
+      )
     }
-
-  def modelUri(defaultPrefixUri: String, baseName: String): Uri =
-    Uri.synthetic(defaultPrefixUri, baseName)
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,

@@ -23,6 +23,7 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
             processSkip(entry, valid)
             val res =
               validator.validate(valid.turtle.get + valid.context.getOrElse(""), RDFFormat.TURTLE)
+            println(ttl)
             withClue(res.getValidationResult) {
               res.conforms() shouldBe true
             }
