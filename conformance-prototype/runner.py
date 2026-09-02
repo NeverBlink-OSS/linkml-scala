@@ -25,12 +25,13 @@ from linkml.linter.linter import Linter
 from linkml_runtime import SchemaView
 from linkml_runtime.loaders import yaml_loader
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str())
+
+repo_root = Path(__file__).parent.parent
 
 import generated as conformance  # noqa: E402
 
-# Hard-coded for now, like the Scala runner.
-RESOURCES = Path("/home/kacper/NeverBlink/linkml-scala/generator/test/resources")
+RESOURCES = Path(f"{repo_root}/generator/test/resources")
 MANIFEST = RESOURCES / "conformance" / "manifest.yaml"
 
 
