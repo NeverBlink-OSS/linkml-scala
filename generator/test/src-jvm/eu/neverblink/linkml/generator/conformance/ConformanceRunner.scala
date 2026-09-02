@@ -20,9 +20,9 @@ class ConformanceRunner extends AnyWordSpec, Matchers {
     .map(os.Path(_)).filter(os.exists)
     .getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
 
-  val resources: Path = repoRoot / "generator/test/resources"
-  val mfStr: String = os.read(resources / "conformance/manifest.yaml")
-  val manifest: ManifestImpl = manifestCodec.decode(
+  lazy val resources: Path = repoRoot / "generator/test/resources"
+  lazy val mfStr: String = os.read(resources / "conformance/manifest.yaml")
+  lazy val manifest: ManifestImpl = manifestCodec.decode(
     parseYaml(mfStr).getOrElse(
       throw RuntimeException("invalid yaml in manifest"),
     ),
@@ -49,7 +49,6 @@ class ConformanceRunner extends AnyWordSpec, Matchers {
           case _: LoadAction =>
             sv should not be null
             ""
-          case _ => ???
         }
 
         test.assertion match {
