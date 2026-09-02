@@ -512,7 +512,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   def inner: TypeDefinition = _type
 
-  def canonicalName: String = Case.PascalCase(baseName)
+  def canonicalName: String = baseName
 
   override def aliasedName: String = canonicalName
 
@@ -574,7 +574,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   def coreType: CoreType = runtimeType.repr
 
   def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast {
-    Uri.synthetic(defaultPrefixUri, _type.name)
+    modelUri
   }
 }
 

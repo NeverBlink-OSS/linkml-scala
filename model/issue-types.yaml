@@ -332,11 +332,11 @@ classes:
       message:
         equals_expression: "Element '{element_name}' name contains repeated separators, they will be reduced to a single underscore."
 
-  LeadingSeparator:
+  FlankingSeparator:
     is_a: SchemaWarning
-    description: An element starts with a word separator. This is reserved and may become an error in the future.
+    description: An element starts or ends with a word separator. This is reserved and may become an error in the future.
     slots:
       - element_name
     slot_usage:
       message:
-        equals_expression: "Element '{element_name}' name starts with a separator, it will be stripped. Leading separators are reserved."
+        equals_expression: "Element '{element_name}' name starts or ends with a separator. These separators will be stripped, as they are reserved for linkml use"

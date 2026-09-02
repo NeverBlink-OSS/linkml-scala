@@ -2,8 +2,9 @@ package eu.neverblink.linkml.schemaview
 
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class CaseSpec extends AnyWordSpec, Matchers {
+class CaseSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
   "Case" should {
     "snake_case" in {
       Case.snake_case("") shouldBe ""
@@ -68,7 +69,7 @@ class CaseSpec extends AnyWordSpec, Matchers {
       Case.camelCase("HTTP") shouldBe "http"
     }
 
-    "internal" in {
+    "convert to base" in {
       Case.base("") shouldBe ""
       Case.base("abc") shouldBe "abc"
       Case.base("abc_def") shouldBe "abc_def"
@@ -115,13 +116,22 @@ class CaseSpec extends AnyWordSpec, Matchers {
       Case.base("żółć") shouldBe ""
     }
 
-    "base2camel" in {
+    "convert base to pascal" in {
       Case.baseToCamel("abc_def", true) shouldBe "AbcDef"
       Case.baseToCamel("abc", true) shouldBe "Abc"
       Case.baseToCamel("123", true) shouldBe "123"
       Case.baseToCamel("123_abc", true) shouldBe "123Abc"
       Case.baseToCamel("def_123", true) shouldBe "Def123"
       Case.baseToCamel("abc_123_def", true) shouldBe "Abc123Def"
+    }
+
+    "convert base to camel" in {
+      Case.baseToCamel("abc_def", false) shouldBe "abcDef"
+      Case.baseToCamel("abc", false) shouldBe "abc"
+      Case.baseToCamel("123", false) shouldBe "123"
+      Case.baseToCamel("123_abc", false) shouldBe "123Abc"
+      Case.baseToCamel("def_123", false) shouldBe "def123"
+      Case.baseToCamel("abc_123_def", false) shouldBe "abc123Def"
     }
   }
 }
