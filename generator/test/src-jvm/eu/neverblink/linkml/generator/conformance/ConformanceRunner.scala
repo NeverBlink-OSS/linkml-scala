@@ -26,16 +26,18 @@ class ConformanceRunner extends AnyWordSpec, Matchers {
 
   val sr: SchemaRegistry = SchemaRegistry.withDialect(Dialects.getDraft202012)
 
-  "test mf" should {
-    lazy val sv = SchemaView.loadSchemaViewFromUri(
-      resources.toString + "/" + manifest.schema,
-    ).getOrElse(fail("couldn't load schema"))
+  s"test ${manifest.name}" should {
+    for (test <- manifest.entries.values) {
+      s"run ${test.name}" in {
+        lazy val sv = SchemaView.loadSchemaViewFromUri(
+          resources.toString + "/" + test.schema,
+        ).getOrElse(fail("couldn't load schema"))
 
-    for (test <- manifest.entries) {
-      s"run $test" in {
         val result = test.action match {
           case _: DeriveAction =>
-            LinkMlGenerator(using sv).serialize()
+            LinkMlGenerator(using sv).serialize(
+              LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.json),
+            )
           case _: JsonSchemaGenerate =>
             JsonSchemaGenerator(using sv).serialize()
           case _: LintAction =>

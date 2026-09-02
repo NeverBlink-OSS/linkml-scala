@@ -19,6 +19,10 @@ slots:
     range: string
   description:
     range: string
+  name:
+    key: true
+    range: string
+    required: true
 
 classes:
   Any:
@@ -29,17 +33,11 @@ classes:
   Manifest:
     tree_root: true
     attributes:
-      name:
-        range: string
-        required: true
-      schema:
-        title: Path to the schema that is being tested
-        range: string
-        required: true
       entries:
         range: Test
         multivalued: true
     slots:
+      - name
       - title
       - description
 
@@ -55,7 +53,12 @@ classes:
         range: Assertion
         required: true
         inlined: true
+      schema:
+        title: Path to the schema that is being tested
+        range: string
+        required: true
     slots:
+      - name
       - title
       - description
 
@@ -75,14 +78,6 @@ classes:
       - title
       - description
 
-  ExpectedFailure:
-    mixin: true
-    title: Mixin for Tests that should fail
-    attributes:
-      message_assertion:
-        range: StringAssertion
-
-
   # ACTIONS
 
   LoadAction:
@@ -93,7 +88,6 @@ classes:
 
   LintAction:
     is_a: Action
-
 
   GenerateAction:
     abstract: true

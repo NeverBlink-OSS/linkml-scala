@@ -1,5 +1,5 @@
 # Auto generated from conformance-ontology.yaml by pythongen.py version: 0.0.1
-# Generation date: 2026-09-01T08:06:07
+# Generation date: 2026-09-02T14:33:51
 # Schema: conformance
 #
 # id: https://linkml.neverblink.eu/model/conformance#
@@ -70,7 +70,12 @@ DEFAULT_ = CONFORMANCE
 # Types
 
 # Class references
+class ManifestName(extended_str):
+    pass
 
+
+class TestName(extended_str):
+    pass
 
 
 Any = Any
@@ -84,22 +89,16 @@ class Manifest(YAMLRoot):
     class_name: ClassVar[str] = "Manifest"
     class_model_uri: ClassVar[URIRef] = CONFORMANCE.Manifest
 
-    name: str = None
-    schema: str = None
+    name: Union[str, ManifestName] = None
     title: Optional[str] = None
     description: Optional[str] = None
-    entries: Optional[Union[Union[dict, "Test"], list[Union[dict, "Test"]]]] = empty_list()
+    entries: Optional[Union[Union[str, TestName], list[Union[str, TestName]]]] = empty_list()
 
     def __post_init__(self, *_: str, **kwargs: Any):
         if self._is_empty(self.name):
             self.MissingRequiredField("name")
-        if not isinstance(self.name, str):
-            self.name = str(self.name)
-
-        if self._is_empty(self.schema):
-            self.MissingRequiredField("schema")
-        if not isinstance(self.schema, str):
-            self.schema = str(self.schema)
+        if not isinstance(self.name, ManifestName):
+            self.name = ManifestName(self.name)
 
         if self.title is not None and not isinstance(self.title, str):
             self.title = str(self.title)
@@ -109,7 +108,7 @@ class Manifest(YAMLRoot):
 
         if not isinstance(self.entries, list):
             self.entries = [self.entries] if self.entries is not None else []
-        self.entries = [v if isinstance(v, Test) else Test(**as_dict(v)) for v in self.entries]
+        self.entries = [v if isinstance(v, TestName) else TestName(v) for v in self.entries]
 
         super().__post_init__(**kwargs)
 
@@ -123,12 +122,19 @@ class Test(YAMLRoot):
     class_name: ClassVar[str] = "Test"
     class_model_uri: ClassVar[URIRef] = CONFORMANCE.Test
 
+    name: Union[str, TestName] = None
     action: Union[dict, "Action"] = None
     assertion: Union[dict, "Assertion"] = None
+    schema: str = None
     title: Optional[str] = None
     description: Optional[str] = None
 
     def __post_init__(self, *_: str, **kwargs: Any):
+        if self._is_empty(self.name):
+            self.MissingRequiredField("name")
+        if not isinstance(self.name, TestName):
+            self.name = TestName(self.name)
+
         if self._is_empty(self.action):
             self.MissingRequiredField("action")
         if not isinstance(self.action, Action):
@@ -138,6 +144,11 @@ class Test(YAMLRoot):
             self.MissingRequiredField("assertion")
         if not isinstance(self.assertion, Assertion):
             self.assertion = Assertion(**as_dict(self.assertion))
+
+        if self._is_empty(self.schema):
+            self.MissingRequiredField("schema")
+        if not isinstance(self.schema, str):
+            self.schema = str(self.schema)
 
         if self.title is not None and not isinstance(self.title, str):
             self.title = str(self.title)
@@ -230,24 +241,6 @@ class Assertion(YAMLRoot):
                                  f"has no subclass with ['class_name']='{kwargs[type_designator]}'")
             return super().__new__(target_cls,*args,**kwargs)
 
-
-
-@dataclass(repr=False)
-class ExpectedFailure(YAMLRoot):
-    _inherited_slots: ClassVar[list[str]] = []
-
-    class_class_uri: ClassVar[URIRef] = CONFORMANCE["ExpectedFailure"]
-    class_class_curie: ClassVar[str] = "conformance:ExpectedFailure"
-    class_name: ClassVar[str] = "ExpectedFailure"
-    class_model_uri: ClassVar[URIRef] = CONFORMANCE.ExpectedFailure
-
-    message_assertion: Optional[Union[dict, "StringAssertion"]] = None
-
-    def __post_init__(self, *_: str, **kwargs: Any):
-        if self.message_assertion is not None and not isinstance(self.message_assertion, StringAssertion):
-            self.message_assertion = StringAssertion(**as_dict(self.message_assertion))
-
-        super().__post_init__(**kwargs)
 
 
 class LoadAction(Action):
@@ -440,14 +433,11 @@ slots.title = Slot(uri=CONFORMANCE.title, name="title", curie=CONFORMANCE.curie(
 slots.description = Slot(uri=CONFORMANCE.description, name="description", curie=CONFORMANCE.curie('description'),
                    model_uri=CONFORMANCE.description, domain=None, range=Optional[str])
 
-slots.manifest__name = Slot(uri=CONFORMANCE.name, name="manifest__name", curie=CONFORMANCE.curie('name'),
-                   model_uri=CONFORMANCE.manifest__name, domain=None, range=str)
-
-slots.manifest__schema = Slot(uri=CONFORMANCE.schema, name="manifest__schema", curie=CONFORMANCE.curie('schema'),
-                   model_uri=CONFORMANCE.manifest__schema, domain=None, range=str)
+slots.name = Slot(uri=CONFORMANCE.name, name="name", curie=CONFORMANCE.curie('name'),
+                   model_uri=CONFORMANCE.name, domain=None, range=URIRef)
 
 slots.manifest__entries = Slot(uri=CONFORMANCE.entries, name="manifest__entries", curie=CONFORMANCE.curie('entries'),
-                   model_uri=CONFORMANCE.manifest__entries, domain=None, range=Optional[Union[Union[dict, Test], list[Union[dict, Test]]]])
+                   model_uri=CONFORMANCE.manifest__entries, domain=None, range=Optional[Union[Union[str, TestName], list[Union[str, TestName]]]])
 
 slots.test__action = Slot(uri=CONFORMANCE.action, name="test__action", curie=CONFORMANCE.curie('action'),
                    model_uri=CONFORMANCE.test__action, domain=None, range=Union[dict, Action])
@@ -455,8 +445,8 @@ slots.test__action = Slot(uri=CONFORMANCE.action, name="test__action", curie=CON
 slots.test__assertion = Slot(uri=CONFORMANCE.assertion, name="test__assertion", curie=CONFORMANCE.curie('assertion'),
                    model_uri=CONFORMANCE.test__assertion, domain=None, range=Union[dict, Assertion])
 
-slots.expectedFailure__message_assertion = Slot(uri=CONFORMANCE.message_assertion, name="expectedFailure__message_assertion", curie=CONFORMANCE.curie('message_assertion'),
-                   model_uri=CONFORMANCE.expectedFailure__message_assertion, domain=None, range=Optional[Union[dict, StringAssertion]])
+slots.test__schema = Slot(uri=CONFORMANCE.schema, name="test__schema", curie=CONFORMANCE.curie('schema'),
+                   model_uri=CONFORMANCE.test__schema, domain=None, range=str)
 
 slots.stringAssertion__includes = Slot(uri=CONFORMANCE.includes, name="stringAssertion__includes", curie=CONFORMANCE.curie('includes'),
                    model_uri=CONFORMANCE.stringAssertion__includes, domain=None, range=Optional[Union[str, list[str]]])

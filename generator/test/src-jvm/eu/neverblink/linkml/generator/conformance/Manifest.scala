@@ -2,15 +2,18 @@ package eu.neverblink.linkml.generator.conformance
 
 // GENERATED FROM LINKML
 
+import eu.neverblink.linkml.runtime.*
+
 /** Base implementation of the [[Manifest]] LinkML class
   *
   * @inheritdoc
   */
 final case class ManifestImpl(
-    description: Option[String] = None,
-    entries: Seq[TestImpl] = Seq(),
+    @id
     name: String,
-    schema: String,
+    description: Option[String] = None,
+    @compactDict
+    entries: Map[String, TestImpl] = Map(),
     title: Option[String] = None,
 ) extends Manifest {
 
@@ -26,22 +29,17 @@ abstract class Manifest {
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/conformance#
     */
-  def description: Option[String]
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/conformance#
-    */
-  def entries: Seq[TestImpl]
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/conformance#
-    */
   def name: String
 
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/conformance#
     */
-  def schema: String
+  def description: Option[String]
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/conformance#
+    */
+  def entries: Map[String, TestImpl]
 
   /** @see
     *   From schema: https://linkml.neverblink.eu/model/conformance#
