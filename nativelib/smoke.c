@@ -118,12 +118,18 @@ int main(void) {
         out = linkml_json_schema(thread, handle, NULL, &error);
         expect(thread, "json-schema with default options", out, &error, "json-schema.org");
 
+        /* Turtle by default, so the vocabularies come out prefixed. */
         out = linkml_shacl(thread, handle, NULL, &error);
-        expect(thread, "shacl", out, &error, "shacl#NodeShape");
+        expect(thread, "shacl", out, &error, "a sh:NodeShape");
 
-        /* And here is the options channel being used. */
+        /* And here is the options channel being used. `open` turns sh:closed off, so this checks
+         * that the option arrived rather than just that something came back. */
         out = linkml_shacl(thread, handle, "{\"open\":true}", &error);
-        expect(thread, "shacl with options", out, &error, "shacl#NodeShape");
+        expect(thread, "shacl with options", out, &error, "sh:closed false");
+
+        /* The format is an option like any other, and picks the other serialization. */
+        out = linkml_shacl(thread, handle, "{\"format\":\"nt\"}", &error);
+        expect(thread, "shacl as n-triples", out, &error, "shacl#NodeShape");
 
         out = linkml_er_diagram(thread, handle, NULL, &error);
         expect(thread, "er-diagram", out, &error, "erDiagram");

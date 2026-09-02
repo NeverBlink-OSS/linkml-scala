@@ -20,12 +20,16 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     *   The currently processed expression
     * @param subject
     *   The subject to generate triples for
+    * @param deferred
+    *   Collects the `any_of` alternatives, which are described only once the class is otherwise
+    *   finished. See [[drain]].
     */
   private def processSlotExpr(
       sink: RdfSink,
       slotView: SlotView,
       slotExpression: SlotExpression,
       subject: Resource,
+      deferred: mutable.Buffer[() => Unit],
   ): Unit = {
     // TODO LNK-129 HACK: Skip the main range if any boolean slot is defined.
     if slotExpression.anyOf.isEmpty then
@@ -47,18 +51,32 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
               enumView.derivedValues.map { value =>
                 new Iri(value.meaning.uri(using enumView.definingPrefixResolver))
               }
-            val rdfListHead = addList(sink, permissibleValues)
-            sink.triple(subject, Shacl.in, rdfListHead)
+            sink.list(subject, Shacl.in, permissibleValues)
           case _ => throw RuntimeException(s"Couldn't map range ${slotExpression.range}")
         }
     // TODO LNK-129: Implement the rest of the boolean slots
+    // Only the sh:or itself is emitted here. Describing the alternatives inline would mean leaving
+    // this subject and coming back to it, which breaks up the shape being built - so they are put
+    // off until the whole class is done.
     val ors = slotExpression.anyOf.map(curSlotExpression => {
       val currentNode = blankNode()
-      processSlotExpr(sink, slotView, curSlotExpression, currentNode)
+      deferred.addOne(() =>
+        processSlotExpr(sink, slotView, curSlotExpression, currentNode, deferred),
+      )
       currentNode
     })
-    val orListHeadMaybe = addList(sink, ors)
-    if (orListHeadMaybe ne Rdf.nil) sink.triple(subject, Shacl.or, orListHeadMaybe)
+    if (ors.nonEmpty) sink.list(subject, Shacl.or, ors)
+  }
+
+  /** Run everything that was put off until the class was finished.
+    */
+  private def drain(deferred: mutable.Buffer[() => Unit]): Unit = {
+    var i = 0
+    while (i < deferred.length) {
+      deferred(i)()
+      i += 1
+    }
+    deferred.clear()
   }
 
   /** Emit the value constraints of an attribute: `pattern`, `minimum_value` and `maximum_value`.
@@ -123,6 +141,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     * @param groups
     *   Collects the slots referenced via `slot_group`, so that their sh:PropertyGroup declarations
     *   can be emitted once at the end.
+    * @param deferred
+    *   Passed on to [[processSlotExpr]].
     */
   private def processSlot(
       sink: RdfSink,
@@ -130,16 +150,19 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       order: Int,
       propertyDomain: Resource,
       groups: mutable.Map[String, SlotView],
+      deferred: mutable.Buffer[() => Unit],
   ): Unit = {
     val s = attributeView.slotView
     val slot = s.slot
-    val property = blankNode()
+    // Everything between here and the sh:order below describes the property shape and nothing else,
+    // so Turtle can write the whole thing inline as `[ ... ]`.
+    val property = inlineBlankNode()
     sink.triple(propertyDomain, Shacl.property, property)
     slot.title.foreachFast { t =>
-      sink.triple(property, Shacl.name, Literal(t))
+      langStringProperty(sink, property, Shacl.name, t)
     }
     slot.description.foreachFast { d =>
-      sink.triple(property, Shacl.description, Literal(d))
+      langStringProperty(sink, property, Shacl.description, d)
     }
     slot.slotGroup.foreachFast { groupRef =>
       sv.resolve(groupRef.asInstanceOf[Reference[SlotView]]).foreachFast { groupView =>
@@ -164,7 +187,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
         sink.triple(property, Shacl.maxCount, Literal(c.toString, XmlSchema.integer))
       }
     sink.triple(property, Shacl.path, new Iri(s.uriStr))
-    processSlotExpr(sink, s, slot, property)
+    processSlotExpr(sink, s, slot, property, deferred)
     processConstraints(sink, attributeView, property)
     // Use rank if possible. Other slots are put at the end.
     val rank = slot.rank.getOrElseFast(order)
@@ -178,13 +201,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
     groups.values.foreach { g =>
       val groupIri = new Iri(g.uriStr)
       sink.triple(groupIri, Rdf.`type`, Shacl.PropertyGroup)
-      sink.triple(
+      langStringProperty(
+        sink,
         groupIri,
         Rdfs.label,
-        Literal(g.slot.title.getOrElseFast(g.name), XmlSchema.string),
+        g.slot.title.getOrElseFast(PlainText(g.name)),
       )
       g.slot.description.foreachFast { d =>
-        sink.triple(groupIri, Rdfs.comment, Literal(d))
+        langStringProperty(sink, groupIri, Rdfs.comment, d)
       }
       g.slot.rank.foreachFast { r =>
         sink.triple(groupIri, Shacl.order, Literal(r.toString, XmlSchema.integer))
@@ -211,19 +235,21 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       }
       else sv.classes
     val groups = mutable.LinkedHashMap.empty[String, SlotView]
+    // Reused across classes rather than allocated per class: it is empty unless a slot uses any_of.
+    val deferred = mutable.ArrayBuffer.empty[() => Unit]
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
-        sink.triple(classNameIri, Rdfs.comment, Literal(d))
+        langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
       val closed = !(open || c.cls.`abstract` || c.cls.mixin)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
-      val ignoredPropertiesListHead = addList(
-        sink,
+      sink.list(
+        classNameIri,
+        Shacl.ignoredProperties,
         c.identifier.foldFast(Seq(Rdf.`type`))(id => Seq(Rdf.`type`, new Iri(id.uriStr))),
       )
-      sink.triple(classNameIri, Shacl.ignoredProperties, ignoredPropertiesListHead)
       // LinkML's `rank` gives slots an explicit order. Slots without one keep their
       // declaration order, but start after the highest rank in the class.
       var order = 0
@@ -234,11 +260,12 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
         if (!slot.identifier) {
-          processSlot(sink, av, order, classNameIri, groups)
+          processSlot(sink, av, order, classNameIri, groups, deferred)
           if (slot.rank.isEmpty) order += 1
         }
       }
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
+      drain(deferred)
     }
     processGroups(sink, groups)
   }
@@ -265,9 +292,13 @@ object ShaclGenerator {
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
     *   the imported classes to be included in the generated SHACL shapes.
+    * @param format
+    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     */
   final case class Options(
       open: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
-  )
+      format: RdfFormat = RdfFormat.ttl,
+  ) extends RdfOptions
 }

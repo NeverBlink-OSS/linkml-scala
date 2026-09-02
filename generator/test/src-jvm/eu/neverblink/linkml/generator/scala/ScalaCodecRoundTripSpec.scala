@@ -51,10 +51,10 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
   private def driverFor(
       entry: ModelCatalogue.Entry,
   ): Either[String, (String => AnyRef, AnyRef => String)] = {
-    val treeRoot = entry.model.treeRoot.toRight("the model has no tree root").fold(
-      reason => return Left(reason),
-      identity,
-    )
+    val treeRoot = entry.model.treeRoot match {
+      case Some(tr) => tr
+      case _ => return Left("the model has no tree root")
+    }
     if treeRoot.cls.`abstract` || treeRoot.cls.mixin then
       return Left("the tree root is abstract, so no implementation is generated for it")
     if treeRoot.attributeViews.sizeIs == 1 then

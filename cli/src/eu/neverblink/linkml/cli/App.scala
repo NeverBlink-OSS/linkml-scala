@@ -33,7 +33,7 @@ final class App private[cli] (
     Scala,
     Rdfs,
     LinkMl,
-    TableSchema,
+    Frictionless,
     GraphQl,
     ErDiagram,
     Version,

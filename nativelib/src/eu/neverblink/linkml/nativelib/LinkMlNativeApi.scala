@@ -7,9 +7,9 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.tableschema.TableSchemaGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.util.JsonUtil
-import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
 import org.virtuslab.yaml.{Node, StringNode}
@@ -29,7 +29,8 @@ object LinkMlNativeApi {
   /** Bumped whenever a change to the exported functions or to the options JSON breaks existing
     * callers.
     *
-    *   - 2 added `linkml_build_info`.
+    *   - 1: initial ABI version.
+    *   - 2: added `linkml_build_info`; replaced `tableSchema` with `frictionless`.
     */
   final val abiVersion: Int = 2
 
@@ -100,15 +101,13 @@ object LinkMlNativeApi {
     JsonSchemaGenerator().writeTo(out, Options.jsonSchema(optionsJson))
   }
 
-  /** SHACL as N-Triples. Turtle is not available here: it would pull in RDF4J, which the shared
-    * library deliberately leaves out.
-    */
+  /** SHACL, as N-Triples or Turtle depending on the `format` option. */
   def shacl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     ShaclGenerator().writeTo(out, Options.shacl(optionsJson))
   }
 
-  /** RDFS as N-Triples, for the same reason as [[shacl]]. */
+  /** RDFS, as N-Triples or Turtle depending on the `format` option. */
   def rdfs(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     RdfsGenerator().writeTo(out, Options.rdfs(optionsJson))
@@ -117,11 +116,6 @@ object LinkMlNativeApi {
   def linkml(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     LinkMlGenerator().writeTo(out, Options.linkml(optionsJson))
-  }
-
-  def tableSchema(handle: Long, optionsJson: String, out: OutputStream): Unit = {
-    given SchemaView = view(handle)
-    TableSchemaGenerator().writeTo(out, Options.tableSchema(optionsJson))
   }
 
   def graphQl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
@@ -139,12 +133,25 @@ object LinkMlNativeApi {
   /** Generate Scala sources, as a JSON object mapping filename to source. */
   def scalaFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    val generated = ScalaGenerator().generate(Options.scala(optionsJson))
+    writeFiles(ScalaGenerator().generate(Options.scala(optionsJson)), out)
+  }
+
+  /** Generate a Frictionless data package, as a JSON object mapping filename to content: the
+    * `datapackage.json` descriptor plus a `schemas/<table>.json` for each table.
+    */
+  def frictionlessFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    writeFiles(FrictionlessGenerator().generateFiles(Options.frictionless(optionsJson)), out)
+  }
+
+  /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the
+    * generators that produce more than one file.
+    */
+  private def writeFiles(files: Iterable[(String, String)], out: OutputStream): Unit =
     JsonUtil.writeJson(
-      Node.MappingNode(generated.map((name, text) => entry(name, StringNode(text))).toMap),
+      Node.MappingNode(files.map((name, text) => entry(name, StringNode(text))).toMap),
       out,
     )
-  }
 
   /** Version and build metadata for this library, as a `BuildInfo` in JSON.
     *
@@ -233,9 +240,11 @@ object LinkMlNativeApi {
   private def entry(name: String, value: Node): (Node, Node) = StringNode(name) -> value
 
   /** A schema importer backed by the caller-supplied filename to YAML map. */
-  private final case class ImportMap(map: Map[String, String]) extends StringImporter {
+  private final case class ImportMap(entries: Map[String, String]) extends StringImporter {
+    private val lookup = Importer.normalizedMap(entries)
+
     override def read(path: String): String =
-      map.getOrElse(path, throw BadRequest(s"could not read from the import map: $path"))
+      lookup.getOrElse(path, throw BadRequest(s"could not read from the import map: $path"))
   }
 
 }

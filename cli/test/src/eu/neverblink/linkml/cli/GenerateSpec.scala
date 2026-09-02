@@ -24,11 +24,12 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     */
   private val generators: Seq[(BaseCommand[?], String, Seq[String])] = Seq(
     (JsonSchema, "json-schema", Seq("\"Root\"", "\"name\"")),
-    (Shacl, "shacl", Seq("shacl#NodeShape", "<https://neverblink.eu/test/name>")),
+    // The RDF generators default to Turtle, so their vocabularies come out prefixed.
+    (Shacl, "shacl", Seq("a sh:NodeShape", "<https://neverblink.eu/test/name>")),
     (Scala, "scala", Seq("abstract class Root", "def name: Option[String]")),
-    (Rdfs, "rdfs", Seq("rdf-schema#Class", "rdf-schema#range")),
+    (Rdfs, "rdfs", Seq("a rdfs:Class", "rdfs:range")),
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
-    (TableSchema, "table-schema", Seq("\"fields\"", "\"name\": \"name\"")),
+    (Frictionless, "frictionless", Seq("\"fields\"", "\"name\": \"name\"")),
     (GraphQl, "graphql", Seq("type Root", "name: string")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
   )
@@ -174,6 +175,56 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           )
           err should include("Malformed pruning mode: bogus")
           code shouldBe 1
+        }
+      }
+    }
+
+    "generating a data package" should {
+      def frictionless(to: os.Path): (String, String, Int) =
+        withSchemas(1, prunableSchema) { paths =>
+          Frictionless.runTestCommandWithExitCode(
+            List("generate", "frictionless", "--to", to.toString) ++ paths,
+          )
+        }
+
+      "write a package directory when --to does not name a .json file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-dp")
+        try {
+          val (_, err, code) = frictionless(dir / "pkg")
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          snapshot(dir / "pkg").keys.map(_.toString) should contain theSameElementsAs Seq(
+            "datapackage.json",
+            "schemas/root.json",
+            "schemas/other.json",
+          )
+          // The descriptor points at the sibling files rather than embedding them.
+          os.read(dir / "pkg" / "datapackage.json") should include(
+            "\"schema\": \"schemas/root.json\"",
+          )
+        } finally os.remove.all(dir)
+      }
+
+      "write a single self-contained document when --to names a .json file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-dp")
+        try {
+          val (_, err, code) = frictionless(dir / "pkg.json")
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          os.isFile(dir / "pkg.json") shouldBe true
+          // Every schema is inlined, so nothing refers to a file that was never written.
+          val content = os.read(dir / "pkg.json")
+          content should include("\"fields\"")
+          content should not include "schemas/"
+        } finally os.remove.all(dir)
+      }
+
+      "write a single self-contained document to stdout" in {
+        withSchemas(1, prunableSchema) { paths =>
+          val (out, err, code) =
+            Frictionless.runTestCommandWithExitCode(List("generate", "frictionless") ++ paths)
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          out should include("\"resources\"")
+          out should include("\"fields\"")
+          out should not include "schemas/"
         }
       }
     }

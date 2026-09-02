@@ -26,15 +26,19 @@ classes:
     tree_root: true
     attributes:
       to_abstract:
+        rank: 1
         range: AbstractRange
         inlined: true
       to_mixin:
+        rank: 2
         range: MixinRange
         inlined: true
       to_concrete:
+        rank: 3
         range: ConcreteRange
         inlined: true
       many_abstract:
+        rank: 4
         range: AbstractRange
         inlined: true
         multivalued: true

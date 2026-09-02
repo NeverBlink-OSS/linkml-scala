@@ -60,6 +60,50 @@ trait Importer {
 
 object Importer {
 
+  /** Both path separators, recognized everywhere regardless of the host OS. Import paths are not
+    * always file system paths – they are also URLs and keys into a caller-supplied map, where `/`
+    * is the separator whatever the host – so import resolution reads both and writes [[separator]].
+    */
+  private val separators = "/\\"
+
+  /** The separator to fall back on when a path uses none. Windows file APIs accept `/` too, so it
+    * is a safe default for file system paths, URLs, and map keys.
+    */
+  val separator: String = "/"
+
+  private def isSeparator(c: Char): Boolean = separators.indexOf(c.toInt) >= 0
+
+  /** The index of the last path separator in `path`, or -1 if it has none. */
+  def lastSeparator(path: String): Int = path.lastIndexOf('/').max(path.lastIndexOf('\\'))
+
+  /** Find the separator used in a path, or return the default [[separator]] if it has none.
+    */
+  def separatorFor(base: String): String = {
+    val idx = lastSeparator(base)
+    if (idx >= 0) base.substring(idx, idx + 1) else separator
+  }
+
+  /** Normalize a schema URI: drop a trailing separator, and add the `.yaml` extension unless the
+    * URI already ends in `.yaml` or `.yml`.
+    */
+  def normalizeUri(uri: String): String = {
+    val trimmed =
+      if (uri.nonEmpty && isSeparator(uri.last)) uri.substring(0, uri.length - 1) else uri
+    if (trimmed.endsWith(".yaml") || trimmed.endsWith(".yml")) trimmed
+    else trimmed.concat(".yaml")
+  }
+
+  /** Build the lookup table of a map-backed importer, adding every key under its normalized form as
+    * well, so a schema keyed `"core"` is found by the lookup of `"core.yaml"`.
+    */
+  def normalizedMap(entries: IterableOnce[(String, String)]): Map[String, String] = {
+    val exact = entries.iterator.toMap
+    exact.foldLeft(exact) { case (acc, (key, body)) =>
+      val normalized = normalizeUri(key)
+      if (acc.contains(normalized)) acc else acc.updated(normalized, body)
+    }
+  }
+
   /** Build a [[SchemaParseError]], pinning it to the position the parser or decoder reported. */
   def parseError(
       parserMessage: String,
@@ -138,6 +182,6 @@ object FileSystemImporter extends StringImporter {
 /** A basic importer implementation which delegates the read operation to a mapping
   */
 final class MapImporter(content: (String, String)*) extends StringImporter {
-  val mapping: Map[String, String] = content.toMap
+  val mapping: Map[String, String] = Importer.normalizedMap(content)
   def read(path: String): String = mapping(path)
 }

@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{Reference, UriOrCurie, Uri}
+import eu.neverblink.linkml.runtime.{PlainText, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.schemaview.SchemaViewSpec.{compact, reference}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -11,7 +11,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
     "inline slots as attributes" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
@@ -31,14 +31,16 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
 
       val result = sv.classes("child")
       result.derivedAttributes("slot1").definingSchema shouldBe sv.root
-      result.derivedAttributes("slot1").slot.description shouldBe Some("Base description")
+      result.derivedAttributes("slot1").slot.description shouldBe Some(
+        PlainText("Base description"),
+      )
       result.derivedAttributes.keys should contain theSameElementsAs Seq("slot1")
     }
 
     "inherit slots as attributes" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
@@ -62,7 +64,9 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child")
-      result.derivedAttributes("slot1").slot.description shouldBe Some("Base description")
+      result.derivedAttributes("slot1").slot.description shouldBe Some(
+        PlainText("Base description"),
+      )
       result.derivedAttributes.keys should contain theSameElementsAs Seq("slot1")
     }
 
@@ -70,7 +74,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       val slot = SlotDefinitionImpl(
         name = "slot1",
         identifier = true,
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
@@ -85,7 +89,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
         slotUsage = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            description = Some("Child description"),
+            description = Some(PlainText("Child description")),
             range = Some(Reference("child")),
           ).compact,
         ),
@@ -101,7 +105,9 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child")
-      result.derivedAttributes("slot1").slot.description shouldBe Some("Child description")
+      result.derivedAttributes("slot1").slot.description shouldBe Some(
+        PlainText("Child description"),
+      )
       result.derivedAttributes("slot1").slot.identifier shouldBe true
       result.derivedAttributes.keys should contain theSameElementsAs Seq("slot1")
     }
@@ -109,7 +115,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
     "merge slots and attributes into attributes" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        description = Some("Base description"),
+        description = Some(PlainText("Base description")),
         range = Some(Reference("base")),
       )
 
@@ -119,7 +125,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
         attributes = Map(
           SlotDefinitionImpl(
             name = "slot2",
-            description = Some("Other description"),
+            description = Some(PlainText("Other description")),
             range = Some(Reference("base")),
           ).compact,
         ),
@@ -136,8 +142,12 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
 
       val result = sv.classes("base")
       result.derivedAttributes.keys should contain theSameElementsAs Seq("slot1", "slot2")
-      result.derivedAttributes("slot1").slot.description shouldBe Some("Base description")
-      result.derivedAttributes("slot2").slot.description shouldBe Some("Other description")
+      result.derivedAttributes("slot1").slot.description shouldBe Some(
+        PlainText("Base description"),
+      )
+      result.derivedAttributes("slot2").slot.description shouldBe Some(
+        PlainText("Other description"),
+      )
     }
 
     "derive the class's URI" in {

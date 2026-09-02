@@ -7,8 +7,7 @@ import org.virtuslab.yaml.Node
   *
   * The version numbers come from [[BuildConstants]], which the build fills in, and the rest is read
   * off the running platform. Callers that know about additional components (beyond SchemaView) can
-  * add more metadata with `copy`: the CLI adds `rdf4jVersion`, the shared library adds
-  * `abiVersion`.
+  * add more metadata with `copy`: the shared library adds `abiVersion`.
   */
 object CurrentBuild {
 

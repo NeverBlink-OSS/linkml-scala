@@ -13,8 +13,8 @@ final case class ClassDefinitionImpl(
     name: String,
     @named("class_uri")
     classUri: Option[UriOrCurie] = None,
-    title: Option[String] = None,
-    description: Option[String] = None,
+    title: Option[LocalizedText] = None,
+    description: Option[LocalizedText] = None,
     alias: Option[String] = None,
     @named("is_a")
     isA: Option[Reference[ClassDefinition]] = None,
@@ -377,7 +377,7 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   Not to be confused with a "singular unique key", which is defined by means of the `key`
     *   slot, or with an "identifier", which is defined by means of the "identifier" slot. Compound
     *   keys, singular unique keys, and identifiers all create a unicity constraint, but singular
-    *   unique keys and identifiers have additional effects that compound keys do not have.\n
+    *   unique keys and identifiers have additional effects that compound keys do not have.
     */
   def uniqueKeys: Map[String, UniqueKeyImpl]
 

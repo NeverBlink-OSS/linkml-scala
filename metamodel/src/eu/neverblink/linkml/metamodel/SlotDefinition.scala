@@ -13,8 +13,8 @@ final case class SlotDefinitionImpl(
     name: String,
     @named("slot_uri")
     slotUri: Option[UriOrCurie] = None,
-    title: Option[String] = None,
-    description: Option[String] = None,
+    title: Option[LocalizedText] = None,
+    description: Option[LocalizedText] = None,
     identifier: Boolean = false,
     alias: Option[String] = None,
     multivalued: Boolean = false,
@@ -571,12 +571,11 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def domainOf: Seq[Reference[ClassDefinition]]
 
-  /** Function that provides a default value for the slot.\n * [Tt]rue -- boolean True\n * [Ff]alse
-    * -- boolean False\n * bnode -- blank node identifier\n * class_curie -- CURIE for the
-    * containing class\n * class_uri -- URI for the containing class\n * default_ns -- schema
-    * default namespace\n * default_range -- schema default range\n * int(value) -- integer value\n
-    * * slot_uri -- URI for the slot\n * slot_curie -- CURIE for the slot\n * string(value) --
-    * string value\n * EnumName(PermissibleValue) -- enum value
+  /** Function that provides a default value for the slot. [Tt]rue -- boolean True [Ff]alse --
+    * boolean False bnode -- blank node identifier class_curie -- CURIE for the containing class
+    * class_uri -- URI for the containing class default_ns -- schema default namespace default_range
+    * -- schema default range int(value) -- integer value slot_uri -- URI for the slot slot_curie --
+    * CURIE for the slot string(value) -- string value EnumName(PermissibleValue) -- enum value
     *
     * @see
     *   https://w3id.org/linkml/equals_expression

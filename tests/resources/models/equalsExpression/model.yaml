@@ -15,99 +15,131 @@ classes:
     tree_root: true
     attributes:
       reference_value:
+        rank: 1
         range: string
       optional_message:
+        rank: 2
         range: string
         equals_expression: "Unknown reference to element '{reference_value}'"
       required_message:
+        rank: 3
         range: string
         required: true
         equals_expression: "ref is {reference_value}"
       required_source:
+        rank: 4
         range: string
         required: true
       from_required:
+        rank: 5
         range: string
         equals_expression: "{required_source} / {required_source}"
       literal_only:
+        rank: 6
         range: string
         equals_expression: "no substitutions here"
       with_escapes:
+        rank: 7
         range: string
         equals_expression: "braces {{like this}} and a \"quote\""
       no_expression:
+        rank: 8
         range: string
       # Reaching into inlined classes with dot notation
       optional_nested:
+        rank: 9
         range: Nested
         inlined: true
       required_nested:
+        rank: 10
         range: Nested
         inlined: true
         required: true
       from_optional_nested:
+        rank: 11
         range: string
         equals_expression: "{optional_nested.leaf}"
       from_required_nested:
+        rank: 12
         range: string
         equals_expression: "{required_nested.required_leaf} at {required_nested.deeper.bottom}"
       # Non-string ranges are stringified automatically
       count:
+        rank: 13
         range: integer
       ratio:
+        rank: 14
         range: double
       flag:
+        rank: 15
         range: boolean
       created:
+        rank: 16
         range: date
       from_numbers:
+        rank: 17
         range: string
         equals_expression: "{count} items, ratio {ratio}, flag {flag}, on {created}"
       # URIs and CURIEs stringify to the value as written, with no prefix resolution
       homepage:
+        rank: 18
         range: uri
         required: true
       term:
+        rank: 19
         range: curie
       either:
+        rank: 20
         range: uriorcurie
       from_uris:
+        rank: 21
         range: string
         equals_expression: "{homepage} | {term} | {either}"
       # Multivalued slots are joined with ", "
       tags:
+        rank: 22
         range: string
         multivalued: true
       codes:
+        rank: 23
         range: curie
         multivalued: true
       from_multivalued:
+        rank: 24
         range: string
         equals_expression: "tags: [{tags}], codes: [{codes}]"
       # A reference stringifies to the identifier it holds
       target:
+        rank: 25
         range: Identified
       targets:
+        rank: 26
         range: Identified
         multivalued: true
       from_references:
+        rank: 27
         range: string
         equals_expression: "{target} <- {targets}"
       # Enums stringify to their LinkML text, which is not the generated case name
       status:
+        rank: 28
         range: StatusEnum
       statuses:
+        rank: 29
         range: StatusEnum
         multivalued: true
       from_enum:
+        rank: 30
         range: string
         equals_expression: "{status} of ({statuses})"
       # Out of scope: not a single-valued string, so the expression must be ignored
       multivalued_ignored:
+        rank: 31
         range: string
         multivalued: true
         equals_expression: "{reference_value}"
       integer_ignored:
+        rank: 32
         range: integer
         equals_expression: "{reference_value}"
 

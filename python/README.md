@@ -26,7 +26,7 @@ with linkml_scala.load_file("model.yaml") as schema:
 `load_file()` will automatically resolve imports and parse the schema. You can reuse the `Schema` object for multiple generator calls, and it will automatically cache the parsed form of any imported schemas.
 
 Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkml()`,
-`table_schema()`, `graphql()`, `er_diagram()` and `scala()`, plus `lint()` for validation.
+`frictionless()`, `graphql()`, `er_diagram()` and `scala()`, plus `lint()` for validation.
 
 To work from memory instead of the file system, use `load_string()` for a single schema or
 `load_path()` when imports are involved:
@@ -34,7 +34,7 @@ To work from memory instead of the file system, use `load_string()` for a single
 ```python
 schema = linkml_scala.load_path("model.yaml", {
     "model.yaml": "...",
-    "person.yaml": "...",
+    "person.yaml": "...",  # referenced via `imports: - person`
 })
 ```
 

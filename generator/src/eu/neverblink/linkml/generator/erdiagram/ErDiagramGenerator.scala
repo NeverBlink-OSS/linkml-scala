@@ -57,10 +57,12 @@ final class ErDiagramGenerator(using sv: SchemaView)
   ): Unit =
     generate(options).writeTo(sink)
 
-  /** Slots of a class sorted by `rank`, then by name. */
+  /** Slots of a class sorted by `rank`, then by name.
+    */
   private def sortedAttributes(cv: ClassView): Seq[AttributeView] =
+    // TODO LNK-198: factor this out
     cv.attributeViews.values.toSeq
-      .sortBy(av => (av.slotView.slot.rank, av.slotView.slot.name))
+      .sortBy(av => (av.slotView.slot.rank.getOrElse(Int.MaxValue), av.slotView.slot.name))
 
   /** The attribute rows of an entity - every slot whose range is *not* a class. */
   private def attributesOf(cv: ClassView, optionalMarker: Boolean): Seq[ErAttribute] =

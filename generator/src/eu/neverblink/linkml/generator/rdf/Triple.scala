@@ -2,14 +2,27 @@ package eu.neverblink.linkml.generator.rdf
 
 import eu.neverblink.linkml.runtime.LanguageTag
 
-/** An RDF term. Serialize with [[NTriplesWriter]]. */
+/** An RDF term. Serialize with [[NTriplesWriter]] or [[TurtleWriter]]. */
 sealed trait Node
 
 sealed trait Resource extends Node
 
 final case class Iri(value: String) extends Resource
 
-final case class BlankNode(id: String) extends Resource
+/** A blank node, either standalone ([[BlankNode]]) or inlined into its one reference
+  * ([[InlineBlankNode]]). The two differ only in how Turtle writes them. N-Triples writes both as
+  * `_:id`.
+  */
+sealed trait AnyBlankNode extends Resource {
+  def id: String
+}
+
+final case class BlankNode(id: String) extends AnyBlankNode
+
+/** A blank node that is referenced exactly once, as an object, and whose own triples are pushed
+  * into the sink immediately after that reference. [[TurtleWriter]] writes it as `[ ... ]`.
+  */
+final case class InlineBlankNode(id: String) extends AnyBlankNode
 
 /** @param value
   *   The lexical value of the literal

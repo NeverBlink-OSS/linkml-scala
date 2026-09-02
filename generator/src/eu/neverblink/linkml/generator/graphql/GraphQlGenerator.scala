@@ -6,10 +6,12 @@ import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator.escaped
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.*
-import eu.neverblink.linkml.metamodel.PermissibleValue
+import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
+import GraphQlGenerator.escaped
+import eu.neverblink.linkml.runtime.FastUtils.flatMapFast
 
 import scala.util.matching.Regex
 
@@ -41,6 +43,8 @@ class GraphQlGenerator(using sv: SchemaView)
   def generate(
       options: GraphQlGenerator.Options = GraphQlGenerator.Options(),
   ): Iterable[GraphQlDefinition] = {
+    given GraphQlGenerator.Options = options
+
     val query = options.pruningMode.derivedQuery(false, true)
 
     val reachableClasses = sv.classes.values
@@ -88,7 +92,7 @@ class GraphQlGenerator(using sv: SchemaView)
   /** Generate a GraphQL definition corresponding to the provided class, or None if the class is
     * linkml:Any
     */
-  def generateClass(cls: ClassView): Iterable[GraphQlDefinition] = {
+  def generateClass(cls: ClassView)(using GraphQlGenerator.Options): Iterable[GraphQlDefinition] = {
     lazy val fields = cls.attributeViews.values.map(av => {
       val range: String = av match {
         case AnyView(_, _) =>
@@ -192,9 +196,12 @@ object GraphQlGenerator extends GraphQlRenames {
     * @param pruningMode
     *   How to prune the generated definitions, schemaRoot by default (elements reachable from any
     *   root schema defined elements) to omit unnecessary linkml:types scalar definitions.
+    * @param metadataLanguage
+    *   Which language to use for metadata fields (description etc.) in the output GraphQL.
     */
   final case class Options(
       pruningMode: PruningMode = schemaRoot,
+      metadataLanguage: String = "en",
   )
 
   /** Remap a runtime type to a GraphQL built-in scalar, if possible.
@@ -218,12 +225,15 @@ object GraphQlGenerator extends GraphQlRenames {
 }
 
 /** ADT for different kinds of GraphQL definitions (type/interface/enum/scalar) */
-trait GraphQlElement extends Printable:
+trait GraphQlElement(using opt: GraphQlGenerator.Options) extends Printable:
   /** Process an optional description into a proper graphql description
     */
   final def wrapDescription(in: Option[String]): String = {
     in.map("\"\"\"\n" + _ + "\n\"\"\"").getOrElse("")
   }
+
+  final def descriptionFor(commonMetadata: CommonMetadata): String =
+    wrapDescription(commonMetadata.description.flatMapFast(_.inLanguage(opt.metadataLanguage)))
 
 trait GraphQlDefinition extends GraphQlElement
 
@@ -243,7 +253,8 @@ case class GraphQlInterfaceDefinition(
     fields: Iterable[GraphQlField],
     inherits: Seq[String],
     nameOverride: Option[String] = None,
-) extends GraphQlDefinition:
+)(using GraphQlGenerator.Options)
+    extends GraphQlDefinition:
   val inheritsList: String =
     if inherits.isEmpty then "" else "implements " + inherits.mkString(" & ")
 
@@ -263,7 +274,7 @@ case class GraphQlInterfaceDefinition(
   val name: String = nameOverride.getOrElse(GraphQlRenames.className(classView))
 
   override def print: String =
-    indent"""${wrapDescription(classView.cls.description)}
+    indent"""${descriptionFor(classView.cls)}
             |interface $name $inheritsList $body
             |""".stripMargin
 
@@ -280,7 +291,8 @@ case class GraphQlTypeDefinition(
     classView: ClassView,
     fields: Iterable[GraphQlField],
     inherits: Seq[String],
-) extends GraphQlDefinition:
+)(using GraphQlGenerator.Options)
+    extends GraphQlDefinition:
   val inheritsList: String =
     if inherits.isEmpty then "" else "implements " + inherits.mkString(" & ")
 
@@ -298,7 +310,7 @@ case class GraphQlTypeDefinition(
   }
 
   override def print: String = {
-    indent"""${wrapDescription(classView.cls.description)}
+    indent"""${descriptionFor(classView.cls)}
             |type ${GraphQlRenames.className(classView)} $inheritsList $body
             |""".stripMargin
   }
@@ -313,10 +325,11 @@ case class GraphQlTypeDefinition(
 case class GraphQlEnumDefinition(
     enumView: EnumView,
     values: Iterable[GraphQlEnumValueDefinition],
-) extends GraphQlDefinition:
+)(using GraphQlGenerator.Options)
+    extends GraphQlDefinition:
   override def print: String = {
     val serializedValues = values.map(_.print.strip())
-    indent"""${wrapDescription(enumView._enum.description)}
+    indent"""${descriptionFor(enumView._enum)}
             |enum ${GraphQlRenames.enumName(enumView)} {
             |  ${serializedValues.mkString("\n")}
             |}
@@ -336,9 +349,10 @@ case class GraphQlEnumValueDefinition(
     pv: PermissibleValue,
     meaning: UriOrCurie,
     prefixResolver: PrefixResolver,
-) extends GraphQlElement:
+)(using opt: GraphQlGenerator.Options)
+    extends GraphQlElement:
   override def print: String =
-    indent"""${wrapDescription(pv.description)}
+    indent"""${descriptionFor(pv)}
             |${GraphQlRenames.permissibleValueName(pv)}
             |""".stripMargin
 
@@ -349,17 +363,18 @@ case class GraphQlEnumValueDefinition(
   */
 case class GraphQlScalarDefinition(
     typeView: TypeView,
-) extends GraphQlDefinition:
+)(using opt: GraphQlGenerator.Options)
+    extends GraphQlDefinition:
   val name: String = GraphQlRenames.typeName(typeView)
   override def print: String = {
-    indent"""${wrapDescription(typeView._type.description)}
+    indent"""${descriptionFor(typeView._type)}
             |scalar $name
             |""".stripMargin
   }
 
 /** Container for creating an "Any" scalar
   */
-case class GraphQlAnyScalarDefinition() extends GraphQlDefinition:
+case class GraphQlAnyScalarDefinition()(using GraphQlGenerator.Options) extends GraphQlDefinition:
   override def print: String = {
     indent""""Scalar definition for a linkml:Any class"
             |scalar Any
@@ -371,7 +386,8 @@ case class GraphQlAnyScalarDefinition() extends GraphQlDefinition:
 case class GraphQlField(
     attributeView: AttributeView,
     range: String,
-) extends GraphQlElement:
+)(using GraphQlGenerator.Options)
+    extends GraphQlElement:
   val slotView: SlotView = attributeView.slotView
 
   /** Aliased name to use in the range of the field */
@@ -382,9 +398,6 @@ case class GraphQlField(
 
   /** Whether the [[range]] should be declared an array ("[Range]") */
   val multivalued: Boolean = slotView.slot.multivalued
-
-  /** Description of the field */
-  val description: Option[String] = slotView.slot.description
 
   /** Stringy expression to put in the type position of the GraphQL field definition */
   val typeExpr: String = {
@@ -398,7 +411,7 @@ case class GraphQlField(
   }
 
   def print: String = {
-    indent"""${wrapDescription(description)}
+    indent"""${descriptionFor(attributeView.slotView.slot)}
             |$name: $typeExpr
             |""".stripMargin
   }

@@ -2,26 +2,33 @@ package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
-import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Options] {
 
   override protected def defaultOptions: RdfsGenerator.Options = RdfsGenerator.Options()
 
-  /** Emit the RDFS metadata of every definition describing the same subject, skipping titles and
-    * descriptions repeated between them.
+  /** Emit the RDFS metadata of every definition describing the same subject, skipping titles,
+    * descriptions and links repeated between them.
+    *
+    * @param cms
+    *   Each definition's metadata, paired with the prefix resolver of the schema that declared it.
+    *   `see_also` holds CURIEs, which only mean something against the prefixes of their own schema.
     */
   private def emitCommonMetadata(
       sink: RdfSink,
       subject: Resource,
-      cms: Seq[CommonMetadata],
+      cms: Seq[(CommonMetadata, PrefixResolver)],
   ): Unit = {
-    cms.flatMap(_.title).distinct.foreach { t =>
-      sink.triple(subject, Rdfs.label, Literal(t, XmlSchema.string))
+    cms.flatMap(_._1.title).distinct.foreach { t =>
+      langStringProperty(sink, subject, Rdfs.label, t)
     }
-    cms.flatMap(_.description).distinct.foreach { d =>
-      sink.triple(subject, Rdfs.comment, Literal(d, XmlSchema.string))
+    cms.flatMap(_._1.description).distinct.foreach { d =>
+      langStringProperty(sink, subject, Rdfs.comment, d)
+    }
+    cms.flatMap((cm, pr) => cm.seeAlso.map(_.uri(using pr))).distinct.foreach { uri =>
+      sink.triple(subject, Rdfs.seeAlso, Iri(uri))
     }
   }
 
@@ -37,7 +44,11 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       usages: Seq[(ClassView, SlotView)],
   ): Unit = {
     sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-    emitCommonMetadata(sink, propertyNameIri, usages.map(_._2.slot))
+    emitCommonMetadata(
+      sink,
+      propertyNameIri,
+      usages.map(u => (u._2.slot, u._2.definingPrefixResolver)),
+    )
 
     sv.lowestCommonAncestors(
       usages
@@ -95,7 +106,11 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       val definitions = classDefinitions(c.uriStr)
       if (definitions.head eq c) {
         sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(sink, classNameIri, definitions.map(_.cls))
+        emitCommonMetadata(
+          sink,
+          classNameIri,
+          definitions.map(d => (d.cls, d.definingPrefixResolver)),
+        )
         definitions
           .flatMap(d => d.cls.isA.toList ++ d.cls.mixins)
           .flatMap(m => sv.getElement(m.value).toList)
@@ -132,7 +147,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       val definitions = enumDefinitions(e.uriStr)
       if (definitions.head eq e) {
         sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(sink, enumIri, definitions.map(_._enum))
+        emitCommonMetadata(sink, enumIri, definitions.map(d => (d._enum, d.definingPrefixResolver)))
       }
       e.derivedValues.foreach { (pv, meaning) =>
         val pvIri = Iri(meaning.uri(using prefixResolver))
@@ -141,7 +156,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }
-          emitCommonMetadata(sink, pvIri, usages.map(_._2))
+          emitCommonMetadata(sink, pvIri, usages.map(u => (u._2, u._1.definingPrefixResolver)))
         }
       }
     }
@@ -156,8 +171,12 @@ object RdfsGenerator {
     *   Whether to include only classes and enums from the root schema (turned off by default). This
     *   is useful if you intend to generate RDFS for each schema file separately, and you don't need
     *   the imported classes to be included.
+    * @param format
+    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
     */
   final case class Options(
       onlyClassesFromRootSchema: Boolean = false,
-  )
+      format: RdfFormat = RdfFormat.ttl,
+  ) extends RdfOptions
 }

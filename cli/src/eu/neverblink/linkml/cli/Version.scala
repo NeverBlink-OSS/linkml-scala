@@ -2,7 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.generator.util.JsonUtil
-import eu.neverblink.linkml.schemaview.buildinfo.{BuildInfoImpl, CurrentBuild}
+import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 
 import java.time.Year
 
@@ -22,26 +22,21 @@ object Version extends BaseCommand[VersionOptions] {
     List("--version"),
   )
 
-  /** What this build is, with the components only the CLI links in filled out. */
-  private def buildInfo: BuildInfoImpl =
-    CurrentBuild.info.copy(rdf4jVersion = Some(BuildInfo.rdf4jVersion))
-
   override def run(options: VersionOptions, remainingArgs: RemainingArgs): Unit =
     options.format.toLowerCase match {
-      case "json" => printLine(JsonUtil.yamlToJson(CurrentBuild.node(buildInfo)))
+      case "json" => printLine(JsonUtil.yamlToJson(CurrentBuild.node()))
       case "terminal" => printTerminal()
       case other => err(s"Unknown format '$other'. Supported formats: terminal|json.")
     }
 
   private def printTerminal(): Unit = {
-    val info = buildInfo
+    val info = CurrentBuild.info
     printLine(
       s"""
          |linkml-scala   ${info.linkmlScalaVersion}
          |-------------------------------------------------------------
          |Metamodel      ${info.metamodelVersion}
          |Scala          ${info.scalaVersion}
-         |RDF4J          ${info.rdf4jVersion.getOrElse("-")}
          |Runtime        ${info.runtime.getOrElse("-")}
          |-------------------------------------------------------------""".stripMargin.trim,
     )
