@@ -16,7 +16,11 @@ import eu.neverblink.linkml.schemaview.yaml
 import os.Path
 
 class ConformanceRunner extends AnyWordSpec, Matchers {
-  val resources: Path = os.Path("/home/kacper/NeverBlink/linkml-scala/generator/test/resources")
+  lazy val repoRoot: Path = sys.env.get("MILL_WORKSPACE_ROOT")
+    .map(os.Path(_)).filter(os.exists)
+    .getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+
+  val resources: Path = repoRoot / "generator/test/resources"
   val mfStr: String = os.read(resources / "conformance/manifest.yaml")
   val manifest: ManifestImpl = manifestCodec.decode(
     parseYaml(mfStr).getOrElse(
