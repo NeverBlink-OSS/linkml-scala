@@ -2,8 +2,8 @@
 
 Mirrors generator/test/src-jvm/eu/neverblink/linkml/generator/conformance/
 ConformanceRunner.scala: it loads a manifest into the classes generated from
-model/conformance-ontology.yaml, runs each entry's action, and checks the
-result against the entry's assertion.
+model/conformance-ontology.yaml, runs each entry's action against that entry's
+schema, and checks the result against the entry's assertion.
 
 Run it directly (`python runner.py`) for a plain report, or via pytest
 (see test_conformance.py).
@@ -20,7 +20,7 @@ from typing import Any
 from jsonasobj2 import JsonObj, as_dict
 from jsonschema.validators import Draft202012Validator, validator_for
 from linkml.generators.jsonschemagen import JsonSchemaGenerator
-from linkml.generators.yamlgen import YAMLGenerator
+from linkml.generators.linkmlgen import LinkmlGenerator
 from linkml.linter.linter import Linter
 from linkml_runtime import SchemaView
 from linkml_runtime.loaders import yaml_loader
@@ -37,33 +37,38 @@ MANIFEST = RESOURCES / "conformance" / "manifest.yaml"
 def load_manifest(path: Path = MANIFEST) -> conformance.Manifest:
     """Read the manifest YAML into the generated Manifest class.
 
-    The `type` slot is a type designator, so linkml_runtime picks the right
-    Action/Assertion subclass for each entry on its own.
+    `entries` is inlined and keyed by `name`, so it comes back as a dict of
+    name -> Test. The `type` slot is a type designator, so linkml_runtime picks
+    the right Action/Assertion subclass for each entry on its own.
     """
     return yaml_loader.load(str(path), conformance.Manifest)
 
 
-def test_name(index: int, test: conformance.Test) -> str:
-    name = f"{type(test.action).__name__} -> {type(test.assertion).__name__}"
-    if test.title:
-        name = f"{name} ({test.title})"
-    return f"[{index}] {name}"
+def entries(manifest: conformance.Manifest) -> list[conformance.Test]:
+    return list(manifest.entries.values())
 
 
 # --- actions ---------------------------------------------------------------
 
 
-def run_action(action: conformance.Action, schema_path: Path, schema_view: SchemaView) -> str:
+def run_action(action: conformance.Action, schema_path: Path) -> str:
     """Run an action and return its output as a string, as the Scala runner does."""
     if isinstance(action, conformance.DeriveAction):
-        return YAMLGenerator(str(schema_path)).serialize()
+        # Matches LinkMlGenerator with OutputFormat.json on the Scala side.
+        # materialize_attributes folds induced slots into each class's
+        # `attributes`, which is what the rank assertions look at.
+        return LinkmlGenerator(
+            str(schema_path),
+            format="json",
+            materialize_attributes=True,
+        ).serialize()
     if isinstance(action, conformance.JsonSchemaGenerate):
         return JsonSchemaGenerator(str(schema_path)).serialize()
     if isinstance(action, conformance.LintAction):
         problems = Linter().lint(str(schema_path))
         return "\n".join(problem.message for problem in problems)
     if isinstance(action, conformance.LoadAction):
-        assert schema_view is not None
+        assert SchemaView(str(schema_path)) is not None
         return ""
     raise NotImplementedError(f"unsupported action: {type(action).__name__}")
 
@@ -72,13 +77,22 @@ def run_action(action: conformance.Action, schema_path: Path, schema_view: Schem
 
 
 def to_plain(value: Any) -> Any:
-    """Turn loader objects into plain dicts/lists so `==` compares like-for-like."""
+    """Turn loader objects into plain Python so `==` and error messages behave."""
     if isinstance(value, JsonObj):
         return to_plain(as_dict(value))
     if isinstance(value, dict):
         return {key: to_plain(item) for key, item in value.items()}
     if isinstance(value, list):
         return [to_plain(item) for item in value]
+    # linkml_runtime hands back extended_str / extended_int subclasses
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return str(value)
+    if isinstance(value, int):
+        return int(value)
+    if isinstance(value, float):
+        return float(value)
     return value
 
 
@@ -108,9 +122,9 @@ def validation_errors(schema_text: str, instance_path: Path) -> list:
 def check_assertion(assertion: conformance.Assertion, result: str) -> None:
     """Raise AssertionError if the action's result doesn't satisfy the assertion."""
     if isinstance(assertion, conformance.JsonPathAssertion):
-        actual = step_path(json.loads(result), assertion.path)
+        actual = to_plain(step_path(json.loads(result), assertion.path))
         expected = to_plain(assertion.value)
-        assert to_plain(actual) == expected, (
+        assert actual == expected, (
             f"at {assertion.path}: expected {expected!r}, got {actual!r}"
         )
 
@@ -145,30 +159,27 @@ class Result:
     error: str = ""
 
 
-def run_test(test: conformance.Test, schema_path: Path, schema_view: SchemaView) -> None:
-    check_assertion(test.assertion, run_action(test.action, schema_path, schema_view))
+def run_test(test: conformance.Test) -> None:
+    """Run one manifest entry against its own schema."""
+    check_assertion(test.assertion, run_action(test.action, RESOURCES / test.schema))
 
 
 def run_all(manifest: conformance.Manifest | None = None) -> list[Result]:
     manifest = manifest or load_manifest()
-    schema_path = RESOURCES / manifest.schema
-    schema_view = SchemaView(str(schema_path))
 
     results = []
-    for index, test in enumerate(manifest.entries):
-        name = test_name(index, test)
+    for test in entries(manifest):
         try:
-            run_test(test, schema_path, schema_view)
-            results.append(Result(name, True))
+            run_test(test)
+            results.append(Result(test.name, True))
         except Exception as error:  # a failed assertion or a broken action
-            results.append(Result(name, False, f"{type(error).__name__}: {error}"))
+            results.append(Result(test.name, False, f"{type(error).__name__}: {error}"))
     return results
 
 
 def main() -> int:
     manifest = load_manifest()
-    print(f"manifest: {manifest.name} ({MANIFEST})")
-    print(f"schema:   {manifest.schema}\n")
+    print(f"manifest: {manifest.name} ({MANIFEST})\n")
 
     results = run_all(manifest)
     for result in results:

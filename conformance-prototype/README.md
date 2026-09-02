@@ -4,7 +4,8 @@ A Python port of `generator/test/src-jvm/eu/neverblink/linkml/generator/conforma
 
 It loads `generator/test/resources/conformance/manifest.yaml` into the classes in
 `generated.py` (generated from `model/conformance-ontology.yaml` with `gen-python`),
-runs each entry's action, and checks the output against the entry's assertion.
+runs each entry's action against that entry's schema, and checks the output
+against the entry's assertion.
 
 ## Files
 
@@ -21,29 +22,44 @@ runs each entry's action, and checks the output against the entry's assertion.
 
 The resources path is hard-coded at the top of `runner.py`, as it is in the Scala version.
 
-## What's covered
+## How it maps to the Scala runner
+
+| Scala | Python |
+| --- | --- |
+| `manifestCodec.decode(parseYaml(...))` | `yaml_loader.load(path, generated.Manifest)` |
+| `LinkMlGenerator` with `OutputFormat.json` | `LinkmlGenerator(format="json", materialize_attributes=True)` |
+| `JsonSchemaGenerator` | `linkml.generators.jsonschemagen.JsonSchemaGenerator` |
+| `sv.lint()` | `linkml.linter.linter.Linter().lint(...)` |
+| networknt `SchemaRegistry` | `jsonschema` |
+
+`entries` is inlined and keyed by `name`, so it loads as a dict of name -> `Test`,
+and each `Test` carries its own `schema`. The `type` slot is a type designator, so
+`linkml_runtime`'s loader picks the right `Action`/`Assertion` subclass by itself —
+no manual dispatch on load.
+
+`materialize_attributes=True` folds induced slots into each class's `attributes`,
+which is what the `classes/<C>/attributes/<slot>/rank` assertions read.
+
+JSON Schema validation uses the `jsonschema` package (Draft 2020-12 by default,
+or whatever the generated schema's `$schema` declares).
+
+## Coverage
 
 Actions: `LoadAction`, `DeriveAction`, `LintAction`, `JsonSchemaGenerate`.
 Assertions: `LoadsAssertion`, `StringAssertion`, `JsonPathAssertion`, `JsonSchemaAccepts`, `JsonSchemaRejects`.
 
-The `type` slot in the ontology is a type designator, so `linkml_runtime`'s loader
-picks the right `Action`/`Assertion` subclass by itself — no manual dispatch on load.
+## Known difference from the Scala runner
 
-JSON Schema validation uses the `jsonschema` package (Draft 2020-12 by default,
-or whatever the generated schema's `$schema` declares), standing in for
-networknt's `SchemaRegistry` on the Scala side.
+Scala passes 5/5; Python passes 4/5. The one failure is **Slot to slot rank
+inheritance**: `rank` is not inherited through a slot's `is_a` parent in Python
+linkml, so `second_slot` comes out with no `rank` at all where Scala derives 2.
 
-## Known gap
-
-`DeriveAction` maps to linkml's `YAMLGenerator`. It currently fails on
-`conformance/basic/model.yaml` with `Unknown CURIE prefix: linkml`, because that
-schema imports `linkml:types` without declaring the `linkml` prefix.
-`JsonSchemaGenerator` tolerates this, `YAMLGenerator` does not. Adding
-
-```yaml
-prefixes:
-  linkml: https://w3id.org/linkml/
+```
+raw second_base_slot rank: 2
+raw second_slot rank:      None
+induced second_slot rank:  None   (slot_ancestors: second_slot, second_base_slot)
 ```
 
-to the test schema fixes it, but that file is shared with the Scala suite, so it
-was left alone. No manifest entry uses `DeriveAction` today.
+`rank` is not marked `inherited: true` in the metamodel, so `class_induced_slots`
+never propagates it. `class2class` (which uses `slot_usage`) works fine in both.
+This is a genuine implementation difference, not a bug in the runner.
