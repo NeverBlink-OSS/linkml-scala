@@ -168,6 +168,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     )
   }
 
+  /** Values of the [[attributeViews]] map, with the common sorting.
+    */
+  lazy val sortedAttributeViews: Seq[AttributeView] = {
+    attributeViews.values.toVector.sortBy(x => sv.elementOrder(x.slotView.slot))
+  }
+
   /** @return
     *   true if this class should be treated as an `Any`
     */

@@ -36,7 +36,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     for classView <- sv.classes.values yield {
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
-      val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
+      val scalaFields = for attribute <- classView.sortedAttributeViews yield {
         makeScalaField(attribute, collectionForm, classView, options)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
@@ -57,7 +57,7 @@ final class ScalaGenerator(using sv: SchemaView) {
           ScalaClassInfo(
             className,
             options.`package`,
-            scalaFields.sortBy(x => (x.order, x.name)),
+            scalaFields,
             (cls.isA ++ cls.mixins).map(ref => Case.PascalCase(ref.value)).toSeq,
             interfaceFields,
             cls.`abstract` || cls.mixin,
@@ -402,7 +402,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     *   if an in-scope slot's expression fails to parse, or references an out-of-scope slot
     */
   private def makeInferredFields(classView: ClassView): Seq[InferredField] =
-    classView.attributeViews.values.toSeq
+    classView.sortedAttributeViews
       .filter(isSingleValuedString)
       .flatMap(attribute => attribute.equalsExpression.map(attribute -> _))
       .map { (attribute, parsed) =>
@@ -422,7 +422,6 @@ final class ScalaGenerator(using sv: SchemaView) {
           renderExpression(classView, attribute, expression),
         )
       }
-      .sortBy(_.name) // sort to minimize diffs
 
   /** Render a parsed interpolation expression as a Scala string-concatenation expression.
     *
