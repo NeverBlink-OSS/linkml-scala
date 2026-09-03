@@ -638,12 +638,12 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         MapImporter("imported1.yaml" -> imported1, "imported2.yaml" -> imported2),
       )
 
-      result shouldBe a[Left[?,?]]
+      result shouldBe a[Left[?, ?]]
       val problems = result.left.getOrElse(null)
 
       problems.map(_.location.schemaId) should contain theSameElementsAs Seq(
         Some(Uri("urn:imported1")),
-        Some(Uri("urn:imported2"))
+        Some(Uri("urn:imported2")),
       )
     }
 

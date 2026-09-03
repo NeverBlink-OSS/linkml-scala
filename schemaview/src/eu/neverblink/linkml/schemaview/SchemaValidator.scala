@@ -57,7 +57,8 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.unknownReferences.map(ref =>
       // A dangling 'string' reference nearly always means 'linkml:types' was not imported, so it
       // gets its own issue type with a hint.
-      if ref.referenceValue == "string" then new UnknownStringReferenceImpl(location = at(ref.path, ref.fromSchema))
+      if ref.referenceValue == "string" then
+        new UnknownStringReferenceImpl(location = at(ref.path, ref.fromSchema))
       else
         new UnknownReferenceImpl(
           location = at(ref.path, ref.fromSchema),
