@@ -598,6 +598,49 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       }.getMessage should include("Value 'V9' not found in enum 'E1'")
     }
 
+    "sort elements by rank then name" in {
+      val model =
+        """id: urn:rankTest
+          |name: rankTest
+          |
+          |types:
+          |  string:
+          |    base: str
+          |
+          |classes:
+          |  C1:
+          |    rank: 1
+          |    attributes:
+          |      s1:
+          |        rank: 1
+          |      s2:
+          |        rank: 2
+          |      abc:
+          |      def:
+          |  C2:
+          |    rank: 2
+          |  ABC:
+          |  DEF:
+          |""".stripMargin
+
+      val sv = SchemaView.single(parse(model))
+      sv.sortedClasses.map(_.name) should contain theSameElementsInOrderAs Seq(
+        "C1",
+        "C2",
+        "ABC",
+        "DEF",
+      )
+
+      sv.classes("C1").sortedAttributeViews.map(
+        _.slotView.name,
+      ) should contain theSameElementsInOrderAs Seq(
+        "s1",
+        "s2",
+        "abc",
+        "def",
+      )
+    }
+
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))
 
     def parse(content: String): SchemaDefinition = parseYaml(content) match {
