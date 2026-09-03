@@ -15,27 +15,40 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Location of an issue that is pinned to a JSON path within the root schema. */
   private def at(jsonPath: String): IssueLocationImpl =
-    new IssueLocationImpl(schemaId = new Some(sv.root.id), jsonPointer = new Some(jsonPath))
+    new IssueLocationImpl(schemaId = new Some(schemaId), jsonPointer = new Some(jsonPath))
 
-  /** Location of an issue that pertains to a class of the root schema. */
-  private def classLocation(className: String): IssueLocationImpl =
-    at("/classes/".concat(className))
+  /** Infer the location of an element, providing the schema id and a JSON pointer if possible.
+    */
+  private def elementLocation(elementView: ElementView[?, ?]): IssueLocationImpl = {
+    new IssueLocationImpl(
+      schemaId = Some(elementView.definingSchema.id),
+      jsonPointer = elementView match {
+        case ClassView(cls, definingSchema) =>
+          Some("/classes/" + cls.name)
+        case SlotView(slot, definingSchema) =>
+          // currently not possible to differentiate between attributes and slots
+          None
+        case EnumView(_enum, definingSchema) =>
+          Some("/enums/" + _enum.name)
+        case TypeView(_type, definingSchema) =>
+          Some("/types/" + _type.name)
+        case SubsetView(subset, definingSchema) =>
+          Some("/subsets/" + subset.name)
+      },
+    )
+  }
 
   /** Location of an issue that pertains to the root schema as a whole. */
   private def rootLocation: IssueLocationImpl =
     new IssueLocationImpl(schemaId = new Some(sv.root.id))
 
-  // TODO: warn about shadowing
-
   /** Whether omitting `range` will result in a valid reference */
   private lazy val isDefaultRangeAllowed: Boolean =
     sv.root.defaultRange.isDefined || sv.types.contains("string")
 
-  private given ValidatorContext = ValidatorContext(isDefaultRangeAllowed)
-
   /** Macro validator's result */
   private lazy val macroResult = sv.schemas.foldLeft(ValidatorResult.ok) { (acc, schema) =>
-    // TODO LNK-166: Store the element "fromSchema"
+    given ValidatorContext = ValidatorContext(isDefaultRangeAllowed, schema.id)
     acc + macroValidator.validate(schema.asInstanceOf).prependedPath("/")
   }
 
@@ -122,7 +135,7 @@ final class SchemaValidator(using sv: SchemaView) {
       if (keyOrId.size > 1) {
         errors.addOne(
           new MultipleKeyOrIdSlotsImpl(
-            location = classLocation(derivedCls.cls.name),
+            location = elementLocation(derivedCls),
             className = derivedCls.cls.name,
             slotNames = keyOrId.toSeq.map(_.name),
           ),
@@ -135,7 +148,7 @@ final class SchemaValidator(using sv: SchemaView) {
           case elem =>
             errors.addOne(
               new InvalidKeyOrIdSlotTypeImpl(
-                location = classLocation(derivedCls.cls.name),
+                location = elementLocation(derivedCls),
                 className = derivedCls.cls.name,
                 elementName = elem.name,
               ),
@@ -297,7 +310,7 @@ final class SchemaValidator(using sv: SchemaView) {
       if (problemSlots.nonEmpty) {
         acc.addOne(
           new InvalidSlotUsageImpl(
-            location = classLocation(cls.cls.name),
+            location = elementLocation(cls),
             className = cls.cls.name,
             slotNames = problemSlots.toSeq,
           ),
@@ -306,36 +319,54 @@ final class SchemaValidator(using sv: SchemaView) {
       acc
     }.result()
 
+  private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
+    UndefinedPrefixImpl(location = at(position), prefix = prefix)
+
   private def slotImplicitPrefix(
       slotDefinition: SlotDefinition,
       prefixResolver: PrefixResolver,
       locationPrefix: String,
+      schemaId: Uri,
   ): Option[SchemaError] = {
     slotDefinition.implicitPrefix match {
       case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
-        new Some(undefinedPrefix(prefix, s"$locationPrefix/${slotDefinition.name}/implicit_prefix"))
+        new Some(
+          undefinedPrefix(
+            prefix,
+            s"$locationPrefix/${slotDefinition.name}/implicit_prefix",
+            schemaId,
+          ),
+        )
       case _ => None
     }
   }
 
-  private def undefinedPrefix(prefix: NcName, position: String): SchemaError =
-    UndefinedPrefixImpl(location = at(position), prefix = prefix)
-
   private lazy val unknownPrefixes: Seq[SchemaError] = {
     sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
       if sv.rootPrefixResolver.resolvePrefix(prefix).isEmpty
-      then new Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx"))
+      then new Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx", sv.root.id))
       else None,
     ) ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
           case Some(prefix) if tv.definingPrefixResolver.resolvePrefix(prefix).isEmpty =>
-            new Some(undefinedPrefix(prefix, s"/types/${tv._type.name}/implicit_prefix"))
+            new Some(
+              undefinedPrefix(
+                prefix,
+                s"/types/${tv._type.name}/implicit_prefix",
+                tv.definingSchema.id,
+              ),
+            )
           case _ => None
         }
       }) ++
       sv.slotDefinitions.values.flatMap(slotView =>
-        slotImplicitPrefix(slotView.inner, slotView.definingPrefixResolver, "/slots"),
+        slotImplicitPrefix(
+          slotView.inner,
+          slotView.definingPrefixResolver,
+          "/slots",
+          slotView.definingSchema.id,
+        ),
       ) ++
       sv.classes.values.flatMap(classView =>
         classView.cls.slotUsage.values.flatMap(
@@ -343,6 +374,7 @@ final class SchemaValidator(using sv: SchemaView) {
             _,
             classView.definingPrefixResolver,
             s"/classes/${classView.cls.name}/slot_usage",
+            classView.definingSchema.id,
           ),
         ) ++
           classView.cls.attributes.values.flatMap(
@@ -350,6 +382,7 @@ final class SchemaValidator(using sv: SchemaView) {
               _,
               classView.definingPrefixResolver,
               s"/classes/${classView.cls.name}/attributes",
+              classView.definingSchema.id,
             ),
           ),
       )
