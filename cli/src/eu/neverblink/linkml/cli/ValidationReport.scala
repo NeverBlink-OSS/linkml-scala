@@ -4,6 +4,7 @@ import eu.neverblink.linkml.generator.util.JsonUtil
 import org.virtuslab.yaml.Node
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.linkml.validation.{
   Codec,
   IssueSeverity,
@@ -56,7 +57,10 @@ object ValidationReport {
     case Error extends Severity("ERROR", "✖", Ansi.red) // ✖
     case Warning extends Severity("WARNING", "⚠", Ansi.yellow) // ⚠
 
-  final case class Issue(severity: Severity, message: String)
+  /** @param schemaId
+    *   ID of the schema the issue was found in, if the validator could attribute it to one.
+    */
+  final case class Issue(severity: Severity, schemaId: Option[Uri], message: String)
 
   /** Map structured schema issues to display issues. */
   def issuesOf(problems: Seq[SchemaIssue]): Seq[Issue] =
@@ -65,7 +69,7 @@ object ValidationReport {
         case IssueSeverity.Fatal => Severity.Fatal
         case IssueSeverity.Error => Severity.Error
         case IssueSeverity.Warning => Severity.Warning
-      Issue(severity, SchemaIssues.description(p))
+      Issue(severity, p.location.schemaId, SchemaIssues.description(p))
     }
 
   /** Render a full validation report in one of the human-readable formats.
@@ -80,7 +84,7 @@ object ValidationReport {
     */
   private def render(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match
-      case Format.Plain => renderPlain(issues)
+      case Format.Plain => renderPlain(schemaName, issues)
       case Format.Terminal => renderTerminal(schemaName, issues)
       case Format.Json => throw UnsupportedOperationException()
 
@@ -120,7 +124,7 @@ object ValidationReport {
 
   private def renderBlock(schemaName: String, issues: Seq[Issue], format: Format): String =
     format match
-      case Format.Plain => s"# $schemaName\n${renderPlain(issues)}"
+      case Format.Plain => s"# $schemaName\n${renderPlain(schemaName, issues)}"
       case Format.Terminal => renderTerminal(schemaName, issues)
       case Format.Json => throw UnsupportedOperationException()
 
@@ -142,29 +146,68 @@ object ValidationReport {
         s"  $color$bold$icon $text$reset"
       case Format.Json => throw UnsupportedOperationException()
 
-  private def renderPlain(issues: Seq[Issue]): String =
+  /** Issues grouped by the schema they were found in.
+    *
+    * Issues without a schema id belong to the root schema, so their group comes first and is
+    * labeled with the input name. Every other group is labeled with its schema id, and sorted by it
+    * so that the report is stable.
+    */
+  private def grouped(inputName: String, issues: Seq[Issue]): Seq[(String, Seq[Issue])] =
+    val byId = issues.groupBy(_.schemaId)
+    val rootGroup = byId.get(None).map(inputName -> _)
+    val importGroups = byId.toSeq.collect { case (Some(id), is) => id.original -> is }.sortBy(_._1)
+    rootGroup.toSeq ++ importGroups
+
+  /** Whether the issues can be rendered as one flat list, with no per-schema headers. That is the
+    * case when none of them carries a schema id, so there is nothing to attribute them to.
+    */
+  private def isFlat(issues: Seq[Issue]): Boolean = issues.forall(_.schemaId.isEmpty)
+
+  private def renderPlain(inputName: String, issues: Seq[Issue]): String =
     if issues.isEmpty then "Schema is valid."
     else {
-      sorted(issues).map(i => s"${i.severity.label}: ${i.message}")
-        .mkString("", "\n", "\n".concat(summaryText(issues)))
+      val body =
+        if isFlat(issues) then plainLines(issues)
+        else
+          grouped(inputName, issues)
+            .map((label, groupIssues) => s"## $label\n${plainLines(groupIssues)}")
+            .mkString("\n")
+      s"$body\n${summaryText(issues)}"
     }
 
-  private def renderTerminal(schemaName: String, issues: Seq[Issue]): String =
+  private def plainLines(issues: Seq[Issue]): String =
+    sorted(issues).map(i => s"${i.severity.label}: ${i.message}").mkString("\n")
+
+  private def renderTerminal(inputName: String, issues: Seq[Issue]): String =
     import Ansi.*
     val sb = new java.lang.StringBuilder
-    sb.append(s"${dim}Validating $schemaName$reset\n\n")
+    sb.append(s"${dim}Validating $inputName$reset\n\n")
     if issues.isEmpty then sb.append(s"$green$bold✔ Schema is valid.$reset") // ✔
     else
-      val entries = sorted(issues)
-      val labelWidth = entries.iterator.map(_.severity.label.length).max
-      for i <- entries do
-        val s = i.severity
-        val label = s.label.padTo(labelWidth, ' ')
-        sb.append(s"  ${s.color}${s.icon} $bold$label$reset  ${i.message}\n")
+      // One width for the whole report, so that the messages line up across groups as well.
+      val labelWidth = issues.iterator.map(_.severity.label.length).max
+      if isFlat(issues) then appendIssues(sb, issues, labelWidth, "  ")
+      else
+        grouped(inputName, issues).foreach { (label, groupIssues) =>
+          sb.append(s"  $bold$label$reset\n")
+          appendIssues(sb, groupIssues, labelWidth, "    ")
+        }
       sb.append("\n")
       val summary = summarySeverity(issues)
       sb.append(s"  ${summary.color}$bold${summary.icon} ${summaryText(issues)}$reset")
     sb.toString
+
+  private def appendIssues(
+      sb: java.lang.StringBuilder,
+      issues: Seq[Issue],
+      labelWidth: Int,
+      indent: String,
+  ): Unit =
+    import Ansi.*
+    for i <- sorted(issues) do
+      val s = i.severity
+      val label = s.label.padTo(labelWidth, ' ')
+      sb.append(s"$indent${s.color}${s.icon} $bold$label$reset  ${i.message}\n")
 
   private def sorted(issues: Seq[Issue]): Seq[Issue] =
     issues.sortBy(_.severity.ordinal)
