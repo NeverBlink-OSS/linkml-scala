@@ -9,12 +9,6 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class UniqueKeyImpl(
-    @id
-    @named("unique_key_name")
-    uniqueKeyName: String,
-    @value
-    @named("unique_key_slots")
-    uniqueKeySlots: Seq[Reference[SlotDefinition]],
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
@@ -73,6 +67,12 @@ final case class UniqueKeyImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @id
+    @named("unique_key_name")
+    uniqueKeyName: String,
+    @value
+    @named("unique_key_slots")
+    uniqueKeySlots: Seq[Reference[SlotDefinition]],
 ) extends UniqueKey {
 
   override def infer(): UniqueKeyImpl =
@@ -85,6 +85,15 @@ final case class UniqueKeyImpl(
   *   From schema: https://w3id.org/linkml/meta
   */
 abstract class UniqueKey extends Extensible, Annotatable, CommonMetadata {
+
+  /** By default, None values are considered equal for the purposes of comparisons in determining
+    * uniqueness. Set this to true to treat missing values as per ANSI-SQL NULLs, i.e NULL=NULL is
+    * always False.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def considerNullsInequal: Boolean
 
   /** Name of the unique key
     *
@@ -100,15 +109,6 @@ abstract class UniqueKey extends Extensible, Annotatable, CommonMetadata {
     *   From schema: https://w3id.org/linkml/meta
     */
   def uniqueKeySlots: Seq[Reference[SlotDefinition]]
-
-  /** By default, None values are considered equal for the purposes of comparisons in determining
-    * uniqueness. Set this to true to treat missing values as per ANSI-SQL NULLs, i.e NULL=NULL is
-    * always False.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def considerNullsInequal: Boolean
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

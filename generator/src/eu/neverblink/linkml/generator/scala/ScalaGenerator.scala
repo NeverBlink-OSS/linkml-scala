@@ -36,7 +36,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     for classView <- sv.classes.values yield {
       val cls = classView.cls
       val collectionForm = CollectionForm.of(classView)
-      val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
+      val scalaFields = for attribute <- classView.sortedAttributeViews yield {
         makeScalaField(attribute, collectionForm, classView, options)
       }
       val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
@@ -57,7 +57,7 @@ final class ScalaGenerator(using sv: SchemaView) {
           ScalaClassInfo(
             className,
             options.`package`,
-            scalaFields.sortBy(x => (x.order, x.name)),
+            scalaFields,
             (cls.isA ++ cls.mixins).map(ref => Case.PascalCase(ref.value)).toSeq,
             interfaceFields,
             cls.`abstract` || cls.mixin,
@@ -402,7 +402,7 @@ final class ScalaGenerator(using sv: SchemaView) {
     *   if an in-scope slot's expression fails to parse, or references an out-of-scope slot
     */
   private def makeInferredFields(classView: ClassView): Seq[InferredField] =
-    classView.attributeViews.values.toSeq
+    classView.sortedAttributeViews
       .filter(isSingleValuedString)
       .flatMap(attribute => attribute.equalsExpression.map(attribute -> _))
       .map { (attribute, parsed) =>
@@ -422,7 +422,6 @@ final class ScalaGenerator(using sv: SchemaView) {
           renderExpression(classView, attribute, expression),
         )
       }
-      .sortBy(_.name) // sort to minimize diffs
 
   /** Render a parsed interpolation expression as a Scala string-concatenation expression.
     *
@@ -498,12 +497,11 @@ final class ScalaGenerator(using sv: SchemaView) {
     val v = attribute.slotView
     val slot = v.slot
     val name = slotName(slot.name)
-    // Move id / value to the front, regardless of rank
-    val (thisAnnotation, order) = collectionForm match {
-      case CollectionForm.SimpleDict(key, value) if slot.name == key => (Some("@id"), -2)
-      case CollectionForm.SimpleDict(key, value) if slot.name == value => (Some("@value"), -1)
-      case CollectionForm.CompactDict(key) if slot.name == key => (Some("@id"), -2)
-      case _ => (None, slot.rank.getOrElse(10_000))
+    val thisAnnotation = collectionForm match {
+      case CollectionForm.SimpleDict(key, value) if slot.name == key => Some("@id")
+      case CollectionForm.SimpleDict(key, value) if slot.name == value => Some("@value")
+      case CollectionForm.CompactDict(key) if slot.name == key => Some("@id")
+      case _ => None
     }
     val aliasAnnotation =
       slot.alias
@@ -519,7 +517,6 @@ final class ScalaGenerator(using sv: SchemaView) {
       typedDefault.default,
       Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
       remapMetamodelCombineFunctions(v, typedDefault.combineFunc),
-      order,
       slot.inherited,
       ScalaDoc(slot, v.definingSchema.id, options)(using v.definingPrefixResolver),
     )
@@ -830,8 +827,6 @@ object ScalaGenerator {
     *   Annotations to add to the case class.
     * @param combineFunc
     *   The runtime function to use for slot combining.
-    * @param order
-    *   The order of the field, smaller values appear first.
     * @param inherited
     *   If true, include this field in the inherited slot combining.
     * @param doc
@@ -843,7 +838,6 @@ object ScalaGenerator {
       default: Option[String],
       annotations: Seq[String],
       combineFunc: CombineFunction,
-      order: Int,
       inherited: Boolean,
       doc: ScalaDoc,
   ):

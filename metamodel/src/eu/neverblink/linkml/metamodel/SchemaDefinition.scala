@@ -9,10 +9,10 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class SchemaDefinitionImpl(
-    @id
-    name: NcName,
     @value
     id: Uri,
+    @id
+    name: NcName,
     @compactDict
     classes: Map[String, ClassDefinitionImpl] = Map(),
     title: Option[LocalizedText] = None,
@@ -138,6 +138,13 @@ final case class SchemaDefinitionImpl(
   */
 abstract class SchemaDefinition extends Element {
 
+  /** The official schema URI
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def id: Uri
+
   /** A unique name for the schema that is both human-readable and consists of only characters from
     * the NCName set
     *
@@ -151,13 +158,6 @@ abstract class SchemaDefinition extends Element {
     *   From schema: https://w3id.org/linkml/meta
     */
   def name: NcName
-
-  /** The official schema URI
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def id: Uri
 
   /** An index to the collection of all class definitions in the schema
     *

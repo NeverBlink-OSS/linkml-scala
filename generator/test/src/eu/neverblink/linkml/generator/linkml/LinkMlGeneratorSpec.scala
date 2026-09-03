@@ -280,8 +280,8 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         ),
       ) shouldBe
         """{
-        |  "name": "d3fend",
         |  "id": "https://d3fend.mitre.org/ontologies/d3fend.owl",
+        |  "name": "d3fend",
         |  "classes": {
         |    "ZeroClientComputer": {
         |      "class_uri": "d3f:ZeroClientComputer",
@@ -327,8 +327,8 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         ),
       ) shouldBe
         """{
-        |  "name": "numeric_strings",
         |  "id": "https://example.org/numeric-strings",
+        |  "name": "numeric_strings",
         |  "classes": {
         |    "SomeClass": {
         |      "class_uri": "https://example.org/numeric-strings/SomeClass",
