@@ -25,6 +25,7 @@ object ModelCatalogue {
       turtle: Option[String],
       csv: Option[String],
       context: Option[String],
+      additionalFiles: Map[String, String],
   ):
     /** @return
       *   the requested format if available, None otherwise
@@ -52,16 +53,30 @@ object ModelCatalogue {
 
   private object InstanceInFormats:
     def apply(path: String, name: String): InstanceInFormats = {
+      val additionalFiles = Resources.map.keySet().asScala
+        .filter(_.startsWith(path + "/"))
+
       val json = path + "/data.json"
       val turtle = path + "/data.ttl"
       val csv = path + "/data.csv"
       val context = path + "/context.ttl"
+
+      val baseFiles = Seq(json, turtle, csv, context)
+
+      if name == "present" then println("")
+
       new InstanceInFormats(
         name,
         if Resources.map.containsKey(json) then Some(Resources.read(json)) else None,
         if Resources.map.containsKey(turtle) then Some(Resources.read(turtle)) else None,
         if Resources.map.containsKey(csv) then Some(Resources.read(csv)) else None,
         if Resources.map.containsKey(context) then Some(Resources.read(context)) else None,
+        additionalFiles
+          .collect {
+            case file if !baseFiles.contains(file) =>
+              file.stripPrefix(path + "/") -> Resources.read(file)
+          }
+          .toMap,
       )
     }
 
@@ -87,8 +102,8 @@ object ModelCatalogue {
   private object Entry:
     def apply(path: String): Entry = {
       val instancePaths = Resources.map.keySet().asScala.toSeq
-        .filter(x => x.endsWith("/data.json") || x.endsWith("/data.ttl"))
-        .map(_.stripSuffix("/data.json").stripSuffix("/data.ttl"))
+        .filter(x => x.endsWith("/data.json") || x.endsWith("/data.ttl") || x.endsWith("/data.csv"))
+        .map(_.stripSuffix("/data.json").stripSuffix("/data.ttl").stripSuffix("/data.csv"))
         .distinct
 
       val validInstancePaths = instancePaths.filter(_.startsWith(path + "valid/"))

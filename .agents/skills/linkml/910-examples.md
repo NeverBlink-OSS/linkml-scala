@@ -24,14 +24,14 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `cardinalityExplicit` | 4 | 8 |  |
 | `constraints` | 12 | 12 |  |
 | `constraintsOnTypes` | 9 | 9 |  |
-| `curie` | 13 | 0 |  |
+| `curie` | 14 | 0 |  |
 | `emitPrefixes` | 0 | 0 |  |
 | `emptyClass` | 0 | 0 |  |
 | `enum` | 8 | 8 |  |
 | `equalsExpression` | 0 | 0 |  |
 | `externalType` | 0 | 0 | This model uses a type which has an unknown and empty 'base… |
 | `ifabsent/enums` | 0 | 0 |  |
-| `implicitPrefix` | 18 | 0 |  |
+| `implicitPrefix` | 22 | 0 |  |
 | `inheritance` | 0 | 0 |  |
 | `inlines/explicitInline` | 6 | 3 |  |
 | `inlines/explicitInlineImplicitlyAsCompactDict` | 9 | 6 |  |
@@ -55,8 +55,8 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `nonHermetic` | 0 | 0 |  |
 | `pruning` | 0 | 0 |  |
 | `pruningDefaultRange` | 0 | 0 |  |
-| `reference` | 8 | 3 |  |
-| `referenceInteger` | 5 | 3 |  |
+| `reference` | 9 | 6 |  |
+| `referenceInteger` | 6 | 3 |  |
 | `syntheticUris` | 0 | 0 |  |
 | `treeRootless` | 0 | 0 |  |
 | `typeDesignator` | 10 | 12 |  |
@@ -64,6 +64,6 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `typed` | 8 | 19 |  |
 | `unionRange` | 6 | 3 |  |
 | `unionRangeReference` | 8 | 3 |  |
-| `uri` | 13 | 0 |  |
+| `uri` | 14 | 0 |  |
 | `uriImports` | 0 | 0 |  |
 | `uriOrCurie` | 22 | 0 |  |
