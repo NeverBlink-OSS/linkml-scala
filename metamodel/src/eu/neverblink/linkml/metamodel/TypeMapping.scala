@@ -9,9 +9,6 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class TypeMappingImpl(
-    @id
-    @named("framework")
-    frameworkKey: String,
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
@@ -42,6 +39,9 @@ final case class TypeMappingImpl(
     examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
+    @id
+    @named("framework")
+    frameworkKey: String,
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")

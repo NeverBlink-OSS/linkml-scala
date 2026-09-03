@@ -9,13 +9,13 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class PermissibleValueImpl(
-    @id
-    text: String,
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     @named("is_a")
     isA: Option[Reference[PermissibleValue]] = None,
     mixins: Seq[Reference[PermissibleValue]] = Seq(),
+    @id
+    text: String,
     meaning: Option[UriOrCurie] = None,
     rank: Option[Int] = None,
     aliases: Seq[String] = Seq(),
@@ -89,18 +89,6 @@ final case class PermissibleValueImpl(
   */
 abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata {
 
-  /** The actual permissible value itself
-    *
-    * @see
-    *   Aliases: value
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   There are no constraints on the text of the permissible value, but for many applications you
-    *   may want to consider following idiomatic forms and using computer-friendly forms
-    */
-  def text: String
-
   /** A textual description of the element's purpose and use
     *
     * @see
@@ -136,6 +124,18 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *   hierarchy, while keeping the benefits of multiple inheritance
     */
   def mixins: Seq[Reference[PermissibleValue]]
+
+  /** The actual permissible value itself
+    *
+    * @see
+    *   Aliases: value
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   There are no constraints on the text of the permissible value, but for many applications you
+    *   may want to consider following idiomatic forms and using computer-friendly forms
+    */
+  def text: String
 
   /** The value meaning of a permissible value
     *

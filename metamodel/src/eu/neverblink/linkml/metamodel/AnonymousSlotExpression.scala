@@ -63,10 +63,10 @@ final case class AnonymousSlotExpressionImpl(
     equalsString: Option[String] = None,
     @named("equals_string_in")
     equalsStringIn: Seq[String] = Seq(),
-    @named("exact_cardinality")
-    exactCardinality: Option[Int] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
+    @named("exact_cardinality")
+    exactCardinality: Option[Int] = None,
     examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),

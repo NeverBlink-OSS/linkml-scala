@@ -497,12 +497,11 @@ final class ScalaGenerator(using sv: SchemaView) {
     val v = attribute.slotView
     val slot = v.slot
     val name = slotName(slot.name)
-    // Move id / value to the front, regardless of rank
-    val (thisAnnotation, order) = collectionForm match {
-      case CollectionForm.SimpleDict(key, value) if slot.name == key => (Some("@id"), -2)
-      case CollectionForm.SimpleDict(key, value) if slot.name == value => (Some("@value"), -1)
-      case CollectionForm.CompactDict(key) if slot.name == key => (Some("@id"), -2)
-      case _ => (None, slot.rank.getOrElse(10_000))
+    val thisAnnotation = collectionForm match {
+      case CollectionForm.SimpleDict(key, value) if slot.name == key => Some("@id")
+      case CollectionForm.SimpleDict(key, value) if slot.name == value => Some("@value")
+      case CollectionForm.CompactDict(key) if slot.name == key => Some("@id")
+      case _ => None
     }
     val aliasAnnotation =
       slot.alias
@@ -518,7 +517,6 @@ final class ScalaGenerator(using sv: SchemaView) {
       typedDefault.default,
       Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
       remapMetamodelCombineFunctions(v, typedDefault.combineFunc),
-      order,
       slot.inherited,
       ScalaDoc(slot, v.definingSchema.id, options)(using v.definingPrefixResolver),
     )
@@ -829,8 +827,6 @@ object ScalaGenerator {
     *   Annotations to add to the case class.
     * @param combineFunc
     *   The runtime function to use for slot combining.
-    * @param order
-    *   The order of the field, smaller values appear first.
     * @param inherited
     *   If true, include this field in the inherited slot combining.
     * @param doc
@@ -842,7 +838,6 @@ object ScalaGenerator {
       default: Option[String],
       annotations: Seq[String],
       combineFunc: CombineFunction,
-      order: Int,
       inherited: Boolean,
       doc: ScalaDoc,
   ):
