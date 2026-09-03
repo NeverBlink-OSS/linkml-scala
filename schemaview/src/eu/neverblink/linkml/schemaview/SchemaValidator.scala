@@ -14,12 +14,12 @@ final class SchemaValidator(using sv: SchemaView) {
   import SchemaValidator.macroValidator
 
   /** Location of an issue that is pinned to a JSON path within the root schema. */
-  private def at(jsonPath: String): IssueLocationImpl =
+  private def at(jsonPath: String, schemaId: Uri): IssueLocationImpl =
     new IssueLocationImpl(schemaId = new Some(schemaId), jsonPointer = new Some(jsonPath))
 
   /** Infer the location of an element, providing the schema id and a JSON pointer if possible.
     */
-  private def elementLocation(elementView: ElementView[?, ?]): IssueLocationImpl = {
+  private def locationOf(elementView: ElementView[?, ?]): IssueLocationImpl = {
     new IssueLocationImpl(
       schemaId = Some(elementView.definingSchema.id),
       jsonPointer = elementView match {
@@ -57,10 +57,10 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.unknownReferences.map(ref =>
       // A dangling 'string' reference nearly always means 'linkml:types' was not imported, so it
       // gets its own issue type with a hint.
-      if ref.referenceValue == "string" then new UnknownStringReferenceImpl(location = at(ref.path))
+      if ref.referenceValue == "string" then new UnknownStringReferenceImpl(location = at(ref.path, ref.fromSchema))
       else
         new UnknownReferenceImpl(
-          location = at(ref.path),
+          location = at(ref.path, ref.fromSchema),
           referenceValue = ref.referenceValue,
         ),
     )
@@ -68,7 +68,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Any usages of an undefined `default_range`. Empty if no usages found. */
   lazy val usedUndefinedDefaultRange: Seq[SchemaFatal] =
     macroResult.invalidDefaultRanges.map(range =>
-      new InvalidDefaultRangeImpl(location = at(range.path)),
+      new InvalidDefaultRangeImpl(location = at(range.path, range.fromSchema)),
     )
 
   lazy val schemaIdClash: Seq[SchemaFatal] = {
@@ -97,7 +97,7 @@ final class SchemaValidator(using sv: SchemaView) {
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
       new InvalidRangeImpl(
-        location = at(range.path),
+        location = at(range.path, range.fromSchema),
         rangeValue = range.value,
         actualType = range.actualType,
       ),
@@ -135,7 +135,7 @@ final class SchemaValidator(using sv: SchemaView) {
       if (keyOrId.size > 1) {
         errors.addOne(
           new MultipleKeyOrIdSlotsImpl(
-            location = elementLocation(derivedCls),
+            location = locationOf(derivedCls),
             className = derivedCls.cls.name,
             slotNames = keyOrId.toSeq.map(_.name),
           ),
@@ -148,7 +148,7 @@ final class SchemaValidator(using sv: SchemaView) {
           case elem =>
             errors.addOne(
               new InvalidKeyOrIdSlotTypeImpl(
-                location = elementLocation(derivedCls),
+                location = locationOf(derivedCls),
                 className = derivedCls.cls.name,
                 elementName = elem.name,
               ),
@@ -310,7 +310,7 @@ final class SchemaValidator(using sv: SchemaView) {
       if (problemSlots.nonEmpty) {
         acc.addOne(
           new InvalidSlotUsageImpl(
-            location = elementLocation(cls),
+            location = locationOf(cls),
             className = cls.cls.name,
             slotNames = problemSlots.toSeq,
           ),
@@ -320,7 +320,7 @@ final class SchemaValidator(using sv: SchemaView) {
     }.result()
 
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
-    UndefinedPrefixImpl(location = at(position), prefix = prefix)
+    UndefinedPrefixImpl(location = at(position, schemaId), prefix = prefix)
 
   private def slotImplicitPrefix(
       slotDefinition: SlotDefinition,
