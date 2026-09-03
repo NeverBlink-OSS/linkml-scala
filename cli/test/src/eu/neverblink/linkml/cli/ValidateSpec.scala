@@ -3,7 +3,7 @@ package eu.neverblink.linkml.cli
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 
 class ValidateSpec extends AnyWordSpec, Matchers {
 
@@ -20,6 +20,20 @@ class ValidateSpec extends AnyWordSpec, Matchers {
     }
     try test(files.map(_.toString))
     finally files.foreach(Files.deleteIfExists)
+  }
+
+  /** Write each `name -> yaml` pair into one temporary directory, so that relative `imports:`
+    * between them resolve, and pass that directory to the test.
+    */
+  private def withSchemaDir(files: (String, String)*)(test: Path => Unit): Unit = {
+    val dir = Files.createTempDirectory("linkml-validate")
+    try {
+      files.foreach((name, yaml) => Files.writeString(dir.resolve(name), yaml))
+      test(dir)
+    } finally {
+      files.foreach((name, _) => Files.deleteIfExists(dir.resolve(name)))
+      Files.deleteIfExists(dir)
+    }
   }
 
   // Loads cleanly (no fatal problems) but has one error (invalid class_uri) and one
@@ -142,6 +156,26 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))
           out should include("imported from schema 'https://neverblink.eu/test/'")
           out should not include "Uri("
+        }
+      }
+
+      "label the issues with the schema id even when there is only one schema" in {
+        withSchema(schemaWithIssues) { path =>
+          val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))
+          out should include("## https://neverblink.eu/test/")
+        }
+      }
+    }
+
+    "an issue cannot be attributed to any schema" should {
+      "report it without a schema header" in {
+        withSchemas(validSchema) { paths =>
+          // The file cannot be read at all, so the import failure carries no schema id.
+          val missing = paths.head + ".does-not-exist"
+          val (out, _) =
+            Validate.runTestCommand(List("validate", "--format", "plain", missing))
+          out should include("FATAL:")
+          out should not include "##"
         }
       }
     }
@@ -320,6 +354,102 @@ class ValidateSpec extends AnyWordSpec, Matchers {
         val (out, _, _) = Validate.runTestCommandWithExitCode(List("--help"))
         // The command list is colored, so drop the escape codes before matching.
         out.replaceAll(s"$Esc\\[[0-9;]*m", "") should include("validate, lint")
+      }
+    }
+
+    "given a schema with imports" should {
+      // Both schemas have an invalid class_uri, and the root one also has no tree_root, so
+      // there is something to report against each of them.
+      val mainWithIssues =
+        """id: urn:main
+          |name: main
+          |default_range: string
+          |imports:
+          |  - imported
+          |types:
+          |  string:
+          |classes:
+          |  MainClass:
+          |    class_uri: "not a curie!"
+          |""".stripMargin
+
+      val importedWithIssues =
+        """id: urn:imported
+          |name: imported
+          |classes:
+          |  ImportedClass:
+          |    class_uri: "also not a curie!"
+          |""".stripMargin
+
+      "group the issues under the id of the schema each one came from" in {
+        withSchemaDir("main.yaml" -> mainWithIssues, "imported.yaml" -> importedWithIssues) { dir =>
+          val path = dir.resolve("main.yaml").toString
+          val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))
+
+          out should include("## urn:main")
+          out should include("## urn:imported")
+
+          // The lines under one `## <schema id>` header, up to the next one.
+          def group(schemaId: String): String =
+            out.split("## ").find(_.startsWith(schemaId)).getOrElse(fail(s"no $schemaId group"))
+
+          group("urn:main") should include(
+            "ERROR: Invalid URI or CURIE 'not a curie!' in class 'MainClass'",
+          )
+          group("urn:main") should include("WARNING: No 'tree_root' class is defined")
+          group("urn:main") should not include "ImportedClass"
+          group("urn:imported") should include(
+            "ERROR: Invalid URI or CURIE 'also not a curie!' in class 'ImportedClass'",
+          )
+          group("urn:imported") should not include "MainClass"
+
+          // Still one combined summary for the file, not one per group.
+          out should include("2 errors, 1 warning")
+        }
+      }
+
+      "name both schemas in the terminal report" in {
+        withSchemaDir("main.yaml" -> mainWithIssues, "imported.yaml" -> importedWithIssues) { dir =>
+          val path = dir.resolve("main.yaml").toString
+          val (out, _) = Validate.runTestCommand(List("validate", path))
+
+          out should include(s"Validating $path")
+          out should include("urn:main")
+          out should include("urn:imported")
+          out should include("2 errors, 1 warning")
+        }
+      }
+
+      "attribute a fatal problem to the imported schema it came from" in {
+        // The bad range makes the whole SchemaView unbuildable, so this is the fatal path - but
+        // the problem is in the import, not in the file the user named.
+        val main =
+          """id: urn:main
+            |name: main
+            |imports:
+            |  - imported
+            |classes:
+            |  MainClass:
+            |    slots:
+            |      - s1
+            |""".stripMargin
+        val imported =
+          """id: urn:imported
+            |name: imported
+            |slots:
+            |  s1:
+            |    range: bad
+            |""".stripMargin
+        withSchemaDir("main.yaml" -> main, "imported.yaml" -> imported) { dir =>
+          val path = dir.resolve("main.yaml").toString
+          val (out, _, code) =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "plain", path))
+
+          out should include("## urn:imported")
+          out should not include "urn:main"
+          out should include("FATAL: Unknown reference 'bad'")
+          code shouldBe 1
+        }
       }
     }
 
