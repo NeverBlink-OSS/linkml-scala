@@ -28,6 +28,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `emitPrefixes` | 0 | 0 |  |
 | `emptyClass` | 0 | 0 |  |
 | `enum` | 8 | 8 |  |
+| `enumInheritance` | 0 | 0 |  |
 | `equalsExpression` | 0 | 0 |  |
 | `externalType` | 0 | 0 | This model uses a type which has an unknown and empty 'base… |
 | `ifabsent/enums` | 0 | 0 |  |

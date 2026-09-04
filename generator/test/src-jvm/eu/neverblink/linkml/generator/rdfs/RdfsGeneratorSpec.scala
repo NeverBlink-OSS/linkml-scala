@@ -636,6 +636,37 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "emit rdfs:subclassOf for enum is_a/mixins inheritance" in {
+      val sv = ModelCatalogue.enumInheritance.model
+      val base = "https://neverblink.eu/linkml/tests/enumInheritance/"
+      val sink = CollectingRdfSink()
+
+      RdfsGenerator(using sv).generate(sink)
+
+      sink.triples should contain allOf (
+        Triple(
+          Iri(base + "SomeEnum"),
+          Rdfs.subClassOf,
+          Iri(base + "SomeClass"),
+        ),
+        Triple(
+          Iri(base + "SomeEnum"),
+          Rdfs.subClassOf,
+          Iri(base + "SomeBaseEnum"),
+        ),
+        Triple(
+          Iri(base + "SomeOtherEnum"),
+          Rdfs.subClassOf,
+          Iri(base + "SomeClass"),
+        ),
+        Triple(
+          Iri(base + "SomeOtherEnum"),
+          Rdfs.subClassOf,
+          Iri(base + "SomeBaseEnum"),
+        ),
+      )
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {

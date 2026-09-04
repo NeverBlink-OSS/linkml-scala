@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/enumInheritance/
+name: enumInheritance
+
+extensions:
+  opt_in: true
+
+classes:
+  SomeClass:
+    abstract: true
+
+enums:
+  SomeBaseEnum:
+    mixin: true
+
+  SomeEnum:
+    is_a: SomeClass
+    mixins: [ SomeBaseEnum ]
+    permissible_values:
+      SOME_VALUE:
+      SOME_OTHER_VALUE:
+
+  SomeOtherEnum:
+    is_a: SomeClass
+    mixins: [ SomeBaseEnum ]
+    permissible_values:
+      YET_ANOTHER_VALUE:
+      ONE_MORE_VALUE:
