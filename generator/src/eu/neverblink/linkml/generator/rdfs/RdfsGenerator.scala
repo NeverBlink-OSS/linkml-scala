@@ -149,6 +149,9 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
         sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
         emitCommonMetadata(sink, enumIri, definitions.map(d => (d._enum, d.definingPrefixResolver)))
       }
+      definitions.flatMap(_.parents).map(_.uriStr).distinct.foreach { parent =>
+        sink.triple(enumIri, Rdfs.subClassOf, Iri(parent))
+      }
       e.derivedValues.foreach { (pv, meaning) =>
         val pvIri = Iri(meaning.uri(using prefixResolver))
         val usages = valueUsages(pvIri.value)

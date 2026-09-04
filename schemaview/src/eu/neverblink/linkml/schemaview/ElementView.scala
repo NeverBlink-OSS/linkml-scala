@@ -456,6 +456,12 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   override def aliasedName: String = Case.PascalCase(Case.escaped(_enum.name))
 
+  lazy val parents: Iterable[EnumView | ClassView] =
+    (_enum.isA ++ _enum.mixins).flatMap(_.resolve).collect {
+      case definition: ClassDefinition => sv.classes(definition.name)
+      case definition: EnumDefinition => sv.enums(definition.name)
+    }
+
   override private[schemaview] def evaluateConstructor(expr: String): Option[PermissibleValue] =
     new Some(ConstructorExpression.evaluateEnum(expr, this))
 

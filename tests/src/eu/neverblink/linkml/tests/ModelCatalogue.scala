@@ -156,6 +156,7 @@ object ModelCatalogue {
   val emptyClass: Entry = Entry("/models/emptyClass/")
   val equalsExpression: Entry = Entry("/models/equalsExpression/")
   val `enum`: Entry = Entry("/models/enum/")
+  val enumInheritance: Entry = Entry("/models/enumInheritance/")
   val externalType: Entry = Entry("/models/externalType/")
   val implicitPrefix: Entry = Entry("/models/implicitPrefix/")
   val inheritance: Entry = Entry("/models/inheritance/")
