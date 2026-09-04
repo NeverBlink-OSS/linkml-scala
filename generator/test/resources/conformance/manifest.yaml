@@ -1,0 +1,43 @@
+name: Basic test manifest
+entries:
+# JSON Schema
+  Reject missing instance:
+    schema: conformance/basic/model.yaml
+    action:
+      type: JsonSchemaGenerate
+    assertion:
+      type: JsonSchemaRejects
+      instance: conformance/basic/invalid/missing/data.json
+  Accept full instance:
+    schema: conformance/basic/model.yaml
+    action:
+      type: JsonSchemaGenerate
+    assertion:
+      type: JsonSchemaAccepts
+      instance: conformance/basic/valid/full/data.json
+  Contains description:
+    schema: conformance/basic/model.yaml
+    action:
+      type: JsonSchemaGenerate
+    assertion:
+      type: JsonPathAssertion
+      path: $defs/SomeClass/description
+      value: Some text that describes the class
+
+# Rank derivation
+  Class to class rank inheritance:
+    schema: conformance/rank/class2class.yaml
+    action:
+      type: DeriveAction
+    assertion:
+      type: JsonPathAssertion
+      path: classes/SomeClass/attributes/first_slot/rank
+      value: 1
+  Slot to slot rank inheritance:
+    schema: conformance/rank/slot2slot.yaml
+    action:
+      type: DeriveAction
+    assertion:
+      type: JsonPathAssertion
+      path: classes/SomeClass/attributes/second_slot/rank
+      value: 2

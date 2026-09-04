@@ -1,0 +1,28 @@
+id: urn:rank/class2class
+name: class2class
+
+prefixes:
+  conformance: https://linkml.neverblink.eu/model/conformance#
+  linkml: https://w3id.org/linkml/
+
+imports:
+  - linkml:types
+
+slots:
+  first_slot:
+    range: string
+    required: true
+    rank: 1
+  second_slot:
+    range: string
+    required: true
+
+classes:
+  SomeClass:
+    tree_root: true
+    slots:
+      - first_slot
+      - second_slot
+    slot_usage:
+      second_slot:
+        rank: 2

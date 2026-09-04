@@ -1,0 +1,24 @@
+id: https://neverblink.eu/linkml/integerInheritance
+name: integerInheritance
+prefixes:
+  linkml: https://w3id.org/linkml/
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    slots:
+      - s3
+
+slots:
+  s1:
+    abstract: true
+    exact_cardinality: 3
+  s2:
+    mixin: true
+    exact_cardinality: 5
+  s3:
+    range: string
+    is_a: s1
+    exact_cardinality: 0
+    mixins: [ s2 ]
