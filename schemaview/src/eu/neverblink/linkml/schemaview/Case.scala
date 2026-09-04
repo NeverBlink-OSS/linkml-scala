@@ -51,24 +51,23 @@ object Case {
     val sb = new java.lang.StringBuilder(len << 1)
     var i = 0
     var isPrecedingNotUpperCased = false
-    while (i < len) isPrecedingNotUpperCased = {
+    while (i < len) {
       val ch = name.charAt(i)
       i += 1
       if (ch == '_' || ch == '-' || ch == ' ') {
-        if (i > 1 && i < len && !isAlphabetic(name.charAt(i))) isPrecedingNotUpperCased
-        else {
+        if (i <= 1 || i >= len || isAlphabetic(name.charAt(i))) {
           sb.append(separator)
-          false
+          isPrecedingNotUpperCased = false
         }
       } else if (!isUpperCase(ch)) {
         sb.append(ch)
-        true
+        isPrecedingNotUpperCased = true
       } else {
         if (isPrecedingNotUpperCased || i > 1 && i < len && isLowerCase(name.charAt(i))) {
           sb.append(separator)
         }
         sb.append(toLowerCase(ch))
-        false
+        isPrecedingNotUpperCased = false
       }
     }
     sb.toString
@@ -110,15 +109,16 @@ object Case {
     } else {
       var i = 0
       var isPrecedingDash = toPascal
-      while (i < len) isPrecedingDash = {
+      while (i < len) {
         val ch = name.charAt(i)
         i += 1
-        (ch == '_' || ch == '-' || ch == ' ') || {
+        if (ch == '_' || ch == '-' || ch == ' ') isPrecedingDash = true
+        else {
           val fixedCh =
             if (isPrecedingDash) toUpperCase(ch)
             else toLowerCase(ch)
           sb.append(fixedCh)
-          false
+          isPrecedingDash = false
         }
       }
     }
