@@ -362,7 +362,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should include("""rdfs:comment "Computes the cosine."""")
       // A permissible value without a meaning falls back to defaultPrefix + text.
       turtle should include(
-        """<https://neverblink.eu/linkml/rdfs/test/Functions.noMeaning> a sd:Function""",
+        """<https://neverblink.eu/linkml/rdfs/test/Functions.NO_MEANING> a sd:Function""",
       )
       turtle should include("""rdfs:label "No meaning"""")
     }

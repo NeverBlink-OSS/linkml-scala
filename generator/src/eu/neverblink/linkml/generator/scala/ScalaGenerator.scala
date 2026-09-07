@@ -33,30 +33,26 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenames {
     *   Tuples of form (file name, file content) for all LinkML classes
     */
   private def generateClasses(options: Options): Iterable[(String, String)] = {
-    for classView <- sv.classes.values yield {
-      val cls = classView.cls
-      val collectionForm = CollectionForm.of(classView)
-      val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
-        makeScalaField(attribute, collectionForm, classView, options)
-      }
-      val shouldBeTrait = cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
-      val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
-      val name = className(classView)
-      val interfaceFields =
-        (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(name =>
-          scalaCamel(Case.base(name)),
-        ).toSet
-      val prefixResolver = classView.definingPrefixResolver
-      name.concat(".scala") -> (
-        if classView.isAny then
-          typeDef(
-            options.`package`,
-            name,
-            "LinkmlAny",
-            ScalaDoc(cls, classView.definingSchema.id, options)(using prefixResolver),
-          )
-        else
-          ScalaClassInfo(
+    sv.classes.values.flatMap { classView =>
+      // Let's treat linkml:Any as a built-in: no type aliasing
+      if classView.isAny then None
+      else {
+        val cls = classView.cls
+        val collectionForm = CollectionForm.of(classView)
+        val scalaFields = for attribute <- classView.attributeViews.values.toIndexedSeq yield {
+          makeScalaField(attribute, collectionForm, classView, options)
+        }
+        val shouldBeTrait =
+          cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
+        val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
+        val name = className(classView)
+        val interfaceFields =
+          (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(name =>
+            scalaCamel(Case.base(name)),
+          ).toSet
+        val prefixResolver = classView.definingPrefixResolver
+        Some(
+          name.concat(".scala") -> ScalaClassInfo(
             name,
             options.`package`,
             scalaFields.sortBy(x => (x.order, x.name)),
@@ -69,8 +65,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenames {
             ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
               prefixResolver,
             ),
-          ).print
-      )
+          ).print,
+        )
+      }
     }
   }
 
@@ -205,8 +202,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenames {
       // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
       // From https://linkml.io/linkml/schemas/advanced.html#linkml-any-type
       // "but any class in the schema can take on this roll be being declared as linkml:Any using class_uri"
-      case AnyView(slotView, classView) =>
-        (className(classView), None)
+      case AnyView(_, _) =>
+        ("LinkmlAny", None)
       case ClassInlineAttributeView(_, _, classView, _) =>
         // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
         // one has to be typed as the interface instead.

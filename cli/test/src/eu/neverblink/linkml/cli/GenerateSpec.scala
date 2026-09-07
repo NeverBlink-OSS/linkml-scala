@@ -30,7 +30,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (Rdfs, "rdfs", Seq("a rdfs:Class", "rdfs:range")),
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
     (Frictionless, "frictionless", Seq("\"fields\"", "\"name\": \"name\"")),
-    (GraphQl, "graphql", Seq("type Root", "name: string")),
+    (GraphQl, "graphql", Seq("type Root", "name: String")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
   )
 
