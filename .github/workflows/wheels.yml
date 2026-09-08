@@ -78,11 +78,13 @@ jobs:
       - name: Cache Dependencies
         uses: coursier/cache-action@v8
 
+      # 17 everywhere it exists. Temurin has no Windows/ARM64 build below 21, and the JVM here
+      # only runs Mill and the Scala Native linker -- nothing about the library depends on it.
       - name: Setup JVM
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 17
+          java-version: ${{ matrix.platform == 'windows-arm64' && '21' || '17' }}
 
       # Scala Native compiles through clang, which the runner images ship, but on Windows the
       # linker and the SDK come from the MSVC environment.

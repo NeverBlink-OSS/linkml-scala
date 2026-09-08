@@ -46,8 +46,9 @@ jobs:
     strategy:
       matrix:
         # Oldest available image per platform, so the binaries stay usable on older systems.
-        os: [macos-14, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest,
-             windows-11-arm]
+        # No windows-11-arm: GraalVM native-image has no Windows/ARM64 target. That platform
+        # still gets a shared library and a wheel, which Scala Native can build - see wheels.yml.
+        os: [macos-14, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v7
@@ -147,7 +148,6 @@ jobs:
           mv bin/linkml-scala-ubuntu-22.04/linkml-scala linkml-scala-linux-x86_64
           mv bin/linkml-scala-ubuntu-22.04-arm/linkml-scala linkml-scala-linux-arm64
           mv bin/linkml-scala-windows-latest/linkml-scala.exe linkml-scala-windows-x86_64.exe
-          mv bin/linkml-scala-windows-11-arm/linkml-scala.exe linkml-scala-windows-arm64.exe
           chmod +x linkml-scala-macos-arm64
           chmod +x linkml-scala-macos-x86_64
           chmod +x linkml-scala-linux-x86_64
@@ -160,7 +160,6 @@ jobs:
           gzip -9 -k linkml-scala-linux-x86_64 &
           gzip -9 -k linkml-scala-linux-arm64 &
           gzip -9 -k linkml-scala-windows-x86_64.exe &
-          gzip -9 -k linkml-scala-windows-arm64.exe &
           wait
 
       - name: Download Shared Libraries
