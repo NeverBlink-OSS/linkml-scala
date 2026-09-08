@@ -634,7 +634,29 @@ object nativelib extends Module, NativeOptional {
       else NativeLib.name.stripPrefix("lib")
     }
 
-    override def nativeCompileOptions = Task { super.nativeCompileOptions() :+ "-O3" }
+    /** The oldest macOS the library runs on, and so the wheel tag: `hatch_build.py` reads it back
+      * out of the Mach-O header.
+      *
+      * Pinned rather than left to clang, which otherwise targets whatever the build machine runs.
+      * That tied the tag to the runner image -- `macosx_14_0_arm64` from macos-14 and
+      * `macosx_15_0_x86_64` from macos-15-intel -- so bumping a runner would quietly narrow the
+      * wheels, and the Intel one already excluded every Mac older than 2019.
+      */
+    private val macosMinimum = "14.0"
+
+    private def macosTarget =
+      if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=$macosMinimum")
+      else Seq.empty
+
+    /** clang's own optimisation level, separate from `releaseMode`: that one governs Scala Native's
+      * NIR optimiser, this one the LLVM IR it emits and the runtime's C sources. Worth about 4% on
+      * generator throughput for no change in size.
+      *
+      * LTO would be the next thing to reach for and does not work; see docs/python_bindings.md.
+      */
+    override def nativeCompileOptions = Task {
+      super.nativeCompileOptions() ++ macosTarget :+ "-O3"
+    }
 
     /** macOS resolves a bare install name as a path, ignoring the `-rpath` a consumer passes, so it
       * has to say `@rpath` explicitly. Linux and Windows get this right from the name alone.
@@ -644,7 +666,7 @@ object nativelib extends Module, NativeOptional {
         if _root_.scala.util.Properties.isMac then
           Seq(s"-Wl,-install_name,@rpath/${NativeLib.name}$platformLibraryExtension")
         else Seq.empty
-      super.nativeLinkingOptions() ++ rpath :+ "-O3"
+      super.nativeLinkingOptions() ++ rpath ++ macosTarget :+ "-O3"
     }
 
     /** `liblinkml_scala.so` and the header, named the way the Python bindings and `package.sh`
