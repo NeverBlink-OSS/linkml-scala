@@ -94,8 +94,45 @@ jobs:
         env:
           MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          LINKML_NATIVE: "1"
         run: |
-          ./mill mill.javalib.SonatypeCentralPublishModule/
+          ./mill --no-server mill.javalib.SonatypeCentralPublishModule/
+
+  scala-native:
+    name: Scala Native
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      LINKML_NATIVE: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 256
+          fetch-tags: true
+
+      # Keeps extracted JDKs out of the cached coursier dir. See checks.yml
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Show the LLVM toolchain
+        run: clang --version
+
+      - name: Build and test
+        run: ./mill --no-server -j 0 __.native.__.testForked
 
   nativelib:
     name: Shared library and Python bindings

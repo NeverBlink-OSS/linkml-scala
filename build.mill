@@ -22,6 +22,7 @@ import mill.scalalib.scalafmt.ScalafmtModule
 import mill.scalajslib.*
 import mill.scalajslib.api.ModuleKind
 import scalalib.*
+import scalanativelib.*
 import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
@@ -33,15 +34,22 @@ import java.net.InetSocketAddress
 
 val scala = "3.9.0"
 val scalaJS = "1.22.0"
+val scalaNative = "0.5.12"
 val rdf4j = "6.0.1"
 
+/** Whether to compile and test Scala Native in this run.
+  *
+  * This is disabled by default, because Scala Native has a pretty complex and slow toolchain. To
+  * run it locally: `LINKML_NATIVE=1 ./mill --no-server runtime.native.test.testForked`
+  */
+val nativeEnabled: Boolean =
+  sys.env.get("LINKML_NATIVE").exists(v => v == "1" || v.equalsIgnoreCase("true"))
+
 object LinkMlAliases extends Aliases {
-  def lint: Seq[String] = alias(
-    "__.jvm.__.fix",
-    "__.jvm.__.reformat",
-    "__.js.__.fix",
-    "__.js.__.reformat",
-  )
+  def lint: Seq[String] = {
+    val platforms = Seq("__.jvm.__", "__.js.__") ++ Option.when(nativeEnabled)("__.native.__")
+    alias(platforms.flatMap(p => Seq(s"$p.fix", s"$p.reformat"))*)
+  }
 
   def regenerateMetamodel: Seq[String] = alias(
     "cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta",
@@ -119,7 +127,7 @@ def ui(args: String*) = Task.Command() {
   }
 }
 
-object runtime extends Module {
+object runtime extends Module, NativeOptional {
   object jvm extends CommonModule {
     object test extends ScalaTests, CommonTestModule
   }
@@ -127,9 +135,13 @@ object runtime extends Module {
   object js extends CommonModule, NoBspModule, CommonScalaJSModule {
     object test extends ScalaJSTests, CommonTestModule
   }
+
+  object native extends CommonModule, NoBspModule, CommonScalaNativeModule {
+    object test extends ScalaNativeTests, CommonTestModule
+  }
 }
 
-object yaml extends Module {
+object yaml extends Module, NativeOptional {
   object jvm extends YamlModule {
     def moduleDeps = Seq(
       build.runtime.jvm,
@@ -146,6 +158,14 @@ object yaml extends Module {
     object test extends ScalaJSTests, CommonTestModule
   }
 
+  object native extends YamlModule, NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.runtime.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule
+  }
+
   trait YamlModule extends CommonModule {
     def mvnDeps = Seq(
       mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.18",
@@ -153,7 +173,7 @@ object yaml extends Module {
   }
 }
 
-object metamodel extends Module {
+object metamodel extends Module, NativeOptional {
   def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
     Task.Command(exclusive = true) {
       AliasesModule.run(ev, "regenerateMetamodel")
@@ -216,6 +236,22 @@ object metamodel extends Module {
       )
     }
   }
+
+  object native extends NoBspModule, CommonScalaNativeModule, ResourcesAsStrings("metamodel") {
+    def moduleDeps = Seq(
+      build.yaml.native,
+    )
+
+    override def resources: T[Seq[PathRef]] = {
+      super.resources() :+ definitions()
+    }
+
+    object test extends ScalaNativeTests, CommonTestModule {
+      override def mvnDeps = super.mvnDeps() ++ Seq(
+        mvn"io.circe::circe-core::0.14.16",
+      )
+    }
+  }
 }
 
 /** The LinkML validation report model, generated into Scala by this project's own Scala generator.
@@ -225,7 +261,7 @@ object metamodel extends Module {
   *   on this module. If they ever stop compiling, revert them before running
   *   `validation.regenerate`.
   */
-object validation extends Module {
+object validation extends Module, NativeOptional {
   def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
     Task.Command(exclusive = true) {
       AliasesModule.run(ev, "regenerateValidation")
@@ -246,9 +282,17 @@ object validation extends Module {
 
     object test extends ScalaJSTests, CommonTestModule
   }
+
+  object native extends NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.yaml.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule
+  }
 }
 
-object schemaview extends Module {
+object schemaview extends Module, NativeOptional {
   def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
     Task.Command(exclusive = true) {
       AliasesModule.run(ev, "regenerateBuildInfo")
@@ -270,6 +314,15 @@ object schemaview extends Module {
     )
 
     object test extends ScalaJSTests, CommonTestModule
+  }
+
+  object native extends SchemaViewModule, NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.metamodel.native,
+      build.validation.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule
   }
 
   trait SchemaViewModule extends CommonModule, BuildInfo {
@@ -308,7 +361,7 @@ object jdk25 extends JavaHomeModule {
   override def jvmVersion = "25"
 }
 
-object generator extends Module {
+object generator extends Module, NativeOptional {
   object jvm extends CommonModule, GeneratorDeps {
     override def mvnDeps = super.mvnDeps() ++ Seq(
       mvn"com.lihaoyi::os-lib:0.11.8",
@@ -430,6 +483,20 @@ object generator extends Module {
 
     object test extends ScalaJSTests, CommonTestModule {
       override def moduleDeps = super.moduleDeps :+ build.tests.js
+
+      override def mvnDeps = super.mvnDeps() ++ Seq(
+        mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
+      )
+    }
+  }
+
+  object native extends NoBspModule, CommonScalaNativeModule, GeneratorDeps {
+    def moduleDeps = Seq(
+      build.schemaview.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule {
+      override def moduleDeps = super.moduleDeps :+ build.tests.native
 
       override def mvnDeps = super.mvnDeps() ++ Seq(
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
@@ -745,7 +812,7 @@ object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule 
   )
 }
 
-object tests extends Module {
+object tests extends Module, NativeOptional {
   object jvm extends ResourcesAsStrings("tests"), CommonModule, CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.jvm,
@@ -760,6 +827,17 @@ object tests extends Module {
         CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.js,
+    )
+  }
+
+  object native
+      extends NoBspModule,
+        ResourcesAsStrings("tests"),
+        CommonScalaNativeModule,
+        TestScalaNativeModule,
+        CommonTestModule {
+    def moduleDeps = Seq(
+      build.schemaview.native,
     )
   }
 }
@@ -864,6 +942,21 @@ trait CommonScalaJSModule extends ScalaJSModule, PublishModule {
   def moduleKind = Task {
     ModuleKind.ESModule
   }
+}
+
+trait CommonScalaNativeModule extends ScalaNativeModule, PublishModule, mill.api.DynamicModule {
+  def scalaNativeVersion = scalaNative
+
+  override def moduleDirectChildren: Seq[mill.api.Module] =
+    super.moduleDirectChildren.filterNot(_.moduleSegments.last.value == "scoverage")
+}
+
+/** Hides a module's nested `native` module unless [[nativeEnabled]].
+  */
+trait NativeOptional extends mill.api.DynamicModule {
+  override def moduleDirectChildren: Seq[mill.api.Module] =
+    if nativeEnabled then super.moduleDirectChildren
+    else super.moduleDirectChildren.filterNot(_.moduleSegments.last.value == "native")
 }
 
 // Global coverage reporting

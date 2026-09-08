@@ -210,6 +210,8 @@ jobs:
   publish:
     name: Publish to Maven and GitHub
     runs-on: ubuntu-latest
+    env:
+      LINKML_NATIVE: "1"
     permissions:
       contents: write
       id-token: write # Required by actions/attest to mint a Sigstore OIDC token
