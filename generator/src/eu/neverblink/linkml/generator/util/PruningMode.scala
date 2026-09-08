@@ -64,8 +64,8 @@ enum PruningMode:
 
 object PruningMode:
   def apply(mode: String, treeRootOverride: Option[String]): PruningMode =
-    Case.camelCase(mode) match {
-      case "treeRoot" => PruningMode.treeRoot(treeRootOverride)
+    Case.base(mode) match {
+      case "tree_toot" => PruningMode.treeRoot(treeRootOverride)
       case "schema" => PruningMode.schemaRoot
       case "skip" => PruningMode.skip
     }

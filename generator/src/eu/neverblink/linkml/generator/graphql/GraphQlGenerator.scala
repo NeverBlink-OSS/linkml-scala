@@ -13,7 +13,7 @@ import eu.neverblink.linkml.runtime.FastUtils.flatMapFast
 
 class GraphQlGenerator(using sv: SchemaView)
     extends CharDocumentGenerator[GraphQlGenerator.Options],
-      GraphQlRenames {
+      GraphQlRenamer {
   import GraphQlGenerator.*
 
   /** Set of classes that are instantiable and have child classes. They need to have a split
@@ -169,7 +169,7 @@ class GraphQlGenerator(using sv: SchemaView)
 
 
 
-object GraphQlGenerator extends GraphQlRenames {
+object GraphQlGenerator extends GraphQlRenamer {
 
   /** Options for [[GraphQlGenerator]].
     *
@@ -251,7 +251,7 @@ case class GraphQlInterfaceDefinition(
               |""".stripMargin
   }
 
-  val name: String = nameOverride.getOrElse(GraphQlRenames.className(classView))
+  val name: String = nameOverride.getOrElse(GraphQlRenamer.className(classView))
 
   override def print: String =
     indent"""${descriptionFor(classView.cls)}
@@ -289,7 +289,7 @@ case class GraphQlTypeDefinition(
               |""".stripMargin
   }
 
-  val name: String = GraphQlRenames.className(classView)
+  val name: String = GraphQlRenamer.className(classView)
 
   override def print: String = {
     indent"""${descriptionFor(classView.cls)}
@@ -309,7 +309,7 @@ case class GraphQlEnumDefinition(
     values: Iterable[GraphQlEnumValueDefinition],
 )(using GraphQlGenerator.Options)
     extends GraphQlDefinition:
-  val name: String = GraphQlRenames.enumName(enumView)
+  val name: String = GraphQlRenamer.enumName(enumView)
   override def print: String = {
     val serializedValues = values.map(_.print.strip())
     indent"""${descriptionFor(enumView._enum)}
@@ -334,7 +334,7 @@ case class GraphQlEnumValueDefinition(
     prefixResolver: PrefixResolver,
 )(using opt: GraphQlGenerator.Options)
     extends GraphQlElement:
-  val name: String = GraphQlRenames.permissibleValueName(pv)
+  val name: String = GraphQlRenamer.permissibleValueName(pv)
   override def print: String =
     indent"""${descriptionFor(pv)}
             |$name
@@ -349,7 +349,7 @@ case class GraphQlScalarDefinition(
     typeView: TypeView,
 )(using opt: GraphQlGenerator.Options)
     extends GraphQlDefinition:
-  val name: String = GraphQlRenames.typeName(typeView)
+  val name: String = GraphQlRenamer.typeName(typeView)
   override def print: String = {
     indent"""${descriptionFor(typeView._type)}
             |scalar $name
@@ -375,7 +375,7 @@ case class GraphQlField(
   val slotView: SlotView = attributeView.slotView
 
   /** Aliased name to use in the range of the field */
-  val name: String = GraphQlRenames.slotName(attributeView.slotView)
+  val name: String = GraphQlRenamer.slotName(attributeView.slotView)
 
   /** Whether the [[range]] should be declared non-null ("Range!") */
   val nonNull: Boolean = slotView.slot.required

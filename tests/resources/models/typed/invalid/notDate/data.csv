@@ -1,2 +1,2 @@
-stringSlot,booleanSlot,intSlot,floatSlot,dateSlot,customSlot
+string_slot,boolean_slot,int_slot,float_slot,date_slot,custom_slot
 string,true,100,0.01,last year,001 custom

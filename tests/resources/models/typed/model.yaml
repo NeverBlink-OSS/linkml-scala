@@ -7,12 +7,12 @@ classes:
   Typed:
     tree_root: true
     slots:
-      - stringSlot
-      - booleanSlot
-      - intSlot
-      - floatSlot
-      - dateSlot
-      - customSlot
+      - string_slot
+      - boolean_slot
+      - int_slot
+      - float_slot
+      - date_slot
+      - custom_slot
 
 types:
   custom:
@@ -21,27 +21,27 @@ types:
     base: str
 
 slots:
-  stringSlot:
+  string_slot:
     rank: 1
     range: string
     required: true
-  booleanSlot:
+  boolean_slot:
     rank: 2
     range: boolean
     required: true
-  intSlot:
+  int_slot:
     rank: 3
     range: integer
     required: true
-  floatSlot:
+  float_slot:
     rank: 4
     range: decimal
     required: true
-  dateSlot:
+  date_slot:
     rank: 5
     range: date
     required: true
-  customSlot:
+  custom_slot:
     rank: 6
     range: custom
     required: true

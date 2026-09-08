@@ -9,7 +9,7 @@ import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression
 import fastparse.Parsed
 import java.lang
 
-final class ScalaGenerator(using sv: SchemaView) extends ScalaRenames {
+final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   import ScalaGenerator.*
   import CombineFunction.*
 

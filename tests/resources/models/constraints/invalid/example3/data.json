@@ -1,5 +1,5 @@
 {
-  "intSlot": 0,
-  "floatSlot": 1,
-  "stringSlot": "1234567"
+  "int_slot": 0,
+  "float_slot": 1,
+  "string_slot": "1234567"
 }

@@ -1,2 +1,2 @@
-stringSlot,booleanSlot,intSlot,floatSlot,dateSlot,customSlot
+string_slot,boolean_slot,int_slot,float_slot,date_slot,custom_slot
 "002 stringy",false,-100,-0.01,"2020-01-31","002 custom"

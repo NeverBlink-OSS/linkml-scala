@@ -62,7 +62,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
         "the codec writes a class that has a single slot as a bare value rather than as an " +
           "object, so it cannot read the object form that the catalogue's data.json uses",
       )
-    val rootImpl = s"${Case.PascalCase(treeRoot.cls.name)}Impl"
+    val rootImpl = s"${ScalaRenamer.className(treeRoot)}Impl"
 
     val dir = os.temp.dir(prefix = "linkml-roundtrip-src")
     val sources = ScalaGenerator(using entry.model).generate(ScalaGenerator.Options("generated"))

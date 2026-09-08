@@ -2,6 +2,6 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 _:b a :Typed;
-    :intSlot 0;
-    :floatSlot "100500"^^xsd:float;
-    :stringSlot "123-4567" .
+    :int_slot 0;
+    :float_slot "100500"^^xsd:float;
+    :string_slot "123-4567" .

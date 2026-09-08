@@ -487,20 +487,20 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val typedClass = schema.$defs.get("Typed").asInstanceOf[Schema]
 
       typedClass.properties.keys should contain theSameElementsAs Seq(
-        "intSlot",
-        "floatSlot",
-        "stringSlot",
+        "int_slot",
+        "float_slot",
+        "string_slot",
       )
 
-      val intSlot = typedClass.properties("intSlot").asInstanceOf[Schema]
+      val intSlot = typedClass.properties("int_slot").asInstanceOf[Schema]
       intSlot.`type` shouldBe Some(List(SchemaType.Integer))
       intSlot.minimum shouldBe Some(BigDecimal(-1))
       intSlot.maximum shouldBe Some(BigDecimal(1))
-      val floatSlot = typedClass.properties("floatSlot").asInstanceOf[Schema]
+      val floatSlot = typedClass.properties("float_slot").asInstanceOf[Schema]
       floatSlot.`type` shouldBe Some(List(SchemaType.Number))
       floatSlot.minimum shouldBe Some(BigDecimal(-2))
       floatSlot.maximum shouldBe Some(BigDecimal(2))
-      val stringSlot = typedClass.properties("stringSlot").asInstanceOf[Schema]
+      val stringSlot = typedClass.properties("string_slot").asInstanceOf[Schema]
       stringSlot.`type` shouldBe Some(List(SchemaType.String))
       stringSlot.pattern shouldBe Some(Pattern("""^([0-9]{3})?[0-9]{3}-[0-9]{4}$"""))
     }
@@ -535,7 +535,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
       val json = JsonSchemaGenerator().generate()
       val someClass = json.$defs.get("Typed").asInstanceOf[Schema]
-      val dateSlot = someClass.properties("dateSlot").asInstanceOf[Schema]
+      val dateSlot = someClass.properties("date_slot").asInstanceOf[Schema]
       dateSlot.`type` shouldBe Some(List(SchemaType.String))
       dateSlot.format shouldBe Some("date")
     }
@@ -545,7 +545,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
       val json = JsonSchemaGenerator().generate()
       val someClass = json.$defs.get("Typed").asInstanceOf[Schema]
-      val customSlot = someClass.properties("customSlot").asInstanceOf[Schema]
+      val customSlot = someClass.properties("custom_slot").asInstanceOf[Schema]
       customSlot.`type` shouldBe Some(List(SchemaType.String))
     }
 
@@ -572,12 +572,12 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val schema = JsonSchemaGenerator().generate()
       val c = schema.$defs.get("Cardinal").asInstanceOf[Schema]
 
-      val exactlyTwo = c.properties("exactlyTwo").asInstanceOf[Schema]
+      val exactlyTwo = c.properties("exactly_two").asInstanceOf[Schema]
       exactlyTwo.`type` shouldBe Some(List(SchemaType.Array))
       exactlyTwo.minItems shouldBe Some(2)
       exactlyTwo.maxItems shouldBe Some(2)
 
-      val oneToThree = c.properties("oneToThree").asInstanceOf[Schema]
+      val oneToThree = c.properties("one_to_three").asInstanceOf[Schema]
       oneToThree.`type` shouldBe Some(List(SchemaType.Array))
       oneToThree.minItems shouldBe Some(1)
       oneToThree.maxItems shouldBe Some(3)
@@ -661,21 +661,21 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         .asInstanceOf[Schema]
 
       val int = typed
-        .properties("intSlot")
+        .properties("int_slot")
         .asInstanceOf[Schema]
       int.`type` shouldBe Some(List(SchemaType.Integer))
       int.minimum shouldBe Some(-1)
       int.maximum shouldBe Some(1)
 
       val float = typed
-        .properties("floatSlot")
+        .properties("float_slot")
         .asInstanceOf[Schema]
       float.`type` shouldBe Some(List(SchemaType.Number))
       float.minimum shouldBe Some(-2.0)
       float.maximum shouldBe Some(2.0)
 
       val string = typed
-        .properties("stringSlot")
+        .properties("string_slot")
         .asInstanceOf[Schema]
       string.`type` shouldBe Some(List(SchemaType.String))
       string.pattern shouldBe Some(Pattern("^([0-9]{3})?[0-9]{3}-[0-9]{4}$"))

@@ -99,7 +99,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   def inner: ClassDefinition = cls
 
-  def canonicalName: String = Case.PascalCase(baseName)
+  def canonicalName: String = Case.baseToPascal(baseName)
 
   def uriOrCurie: UriOrCurie =
     cls.classUri.getOrElseFast(modelUri)
@@ -320,7 +320,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     overrideType.orElseFast {
       cls.extensions.get("tree_root_as").mapFast(_.extensionValue.value.strip)
     }.mapFast { v =>
-      Case.camelCase(v) match {
+      Case.baseToCamel(Case.base(v)) match {
         case "plain" => InlineType.plain
         case "optional" => InlineType.optional
         case "list" => InlineType.list
@@ -472,7 +472,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def inner: EnumDefinition = _enum
 
-  def canonicalName: String = Case.PascalCase(baseName)
+  def canonicalName: String = Case.baseToPascal(baseName)
 
   override def aliasedName: String = canonicalName
 
@@ -595,11 +595,11 @@ final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefi
 
   def inner: SubsetDefinition = subset
 
-  override def aliasedName: String = Case.escaped(name)
+  override def aliasedName: String = baseName
 
   def uriOrCurie: UriOrCurie =
     // there is no subset_uri in the metamodel
-    Uri.synthetic(defaultPrefixUri, Case.escaped(subset.name))
+    Uri.synthetic(defaultPrefixUri, baseName)
 
   override def canonicalName: String = baseName
 }

@@ -78,23 +78,23 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       val td = rootTable(ModelCatalogue.typed.model)
       val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
 
-      fieldMap("stringSlot").`type` shouldBe "string"
-      fieldMap("stringSlot").rdfType shouldBe Some(xsd + "string")
+      fieldMap("string_slot").`type` shouldBe "string"
+      fieldMap("string_slot").rdfType shouldBe Some(xsd + "string")
 
-      fieldMap("booleanSlot").`type` shouldBe "boolean"
-      fieldMap("booleanSlot").rdfType shouldBe Some(xsd + "boolean")
+      fieldMap("boolean_slot").`type` shouldBe "boolean"
+      fieldMap("boolean_slot").rdfType shouldBe Some(xsd + "boolean")
 
-      fieldMap("intSlot").`type` shouldBe "integer"
-      fieldMap("intSlot").rdfType shouldBe Some(xsd + "integer")
+      fieldMap("int_slot").`type` shouldBe "integer"
+      fieldMap("int_slot").rdfType shouldBe Some(xsd + "integer")
 
-      fieldMap("floatSlot").`type` shouldBe "number"
-      fieldMap("floatSlot").rdfType shouldBe Some(xsd + "decimal")
+      fieldMap("float_slot").`type` shouldBe "number"
+      fieldMap("float_slot").rdfType shouldBe Some(xsd + "decimal")
 
-      fieldMap("dateSlot").`type` shouldBe "date"
-      fieldMap("dateSlot").rdfType shouldBe Some(xsd + "date")
+      fieldMap("date_slot").`type` shouldBe "date"
+      fieldMap("date_slot").rdfType shouldBe Some(xsd + "date")
 
-      fieldMap("customSlot").`type` shouldBe "string"
-      fieldMap("customSlot").rdfType shouldBe Some(ModelCatalogue.typed.id + "Custom")
+      fieldMap("custom_slot").`type` shouldBe "string"
+      fieldMap("custom_slot").rdfType shouldBe Some(ModelCatalogue.typed.id + "Custom")
     }
 
     "generate uri format" in {
@@ -154,14 +154,14 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       val td = rootTable(ModelCatalogue.constraints.model)
 
       val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
-      val intConstraints = fieldMap("intSlot").constraints.get
+      val intConstraints = fieldMap("int_slot").constraints.get
       intConstraints.minimum shouldBe Some("-1")
       intConstraints.maximum shouldBe Some("1")
-      val floatConstraints = fieldMap("floatSlot").constraints.get
+      val floatConstraints = fieldMap("float_slot").constraints.get
       floatConstraints.minimum shouldBe Some("-2.0")
       floatConstraints.maximum shouldBe Some("2.0")
 
-      val stringConstraints = fieldMap("stringSlot").constraints.get
+      val stringConstraints = fieldMap("string_slot").constraints.get
       stringConstraints.pattern shouldBe Some("^([0-9]{3})?[0-9]{3}-[0-9]{4}$")
     }
 

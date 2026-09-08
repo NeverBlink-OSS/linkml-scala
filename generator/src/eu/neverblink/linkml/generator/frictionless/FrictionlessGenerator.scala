@@ -63,7 +63,7 @@ class FrictionlessGenerator(using sv: SchemaView)
   /** Get the name of the slot, respecting alias, and LinkML casing rules
     */
   def slotName(slotView: SlotView): String =
-    slotView.slot.alias.getOrElseFast(Case.escaped(slotView.slot.name))
+    slotView.slot.alias.getOrElseFast(slotView.canonicalName)
 
   /** The classes that will be rendered as tables. */
   private def tables(options: Options): Seq[Table] = {

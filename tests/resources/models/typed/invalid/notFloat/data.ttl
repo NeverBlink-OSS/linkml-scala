@@ -2,9 +2,9 @@
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 _:b a :Typed;
-    :stringSlot "string";
-    :booleanSlot true;
-    :intSlot 100;
-    :floatSlot "one hundredth";
-    :dateSlot "2020-01-31"^^xsd:date;
-    :customSlot "001 custom"^^:Custom .
+    :string_slot "string";
+    :boolean_slot true;
+    :int_slot 100;
+    :float_slot "one hundredth";
+    :date_slot "2020-01-31"^^xsd:date;
+    :custom_slot "001 custom"^^:Custom .
