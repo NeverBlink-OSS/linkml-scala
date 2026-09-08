@@ -27,9 +27,9 @@ final case class AnonymousTypeExpressionImpl(
     @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
     @named("maximum_value")
-    maximumValue: Option[Anything] = None,
+    maximumValue: Option[LinkmlAny] = None,
     @named("minimum_value")
-    minimumValue: Option[Anything] = None,
+    minimumValue: Option[LinkmlAny] = None,
     @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
     unit: Option[UnitOfMeasureImpl] = None,

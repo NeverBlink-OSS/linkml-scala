@@ -89,9 +89,9 @@ final case class TypeDefinitionImpl(
     localNames: Map[String, LocalNameImpl] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
     @named("maximum_value")
-    maximumValue: Option[Anything] = None,
+    maximumValue: Option[LinkmlAny] = None,
     @named("minimum_value")
-    minimumValue: Option[Anything] = None,
+    minimumValue: Option[LinkmlAny] = None,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
