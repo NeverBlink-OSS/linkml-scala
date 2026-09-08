@@ -139,6 +139,11 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
               }
             }
           }
+
+          "validate" in {
+            assume(!skip.contains((name, "validation")), skip.getOrElse((name, "validation"), ""))
+            sv.validationProblems.map(_.infer().message) shouldBe empty
+          }
         }
       }
     }
@@ -167,5 +172,9 @@ object BenchmarkSchemaSpec {
   /** Map of (dataset name, generator id) -> reason, for skipping known-failing combinations.
     */
   private val skip: Map[(String, String), String] = Map(
+    "d3fend" -> "validation" -> "Time -> time renaming clash",
+    "iso27001" -> "validation" -> "Vendored linkml:types?",
+    "nmdc_microbiome" -> "validation" -> "'%'-named PV",
+    "tc57cim" -> "validation" -> "'%'-named PV",
   )
 }
