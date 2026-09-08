@@ -625,16 +625,20 @@ object nativelib extends Module, NativeOptional {
     def sharedLibrary = Task {
       val built = nativeLink().path
       val stem = built.baseName
-      // Listing another task's output directory, which is what the checker is there to stop. The
+      // Reading another task's output directory, which is what the checker is there to stop. The
       // linker names its side outputs after the library rather than declaring them, so there is
-      // nothing to ask for by name.
-      val produced = mill.api.BuildCtx.withFilesystemCheckerDisabled {
+      // nothing to ask for by name. `out.exp` on Windows is left behind: it is a linker
+      // intermediate, and nothing downstream wants it.
+      mill.api.BuildCtx.withFilesystemCheckerDisabled {
         Seq(built / os.up, nativeWorkdir())
           .filter(os.exists)
           .flatMap(os.list(_))
-          .filter(path => os.isFile(path) && path.baseName == stem)
+          .filter(path =>
+            os.isFile(path) && path.baseName == stem &&
+              Set("so", "dylib", "dll", "lib").contains(path.ext),
+          )
+          .foreach(path => os.copy.over(path, Task.dest / (NativeLib.name + "." + path.ext)))
       }
-      produced.foreach(path => os.copy.over(path, Task.dest / (NativeLib.name + "." + path.ext)))
       os.copy.over(headerSource().path, Task.dest / "linkml_scala.h")
       PathRef(Task.dest)
     }

@@ -92,10 +92,12 @@ jobs:
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # The oldest we support, except on Windows/ARM64 where no build of it exists. The wheel is
+      # tagged py3-none-<platform> either way, so the interpreter here does not reach the artifact.
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.10'
+          python-version: ${{ matrix.platform == 'windows-arm64' && '3.12' || '3.10' }}
 
       - name: Show the LLVM toolchain
         run: clang --version
