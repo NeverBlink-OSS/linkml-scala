@@ -1,5 +1,3 @@
-from python.linkml_scala import Generators
-
 # Python bindings (experimental)
 
 LinkML-Scala compiled to a native shared library, called from Python through `ctypes`. No JVM, no

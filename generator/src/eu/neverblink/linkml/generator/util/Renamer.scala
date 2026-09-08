@@ -5,7 +5,7 @@ import eu.neverblink.linkml.schemaview.*
 
 /** Mixin to provide renaming mappings to a generator. These mappings should be bijective with the
   * [[Case.base]] form of names. Used by [[TranslationGenerator]] to generate mappings from a LinkML
-  * name to
+  * name to the respective frameworks naming convention.
   */
 trait Renamer {
   def className(el: ClassView): String
