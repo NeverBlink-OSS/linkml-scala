@@ -15,35 +15,28 @@ final class SchemaValidator(using sv: SchemaView) {
   import SchemaValidator.macroValidator
 
   /** Location of an issue that is pinned to a JSON path within the root schema. */
-  private def at(jsonPath: String, schemaId: Uri = sv.root.id): IssueLocationImpl =
+  private def at(jsonPath: String, schemaId: Uri): IssueLocationImpl =
     new IssueLocationImpl(schemaId = new Some(schemaId), jsonPointer = new Some(jsonPath))
 
-  private def elementLocation(elementView: ElementView[?, ?]): IssueLocationImpl = {
-    elementView match {
-      case ClassView(cls, definingSchema) =>
-        new IssueLocationImpl(
-          schemaId = Some(definingSchema.id),
-          jsonPointer = Some("/classes/" + cls.name),
-        )
-      case SlotView(slot, definingSchema) =>
-        // currently not possible to differentiate between attributes and slots
-        new IssueLocationImpl(schemaId = Some(definingSchema.id))
-      case EnumView(_enum, definingSchema) =>
-        new IssueLocationImpl(
-          schemaId = Some(definingSchema.id),
-          jsonPointer = Some("/enums/" + _enum.name),
-        )
-      case TypeView(_type, definingSchema) =>
-        new IssueLocationImpl(
-          schemaId = Some(definingSchema.id),
-          jsonPointer = Some("/types/" + _type.name),
-        )
-      case SubsetView(subset, definingSchema) =>
-        new IssueLocationImpl(
-          schemaId = Some(definingSchema.id),
-          jsonPointer = Some("/subsets/" + subset.name),
-        )
-    }
+  /** Infer the location of an element, providing the schema id and a JSON pointer if possible.
+    */
+  private def locationOf(elementView: ElementView[?, ?]): IssueLocationImpl = {
+    new IssueLocationImpl(
+      schemaId = Some(elementView.definingSchema.id),
+      jsonPointer = elementView match {
+        case ClassView(cls, definingSchema) =>
+          Some("/classes/" + cls.name)
+        case SlotView(slot, definingSchema) =>
+          // currently not possible to differentiate between attributes and slots
+          None
+        case EnumView(_enum, definingSchema) =>
+          Some("/enums/" + _enum.name)
+        case TypeView(_type, definingSchema) =>
+          Some("/types/" + _type.name)
+        case SubsetView(subset, definingSchema) =>
+          Some("/subsets/" + subset.name)
+      },
+    )
   }
 
   /** Location of an issue that pertains to the root schema as a whole. */
@@ -54,11 +47,9 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val isDefaultRangeAllowed: Boolean =
     sv.root.defaultRange.isDefined || sv.types.contains("string")
 
-  private given ValidatorContext = ValidatorContext(isDefaultRangeAllowed)
-
   /** Macro validator's result */
   private lazy val macroResult = sv.schemas.foldLeft(ValidatorResult.ok) { (acc, schema) =>
-    // TODO LNK-166: Store the element "fromSchema"
+    given ValidatorContext = ValidatorContext(isDefaultRangeAllowed, schema.id)
     acc + macroValidator.validate(schema.asInstanceOf).prependedPath("/")
   }
 
@@ -67,10 +58,11 @@ final class SchemaValidator(using sv: SchemaView) {
     macroResult.unknownReferences.map(ref =>
       // A dangling 'string' reference nearly always means 'linkml:types' was not imported, so it
       // gets its own issue type with a hint.
-      if ref.referenceValue == "string" then new UnknownStringReferenceImpl(location = at(ref.path))
+      if ref.referenceValue == "string" then
+        new UnknownStringReferenceImpl(location = at(ref.path, ref.fromSchema))
       else
         new UnknownReferenceImpl(
-          location = at(ref.path),
+          location = at(ref.path, ref.fromSchema),
           referenceValue = ref.referenceValue,
         ),
     )
@@ -78,7 +70,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Any usages of an undefined `default_range`. Empty if no usages found. */
   lazy val usedUndefinedDefaultRange: Seq[SchemaFatal] =
     macroResult.invalidDefaultRanges.map(range =>
-      new InvalidDefaultRangeImpl(location = at(range.path)),
+      new InvalidDefaultRangeImpl(location = at(range.path, range.fromSchema)),
     )
 
   lazy val schemaIdClash: Seq[SchemaFatal] = {
@@ -107,7 +99,7 @@ final class SchemaValidator(using sv: SchemaView) {
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
       new InvalidRangeImpl(
-        location = at(range.path),
+        location = at(range.path, range.fromSchema),
         rangeValue = range.value,
         actualType = range.actualType,
       ),
@@ -145,7 +137,7 @@ final class SchemaValidator(using sv: SchemaView) {
       if (keyOrId.size > 1) {
         errors.addOne(
           new MultipleKeyOrIdSlotsImpl(
-            location = elementLocation(derivedCls),
+            location = locationOf(derivedCls),
             className = derivedCls.cls.name,
             slotNames = keyOrId.toSeq.map(_.name),
           ),
@@ -158,7 +150,7 @@ final class SchemaValidator(using sv: SchemaView) {
           case elem =>
             errors.addOne(
               new InvalidKeyOrIdSlotTypeImpl(
-                location = elementLocation(derivedCls),
+                location = locationOf(derivedCls),
                 className = derivedCls.cls.name,
                 elementName = elem.name,
               ),
@@ -338,7 +330,7 @@ final class SchemaValidator(using sv: SchemaView) {
       if (problemSlots.nonEmpty) {
         acc.addOne(
           new InvalidSlotUsageImpl(
-            location = elementLocation(cls),
+            location = locationOf(cls),
             className = cls.cls.name,
             slotNames = problemSlots.toSeq,
           ),
@@ -348,7 +340,7 @@ final class SchemaValidator(using sv: SchemaView) {
     }.result()
 
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
-    UndefinedPrefixImpl(location = at(position), prefix = prefix)
+    UndefinedPrefixImpl(location = at(position, schemaId), prefix = prefix)
 
   private def slotImplicitPrefix(
       slotDefinition: SlotDefinition,
@@ -422,7 +414,7 @@ final class SchemaValidator(using sv: SchemaView) {
       else
         new Some(
           new InvalidUriOrCurieImpl(
-            location = elementLocation(elem),
+            location = locationOf(elem),
             uriOrCurie = elem.uriOrCurie,
             elementType = elem.elementType,
             elementName = elem.inner.name,
@@ -436,7 +428,7 @@ final class SchemaValidator(using sv: SchemaView) {
   locally {
     val builder = Seq.newBuilder[SchemaIssue]
     sv.elements.values.foreach { el =>
-      lazy val location = elementLocation(el)
+      lazy val location = locationOf(el)
 
       if el.name.isEmpty then
         builder.addOne(

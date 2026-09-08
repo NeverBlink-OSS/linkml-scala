@@ -178,6 +178,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     )
   }
 
+  /** Values of the [[attributeViews]] map, with the common sorting.
+    */
+  lazy val sortedAttributeViews: Seq[AttributeView] = {
+    attributeViews.values.toVector.sortBy(x => sv.elementOrder(x.slotView.slot))
+  }
+
   /** @return
     *   true if this class should be treated as an `Any`
     */
@@ -471,6 +477,12 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
   def canonicalName: String = Case.PascalCase(baseName)
 
   override def aliasedName: String = canonicalName
+
+  lazy val parents: Iterable[EnumView | ClassView] =
+    (_enum.isA ++ _enum.mixins).flatMap(_.resolve).collect {
+      case definition: ClassDefinition => sv.classes(definition.name)
+      case definition: EnumDefinition => sv.enums(definition.name)
+    }
 
   override private[schemaview] def evaluateConstructor(expr: String): Option[PermissibleValue] =
     new Some(ConstructorExpression.evaluateEnum(expr, this))

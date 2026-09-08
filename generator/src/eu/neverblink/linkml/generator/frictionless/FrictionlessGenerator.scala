@@ -73,7 +73,7 @@ class FrictionlessGenerator(using sv: SchemaView)
       case _ => None
     }).get
 
-    val classes = sv.classes.values
+    val classes = sv.sortedClasses
       .filter(cv => query.reachable(cv) && !cv.isAny)
       // The tree root is always a table, even when it is abstract or has no identifier.
       // Every other class has to be non-abstract and have an identifier.
@@ -84,8 +84,6 @@ class FrictionlessGenerator(using sv: SchemaView)
             (!options.skipClassesWithoutIdentifier || cv.hasIdentifier)
         ),
       )
-      .toSeq
-      .sortBy(_.aliasedName)
 
     val used = mutable.Set.empty[String]
     classes.map { cv =>
@@ -119,10 +117,8 @@ class FrictionlessGenerator(using sv: SchemaView)
   ): TableDescriptor = {
     val foreignKeys = mutable.ListBuffer.empty[ForeignKey]
 
-    // TODO LNK-198: factor this out
     val fields =
-      for av <- cv.attributeViews.values.toSeq
-          .sortBy(av => (av.slotView.slot.rank.getOrElseFast(Int.MaxValue), av.slotView.slot.name))
+      for av <- cv.sortedAttributeViews
       yield {
         val slotView = av.slotView
         val name = slotName(slotView)

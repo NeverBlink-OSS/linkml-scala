@@ -35,10 +35,10 @@ final case class DimensionExpressionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("exact_cardinality")
-    exactCardinality: Option[Int] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
+    @named("exact_cardinality")
+    exactCardinality: Option[Int] = None,
     examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),

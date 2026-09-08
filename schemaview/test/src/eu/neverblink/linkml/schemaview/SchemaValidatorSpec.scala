@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
+import eu.neverblink.linkml.runtime.Uri
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal}
@@ -596,6 +597,54 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val sv = load(schemaYaml)
 
       SchemaValidator(using sv).validationProblems shouldBe empty
+    }
+
+    "provide schema id locations for macro-based results" in {
+      val main =
+        """id: urn:main
+          |name: main
+          |
+          |imports:
+          |  - imported1
+          |  - imported2
+          |
+          |classes:
+          |  C1:
+          |    slots:
+          |      - s1
+          |      - s2
+          |""".stripMargin
+
+      val imported1 =
+        """id: urn:imported1
+          |name: imported1
+          |
+          |slots:
+          |  s1:
+          |    range: bad
+          |""".stripMargin
+
+      val imported2 =
+        """id: urn:imported2
+          |name: imported2
+          |
+          |slots:
+          |  s2:
+          |    range: s2
+          |""".stripMargin
+
+      val result = SchemaView.loadSchemaViewFromString(
+        main,
+        MapImporter("imported1.yaml" -> imported1, "imported2.yaml" -> imported2),
+      )
+
+      result shouldBe a[Left[?, ?]]
+      val problems = result.left.getOrElse(null)
+
+      problems.map(_.location.schemaId) should contain theSameElementsAs Seq(
+        Some(Uri("urn:imported1")),
+        Some(Uri("urn:imported2")),
+      )
     }
 
     "validate the metamodel" in {

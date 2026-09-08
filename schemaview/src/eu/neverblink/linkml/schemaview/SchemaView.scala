@@ -80,6 +80,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       acc
     }.result()
 
+  /** All classes defined in the loaded schemas, sorted using the common order. */
+  lazy val sortedClasses: Seq[ClassView] =
+    classes.values.toVector.sortBy(el => elementOrder(el.cls))
+
   /** All enums defined in the loaded schemas, as views.
     */
   lazy val enums: Map[String, EnumView] =
@@ -233,6 +237,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     }
     lowestCommon.toSeq.map(Reference[ClassView](_).resolve.get)
   }
+
+  /** Common element order. Rank first if defined, then alphabetically.
+    */
+  def elementOrder(el: Element): (Int, String) = (el.rank.getOrElse(Int.MaxValue), el.name)
 
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.

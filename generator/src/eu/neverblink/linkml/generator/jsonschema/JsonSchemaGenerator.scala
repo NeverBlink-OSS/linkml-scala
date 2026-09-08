@@ -4,7 +4,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
-import eu.neverblink.linkml.metamodel.Anything
+import eu.neverblink.linkml.metamodel.{Anything, SlotDefinition}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -86,23 +86,23 @@ class JsonSchemaGenerator(using sv: SchemaView)
         case _: AnyView => Schema.Empty
         case ClassInlineAttributeView(_, _, classView, inlineType) =>
           val mappedClassName = className(classView)
-          val $ref = "#/$defs/".concat(mappedClassName)
+          val ref = "#/$defs/".concat(mappedClassName)
           inlineType match {
             case InlineType.plain =>
-              new Schema($ref = new Some($ref))
+              new Schema($ref = new Some(ref))
             case InlineType.optional =>
-              new Schema($ref = new Some($ref)) // TODO LNK-34: or null
+              new Schema($ref = new Some(ref)) // TODO LNK-34: or null
             case InlineType.list =>
-              new Schema($ref = new Some($ref)).arrayOf // TODO LNK-34: or null
+              new Schema($ref = new Some(ref)).arrayOf // TODO LNK-34: or null
             case InlineType.dict(CollectionForm.CompactDict(key)) =>
               needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
               new Schema(
-                $ref = new Some($ref.concat("__identifier_optional")),
+                $ref = new Some(ref.concat("__identifier_optional")),
               ).dictOf // TODO LNK-34: or null
             case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
               needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
               new Schema($ref =
-                new Some($ref.concat("__simple_dict_value")),
+                new Some(ref.concat("__simple_dict_value")),
               ).dictOf // TODO LNK-34: or null
           }
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
@@ -128,7 +128,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
           ).arrayOfIf(slotView.slot.multivalued)
       }
       val sv = attribute.slotView
-      slotSchema.copy(
+      withCardinality(slotSchema, sv.slot).copy(
         title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
           Some(sv.slot.name),
         ),
@@ -286,6 +286,21 @@ object JsonSchemaGenerator {
     case _: NcNameType.type => ncNameSchema
     case _: LocalizedTextType.type => stringSchema // TODO LNK-195
     case _: UnknownType.type => Schema.Empty
+  }
+
+  /** Apply the explicit cardinality metaslots to a slot's schema.
+    */
+  private def withCardinality(schema: Schema, slot: SlotDefinition): Schema = {
+    val min = slot.minimumCardinality.orElseFast(slot.exactCardinality)
+    val max = slot.maximumCardinality.orElseFast(slot.exactCardinality)
+    if (min.isEmpty && max.isEmpty) schema
+    else
+      schema.`type` match {
+        case Some(SchemaType.Array :: Nil) => schema.copy(minItems = min, maxItems = max)
+        case Some(SchemaType.Object :: Nil) =>
+          schema.copy(minProperties = min, maxProperties = max)
+        case _ => schema
+      }
   }
 
   type MappedClassName = String

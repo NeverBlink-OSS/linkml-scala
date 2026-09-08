@@ -30,10 +30,8 @@ final class ErDiagramGenerator(using sv: SchemaView)
     import options.{optionalMarker, pruningMode}
     val query = pruningMode.derivedQuery(false, true)
 
-    val classes = sv.classes.values
+    val classes = sv.sortedClasses
       .filter(cv => query.reachable(cv) && !cv.isAny) // Never plot linkml:Any
-      .toSeq
-      .sortBy(_.aliasedName)
 
     val entities =
       classes.map(cv => ErEntity(ErName.entity(cv.aliasedName), attributesOf(cv, optionalMarker)))
@@ -57,16 +55,9 @@ final class ErDiagramGenerator(using sv: SchemaView)
   ): Unit =
     generate(options).writeTo(sink)
 
-  /** Slots of a class sorted by `rank`, then by name.
-    */
-  private def sortedAttributes(cv: ClassView): Seq[AttributeView] =
-    // TODO LNK-198: factor this out
-    cv.attributeViews.values.toSeq
-      .sortBy(av => (av.slotView.slot.rank.getOrElse(Int.MaxValue), av.slotView.slot.name))
-
   /** The attribute rows of an entity - every slot whose range is *not* a class. */
   private def attributesOf(cv: ClassView, optionalMarker: Boolean): Seq[ErAttribute] =
-    sortedAttributes(cv).flatMap { av =>
+    cv.sortedAttributeViews.flatMap { av =>
       val slot = av.slotView.slot
       val dataType: Option[String] = av match {
         // A class-ranged slot is an edge, not a row.
@@ -91,7 +82,7 @@ final class ErDiagramGenerator(using sv: SchemaView)
     }
 
   private def relationshipsOf(cv: ClassView): Seq[ErRelationship] =
-    sortedAttributes(cv).collect {
+    cv.sortedAttributeViews.collect {
       case av: ClassInlineAttributeView => relationship(cv, av, av.classView, identifying = true)
       case av: ClassReferenceAttributeView =>
         relationship(cv, av, av.classView, identifying = false)

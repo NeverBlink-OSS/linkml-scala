@@ -31,7 +31,7 @@ import millbuild.*
 
 import java.net.InetSocketAddress
 
-val scala = "3.8.4"
+val scala = "3.9.0"
 val scalaJS = "1.22.0"
 val rdf4j = "6.0.1"
 
@@ -766,7 +766,7 @@ object tests extends Module {
 
 trait CommonModule
     extends ScalaModule,
-      CommonPublishModule,
+      PublishModule,
       PlatformScalaModule,
       ScalafixModule,
       ScalafmtModule,
@@ -858,25 +858,11 @@ trait CommonTestModule extends ScalaModule, TestModule.ScalaTest, ScalafixModule
   override def scalaTestVersion = Task("3.2.20")
 }
 
-trait CommonScalaJSModule extends ScalaJSModule, CommonPublishModule {
+trait CommonScalaJSModule extends ScalaJSModule, PublishModule {
   def scalaJSVersion = scalaJS
 
   def moduleKind = Task {
     ModuleKind.ESModule
-  }
-}
-
-trait CommonPublishModule extends ScalaModule, PublishModule {
-  override def docJar = Task {
-    val outDir = Task.dest
-    val filteredDir = outDir / "filtered-javadoc"
-    val jarPath = outDir / "javadoc.jar"
-    os.copy(scalaDocGenerated().path, filteredDir)
-    os.remove.all(filteredDir / "fonts")
-    os.remove.all(filteredDir / "webfonts")
-    os.remove.all(filteredDir / "scripts" / "inkuire")
-    mill.util.Jvm.createJar(jarPath, Seq(filteredDir))
-    PathRef(jarPath)
   }
 }
 

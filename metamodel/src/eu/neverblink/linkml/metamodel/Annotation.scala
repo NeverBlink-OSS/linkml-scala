@@ -9,14 +9,14 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class AnnotationImpl(
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
     @id
     @named("tag")
     extensionTag: UriOrCurie,
     @value
     @named("value")
     extensionValue: AnyValue,
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
 ) extends Annotation {

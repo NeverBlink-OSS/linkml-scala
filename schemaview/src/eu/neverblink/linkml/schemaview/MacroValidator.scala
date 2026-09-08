@@ -72,7 +72,7 @@ object ValidatorResult {
   * @param referenceValue
   *   Value of the invalid reference
   */
-final case class UnknownReference(path: String, referenceValue: String):
+final case class UnknownReference(path: String, referenceValue: String, fromSchema: Uri):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): UnknownReference = copy(path = prefix.concat(path))
 
@@ -85,7 +85,7 @@ final case class UnknownReference(path: String, referenceValue: String):
   * @param actualType
   *   The definition type that this reference actually points to
   */
-final case class InvalidRange(path: String, value: String, actualType: String):
+final case class InvalidRange(path: String, value: String, actualType: String, fromSchema: Uri):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): InvalidRange = copy(path = prefix.concat(path))
 
@@ -94,7 +94,7 @@ final case class InvalidRange(path: String, value: String, actualType: String):
   * @param path
   *   JSON path to the reference
   */
-final case class InvalidDefaultRange(path: String):
+final case class InvalidDefaultRange(path: String, fromSchema: Uri):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): InvalidDefaultRange = copy(path = prefix.concat(path))
 
@@ -109,14 +109,18 @@ private trait MacroValidator[T] {
   * @param isRange
   *   Whether this particular slot is a range and should be additionally checked
   */
-final class ValidatorContext private (val defaultRangeAllowed: Boolean, val isRange: Boolean):
+final class ValidatorContext private (
+    val defaultRangeAllowed: Boolean,
+    val isRange: Boolean,
+    val fromSchema: Uri,
+):
   /** Mark continue validating this slot as a range. SHOULD NOT BE USED OUTSIDE THE MACRO */
   def asRange: ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, true)
+    new ValidatorContext(defaultRangeAllowed, true, fromSchema)
 
 object ValidatorContext:
-  def apply(defaultRangeAllowed: Boolean): ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, false)
+  def apply(defaultRangeAllowed: Boolean, fromSchema: Uri): ValidatorContext =
+    new ValidatorContext(defaultRangeAllowed, false, fromSchema)
 
 private object MacroValidator {
   given MacroValidator[LinkmlAny] = new MacroValidator[LinkmlAny] {
@@ -149,8 +153,11 @@ private object MacroValidator {
             || value.isInstanceOf[EnumDefinition]
           then ValidatorResult.ok
           else
-            ValidatorResult(invalidRanges = Seq(InvalidRange("", t.value, formatRangeType(value))))
-        case None => ValidatorResult(unknownReferences = Seq(UnknownReference("", t.value)))
+            ValidatorResult(invalidRanges =
+              Seq(InvalidRange("", t.value, formatRangeType(value), vc.fromSchema)),
+            )
+        case None =>
+          ValidatorResult(unknownReferences = Seq(UnknownReference("", t.value, vc.fromSchema)))
       }
     }
 
@@ -208,7 +215,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
             if ($opt ne None) ${ genValidator[t1](tpe1, '{ $opt.get }, sv, vc) }
             else if $vc.isRange && ! $vc.defaultRangeAllowed then
               ValidatorResult(
-                invalidDefaultRanges = Seq(InvalidDefaultRange("")),
+                invalidDefaultRanges = Seq(InvalidDefaultRange("", $vc.fromSchema)),
               )
             else ValidatorResult.ok
           }
