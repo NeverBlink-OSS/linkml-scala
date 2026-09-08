@@ -481,6 +481,16 @@ final class SchemaValidator(using sv: SchemaView) {
     sv.elements.values.foreach { el =>
       checkNaming(builder, el.name, el.baseName, locationOf(el))
     }
+    sv.classes.values.foreach { cls =>
+      cls.cls.attributes.values.foreach { attr =>
+        val classLocation = locationOf(cls)
+        val location =
+          classLocation.copy(jsonPointer = classLocation.jsonPointer.map(_ + "/" + attr.name))
+
+        checkNaming(builder, attr.name, Case.base(attr.name), location)
+      }
+    }
+
     sv.enums.values.flatMap(enumView => enumView.derivedValues.map(enumView -> _.pv)).foreach {
       (enumView, pv) =>
         val enumLocation = locationOf(enumView)
