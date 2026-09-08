@@ -8,6 +8,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
@@ -127,6 +128,16 @@ object LinkMlNativeApi {
     given SchemaView = view(handle)
     ErDiagramGenerator().writeTo(out, Options.erDiagram(optionsJson))
   }
+
+  def translation(
+      handle: Long,
+      optionsJson: String,
+      out: OutputStream,
+  ): Unit =
+    TranslationGenerator(using view(handle)).writeTo(
+      out,
+      Options.translation(optionsJson),
+    )
 
   // Results that are structured, and so come back as JSON
 

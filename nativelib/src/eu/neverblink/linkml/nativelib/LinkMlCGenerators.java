@@ -100,4 +100,14 @@ public final class LinkMlCGenerators {
             CCharPointerPointer error) {
         return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::scalaFiles);
     }
+
+    /** Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs. Options: {@code to}, {@code indentationStep}. */
+    @CEntryPoint(name = "linkml_translation")
+    static CCharPointer translation(
+            IsolateThread thread,
+            long handle,
+            @CConst CCharPointer options,
+            CCharPointerPointer error) {
+        return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::translation);
+    }
 }

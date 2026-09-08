@@ -34,6 +34,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_graphql",
     "linkml_er_diagram",
     "linkml_scala",
+    "linkml_translation",
 )
 
 
@@ -233,4 +234,17 @@ class Generators:
             package=package,
             generateEmitPrefixes=generate_emit_prefixes,
             metadataLanguage=metadata_language,
+        )
+
+    def translation(
+        self,
+        *,
+        to: str = "base",
+        indentation_step: int = 2,
+    ) -> str:
+        """Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs."""
+        return self._document(
+            "linkml_translation",
+            to=to,
+            indentationStep=indentation_step,
         )

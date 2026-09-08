@@ -1,3 +1,5 @@
+from python.linkml_scala import Generators
+
 # Python bindings (experimental)
 
 LinkML-Scala compiled to a native shared library, called from Python through `ctypes`. No JVM, no
@@ -65,6 +67,7 @@ schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_id
 schema.graphql(pruning_mode="schema", tree_root=None)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
+schema.translation(to="base")
 ```
 
 All arguments are keyword-only. Every one returns a string, except `scala()` and `frictionless()`,

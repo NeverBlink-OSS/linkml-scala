@@ -167,8 +167,6 @@ class GraphQlGenerator(using sv: SchemaView)
   }
 }
 
-
-
 object GraphQlGenerator extends GraphQlRenamer {
 
   /** Options for [[GraphQlGenerator]].

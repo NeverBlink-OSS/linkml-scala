@@ -7,6 +7,7 @@ import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
@@ -393,6 +394,16 @@ object LinkMlJsApi {
       ErDiagramGenerator.Options(
         pruningMode = PruningMode(pruningMode, treeRoot.toOption),
         optionalMarker = optionalMarker,
+      ),
+    )
+
+  def translation(
+      schema: SchemaViewJs,
+      target: String,
+  ): String =
+    TranslationGenerator(using schema.underlying).serialize(
+      TranslationGenerator.Options(
+        target,
       ),
     )
 

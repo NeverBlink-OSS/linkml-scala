@@ -121,6 +121,8 @@ export interface LinkMLApi {
    */
   erDiagram(schema: SchemaView, pruningMode?: string, treeRoot?: string, optionalMarker?: boolean): string;
 
+  translation(schema: SchemaView, target: string): string;
+
   /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.  TODO: consider typing the return value in TypeScript using a TypeScript generator. See: https://github.com/NeverBlink-OSS/linkml-scala/issues/127
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].

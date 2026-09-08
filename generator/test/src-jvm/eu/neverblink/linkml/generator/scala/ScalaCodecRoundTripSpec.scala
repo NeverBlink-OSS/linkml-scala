@@ -1,6 +1,5 @@
 package eu.neverblink.linkml.generator.scala
 
-import eu.neverblink.linkml.schemaview.Case
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

@@ -11,6 +11,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.PruningMode
 
 import scala.util.control.NonFatal
@@ -117,6 +118,9 @@ private object Options {
   private given scalaOptions: JsonValueCodec[ScalaGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
+  private given translationOptions: JsonValueCodec[TranslationGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
   private given loadOptions: JsonValueCodec[LoadOptions] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
@@ -149,6 +153,9 @@ private object Options {
     apply(json, ErDiagramGenerator.Options())
 
   def scala(json: String): ScalaGenerator.Options = apply(json, ScalaGenerator.Options())
+
+  def translation(json: String): TranslationGenerator.Options =
+    apply(json, TranslationGenerator.Options())
 
   def load(json: String): LoadOptions = apply(json, LoadOptions())
 }

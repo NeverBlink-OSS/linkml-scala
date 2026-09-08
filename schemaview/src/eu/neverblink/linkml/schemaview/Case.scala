@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
 import java.lang
-import java.lang.Character.*
 
 object Case {
   def isAlphaUpper(c: Char): Boolean = c >= 'A' && c <= 'Z'
