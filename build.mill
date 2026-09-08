@@ -964,8 +964,20 @@ trait CommonScalaJSModule extends ScalaJSModule, PublishModule {
   }
 }
 
+/** Scala Native modules must be compiled one at a time.
+  *
+  * Two of them compiling at once fail perhaps a third of the time, reading Scala Native's own TASTy
+  * — `CyclicReference involving class CFuncPtr0`, or `Could not read definition class USize`, from
+  * whichever phase got there first. The sibling pairs are `metamodel`/`validation` and
+  * `generator`/`tests`. `-j 1` is reliable over repeated cold builds where the default is not.
+  *
+  * Nothing here can express that, so the CI steps that compile native modules pass `-j 1`. Giving
+  * each module its own compiler worker does not help, and the Scala 3 optimiser makes it more
+  * likely without being the cause.
+  */
 trait CommonScalaNativeModule extends ScalaNativeModule, PublishModule, mill.api.DynamicModule {
   def scalaNativeVersion = scalaNative
+
 
   /** Nothing a Scala Native module produces runs on a JVM, so let it use whichever one Mill is
     * running on rather than making coursier fetch the pinned one. That pin has no Temurin build for

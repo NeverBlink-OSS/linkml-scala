@@ -150,7 +150,8 @@ jobs:
         run: |
           ./mill --no-server __.jvm.__.fix --check
           ./mill --no-server __.js.__.fix --check
-          ./mill --no-server __.native.__.fix --check
+          # Native modules cannot be compiled in parallel; see CommonScalaNativeModule in build.mill.
+          ./mill --no-server -j 1 __.native.__.fix --check
 
   git-lint:
     name: Git lint

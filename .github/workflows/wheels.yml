@@ -118,12 +118,13 @@ jobs:
       - name: Show the LLVM toolchain
         run: clang --version
 
+      # Native modules cannot be compiled in parallel; see CommonScalaNativeModule in build.mill.
       - name: Build the Shared Library and Test the Python Bindings
         run: |
           if [ "$RUNNER_OS" == "Windows" ]; then
-            ./mill.bat nativelib.native.pythonTest
+            ./mill.bat -j 1 nativelib.native.pythonTest
           else
-            ./mill nativelib.native.pythonTest
+            ./mill -j 1 nativelib.native.pythonTest
           fi
 
       # The version only names the archive. Off a tag it is the release; anywhere else it just has
@@ -162,9 +163,9 @@ jobs:
         run: |
           python -m pip install --quiet build
           if [ "$RUNNER_OS" == "Windows" ]; then
-            ./mill.bat nativelib.native.pythonWheelTest
+            ./mill.bat -j 1 nativelib.native.pythonWheelTest
           else
-            ./mill nativelib.native.pythonWheelTest
+            ./mill -j 1 nativelib.native.pythonWheelTest
           fi
 
       - name: Upload Python Wheel
@@ -205,7 +206,7 @@ jobs:
               apk add --no-cache bash curl clang lld musl-dev openjdk21 python3 py3-pip git
               git config --global --add safe.directory /work
               python3 -m venv /tmp/venv && /tmp/venv/bin/pip install --quiet build
-              PYTHON=/tmp/venv/bin/python ./mill --no-server nativelib.native.pythonWheelTest'
+              PYTHON=/tmp/venv/bin/python ./mill --no-server -j 1 nativelib.native.pythonWheelTest'
 
       - name: Upload musl Python Wheel
         uses: actions/upload-artifact@v7
@@ -242,7 +243,7 @@ jobs:
           LINKML_NATIVE: "1"
         run: |
           python -m pip install --quiet build
-          ./mill nativelib.native.sdistTest
+          ./mill -j 1 nativelib.native.sdistTest
 
       - name: Upload Source Distribution
         uses: actions/upload-artifact@v7

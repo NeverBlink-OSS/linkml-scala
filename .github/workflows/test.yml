@@ -131,7 +131,13 @@ jobs:
       - name: Show the LLVM toolchain
         run: clang --version
 
-      - name: Build and test
+      # Compiled serially first, then tested in parallel: linking is the expensive half and is
+      # safe to run concurrently. Native modules cannot be compiled in parallel; see
+      # CommonScalaNativeModule in build.mill.
+      - name: Compile
+        run: ./mill --no-server -j 1 __.native.__.compile
+
+      - name: Test
         run: ./mill --no-server -j 0 __.native.__.testForked
 
   nativelib:
@@ -177,9 +183,10 @@ jobs:
         with:
           python-version: '3.x'
 
+      # Native modules cannot be compiled in parallel; see CommonScalaNativeModule in build.mill.
       - name: Regenerate the bindings and check they are committed
         run: |
-          ./mill --no-server bindings
+          ./mill --no-server -j 1 bindings
           git diff --exit-code -- python/linkml_scala/_generated.py \
             nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.scala \
             || (echo "generated bindings are stale – run LINKML_NATIVE=1 ./mill bindings and commit the result"; exit 1)
@@ -187,12 +194,12 @@ jobs:
       - name: Build the shared library and test the bindings on the oldest supported Python
         env:
           PYTHON: ${{ steps.python-oldest.outputs.python-path }}
-        run: ./mill --no-server nativelib.native.pythonTest
+        run: ./mill --no-server -j 1 nativelib.native.pythonTest
 
       - name: Test the bindings on the newest Python
         env:
           PYTHON: ${{ steps.python-newest.outputs.python-path }}
-        run: ./mill --no-server nativelib.native.pythonTest
+        run: ./mill --no-server -j 1 nativelib.native.pythonTest
 
       # Builds the wheel that gets published on release, installs it into a clean virtualenv and
       # runs it from there, so the packaging is tested and not just the sources.
