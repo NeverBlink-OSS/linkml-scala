@@ -454,7 +454,9 @@ final class SchemaValidator(using sv: SchemaView) {
           NonStandardSeparatorImpl(
             elementName = name,
             location = location,
-            separators = name.collect { case c if !Case.isStandard(c) => c.toString },
+            separators = name.collect {
+              case c if !Case.isStandard(c) && !c.isSurrogate => c.toString
+            },
           ),
         )
 

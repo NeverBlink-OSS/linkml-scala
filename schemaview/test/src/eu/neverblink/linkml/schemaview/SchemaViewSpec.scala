@@ -3,6 +3,7 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
+import eu.neverblink.linkml.validation.NonStandardSeparatorImpl
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
@@ -639,6 +640,26 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         "abc",
         "def",
       )
+    }
+
+    "load wąż and ignore surrogates in the message" in {
+      val schema = """
+        |id: https://example.org/unicode
+        |name: unicode
+        |imports:
+        |  - linkml:types
+        |default_range: string
+        |classes:
+        |  Terrarium:
+        |    tree_root: true
+        |    attributes:
+        |      wąż🐍:
+        |        description: "grzegorz brzęczyszczykiewicz 🐍"
+        |        range: string
+        |""".stripMargin
+      val ifSv = SchemaView.loadSchemaViewFromString(schema).getOrElse(fail("bad"))
+      val separator = ifSv.lintProblems.collect { case s: NonStandardSeparatorImpl => s }.head
+      separator.separators should contain theSameElementsAs Seq("ą", "ż")
     }
 
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))

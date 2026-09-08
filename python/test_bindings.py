@@ -502,12 +502,10 @@ class RuntimeTest(unittest.TestCase):
         # The emoji is in the slot name, not just the description, because the ER diagram renders
         # names and types but no descriptions.
         with linkml_scala.load_string(unicode_schema) as loaded:
-            for name in ("linkml", "graphql", "er_diagram", "json_schema"):
+            for name in ("linkml", "graphql", "translation", "json_schema"):
                 with self.subTest(generator=name):
                     generated = getattr(loaded, name)()
-                    # TODO LNK-159: update this test to be in-line with whatever we think up
-                    # self.assertIn("wąż", generated)
-                    # self.assertIn("🐍", generated)
+                    self.assertIn("🐍", generated)
                     self.assertIn("Terrarium", generated)
 
     def test_a_large_output_comes_back_whole(self):
