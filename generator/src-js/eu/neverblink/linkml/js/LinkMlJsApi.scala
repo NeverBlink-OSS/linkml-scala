@@ -397,12 +397,17 @@ object LinkMlJsApi {
       ),
     )
 
-  /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
-   *
-   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param target Target framework to generate translations for. One of "base", "uri", "scala", or "graphql".
-   * @return Translation dictionary for translating the linkml names to framework names.
-   */
+  /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
+    * useful when the framework symbols are significant and must be known, like when constructing a
+    * query that is meant to be executed against a database conformant to a LinkML schema.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param target
+    *   Target framework to generate translations for. One of "base", "uri", "scala", or "graphql".
+    * @return
+    *   Translation dictionary for translating the linkml names to framework names.
+    */
   def translation(
       schema: SchemaViewJs,
       target: String,
