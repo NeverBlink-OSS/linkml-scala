@@ -9,6 +9,7 @@ import eu.neverblink.linkml.validation.{
   IssueLocationImpl,
   SchemaError,
   SchemaFatal,
+  SchemaIssue,
   UnexpectedErrorImpl,
 }
 
@@ -299,6 +300,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * included - use [[lint]] for a report that covers those too.
     */
   def validationProblems: Seq[SchemaError | SchemaFatal] = validator.validationProblems
+
+  /** All problems in the merged schema, empty if the schema is valid and no warnings are found.
+    */
+  def lintProblems: Seq[SchemaIssue] = validator.lintProblems
 
   /** Produce validation report with all detected problems
     *

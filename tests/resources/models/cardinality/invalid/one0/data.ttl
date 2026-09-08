@@ -1,4 +1,4 @@
 @prefix : <https://neverblink.eu/linkml/tests/cardinality/> .
 
 _:b a :Cardinal;
-    :atLeastOne "hello" .
+    :at_least_one "hello" .

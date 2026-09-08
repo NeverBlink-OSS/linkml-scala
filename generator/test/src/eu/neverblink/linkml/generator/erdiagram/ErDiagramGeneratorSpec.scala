@@ -45,9 +45,9 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       val result = ErDiagramGenerator().serialize()
       Seq(
         "string one",
-        "string? atMostOne",
-        "string[] atLeastOne",
-        "string[]? zeroOrMore",
+        "string? at_most_one",
+        "string[] at_least_one",
+        "string[]? zero_or_more",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -60,9 +60,9 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
         ErDiagramGenerator().serialize(ErDiagramGenerator.Options(optionalMarker = false))
       Seq(
         "string one",
-        "string atMostOne",
-        "string[] atLeastOne",
-        "string[] zeroOrMore",
+        "string at_most_one",
+        "string[] at_least_one",
+        "string[] zero_or_more",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -200,12 +200,12 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = ErDiagramGenerator().serialize()
       Seq(
-        "string stringSlot",
-        "boolean booleanSlot",
-        "integer intSlot",
-        "decimal floatSlot",
-        "date dateSlot",
-        "custom customSlot",
+        "string string_slot",
+        "boolean boolean_slot",
+        "integer int_slot",
+        "decimal float_slot",
+        "date date_slot",
+        "custom custom_slot",
       ).foreach { snippet =>
         result should include(snippet)
       }

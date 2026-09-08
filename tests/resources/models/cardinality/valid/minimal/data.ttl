@@ -2,4 +2,4 @@
 
 _:b1 a :Cardinal;
     :one "string" ;
-    :atLeastOne "one" .
+    :at_least_one "one" .

@@ -1,2 +1,2 @@
-one,atMostOne,atLeastOne,zeroOrMore
+one,at_most_one,at_least_one,zero_or_more
 ,,"[""hello""]",

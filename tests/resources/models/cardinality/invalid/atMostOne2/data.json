@@ -1,5 +1,5 @@
 {
   "one": "a",
-  "atLeastOne": ["a"],
-  "atMostOne": ["a", "b"]
+  "at_least_one": ["a"],
+  "at_most_one": ["a", "b"]
 }

@@ -2,6 +2,6 @@
 
 _:b1 a :Cardinal;
     :one "string" ;
-    :atLeastOne "one", "two" ;
-    :atMostOne "set" ;
-    :zeroOrMore "zero", "or", "more" .
+    :at_least_one "one", "two" ;
+    :at_most_one "set" ;
+    :zero_or_more "zero", "or", "more" .

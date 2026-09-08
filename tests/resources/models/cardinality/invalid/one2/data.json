@@ -1,4 +1,4 @@
 {
   "one": ["a", "b"],
-  "atLeastOne": ["c"]
+  "at_least_one": ["c"]
 }
