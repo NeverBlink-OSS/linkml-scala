@@ -198,7 +198,7 @@ final class SchemaValidator(using sv: SchemaView) {
         val renamed = Case.base(typeName)
         val typeSchemaName = typeNames.put(renamed, s.name)
         val enumSchemaName = enumNames.get(renamed)
-        if (enumSchemaName != null && enumSchemaName != s.name) {
+        if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               typeName,
@@ -229,12 +229,12 @@ final class SchemaValidator(using sv: SchemaView) {
         val classSchemaName = classNames.put(renamed, s.name)
         val typeSchemaName = typeNames.get(renamed)
         val enumSchemaName = enumNames.get(renamed)
-        if (enumSchemaName != null && enumSchemaName != s.name) {
+        if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               className,
               renamed, {
-                if (typeSchemaName != null && typeSchemaName != s.name) {
+                if (typeSchemaName ne null) {
                   if (classSchemaName != null && classSchemaName != s.name) {
                     s"class from '${s.name}' and '$classSchemaName' schemas, enum from '$enumSchemaName' schema, and type from '$typeSchemaName' schema"
                   } else {
@@ -248,7 +248,7 @@ final class SchemaValidator(using sv: SchemaView) {
               },
             ),
           )
-        } else if (typeSchemaName != null && typeSchemaName != s.name) {
+        } else if (typeSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               className,

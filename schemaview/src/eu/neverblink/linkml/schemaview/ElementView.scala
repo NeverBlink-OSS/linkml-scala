@@ -383,10 +383,8 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 
   def inner: SlotDefinition = slot
 
-  override def canonicalName: String = {
-    if name.forall(Case.isAlphanumeric) then Case.baseToCapital(baseName, false)
-    else baseName
-  }
+  override def canonicalName: String =
+    baseName
 
   override def aliasedName: String =
     slot.alias.getOrElseFast(canonicalName)

@@ -167,23 +167,7 @@ class GraphQlGenerator(using sv: SchemaView)
   }
 }
 
-trait GraphQlRenames extends Renames {
-  override def className(el: ClassView): String = Case.baseToPascal(el.baseName)
 
-  override def slotName(el: SlotView): String = el.canonicalName
-
-  override def typeName(el: TypeView): String = Case.baseToPascal(el.baseName)
-
-  override def enumName(el: EnumView): String = Case.baseToPascal(el.baseName)
-
-  override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
-    Case.baseToScreamingSnake(Case.base(pv.text))
-
-  def permissibleValueName(pv: PermissibleValue): String =
-    Case.baseToScreamingSnake(Case.base(pv.text))
-}
-
-object GraphQlRenames extends GraphQlRenames
 
 object GraphQlGenerator extends GraphQlRenames {
 
