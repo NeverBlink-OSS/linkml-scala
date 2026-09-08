@@ -29,6 +29,12 @@ on:
         description: Also build and install-test the source distribution.
         type: boolean
         default: true
+      sdist-install:
+        description: >-
+          JSON array of {os, platform} pairs to install the source distribution on, proving it
+          builds from IR on each. Empty to skip.
+        type: string
+        default: '[]'
   workflow_dispatch:
     inputs:
       targets:
@@ -49,6 +55,12 @@ on:
         description: Also build and install-test the source distribution.
         type: boolean
         default: true
+      sdist-install:
+        description: >-
+          JSON array of {os, platform} pairs to install the source distribution on, proving it
+          builds from IR on each. Empty to skip.
+        type: string
+        default: '[]'
 
 jobs:
   library:
@@ -237,3 +249,62 @@ jobs:
         with:
           name: linkml-sdist
           path: out/nativelib/native/sdist.dest/*.tar.gz
+
+  sdist-install:
+    name: Install from sdist on ${{ matrix.platform }}
+    # Skipped automatically when `sdist` did not run, since there would be nothing to install.
+    if: inputs.sdist-install != '[]'
+    needs: sdist
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include: ${{ fromJSON(inputs.sdist-install) }}
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      # For python/test_bindings.py and its fixtures. The package itself comes from the sdist.
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+
+      - name: Download the Source Distribution
+        uses: actions/download-artifact@v8
+        with:
+          name: linkml-sdist
+          path: sdist
+
+      # A JVM and clang are what the sdist needs to link the library while pip installs it.
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.platform == 'windows-arm64' && '21' || '17' }}
+
+      - name: Setup MSVC (Windows only)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.platform == 'windows-arm64' && 'arm64' || 'x64' }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.platform == 'windows-arm64' && '3.12' || '3.10' }}
+
+      - name: Show the LLVM toolchain
+        run: clang --version
+
+      - name: Install It
+        run: python -m pip install sdist/*.tar.gz
+
+      # From outside the checkout, so `import linkml_scala` can only find the installed package.
+      - name: Run the Test Suite Against the Installed Package
+        env:
+          LINKML_SCALA_REPO: ${{ github.workspace }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/sdist-check"
+          cp python/test_bindings.py "$RUNNER_TEMP/sdist-check/"
+          cd "$RUNNER_TEMP/sdist-check"
+          python -m unittest test_bindings -v
