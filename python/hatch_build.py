@@ -1,4 +1,11 @@
-"""Helpers for managing platform tags on the wheel built by hatchling.
+"""Building the shared library when needed, and tagging the wheel that carries it.
+
+A wheel build normally finds the library already staged in ``linkml_scala/_lib`` by
+``./mill nativelib.native.pythonWheel``. A build from the source distribution does not: that
+distribution carries Scala Native IR and Scala Native's linker instead of a compiled library, so
+the target-specific half of the build happens here, on the machine doing the install. That is what
+makes it installable on any platform Scala Native supports rather than only the ones we ship wheels
+for. It needs a JVM and clang, and nothing from the network.
 
 The platform tag must name the oldest system the library still runs on, so that pip installs the
 correct wheel. We read that out of the library itself:
@@ -16,11 +23,23 @@ from __future__ import annotations
 
 import os
 import platform
+import shutil
 import struct
+import subprocess
 import sys
 from pathlib import Path
 
 LIBRARY_EXTENSIONS = (".so", ".dylib", ".dll")
+
+# Where the source distribution keeps the jars, and the linker's entry point.
+NIR_DIR = "_native/nir"
+LINKER_DIR = "_native/linker"
+LINKER_MAIN = "scala.scalanative.cli.ScalaNativeLd"
+
+# Kept in step with build.mill. See docs/python_bindings.md for why these and not the defaults.
+GC = os.environ.get("LINKML_SCALA_GC", "immix")
+MODE = os.environ.get("LINKML_SCALA_MODE", "release-fast")
+LTO = os.environ.get("LINKML_SCALA_LTO", "none")
 
 LINUX_ARCHITECTURES = {
     "x86_64": "x86_64",
@@ -36,6 +55,14 @@ WINDOWS_ARCHITECTURES = {"amd64": "amd64", "x86_64": "amd64", "arm64": "arm64"}
 MUSLLINUX_VERSION = (1, 2)
 
 
+def library_name() -> str:
+    if sys.platform == "darwin":
+        return "liblinkml_scala.dylib"
+    if sys.platform == "win32":
+        return "liblinkml_scala.dll"
+    return "liblinkml_scala.so"
+
+
 def find_library(root: Path) -> Path:
     """The one shared library staged inside the package."""
     lib_dir = root / "linkml_scala" / "_lib"
@@ -43,9 +70,64 @@ def find_library(root: Path) -> Path:
     if len(found) != 1:
         raise RuntimeError(
             f"expected exactly one shared library in {lib_dir}, found {len(found)}. "
-            "Build it with `./mill nativelib.installPythonLib`."
+            "Build it with `./mill nativelib.native.installPythonLib`."
         )
     return found[0]
+
+
+def tool(executable: str, variable: str, why: str) -> str:
+    """Locate a build tool, or explain what to do about it.
+
+    ``variable`` overrides the executable, and for Java ``JAVA_HOME`` is honoured too.
+    """
+    if variable == "JAVA":
+        java_home = os.environ.get("JAVA_HOME")
+        if java_home:
+            exe = "java.exe" if sys.platform == "win32" else "java"
+            candidate = Path(java_home) / "bin" / exe
+            if candidate.is_file():
+                return str(candidate)
+    found = shutil.which(os.environ.get(variable, executable))
+    if found:
+        return found
+    raise RuntimeError(
+        f"Building this package from source needs {executable}, {why}. Install it, or install a "
+        "prebuilt wheel instead: pip install --only-binary :all: neverblink-linkml"
+    )
+
+
+def link(root: Path) -> Path:
+    """Run Scala Native's linker over the bundled IR, producing the shared library."""
+    output = root / "linkml_scala" / "_lib" / library_name()
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    nir = sorted(str(p) for p in (root / NIR_DIR).glob("*.jar"))
+    linker = sorted(str(p) for p in (root / LINKER_DIR).glob("*.jar"))
+    if not nir or not linker:
+        raise RuntimeError(f"the source distribution is missing its jars: {root / '_native'}")
+
+    java = tool("java", "JAVA", "to run the Scala Native linker")
+    tool("clang", "CLANG", "to compile the generated code")
+
+    print(f"linking {output.name} with Scala Native ({MODE}, {GC} gc, lto {LTO})", flush=True)
+    result = subprocess.run([
+        java, "-cp", os.pathsep.join(linker), LINKER_MAIN,
+        "--build-target", "library-dynamic",
+        "--gc", GC,
+        "--mode", MODE,
+        "--lto", LTO,
+        # The bindings drive the library from one dedicated thread, the only arrangement Scala
+        # Native supports for a library another runtime loads.
+        "--multithreading", "false",
+        "--outpath", str(output),
+        "--workdir", str(root / "_native" / "workdir"),
+        *nir,
+    ], stdout=sys.stdout, stderr=sys.stderr)
+    if result.returncode != 0:
+        raise RuntimeError(f"the Scala Native linker failed with exit code {result.returncode}")
+    if not output.is_file():
+        raise RuntimeError(f"the linker reported success but wrote no {output}")
+    return output
 
 
 def platform_tag(library: Path) -> str:
@@ -215,10 +297,12 @@ except ImportError:  # Running this file directly, to see what tag a library wou
 
 
 class CustomBuildHook(BuildHookInterface):  # type: ignore[misc]
-    """Tags the wheel for one platform, and marks it as containing a binary."""
+    """Builds the library if it is not already staged, then tags the wheel for one platform."""
 
     def initialize(self, version: str, build_data: dict) -> None:
-        library = find_library(Path(self.root))
+        root = Path(self.root)
+        staged = root / "linkml_scala" / "_lib" / library_name()
+        library = staged if staged.is_file() else link(root)
         tag = f"py3-none-{platform_tag(library)}"
         # Not pure Python, so the files belong in platlib rather than purelib.
         build_data["pure_python"] = False

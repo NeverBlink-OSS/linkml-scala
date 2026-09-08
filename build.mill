@@ -23,6 +23,7 @@ import mill.scalajslib.*
 import mill.scalajslib.api.ModuleKind
 import scalalib.*
 import scalanativelib.*
+import mill.scalanativelib.api.{BuildTarget, ReleaseMode}
 import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
@@ -563,222 +564,197 @@ def bindings(args: String*) = Task.Command(exclusive = true) {
   os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
   os.write.over(
     root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
-      "LinkMlCGenerators.java",
+      "LinkMlCGenerators.scala",
     CApiGen(read),
   )
 }
 
-/** LinkML compiled to a native shared library with a C ABI, and the Python bindings that sit on top
-  * of it. See docs/python_bindings.md.
+/** LinkML as a native shared library with a C ABI, and the Python bindings on top of it.
   *
-  * Experimental. Deliberately does not extend `CommonModule`, so it stays out of
-  * `SonatypeCentralPublishModule` (which publishes every `PublishModule` in the build). The wheel
-  * goes to PyPI instead, see `pythonWheel`.
+  * Built with Scala Native. The CLI executable is still a GraalVM native image, see `cli`.
   *
-  * It extends `NativeImage` only to reuse `nativeImageGraalvmHome`, which fetches GraalVM (or
-  * honours `GRAALVM_HOME`). The trait's own `nativeImage` task builds an executable and is unused
-  * here; `sharedLibrary` below runs native-image with `--shared` instead.
+  * Hidden unless `LINKML_NATIVE=1`, like every other Scala Native module.
   */
-object nativelib extends ScalaModule, ScalafmtModule, ScalafixModule, NativeImage {
-  def scalaVersion = scala
+object nativelib extends Module, NativeOptional {
+  object native extends ScalaNativeModule, ScalafmtModule, ScalafixModule {
+    override def moduleDir = super.moduleDir / os.up
 
-  def moduleDeps = Seq(
-    build.generator.jvm,
-  )
+    def scalaVersion = scala
 
-  /** GraalVM's `@CEntryPoint` annotations. Compile-time only: native-image puts its own copy on the
-    * image classpath, and having a second one there confuses it.
-    */
-  override def compileMvnDeps = Seq(
-    mvn"org.graalvm.sdk:nativeimage:25.3.4.1",
-    // WordFactory, for the null pointer the C error out-params are cleared to.
-    mvn"org.graalvm.sdk:word:25.3.4.1",
-  )
+    def scalaNativeVersion = scalaNative
 
-  def scalacOptions = Seq(
-    "-release",
-    "17",
-    "-Wunused:all",
-  )
+    def moduleDeps = Seq(build.generator.native)
 
-  /** Unused: a shared library has no main class. Required by the `NativeImage` trait, whose
-    * executable-building tasks we don't call.
-    */
-  def nativeImageMainClass = ""
+    def scalacOptions = Seq("-Wunused:all")
 
-  def nativeImageClassPath = runClasspath()
+    override def nativeBuildTarget = BuildTarget.LibraryDynamic
 
-  def nativeImageName = NativeLib.name
+    /** The Python bindings drive the library from one dedicated thread, which is the only
+      * arrangement Scala Native supports for a library another runtime loads. Multithreading
+      * support would only cost us safepoint checks we never benefit from.
+      */
+    override def nativeMultithreading = Task { Some(false) }
 
-  def nativeImageGraalVmJvmId = "graalvm-oracle:25"
+    /** `release-fast`, not `release-full`: 4.5% faster for +42% size, double the start-up and a
+      * 39-second link. LTO is left off because it breaks exception handling in a library build.
+      * See docs/python_bindings.md.
+      */
+    override def releaseMode = Task { ReleaseMode.ReleaseFast }
 
-  // Same as the CLI's, minus what only makes sense for an executable.
-  def nativeImageOptions = Seq(
-    "-O3", // Optimized for throughput
-    "--no-fallback",
-    "--initialize-at-build-time",
-    // os.pwd is a val, must not be initialized at build time, or we get bad PWD on runtime.
-    // See: https://github.com/com-lihaoyi/os-lib/issues/318
-    "--initialize-at-run-time=os.package$",
-    "-H:+UnlockExperimentalVMOptions",
-    "-H:+RemoveSaturatedTypeFlows",
-    "-H:+MLCallCountProfileInference",
-    "-H:IncludeLocales=en",
-    "-H:-GenLoopSafepoints",
-    "-H:-IncludeMethodData",
-  )
+    /** Set to an LLVM triple to generate code for another platform. */
+    override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
 
-  /** Compile the library to `liblinkml_scala.so` (`.dylib`, `.dll`) plus the C headers GraalVM
-    * generates for it. Takes a few minutes.
-    */
-  def sharedLibrary = Task {
-    PathRef(
-      NativeLib.build(
-        Task.dest,
-        nativeImageGraalvmHome().path,
-        nativeImageClassPath().map(_.path),
-        nativeImageOptions(),
-        mill.api.BuildCtx.workspaceRoot,
-      ),
-    )
-  }
-
-  /** The image classpath written to a file, so we can safely pass it to scripts.
-    */
-  def nativeImageClassPathFile = Task {
-    PathRef(NativeLib.classPathFile(Task.dest, nativeImageClassPath().map(_.path)))
-  }
-
-  /** The Python package: the sources, packaging metadata and tests. */
-  def pythonDir = Task.Source(mill.api.BuildCtx.workspaceRoot / "python")
-
-  /** Shipped inside the wheel. */
-  def licenseFile = Task.Source(mill.api.BuildCtx.workspaceRoot / "LICENSE")
-
-  /** Where the Python package looks for the library when it is not told otherwise. */
-  private def pythonLibDir = mill.api.BuildCtx.workspaceRoot / "python" / "linkml_scala" / "_lib"
-
-  /** Build the shared library and install it (with its headers) into the Python package, so
-    * `import linkml_scala` works from a source checkout.
-    */
-  def installPythonLib() = Task.Command(exclusive = true) {
-    Python.installLibrary(sharedLibrary().path, pythonLibDir)
-    println(s"Installed the shared library into ${pythonLibDir.relativeTo(
-        mill.api.BuildCtx.workspaceRoot,
-      )}")
-  }
-
-  /** Run the Python binding's test suite against a freshly installed library. Requires Python 3.10+
-    * on the PATH, or `PYTHON` pointing at one.
-    */
-  def pythonTest(args: String*) = Task.Command(exclusive = true) {
-    installPythonLib()()
-    Python.runTests(mill.api.BuildCtx.workspaceRoot)
-  }
-
-  /** Build the `neverblink-linkml` wheel for this platform.
-    */
-  def pythonWheel = Task {
-    PathRef(
-      Python.buildWheel(
-        Task.dest,
-        sharedLibrary().path,
-        pythonDir().path,
-        licenseFile().path,
-        wheelVersion(),
-      ),
-    )
-  }
-
-  /** The wheel's version in the PEP 440 format. */
-  def wheelVersion = Task {
-    PyPackage.version(build.generator.jvm.publishVersion())
-  }
-
-  /** Build the wheel, install it into a throwaway virtualenv and check the installed package works.
-    *
-    * Runs python/test_bindings.py from a temporary directory, so the import can only come from the
-    * wheel and never from `python/`.
-    */
-  def pythonWheelTest(args: String*) = Task.Command(exclusive = true) {
-    Python.testWheel(
-      Task.dest,
-      pythonWheel().path,
-      pythonDir().path,
-      mill.api.BuildCtx.workspaceRoot,
-    )
-  }
-
-  object linux extends Module {
-
-    /** glibc, built inside manylinux2014. */
-    object glibc extends Module {
-      def sharedLibrary = Task {
-        PathRef(
-          NativeLib.buildForLinux(
-            "glibc",
-            Task.dest,
-            build.nativelib.nativeImageGraalvmHome().path,
-            build.nativelib.nativeImageClassPathFile().path,
-            build.nativelib.nativeImageOptions(),
-            mill.api.BuildCtx.workspaceRoot,
-          ),
-        )
-      }
-
-      def pythonWheel = Task {
-        PathRef(
-          Python.buildWheel(
-            Task.dest,
-            sharedLibrary().path,
-            build.nativelib.pythonDir().path,
-            build.nativelib.licenseFile().path,
-            build.nativelib.wheelVersion(),
-          ),
-        )
-      }
-
-      /** Run it against the host's libc (usually much newer). */
-      def pythonWheelTest(args: String*) = Task.Command(exclusive = true) {
-        Python.testWheel(
-          Task.dest,
-          pythonWheel().path,
-          build.nativelib.pythonDir().path,
-          mill.api.BuildCtx.workspaceRoot,
-        )
-      }
+    /** Scala Native names the library after its own output file, so the install name has to be
+      * corrected or the loader goes looking for `libout.so`. The last one on the command line wins.
+      */
+    override def nativeLinkingOptions = Task {
+      val library = NativeLib.name + platformLibraryExtension
+      val rename =
+        if _root_.scala.util.Properties.isMac then Seq(s"-Wl,-install_name,$library")
+        else if _root_.scala.util.Properties.isWin then Seq.empty
+        else Seq(s"-Wl,-soname,$library")
+      super.nativeLinkingOptions() ++ rename
     }
 
-    /** musl, cross-linked for Alpine. Needs nativelib/install-musl-toolchain.sh first.
-      *
-      * There is deliberately no `pythonWheelTest` here: the wheel only loads under musl, so testing
-      * requires running it in an Alpine container. The release workflow does that.
-      */
-    object musl extends Module {
-      def sharedLibrary = Task {
-        PathRef(
-          NativeLib.buildForLinux(
-            "musl",
-            Task.dest,
-            build.nativelib.nativeImageGraalvmHome().path,
-            build.nativelib.nativeImageClassPathFile().path,
-            build.nativelib.nativeImageOptions(),
-            mill.api.BuildCtx.workspaceRoot,
-          ),
-        )
-      }
+    /** `liblinkml_scala.so`, named the way the Python bindings and `package.sh` expect. */
+    def sharedLibrary = Task {
+      val built = nativeLink()
+      val dest = Task.dest / (NativeLib.name + platformLibraryExtension)
+      os.copy.over(built.path, dest)
+      os.copy.over(headerSource().path, Task.dest / "linkml_scala.h")
+      PathRef(Task.dest)
+    }
 
-      def pythonWheel = Task {
-        PathRef(
-          Python.buildWheel(
-            Task.dest,
-            sharedLibrary().path,
-            build.nativelib.pythonDir().path,
-            build.nativelib.licenseFile().path,
-            build.nativelib.wheelVersion(),
-          ),
-        )
+    private def platformLibraryExtension =
+      if _root_.scala.util.Properties.isWin then ".dll"
+      else if _root_.scala.util.Properties.isMac then ".dylib"
+      else ".so"
+
+    /** Hand-written, because Scala Native generates no header for its exports. */
+    def headerSource =
+      Task.Source(mill.api.BuildCtx.workspaceRoot / "nativelib" / "include" / "linkml_scala.h")
+
+    // Python bindings
+
+    /** The Python package: the sources, packaging metadata and tests. */
+    def pythonDir = Task.Source(mill.api.BuildCtx.workspaceRoot / "python")
+
+    def licenseFile = Task.Source(mill.api.BuildCtx.workspaceRoot / "LICENSE")
+
+    /** Where the Python package looks for the library when it is not told otherwise. */
+    private def pythonLibDir = mill.api.BuildCtx.workspaceRoot / "python" / "linkml_scala" / "_lib"
+
+    /** Build the library and install it into the Python package, so `import linkml_scala` works
+      * from a source checkout.
+      */
+    def installPythonLib() = Task.Command(exclusive = true) {
+      Python.installLibrary(sharedLibrary().path, pythonLibDir)
+      println(s"Installed the shared library into ${pythonLibDir.relativeTo(
+          mill.api.BuildCtx.workspaceRoot,
+        )}")
+    }
+
+    /** Run the Python binding's test suite against a freshly installed library. Requires Python
+      * 3.10+ on the PATH, or `PYTHON` pointing at one.
+      */
+    def pythonTest(args: String*) = Task.Command(exclusive = true) {
+      installPythonLib()()
+      Python.runTests(mill.api.BuildCtx.workspaceRoot)
+    }
+
+    /** Build the `neverblink-linkml` wheel for this platform. */
+    def pythonWheel = Task {
+      PathRef(
+        Python.buildWheel(
+          Task.dest,
+          sharedLibrary().path,
+          pythonDir().path,
+          licenseFile().path,
+          wheelVersion(),
+        ),
+      )
+    }
+
+    def wheelVersion = Task { PyPackage.version(build.generator.jvm.publishVersion()) }
+
+    /** Build the wheel, install it into a throwaway virtualenv and check the installed package
+      * works, from a temporary directory so the import cannot come from `python/`.
+      */
+    def pythonWheelTest(args: String*) = Task.Command(exclusive = true) {
+      Python.testWheel(
+        Task.dest,
+        pythonWheel().path,
+        pythonDir().path,
+        mill.api.BuildCtx.workspaceRoot,
+      )
+    }
+
+    // The source distribution
+    //
+    // It carries Scala Native IR rather than a compiled library, plus Scala Native's linker, and
+    // links on the machine doing the install. That is what makes it installable on any platform
+    // Scala Native supports rather than only the ones we build wheels for.
+
+    /** Scala Native's linker, as a standalone tool. */
+    def linkerClasspath = Task {
+      defaultResolver().classpath(Seq(mvn"org.scala-native::scala-native-cli:$scalaNative"))
+    }
+
+    /** Every jar the linker needs. `transitiveJars` is upstream only, so this module's own jar has
+      * to be added by hand.
+      */
+    def nirJars = Task { (transitiveJars() :+ jar()) ++ resolvedMvnDeps() }
+
+    /** Lay out the source distribution. No compiled library goes in; `python/hatch_build.py` links
+      * one during `pip install`.
+      */
+    def sdistTree = Task {
+      val dest = Task.dest
+      val source = pythonDir().path
+      os.copy.over(source / "pyproject.toml", dest / "pyproject.toml", createFolders = true)
+      os.copy.over(source / "hatch_build.py", dest / "hatch_build.py")
+      os.copy.over(source / "README.md", dest / "README.md")
+      os.copy.over(licenseFile().path, dest / "LICENSE")
+      os.copy.over(source / "linkml_scala", dest / "linkml_scala")
+      os.remove.all(dest / "linkml_scala" / "_lib")
+      os.write.over(dest / "linkml_scala" / "_version.py", PyPackage.versionFile(wheelVersion()))
+
+      def stage(jars: Seq[PathRef], into: os.Path): Unit = {
+        os.makeDir.all(into)
+        jars.map(_.path).foreach { jar =>
+          // Dependency jars are uniquely named; ours are all `out.jar`, so name those by module.
+          val name =
+            if jar.last == "out.jar" then
+              jar.segments.toSeq.dropRight(2).takeRight(2).mkString("-") + ".jar"
+            else jar.last
+          os.copy.over(jar, into / name)
+        }
       }
+      stage(nirJars(), dest / "_native" / "nir")
+      stage(linkerClasspath(), dest / "_native" / "linker")
+      PathRef(dest)
+    }
+
+    /** Build the source distribution. Requires Python with `build` installed. */
+    def sdist = Task {
+      os.call(
+        (sys.env.getOrElse("PYTHON", "python3"), "-m", "build", "--sdist", "--outdir", Task.dest,
+          sdistTree().path),
+        stdout = os.Inherit,
+        stderr = os.Inherit,
+      )
+      PathRef(Task.dest)
+    }
+
+    /** Install the source distribution into a throwaway virtualenv, which links the library on the
+      * way in, and run the test suite against the result.
+      */
+    def sdistTest(args: String*) = Task.Command(exclusive = true) {
+      Python.testSdist(
+        Task.dest,
+        os.list(sdist().path).find(_.ext == "gz").getOrElse(Task.fail("no sdist was produced")),
+        mill.api.BuildCtx.workspaceRoot,
+      )
     }
   }
 }
@@ -946,6 +922,12 @@ trait CommonScalaJSModule extends ScalaJSModule, PublishModule {
 
 trait CommonScalaNativeModule extends ScalaNativeModule, PublishModule, mill.api.DynamicModule {
   def scalaNativeVersion = scalaNative
+
+  /** Nothing a Scala Native module produces runs on a JVM, so let it use whichever one Mill is
+    * running on rather than making coursier fetch the pinned one. That pin has no Temurin build for
+    * every platform we compile on -- musl is the one that bites.
+    */
+  override def javaHome = Task { None }
 
   override def moduleDirectChildren: Seq[mill.api.Module] =
     super.moduleDirectChildren.filterNot(_.moduleSegments.last.value == "scoverage")

@@ -113,46 +113,57 @@ Here we measured only the time to generate the output, not the time to load the 
 
 ## How it works
 
-We export one function per operation:
+The library is compiled with [Scala Native](https://scala-native.org/), and exports one C function
+per operation:
 
 ```c
-char* linkml_shacl      (graal_isolatethread_t*, long long handle, const char* opts, char** err);
-char* linkml_json_schema(graal_isolatethread_t*, long long handle, const char* opts, char** err);
-/* rdfs, linkml, frictionless, graphql, er_diagram, scala, lint – same shape */
+char* linkml_shacl      (long long handle, const char* opts, char** err);
+char* linkml_json_schema(long long handle, const char* opts, char** err);
+/* rdfs, linkml, frictionless, graphql, er_diagram, scala, lint - same shape */
 
-long long linkml_load_file(graal_isolatethread_t*, const char* path,
-                           const char* opts, char** report, char** err);
-void      linkml_close    (graal_isolatethread_t*, long long handle);
-void      linkml_free     (graal_isolatethread_t*, char*);
+long long linkml_load_file(const char* path, const char* opts, char** report, char** err);
+void      linkml_close    (long long handle);
+void      linkml_free     (char*);
 
-int       linkml_abi_version(graal_isolatethread_t*);
-char*     linkml_build_info (graal_isolatethread_t*, char** err);
+int       linkml_abi_version(void);
+int       linkml_init_threads(void);
+char*     linkml_build_info (char** err);
 ```
 
 Conventions:
 
-**Options are one JSON string, and may be NULL.** Options are the part that changes as generators grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
+**Options are one JSON string, and may be NULL.** Options are the part that changes as generators
+grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
 
 ```c
-char *shacl = linkml_shacl(thread, handle, NULL, &err);               /* defaults */
-char *open  = linkml_shacl(thread, handle, "{\"open\":true}", &err);  /* one option */
+char *shacl = linkml_shacl(handle, NULL, &err);               /* defaults */
+char *open  = linkml_shacl(handle, "{\"open\":true}", &err);  /* one option */
 ```
 
-**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.
+**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`.
+Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be
+freed by the caller with `linkml_free`.
 
 A loaded schema is an integer handle.
 
+**One thread.** Scala Native cannot register a thread it did not create
+([scala-native#4951](https://github.com/scala-native/scala-native/issues/4951)), so the library has
+to be used from a single thread, which calls `linkml_init_threads()` once before anything else. The
+Python bindings do this for you: they own a worker thread and hand every call to it, so calling from
+several Python threads is safe, just not parallel.
+
 ## Building it yourself
 
-You need JDK 17+ (Mill downloads GraalVM itself) and Python 3.10 or newer. Then:
+You need JDK 17+, clang, and Python 3.10 or newer. Then:
 
 ```shell
-./mill nativelib.installPythonLib
+LINKML_NATIVE=1 ./mill nativelib.native.installPythonLib
 ```
 
-That runs `native-image --shared` over the `nativelib` module and copies the result into
-`python/linkml_scala/_lib/`, where the Python package looks for it. Takes about half a minute on a
-recent laptop, and produces a 22 MB `liblinkml_scala.so`.
+Scala Native modules are hidden unless `LINKML_NATIVE=1`, because the toolchain is slow — see
+[CONTRIBUTING](../CONTRIBUTING.md#scala-native). That task links the library and copies it into
+`python/linkml_scala/_lib/`, where the Python package looks for it. Takes about 20 seconds and
+produces an 11 MB `liblinkml_scala.so`.
 
 To use the package, put `python/` on your path:
 
@@ -163,26 +174,39 @@ PYTHONPATH=python python3 -c "import linkml_scala; print(linkml_scala.library_pa
 Run the tests with:
 
 ```shell
-./mill nativelib.pythonTest
+LINKML_NATIVE=1 ./mill nativelib.native.pythonTest
 ```
 
 If you keep the library somewhere else, point `LINKML_SCALA_LIB` at the file (or at the directory
 holding it).
 
+The build is `release-fast` with the Immix collector and no LTO. `release-full` is 4.5% faster for
++42% library size, double the start-up and a much slower link, and LTO breaks exception handling in
+a library build, so neither is on. `LINKML_SCALA_MODE`, `LINKML_SCALA_GC` and `LINKML_SCALA_LTO`
+override those when building from a source distribution.
+
 ### Building a wheel
 
 ```shell
 pip install build
-./mill nativelib.pythonWheel      # writes out/nativelib/pythonWheel.dest/dist/*.whl
-./mill nativelib.pythonWheelTest  # installs it in a throwaway virtualenv and runs the tests there
+LINKML_NATIVE=1 ./mill nativelib.native.pythonWheel      # out/nativelib/native/pythonWheel.dest/dist/*.whl
+LINKML_NATIVE=1 ./mill nativelib.native.pythonWheelTest  # installs it in a throwaway virtualenv
 ```
 
-For Linux, we support both glibc and musl. The glibc build is done inside a manylinux2014 container, so it can be used on any Linux distribution. The musl build is done on the host, but requires a musl toolchain to be installed first – this works only on x86-64. This can be done with these scripts:
+Releases ship wheels for Linux, macOS and Windows on x86-64 and ARM64, glibc and musl. The musl
+wheels are built natively in an Alpine container — Scala Native needs only clang, so no cross
+toolchain is involved.
+
+### The source distribution
+
+There is also a source distribution, for platforms we ship no wheel for. It carries Scala Native IR
+and Scala Native's linker instead of a compiled library, and links one during `pip install`, so it
+works on anything Scala Native supports. That needs a JVM and clang on the installing machine;
+`pip install --only-binary :all: neverblink-linkml` avoids it if you would rather have a wheel.
 
 ```shell
-./mill nativelib.linux.glibc.pythonWheelTest  # glibc, built inside manylinux2014
-sudo nativelib/install-musl-toolchain.sh      # once, for the musl build
-./mill nativelib.linux.musl.pythonWheel       # musl, for Alpine
+LINKML_NATIVE=1 ./mill nativelib.native.sdist      # out/nativelib/native/sdist.dest/*.tar.gz
+LINKML_NATIVE=1 ./mill nativelib.native.sdistTest  # installs it in a virtualenv and runs the tests
 ```
 
 Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out

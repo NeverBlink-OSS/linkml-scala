@@ -1,6 +1,6 @@
 """The package version.
 
-`nativelib.pythonWheel` in build.mill overwrites this when it builds a wheel, so that the version
+`nativelib.native.pythonWheel` in build.mill overwrites this when it builds a wheel, so that the version
 matches the one published to Maven Central and npm.
 """
 

@@ -113,4 +113,33 @@ object Python {
       stderr = os.Inherit,
     )
   }
+
+  /** Install a source distribution into a throwaway virtualenv and run the test suite against it.
+    *
+    * Installing it is the interesting part: the sdist carries Scala Native IR rather than a
+    * compiled library, so pip has to link one on the way in. That needs a JVM and clang.
+    */
+  def testSdist(dest: os.Path, sdist: os.Path, repoRoot: os.Path): Unit = {
+    val venv = dest / "venv"
+    os.call((executable, "-m", "venv", venv.toString), stdout = os.Inherit, stderr = os.Inherit)
+    val venvPython =
+      if scala.util.Properties.isWin then venv / "Scripts" / "python.exe"
+      else venv / "bin" / "python"
+
+    os.call(
+      (venvPython.toString, "-m", "pip", "install", sdist.toString),
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+
+    // From a directory with no linkml_scala in it, so the installed package is what gets imported.
+    os.copy.over(repoRoot / "python" / "test_bindings.py", dest / "test_bindings.py")
+    os.call(
+      (venvPython.toString, "-m", "unittest", "test_bindings", "-v"),
+      cwd = dest,
+      env = Map("LINKML_SCALA_REPO" -> repoRoot.toString),
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+  }
 }

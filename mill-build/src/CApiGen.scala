@@ -12,26 +12,19 @@ object CApiGen {
 
     s"""// AUTO-GENERATED from mill-build/src/Entrypoints.scala and the generators' Options case
        |// classes. Do not edit by hand - regenerate with ./mill bindings.
-       |package eu.neverblink.linkml.nativelib;
+       |package eu.neverblink.linkml.nativelib
        |
-       |import org.graalvm.nativeimage.IsolateThread;
-       |import org.graalvm.nativeimage.c.function.CEntryPoint;
-       |import org.graalvm.nativeimage.c.type.CCharPointer;
-       |import org.graalvm.nativeimage.c.type.CCharPointerPointer;
-       |import org.graalvm.nativeimage.c.type.CConst;
+       |import scala.scalanative.unsafe.*
        |
-       |/**
-       | * The generator entry points of the C ABI, one per generator.
-       | *
-       | * <p>All of them have the same shape: a schema handle, an options JSON that may be NULL for
-       | * defaults, and an error out-param. They return the generated document, or NULL with {@code
-       | * *error} set. Release returned strings with {@code linkml_free}.
-       | *
-       | * <p>See {@link LinkMlCApi} for loading, linting and the lifecycle.
-       | */
-       |public final class LinkMlCGenerators {
-       |
-       |    private LinkMlCGenerators() {}
+       |/** The generator entry points of the C ABI, one per generator.
+       |  *
+       |  * All of them have the same shape: a schema handle, an options JSON that may be NULL for
+       |  * defaults, and an error out-param. They return the generated document, or NULL with
+       |  * `*error` set. Release returned strings with `linkml_free`.
+       |  *
+       |  * See [[LinkMlCApi]] for loading, linting and the lifecycle.
+       |  */
+       |object LinkMlCGenerators {
        |
        |${methods.mkString("\n")}}
        |""".stripMargin
@@ -41,20 +34,16 @@ object CApiGen {
     val options = OptionsReader.fields(source, entry.generator, entry.source)
     val listed =
       if options.isEmpty then "Takes no options."
-      else "Options: " + options.map(field => s"{@code ${field.name}}").mkString(", ") + "."
+      else "Options: " + options.map(field => s"`${field.name}`").mkString(", ") + "."
+    val method = entry.python.split('_').toList match {
+      case head :: tail => head + tail.map(_.capitalize).mkString
+      case Nil => entry.python
+    }
 
-    s"""    /** ${entry.cComment} $listed */
-       |    @CEntryPoint(name = "${entry.symbol}")
-       |    static CCharPointer ${entry.python.split('_').toList match {
-        case head :: tail => head + tail.map(_.capitalize).mkString
-        case Nil => entry.python
-      }}(
-       |            IsolateThread thread,
-       |            long handle,
-       |            @CConst CCharPointer options,
-       |            CCharPointerPointer error) {
-       |        return LinkMlCApi.document(handle, options, error, LinkMlNativeApi::${entry.scalaMethod});
-       |    }
+    s"""  /** ${entry.cComment} $listed */
+       |  @exported("${entry.symbol}")
+       |  def $method(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+       |    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.${entry.scalaMethod})
        |""".stripMargin
   }
 }

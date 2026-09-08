@@ -31,14 +31,17 @@ Common tasks with mill:
 
 ### Scala Native
 
-The library cross-compiles to Scala Native as well as the JVM and Scala.js, and all three are published to Maven Central.
+The library cross-compiles to Scala Native as well as the JVM and Scala.js, and all three are published to Maven Central. The shared library and the Python bindings are built with Scala Native too – see [docs/python_bindings.md](docs/python_bindings.md). The CLI executable is still a GraalVM native image.
 
 The Scala Native submodules are **hidden from the build unless you enable them**, because the Scala Native toolchain rather heavy. To enable them, set `LINKML_NATIVE=1`:
 
 ```shell
 LINKML_NATIVE=1 ./mill --no-server __.native.__.testForked   # all Scala Native tests
 LINKML_NATIVE=1 ./mill --no-server schemaview.native.compile # just one module
+LINKML_NATIVE=1 ./mill --no-server nativelib.native.pythonTest  # the C library and Python bindings
 ```
+
+Building the shared library needs clang; the Scala modules only need the JVM.
 
 The env var is set when starting the mill process, so if you have a daemon running, restart it and pass this variable.
 

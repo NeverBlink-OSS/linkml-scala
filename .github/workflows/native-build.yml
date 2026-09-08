@@ -1,0 +1,47 @@
+name: Native build
+
+# The release build's native half, run before merging.
+#
+# By default this is the Windows legs only: they are the ones nothing else covers, since test.yml
+# builds the library on Linux and macOS is otherwise only reached at release time. Put the
+# `full-wheels` label on a pull request to build every platform instead, plus the musl wheels and
+# the source distribution — the whole thing the release runs.
+#
+# The jobs live in wheels.yml, which the release calls the same way, so what runs here is what runs
+# then.
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths: &paths
+      - 'nativelib/**'
+      - 'python/**'
+      - 'build.mill'
+      - 'mill-build/**'
+      - '.github/workflows/native-build.yml'
+      - '.github/workflows/wheels.yml'
+  push:
+    branches: [ "main" ]
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheels:
+    name: Wheels
+    uses: ./.github/workflows/wheels.yml
+    with:
+      targets: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels')
+        && '[{"os":"macos-14","platform":"macos-arm64"},
+             {"os":"macos-15-intel","platform":"macos-x86_64"},
+             {"os":"ubuntu-22.04","platform":"linux-x86_64"},
+             {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+             {"os":"windows-latest","platform":"windows-x86_64"},
+             {"os":"windows-11-arm","platform":"windows-arm64"}]'
+        || '[{"os":"windows-latest","platform":"windows-x86_64"},
+             {"os":"windows-11-arm","platform":"windows-arm64"}]' }}
+      # Neither is platform-specific, and test.yml already covers both on Linux for every PR.
+      musl: ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels') }}
+      sdist: ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels') }}

@@ -1,0 +1,231 @@
+name: Wheels
+
+# Builds the shared library, the release archive and the Python wheel for every platform we ship,
+# plus the musl wheels and the source distribution. Publishes nothing: everything lands as
+# artifacts, which the release workflow picks up.
+#
+# Reusable, so the same definition is what runs at release time and what you can run by hand from
+# the Actions tab to check a change before tagging. `targets` narrows the matrix, which is how the
+# native-build workflow reuses this for pull requests without paying for the whole thing.
+
+on:
+  workflow_call:
+    inputs:
+      targets:
+        description: JSON array of {os, platform} pairs to build.
+        type: string
+        default: >-
+          [{"os":"macos-14","platform":"macos-arm64"},
+           {"os":"macos-15-intel","platform":"macos-x86_64"},
+           {"os":"ubuntu-22.04","platform":"linux-x86_64"},
+           {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+           {"os":"windows-latest","platform":"windows-x86_64"},
+           {"os":"windows-11-arm","platform":"windows-arm64"}]
+      musl:
+        description: Also build the musl wheels.
+        type: boolean
+        default: true
+      sdist:
+        description: Also build and install-test the source distribution.
+        type: boolean
+        default: true
+  workflow_dispatch:
+    inputs:
+      targets:
+        description: JSON array of {os, platform} pairs to build.
+        type: string
+        default: >-
+          [{"os":"macos-14","platform":"macos-arm64"},
+           {"os":"macos-15-intel","platform":"macos-x86_64"},
+           {"os":"ubuntu-22.04","platform":"linux-x86_64"},
+           {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+           {"os":"windows-latest","platform":"windows-x86_64"},
+           {"os":"windows-11-arm","platform":"windows-arm64"}]
+      musl:
+        description: Also build the musl wheels.
+        type: boolean
+        default: true
+      sdist:
+        description: Also build and install-test the source distribution.
+        type: boolean
+        default: true
+
+jobs:
+  library:
+    name: Library and wheel for ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include: ${{ fromJSON(inputs.targets) }}
+      fail-fast: false
+    defaults:
+      run:
+        shell: bash
+    env:
+      LINKML_NATIVE: "1"
+      PYTHON: python # so `pip install build` and Mill use the same interpreter on every OS
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Required so Mill can derive the version from Git tags
+
+      # Keeps extracted JDKs out of the cached coursier dir. See checks.yml.
+      - name: Relocate the coursier archive cache
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache Dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Scala Native compiles through clang, which the runner images ship, but on Windows the
+      # linker and the SDK come from the MSVC environment.
+      - name: Setup MSVC (Windows only)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+
+      - name: Show the LLVM toolchain
+        run: clang --version
+
+      - name: Build the Shared Library and Test the Python Bindings
+        run: |
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./mill.bat nativelib.native.pythonTest
+          else
+            ./mill nativelib.native.pythonTest
+          fi
+
+      # The version only names the archive. Off a tag it is the release; anywhere else it just has
+      # to be something.
+      - name: Resolve the Archive Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" == "tag" ]; then
+            echo "ARCHIVE_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "ARCHIVE_VERSION=0.0.0-ci" >> "$GITHUB_ENV"
+          fi
+
+      # The archive is what people actually download, so build it here and check a C program can
+      # compile against it and run. This is the only place the Windows import library and the
+      # macOS dylib get tested.
+      - name: Check the Release Archive Works from C
+        run: |
+          nativelib/package.sh "$ARCHIVE_VERSION" "${{ matrix.platform }}" \
+            out/nativelib/native/sharedLibrary.dest dist
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            # Git Bash ships neither zip nor unzip. Windows' own tar is bsdtar, which reads zip;
+            # the GNU tar Git Bash puts on PATH does not, hence the full path.
+            /c/Windows/System32/tar.exe -xf "dist/linkml-scala-lib-${{ matrix.platform }}.zip" -C dist
+          else
+            tar -xzf "dist/linkml-scala-lib-${{ matrix.platform }}.tar.gz" -C dist
+          fi
+          nativelib/smoke.sh "dist/liblinkml-scala-$ARCHIVE_VERSION-${{ matrix.platform }}"
+
+      - name: Upload Shared Library
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-nativelib-${{ matrix.platform }}
+          path: out/nativelib/native/sharedLibrary.dest/*
+
+      - name: Build the Python Wheel and Test the Installed Package
+        run: |
+          python -m pip install --quiet build
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            ./mill.bat nativelib.native.pythonWheelTest
+          else
+            ./mill nativelib.native.pythonWheelTest
+          fi
+
+      - name: Upload Python Wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-wheel-${{ matrix.platform }}
+          path: out/nativelib/native/pythonWheel.dest/dist/*.whl
+
+  musl:
+    name: musl wheel for ${{ matrix.platform }}
+    if: inputs.musl
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: x86_64
+          - os: ubuntu-22.04-arm
+            platform: aarch64
+      fail-fast: false
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Required so Mill can derive the version from Git tags
+
+      # Scala Native only needs clang, so the musl build runs natively in an Alpine container
+      # rather than through a cross toolchain, and works on ARM64 as well.
+      - name: Build and Test the musl Wheel in Alpine
+        run: |
+          docker run --rm -v "$PWD:/work" -w /work \
+            -e LINKML_NATIVE=1 -e LINKML_SCALA_REPO=/work \
+            -e HOST_UID="$(id -u)" -e HOST_GID="$(id -g)" \
+            alpine:3.20 sh -c '
+              set -e
+              # The build runs as root, so hand the outputs back before leaving.
+              trap "chown -R $HOST_UID:$HOST_GID /work/out 2>/dev/null || true" EXIT
+              apk add --no-cache bash curl clang lld musl-dev openjdk21 python3 py3-pip git
+              git config --global --add safe.directory /work
+              python3 -m venv /tmp/venv && /tmp/venv/bin/pip install --quiet build
+              PYTHON=/tmp/venv/bin/python ./mill --no-server nativelib.native.pythonWheelTest'
+
+      - name: Upload musl Python Wheel
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-wheel-musl-${{ matrix.platform }}
+          path: out/nativelib/native/pythonWheel.dest/dist/*.whl
+
+  sdist:
+    name: Source distribution
+    if: inputs.sdist
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # Required so Mill can derive the version from Git tags
+
+      - name: Relocate the coursier archive cache # see checks.yml
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache Dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # The sdist carries Scala Native IR and its linker rather than a compiled library, so it
+      # installs on any platform Scala Native supports. Installing it here proves that path works.
+      - name: Build the Source Distribution and Install It From Scratch
+        env:
+          LINKML_NATIVE: "1"
+        run: |
+          python -m pip install --quiet build
+          ./mill nativelib.native.sdistTest
+
+      - name: Upload Source Distribution
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-sdist
+          path: out/nativelib/native/sdist.dest/*.tar.gz

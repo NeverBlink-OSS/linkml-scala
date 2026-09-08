@@ -119,10 +119,10 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val generated = os.read(
         root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
-          "LinkMlCGenerators.java",
+          "LinkMlCGenerators.scala",
       )
       // Generated from the table, so this catches a stale checked-in copy rather than a missing row.
-      val exported = "@CEntryPoint\\(name = \"(\\w+)\"\\)".r.findAllMatchIn(generated).size
+      val exported = "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(generated).size
       withClue("run ./mill bindings and commit the result: ")(
         exported shouldBe generators(root).size,
       )
