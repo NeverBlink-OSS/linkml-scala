@@ -16,7 +16,7 @@ object PyBindingsGen {
     val symbols = Entrypoints.all.map(e => s"""    "${e.symbol}",""").mkString("\n")
 
     s"""# AUTO-GENERATED from mill-build/src/Entrypoints.scala and the generators' Options case
-       |# classes. Do not edit by hand - regenerate with ./mill bindings.
+       |# classes. Do not edit by hand - regenerate with LINKML_NATIVE=1 ./mill bindings.
        |\"\"\"The generator methods of :class:`linkml_scala.Schema`.
        |
        |Each one mirrors an ``Options`` case class in the Scala sources, so the keyword arguments,

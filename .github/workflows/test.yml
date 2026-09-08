@@ -182,7 +182,7 @@ jobs:
           ./mill --no-server bindings
           git diff --exit-code -- python/linkml_scala/_generated.py \
             nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.scala \
-            || (echo "generated bindings are stale – run ./mill bindings and commit the result"; exit 1)
+            || (echo "generated bindings are stale – run LINKML_NATIVE=1 ./mill bindings and commit the result"; exit 1)
 
       - name: Build the shared library and test the bindings on the oldest supported Python
         env:

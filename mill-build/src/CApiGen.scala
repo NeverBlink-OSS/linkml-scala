@@ -11,7 +11,7 @@ object CApiGen {
     val methods = Entrypoints.all.map(entry => render(entry, read(entry.source)))
 
     s"""// AUTO-GENERATED from mill-build/src/Entrypoints.scala and the generators' Options case
-       |// classes. Do not edit by hand - regenerate with ./mill bindings.
+       |// classes. Do not edit by hand - regenerate with LINKML_NATIVE=1 ./mill bindings.
        |package eu.neverblink.linkml.nativelib
        |
        |import scala.scalanative.unsafe.*

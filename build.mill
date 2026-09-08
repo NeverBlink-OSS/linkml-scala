@@ -65,6 +65,12 @@ object LinkMlAliases extends Aliases {
     "validation.jvm.reformat",
   )
 
+  def regenerateBindings: Seq[String] = alias(
+    "generateBindings",
+    "nativelib.native.fix",
+    "nativelib.native.reformat",
+  )
+
   def regenerateBuildInfo: Seq[String] = alias(
     "cli.jvm.run generate scala --to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
       "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
@@ -556,9 +562,21 @@ object cli extends Module {
 }
 
 /** Regenerate the C and Python bindings from mill-build/src/Entrypoints.scala and each generator's
-  * `Options` case class. Run after adding a generator or an option.
+  * `Options` case class, then format the result. Run after adding a generator or an option.
+  *
+  * Needs `LINKML_NATIVE=1`: the C bindings are Scala Native sources, so formatting them means
+  * resolving that module.
   */
-def bindings(args: String*) = Task.Command(exclusive = true) {
+def bindings(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
+  if !nativeEnabled then
+    Task.fail(
+      "`bindings` writes Scala Native sources and formats them, so it needs LINKML_NATIVE=1",
+    )
+  else AliasesModule.run(ev, "regenerateBindings")
+}
+
+/** Writes the generated sources, unformatted. Use `bindings`, which formats them afterwards. */
+def generateBindings(args: String*) = Task.Command(exclusive = true) {
   val root = mill.api.BuildCtx.workspaceRoot
   def read(path: String): String = os.read(root / os.RelPath(path))
   os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
@@ -604,16 +622,26 @@ object nativelib extends Module, NativeOptional {
     /** Set to an LLVM triple to generate code for another platform. */
     override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
 
-    /** Scala Native names the library after its own output file, so the install name has to be
-      * corrected or the loader goes looking for `libout.so`. The last one on the command line wins.
+    /** Scala Native's default is `out`, which ends up in the SONAME on Linux, the install name on
+      * macOS and — the one that is not fixable afterwards — inside the Windows import library, so
+      * anything linking against a renamed copy goes looking for `out.dll`. Naming the artifact up
+      * front is the only way to get all three right.
+      *
+      * Unix adds the `lib` prefix itself; Windows does not.
+      */
+    override def nativeBaseName = Task {
+      if _root_.scala.util.Properties.isWin then NativeLib.name else NativeLib.name.stripPrefix("lib")
+    }
+
+    /** macOS resolves a bare install name as a path, ignoring the `-rpath` a consumer passes, so
+      * it has to say `@rpath` explicitly. Linux and Windows get this right from the name alone.
       */
     override def nativeLinkingOptions = Task {
-      val library = NativeLib.name + platformLibraryExtension
-      val rename =
-        if _root_.scala.util.Properties.isMac then Seq(s"-Wl,-install_name,@rpath/$library")
-        else if _root_.scala.util.Properties.isWin then Seq.empty
-        else Seq(s"-Wl,-soname,$library")
-      super.nativeLinkingOptions() ++ rename
+      val rpath =
+        if _root_.scala.util.Properties.isMac then
+          Seq(s"-Wl,-install_name,@rpath/${NativeLib.name}$platformLibraryExtension")
+        else Seq.empty
+      super.nativeLinkingOptions() ++ rpath
     }
 
     /** `liblinkml_scala.so` and the header, named the way the Python bindings and `package.sh`
@@ -624,20 +652,18 @@ object nativelib extends Module, NativeOptional {
       */
     def sharedLibrary = Task {
       val built = nativeLink().path
-      val stem = built.baseName
       // Reading another task's output directory, which is what the checker is there to stop. The
-      // linker names its side outputs after the library rather than declaring them, so there is
-      // nothing to ask for by name. `out.exp` on Windows is left behind: it is a linker
-      // intermediate, and nothing downstream wants it.
+      // linker emits the Windows import library beside the DLL without declaring it, so there is
+      // nothing to ask for by name. The `.exp` next to it is a linker intermediate and is left.
       mill.api.BuildCtx.withFilesystemCheckerDisabled {
         Seq(built / os.up, nativeWorkdir())
           .filter(os.exists)
           .flatMap(os.list(_))
           .filter(path =>
-            os.isFile(path) && path.baseName == stem &&
+            os.isFile(path) && path.baseName == built.baseName &&
               Set("so", "dylib", "dll", "lib").contains(path.ext),
           )
-          .foreach(path => os.copy.over(path, Task.dest / (NativeLib.name + "." + path.ext)))
+          .foreach(path => os.copy.into(path, Task.dest, replaceExisting = true))
       }
       os.copy.over(headerSource().path, Task.dest / "linkml_scala.h")
       PathRef(Task.dest)

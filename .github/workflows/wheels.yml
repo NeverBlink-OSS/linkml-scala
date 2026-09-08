@@ -87,10 +87,14 @@ jobs:
           java-version: ${{ matrix.platform == 'windows-arm64' && '21' || '17' }}
 
       # Scala Native compiles through clang, which the runner images ship, but on Windows the
-      # linker and the SDK come from the MSVC environment.
+      # linker and the SDK come from the MSVC environment. That environment also decides the
+      # target architecture: the action defaults to x64, which on the ARM64 runner produces a DLL
+      # Python then refuses to load with "%1 is not a valid Win32 application".
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: ${{ matrix.platform == 'windows-arm64' && 'arm64' || 'x64' }}
 
       # The oldest we support, except on Windows/ARM64 where no build of it exists. The wheel is
       # tagged py3-none-<platform> either way, so the interpreter here does not reach the artifact.
