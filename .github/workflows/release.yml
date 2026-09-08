@@ -68,9 +68,14 @@ jobs:
           distribution: temurin
           java-version: 17 # The minimal JDK version for Scala Next
 
+      # Required by GraalVM Native Image on Windows to find cl.exe. Not ilammy/msvc-dev-cmd: that
+      # one still targets Node 20, which GitHub now warns about, and has been unmaintained since
+      # early 2024.
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1 # Required by GraalVM Native Image on Windows to find cl.exe
+        uses: TheMrMilchmann/setup-msvc-dev@v4.1.0
+        with:
+          arch: x64
 
       - name: Setup Python
         uses: actions/setup-python@v6

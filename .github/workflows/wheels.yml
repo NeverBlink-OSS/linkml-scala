@@ -104,7 +104,7 @@ jobs:
       # Python then refuses to load with "%1 is not a valid Win32 application".
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: TheMrMilchmann/setup-msvc-dev@v4.1.0
         with:
           arch: ${{ matrix.platform == 'windows-arm64' && 'arm64' || 'x64' }}
 
@@ -285,7 +285,7 @@ jobs:
 
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: TheMrMilchmann/setup-msvc-dev@v4.1.0
         with:
           arch: ${{ matrix.platform == 'windows-arm64' && 'arm64' || 'x64' }}
 

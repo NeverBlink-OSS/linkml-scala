@@ -614,8 +614,8 @@ object nativelib extends Module, NativeOptional {
     override def nativeMultithreading = Task { Some(false) }
 
     /** `release-fast`, not `release-full`: 4.5% faster for +42% size, double the start-up and a
-      * 39-second link. LTO is left off because it breaks exception handling in a library build.
-      * See docs/python_bindings.md.
+      * 39-second link. LTO is left off because it breaks exception handling in a library build. See
+      * docs/python_bindings.md.
       */
     override def releaseMode = Task { ReleaseMode.ReleaseFast }
 
@@ -630,18 +630,21 @@ object nativelib extends Module, NativeOptional {
       * Unix adds the `lib` prefix itself; Windows does not.
       */
     override def nativeBaseName = Task {
-      if _root_.scala.util.Properties.isWin then NativeLib.name else NativeLib.name.stripPrefix("lib")
+      if _root_.scala.util.Properties.isWin then NativeLib.name
+      else NativeLib.name.stripPrefix("lib")
     }
 
-    /** macOS resolves a bare install name as a path, ignoring the `-rpath` a consumer passes, so
-      * it has to say `@rpath` explicitly. Linux and Windows get this right from the name alone.
+    override def nativeCompileOptions = Task { super.nativeCompileOptions() :+ "-O3" }
+
+    /** macOS resolves a bare install name as a path, ignoring the `-rpath` a consumer passes, so it
+      * has to say `@rpath` explicitly. Linux and Windows get this right from the name alone.
       */
     override def nativeLinkingOptions = Task {
       val rpath =
         if _root_.scala.util.Properties.isMac then
           Seq(s"-Wl,-install_name,@rpath/${NativeLib.name}$platformLibraryExtension")
         else Seq.empty
-      super.nativeLinkingOptions() ++ rpath
+      super.nativeLinkingOptions() ++ rpath :+ "-O3"
     }
 
     /** `liblinkml_scala.so` and the header, named the way the Python bindings and `package.sh`
@@ -782,8 +785,15 @@ object nativelib extends Module, NativeOptional {
     /** Build the source distribution. Requires Python with `build` installed. */
     def sdist = Task {
       os.call(
-        (sys.env.getOrElse("PYTHON", "python3"), "-m", "build", "--sdist", "--outdir", Task.dest,
-          sdistTree().path),
+        (
+          sys.env.getOrElse("PYTHON", "python3"),
+          "-m",
+          "build",
+          "--sdist",
+          "--outdir",
+          Task.dest,
+          sdistTree().path,
+        ),
         stdout = os.Inherit,
         stderr = os.Inherit,
       )
@@ -977,7 +987,6 @@ trait CommonScalaJSModule extends ScalaJSModule, PublishModule {
   */
 trait CommonScalaNativeModule extends ScalaNativeModule, PublishModule, mill.api.DynamicModule {
   def scalaNativeVersion = scalaNative
-
 
   /** Nothing a Scala Native module produces runs on a JVM, so let it use whichever one Mill is
     * running on rather than making coursier fetch the pinned one. That pin has no Temurin build for

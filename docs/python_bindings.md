@@ -180,11 +180,6 @@ LINKML_NATIVE=1 ./mill nativelib.native.pythonTest
 If you keep the library somewhere else, point `LINKML_SCALA_LIB` at the file (or at the directory
 holding it).
 
-The build is `release-fast` with the Immix collector and no LTO. `release-full` is 4.5% faster for
-+42% library size, double the start-up and a much slower link, and LTO breaks exception handling in
-a library build, so neither is on. `LINKML_SCALA_MODE`, `LINKML_SCALA_GC` and `LINKML_SCALA_LTO`
-override those when building from a source distribution.
-
 ### Building a wheel
 
 ```shell
