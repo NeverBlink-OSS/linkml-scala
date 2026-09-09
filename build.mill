@@ -622,19 +622,20 @@ object nativelib extends Module, NativeOptional {
     override def releaseMode = Task { ReleaseMode.ReleaseFast }
     override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
 
-    /** Link-time optimisation, on x86-64 only.
-      *
-      * Turning LTO on also switches Scala Native to the C++ exception backend, so a throw starts
-      * inside libstdc++. On ARM64 that is a frame with a signed return address, and Scala Native's
-      * vendored libunwind is compiled without `_LIBUNWIND_IS_NATIVE_ONLY`, so it refuses to step
-      * out of one.
+    /** Link-time optimisation, on x86-64 only. Thin LTO is not supported on macOS. ARM64 does not
+      * seem to work with LTO at all at the moment due to a bug in C++ exception handling.
       */
     override def nativeLTO = Task {
-      val arch = nativeTarget()
+      val triple = nativeTarget()
+      val arch = triple
         .map(_.takeWhile(_ != '-'))
         .getOrElse(_root_.scala.util.Properties.propOrElse("os.arch", ""))
-      if Set("x86_64", "amd64", "x64").contains(arch.toLowerCase) then LTO.Thin
-      else LTO.None
+      val isMac = triple
+        .map(t => t.contains("apple") || t.contains("darwin"))
+        .getOrElse(_root_.scala.util.Properties.isMac)
+      if !Set("x86_64", "amd64", "x64").contains(arch.toLowerCase) then LTO.None
+      else if isMac then LTO.Full
+      else LTO.Thin
     }
 
     /** Override needed for Scala Native 0.15.2. Remove after upgrading. */
