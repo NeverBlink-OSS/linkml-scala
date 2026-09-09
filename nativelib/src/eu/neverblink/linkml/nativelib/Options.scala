@@ -61,10 +61,13 @@ private object Options {
     new JsonValueCodec[JsonOutputFormat] {
       override def decodeValue(in: JsonReader, default: JsonOutputFormat): JsonOutputFormat = {
         val value = in.readString(null)
-        JsonOutputFormat.parse(value).getOrElse(in.decodeError(JsonOutputFormat.unknownFormat(value)))
+        JsonOutputFormat.parse(value).getOrElse(
+          in.decodeError(JsonOutputFormat.unknownFormat(value)),
+        )
       }
 
-      override def encodeValue(x: JsonOutputFormat, out: JsonWriter): Unit = out.writeVal(x.toString)
+      override def encodeValue(x: JsonOutputFormat, out: JsonWriter): Unit =
+        out.writeVal(x.toString)
 
       override def nullValue: JsonOutputFormat = null
     }

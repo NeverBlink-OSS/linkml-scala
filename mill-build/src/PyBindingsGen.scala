@@ -70,7 +70,8 @@ object PyBindingsGen {
     val doc = {
       val lines = params.filter(_.doc.nonEmpty).map(p => wrap(s":param ${p.name}: ${p.doc}"))
       if lines.isEmpty then s"""        \"\"\"${entry.summary}\"\"\""""
-      else s"""        \"\"\"${entry.summary}
+      else
+        s"""        \"\"\"${entry.summary}
            |
            |${lines.mkString("\n")}
            |        \"\"\"""".stripMargin
@@ -80,7 +81,8 @@ object PyBindingsGen {
     val method = if entry.structured then "_json" else "_document"
     val body =
       if call.isEmpty then s"""        return self.$method("${entry.symbol}")"""
-      else s"""        return self.$method(
+      else
+        s"""        return self.$method(
            |            "${entry.symbol}",
            |${call.map(a => s"            $a,").mkString("\n")}
            |        )""".stripMargin
