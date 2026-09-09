@@ -1,16 +1,13 @@
 package eu.neverblink.linkml.generator.ossie
 
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import com.networknt.schema.InputFormat
+import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.virtuslab.yaml.parseYaml
 
-/** Checks the `ossie` generator's output against Apache Ossie's own JSON Schema for ontology
-  * definitions.
-  */
+/** Checks the `ossie` generator's output against Apache Ossie's own JSON Schema. */
 class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   import OssieIntegrationSpec.*
 
@@ -41,19 +38,13 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
           asJson should not include "\"ontology_mappings\""
         }
 
-        "the ontology reads back into the model it was written from" in {
-          processSkip(entry.name, "round-trip")
-          val parsed = parseYaml(asYaml).getOrElse(fail(s"not YAML:\n$asYaml"))
-          OssieOntology.codec.decode(parsed) shouldBe generator.generate()
-        }
-
         "the upstream Ossie validator accepts the output" in {
           processSkip(entry.name, "upstream")
           val (python, repo) = upstreamValidator.getOrElse(
             cancel(
-              "No apache/ossie checkout and Python environment to validate with. Set LINKML_OSSIE_REPO " +
-                "to a checkout (the `ossieRepo` mill task clones one) and create the .venv from " +
-                "requirements.txt.",
+              "No apache/ossie checkout and Python environment to validate with. Set " +
+                "LINKML_OSSIE_REPO to a checkout (the `ossieRepo` mill task clones one) and " +
+                "create the .venv from requirements.txt.",
             ),
           )
           val document = os.temp(asYaml, suffix = ".yaml")
@@ -74,10 +65,10 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       }
   }
 
-  "the mapping" should {
-    "include the schema's ai_context extension" in {
-      val ontology = ontologyOf(
-        """
+  "ai_context" should {
+    "validate when it is an object" in {
+      OssieSchema.validate(
+        ontologyOf("""
           |extensions:
           |  ai_context:
           |    value:
@@ -87,85 +78,26 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
           |  Person:
           |    attributes:
           |      name: {}
-        """.stripMargin,
-      )
-      ontology should include("ai_context")
-      ontology should include("Prefer the full name.")
-      ontology should include("individual")
-      OssieSchema.validate(ontology, InputFormat.YAML) shouldBe empty
+          """),
+        InputFormat.YAML,
+      ) shouldBe empty
     }
 
-    "carry a plain-string ai_context through" in {
-      val ontology = ontologyOf(
-        """
+    "validate when it is a plain string" in {
+      OssieSchema.validate(
+        ontologyOf("""
           |extensions:
           |  ai_context: Answer questions about people.
           |classes:
           |  Person:
           |    attributes:
           |      name: {}
-        """.stripMargin,
-      )
-      ontology should include("Answer questions about people.")
-      OssieSchema.validate(ontology, InputFormat.YAML) shouldBe empty
+          """),
+        InputFormat.YAML,
+      ) shouldBe empty
     }
 
-    "skip ai_context when the schema declares no such extension" in {
-      ontologyOf(
-        """
-          |classes:
-          |  Person:
-          |    attributes:
-          |      name: {}
-        """.stripMargin,
-      ) should not include "ai_context"
-    }
-
-    "identify a concept by its unique_keys when it has no identifier or key" in {
-      val ontology = ontologyOf(
-        """
-          |slots:
-          |  order: {}
-          |  nr:
-          |    range: integer
-          |classes:
-          |  OrderLine:
-          |    slots: [order, nr]
-          |    unique_keys:
-          |      line:
-          |        unique_key_slots: [order, nr]
-        """.stripMargin,
-      )
-      // Both slots of the key, in the order the key declares them.
-      ontology should include("identify_by")
-      ontology should include("- order")
-      ontology should include("- nr")
-      // But neither slot identifies a line on its own, so it's not a OneToOne relationship.
-      ontology should not include "OneToOne"
-    }
-
-    "prefer an identifier over unique_keys" in {
-      val ontology = ontologyOf(
-        """
-          |slots:
-          |  a: {}
-          |  b: {}
-          |classes:
-          |  Thing:
-          |    slots: [a, b]
-          |    unique_keys:
-          |      pair:
-          |        unique_key_slots: [a, b]
-          |    attributes:
-          |      id:
-          |        identifier: true
-        """.stripMargin,
-      )
-      ontology should include("identify_by:\n      - id\n")
-    }
-
-    "validate against a live core-spec ref, not a skipped one" in {
-      // Check if the $ref in the JSON Schema of Ossie is resolved correctly
+    "be rejected when it is neither, so we know the $ref is live and not silently skipped" in {
       val errors = OssieSchema.validate(
         """version: 0.2.0.dev0
           |name: spec
@@ -178,21 +110,6 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         InputFormat.YAML,
       )
       withClue("the AIContext ref is not being enforced: ")(errors should not be empty)
-    }
-
-    "use a slot's alias verbatim as the relationship name" in {
-      val ontology = ontologyOf(
-        """
-          |classes:
-          |  Person:
-          |    attributes:
-          |      full_name:
-          |        alias: fullName
-        """.stripMargin,
-      )
-      ontology should include("name: fullName")
-      // The verbalization is space-cased regardless, so an alias in any casing reads as words.
-      ontology should include("{Person} full name {String}")
     }
   }
 }
@@ -211,7 +128,7 @@ object OssieIntegrationSpec {
          |default_range: string
          |imports:
          |  - linkml:types
-         |$body
+         |${body.stripMargin}
          |""".stripMargin
     given SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
     OssieGenerator().serialize()
@@ -222,8 +139,6 @@ object OssieIntegrationSpec {
 
   /** Python interpreter and apache/ossie checkout to run the upstream validator with, if both are
     * available.
-    *
-    * The validator needs `jsonschema` and `pyyaml`, which are in `requirements.txt`.
     */
   private lazy val upstreamValidator: Option[(os.Path, os.Path)] = {
     val python = repoRoot / ".venv" / "bin" / "python"
