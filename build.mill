@@ -627,8 +627,7 @@ object nativelib extends Module, NativeOptional {
       * Turning LTO on also switches Scala Native to the C++ exception backend, so a throw starts
       * inside libstdc++. On ARM64 that is a frame with a signed return address, and Scala Native's
       * vendored libunwind is compiled without `_LIBUNWIND_IS_NATIVE_ONLY`, so it refuses to step
-      * out of one. Nothing is ever caught and the process aborts. Reported upstream; the fix is one
-      * define in nativelib's scala-native.properties.
+      * out of one.
       */
     override def nativeLTO = Task {
       val arch = nativeTarget()
