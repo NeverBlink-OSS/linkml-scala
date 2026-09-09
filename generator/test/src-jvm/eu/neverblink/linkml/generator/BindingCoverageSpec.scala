@@ -89,7 +89,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val table = os.read(root / "mill-build" / "src" / "Entrypoints.scala")
       val missing = generators(root).filterNot(name => table.contains(s"\"$name\""))
       withClue(
-        "add a row to mill-build/src/Entrypoints.scala, then run ./mill bindings: ",
+        "add a row to mill-build/src/Entrypoints.scala, then run LINKML_NATIVE=1 ./mill bindings: ",
       )(missing shouldBe empty)
     }
 
@@ -119,11 +119,11 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val generated = os.read(
         root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
-          "LinkMlCGenerators.java",
+          "LinkMlCGenerators.scala",
       )
       // Generated from the table, so this catches a stale checked-in copy rather than a missing row.
-      val exported = "@CEntryPoint\\(name = \"(\\w+)\"\\)".r.findAllMatchIn(generated).size
-      withClue("run ./mill bindings and commit the result: ")(
+      val exported = "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(generated).size
+      withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
         exported shouldBe generators(root).size,
       )
     }
@@ -132,7 +132,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val generated = os.read(root / "python" / "linkml_scala" / "_generated.py")
       val methods = "\\n    def (\\w+)\\(".r.findAllMatchIn(generated).size
-      withClue("run ./mill bindings and commit the result: ")(
+      withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
         methods shouldBe generators(root).size,
       )
     }

@@ -64,7 +64,7 @@ BuildInfo = dict[str, Any]
 """Build metadata, following the `build-info.yaml` LinkML model.
 
 Always has ``linkml_scala_version``, ``metamodel_version``, ``scala_version`` and ``platform``.
-Here ``platform`` is always ``"NATIVE"`` and ``abi_version`` is filled in as well. See
+Here ``platform`` is always ``"SCALA_NATIVE"`` and ``abi_version`` is filled in as well. See
 :func:`build_info`.
 """
 

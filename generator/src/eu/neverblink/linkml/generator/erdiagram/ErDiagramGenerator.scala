@@ -307,11 +307,12 @@ private[erdiagram] object ErName {
     */
   private val directionStatement = "(?i)(direction)(\\s+)(TB|BT|RL|LR)".r
 
-  /** Legal first characters of an `ATTRIBUTE_WORD`. */
-  private val attributeHead = "[*A-Za-z_\\u00C0-\\uFFFF]".r
+  /** Legal first characters of an `ATTRIBUTE_WORD`. Has to use \x escapes to work on Scala Native.
+    */
+  private val attributeHead = "[*A-Za-z_\\x{00C0}-\\x{FFFF}]".r
 
   /** Legal subsequent characters of an `ATTRIBUTE_WORD`. */
-  private val attributeTail = "[A-Za-z0-9\\-_\\[\\]().,\\u00C0-\\uFFFF*]".r
+  private val attributeTail = "[A-Za-z0-9\\-_\\[\\]().,\\x{00C0}-\\x{FFFF}*]".r
 
   private def defuseDirection(s: String): String =
     directionStatement.replaceAllIn(s, m => s"${m.group(1)}_${m.group(3)}")

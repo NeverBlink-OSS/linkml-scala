@@ -113,4 +113,87 @@ object Python {
       stderr = os.Inherit,
     )
   }
+
+  /** Stage the sdist package for upload.
+    *
+    * @param source
+    *   the repository's `python/` directory
+    * @param nirJars
+    *   the jars holding the Scala Native IR to link
+    * @param linkerJars
+    *   Scala Native's linker and its dependencies
+    */
+  def layOutSdist(
+      dest: os.Path,
+      source: os.Path,
+      license: os.Path,
+      version: String,
+      nirJars: Seq[os.Path],
+      linkerJars: Seq[os.Path],
+  ): Unit = {
+    Seq("pyproject.toml", "hatch_build.py", "README.md")
+      .foreach(name => os.copy.over(source / name, dest / name, createFolders = true))
+    os.copy.over(license, dest / "LICENSE")
+    os.copy.over(source / "linkml_scala", dest / "linkml_scala")
+    os.remove.all(dest / "linkml_scala" / "_lib")
+    os.write.over(dest / "linkml_scala" / "_version.py", PyPackage.versionFile(version))
+
+    stageJars(nirJars, dest / "_native" / "nir")
+    stageJars(linkerJars, dest / "_native" / "linker")
+  }
+
+  private def stageJars(jars: Seq[os.Path], into: os.Path): Unit = {
+    os.makeDir.all(into)
+    jars.foreach { jar =>
+      // Dependency jars are uniquely named; ours are all `out.jar`, so name those by module.
+      val name =
+        if jar.last == "out.jar" then
+          jar.segments.toSeq.dropRight(2).takeRight(2).mkString("-") + ".jar"
+        else jar.last
+      os.copy.over(jar, into / name)
+    }
+  }
+
+  /** Build a source distribution from a tree prepared by `layOutSdist`. Returns the directory
+    * holding it.
+    */
+  def buildSdist(dest: os.Path, tree: os.Path): os.Path = {
+    os.call(
+      (executable, "-m", "build", "--sdist", "--outdir", dest.toString, tree.toString),
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+    dest
+  }
+
+  /** Install a source distribution from `dist` into a throwaway virtualenv and run the test suite
+    * against it.
+    */
+  def testSdist(dest: os.Path, dist: os.Path, repoRoot: os.Path): Unit = {
+    val sdist = os.list(dist).find(_.ext == "gz").getOrElse(
+      throw new Exception(s"no source distribution was built in $dist"),
+    )
+
+    val venv = dest / "venv"
+    os.call((executable, "-m", "venv", venv.toString), stdout = os.Inherit, stderr = os.Inherit)
+    val venvPython =
+      if scala.util.Properties.isWin then venv / "Scripts" / "python.exe"
+      else venv / "bin" / "python"
+
+    os.call(
+      (venvPython.toString, "-m", "pip", "install", sdist.toString),
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+
+    // From a directory with no linkml_scala in it, so the installed package is what gets imported.
+    os.copy.over(repoRoot / "python" / "test_bindings.py", dest / "test_bindings.py")
+    os.call(
+      (venvPython.toString, "-m", "unittest", "test_bindings", "-v"),
+      cwd = dest,
+      env = Map("LINKML_SCALA_REPO" -> repoRoot.toString),
+      stdout = os.Inherit,
+      stderr = os.Inherit,
+    )
+  }
 }

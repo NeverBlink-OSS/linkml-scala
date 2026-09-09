@@ -34,7 +34,7 @@ object PyPackage {
 
   /** The `_version.py` that goes into the wheel. */
   def versionFile(version: String): String =
-    s"""\"\"\"The package version, written by `nativelib.pythonWheel` in build.mill.\"\"\"
+    s"""\"\"\"The package version, written by `nativelib.native.pythonWheel` in build.mill.\"\"\"
        |
        |__version__ = "$version"
        |""".stripMargin

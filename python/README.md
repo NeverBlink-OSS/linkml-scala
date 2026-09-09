@@ -40,14 +40,9 @@ schema = linkml_scala.load_path("model.yaml", {
 
 ## Supported platforms
 
-| OS            | Architectures        |
-|---------------|----------------------|
-| Linux (glibc) | x86-64, ARM64        |
-| Linux (musl)  | x86-64               |
-| macOS         | Apple silicon, Intel |
-| Windows       | x86-64               |
+We provide both sdist (source distribution) and pre-built wheels for popular platforms (Linux, macOS, Windows, x86-64 and ARM64).
 
-Python 3.10 or newer, 64-bit only. Other platforms are currently not supported, and would require an alternative compilation path (e.g., Scala Native). Please [open an issue](https://github.com/NeverBlink-OSS/linkml-scala/issues/new) if you need a platform that is not listed above.
+To build the package from source (sdist) you must have Java 17+ and Clang installed on your system. Please [open an issue](https://github.com/NeverBlink-OSS/linkml-scala/issues/new) if you encounter any issues with the installation process.
 
 ## Documentation
 
