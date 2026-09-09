@@ -22,7 +22,7 @@ The wheels on [PyPI](https://pypi.org/project/neverblink-linkml/) bundle the nat
 | macOS         | Apple silicon, Intel |
 | Windows       | x86-64, ARM64        |
 
-We also provide source distributions (*sdist*), which should work on any platform. To use the sdist, you must have on your system Java 17+ and Clang. 
+We also provide source distributions (*sdist*), which should work on any platform that has Java 17+ and Clang. 
 
 ## Usage
 
