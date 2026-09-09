@@ -204,6 +204,71 @@ LINKML_NATIVE=1 ./mill nativelib.native.sdist      # out/nativelib/native/sdist.
 LINKML_NATIVE=1 ./mill nativelib.native.sdistTest  # installs it in a virtualenv and runs the tests
 ```
 
+#### Which platforms it actually reaches
+
+"Anything Scala Native supports" is the real bound, and that set is narrower than it looks. The test
+case is an emulated `riscv64` Debian.
+
+The first thing in the way was delimited continuations. `delimcc.c` implements x86-64, i386 and
+aarch64 only, while 0.5.12's `LinktimeInfo.isContinuationsSupported` is true for any 64-bit Unix, so
+Scala Native turned on a feature it has no code for and the install died on
+`delimcc.c:39:2: error: "Unsupported platform"`. Nothing here uses continuations or virtual threads,
+but the runtime links them in through javalib regardless, and neither `--compile-option` nor
+`--copt -U__SCALANATIVE_DELIMCC` suppresses the file, so it cannot be turned off from outside.
+
+Upstream fixed this in [scala-native#4937](https://github.com/scala-native/scala-native/pull/4937),
+three days after 0.5.12 was tagged. Until we build against 0.5.13 we carry our own fix in
+[`nativelib/src/scala/scalanative/meta/LinktimeInfo.scala`](../nativelib/src/scala/scalanative/meta/LinktimeInfo.scala):
+a copy of the upstream file with the flag hardcoded to false. The linker takes the first classpath
+entry defining a symbol, so our copy replaces nativelib's — which is also why `runClasspath` is
+overridden in `build.mill` to put our classes first. `delimcc.c` sits entirely behind
+`#ifdef __SCALANATIVE_DELIMCC`, a macro emitted only when the extern object carrying
+`@define("__SCALANATIVE_DELIMCC")` is reachable, so with the flag off the file compiles to nothing.
+Confirmed by `nm`: `delimcc.c.o` goes from 39 symbols to zero, and everything else is unchanged.
+
+With that out of the way the sdist compiles, links and installs on `riscv64`. It is still not a
+platform we can claim, because the next thing breaks at runtime:
+
+```
+ScalaNative Fatal Error: Failed to throw exception, not found a valid catch handler
+for unwinding execution stack.
+```
+
+Four tests pass and the fifth, which expects a rejected option to come back as an error, aborts the
+process instead. Since every error path in the bindings is an exception, that makes the library
+unusable there.
+
+The message comes from `eh.c`, after `_Unwind_RaiseException` has returned without finding a
+handler. Scala Native does not use the system unwinder: it vendors LLVM's libunwind (20.1.4) as
+source and adds its own personality routine and LSDA parser, which is why the library needs nothing
+beyond libc and libm. Ruled out so far: the unwind sections are all present; `eh.c` gets its
+exception registers from `__builtin_eh_return_data_regno`, so they are correct per architecture;
+`libgcc_s` is not loaded, so nothing is interposing on the 18 `_Unwind_*` symbols we export; the
+vendored libunwind does handle `riscv64`, including the register save and restore assembly, and
+those objects are built; and `-funwind-tables` changes nothing, which fits clang already emitting
+`.eh_frame` for ordinary code there. libunwind's own `LIBUNWIND_PRINT_UNWINDING` trace would say
+where the walk stops, but it is compiled out under `NDEBUG` and `--compile-option -UNDEBUG` loses to
+Scala Native's own `-DNDEBUG` later on the command line.
+
+There is a second exception backend that uses the real C++ ABI personality, turned on when
+`cppOptions` contains `-fcxx-exceptions`. It is not reachable from here: the linker CLI advertises
+`--cppopt` for that, but the option lands on the C compiles instead — clang reports
+`-fcxx-exceptions` as unused — and the generated code keeps `scalanative_personality`. That looks
+like an upstream bug worth reporting on its own. It may also explain why LTO broke exception
+handling for us, since enabling LTO switches Scala Native to that same backend.
+
+So the practical set stays x86-64 and aarch64, on glibc and musl, plus macOS and Windows. `ppc64le`,
+`s390x` and `loongarch64` are past the same first hurdle now and untested beyond it.
+
+Nothing in the packaging is in the way any more, at least. Linux wheel tags take the machine name as
+it comes, so a new architecture needs no change here, and anywhere we ship no wheels at all — the
+BSDs, which Scala Native does support — the tag falls back to whatever `sysconfig` calls the
+platform. Untested, but there is no list to keep up to date and no architecture left to reject.
+
+The fix landed three days after 0.5.12 was tagged, so we do not have it, and it should arrive in
+0.5.13. Untested on our side: the only published nightly is from July and does not carry the Scala 3
+artifacts we need, so there is no snapshot to try it with.
+
 Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out
 as a normal install prefix – `include/`, `lib/` and a pkg-config file – so C, C++ and Rust callers can
 use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked example in C.

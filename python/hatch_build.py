@@ -13,6 +13,8 @@ correct wheel. We read that out of the library itself:
   * Linux: the highest ``GLIBC_x.y`` the library asks for (manylinux).
   * macOS: the minimum OS version recorded in the Mach-O header.
   * Windows: no such thing exists, so the tag is only the architecture.
+  * Anywhere else, the BSDs included: whatever ``sysconfig`` calls the platform. Only a source
+    build can land there, and it is installed on the machine that just built it.
 
 Set ``LINKML_SCALA_WHEEL_PLATFORM`` to override the whole platform tag. Run it like::
 
@@ -27,6 +29,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import sysconfig
 from pathlib import Path
 
 LIBRARY_EXTENSIONS = (".so", ".dylib", ".dll")
@@ -40,13 +43,12 @@ LINKER_MAIN = "scala.scalanative.cli.ScalaNativeLd"
 GC = os.environ.get("LINKML_SCALA_GC", "immix")
 MODE = os.environ.get("LINKML_SCALA_MODE", "release-fast")
 LTO = os.environ.get("LINKML_SCALA_LTO", "none")
+COMPILE_OPTIONS = os.environ.get("LINKML_SCALA_COPTS", "").split()
 
-LINUX_ARCHITECTURES = {
-    "x86_64": "x86_64",
-    "amd64": "x86_64",
-    "aarch64": "aarch64",
-    "arm64": "aarch64",
-}
+# Only the names the kernel and the wheel tag disagree on. Linux tags use the machine name as-is,
+# so anything else passes through: the source distribution links wherever Scala Native and clang
+# do, and there is no list of those worth keeping up to date.
+LINUX_ARCHITECTURE_ALIASES = {"amd64": "x86_64", "arm64": "aarch64"}
 MACOS_ARCHITECTURES = {"x86_64": "x86_64", "amd64": "x86_64", "arm64": "arm64", "aarch64": "arm64"}
 WINDOWS_ARCHITECTURES = {"amd64": "amd64", "x86_64": "amd64", "arm64": "arm64"}
 
@@ -119,6 +121,7 @@ def link(root: Path) -> Path:
         # The bindings drive the library from one dedicated thread, the only arrangement Scala
         # Native supports for a library another runtime loads.
         "--multithreading", "false",
+        *[arg for option in COMPILE_OPTIONS for arg in ("--compile-option", option)],
         "--outpath", str(output),
         "--workdir", str(root / "_native" / "workdir"),
         *nir,
@@ -138,13 +141,15 @@ def platform_tag(library: Path) -> str:
 
     machine = platform.machine().lower()
     if sys.platform.startswith("linux"):
-        return linux_tag(library, architecture(LINUX_ARCHITECTURES, machine))
+        return linux_tag(library, LINUX_ARCHITECTURE_ALIASES.get(machine, machine))
     if sys.platform == "darwin":
         major, minor = macho_minimum_os(library)
         return f"macosx_{major}_{minor}_{architecture(MACOS_ARCHITECTURES, machine)}"
     if sys.platform == "win32":
         return f"win_{architecture(WINDOWS_ARCHITECTURES, machine)}"
-    raise RuntimeError(f"no wheel platform tag known for {sys.platform}")
+    # Somewhere we ship no wheels for, so this can only be a source build, and pip just needs a
+    # name for the wheel it is about to install here and now. Give it the one setuptools would.
+    return sysconfig.get_platform().replace("-", "_").replace(".", "_").lower()
 
 
 def architecture(known: dict[str, str], machine: str) -> str:

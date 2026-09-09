@@ -38,6 +38,15 @@ val scalaJS = "1.22.0"
 val scalaNative = "0.5.12"
 val rdf4j = "6.0.1"
 
+// nativelib/src/scala/scalanative/meta/LinktimeInfo.scala is a copy of that exact version's file,
+// and a copy is only safe against the version it came from.
+require(
+  scalaNative == "0.5.12",
+  "Scala Native was upgraded. If it is 0.5.13 or later, delete nativelib/src/scala and the " +
+    "runClasspath override in nativelib.native - the fix it carries is upstream now. Otherwise " +
+    "re-copy LinktimeInfo.scala from the new version.",
+)
+
 /** Whether to compile and test Scala Native in this run.
   *
   * This is disabled by default, because Scala Native has a pretty complex and slow toolchain. To
@@ -621,6 +630,17 @@ object nativelib extends Module, NativeOptional {
 
     /** Set to an LLVM triple to generate code for another platform. */
     override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
+
+    /** The linker takes the first entry on the classpath that defines a symbol, and Mill puts the
+      * resolved jars ahead of our own classes. Moving ours to the front is what lets
+      * nativelib/src/scala/scalanative/meta/LinktimeInfo.scala replace the copy in nativelib; see
+      * the note in that file. `nirJars`, which the sdist links from, is already in this order.
+      */
+    override def runClasspath = Task {
+      val ours = compile().classes.path
+      val classpath = super.runClasspath()
+      classpath.filter(_.path == ours) ++ classpath.filterNot(_.path == ours)
+    }
 
     /** Scala Native's default is `out`, which ends up in the SONAME on Linux, the install name on
       * macOS and — the one that is not fixable afterwards — inside the Windows import library, so
