@@ -38,13 +38,10 @@ val scalaJS = "1.22.0"
 val scalaNative = "0.5.12"
 val rdf4j = "6.0.1"
 
-// nativelib/src/scala/scalanative/meta/LinktimeInfo.scala is a copy of that exact version's file,
-// and a copy is only safe against the version it came from.
 require(
   scalaNative == "0.5.12",
   "Scala Native was upgraded. If it is 0.5.13 or later, delete nativelib/src/scala and the " +
-    "runClasspath override in nativelib.native - the fix it carries is upstream now. Otherwise " +
-    "re-copy LinktimeInfo.scala from the new version.",
+    "runClasspath override in nativelib.native - the fix there is upstream now.",
 )
 
 /** Whether to compile and test Scala Native in this run.
@@ -622,65 +619,30 @@ object nativelib extends Module, NativeOptional {
       */
     override def nativeMultithreading = Task { Some(false) }
 
-    /** `release-fast`, not `release-full`: 4.5% faster for +42% size, double the start-up and a
-      * 39-second link. LTO is left off because it breaks exception handling in a library build. See
-      * docs/python_bindings.md.
-      */
     override def releaseMode = Task { ReleaseMode.ReleaseFast }
-
-    /** Set to an LLVM triple to generate code for another platform. */
     override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
 
-    /** The linker takes the first entry on the classpath that defines a symbol, and Mill puts the
-      * resolved jars ahead of our own classes. Moving ours to the front is what lets
-      * nativelib/src/scala/scalanative/meta/LinktimeInfo.scala replace the copy in nativelib; see
-      * the note in that file. `nirJars`, which the sdist links from, is already in this order.
-      */
+    /** Override needed for Scala Native 0.15.2. Remove after upgrading. */
     override def runClasspath = Task {
       val ours = compile().classes.path
       val classpath = super.runClasspath()
       classpath.filter(_.path == ours) ++ classpath.filterNot(_.path == ours)
     }
 
-    /** Scala Native's default is `out`, which ends up in the SONAME on Linux, the install name on
-      * macOS and — the one that is not fixable afterwards — inside the Windows import library, so
-      * anything linking against a renamed copy goes looking for `out.dll`. Naming the artifact up
-      * front is the only way to get all three right.
-      *
-      * Unix adds the `lib` prefix itself; Windows does not.
-      */
     override def nativeBaseName = Task {
       if _root_.scala.util.Properties.isWin then NativeLib.name
       else NativeLib.name.stripPrefix("lib")
     }
 
-    /** The oldest macOS the library runs on, and so the wheel tag: `hatch_build.py` reads it back
-      * out of the Mach-O header.
-      *
-      * Pinned rather than left to clang, which otherwise targets whatever the build machine runs.
-      * That tied the tag to the runner image -- `macosx_14_0_arm64` from macos-14 and
-      * `macosx_15_0_x86_64` from macos-15-intel -- so bumping a runner would quietly narrow the
-      * wheels, and the Intel one already excluded every Mac older than 2019.
-      */
-    private val macosMinimum = "14.0"
-
     private def macosTarget =
-      if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=$macosMinimum")
+      // macOS target for wheel builds
+      if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=14.0")
       else Seq.empty
 
-    /** clang's own optimisation level, separate from `releaseMode`: that one governs Scala Native's
-      * NIR optimiser, this one the LLVM IR it emits and the runtime's C sources. Worth about 4% on
-      * generator throughput for no change in size.
-      *
-      * LTO would be the next thing to reach for and does not work; see docs/python_bindings.md.
-      */
     override def nativeCompileOptions = Task {
       super.nativeCompileOptions() ++ macosTarget :+ "-O3"
     }
 
-    /** macOS resolves a bare install name as a path, ignoring the `-rpath` a consumer passes, so it
-      * has to say `@rpath` explicitly. Linux and Windows get this right from the name alone.
-      */
     override def nativeLinkingOptions = Task {
       val rpath =
         if _root_.scala.util.Properties.isMac then
@@ -691,15 +653,12 @@ object nativelib extends Module, NativeOptional {
 
     /** `liblinkml_scala.so` and the header, named the way the Python bindings and `package.sh`
       * expect.
-      *
-      * Everything the linker emitted alongside the library comes too, renamed to match: on Windows
-      * that is the `.lib` import library, without which nothing can link against the DLL.
       */
     def sharedLibrary = Task {
       val built = nativeLink().path
-      // Reading another task's output directory, which is what the checker is there to stop. The
+      // Reading another task's output directory, which is forbidden by the checker. The
       // linker emits the Windows import library beside the DLL without declaring it, so there is
-      // nothing to ask for by name. The `.exp` next to it is a linker intermediate and is left.
+      // nothing to ask for by name.
       mill.api.BuildCtx.withFilesystemCheckerDisabled {
         Seq(built / os.up, nativeWorkdir())
           .filter(os.exists)
@@ -719,7 +678,6 @@ object nativelib extends Module, NativeOptional {
       else if _root_.scala.util.Properties.isMac then ".dylib"
       else ".so"
 
-    /** Hand-written, because Scala Native generates no header for its exports. */
     def headerSource =
       Task.Source(mill.api.BuildCtx.workspaceRoot / "nativelib" / "include" / "linkml_scala.h")
 
@@ -743,9 +701,7 @@ object nativelib extends Module, NativeOptional {
         )}")
     }
 
-    /** Run the Python binding's test suite against a freshly installed library. Requires Python
-      * 3.10+ on the PATH, or `PYTHON` pointing at one.
-      */
+    /** Run the Python binding's test suite against a freshly installed library. */
     def pythonTest(args: String*) = Task.Command(exclusive = true) {
       installPythonLib()()
       Python.runTests(mill.api.BuildCtx.workspaceRoot)
@@ -778,11 +734,7 @@ object nativelib extends Module, NativeOptional {
       )
     }
 
-    // The source distribution
-    //
-    // It carries Scala Native IR rather than a compiled library, plus Scala Native's linker, and
-    // links on the machine doing the install. That is what makes it installable on any platform
-    // Scala Native supports rather than only the ones we build wheels for.
+    // The source Python distribution
 
     /** Scala Native's linker, as a standalone tool. */
     def linkerClasspath = Task {
@@ -794,63 +746,29 @@ object nativelib extends Module, NativeOptional {
       */
     def nirJars = Task { (transitiveJars() :+ jar()) ++ resolvedMvnDeps() }
 
-    /** Lay out the source distribution. No compiled library goes in; `python/hatch_build.py` links
-      * one during `pip install`.
-      */
+    /** Stage the sdist package for upload. */
     def sdistTree = Task {
-      val dest = Task.dest
-      val source = pythonDir().path
-      os.copy.over(source / "pyproject.toml", dest / "pyproject.toml", createFolders = true)
-      os.copy.over(source / "hatch_build.py", dest / "hatch_build.py")
-      os.copy.over(source / "README.md", dest / "README.md")
-      os.copy.over(licenseFile().path, dest / "LICENSE")
-      os.copy.over(source / "linkml_scala", dest / "linkml_scala")
-      os.remove.all(dest / "linkml_scala" / "_lib")
-      os.write.over(dest / "linkml_scala" / "_version.py", PyPackage.versionFile(wheelVersion()))
-
-      def stage(jars: Seq[PathRef], into: os.Path): Unit = {
-        os.makeDir.all(into)
-        jars.map(_.path).foreach { jar =>
-          // Dependency jars are uniquely named; ours are all `out.jar`, so name those by module.
-          val name =
-            if jar.last == "out.jar" then
-              jar.segments.toSeq.dropRight(2).takeRight(2).mkString("-") + ".jar"
-            else jar.last
-          os.copy.over(jar, into / name)
-        }
-      }
-      stage(nirJars(), dest / "_native" / "nir")
-      stage(linkerClasspath(), dest / "_native" / "linker")
-      PathRef(dest)
+      Python.layOutSdist(
+        Task.dest,
+        pythonDir().path,
+        licenseFile().path,
+        wheelVersion(),
+        nirJars().map(_.path),
+        linkerClasspath().map(_.path),
+      )
+      PathRef(Task.dest)
     }
 
     /** Build the source distribution. Requires Python with `build` installed. */
     def sdist = Task {
-      os.call(
-        (
-          sys.env.getOrElse("PYTHON", "python3"),
-          "-m",
-          "build",
-          "--sdist",
-          "--outdir",
-          Task.dest,
-          sdistTree().path,
-        ),
-        stdout = os.Inherit,
-        stderr = os.Inherit,
-      )
-      PathRef(Task.dest)
+      PathRef(Python.buildSdist(Task.dest, sdistTree().path))
     }
 
     /** Install the source distribution into a throwaway virtualenv, which links the library on the
       * way in, and run the test suite against the result.
       */
     def sdistTest(args: String*) = Task.Command(exclusive = true) {
-      Python.testSdist(
-        Task.dest,
-        os.list(sdist().path).find(_.ext == "gz").getOrElse(Task.fail("no sdist was produced")),
-        mill.api.BuildCtx.workspaceRoot,
-      )
+      Python.testSdist(Task.dest, sdist().path, mill.api.BuildCtx.workspaceRoot)
     }
   }
 }
@@ -1016,24 +934,12 @@ trait CommonScalaJSModule extends ScalaJSModule, PublishModule {
   }
 }
 
-/** Scala Native modules must be compiled one at a time.
-  *
-  * Two of them compiling at once fail perhaps a third of the time, reading Scala Native's own TASTy
-  * — `CyclicReference involving class CFuncPtr0`, or `Could not read definition class USize`, from
-  * whichever phase got there first. The sibling pairs are `metamodel`/`validation` and
-  * `generator`/`tests`. `-j 1` is reliable over repeated cold builds where the default is not.
-  *
-  * Nothing here can express that, so the CI steps that compile native modules pass `-j 1`. Giving
-  * each module its own compiler worker does not help, and the Scala 3 optimiser makes it more
-  * likely without being the cause.
+/** Scala Native modules must be compiled one at a time. Otherwise, race conditions in scalac cause
+  * random crashes.
   */
 trait CommonScalaNativeModule extends ScalaNativeModule, PublishModule, mill.api.DynamicModule {
   def scalaNativeVersion = scalaNative
 
-  /** Nothing a Scala Native module produces runs on a JVM, so let it use whichever one Mill is
-    * running on rather than making coursier fetch the pinned one. That pin has no Temurin build for
-    * every platform we compile on -- musl is the one that bites.
-    */
   override def javaHome = Task { None }
 
   override def moduleDirectChildren: Seq[mill.api.Module] =

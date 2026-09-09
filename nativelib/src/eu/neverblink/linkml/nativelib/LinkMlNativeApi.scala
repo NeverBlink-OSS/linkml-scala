@@ -31,9 +31,8 @@ object LinkMlNativeApi {
     *
     *   - 1: initial ABI version.
     *   - 2: added `linkml_build_info`; replaced `tableSchema` with `frictionless`.
-    *   - 3: rebuilt with Scala Native. The isolate arguments were removed.
-    *     `linkml_init_threads` replaces `graal_create_isolate`. `platform` in
-    *     `linkml_build_info` is now `SCALA_NATIVE`.
+    *   - 3: rebuilt with Scala Native. The isolate arguments were removed. `linkml_init_threads`
+    *     replaces `graal_create_isolate`. `platform` in `linkml_build_info` is now `SCALA_NATIVE`.
     */
   final val abiVersion: Int = 3
 
