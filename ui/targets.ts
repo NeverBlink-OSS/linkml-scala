@@ -180,7 +180,7 @@ export const TARGETS: Target[] = [
   },
   {
     id: "translation",
-    label: "Framework translations",
+    label: "Key translations",
     lang: "json",
     options: [
       { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql"], default: "base" },
