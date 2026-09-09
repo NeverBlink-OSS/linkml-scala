@@ -1,9 +1,9 @@
 """Tests for the LinkML-Scala Python bindings.
 
-Run them with ``./mill nativelib.pythonTest``, which rebuilds the shared library first. To run them
+Run them with ``./mill nativelib.native.pythonTest``, which rebuilds the shared library first. To run them
 against a library you already have, ``python -m unittest discover -s python``.
 
-``./mill nativelib.pythonWheelTest`` runs this same file against an installed wheel, from a copy in
+``./mill nativelib.native.pythonWheelTest`` runs this same file against an installed wheel, from a copy in
 a temporary directory so that the sources here cannot shadow the package under test. That is what
 ``LINKML_SCALA_REPO`` is for: from there, the fixtures are no longer two directories up.
 
@@ -86,7 +86,7 @@ class BuildInfoTest(unittest.TestCase):
         self.assertTrue(info["linkml_scala_version"])
         self.assertRegex(info["metamodel_version"], r"^\d+\.\d+\.\d+$")
         self.assertTrue(info["scala_version"].startswith("3."))
-        self.assertEqual("NATIVE", info["platform"])
+        self.assertEqual("SCALA_NATIVE", info["platform"])
 
     def test_build_info_reports_the_abi_it_was_checked_against(self):
         from linkml_scala._runtime import _EXPECTED_ABI_VERSION

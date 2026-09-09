@@ -1,0 +1,51 @@
+name: Native build
+
+# Test native builds. By default, runs only 1 possible combination (Windows ARM
+# wheels) to make sure nothing is terribly broken. To run test all wheel combinations, give the PR
+# the `full-wheels` label. To also test installation from sdist, give it the `test-sdist` label.
+on:
+  pull_request:
+    branches: [ "main" ]
+    paths: &paths
+      - 'nativelib/**'
+      - 'python/**'
+      - 'build.mill'
+      - 'mill-build/**'
+      - '.github/workflows/native-build.yml'
+      - '.github/workflows/wheels.yml'
+  push:
+    branches: [ "main" ]
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wheels:
+    name: Wheels
+    uses: ./.github/workflows/wheels.yml
+    with:
+      targets: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels')
+        && '[{"os":"macos-14","platform":"macos-arm64"},
+             {"os":"macos-15-intel","platform":"macos-x86_64"},
+             {"os":"ubuntu-22.04","platform":"linux-x86_64"},
+             {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+             {"os":"windows-latest","platform":"windows-x86_64"},
+             {"os":"windows-11-arm","platform":"windows-arm64"}]'
+        || '[{"os":"windows-11-arm","platform":"windows-arm64"}]' }}
+      musl: ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels') }}
+      # `test-sdist` needs the distribution built before it can install it.
+      sdist: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels')
+        || contains(github.event.pull_request.labels.*.name, 'test-sdist') }}
+      sdist-install: >-
+        ${{ contains(github.event.pull_request.labels.*.name, 'test-sdist')
+        && '[{"os":"macos-14","platform":"macos-arm64"},
+             {"os":"macos-15-intel","platform":"macos-x86_64"},
+             {"os":"ubuntu-22.04","platform":"linux-x86_64"},
+             {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+             {"os":"windows-latest","platform":"windows-x86_64"},
+             {"os":"windows-11-arm","platform":"windows-arm64"}]'
+        || '[]' }}

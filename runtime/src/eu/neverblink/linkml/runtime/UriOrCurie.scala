@@ -36,7 +36,9 @@ object Uri {
     * [[base]] is a valid URI base and does not need escaping.
     */
   def synthetic(base: String, name: String): Uri =
-    new Uri(base.concat(URLEncoder.encode(name, StandardCharsets.UTF_8)))
+    // The charset is named rather than passed as a `Charset`: that overload is Java 10 and
+    // Scala Native's javalib only has the older one.
+    new Uri(base.concat(URLEncoder.encode(name, StandardCharsets.UTF_8.name)))
 }
 
 final case class Curie(original: String) extends UriOrCurie {

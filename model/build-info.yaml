@@ -80,6 +80,11 @@ enums:
       JVM:
         description: Running on a Java virtual machine.
       NATIVE:
-        description: A GraalVM native image -- the standalone CLI executable or the shared library.
+        description: >-
+          A GraalVM native image – the standalone CLI executable or the shared library. Built by
+          compiling the JVM build ahead of time.
+      SCALA_NATIVE:
+        description: >-
+          Compiled to a native binary by Scala Native.
       JS:
         description: Compiled to JavaScript with Scala.js, running under Node.js or in a browser.

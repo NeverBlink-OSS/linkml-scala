@@ -94,22 +94,27 @@ jobs:
         env:
           MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          LINKML_NATIVE: "1"
         run: |
-          ./mill mill.javalib.SonatypeCentralPublishModule/
+          ./mill --no-server mill.javalib.SonatypeCentralPublishModule/
 
-  nativelib:
-    name: Shared library and Python bindings
+  scala-native:
+    name: Scala Native
     runs-on: ubuntu-latest
     defaults:
       run:
         shell: bash
+    env:
+      LINKML_NATIVE: "1"
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          fetch-depth: 256
+          fetch-tags: true
 
-      # Matters most here: the native-image build pulls a ~360 MB GraalVM tarball and unpacks it
-      # to ~1 GB, and both copies would otherwise land in the cache. See checks.yml.
+      # Keeps extracted JDKs out of the cached coursier dir. See checks.yml
       - name: Relocate the coursier archive cache
         shell: bash
         run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
@@ -121,7 +126,47 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 25
+          java-version: 17
+
+      - name: Show the LLVM toolchain
+        run: clang --version
+
+      # Compiled serially first, then tested in parallel.
+      # Native modules cannot be compiled in parallel, see CommonScalaNativeModule in build.mill.
+      - name: Compile
+        run: ./mill --no-server -j 1 __.native.__.compile
+
+      - name: Test
+        run: ./mill --no-server -j 0 __.native.__.testForked
+
+  nativelib:
+    name: Shared library and Python bindings
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    env:
+      LINKML_NATIVE: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Relocate the coursier archive cache # see checks.yml
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Show the LLVM toolchain
+        run: clang --version
 
       - name: Setup the oldest supported Python
         id: python-oldest
@@ -136,22 +181,23 @@ jobs:
         with:
           python-version: '3.x'
 
+      # Native modules cannot be compiled in parallel. See CommonScalaNativeModule in build.mill.
       - name: Regenerate the bindings and check they are committed
         run: |
-          ./mill --no-server bindings
+          ./mill --no-server -j 1 bindings
           git diff --exit-code -- python/linkml_scala/_generated.py \
-            nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.java \
-            || (echo "generated bindings are stale – run ./mill bindings and commit the result"; exit 1)
+            nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.scala \
+            || (echo "generated bindings are stale – run LINKML_NATIVE=1 ./mill bindings and commit the result"; exit 1)
 
       - name: Build the shared library and test the bindings on the oldest supported Python
         env:
           PYTHON: ${{ steps.python-oldest.outputs.python-path }}
-        run: ./mill --no-server nativelib.pythonTest
+        run: ./mill --no-server -j 1 nativelib.native.pythonTest
 
       - name: Test the bindings on the newest Python
         env:
           PYTHON: ${{ steps.python-newest.outputs.python-path }}
-        run: ./mill --no-server nativelib.pythonTest
+        run: ./mill --no-server -j 1 nativelib.native.pythonTest
 
       # Builds the wheel that gets published on release, installs it into a clean virtualenv and
       # runs it from there, so the packaging is tested and not just the sources.
@@ -160,30 +206,21 @@ jobs:
           PYTHON: ${{ steps.python-oldest.outputs.python-path }}
         run: |
           "$PYTHON" -m pip install --quiet build
-          ./mill --no-server nativelib.pythonWheelTest
+          ./mill --no-server nativelib.native.pythonWheelTest
 
-      - name: Build the manylinux wheel and test the installed package
-        env:
-          PYTHON: ${{ steps.python-oldest.outputs.python-path }}
-        run: ./mill --no-server nativelib.linux.glibc.pythonWheelTest
-
-      - name: Build the musl wheel and test it in Alpine
+      # The source distribution ships Scala Native IR instead of a library and links it during
+      # `pip install`.
+      - name: Build the source distribution and install it from scratch
         env:
           PYTHON: ${{ steps.python-oldest.outputs.python-path }}
         run: |
-          sudo nativelib/install-musl-toolchain.sh
-          ./mill --no-server nativelib.linux.musl.pythonWheel
-          wheel="$(ls out/nativelib/linux/musl/pythonWheel.dest/dist/*.whl)"
-          docker run --rm -v "$PWD:/work:ro" -e LINKML_SCALA_REPO=/work python:3.12-alpine sh -c "
-            set -e
-            pip install --quiet '/work/$wheel'
-            cp /work/python/test_bindings.py /tmp/
-            cd /tmp && python -m unittest test_bindings -v"
+          "$PYTHON" -m pip install --quiet build
+          ./mill --no-server nativelib.native.sdistTest
 
       # Builds the release archive, then compiles and runs a C program against the unpacked copy.
       - name: Check that the release archive works from C
         run: |
-          nativelib/package.sh 0.0.0-ci linux-x86_64 out/nativelib/sharedLibrary.dest dist
+          nativelib/package.sh 0.0.0-ci linux-x86_64 out/nativelib/native/sharedLibrary.dest dist
           tar -xzf dist/linkml-scala-lib-linux-x86_64.tar.gz -C dist
           nativelib/smoke.sh dist/liblinkml-scala-0.0.0-ci-linux-x86_64
 
@@ -193,4 +230,4 @@ jobs:
           flags=$(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs linkml-scala)
           echo "pkg-config: $flags"
           gcc nativelib/smoke.c -o dist/smoke-pc $flags
-          LD_LIBRARY_PATH="$prefix/lib" dist/smoke-pc    
+          LD_LIBRARY_PATH="$prefix/lib" dist/smoke-pc

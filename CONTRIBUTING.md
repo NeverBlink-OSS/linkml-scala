@@ -20,6 +20,7 @@ Common tasks with mill:
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project: `./mill lint` (scalafix + scalafmt)
 - Re-generate the metamodel classes: `./mill metamodel.regenerate`
+- Re-generate the build info classes: `./mill Alias/run regenerateBuildInfo`
 - Re-generate the validation model classes: `./mill validation.regenerate`
 - Fetch the metamodel definitions from [linkml/linkml-model](https://github.com/linkml/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
@@ -27,6 +28,22 @@ Common tasks with mill:
 - Build native binary: `./mill cli.jvm.nativeImage` (requires Coursier (cs) to be installed)
 - Assemble the npm package: `./mill generator.js.npmPackage` (TS declarations are generated from the Scala facade)
 - Verify the npm package (README examples run + types compile): `./mill generator.js.verifyPackage` (requires Node.js and npm)
+
+### Scala Native
+
+The library cross-compiles to Scala Native as well as the JVM and Scala.js, and all three are published to Maven Central. The shared library and the Python bindings are built with Scala Native too – see [docs/python_bindings.md](docs/python_bindings.md). The CLI executable is still a GraalVM native image.
+
+The Scala Native submodules are **hidden from the build unless you enable them**, because the Scala Native toolchain rather heavy. To enable them, set `LINKML_NATIVE=1`:
+
+```shell
+LINKML_NATIVE=1 ./mill --no-server __.native.__.testForked   # all Scala Native tests
+LINKML_NATIVE=1 ./mill --no-server schemaview.native.compile # just one module
+LINKML_NATIVE=1 ./mill --no-server nativelib.native.pythonTest  # the C library and Python bindings
+```
+
+Building the shared library needs clang; the Scala modules only need the JVM.
+
+The env var is set when starting the mill process, so if you have a daemon running, restart it and pass this variable.
 
 ### Playground UI
 

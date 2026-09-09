@@ -20,7 +20,7 @@
 
 **[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple programming languages and data formats (e.g., JSON Schema, CSV, RDF/SHACL...).
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#jvm-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 > [!NOTE]
 > ⭐ If you like LinkML-Scala, consider giving it a star – it helps others find the project!
@@ -195,9 +195,9 @@ with linkml_scala.load_file("model.yaml") as schema:
 
 See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and for the C ABI for C, C++ and Rust.
 
-## JVM library
+## Scala library
 
-All modules are published to Maven Central under the `eu.neverblink.linkml` group ID. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli).
+All modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli).
 
 ## GitHub Action (CI)
 

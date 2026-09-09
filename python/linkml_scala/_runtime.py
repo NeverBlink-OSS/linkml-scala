@@ -1,4 +1,4 @@
-"""Loading the shared library, and calling into it.
+"""Loading the Scala Native shared library, and calling into it.
 
 Everything ctypes-shaped lives here. The public API in ``__init__`` deals in strings and dicts.
 
@@ -12,17 +12,18 @@ from __future__ import annotations
 import ctypes
 import json
 import os
+import queue
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping
 
 from ._generated import DOCUMENT_FUNCTIONS
 
 __all__ = ["Runtime", "LinkMlError", "NativeLibraryNotFound", "library_path", "runtime"]
 
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
-_EXPECTED_ABI_VERSION = 2
+_EXPECTED_ABI_VERSION = 3
 
 _LIB_STEM = "liblinkml_scala"
 
@@ -59,13 +60,8 @@ def _candidates() -> list[Path]:
         path = Path(explicit)
         found.append(path / filename if path.is_dir() else path)
 
-    # Shipped inside the wheel, or put there by `./mill nativelib.installPythonLib`.
+    # Shipped inside the wheel, or put there by `./mill nativelib.native.installPythonLib`.
     found.append(Path(__file__).parent / "_lib" / filename)
-
-    # A source checkout that built the library but did not install it.
-    built = Path(__file__).resolve().parents[2] / "out" / "nativelib" / "sharedLibrary.dest"
-    if built.is_dir():
-        found.append(built / filename)
 
     return found
 
@@ -82,16 +78,15 @@ def library_path() -> Path:
     listed = "\n  ".join(str(candidate) for candidate in candidates)
     raise NativeLibraryNotFound(
         f"Could not find {_library_filename()}. Looked in:\n  {listed}\n"
-        "Install a wheel with `pip install neverblink-linkml`, build the library with "
-        "`./mill nativelib.installPythonLib`, or point LINKML_SCALA_LIB at one you already have."
+        "Build it with `./mill nativelib.native.installPythonLib`, or point LINKML_SCALA_LIB at one you "
+        "already have."
     )
 
 
 def _options(options: Mapping[str, Any] | None) -> bytes | None:
     """Encode an options mapping, dropping unset values.
 
-    Returns None, which reaches C as NULL, when there is nothing to say. The library then applies
-    its own defaults and no JSON is built or parsed on either side.
+    Returns None, which reaches C as NULL, when there is nothing to say.
     """
     if not options:
         return None
@@ -101,32 +96,73 @@ def _options(options: Mapping[str, Any] | None) -> bytes | None:
     return json.dumps(present).encode("utf-8")
 
 
+class _Worker:
+    """LinkML-Scala native worker thread."""
+
+    def __init__(self, path: Path) -> None:
+        self._work: queue.SimpleQueue = queue.SimpleQueue()
+        ready: queue.SimpleQueue = queue.SimpleQueue()
+        self._thread = threading.Thread(
+            target=self._loop, args=(path, ready), name="linkml-scala", daemon=True
+        )
+        self._thread.start()
+        ok, value = ready.get()
+        if not ok:
+            raise value
+        self.lib: ctypes.CDLL = value
+
+    def _loop(self, path: Path, ready: queue.SimpleQueue) -> None:
+        # Load the library from this thread and keep all calls to this thread.
+        try:
+            lib = ctypes.CDLL(str(path))
+            # dlopen and the library constructor run several frames below this one, so the stack
+            # bottom Scala Native recorded is *lower* than where calls will arrive from -- the same
+            # inversion as loading from anywhere else, just smaller. Re-record it from here.
+            lib.linkml_init_threads.argtypes = []
+            lib.linkml_init_threads.restype = ctypes.c_int
+            lib.linkml_init_threads()
+        except BaseException as error:  # noqa: BLE001 - returned to the caller as-is
+            ready.put((False, error))
+            return
+        ready.put((True, lib))
+
+        while True:
+            call, box = self._work.get()
+            try:
+                box.put((True, call()))
+            except BaseException as error:  # noqa: BLE001 - returned to the caller as-is
+                box.put((False, error))
+
+    def run(self, call: Callable[[], Any]) -> Any:
+        """Run ``call`` on the worker and return its result here."""
+        if threading.get_ident() == self._thread.ident:
+            # Re-entrant: a finaliser the worker itself triggered. Running it inline is both
+            # correct and the only option, since the worker cannot wait for itself.
+            return call()
+        box: queue.SimpleQueue = queue.SimpleQueue()
+        self._work.put((call, box))
+        ok, value = box.get()
+        if ok:
+            return value
+        raise value
+
+
 class Runtime:
-    """One GraalVM isolate, and the calls into it.
+    """The loaded library, and the calls into it.
 
-    An isolate is a self-contained heap. Schema handles only mean anything within the isolate that
-    made them. Threads have to attach before calling in, which happens on demand and is remembered
-    per thread.
+    Thread-safe: calls from any thread are passed to the one worker thread that owns the library.
+    They are therefore serialised.
 
-    Thread-safe. Prefer the process-wide instance from :func:`runtime` over building your own.
+    Prefer the process-wide instance from :func:`runtime` over building your own.
     """
 
     def __init__(self, path: str | Path | None = None) -> None:
         self._path = Path(path) if path is not None else library_path()
-        self._lib = ctypes.CDLL(str(self._path))
+        self._worker = _Worker(self._path)
+        self._lib = self._worker.lib
         self._declare_signatures()
 
-        isolate = ctypes.c_void_p()
-        main_thread = ctypes.c_void_p()
-        code = self._lib.graal_create_isolate(None, ctypes.byref(isolate), ctypes.byref(main_thread))
-        if code != 0:
-            raise LinkMlError(f"graal_create_isolate failed with code {code}")
-        self._isolate = isolate
-
-        self._threads = threading.local()
-        self._threads.handle = main_thread
-
-        version = self._lib.linkml_abi_version(self._thread())
+        version = self._call(self._lib.linkml_abi_version)
         if version != _EXPECTED_ABI_VERSION:
             raise LinkMlError(
                 f"{self._path} speaks ABI version {version}, but this package expects "
@@ -138,6 +174,9 @@ class Runtime:
         """The library file backing this runtime."""
         return self._path
 
+    def _call(self, function: Callable[..., Any], *args: Any) -> Any:
+        return self._worker.run(lambda: function(*args))
+
     # Loading
 
     def load_file(
@@ -148,8 +187,8 @@ class Runtime:
         :return: the schema handle, 0 if the schema had fatal problems, and the validation report.
         """
         report, error = _Chars(), _Chars()
-        handle = self._lib.linkml_load_file(
-            self._thread(),
+        handle = self._call(
+            self._lib.linkml_load_file,
             path.encode("utf-8"),
             _options(options),
             ctypes.byref(report),
@@ -170,16 +209,14 @@ class Runtime:
         :param schema: the root schema as YAML. Ignored when ``path`` is given.
         :return: the schema handle, 0 if the schema had fatal problems, and the validation report.
         """
-        # The map goes over as two parallel arrays rather than JSON: it holds whole schemas, and
-        # escaping megabytes of YAML only to parse it back out would undo the point of the split.
         entries = dict(imports or {})
         count = len(entries)
         names = (ctypes.c_char_p * count)(*(key.encode("utf-8") for key in entries))
         bodies = (ctypes.c_char_p * count)(*(value.encode("utf-8") for value in entries.values()))
 
         report, error = _Chars(), _Chars()
-        handle = self._lib.linkml_load_string(
-            self._thread(),
+        handle = self._call(
+            self._lib.linkml_load_string,
             None if path is None else path.encode("utf-8"),
             None if schema is None else schema.encode("utf-8"),
             names if count else None,
@@ -193,7 +230,7 @@ class Runtime:
 
     def close(self, handle: int) -> None:
         """Release a schema handle. Releasing one that is already gone does nothing."""
-        self._lib.linkml_close(self._thread(), handle)
+        self._call(self._lib.linkml_close, handle)
 
     # Generating
 
@@ -206,8 +243,8 @@ class Runtime:
         :raises LinkMlError: if the library reported a failure.
         """
         error = _Chars()
-        result = getattr(self._lib, function)(
-            self._thread(), handle, _options(options), ctypes.byref(error)
+        result = self._call(
+            getattr(self._lib, function), handle, _options(options), ctypes.byref(error)
         )
         # Take both, so neither leaks whichever way the call went.
         message = self._take(error)
@@ -228,7 +265,7 @@ class Runtime:
         :raises LinkMlError: if the library reported a failure.
         """
         error = _Chars()
-        result = self._lib.linkml_build_info(self._thread(), ctypes.byref(error))
+        result = self._call(self._lib.linkml_build_info, ctypes.byref(error))
         # Take both, so neither leaks whichever way the call went.
         message = self._take(error)
         text = self._take(result)
@@ -252,41 +289,18 @@ class Runtime:
         try:
             raw = ctypes.cast(pointer, ctypes.c_char_p).value
         finally:
-            self._lib.linkml_free(self._thread(), pointer)
+            self._call(self._lib.linkml_free, pointer)
         return None if raw is None else raw.decode("utf-8")
 
-    def _thread(self) -> ctypes.c_void_p:
-        """This thread's isolate thread, attaching it to the isolate on first use."""
-        handle = getattr(self._threads, "handle", None)
-        if handle is None:
-            handle = ctypes.c_void_p()
-            code = self._lib.graal_attach_thread(self._isolate, ctypes.byref(handle))
-            if code != 0:
-                raise LinkMlError(f"graal_attach_thread failed with code {code}")
-            self._threads.handle = handle
-        return handle
-
     def _declare_signatures(self) -> None:
-        void_p = ctypes.c_void_p
         handle = ctypes.c_longlong
         chars_out = ctypes.POINTER(_Chars)
         strings = ctypes.POINTER(ctypes.c_char_p)
 
-        self._lib.graal_create_isolate.argtypes = [
-            void_p,
-            ctypes.POINTER(void_p),
-            ctypes.POINTER(void_p),
-        ]
-        self._lib.graal_create_isolate.restype = ctypes.c_int
-
-        self._lib.graal_attach_thread.argtypes = [void_p, ctypes.POINTER(void_p)]
-        self._lib.graal_attach_thread.restype = ctypes.c_int
-
-        self._lib.linkml_abi_version.argtypes = [void_p]
+        self._lib.linkml_abi_version.argtypes = []
         self._lib.linkml_abi_version.restype = ctypes.c_int
 
         self._lib.linkml_load_file.argtypes = [
-            void_p,
             ctypes.c_char_p,
             ctypes.c_char_p,
             chars_out,
@@ -295,7 +309,6 @@ class Runtime:
         self._lib.linkml_load_file.restype = handle
 
         self._lib.linkml_load_string.argtypes = [
-            void_p,
             ctypes.c_char_p,
             ctypes.c_char_p,
             strings,
@@ -307,21 +320,21 @@ class Runtime:
         ]
         self._lib.linkml_load_string.restype = handle
 
-        self._lib.linkml_close.argtypes = [void_p, handle]
+        self._lib.linkml_close.argtypes = [handle]
         self._lib.linkml_close.restype = None
 
         # Takes no schema, so it does not fit the generator shape below.
-        self._lib.linkml_build_info.argtypes = [void_p, chars_out]
+        self._lib.linkml_build_info.argtypes = [chars_out]
         self._lib.linkml_build_info.restype = _Chars
 
         # linkml_lint has the same shape but is not a generator, so it is not in the generated
         # list and gets declared alongside it.
         for name in (*DOCUMENT_FUNCTIONS, "linkml_lint"):
             function = getattr(self._lib, name)
-            function.argtypes = [void_p, handle, ctypes.c_char_p, chars_out]
+            function.argtypes = [handle, ctypes.c_char_p, chars_out]
             function.restype = _Chars
 
-        self._lib.linkml_free.argtypes = [void_p, _Chars]
+        self._lib.linkml_free.argtypes = [_Chars]
         self._lib.linkml_free.restype = None
 
 
@@ -330,11 +343,7 @@ _runtime_lock = threading.Lock()
 
 
 def runtime() -> Runtime:
-    """The process-wide runtime, created on first use.
-
-    One isolate per process keeps memory use predictable and lets schema handles be passed around
-    freely, since they only mean anything within the isolate that made them.
-    """
+    """The process-wide runtime, created on first use."""
     global _runtime
     with _runtime_lock:
         if _runtime is None:

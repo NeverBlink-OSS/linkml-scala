@@ -3,7 +3,7 @@
 # Package a native-image shared library build into the layout C, C++ and Rust consumers expect:
 #
 #   liblinkml-scala-<version>-<platform>/
-#     include/*.h          the headers native-image generated
+#     include/*.h          the C header
 #     lib/liblinkml_scala.*  (bin/ for the Windows DLL, as is conventional there)
 #     linkml-scala.pc      pkg-config, so `pkg-config --cflags --libs linkml-scala` works
 #     LICENSE
@@ -98,7 +98,7 @@ cat >"${prefix}/README.md" <<EOF
 
 LinkML schema validation and code generation as a native shared library, with a C ABI. Experimental.
 
-See include/liblinkml_scala.h for the full API: one function per generator, plus loading, linting
+See include/linkml_scala.h for the full API: one function per generator, plus loading, linting
 and the lifecycle. Two conventions cover all of it.
 
 Options are one JSON string, and may be NULL for defaults, so the common case needs no JSON:

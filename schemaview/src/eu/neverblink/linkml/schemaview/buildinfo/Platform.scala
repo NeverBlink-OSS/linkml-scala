@@ -20,12 +20,20 @@ object Platform {
     */
   @named("JVM") case object Jvm extends Platform
 
-  /** A GraalVM native image -- the standalone CLI executable or the shared library.
+  /** A GraalVM native image – the standalone CLI executable or the shared library. Built by
+    * compiling the JVM build ahead of time.
     *
     * @see
     *   From schema: https://linkml.neverblink.eu/model/build-info
     */
   @named("NATIVE") case object Native extends Platform
+
+  /** Compiled to a native binary by Scala Native.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/build-info
+    */
+  @named("SCALA_NATIVE") case object ScalaNative extends Platform
 
   /** Compiled to JavaScript with Scala.js, running under Node.js or in a browser.
     *

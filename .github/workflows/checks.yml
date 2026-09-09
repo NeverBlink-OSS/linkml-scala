@@ -12,6 +12,8 @@ jobs:
   scalafmt-lint:
     name: Scalafmt lint
     runs-on: ubuntu-latest
+    env:
+      LINKML_NATIVE: "1"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
@@ -32,6 +34,7 @@ jobs:
         run: |
           ./mill --no-server __.jvm.__.checkFormat
           ./mill --no-server __.js.__.checkFormat
+          ./mill --no-server __.native.__.checkFormat
 
 
   skills-check:
@@ -130,6 +133,8 @@ jobs:
     defaults:
       run:
         shell: bash
+    env:
+      LINKML_NATIVE: "1"
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
@@ -142,9 +147,11 @@ jobs:
         uses: coursier/cache-action@v8
 
       - name: Run scalafix
-        run: | 
+        run: |
           ./mill --no-server __.jvm.__.fix --check
           ./mill --no-server __.js.__.fix --check
+          # Native modules cannot be compiled in parallel; see CommonScalaNativeModule in build.mill.
+          ./mill --no-server -j 1 __.native.__.fix --check
 
   git-lint:
     name: Git lint
