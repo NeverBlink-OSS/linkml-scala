@@ -381,24 +381,32 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           |    range: string
           |""".stripMargin))
 
-      val options = LinkMlGenerator.Options(skipClassDerivation = true)
-      val yaml = LinkMlGenerator(using sv).serialize(options)
-      // The two collapsed input forms normalize to the full form as well
-      yaml should include("""    unique_keys:
-          |      compound:
-          |        unique_key_slots:
-          |          - a
-          |          - b
-          |      collapsed_list:
-          |        unique_key_slots:
-          |          - a
-          |      collapsed_scalar:
-          |        unique_key_slots:
-          |          - b
-          |""".stripMargin)
+      // Derivation turns the slots into attributes.
+      // The macro validator must be aware of the class context (attributes) to load such
+      // a schema, so we test it here.
+      for options <- Seq(
+          LinkMlGenerator.Options(),
+          LinkMlGenerator.Options(skipClassDerivation = true),
+        )
+      do {
+        val yaml = LinkMlGenerator(using sv).serialize(options)
+        // The two collapsed input forms normalize to the full form as well
+        yaml should include("""    unique_keys:
+            |      compound:
+            |        unique_key_slots:
+            |          - a
+            |          - b
+            |      collapsed_list:
+            |        unique_key_slots:
+            |          - a
+            |      collapsed_scalar:
+            |        unique_key_slots:
+            |          - b
+            |""".stripMargin)
 
-      val reloaded = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
-      LinkMlGenerator(using reloaded).serialize(options) shouldBe yaml
+        val reloaded = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
+        LinkMlGenerator(using reloaded).serialize(options) shouldBe yaml
+      }
     }
 
     "generate all catalogue models without errors" when {
