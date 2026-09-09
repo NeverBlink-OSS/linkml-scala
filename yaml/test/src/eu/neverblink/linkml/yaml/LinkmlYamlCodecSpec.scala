@@ -674,6 +674,49 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "not use the collapsed form for a simple dictionary value that is a map at runtime" in {
+      case class Entry(@id k: String, @value v: LinkmlAny)
+
+      case class MyClass(@simpleDict d: Map[String, Entry], x: Option[Int] = None)
+          derives LinkmlYamlCodec
+
+      // 'LinkmlAny' is not statically a collection, so whether the collapsed form is safe can
+      // only be decided from the value.
+      roundTrip(
+        MyClass(Map("a" -> Entry("a", LinkmlAny("plain\n")))),
+        "d:\n  a: plain\n",
+      )
+      roundTrip(
+        MyClass(Map("a" -> Entry("a", LinkmlAny("- x\n- y\n")))),
+        "d:\n  a:\n    - x\n    - y\n",
+      )
+      // A map would be read back as the full form, so it keeps the 'v' wrapper
+      roundTrip(
+        MyClass(Map("a" -> Entry("a", LinkmlAny("m: 1\n")))),
+        "d:\n  a:\n    v:\n      m: 1\n",
+      )
+    }
+
+    "reject an id field that disagrees with the enclosing dict key" in {
+      case class Annotable(
+          @simpleDict
+          annotations: Map[String, Annotation],
+          x: Option[String] = None,
+      )
+      case class Annotation(@id tag: String, @value value: String)
+
+      implicit val codec: LinkmlYamlCodec[Annotable] = LinkmlYamlCodec.derived
+
+      decode[Annotable](
+        "annotations:\n  someTag:\n    tag: someTag\n    value: v\n",
+        Annotable(Map("someTag" -> Annotation("someTag", "v"))),
+      )
+      decodeError[Annotable](
+        "annotations:\n  someTag:\n    tag: other\n    value: v\n",
+        "Expected field 'tag' of 'Annotation' to match the enclosing key 'someTag'",
+      )
+    }
+
     "decode nested mixed simple/compact Dicts" in {
       case class Annotable(
           @simpleDict
