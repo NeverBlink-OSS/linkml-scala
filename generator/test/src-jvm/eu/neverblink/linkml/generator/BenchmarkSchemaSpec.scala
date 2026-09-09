@@ -172,9 +172,9 @@ object BenchmarkSchemaSpec {
   /** Map of (dataset name, generator id) -> reason, for skipping known-failing combinations.
     */
   private val skip: Map[(String, String), String] = Map(
-    "d3fend" -> "validation" -> "Time -> time renaming clash",
-    "iso27001" -> "validation" -> "Vendored linkml:types?",
-    "nmdc_microbiome" -> "validation" -> "'%'-named PV",
-    "tc57cim" -> "validation" -> "'%'-named PV",
+    "d3fend" -> "validation" -> "LNK-209: Time -> time renaming clash",
+    "iso27001" -> "validation" -> "LNK-209: Vendored linkml:types?",
+    "nmdc_microbiome" -> "validation" -> "LNK-208, LNK-209: '%'-named PV",
+    "tc57cim" -> "validation" -> "LNK-208, LNK-209: '%'-named PV",
   )
 }

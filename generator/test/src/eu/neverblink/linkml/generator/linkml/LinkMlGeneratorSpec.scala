@@ -239,14 +239,14 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       SchemaView.single(
         LinkMlGenerator(using sv).generate(),
-        // TODO LNK-???: fix the metamodel
+        // TODO LNK-207: fix the metamodel
       ).lintProblems.filter(!_.isInstanceOf[NonStandardSeparatorImpl]) shouldBe empty
 
       SchemaView.single(
         LinkMlGenerator(using sv).generate(
           LinkMlGenerator.Options(skipClassDerivation = true),
         ),
-        // TODO LNK-???: fix the metamodel
+        // TODO LNK-207: fix the metamodel
       ).lintProblems.filter(!_.isInstanceOf[NonStandardSeparatorImpl]) shouldBe empty
     }
 
@@ -378,6 +378,6 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
 object LinkMlGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "unionRange" -> "Not yet implemented: LNK-110",
-    "equals_expression" -> "Warning in lint - non-standard separator for PV: LNK-???",
+    "equals_expression" -> "Warning in lint - non-standard separator for PV: LNK-208",
   )
 }
