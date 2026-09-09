@@ -622,20 +622,12 @@ object nativelib extends Module, NativeOptional {
     override def releaseMode = Task { ReleaseMode.ReleaseFast }
     override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
 
-    /** Link-time optimisation, on x86-64 only. Thin LTO is not supported on macOS. ARM64 does not
-      * seem to work with LTO at all at the moment due to a bug in C++ exception handling.
-      */
+    /** Link-time optimisation. Thin LTO is not supported on macOS. */
     override def nativeLTO = Task {
-      val triple = nativeTarget()
-      val arch = triple
-        .map(_.takeWhile(_ != '-'))
-        .getOrElse(_root_.scala.util.Properties.propOrElse("os.arch", ""))
-      val isMac = triple
+      val isMac = nativeTarget()
         .map(t => t.contains("apple") || t.contains("darwin"))
         .getOrElse(_root_.scala.util.Properties.isMac)
-      if !Set("x86_64", "amd64", "x64").contains(arch.toLowerCase) then LTO.None
-      else if isMac then LTO.Full
-      else LTO.Thin
+      if isMac then LTO.Full else LTO.Thin
     }
 
     /** Override needed for Scala Native 0.15.2. Remove after upgrading. */
@@ -655,8 +647,11 @@ object nativelib extends Module, NativeOptional {
       if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=14.0")
       else Seq.empty
 
+    /** _LIBUNWIND_IS_NATIVE_ONLY: see https://github.com/scala-native/scala-native/pull/5034
+      */
     override def nativeCompileOptions = Task {
-      super.nativeCompileOptions() ++ macosTarget :+ "-O3"
+      super.nativeCompileOptions() ++ macosTarget ++
+        Seq("-O3", "-D_LIBUNWIND_IS_NATIVE_ONLY")
     }
 
     override def nativeLinkingOptions = Task {
