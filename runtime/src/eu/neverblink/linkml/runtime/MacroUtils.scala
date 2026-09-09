@@ -134,6 +134,11 @@ trait MacroUtils(using val quotes: Quotes) {
     "scala.collection.immutable.Map",
   ).typeRef.appliedTo(wildcardBounds :: wildcardBounds :: Nil)
 
+  /** True if the type serializes to a sequence or a map rather than to a single scalar or object.
+    */
+  def isCollectionTpe(tpe: TypeRepr): Boolean =
+    tpe <:< seqOfWildcardTpe || tpe <:< mapOfWildcardsTpe
+
   /** Reports an error during macro expansion and immediately aborts the compilation.
     *
     * @param msg
