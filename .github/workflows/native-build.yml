@@ -1,19 +1,8 @@
 name: Native build
 
-# The release build's native half, run before merging.
-#
-# By default this is the Windows legs only: they are the ones nothing else covers, since test.yml
-# builds the library on Linux and macOS is otherwise only reached at release time. Two labels widen
-# it, and both are expensive enough to be opt-in:
-#
-#   full-wheels  every platform, plus the musl wheels and the source distribution — the whole
-#                thing the release runs.
-#   test-sdist   install the source distribution on every platform. It ships IR rather than a
-#                library and links one during `pip install`, so this is the only thing that proves
-#                that path works anywhere but Linux.
-#
-# The jobs live in wheels.yml, which the release calls the same way, so what runs here is what runs
-# then.
+# Test native builds. By default, runs only 1 possible combination (Windows ARM
+# wheels) to make sure nothing is terribly broken. To run test all wheel combinations, give the PR
+# the `full-wheels` label. To also test installation from sdist, give it the `test-sdist` label.
 on:
   pull_request:
     branches: [ "main" ]
@@ -45,9 +34,7 @@ jobs:
              {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
              {"os":"windows-latest","platform":"windows-x86_64"},
              {"os":"windows-11-arm","platform":"windows-arm64"}]'
-        || '[{"os":"windows-latest","platform":"windows-x86_64"},
-             {"os":"windows-11-arm","platform":"windows-arm64"}]' }}
-      # Not platform-specific, and test.yml already covers it on Linux for every PR.
+        || '[{"os":"windows-11-arm","platform":"windows-arm64"}]' }}
       musl: ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels') }}
       # `test-sdist` needs the distribution built before it can install it.
       sdist: >-

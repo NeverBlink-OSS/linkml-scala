@@ -10,10 +10,6 @@ import scala.scalanative.unsafe.*
 
 /** The C ABI, built with Scala Native.
   *
-  * Same conventions as the GraalVM library in `nativelib`, with one difference: there is no
-  * isolate, so no function takes a thread argument. The runtime starts itself when the library is
-  * loaded.
-  *
   *   - Options are one JSON string, and may be NULL for defaults.
   *   - Failure is NULL plus a message written to `*error`. Loading returns handle 0 instead.
   *   - Every returned string belongs to the caller and must go back through `linkml_free`.

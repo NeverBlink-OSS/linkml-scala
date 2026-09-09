@@ -42,8 +42,7 @@ Changelog = "https://github.com/NeverBlink-OSS/linkml-scala/releases"
 path = "linkml_scala/_version.py"
 
 [tool.hatch.build.targets.sdist]
-# The jars are what makes this distribution buildable anywhere: hatch_build.py links them into a
-# shared library at install time. They are staged by `./mill nativelib.native.sdistTree`.
+# sdist files: they are staged by `./mill nativelib.native.sdistTree`.
 include = ["linkml_scala", "_native/nir", "_native/linker", "hatch_build.py", "README.md",
            "LICENSE"]
 

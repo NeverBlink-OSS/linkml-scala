@@ -9,7 +9,7 @@ import scala.scalanative.unsigned.*
 /** An [[OutputStream]] writing into malloc'd memory, so a generated document never has to exist as
   * a Scala string before it is handed to C.
   *
-  * Not thread-safe; one per call, which is how [[LinkMlCApi]] uses it.
+  * Not thread-safe. One per call, which is how [[LinkMlCApi]] uses it.
   */
 private[nativelib] final class MallocOutputStream extends OutputStream {
 
@@ -80,7 +80,7 @@ private[nativelib] object MallocOutputStream {
   /** Matches jsoniter's own buffer, so small documents never grow. */
   private val InitialCapacity = 32 * 1024
 
-  /** Double up to here, then grow by half, the same as the GraalVM library does. */
+  /** Double up to here, then grow by half. */
   private val DoublingLimit = 8 * 1024 * 1024
 
   private val MaxCapacity = Int.MaxValue - 8

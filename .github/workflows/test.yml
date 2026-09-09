@@ -131,9 +131,8 @@ jobs:
       - name: Show the LLVM toolchain
         run: clang --version
 
-      # Compiled serially first, then tested in parallel: linking is the expensive half and is
-      # safe to run concurrently. Native modules cannot be compiled in parallel; see
-      # CommonScalaNativeModule in build.mill.
+      # Compiled serially first, then tested in parallel.
+      # Native modules cannot be compiled in parallel, see CommonScalaNativeModule in build.mill.
       - name: Compile
         run: ./mill --no-server -j 1 __.native.__.compile
 
@@ -166,7 +165,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      # clang comes with the runner image. Printed so a change to the image fails visibly.
       - name: Show the LLVM toolchain
         run: clang --version
 
@@ -183,7 +181,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      # Native modules cannot be compiled in parallel; see CommonScalaNativeModule in build.mill.
+      # Native modules cannot be compiled in parallel. See CommonScalaNativeModule in build.mill.
       - name: Regenerate the bindings and check they are committed
         run: |
           ./mill --no-server -j 1 bindings
@@ -211,7 +209,7 @@ jobs:
           ./mill --no-server nativelib.native.pythonWheelTest
 
       # The source distribution ships Scala Native IR instead of a library and links it during
-      # `pip install`, which is what makes it installable on platforms we ship no wheel for.
+      # `pip install`.
       - name: Build the source distribution and install it from scratch
         env:
           PYTHON: ${{ steps.python-oldest.outputs.python-path }}

@@ -1,22 +1,10 @@
 """Loading the Scala Native shared library, and calling into it.
 
-The Scala Native counterpart of ``python/linkml_scala/_runtime.py``. Same public surface, so the
-rest of the package is shared verbatim and ``test_bindings.py`` runs against either build.
+Everything ctypes-shaped lives here. The public API in ``__init__`` deals in strings and dicts.
 
-Two differences from the GraalVM version.
-
-There is no isolate, so no call takes a thread argument.
-
-And every call runs on one dedicated thread, which also loads the library. Scala Native has no way
-to register a thread it did not create -- see scala-native#4951, where a maintainer confirms no such
-API exists and none is planned -- so a foreign thread that allocates crashes the process. Its
-collector also takes the address of one of its own locals as the bottom of the loading thread's
-stack and only scans from there down, which under ``dlopen`` lands halfway up whatever call stack
-happened to import us (scala-native#4334). Owning one thread solves both: the library is loaded near
-the base of that thread's stack, and it is the only thread ever inside.
-
-The cost is a thread hop per call, tens of microseconds against milliseconds of schema work, and no
-parallelism. The GraalVM build has neither limitation.
+The library exports one function per operation. Options travel as one JSON string, which may be NULL
+for defaults, so the common case never builds any JSON at all. Documents come back as plain strings,
+so a multi-megabyte SHACL graph is not escaped into JSON and parsed straight back out.
 """
 
 from __future__ import annotations
@@ -109,11 +97,7 @@ def _options(options: Mapping[str, Any] | None) -> bytes | None:
 
 
 class _Worker:
-    """The one thread that ever touches the library.
-
-    It loads it and then runs every call, so from Scala Native's point of view there is a single
-    thread, the one it saw at startup. That is the only arrangement it supports.
-    """
+    """LinkML-Scala native worker thread."""
 
     def __init__(self, path: Path) -> None:
         self._work: queue.SimpleQueue = queue.SimpleQueue()
@@ -128,9 +112,7 @@ class _Worker:
         self.lib: ctypes.CDLL = value
 
     def _loop(self, path: Path, ready: queue.SimpleQueue) -> None:
-        # Loading here rather than on the caller's thread is the point. The library constructor
-        # runs Scala Native's GC init, which records this thread's stack, and this frame is as
-        # close to the base of it as we can get.
+        # Load the library from this thread and keep all calls to this thread.
         try:
             lib = ctypes.CDLL(str(path))
             # dlopen and the library constructor run several frames below this one, so the stack
@@ -139,7 +121,7 @@ class _Worker:
             lib.linkml_init_threads.argtypes = []
             lib.linkml_init_threads.restype = ctypes.c_int
             lib.linkml_init_threads()
-        except BaseException as error:  # noqa: BLE001 - handed back to the caller as-is
+        except BaseException as error:  # noqa: BLE001 - returned to the caller as-is
             ready.put((False, error))
             return
         ready.put((True, lib))
@@ -148,7 +130,7 @@ class _Worker:
             call, box = self._work.get()
             try:
                 box.put((True, call()))
-            except BaseException as error:  # noqa: BLE001 - handed back to the caller as-is
+            except BaseException as error:  # noqa: BLE001 - returned to the caller as-is
                 box.put((False, error))
 
     def run(self, call: Callable[[], Any]) -> Any:
@@ -168,8 +150,8 @@ class _Worker:
 class Runtime:
     """The loaded library, and the calls into it.
 
-    Thread-safe: calls from any thread are handed to the one worker thread that owns the library.
-    They are therefore serialised rather than run in parallel.
+    Thread-safe: calls from any thread are passed to the one worker thread that owns the library.
+    They are therefore serialised.
 
     Prefer the process-wide instance from :func:`runtime` over building your own.
     """

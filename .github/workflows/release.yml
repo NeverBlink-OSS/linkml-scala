@@ -46,8 +46,6 @@ jobs:
     strategy:
       matrix:
         # Oldest available image per platform, so the binaries stay usable on older systems.
-        # No windows-11-arm: GraalVM native-image has no Windows/ARM64 target. That platform
-        # still gets a shared library and a wheel, which Scala Native can build - see wheels.yml.
         os: [macos-14, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
     steps:
       - name: Checkout Repository
@@ -68,9 +66,6 @@ jobs:
           distribution: temurin
           java-version: 17 # The minimal JDK version for Scala Next
 
-      # Required by GraalVM Native Image on Windows to find cl.exe. Not ilammy/msvc-dev-cmd: that
-      # one still targets Node 20, which GitHub now warns about, and has been unmaintained since
-      # early 2024.
       - name: Setup MSVC (Windows only)
         if: runner.os == 'Windows'
         uses: TheMrMilchmann/setup-msvc-dev@v4.1.0
@@ -114,8 +109,8 @@ jobs:
 
 
   wheels:
-    # The library, the release archives, the wheels and the source distribution. Same workflow you
-    # can run by hand from the Actions tab to check a change before tagging.
+    # The library, the release archives, the wheels and the source distribution.
+    # This can be tested in PRs – see native-build.yml.
     name: Wheels
     uses: ./.github/workflows/wheels.yml
 

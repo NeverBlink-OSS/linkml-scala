@@ -1,8 +1,6 @@
-// Copied verbatim from Scala Native 0.5.12 (BSD 3-Clause, (c) EPFL) with one change, marked below.
+// Copied verbatim from Scala Native 0.5.12 (Apache 2.0, (c) EPFL) with one change, marked below.
 //
-// Scala Native's linker takes the first classpath entry that defines a symbol, and our own classes
-// come before the resolved jars, so this file replaces the one in nativelib. Delete it, and the
-// directory, once we build against 0.5.13 or later.
+// Delete this after upgrading to Scala Native 0.5.13, which includes this fix.
 //
 // Original:
 // https://github.com/scala-native/scala-native/blob/v0.5.12/nativelib/src/main/scala/scala/scalanative/meta/LinktimeInfo.scala
@@ -56,15 +54,7 @@ object LinktimeInfo {
   )
   def isWeakReferenceSupported: Boolean = resolved
 
-  // THE CHANGE. Upstream returns true for any 64-bit Unix, but delimcc.c only implements x86-64,
-  // i386 and aarch64, so on anything else Scala Native turns on a feature it has no code for and
-  // the build dies on `#error "Unsupported platform"`. That is what stops the sdist installing on
-  // riscv64. Fixed upstream in scala-native#4937, which landed three days after 0.5.12 was tagged.
-  //
-  // We return false outright rather than copying upstream's architecture list: we use neither
-  // continuations nor virtual threads, and false is the same on every platform we ship, so every
-  // wheel build exercises it. An architecture list would only differ on platforms our CI never
-  // builds, leaving the interesting case untested.
+  // CHANGE: set to false. Patch for https://github.com/scala-native/scala-native/issues/5031
   @resolvedAtLinktime()
   def isContinuationsSupported: Boolean = false
 

@@ -18,11 +18,11 @@ The wheels on [PyPI](https://pypi.org/project/neverblink-linkml/) bundle the nat
 | OS            | Architectures        |
 |---------------|----------------------|
 | Linux (glibc) | x86-64, ARM64        |
-| Linux (musl)  | x86-64               |
+| Linux (musl)  | x86-64, ARM64        |
 | macOS         | Apple silicon, Intel |
-| Windows       | x86-64               |
+| Windows       | x86-64, ARM64        |
 
-Python 3.10 or newer, 64-bit only.
+We also provide source distributions (*sdist*), which should work on any platform. To use the sdist, you must have on your system Java 17+ and Clang. 
 
 ## Usage
 
@@ -113,8 +113,7 @@ Here we measured only the time to generate the output, not the time to load the 
 
 ## How it works
 
-The library is compiled with [Scala Native](https://scala-native.org/), and exports one C function
-per operation:
+The library is compiled with [Scala Native](https://scala-native.org/), and exports one C function per operation:
 
 ```c
 char* linkml_shacl      (long long handle, const char* opts, char** err);
@@ -132,25 +131,18 @@ char*     linkml_build_info (char** err);
 
 Conventions:
 
-**Options are one JSON string, and may be NULL.** Options are the part that changes as generators
-grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
+**Options are one JSON string, and may be NULL.** Options are the part that changes as generators grow, so keeping them out of the signatures keeps the ABI stable. NULL means "use defaults":
 
 ```c
 char *shacl = linkml_shacl(handle, NULL, &err);               /* defaults */
 char *open  = linkml_shacl(handle, "{\"open\":true}", &err);  /* one option */
 ```
 
-**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`.
-Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be
-freed by the caller with `linkml_free`.
+**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.
 
 A loaded schema is an integer handle.
 
-**One thread.** Scala Native cannot register a thread it did not create
-([scala-native#4951](https://github.com/scala-native/scala-native/issues/4951)), so the library has
-to be used from a single thread, which calls `linkml_init_threads()` once before anything else. The
-Python bindings do this for you: they own a worker thread and hand every call to it, so calling from
-several Python threads is safe, just not parallel.
+**One thread.** Due to a current limitation in Scala Native, the library has to be used from a single thread, which calls `linkml_init_threads()` once before anything else. The Python bindings do this for you: they own a worker thread and send all requests to it. Calling LinkML-Scala from multiple threads in Python is safe, but the calls will be executed serially.
 
 ## Building it yourself
 
@@ -160,10 +152,7 @@ You need JDK 17+, clang, and Python 3.10 or newer. Then:
 LINKML_NATIVE=1 ./mill nativelib.native.installPythonLib
 ```
 
-Scala Native modules are hidden unless `LINKML_NATIVE=1`, because the toolchain is slow — see
-[CONTRIBUTING](../CONTRIBUTING.md#scala-native). That task links the library and copies it into
-`python/linkml_scala/_lib/`, where the Python package looks for it. Takes about 20 seconds and
-produces an 11 MB `liblinkml_scala.so`.
+Scala Native modules are hidden in the mill project unless `LINKML_NATIVE=1` – see [CONTRIBUTING](../CONTRIBUTING.md#scala-native). That task links the library and copies it into `python/linkml_scala/_lib/`, where the Python package looks for it.
 
 To use the package, put `python/` on your path:
 
@@ -188,87 +177,13 @@ LINKML_NATIVE=1 ./mill nativelib.native.pythonWheel      # out/nativelib/native/
 LINKML_NATIVE=1 ./mill nativelib.native.pythonWheelTest  # installs it in a throwaway virtualenv
 ```
 
-Releases ship wheels for Linux, macOS and Windows on x86-64 and ARM64, glibc and musl. The musl
-wheels are built natively in an Alpine container — Scala Native needs only clang, so no cross
-toolchain is involved.
+Releases include wheels for Linux, macOS and Windows on x86-64 and ARM64, glibc and musl.
 
 ### The source distribution
 
-There is also a source distribution, for platforms we ship no wheel for. It carries Scala Native IR
-and Scala Native's linker instead of a compiled library, and links one during `pip install`, so it
-works on anything Scala Native supports. That needs a JVM and clang on the installing machine;
-`pip install --only-binary :all: neverblink-linkml` avoids it if you would rather have a wheel.
+There is also a source distribution, for platforms that we don't have wheels for. The sdist contains Scala Native IR (NIR) and a portable linker. The linking and final compilation is done during `pip install` – this requires Java 17+ and Clang to be installed on your system. You can force pip to install from a wheel with `pip install --only-binary :all: neverblink-linkml`.
 
 ```shell
 LINKML_NATIVE=1 ./mill nativelib.native.sdist      # out/nativelib/native/sdist.dest/*.tar.gz
 LINKML_NATIVE=1 ./mill nativelib.native.sdistTest  # installs it in a virtualenv and runs the tests
 ```
-
-#### Which platforms it actually reaches
-
-"Anything Scala Native supports" is the real bound, and that set is narrower than it looks. The test
-case is an emulated `riscv64` Debian.
-
-The first thing in the way was delimited continuations. `delimcc.c` implements x86-64, i386 and
-aarch64 only, while 0.5.12's `LinktimeInfo.isContinuationsSupported` is true for any 64-bit Unix, so
-Scala Native turned on a feature it has no code for and the install died on
-`delimcc.c:39:2: error: "Unsupported platform"`. Nothing here uses continuations or virtual threads,
-but the runtime links them in through javalib regardless, and neither `--compile-option` nor
-`--copt -U__SCALANATIVE_DELIMCC` suppresses the file, so it cannot be turned off from outside.
-
-Upstream fixed this in [scala-native#4937](https://github.com/scala-native/scala-native/pull/4937),
-three days after 0.5.12 was tagged. Until we build against 0.5.13 we carry our own fix in
-[`nativelib/src/scala/scalanative/meta/LinktimeInfo.scala`](../nativelib/src/scala/scalanative/meta/LinktimeInfo.scala):
-a copy of the upstream file with the flag hardcoded to false. The linker takes the first classpath
-entry defining a symbol, so our copy replaces nativelib's — which is also why `runClasspath` is
-overridden in `build.mill` to put our classes first. `delimcc.c` sits entirely behind
-`#ifdef __SCALANATIVE_DELIMCC`, a macro emitted only when the extern object carrying
-`@define("__SCALANATIVE_DELIMCC")` is reachable, so with the flag off the file compiles to nothing.
-Confirmed by `nm`: `delimcc.c.o` goes from 39 symbols to zero, and everything else is unchanged.
-
-With that out of the way the sdist compiles, links and installs on `riscv64`. It is still not a
-platform we can claim, because the next thing breaks at runtime:
-
-```
-ScalaNative Fatal Error: Failed to throw exception, not found a valid catch handler
-for unwinding execution stack.
-```
-
-Four tests pass and the fifth, which expects a rejected option to come back as an error, aborts the
-process instead. Since every error path in the bindings is an exception, that makes the library
-unusable there.
-
-The message comes from `eh.c`, after `_Unwind_RaiseException` has returned without finding a
-handler. Scala Native does not use the system unwinder: it vendors LLVM's libunwind (20.1.4) as
-source and adds its own personality routine and LSDA parser, which is why the library needs nothing
-beyond libc and libm. Ruled out so far: the unwind sections are all present; `eh.c` gets its
-exception registers from `__builtin_eh_return_data_regno`, so they are correct per architecture;
-`libgcc_s` is not loaded, so nothing is interposing on the 18 `_Unwind_*` symbols we export; the
-vendored libunwind does handle `riscv64`, including the register save and restore assembly, and
-those objects are built; and `-funwind-tables` changes nothing, which fits clang already emitting
-`.eh_frame` for ordinary code there. libunwind's own `LIBUNWIND_PRINT_UNWINDING` trace would say
-where the walk stops, but it is compiled out under `NDEBUG` and `--compile-option -UNDEBUG` loses to
-Scala Native's own `-DNDEBUG` later on the command line.
-
-There is a second exception backend that uses the real C++ ABI personality, turned on when
-`cppOptions` contains `-fcxx-exceptions`. It is not reachable from here: the linker CLI advertises
-`--cppopt` for that, but the option lands on the C compiles instead — clang reports
-`-fcxx-exceptions` as unused — and the generated code keeps `scalanative_personality`. That looks
-like an upstream bug worth reporting on its own. It may also explain why LTO broke exception
-handling for us, since enabling LTO switches Scala Native to that same backend.
-
-So the practical set stays x86-64 and aarch64, on glibc and musl, plus macOS and Windows. `ppc64le`,
-`s390x` and `loongarch64` are past the same first hurdle now and untested beyond it.
-
-Nothing in the packaging is in the way any more, at least. Linux wheel tags take the machine name as
-it comes, so a new architecture needs no change here, and anywhere we ship no wheels at all — the
-BSDs, which Scala Native does support — the tag falls back to whatever `sysconfig` calls the
-platform. Untested, but there is no list to keep up to date and no architecture left to reject.
-
-The fix landed three days after 0.5.12 was tagged, so we do not have it, and it should arrive in
-0.5.13. Untested on our side: the only published nightly is from July and does not carry the Scala 3
-artifacts we need, so there is no snapshot to try it with.
-
-Each release also attaches a prebuilt archive per platform, `linkml-scala-lib-<os>-<arch>`, laid out
-as a normal install prefix – `include/`, `lib/` and a pkg-config file – so C, C++ and Rust callers can
-use the same library. [`nativelib/smoke.c`](../nativelib/smoke.c) is a worked example in C.

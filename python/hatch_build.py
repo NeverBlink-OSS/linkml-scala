@@ -1,20 +1,10 @@
-"""Building the shared library when needed, and tagging the wheel that carries it.
+"""Building the shared library when needed, and tagging the wheel that contains it.
 
 A wheel build normally finds the library already staged in ``linkml_scala/_lib`` by
-``./mill nativelib.native.pythonWheel``. A build from the source distribution does not: that
-distribution carries Scala Native IR and Scala Native's linker instead of a compiled library, so
-the target-specific half of the build happens here, on the machine doing the install. That is what
-makes it installable on any platform Scala Native supports rather than only the ones we ship wheels
-for. It needs a JVM and clang, and nothing from the network.
-
-The platform tag must name the oldest system the library still runs on, so that pip installs the
-correct wheel. We read that out of the library itself:
-
-  * Linux: the highest ``GLIBC_x.y`` the library asks for (manylinux).
-  * macOS: the minimum OS version recorded in the Mach-O header.
-  * Windows: no such thing exists, so the tag is only the architecture.
-  * Anywhere else, the BSDs included: whatever ``sysconfig`` calls the platform. Only a source
-    build can land there, and it is installed on the machine that just built it.
+``./mill nativelib.native.pythonWheel``. A build from the source distribution instead uses the
+distribution that includes Scala Native IR and Scala Native's linker, so
+the target-specific half of the build happens here, on the machine doing the install.
+It needs a JVM and clang, and nothing from the network.
 
 Set ``LINKML_SCALA_WHEEL_PLATFORM`` to override the whole platform tag. Run it like::
 
@@ -39,15 +29,12 @@ NIR_DIR = "_native/nir"
 LINKER_DIR = "_native/linker"
 LINKER_MAIN = "scala.scalanative.cli.ScalaNativeLd"
 
-# Kept in step with build.mill. See docs/python_bindings.md for why these and not the defaults.
+# Kept in step with build.mill.
 GC = os.environ.get("LINKML_SCALA_GC", "immix")
 MODE = os.environ.get("LINKML_SCALA_MODE", "release-fast")
 LTO = os.environ.get("LINKML_SCALA_LTO", "none")
 COMPILE_OPTIONS = os.environ.get("LINKML_SCALA_COPTS", "").split()
 
-# Only the names the kernel and the wheel tag disagree on. Linux tags use the machine name as-is,
-# so anything else passes through: the source distribution links wherever Scala Native and clang
-# do, and there is no list of those worth keeping up to date.
 LINUX_ARCHITECTURE_ALIASES = {"amd64": "x86_64", "arm64": "aarch64"}
 MACOS_ARCHITECTURES = {"x86_64": "x86_64", "amd64": "x86_64", "arm64": "arm64", "aarch64": "arm64"}
 WINDOWS_ARCHITECTURES = {"amd64": "amd64", "x86_64": "amd64", "arm64": "arm64"}
@@ -118,8 +105,6 @@ def link(root: Path) -> Path:
         "--gc", GC,
         "--mode", MODE,
         "--lto", LTO,
-        # The bindings drive the library from one dedicated thread, the only arrangement Scala
-        # Native supports for a library another runtime loads.
         "--multithreading", "false",
         *[arg for option in COMPILE_OPTIONS for arg in ("--compile-option", option)],
         "--outpath", str(output),
@@ -147,8 +132,6 @@ def platform_tag(library: Path) -> str:
         return f"macosx_{major}_{minor}_{architecture(MACOS_ARCHITECTURES, machine)}"
     if sys.platform == "win32":
         return f"win_{architecture(WINDOWS_ARCHITECTURES, machine)}"
-    # Somewhere we ship no wheels for, so this can only be a source build, and pip just needs a
-    # name for the wheel it is about to install here and now. Give it the one setuptools would.
     return sysconfig.get_platform().replace("-", "_").replace(".", "_").lower()
 
 
