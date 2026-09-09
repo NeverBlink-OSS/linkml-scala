@@ -3,13 +3,14 @@ package eu.neverblink.linkml.js
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
+import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode}
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
@@ -254,6 +255,12 @@ object LinkMlJsApi {
       ),
     )
 
+  /** The YAML-or-JSON format the caller named, as the generators spell it. */
+  private def outputFormat(format: String): JsonOutputFormat =
+    JsonOutputFormat.parse(format).getOrElse(
+      throw RuntimeException(JsonOutputFormat.unknownFormat(format)),
+    )
+
   /** The RDF format the caller named, as the generators spell it. */
   private def rdfFormat(format: String): RdfFormat = format.toLowerCase match {
     case "nt" | "ntriples" => RdfFormat.nt
@@ -290,12 +297,7 @@ object LinkMlJsApi {
   ): String = {
     val mode = PruningMode(pruningMode, treeRoot.toOption)
 
-    val format = outFormat.toLowerCase match {
-      case "yaml" => LinkMlGenerator.OutputFormat.yaml
-      case "yml" => LinkMlGenerator.OutputFormat.yaml
-      case "json" => LinkMlGenerator.OutputFormat.json
-      case s => throw RuntimeException(s"Unknown output format: $s")
-    }
+    val format = outputFormat(outFormat)
     LinkMlGenerator(using schema.underlying).serialize(
       LinkMlGenerator.Options(
         pruningMode = mode,
@@ -417,6 +419,40 @@ object LinkMlJsApi {
         target,
       ),
     )
+
+  /** Generate an Apache Ossie ontology from a loaded LinkML schema. Classes become entity types,
+    * enums and named types become value types, and slots become the relationships grouped under the
+    * concept that plays their first role.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Pruning mode to use for choosing which elements become concepts. One of
+    *   treeRoot|schema|skip. treeRoot - only elements reachable from the tree_root class. schema -
+    *   only elements reachable from any of the classes defined in the root schema. skip - every
+    *   element. Default: skip
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
+    *   tree root pruning mode.
+    * @param outFormat
+    *   Output serialization format to use. One of yaml|json. Default: yaml
+    * @return
+    *   The ontology, serialized in the specified format.
+    */
+  def ossie(
+      schema: SchemaViewJs,
+      pruningMode: String = "skip",
+      treeRoot: js.UndefOr[String] = js.undefined,
+      outFormat: String = "yaml",
+  ): String = {
+    val format = outputFormat(outFormat)
+    OssieGenerator(using schema.underlying).serialize(
+      OssieGenerator.Options(
+        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+        outputFormat = format,
+      ),
+    )
+  }
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This
     * method returns a structured JSON that follows the validation-report.yaml model.

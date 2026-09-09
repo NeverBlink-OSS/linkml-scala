@@ -432,11 +432,28 @@ object generator extends Module, NativeOptional {
           os.call(("npm", "ci"), cwd = mermaidDir, stdout = os.Inherit, stderr = os.Inherit)
       }
 
+      /** Where `ossieRepo` puts the apache/ossie checkout. */
+      def ossieDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "ossie-repo"
+
+      /** Clone apache/ossie, so that `OssieIntegrationSpec` also checks the generated ontologies
+        * with the upstream `validation/validate.py`.
+        */
+      def ossieRepo(args: String*) = Task.Command(exclusive = true) {
+        if !os.exists(ossieDir) then
+          os.call(
+            ("git", "clone", "--depth=1", "https://github.com/apache/ossie", ossieDir),
+            stdout = os.Inherit,
+            stderr = os.Inherit,
+          )
+      }
+
       // Point BenchmarkSchemaSpec at the fetched datasets, so they are cloned before the tests run,
-      // and ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`.
+      // ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`, and
+      // OssieIntegrationSpec at the checkout prepared by `ossieRepo`.
       override def forkEnv = super.forkEnv() ++ Map(
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
+        "LINKML_OSSIE_REPO" -> ossieDir.toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
     }

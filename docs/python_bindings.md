@@ -36,7 +36,7 @@ with linkml_scala.load_file("model.yaml") as schema:
         print(issue["severity"], issue["message"])
 ```
 
-A schema is parsed once and reused across generators, the same way the [JavaScript bindings](../generator/npm/README.md) work. All eight generators are available, plus the schema validator.
+A schema is parsed once and reused across generators, the same way the [JavaScript bindings](../generator/npm/README.md) work. All generators are available, plus the schema validator.
 
 ## The API
 
@@ -64,6 +64,7 @@ schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, 
 schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_identifier=False)
 schema.graphql(pruning_mode="schema", tree_root=None)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
+schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml")
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
 schema.translation(to="base")
 ```

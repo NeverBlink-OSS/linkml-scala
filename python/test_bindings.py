@@ -359,6 +359,22 @@ class GeneratorTest(unittest.TestCase):
         # Class-ranged slots become relationship lines instead.
         self.assertIn('Person ||--o| Animal : "pet"', generated)
 
+    def test_ossie(self):
+        generated = self.schema.ossie()
+        # Classes become entity types, and slots become relationships under them.
+        self.assertIn("concept: Person", generated)
+        self.assertIn("type: EntityType", generated)
+        # YAML by default, and the version the Ossie ontology spec pins.
+        self.assertIn("version: 0.2.0.dev0", generated)
+        as_json = json.loads(self.schema.ossie(output_format="json"))
+        self.assertEqual("0.2.0.dev0", as_json["version"])
+        self.assertIn("Person", [c["concept"] for c in as_json["ontology"]])
+
+    def test_ossie_unknown_output_format_is_rejected(self):
+        with self.assertRaises(linkml_scala.LinkMlError) as raised:
+            self.schema.ossie(output_format="toml")
+        self.assertIn("toml", str(raised.exception))
+
     def test_scala(self):
         files = self.schema.scala(package="com.example.model")
         self.assertIn("Person.scala", files)
@@ -502,7 +518,7 @@ class RuntimeTest(unittest.TestCase):
         # The emoji is in the slot name, not just the description, because the ER diagram renders
         # names and types but no descriptions.
         with linkml_scala.load_string(unicode_schema) as loaded:
-            for name in ("linkml", "graphql", "translation", "json_schema"):
+            for name in ("linkml", "graphql", "translation", "json_schema", "ossie"):
                 with self.subTest(generator=name):
                     generated = getattr(loaded, name)()
                     self.assertIn("🐍", generated)

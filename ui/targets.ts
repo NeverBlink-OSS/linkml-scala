@@ -109,6 +109,20 @@ export const TARGETS: Target[] = [
     call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
   },
   {
+    id: "ossie",
+    label: "Apache Ossie",
+    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    options: [
+      // Defaults to `skip` for the same reason as Frictionless: a root schema may only import its
+      // classes, and an ontology with no concepts at all is not valid Ossie.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "treeRoot", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
+      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+    ],
+    call: (api, v, o) =>
+        api.ossie(v, String(o.pruningMode || "skip"), blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
+  },
+  {
     id: "frictionless",
     label: "Frictionless",
     lang: "json",

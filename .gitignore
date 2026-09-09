@@ -39,6 +39,9 @@ target/
 node_modules/
 ui/dist/
 
+# apache/ossie checkout for OssieIntegrationSpec, cloned by `./mill generator.jvm.test.ossieRepo`
+/generator/test/ossie-repo/
+
 # AI
 .claude/
 

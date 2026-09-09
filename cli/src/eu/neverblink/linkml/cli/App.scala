@@ -37,6 +37,7 @@ final class App private[cli] (
     GraphQl,
     ErDiagram,
     Translation,
+    Ossie,
     Version,
   )
 

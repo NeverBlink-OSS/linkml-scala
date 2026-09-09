@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.util.PruningMode.*
+import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -253,14 +254,14 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     "serialize yaml format without errors" in {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       LinkMlGenerator(using sv).serialize(
-        LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.yaml),
+        LinkMlGenerator.Options(outputFormat = JsonOutputFormat.yaml),
       ).isEmpty shouldBe false
     }
 
     "serialize json format without errors" in {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       LinkMlGenerator(using sv).serialize(
-        LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.json),
+        LinkMlGenerator.Options(outputFormat = JsonOutputFormat.json),
       ).isEmpty shouldBe false
     }
 
@@ -279,7 +280,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       LinkMlGenerator(using sv).serialize(
         LinkMlGenerator.Options(
           pruningMode = treeRoot(None),
-          outputFormat = LinkMlGenerator.OutputFormat.json,
+          outputFormat = JsonOutputFormat.json,
         ),
       ) shouldBe
         """{
@@ -326,7 +327,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       LinkMlGenerator(using sv).serialize(
         LinkMlGenerator.Options(
           pruningMode = treeRoot(None),
-          outputFormat = LinkMlGenerator.OutputFormat.json,
+          outputFormat = JsonOutputFormat.json,
         ),
       ) shouldBe
         """{
@@ -347,7 +348,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       // The same nodes feed the YAML output, which must quote them for the same reason.
       val yaml =
         LinkMlGenerator(using sv).serialize(
-          LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.yaml),
+          LinkMlGenerator.Options(outputFormat = JsonOutputFormat.yaml),
         )
       yaml should include("""title: "123"""")
       yaml should include("""description: "true"""")

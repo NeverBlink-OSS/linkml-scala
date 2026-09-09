@@ -5,6 +5,7 @@ import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
+import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -140,6 +141,12 @@ object LinkMlNativeApi {
       out,
       Options.translation(optionsJson),
     )
+
+  /** An Apache Ossie ontology, as YAML or JSON depending on the `outputFormat` option. */
+  def ossie(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    OssieGenerator().writeTo(out, Options.ossie(optionsJson))
+  }
 
   // Results that are structured, and so come back as JSON
 
