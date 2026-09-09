@@ -210,7 +210,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           |  rdfs:comment "Represents an employee." ;
           |  rdfs:subClassOf <https://neverblink.eu/linkml/rdfs/test/Person> .
           |
-          |<https://neverblink.eu/linkml/rdfs/test/worksFor> a rdf:Property ;
+          |<https://neverblink.eu/linkml/rdfs/test/works_for> a rdf:Property ;
           |  rdfs:comment "Property indicating who an employee works for." ;
           |  rdfs:range <https://neverblink.eu/linkml/rdfs/test/Person> .
           |
