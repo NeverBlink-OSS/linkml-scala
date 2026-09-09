@@ -134,11 +134,11 @@ final case class TypeAttributeView(
     combineOption(slot.implicitPrefix, _type.implicitPrefix, combineFallback)
 
   /** @see [[slot.minimumValue]] */
-  def minimumValue: Option[Anything] =
+  def minimumValue: Option[LinkmlAny] =
     combineOption(slot.minimumValue, _type.minimumValue, combineMin)
 
   /** @see [[slot.maximumValue]] */
-  def maximumValue: Option[Anything] =
+  def maximumValue: Option[LinkmlAny] =
     combineOption(slot.maximumValue, _type.maximumValue, combineMax)
 
 /** Slot's range is an enum.

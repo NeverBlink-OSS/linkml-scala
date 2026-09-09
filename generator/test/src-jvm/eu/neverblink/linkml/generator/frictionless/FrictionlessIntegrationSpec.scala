@@ -16,6 +16,10 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
   override val globalEnable: Boolean =
     os.call((frictionless, "--version"), check = false).exitCode == 0 || System.getenv("CI") != null
 
+  override val skipModels: Map[String, String] = Map(
+    "aliases" -> "Not expressible: aliases never get mangled, frictionless resources must be lowercase",
+  )
+
   override val skipInstances: Map[(String, String), String] = Map(
     ("typeDesignator", "unknownType") ->
       "LNK-101/LNK-102: not yet implemented, so unknown types get accepted",
@@ -144,11 +148,12 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
           s"multi-table valid instance ${valid.name}" in {
             val thisDir = multiTableDir / entry.name / valid.name
 
-            val main = entry.model.treeRoot.getOrElse(fail("no tree root")).name
+            val main =
+              FrictionlessRenamer.className(entry.model.treeRoot.getOrElse(fail("no tree root")))
             os.copy.over(packageDir, thisDir, createFolders = true)
 
             os.write.over(
-              thisDir / "data" / (main.toLowerCase + ".csv"),
+              thisDir / "data" / (main + ".csv"),
               valid.csv.get,
               createFolders = true,
             )
@@ -171,7 +176,8 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
           s"multi-table invalid instance ${valid.name}" in {
             val thisDir = multiTableDir / entry.name / valid.name
 
-            val main = entry.model.treeRoot.getOrElse(fail("no tree root")).name
+            val main =
+              FrictionlessRenamer.className(entry.model.treeRoot.getOrElse(fail("no tree root")))
             os.copy.over(packageDir, thisDir, createFolders = true)
 
             os.write.over(

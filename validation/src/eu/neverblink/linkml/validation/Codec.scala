@@ -31,6 +31,12 @@ object Codec {
   private val unknownReference: LinkmlYamlCodec[UnknownReferenceImpl] = LinkmlYamlCodec.derived
   private val unknownStringReference: LinkmlYamlCodec[UnknownStringReferenceImpl] =
     LinkmlYamlCodec.derived
+  private val emptyName: LinkmlYamlCodec[EmptyNameImpl] = LinkmlYamlCodec.derived
+  private val flankingSeparator: LinkmlYamlCodec[FlankingSeparatorImpl] = LinkmlYamlCodec.derived
+  private val nonAsciiName: LinkmlYamlCodec[NonAsciiNameImpl] = LinkmlYamlCodec.derived
+  private val nonStandardSeparator: LinkmlYamlCodec[NonStandardSeparatorImpl] =
+    LinkmlYamlCodec.derived
+  private val repeatedSeparator: LinkmlYamlCodec[RepeatedSeparatorImpl] = LinkmlYamlCodec.derived
 
   private given issueCodec: LinkmlYamlCodec[SchemaIssue] =
     LinkmlYamlCodec.typeDesignatorCodec(
@@ -72,6 +78,23 @@ object Codec {
           "UnknownStringReference",
           classOf[UnknownStringReferenceImpl],
           unknownStringReference,
+        ),
+        TypeDesignatorEntry("EmptyNameImpl", classOf[EmptyNameImpl], emptyName),
+        TypeDesignatorEntry(
+          "FlankingSeparatorImpl",
+          classOf[FlankingSeparatorImpl],
+          flankingSeparator,
+        ),
+        TypeDesignatorEntry("NonAsciiNameImpl", classOf[NonAsciiNameImpl], nonAsciiName),
+        TypeDesignatorEntry(
+          "NonStandardSeparatorImpl",
+          classOf[NonStandardSeparatorImpl],
+          nonStandardSeparator,
+        ),
+        TypeDesignatorEntry(
+          "RepeatedSeparatorImpl",
+          classOf[RepeatedSeparatorImpl],
+          repeatedSeparator,
         ),
       ),
     )

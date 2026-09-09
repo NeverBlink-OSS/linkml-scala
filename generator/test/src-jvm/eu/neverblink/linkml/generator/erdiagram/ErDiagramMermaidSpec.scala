@@ -104,7 +104,7 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
                     |""".stripMargin,
     // A digit is legal in an attribute name, but not as its first character. An entity name may not
     // begin with one at all, since Mermaid's lexer reaches for `NUM` first.
-    // TODO LNK-159: update this test to be in-line with whatever we think up
+    // TODO LNK-206: Port ErDiagramGenerator into the renaming framework
 //    "leadingDigitNames" -> """  1class:
 //                             |    attributes:
 //                             |      1st slot:

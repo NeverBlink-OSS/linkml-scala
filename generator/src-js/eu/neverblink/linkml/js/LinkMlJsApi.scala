@@ -7,6 +7,7 @@ import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode}
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
@@ -393,6 +394,27 @@ object LinkMlJsApi {
       ErDiagramGenerator.Options(
         pruningMode = PruningMode(pruningMode, treeRoot.toOption),
         optionalMarker = optionalMarker,
+      ),
+    )
+
+  /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
+    * useful when the framework symbols are significant and must be known, like when constructing a
+    * query that is meant to be executed against a database conformant to a LinkML schema.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param target
+    *   Target framework to generate translations for. One of "base", "uri", "scala", or "graphql".
+    * @return
+    *   Translation dictionary for translating the linkml names to framework names.
+    */
+  def translation(
+      schema: SchemaViewJs,
+      target: String,
+  ): String =
+    TranslationGenerator(using schema.underlying).serialize(
+      TranslationGenerator.Options(
+        target,
       ),
     )
 

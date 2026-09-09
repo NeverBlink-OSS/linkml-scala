@@ -1,16 +1,17 @@
 package eu.neverblink.linkml.nativelib
 
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.JsonUtil
-import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
+import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
 import org.virtuslab.yaml.{Node, StringNode}
 
@@ -129,6 +130,16 @@ object LinkMlNativeApi {
     given SchemaView = view(handle)
     ErDiagramGenerator().writeTo(out, Options.erDiagram(optionsJson))
   }
+
+  def translation(
+      handle: Long,
+      optionsJson: String,
+      out: OutputStream,
+  ): Unit =
+    TranslationGenerator(using view(handle)).writeTo(
+      out,
+      Options.translation(optionsJson),
+    )
 
   // Results that are structured, and so come back as JSON
 

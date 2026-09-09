@@ -1,8 +1,8 @@
 {
-  "stringSlot": "string",
-  "booleanSlot": true,
-  "intSlot": 100,
-  "floatSlot": 0.01,
-  "dateSlot": "last year",
-  "customSlot": "001 custom"
+  "string_slot": "string",
+  "boolean_slot": true,
+  "int_slot": 100,
+  "float_slot": 0.01,
+  "date_slot": "last year",
+  "custom_slot": "001 custom"
 }

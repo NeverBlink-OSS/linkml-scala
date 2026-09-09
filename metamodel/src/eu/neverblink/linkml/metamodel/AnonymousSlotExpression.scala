@@ -89,11 +89,11 @@ final case class AnonymousSlotExpressionImpl(
     @named("maximum_cardinality")
     maximumCardinality: Option[Int] = None,
     @named("maximum_value")
-    maximumValue: Option[Anything] = None,
+    maximumValue: Option[LinkmlAny] = None,
     @named("minimum_cardinality")
     minimumCardinality: Option[Int] = None,
     @named("minimum_value")
-    minimumValue: Option[Anything] = None,
+    minimumValue: Option[LinkmlAny] = None,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")

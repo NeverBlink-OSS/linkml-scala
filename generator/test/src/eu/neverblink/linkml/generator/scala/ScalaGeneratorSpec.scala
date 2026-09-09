@@ -553,9 +553,9 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
 
-      files("SomeClass.scala") should include("def someSlot: MyAny")
-      files("SomeClass.scala") should include("someSlot: MyAny,")
-      files("MyAny.scala") should include("type MyAny = LinkmlAny")
+      files("SomeClass.scala") should include("def someSlot: LinkmlAny")
+      files("SomeClass.scala") should include("someSlot: LinkmlAny,")
+      files.keys should not contain "MyAny.scala"
     }
 
     "generate a slot combining function for linkml:SlotDefinition" in {

@@ -10,6 +10,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
@@ -322,4 +323,27 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
         optionalMarker = options.optionalMarker,
       ),
     )
+}
+
+@HelpMessage(
+  "Generate translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs.",
+)
+@ArgsName("<input-file>")
+final case class TranslationOptions(
+    @Recurse
+    common: GenerateOptions,
+    @HelpMessage(
+      s"Framework name to generate a translation dict for. One of: ${TranslationGenerator.availableValues}",
+    )
+    target: String = "base",
+) extends HasGenerateOptions
+
+object Translation extends StreamGenerate[TranslationOptions] {
+  override protected def generatorName: String = "translation"
+
+  override protected[cli] def generate(options: TranslationOptions, out: OutputStream)(using
+      sv: SchemaView,
+  ): Unit = {
+    TranslationGenerator(using sv).writeTo(out, TranslationGenerator.Options(options.target))
+  }
 }

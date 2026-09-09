@@ -73,9 +73,9 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       val result = GraphQlGenerator().serialize()
       Seq(
         "one: String!\n",
-        "atMostOne: String\n",
-        "atLeastOne: [String]!\n",
-        "zeroOrMore: [String]!\n",
+        "at_most_one: String\n",
+        "at_least_one: [String]!\n",
+        "zero_or_more: [String]!\n",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -86,10 +86,10 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "stringSlot: String!",
-        "intSlot: Int!",
-        "booleanSlot: Boolean!",
-        "customSlot: String!", // has string base
+        "string_slot: String!",
+        "int_slot: Int!",
+        "boolean_slot: Boolean!",
+        "custom_slot: String!", // has string base
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -100,8 +100,8 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "scalar uri",
-        "some_slot: uri",
+        "scalar Uri",
+        "some_slot: Uri",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -112,8 +112,8 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize()
       Seq(
-        "scalar ext_type",
-        "some_slot: ext_type",
+        "scalar ExtType",
+        "some_slot: ExtType",
       ).foreach { snippet =>
         result should include(snippet)
       }
@@ -216,9 +216,9 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result = GraphQlGenerator().serialize(GraphQlGenerator.Options(skip))
       Seq(
-        "scalar uri",
-        "scalar uriorcurie",
-        "scalar nodeidentifier",
+        "scalar Uri",
+        "scalar Uriorcurie",
+        "scalar Nodeidentifier",
       ).foreach { snippet =>
         result should include(snippet)
       }

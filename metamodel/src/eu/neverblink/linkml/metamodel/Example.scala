@@ -13,7 +13,7 @@ final case class ExampleImpl(
     @named("description")
     valueDescription: Option[String] = None,
     @named("object")
-    valueObject: Option[Anything] = None,
+    valueObject: Option[LinkmlAny] = None,
 ) extends Example {
 
   override def infer(): ExampleImpl =
@@ -46,7 +46,7 @@ abstract class Example {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def valueObject: Option[Anything]
+  def valueObject: Option[LinkmlAny]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

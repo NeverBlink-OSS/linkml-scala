@@ -4,18 +4,17 @@ import eu.neverblink
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{CharSink, Printable, PruningMode, indent}
+import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
-import GraphQlGenerator.escaped
 import eu.neverblink.linkml.runtime.FastUtils.flatMapFast
 
-import scala.util.matching.Regex
-
 class GraphQlGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[GraphQlGenerator.Options] {
+    extends CharDocumentGenerator[GraphQlGenerator.Options],
+      GraphQlRenamer {
+  import GraphQlGenerator.*
 
   /** Set of classes that are instantiable and have child classes. They need to have a split
     * interface/implementation, with the implementation only inheriting from the interface.
@@ -29,8 +28,6 @@ class GraphQlGenerator(using sv: SchemaView)
     }
     builder.result()
   }
-
-  import GraphQlGenerator.*
 
   override protected def defaultOptions: Options = Options()
 
@@ -147,14 +144,14 @@ class GraphQlGenerator(using sv: SchemaView)
     // Class is split, we need to refer to the interface instead
     if concreteInheritance.contains(cls.name) then splitInterfaceName(cls)
     // Class is interface-only, we can refer to it directly
-    else escaped(cls.aliasedName)
+    else className(cls)
   }
 
   /** Get the interface name of a split class. Assumes [[cls]] is a split class:
     * `concreteInheritance.contains(cls.name)` is true.
     */
   def splitInterfaceName(cls: ClassView): String =
-    escaped(cls.aliasedName) + "Interface"
+    className(cls) + "Interface"
 
   /** Write the GraphQL definitions.
     */
@@ -170,7 +167,7 @@ class GraphQlGenerator(using sv: SchemaView)
   }
 }
 
-object GraphQlGenerator {
+object GraphQlGenerator extends GraphQlRenamer {
 
   /** Options for [[GraphQlGenerator]].
     *
@@ -201,17 +198,8 @@ object GraphQlGenerator {
   /** Builtin remapped type or the aliased name of the type
     */
   def remappedType(tv: TypeView): String =
-    remapToBuiltin(tv).getOrElse(tv.aliasedName)
+    remapToBuiltin(tv).getOrElse(typeName(tv))
 
-  private val leadingUnderscores: Regex = "^_+".r
-
-  /** Process the escapes and reduce the leading underscores to at most one to avoid clashes with
-    * the GraphQL reserved names.
-    */
-  def escaped(text: String): String = {
-    val res = Case.escaped(text)
-    leadingUnderscores.replaceAllIn(res, "_")
-  }
 }
 
 /** ADT for different kinds of GraphQL definitions (type/interface/enum/scalar) */
@@ -261,7 +249,7 @@ case class GraphQlInterfaceDefinition(
               |""".stripMargin
   }
 
-  val name: String = nameOverride.getOrElse(escaped(classView.aliasedName))
+  val name: String = nameOverride.getOrElse(GraphQlRenamer.className(classView))
 
   override def print: String =
     indent"""${descriptionFor(classView.cls)}
@@ -299,9 +287,11 @@ case class GraphQlTypeDefinition(
               |""".stripMargin
   }
 
+  val name: String = GraphQlRenamer.className(classView)
+
   override def print: String = {
     indent"""${descriptionFor(classView.cls)}
-            |type ${escaped(classView.aliasedName)} $inheritsList $body
+            |type $name $inheritsList $body
             |""".stripMargin
   }
 
@@ -317,10 +307,11 @@ case class GraphQlEnumDefinition(
     values: Iterable[GraphQlEnumValueDefinition],
 )(using GraphQlGenerator.Options)
     extends GraphQlDefinition:
+  val name: String = GraphQlRenamer.enumName(enumView)
   override def print: String = {
     val serializedValues = values.map(_.print.strip())
     indent"""${descriptionFor(enumView._enum)}
-            |enum ${escaped(enumView.aliasedName)} {
+            |enum $name {
             |  ${serializedValues.mkString("\n")}
             |}
             |""".stripMargin
@@ -341,9 +332,10 @@ case class GraphQlEnumValueDefinition(
     prefixResolver: PrefixResolver,
 )(using opt: GraphQlGenerator.Options)
     extends GraphQlElement:
+  val name: String = GraphQlRenamer.permissibleValueName(pv)
   override def print: String =
     indent"""${descriptionFor(pv)}
-            |${escaped(pv.text)}
+            |$name
             |""".stripMargin
 
 /** Container for information needed to generate a scalar definition
@@ -355,9 +347,10 @@ case class GraphQlScalarDefinition(
     typeView: TypeView,
 )(using opt: GraphQlGenerator.Options)
     extends GraphQlDefinition:
+  val name: String = GraphQlRenamer.typeName(typeView)
   override def print: String = {
     indent"""${descriptionFor(typeView._type)}
-            |scalar ${escaped(typeView.aliasedName)}
+            |scalar $name
             |""".stripMargin
   }
 
@@ -380,7 +373,7 @@ case class GraphQlField(
   val slotView: SlotView = attributeView.slotView
 
   /** Aliased name to use in the range of the field */
-  val name: String = escaped(slotView.aliasedName)
+  val name: String = GraphQlRenamer.slotName(attributeView.slotView)
 
   /** Whether the [[range]] should be declared non-null ("Range!") */
   val nonNull: Boolean = slotView.slot.required

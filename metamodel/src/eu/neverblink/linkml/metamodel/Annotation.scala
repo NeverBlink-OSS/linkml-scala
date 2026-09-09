@@ -16,7 +16,7 @@ final case class AnnotationImpl(
     extensionTag: UriOrCurie,
     @value
     @named("value")
-    extensionValue: AnyValue,
+    extensionValue: LinkmlAny,
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
 ) extends Annotation {

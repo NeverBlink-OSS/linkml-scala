@@ -1,6 +1,9 @@
 id: https://neverblink.eu/linkml/tests/ifabsent/enums/
 name: ifabsent_enums
 
+extensions:
+  opt_in: true
+
 imports:
   - linkml:types
 

@@ -71,20 +71,21 @@ const { view } = LinkML.loadFromPath("model.yaml", {
 
 Load a schema into a `SchemaView` handle (see above), then pass that handle to any generator:
 
-| Function                                                             | Returns | Notes                                                        |
-|----------------------------------------------------------------------| --- |--------------------------------------------------------------|
-| `loadFromString(schema, importMap, inferMessages?)`                  | `LoadResult` | parse from YAML text; `{ view?, report }`                    |
-| `loadFromPath(path, importMap, inferMessages?)`                      | `LoadResult` | parse from a path in the import map; cycle-safe for the root |
-| `jsonSchema(view, open?, treeRootOverride?)`                         | `string` | JSON Schema                                                  |
-| `shacl(view, open?, onlyClassesFromRootSchema?, format?)`            | `string` | SHACL shapes, `ttl` (default) or `nt`                        |
-| `rdfs(view, onlyClassesFromRootSchema?, format?)`                    | `string` | RDFS, `ttl` (default) or `nt`                                |
-| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)` | `string` | derived/pruned LinkML schema                                 |
-| `scala(view, packageName)`                                           | `Record<string, string>` | filename → generated Scala                                   |
+| Function                                                                     | Returns                  | Notes                                                                          |
+|------------------------------------------------------------------------------|--------------------------|--------------------------------------------------------------------------------|
+| `loadFromString(schema, importMap, inferMessages?)`                          | `LoadResult`             | parse from YAML text; `{ view?, report }`                                      |
+| `loadFromPath(path, importMap, inferMessages?)`                              | `LoadResult`             | parse from a path in the import map; cycle-safe for the root                   |
+| `jsonSchema(view, open?, treeRootOverride?)`                                 | `string`                 | JSON Schema                                                                    |
+| `shacl(view, open?, onlyClassesFromRootSchema?, format?)`                    | `string`                 | SHACL shapes, `ttl` (default) or `nt`                                          |
+| `rdfs(view, onlyClassesFromRootSchema?, format?)`                            | `string`                 | RDFS, `ttl` (default) or `nt`                                                  |
+| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)`         | `string`                 | derived/pruned LinkML schema                                                   |
+| `scala(view, packageName)`                                                   | `Record<string, string>` | filename → generated Scala                                                     |
 | `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
-| `graphQl(view, pruningMode?, treeRoot?)`                             | `string` | GraphQL                                                      |
-| `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`          | `string` | Mermaid entity relationship diagram                          |
-| `lint(view, inferMessages?)`                                         | `object` | `SchemaValidationReport` (JSON)                              |
-| `buildInfo()`                                                        | `object` | `BuildInfo` (JSON) – version and build metadata |
+| `graphQl(view, pruningMode?, treeRoot?)`                                     | `string`                 | GraphQL                                                                        |
+| `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`                  | `string`                 | Mermaid entity relationship diagram                                            |
+| `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
+| `lint(view, inferMessages?)`                                                 | `object`                 | `SchemaValidationReport` (JSON)                                                |
+| `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

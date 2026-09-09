@@ -1,6 +1,9 @@
 id: https://neverblink.eu/linkml/tests/equalsExpression/
 name: equals_expression
 
+extensions:
+  opt_in: true
+
 imports:
   - linkml:types
 

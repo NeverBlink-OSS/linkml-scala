@@ -30,6 +30,18 @@ slots:
     title: element name
     description: Name of the element the issue was found in.
 
+  used_for:
+    range: string
+    required: true
+    title: used for
+    description: Formatted description of the elements that share the name.
+
+  transformed_name:
+    range: string
+    required: true
+    title: used for
+    description: Formatted description of the elements that share the name.
+
 classes:
   # ---- Fatal ------------------------------------------------------------------------------------
 
@@ -199,18 +211,33 @@ classes:
 
   NonUniqueName:
     is_a: SchemaError
-    description: The same name is used by more than one element.
+    description: There is a name clash after name mangling
     slots:
       - element_name
-    attributes:
-      used_for:
-        range: string
-        required: true
-        title: used for
-        description: Formatted description of the elements that share the name.
+      - transformed_name
+      - used_for
     slot_usage:
       message:
-        equals_expression: "Non-unique name '{element_name}' used for {used_for}"
+        equals_expression: "Non-unique name '{element_name}' (renamed internally to '{transformed_name}') used for {used_for}"
+
+  NonAsciiName:
+    is_a: SchemaError
+    description: An element name uses non-ASCII characters.
+    slots:
+      - element_name
+    slot_usage:
+      message:
+        equals_expression: "Element '{element_name}' uses non-ASCII characters in its name"
+
+  EmptyName:
+    is_a: SchemaError
+    description: An element has an empty name after renaming
+    slots:
+      - element_name
+      - transformed_name
+    slot_usage:
+      message:
+        equals_expression: "Element '{element_name}' has an empty name after internal renaming: '{transformed_name}'"
 
   UndefinedPrefix:
     is_a: SchemaError
@@ -290,3 +317,37 @@ classes:
         equals_expression: >-
           Class '{class_name}' has declared 'slot_usage' for slots that are not defined for its ancestors.
           These slots will not be included: {slot_names}
+
+  NonStandardSeparator:
+    is_a: SchemaWarning
+    description: |
+      An element contains allowed, but non-standard word separators. This may become an error in the future.
+    slots:
+      - element_name
+    attributes:
+      separators:
+        title: Non-standards separators used
+        description:
+        range: string
+        multivalued: true
+    slot_usage:
+      message:
+        equals_expression: "Element '{element_name}' uses non-standard separators in its name: {separators}. They will be replaced with underscores"
+
+  RepeatedSeparator:
+    is_a: SchemaWarning
+    description: An element starts with a word separator. This may become an error in the future.
+    slots:
+      - element_name
+    slot_usage:
+      message:
+        equals_expression: "Element '{element_name}' name contains repeated separators, they will be reduced to a single underscore."
+
+  FlankingSeparator:
+    is_a: SchemaWarning
+    description: An element starts or ends with a word separator. This is reserved and may become an error in the future.
+    slots:
+      - element_name
+    slot_usage:
+      message:
+        equals_expression: "Element '{element_name}' name starts or ends with a separator. These separators will be stripped, as they are reserved for linkml use"

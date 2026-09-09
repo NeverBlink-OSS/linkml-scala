@@ -55,7 +55,7 @@ final case class ArrayExpressionImpl(
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
     @named("maximum_number_dimensions")
-    maximumNumberDimensions: Option[Anything] = None,
+    maximumNumberDimensions: Option[LinkmlAny] = None,
     @named("minimum_number_dimensions")
     minimumNumberDimensions: Option[Int] = None,
     @named("modified_by")
@@ -114,7 +114,7 @@ abstract class ArrayExpression extends Extensible, Annotatable, CommonMetadata {
     * @note
     *   Maximum_number_dimensions cannot be less than minimum_number_dimensions
     */
-  def maximumNumberDimensions: Option[Anything]
+  def maximumNumberDimensions: Option[LinkmlAny]
 
   /** Minimum number of dimensions in the array
     *

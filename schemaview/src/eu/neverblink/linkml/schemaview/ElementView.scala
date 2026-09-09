@@ -43,6 +43,14 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
     */
   final def name: String = inner.name
 
+  /** The base name
+    */
+  final lazy val baseName: String = Case.base(name)
+
+  def canonicalName: String
+
+  final def modelUri: Uri = Uri.synthetic(defaultPrefixUri, canonicalName)
+
   /** The name of the underlying Element, aliased with the `alias` slot if defined, re-cased
     * appropriately if needed.
     */
@@ -91,11 +99,13 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   def inner: ClassDefinition = cls
 
-  def uriOrCurie: UriOrCurie =
-    cls.classUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(cls.name)))
+  def canonicalName: String = Case.baseToPascal(baseName)
 
-  override def aliasedName: String =
-    cls.alias.getOrElseFast(Case.PascalCase(Case.escaped(cls.name)))
+  def uriOrCurie: UriOrCurie =
+    cls.classUri.getOrElseFast(modelUri)
+
+  def aliasedName: String =
+    cls.alias.getOrElseFast(canonicalName)
 
   /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
@@ -310,7 +320,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     overrideType.orElseFast {
       cls.extensions.get("tree_root_as").mapFast(_.extensionValue.value.strip)
     }.mapFast { v =>
-      Case.camelCase(v) match {
+      Case.baseToCamel(Case.base(v)) match {
         case "plain" => InlineType.plain
         case "optional" => InlineType.optional
         case "list" => InlineType.list
@@ -373,8 +383,11 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
 
   def inner: SlotDefinition = slot
 
+  override def canonicalName: String =
+    baseName
+
   override def aliasedName: String =
-    slot.alias.getOrElseFast(Case.escaped(slot.name))
+    slot.alias.getOrElseFast(canonicalName)
 
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
@@ -444,7 +457,10 @@ private object SlotView:
   // Exposed for slot derivation in ClassView.
   def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): UriOrCurie =
     slotUri.getOrElseFast {
-      Uri.synthetic(context.defaultPrefixUri, slotName)
+      Uri.synthetic(
+        context.defaultPrefixUri,
+        Case.base(slotName),
+      )
     }
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
@@ -454,7 +470,9 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def inner: EnumDefinition = _enum
 
-  override def aliasedName: String = Case.PascalCase(Case.escaped(_enum.name))
+  def canonicalName: String = Case.baseToPascal(baseName)
+
+  override def aliasedName: String = canonicalName
 
   lazy val parents: Iterable[EnumView | ClassView] =
     (_enum.isA ++ _enum.mixins).flatMap(_.resolve).collect {
@@ -466,7 +484,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
     new Some(ConstructorExpression.evaluateEnum(expr, this))
 
   def uriOrCurie: UriOrCurie =
-    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.PascalCase(_enum.name)))
+    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.baseToPascal(canonicalName)))
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
   lazy val derivedValues: Seq[(pv: PermissibleValue, meaning: UriOrCurie)] =
@@ -476,7 +494,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
           (
             x,
             x.meaning.getOrElseFast {
-              Uri.synthetic(defaultPrefixUri, x.text)
+              Uri.synthetic(defaultPrefixUri, canonicalName + "." + Case.base(x.text).toUpperCase)
             },
           ),
         )
@@ -504,7 +522,9 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   def inner: TypeDefinition = _type
 
-  override def aliasedName: String = Case.escaped(name)
+  def canonicalName: String = baseName
+
+  override def aliasedName: String = canonicalName
 
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
     * the RDF representations.
@@ -563,9 +583,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast {
-    Uri.synthetic(defaultPrefixUri, _type.name)
-  }
+  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast(modelUri)
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
@@ -575,9 +593,11 @@ final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefi
 
   def inner: SubsetDefinition = subset
 
-  override def aliasedName: String = Case.escaped(name)
+  override def aliasedName: String = baseName
 
   def uriOrCurie: UriOrCurie =
     // there is no subset_uri in the metamodel
-    Uri.synthetic(defaultPrefixUri, Case.escaped(subset.name))
+    Uri.synthetic(defaultPrefixUri, baseName)
+
+  override def canonicalName: String = baseName
 }

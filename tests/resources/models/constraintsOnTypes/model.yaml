@@ -9,18 +9,18 @@ classes:
   Typed:
     tree_root: true
     slots:
-      - intSlot
-      - floatSlot
-      - stringSlot
+      - int_slot
+      - float_slot
+      - string_slot
 
 slots:
-  intSlot:
+  int_slot:
     rank: 1
     range: small_int
-  floatSlot:
+  float_slot:
     rank: 2
     range: small_float
-  stringSlot:
+  string_slot:
     rank: 3
     range: patterned_string
 

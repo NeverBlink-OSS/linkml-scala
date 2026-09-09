@@ -10,16 +10,16 @@ classes:
   Cardinal:
     tree_root: true
     slots:
-      - exactlyTwo
-      - oneToThree
+      - exactly_two
+      - one_to_three
 
 slots:
-  exactlyTwo:
+  exactly_two:
     rank: 1
     range: string
     multivalued: true
     exact_cardinality: 2
-  oneToThree:
+  one_to_three:
     rank: 2
     range: string
     multivalued: true

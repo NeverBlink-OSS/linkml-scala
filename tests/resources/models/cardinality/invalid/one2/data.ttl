@@ -2,4 +2,4 @@
 
 _:b a :Cardinal;
     :one "a", "b";
-    :atLeastOne "c" .
+    :at_least_one "c" .

@@ -17,7 +17,8 @@ final case class UnitOfMeasureImpl(
     exactMappings: Seq[UriOrCurie] = Seq(),
     @named("has_quantity_kind")
     hasQuantityKind: Option[UriOrCurie] = None,
-    iec61360code: Option[String] = None,
+    @named("iec_61360_code")
+    iec61360Code: Option[String] = None,
     symbol: Option[String] = None,
     @named("ucum_code")
     ucumCode: Option[String] = None,
@@ -81,7 +82,7 @@ abstract class UnitOfMeasure {
   /** @see
     *   From schema: https://w3id.org/linkml/units
     */
-  def iec61360code: Option[String]
+  def iec61360Code: Option[String]
 
   /** Name of the unit encoded as a symbol
     *

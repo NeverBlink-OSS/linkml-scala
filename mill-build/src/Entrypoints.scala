@@ -116,5 +116,14 @@ object Entrypoints {
       "Generate Scala classes, as a filename to source mapping.",
       "Generate Scala sources, as a JSON object mapping filename to source.",
     ),
+    Entrypoint(
+      "translation",
+      "linkml_translation",
+      "translation",
+      "TranslationGenerator",
+      "str",
+      "Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs.",
+      "Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs.",
+    ),
   )
 }

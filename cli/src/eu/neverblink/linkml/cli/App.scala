@@ -36,6 +36,7 @@ final class App private[cli] (
     Frictionless,
     GraphQl,
     ErDiagram,
+    Translation,
     Version,
   )
 

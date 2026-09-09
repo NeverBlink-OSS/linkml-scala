@@ -39,8 +39,8 @@ object PruningOptions {
     * `tree_root`).
     */
   given parser: ArgParser[PruningMode] = SimpleArgParser.from(names.mkString("|")) { value =>
-    Case.camelCase(value) match {
-      case "treeRoot" => Right(PruningMode.treeRoot(None))
+    Case.base(value) match {
+      case "tree_root" => Right(PruningMode.treeRoot(None))
       case "schema" => Right(PruningMode.schemaRoot)
       case "skip" => Right(PruningMode.skip)
       case _ =>

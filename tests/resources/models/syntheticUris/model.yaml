@@ -1,6 +1,9 @@
 id: https://neverblink.eu/linkml/tests/syntheticUris/
 name: syntheticUris
 
+extensions:
+  opt_in: true
+
 imports:
   - linkml:types
 

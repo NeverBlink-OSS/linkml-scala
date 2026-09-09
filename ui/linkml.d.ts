@@ -122,6 +122,14 @@ export interface LinkMLApi {
   erDiagram(schema: SchemaView, pruningMode?: string, treeRoot?: string, optionalMarker?: boolean): string;
 
   /**
+   * Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param target Target framework to generate translations for. One of "base", "uri", "scala", or "graphql".
+   * @returns Translation dictionary for translating the linkml names to framework names.
+   */
+  translation(schema: SchemaView, target: string): string;
+
+  /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.  TODO: consider typing the return value in TypeScript using a TypeScript generator. See: https://github.com/NeverBlink-OSS/linkml-scala/issues/127
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details` from the model's `equals_expression`s. Turn it off to get only the structured fields.

@@ -4,10 +4,11 @@ import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
-import eu.neverblink.linkml.metamodel.{Anything, SlotDefinition}
+import eu.neverblink.linkml.metamodel.SlotDefinition
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.LinkmlAny
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -40,14 +41,14 @@ class JsonSchemaGenerator(using sv: SchemaView)
   /** Translate a class name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def className(cls: ClassView): MappedClassName =
-    cls.cls.alias.getOrElseFast(Case.PascalCase(cls.cls.name))
+    cls.cls.alias.getOrElseFast(cls.canonicalName)
 
   /** Translate a slot name into a JSON Schema form, respecting aliases and LinkML casing rules
     */
   protected def slotName(slot: SlotView): MappedSlotName =
-    slot.slot.alias.getOrElseFast(Case.escaped(slot.slot.name))
+    slot.slot.alias.getOrElseFast(slot.baseName)
 
-  private def toBigDecimalOpt(x: Option[Anything]): Option[BigDecimal] =
+  private def toBigDecimalOpt(x: Option[LinkmlAny]): Option[BigDecimal] =
     try x.mapFast(v => BigDecimal(v.value.trim))
     catch {
       case ex if NonFatal(ex) => None

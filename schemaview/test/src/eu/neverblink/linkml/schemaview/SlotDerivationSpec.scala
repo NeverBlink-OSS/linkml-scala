@@ -544,7 +544,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
       sv.classes("child").derivedAttributes("slot1")
-        .uriOrCurie shouldBe UriOrCurie("https://neverblink.eu/test/slot1")
+        .uriOrCurie shouldBe UriOrCurie("https://neverblink.eu/test/slot_1")
     }
   }
 }

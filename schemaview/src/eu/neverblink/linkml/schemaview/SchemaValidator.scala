@@ -5,7 +5,9 @@ import eu.neverblink.linkml.runtime.{NcName, PrefixResolver, Reference, Uri}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
-import java.util
+import java.{lang, util}
+import scala.collection.mutable
+import scala.util.matching.Regex
 
 /** Performs validation for a [[SchemaView]], most importantly checking whether all references are
   * correct.
@@ -162,8 +164,13 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Errors for classes, types, and enums that have non-unique names
     */
-  private def nonUniqueName(name: String, usedFor: String): SchemaError =
-    new NonUniqueNameImpl(location = rootLocation, elementName = name, usedFor = usedFor)
+  private def nonUniqueName(name: String, renamed: String, usedFor: String): SchemaError =
+    new NonUniqueNameImpl(
+      location = rootLocation,
+      elementName = name,
+      transformedName = renamed,
+      usedFor = usedFor,
+    )
 
   private lazy val nonUniqueNames: Seq[SchemaError] = {
     val errors = Seq.newBuilder[SchemaError]
@@ -171,11 +178,13 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.enums.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.enums.foreach { (enumName, _) =>
-        val enumSchemaName = enumNames.put(enumName, s.name)
-        if (enumSchemaName ne null) {
+        val renamed = Case.base(enumName)
+        val enumSchemaName = enumNames.put(renamed, s.name)
+        if (enumSchemaName != null && enumSchemaName != s.name) {
           errors.addOne(
             nonUniqueName(
               enumName,
+              renamed,
               s"enum from '$enumSchemaName' and '${s.name}' schemas",
             ),
           )
@@ -186,23 +195,26 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.types.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.types.foreach { (typeName, _) =>
-        val typeSchemaName = typeNames.put(typeName, s.name)
-        val enumSchemaName = enumNames.get(typeName)
+        val renamed = Case.base(typeName)
+        val typeSchemaName = typeNames.put(renamed, s.name)
+        val enumSchemaName = enumNames.get(renamed)
         if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
               typeName,
-              if (typeSchemaName ne null) {
+              renamed,
+              if (typeSchemaName != null && typeSchemaName != s.name) {
                 s"type from '$typeSchemaName' and '${s.name}' schemas, and enum from '$enumSchemaName' schema"
               } else {
                 s"enum from '$enumSchemaName' schema and type from '${s.name}' schema"
               },
             ),
           )
-        } else if (typeSchemaName ne null) {
+        } else if (typeSchemaName != null && typeSchemaName != s.name) {
           errors.addOne(
             nonUniqueName(
               typeName,
+              renamed,
               s"type from '$typeSchemaName' and '${s.name}' schemas",
             ),
           )
@@ -213,20 +225,22 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.classes.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.classes.foreach { (className, _) =>
-        val classSchemaName = classNames.put(className, s.name)
-        val typeSchemaName = typeNames.get(className)
-        val enumSchemaName = enumNames.get(className)
+        val renamed = Case.base(className)
+        val classSchemaName = classNames.put(renamed, s.name)
+        val typeSchemaName = typeNames.get(renamed)
+        val enumSchemaName = enumNames.get(renamed)
         if (enumSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
-              className, {
+              className,
+              renamed, {
                 if (typeSchemaName ne null) {
-                  if (classSchemaName ne null) {
+                  if (classSchemaName != null && classSchemaName != s.name) {
                     s"class from '${s.name}' and '$classSchemaName' schemas, enum from '$enumSchemaName' schema, and type from '$typeSchemaName' schema"
                   } else {
                     s"class from '${s.name}' schema, enum from '$enumSchemaName' schema, and type from '$typeSchemaName' schema"
                   }
-                } else if (classSchemaName ne null) {
+                } else if (classSchemaName != null && classSchemaName != s.name) {
                   s"class from '${s.name}' and '$classSchemaName' schemas, and enum from '$enumSchemaName' schema"
                 } else {
                   s"class from '${s.name}' schema and enum from '$enumSchemaName' schema"
@@ -237,8 +251,9 @@ final class SchemaValidator(using sv: SchemaView) {
         } else if (typeSchemaName ne null) {
           errors.addOne(
             nonUniqueName(
-              className, {
-                if (classSchemaName ne null) {
+              className,
+              renamed, {
+                if (classSchemaName != null && classSchemaName != s.name) {
                   s"class from '${s.name}' schema, class from '$classSchemaName' schema and type from '$typeSchemaName' schema"
                 } else {
                   s"class from '${s.name}' schema and type from '$typeSchemaName' schema"
@@ -246,10 +261,11 @@ final class SchemaValidator(using sv: SchemaView) {
               },
             ),
           )
-        } else if (classSchemaName ne null) {
+        } else if (classSchemaName != null && classSchemaName != s.name) {
           errors.addOne(
             nonUniqueName(
               className,
+              renamed,
               s"class from '${s.name}' and '$classSchemaName' schemas",
             ),
           )
@@ -263,11 +279,13 @@ final class SchemaValidator(using sv: SchemaView) {
       )
     sv.schemas.foreach(s =>
       s.slotDefinitions.foreach { (slotName, _) =>
-        val slotSchemaName = slotNames.put(slotName, s.name)
-        if (slotSchemaName ne null) {
+        val renamed = Case.base(slotName)
+        val slotSchemaName = slotNames.put(renamed, s.name)
+        if (slotSchemaName != null && slotSchemaName != s.name) {
           errors.addOne(
             nonUniqueName(
               slotName,
+              renamed,
               s"slot from '${s.name}' and '$slotSchemaName' schemas",
             ),
           )
@@ -278,11 +296,13 @@ final class SchemaValidator(using sv: SchemaView) {
       new util.HashMap[String, String](sv.schemas.foldLeft(0)(_ + _.subsets.size) << 1, 0.5f)
     sv.schemas.foreach(s =>
       s.subsets.foreach { (subsetName, _) =>
-        val subsetSchemaName = subsetNames.put(subsetName, s.name)
-        if (subsetSchemaName ne null) {
+        val renamed = Case.base(subsetName)
+        val subsetSchemaName = subsetNames.put(renamed, s.name)
+        if (subsetSchemaName != null && subsetSchemaName != s.name) {
           errors.addOne(
             nonUniqueName(
               subsetName,
+              renamed,
               s"subset from '${s.name}' and '$subsetSchemaName' schemas",
             ),
           )
@@ -395,13 +415,93 @@ final class SchemaValidator(using sv: SchemaView) {
       else
         new Some(
           new InvalidUriOrCurieImpl(
-            location = IssueLocationImpl(schemaId = new Some(elem.definingSchema.id)),
+            location = locationOf(elem),
             uriOrCurie = elem.uriOrCurie,
             elementType = elem.elementType,
             elementName = elem.inner.name,
           ),
         )
     }.toSeq
+  }
+
+  private val repeatedSeparatorRegex: Regex = "[^A-Za-z0-9]{2,}".r.unanchored
+
+  private def checkNaming(
+      builder: mutable.Builder[SchemaIssue, Seq[SchemaIssue]],
+      name: String,
+      baseName: String,
+      location: IssueLocationImpl,
+  ): Unit = {
+    if name.isEmpty then
+      builder.addOne(
+        EmptyNameImpl(elementName = name, transformedName = baseName, location = location),
+      )
+    else {
+      // chain of complaining: complain about non-ASCII first, then about empty transformed name, then about non-standard separators
+      if name.exists(!Case.isAllowedAscii(_)) then
+        builder.addOne(
+          NonAsciiNameImpl(
+            elementName = name,
+            location = location,
+          ),
+        )
+      else if baseName.isEmpty then
+        builder.addOne(
+          EmptyNameImpl(elementName = name, transformedName = baseName, location = location),
+        )
+      else if name.exists(!Case.isStandard(_)) then
+        builder.addOne(
+          NonStandardSeparatorImpl(
+            elementName = name,
+            location = location,
+            separators = name.collect {
+              case c if !Case.isStandard(c) && !c.isSurrogate => c.toString
+            },
+          ),
+        )
+
+      if !Case.isAlphanumeric(name.head) || !Case.isAlphanumeric(name.last) then
+        builder.addOne(
+          FlankingSeparatorImpl(
+            elementName = name,
+            location = location,
+          ),
+        )
+
+      if repeatedSeparatorRegex.matches(name) then
+        builder.addOne(
+          RepeatedSeparatorImpl(
+            elementName = name,
+            location = location,
+          ),
+        )
+    }
+  }
+
+  private lazy val namingIssues: Seq[SchemaIssue] = {
+    val builder = Seq.newBuilder[SchemaIssue]
+    sv.elements.values.foreach { el =>
+      checkNaming(builder, el.name, el.baseName, locationOf(el))
+    }
+    sv.classes.values.foreach { cls =>
+      cls.cls.attributes.values.foreach { attr =>
+        val classLocation = locationOf(cls)
+        val location =
+          classLocation.copy(jsonPointer = classLocation.jsonPointer.map(_ + "/" + attr.name))
+
+        checkNaming(builder, attr.name, Case.base(attr.name), location)
+      }
+    }
+
+    sv.enums.values.flatMap(enumView => enumView.derivedValues.map(enumView -> _.pv)).foreach {
+      (enumView, pv) =>
+        val enumLocation = locationOf(enumView)
+        val location =
+          enumLocation.copy(jsonPointer = enumLocation.jsonPointer.map(_ + "/" + pv.text))
+        checkNaming(builder, pv.text, Case.base(pv.text), location)
+    }
+
+    builder.result()
   }
 
   /** Any fatal problems that block further processing / validation, if any. */
@@ -417,13 +517,15 @@ final class SchemaValidator(using sv: SchemaView) {
       multipleTreeRoots ++
       nonUniqueNames ++
       unknownPrefixes ++
-      invalidUris
+      invalidUris ++
+      namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */
   private lazy val warnings: Seq[SchemaWarning] =
     invalidSlotUsage ++
       undefinedDefaultRange ++
-      noTreeRoot
+      noTreeRoot ++
+      namingIssues.collect { case e: SchemaWarning => e }
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.
     * Warnings are not included - see [[lintProblems]] for those.

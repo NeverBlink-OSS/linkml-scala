@@ -234,7 +234,7 @@ trait SlotExpression extends Expression {
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
     */
-  def maximumValue: Option[Anything]
+  def maximumValue: Option[LinkmlAny]
 
   /** The minimum number of entries for a multivalued slot
     *
@@ -255,7 +255,7 @@ trait SlotExpression extends Expression {
     *   Range to be refined to an "Ordinal" metaclass - see
     *   https://github.com/linkml/linkml/issues/1384#issuecomment-1892721142
     */
-  def minimumValue: Option[Anything]
+  def minimumValue: Option[LinkmlAny]
 
   /** Defines the type of the object of the slot. Given the following slot definition S1: domain: C1
     * range: C2 the declaration X: S1: Y

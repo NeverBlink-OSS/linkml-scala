@@ -7,22 +7,22 @@ classes:
   Typed:
     tree_root: true
     slots:
-      - intSlot
-      - floatSlot
-      - stringSlot
+      - int_slot
+      - float_slot
+      - string_slot
 
 slots:
-  intSlot:
+  int_slot:
     rank: 1
     range: integer
     minimum_value: -1
     maximum_value: 1
-  floatSlot:
+  float_slot:
     rank: 2
     range: float
     minimum_value: -2.0
     maximum_value: 2.0
-  stringSlot:
+  string_slot:
     rank: 3
     range: string
     pattern: "^([0-9]{3})?[0-9]{3}-[0-9]{4}$"

@@ -179,6 +179,15 @@ export const TARGETS: Target[] = [
       api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
   },
   {
+    id: "translation",
+    label: "Key translations",
+    lang: "json",
+    options: [
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless"], default: "base" },
+    ],
+    call: (api, v, o) => api.translation(v, String(o.target))
+  },
+  {
     id: "lint",
     label: "Lint",
     lang: "json",

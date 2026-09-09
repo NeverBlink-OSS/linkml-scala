@@ -14,7 +14,7 @@ final case class ExtensionImpl(
     extensionTag: UriOrCurie,
     @value
     @named("value")
-    extensionValue: AnyValue,
+    extensionValue: LinkmlAny,
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
 ) extends Extension {
@@ -42,7 +42,7 @@ abstract class Extension {
     * @see
     *   From schema: https://w3id.org/linkml/extensions
     */
-  def extensionValue: AnyValue
+  def extensionValue: LinkmlAny
 
   /** A tag/text tuple attached to an arbitrary element
     *
