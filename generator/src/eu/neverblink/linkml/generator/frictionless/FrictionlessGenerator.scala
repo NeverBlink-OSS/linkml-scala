@@ -25,7 +25,8 @@ import scala.collection.mutable
   * The CSVs the resources point at do not exist yet.
   */
 class FrictionlessGenerator(using sv: SchemaView)
-    extends JsonDocumentGenerator[FrictionlessGenerator.Options, DataPackageDescriptor] {
+    extends JsonDocumentGenerator[FrictionlessGenerator.Options, DataPackageDescriptor],
+      FrictionlessRenamer {
 
   import FrictionlessGenerator.*
 
@@ -60,11 +61,6 @@ class FrictionlessGenerator(using sv: SchemaView)
     case _: UnknownType.type => (types.any, "default")
   }
 
-  /** Get the name of the slot, respecting alias, and LinkML casing rules
-    */
-  def slotName(slotView: SlotView): String =
-    slotView.slot.alias.getOrElseFast(slotView.canonicalName)
-
   /** The classes that will be rendered as tables. */
   private def tables(options: Options): Seq[Table] = {
     val query = options.pruningMode.derivedQuery(false, true)
@@ -85,20 +81,8 @@ class FrictionlessGenerator(using sv: SchemaView)
         ),
       )
 
-    val used = mutable.Set.empty[String]
     classes.map { cv =>
-      val base = slug(cv.aliasedName)
-      var name = base
-      var n = 2
-      // Class names are unique, but resource names are lowercase-only, so two classes can slug
-      // down to the same string. Whichever sorts second gets a suffix.
-      // TODO LNK-159: this should be a bijection
-      while used.contains(name) do {
-        name = s"$base-$n"
-        n += 1
-      }
-      used += name
-      Table(cv, name)
+      Table(cv, className(cv))
     }
   }
 
@@ -255,7 +239,7 @@ class FrictionlessGenerator(using sv: SchemaView)
       )
     val root = sv.root
     DataPackageDescriptor(
-      name = new Some(slug(root.name)),
+      name = new Some(Case.base(root.name)),
       id = new Some(root.id.original),
       title = root.title.mapFast(_.plain),
       description = root.description.mapFast(_.plain),
@@ -301,21 +285,6 @@ object FrictionlessGenerator {
 
   /** Open Definition license identifier regex. */
   private val licenseId = "^[-a-zA-Z0-9._]+$".r
-
-  /** Package and resource names must be lowercase alphanumerics, `.`, `-` and `_`. Anything else
-    * becomes a hyphen rather than being dropped, so two names cannot silently collapse into one.
-    *
-    * TODO LNK-159: this should be a bijection and be defined elsewhere to be reusable
-    */
-  private def slug(raw: String): String = {
-    val cleaned = raw.toLowerCase.map {
-      case c if c >= 'a' && c <= 'z' => c
-      case c if c >= '0' && c <= '9' => c
-      case c @ ('.' | '-' | '_') => c
-      case _ => '-'
-    }
-    if cleaned.isEmpty then "table" else cleaned
-  }
 
   /** LinkML's `license` is free text. The data package profile is much pickier, so we check if the
     * license matches something that Frictionless can understand.
