@@ -183,7 +183,7 @@ export const TARGETS: Target[] = [
     label: "Key translations",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless"], default: "base" },
     ],
     call: (api, v, o) => api.translation(v, String(o.target))
   },

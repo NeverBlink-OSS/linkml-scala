@@ -58,6 +58,8 @@ class TranslationGenerator(using sv: SchemaView)
 }
 
 object TranslationGenerator {
+  val availableValues = """"base", "uri", "scala", "graphql", "frictionless""""
+  
   final case class Translation(
       classes: Map[String, String],
       classAttributes: Map[String, Map[String, String]],
