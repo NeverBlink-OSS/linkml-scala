@@ -314,7 +314,9 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
                 sv,
                 fieldInfo.mappedName match {
                   case "range" => '{ $vc.asRange }
-                  case "unique_key_slots" => '{ $vc.asLocalSlotRef }
+                  // LinkML scopes these to the enclosing class, they may reference its attributes.
+                  case "unique_key_slots" | "defining_slots" | "slot_group" =>
+                    '{ $vc.asLocalSlotRef }
                   case _ => vc
                 },
               )
