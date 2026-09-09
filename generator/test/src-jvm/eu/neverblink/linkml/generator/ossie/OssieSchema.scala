@@ -5,8 +5,6 @@ import com.networknt.schema.resource.{MapResourceLoader, ResourceLoaders, Schema
 import com.networknt.schema.serialization.DefaultNodeReader
 import com.networknt.schema.{InputFormat, Schema, SchemaRegistry}
 import org.snakeyaml.engine.v2.api.LoadSettings
-import tools.jackson.databind.node.ObjectNode
-import tools.jackson.databind.json.JsonMapper
 import tools.jackson.dataformat.yaml.{YAMLFactory, YAMLMapper}
 
 import java.util.function.Consumer
@@ -21,19 +19,13 @@ object OssieSchema {
   private val coreSpecUri =
     "https://raw.githubusercontent.com/apache/ossie/main/core-spec/ossie-schema.json"
 
-  /** The vendored core spec, with its `$id` corrected to the URI it is fetched from.
-    *
-    * See: https://github.com/apache/ossie/pull/372
+  /** The vendored core spec, served verbatim.
     */
   private def coreSpec: String = {
     val url = Option(getClass.getResource("/ossie/ossie-schema.json")).getOrElse(
       sys.error("The vendored Apache Ossie core schema is not on the test classpath"),
     )
-    val json = JsonMapper.shared()
-      .readTree(os.read(os.Path(java.nio.file.Paths.get(url.toURI))))
-      .asInstanceOf[ObjectNode]
-    json.put("$id", coreSpecUri)
-    json.toString
+    os.read(os.Path(java.nio.file.Paths.get(url.toURI)))
   }
 
   private lazy val schema: Schema = {
