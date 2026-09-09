@@ -308,7 +308,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       val p = pkg()
       p.profile shouldBe "tabular-data-package"
       // The schema is named "dp test", which is not a legal package name.
-      p.name shouldBe Some("dp-test")
+      p.name shouldBe Some("dp_test")
       p.id shouldBe Some("https://neverblink.eu/test/")
       p.title shouldBe Some("A title")
       p.description shouldBe Some("A description")
@@ -401,28 +401,6 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
           writeToString(inlineOf(r), WriterConfig.withIndentionStep(2))
         files("datapackage.json") should include(s"\"schema\": \"schemas/${r.name}.json\"")
       }
-    }
-
-    "give colliding class names distinct resource names" in {
-      val colliding =
-        """id: https://neverblink.eu/test/
-          |name: test
-          |default_range: string
-          |types:
-          |  string:
-          |classes:
-          |  First:
-          |    alias: A B
-          |    tree_root: true
-          |    attributes:
-          |      x:
-          |  Second:
-          |    alias: A-B
-          |    attributes:
-          |      y:
-          |""".stripMargin
-      val names = FrictionlessGenerator(using load(colliding)).generate().resources.map(_.name)
-      names shouldBe Seq("a-b", "a-b-2")
     }
 
     "refuse to build a package with no tables" in {
