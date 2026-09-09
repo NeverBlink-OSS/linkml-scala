@@ -6,6 +6,7 @@ import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.virtuslab.yaml.parseYaml
 
 /** Checks the `ossie` generator's output against Apache Ossie's own JSON Schema for ontology
   * definitions.
@@ -38,6 +39,12 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         "the output does not include ontology mappings" in {
           processSkip(entry.name, "no-ontology-mappings")
           asJson should not include "\"ontology_mappings\""
+        }
+
+        "the ontology reads back into the model it was written from" in {
+          processSkip(entry.name, "round-trip")
+          val parsed = parseYaml(asYaml).getOrElse(fail(s"not YAML:\n$asYaml"))
+          OssieOntology.codec.decode(parsed) shouldBe generator.generate()
         }
 
         "the upstream Ossie validator accepts the output" in {

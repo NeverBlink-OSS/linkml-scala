@@ -3,7 +3,7 @@ package eu.neverblink.linkml.generator.ossie
 import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.{json, yaml}
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode, Utf8ByteSink}
-import eu.neverblink.linkml.metamodel.{CommonMetadata, Extensible}
+import eu.neverblink.linkml.metamodel.Extensible
 import eu.neverblink.linkml.runtime.LinkmlAny
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.*
@@ -76,7 +76,7 @@ class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenera
       .flatMap(ext => parseYaml(ext.extensionValue.toString).toOption)
 
   override def serialize(options: Options = Options()): String = {
-    val node = OssieOntology.encode(generate(options))
+    val node = OssieOntology.codec.encode(generate(options))
     if options.outputFormat == json then JsonUtil.yamlToJson(node)
     else node.asYaml
   }
@@ -84,7 +84,7 @@ class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenera
   /** JSON streams out through jsoniter. YAML builds the whole string first.
     */
   override def writeTo(out: OutputStream, options: Options = Options()): Unit = {
-    val node = OssieOntology.encode(generate(options))
+    val node = OssieOntology.codec.encode(generate(options))
     if options.outputFormat == json then JsonUtil.writeJson(node, out)
     else {
       val sink = new Utf8ByteSink(out)
