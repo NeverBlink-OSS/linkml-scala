@@ -8,6 +8,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.{
 }
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessRenamer
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
 import eu.neverblink.linkml.generator.scala.ScalaRenamer
 import eu.neverblink.linkml.generator.translation.TranslationGenerator.Translation
@@ -51,6 +52,7 @@ class TranslationGenerator(using sv: SchemaView)
     case "uri" => TranslationGenerator.UriRenamer
     case "scala" => ScalaRenamer
     case "graphql" => GraphQlRenamer
+    case "frictionless" => FrictionlessRenamer
     case other => throw IllegalArgumentException(s"Unknown translation target: '$other'")
   }
 }
