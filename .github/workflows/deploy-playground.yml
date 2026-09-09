@@ -20,6 +20,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          # Without tags the build version falls back to 0.0.0-SNAPSHOT and the
+          # playground shows that in its footer and build info dialog.
+          fetch-depth: 256
+          fetch-tags: true
 
       # Keeps extracted JDKs out of the cached coursier dir. See checks.yml
       - name: Relocate the coursier archive cache
