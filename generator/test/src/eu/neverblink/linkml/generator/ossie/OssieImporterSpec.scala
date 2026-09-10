@@ -324,6 +324,61 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
       ).alias shouldBe None
     }
 
+    "rank the attributes in the order the relationships were written" in {
+      val cls = importOf(ossie("""
+        |ontology:
+        |  - concept: Thing
+        |    type: EntityType
+        |    relationships:
+        |      - name: zzz
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} zzz {String}']
+        |      - name: aaa
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} aaa {String}']
+        """)).classes("Thing")
+      cls.attributes.values.map(s => s.name -> s.rank).toSeq shouldBe
+        Seq("zzz" -> Some(1), "aaa" -> Some(2))
+    }
+
+    "read the verbalization's phrase as the title" in {
+      attributeOf(
+        """
+        |      - name: full_name
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} has official name {String}']
+        """,
+        "full_name",
+      ).title shouldBe Some(PlainText("has official name"))
+    }
+
+    "leave the title off when the phrase is just the name" in {
+      attributeOf(
+        """
+        |      - name: full_name
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} full name {String}']
+        """,
+        "full_name",
+      ).title shouldBe None
+    }
+
+    "read the phrase of a self-referencing relationship, past the role name" in {
+      attributeOf(
+        """
+        |      - name: parent_of
+        |        roles: [{concept: Thing, name: parent_of}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ['{Thing} is the parent of {Thing:parent_of}']
+        """,
+        "parent_of",
+      ).title shouldBe Some(PlainText("is the parent of"))
+    }
+
     "read a missing multiplicity as multivalued" in {
       attributeOf(
         """

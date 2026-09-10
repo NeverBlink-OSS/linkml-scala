@@ -37,15 +37,16 @@ A subtype only declares what it does not inherit unchanged. If it narrows a slot
 
 One per derived slot of the class. Identified as `Concept.name`, so names only need to be unique within their concept.
 
-| From LinkML                                                                       | Ossie field    | To LinkML                                                      |
-|-----------------------------------------------------------------------------------|----------------|----------------------------------------------------------------|
-| Slot `alias`, else slot name in snake_case.                                       | `name`         | Slot name in snake_case, original spelling in `alias`.         |
-| `{Concept} <title or space-case name> {Range}`                                    | `verbalizes`   | **Not read.**                                                  |
-| Slot `description`, in `--metadata-language`.                                     | `description`  | Inverse.                                                       |
-| Always exactly one, played by the slot's range concept.                           | `roles`        | The first role's concept is the range. Any others are dropped. |
-| Single-valued identifier/key slot → `OneToOne`. Others → `ManyToOne`.             | `multiplicity` | Absent → `multivalued: true`.                                  |
-| Slot `minimum_value` / `maximum_value` / `pattern`, as expressions over the role. | `requires`     | Inverse.                                                       |
-| **Not emitted.**                                                                  | `derived_by`   | **Not read.**                                                  |
+| From LinkML                                                                       | Ossie field            | To LinkML                                                                                            |
+|-----------------------------------------------------------------------------------|------------------------|------------------------------------------------------------------------------------------------------|
+| Slot `alias`, else slot name in snake_case.                                       | `name`                 | Slot name in snake_case, original spelling in `alias`.                                               |
+| `{Concept} <title or space-case name> {Range}`                                    | `verbalizes`           | The phrase becomes the slot `title`, unless it is just the space-cased name. Only the first is read. |
+| Slot `description`, in `--metadata-language`.                                     | `description`          | Inverse.                                                                                             |
+| Always exactly one, played by the slot's range concept.                           | `roles`                | The first role's concept is the range. Any others are dropped.                                       |
+| Single-valued identifier/key slot → `OneToOne`. Others → `ManyToOne`.             | `multiplicity`         | Absent → `multivalued: true`.                                                                        |
+| Slot `minimum_value` / `maximum_value` / `pattern`, as expressions over the role. | `requires`             | Inverse.                                                                                             |
+| **Not emitted.**                                                                  | `derived_by`           | **Not read.**                                                                                        |
+| `rank` of the slot                                                                | *(relationship order)* | Inverse.                                                                                             |
 
 ### Roles
 

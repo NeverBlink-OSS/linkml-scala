@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.SchemaImporter
-import eu.neverblink.linkml.generator.ossie.expression.{Constraints, Expression, Ref}
+import eu.neverblink.linkml.generator.ossie.expression.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.metamodel.*
@@ -158,8 +158,8 @@ object OssieImporter {
         isA = parents.lastOption.map(Reference.apply),
         mixins = parents.dropRight(1).map(Reference.apply),
         attributes = VectorMap.from(
-          concept.relationships.map(r =>
-            attributeOf(r, required(r.name), identifier.contains(r.name)),
+          concept.relationships.zipWithIndex.map((r, i) =>
+            attributeOf(r, required(r.name), identifier.contains(r.name), i + 1),
           ),
         ),
         uniqueKeys = compoundKey.map(uniqueKeyName -> _).toMap,
@@ -179,6 +179,7 @@ object OssieImporter {
         relationship: Relationship,
         required: Boolean,
         identifier: Boolean,
+        rank: Int,
     ): (String, SlotDefinitionImpl) = {
       val name = Case.base(relationship.name)
       // We don't support multi-role relationships yet, so we only look at the first one.
@@ -187,9 +188,18 @@ object OssieImporter {
       val constraints = role
         .map(r => Constraints.from(Ref(r.ref), relationship.requires.flatMap(Expression.parse)))
         .getOrElse(Constraints())
+      // Try to get a title from the verbalization, but only if it is not empty
+      // and not the same as the space-cased relationship name.
+      val title = relationship.verbalizes.headOption
+        .flatMap(Verbalization.parse)
+        .map(_.phrase)
+        .filter(phrase => phrase.nonEmpty && phrase != name.replace('_', ' '))
+
       name -> SlotDefinitionImpl(
         name = name,
+        rank = Some(rank),
         alias = Option.when(name != relationship.name)(relationship.name),
+        title = title.map(PlainText.apply),
         description = relationship.description.map(PlainText.apply),
         range = role.map(r => Reference(rangeOf(r.concept))),
         multivalued = relationship.multiplicity.isEmpty,

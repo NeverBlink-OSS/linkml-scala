@@ -2,7 +2,13 @@ package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
-import eu.neverblink.linkml.generator.ossie.expression.{Constraints, Expression, Literal, Ref}
+import eu.neverblink.linkml.generator.ossie.expression.{
+  Constraints,
+  Expression,
+  Literal,
+  Ref,
+  Verbalization,
+}
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
 import eu.neverblink.linkml.metamodel.Extensible
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -161,7 +167,6 @@ class OssieGenerator(using sv: SchemaView)
       // Ossie then requires a role name to tell the two roles apart.
       val selfReference = range == conceptName
       val role = Role(range, if selfReference then Some(name) else None)
-      val target = if selfReference then s"{$range:$name}" else s"{$range}"
 
       val multiplicity =
         if slot.multivalued then None
@@ -172,12 +177,16 @@ class OssieGenerator(using sv: SchemaView)
         relationship = Relationship(
           name = name,
           // Ossie requires at least one verbalization.
-          verbalizes = {
-            // Title or space-cased slot name
-            val title = slot.title.flatMapFast(_.inLanguage(options.metadataLanguage))
-              .getOrElse(Case.base(name).replace('_', ' '))
-            Seq(s"{$conceptName} $title $target")
-          },
+          verbalizes = Seq(
+            Verbalization(
+              Ref(conceptName),
+              // Title or space-cased slot name
+              slot.title.flatMapFast(_.inLanguage(options.metadataLanguage))
+                .getOrElse(Case.base(name).replace('_', ' ')),
+              Ref(range),
+              Option.when(selfReference)(name),
+            ).render,
+          ),
           description = slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
           roles = Seq(role),
           multiplicity = multiplicity,
