@@ -240,15 +240,13 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       SchemaView.single(
         LinkMlGenerator(using sv).generate(),
-        // TODO LNK-207: fix the metamodel
-      ).lintProblems.filter(!_.isInstanceOf[NonStandardSeparatorImpl]) shouldBe empty
+      ).lint() shouldBe empty
 
       SchemaView.single(
         LinkMlGenerator(using sv).generate(
           LinkMlGenerator.Options(skipClassDerivation = true),
         ),
-        // TODO LNK-207: fix the metamodel
-      ).lintProblems.filter(!_.isInstanceOf[NonStandardSeparatorImpl]) shouldBe empty
+      ).lint() shouldBe empty
     }
 
     "serialize yaml format without errors" in {
