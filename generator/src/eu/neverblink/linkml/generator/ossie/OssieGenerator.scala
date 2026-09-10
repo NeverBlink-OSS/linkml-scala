@@ -180,7 +180,12 @@ class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenera
         relationship = Relationship(
           name = name,
           // Ossie requires at least one verbalization.
-          verbalizes = Seq(s"{$conceptName} ${Case.base(name).replace('_', ' ')} $target"),
+          verbalizes = {
+            // Title or space-cased slot name
+            val title = slot.title.flatMapFast(_.inLanguage(options.metadataLanguage))
+              .getOrElse(Case.base(name).replace('_', ' '))
+            Seq(s"{$conceptName} $title $target")
+          },
           description = slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
           roles = Seq(role),
           multiplicity = multiplicity,

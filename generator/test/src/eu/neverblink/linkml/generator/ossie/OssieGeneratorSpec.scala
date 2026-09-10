@@ -203,6 +203,20 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers {
   }
 
   "relationships" should {
+    "use the slot's title for the verbalization if it has one" in {
+      relationship(
+        ontologyOf("""
+          |classes:
+          |  Person:
+          |    attributes:
+          |      full_name:
+          |        title: has official name
+          """),
+        "Person",
+        "full_name",
+      ).verbalizes shouldBe Seq("{Person} has official name {String}")
+    }
+
     "verbalize as the space-cased name between the two concepts" in {
       relationship(
         ontologyOf("""
