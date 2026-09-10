@@ -17,7 +17,9 @@ import scala.collection.mutable
   * Targets the ontology spec (`ontology/ontology.json`), which describes a conceptual model:
   * concepts and the relationships between them.
   */
-class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenerator.Options] {
+class OssieGenerator(using sv: SchemaView)
+    extends DocumentGenerator[OssieGenerator.Options],
+      OssieRenamer {
 
   import OssieGenerator.*
 
@@ -42,8 +44,9 @@ class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenera
       )
       .sortBy(tv => sv.elementOrder(tv._type))
 
-    val conceptOf = (classes.map(_.name) ++ enums.map(_.name) ++ types.map(_.name))
-      .map(name => name -> Case.baseToPascal(Case.base(name))).toMap
+    val conceptOf = (classes.map(cv => cv.name -> className(cv)) ++
+      enums.map(ev => ev.name -> enumName(ev)) ++
+      types.map(tv => tv.name -> typeName(tv))).toMap
 
     // Every class' relationships, before inherited ones are taken back out. Needed up front
     // because subtypes only redeclare relationships that differ from their supertypes.
@@ -162,7 +165,7 @@ class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenera
 
     cv.sortedAttributeViews.map { av =>
       val slot = av.slotView.slot
-      val name = slot.alias.getOrElseFast(Case.base(slot.name))
+      val name = slotName(av.slotView)
 
       val range = rangeOf(av, conceptOf)
       // The one case where the role player is ambiguous: a slot pointing back at its own class.
@@ -199,7 +202,7 @@ class OssieGenerator(using sv: SchemaView) extends DocumentGenerator[OssieGenera
 
   /** An enum becomes a value type over strings, constrained to its permissible values. */
   private def enumConcept(ev: EnumView, name: String)(using options: Options): Concept = {
-    val values = ev.derivedValues.map(_.pv.text)
+    val values = ev.derivedValues.map(v => permissibleValueName(ev, v.pv))
     Concept(
       concept = name,
       conceptType = ConceptType.ValueType,

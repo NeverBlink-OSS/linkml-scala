@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.translation
 
 import eu.neverblink.linkml.generator.translation.TranslationGenerator.Options
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -85,13 +86,60 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
           result should include(snippet)
         }
       }
+
+      "target is Ossie" in {
+        val snippets =
+          """"łączony (class)": "CzonyClass"
+            |"łączony <typ>": "CzonyTyp"
+            |"łączony 'enum'": "CzonyEnum"
+            |"łączony [slot]": "czony_slot"
+            |"inny łączony \"slot\"": "inny_czony_slot"
+            |"łączony {value}": "łączony {value}"
+            |"inny łączony \\value//": "inny łączony \\value//"
+            |""".stripMargin.strip()
+            .linesIterator.toSeq
+
+        val result = gen.serialize(Options("ossie"))
+
+        snippets.foreach { snippet =>
+          result should include(snippet)
+        }
+      }
+    }
+
+    "translate a class' attributes, alias and all" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/spec
+          |name: spec
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: linkml
+          |default_range: string
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  order_line:
+          |    attributes:
+          |      line_nr: {}
+          |      ordered_by:
+          |        alias: orderedBy
+          |""".stripMargin,
+        ),
+      )
+      val result = TranslationGenerator(using sv).generate(Options("ossie"))
+      result.classes("order_line") shouldBe "OrderLine"
+      result.classAttributes("order_line") shouldBe Map(
+        "line_nr" -> "line_nr",
+        "ordered_by" -> "orderedBy",
+      )
     }
   }
 
   "generate all catalogue models without errors" when {
     for entry <- ModelCatalogue.all do
       s"model is '${entry.model.root.name}'" when {
-        for target <- Seq("base", "URI", "Scala", "GraphQL") do
+        for target <- Seq("base", "URI", "Scala", "GraphQL", "Frictionless", "Ossie") do
           s"target is $target" in {
             val result = TranslationGenerator(using entry.model).generate(
               TranslationGenerator.Options(target),
