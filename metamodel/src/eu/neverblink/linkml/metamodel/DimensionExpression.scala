@@ -35,10 +35,10 @@ final case class DimensionExpressionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("exact_mappings")
-    exactMappings: Seq[UriOrCurie] = Seq(),
     @named("exact_cardinality")
     exactCardinality: Option[Int] = None,
+    @named("exact_mappings")
+    exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
@@ -85,8 +85,8 @@ final case class DimensionExpressionImpl(
   */
 abstract class DimensionExpression extends Extensible, Annotatable, CommonMetadata {
 
-  /** The name used for a slot in the context of its owning class. If present, this is used instead
-    * of the actual slot name.
+  /** The alternative name to be used in serializations of an instance instead of the canonical
+    * name.
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
@@ -95,6 +95,10 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
     * @note
     *   Not to be confused with aliases, which indicates a set of terms to be used for search
     *   purposes.
+    * @note
+    *   This should be used for describing the structure of already existing instances.
+    * @note
+    *   For human-readable labels, prefer 'title' instead.
     */
   def alias: Option[String]
 

@@ -13,6 +13,7 @@ final case class EnumDefinitionImpl(
     name: String,
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
+    alias: Option[String] = None,
     @named("is_a")
     isA: Option[Reference[Definition]] = None,
     mixins: Seq[Reference[Definition]] = Seq(),
@@ -127,6 +128,23 @@ final case class EnumDefinitionImpl(
   *   From schema: https://w3id.org/linkml/meta
   */
 abstract class EnumDefinition extends Definition, EnumExpression {
+
+  /** The alternative name to be used in serializations of an instance instead of the canonical
+    * name.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
+    * @note
+    *   Not to be confused with aliases, which indicates a set of terms to be used for search
+    *   purposes.
+    * @note
+    *   This should be used for describing the structure of already existing instances.
+    * @note
+    *   For human-readable labels, prefer 'title' instead.
+    */
+  def alias: Option[String]
 
   /** URI of the enum that provides a semantic interpretation of the element in a linked data
     * context. The URI may come from any namespace and may be shared between schemas

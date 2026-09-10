@@ -15,6 +15,7 @@ final case class TypeDefinitionImpl(
     typeUri: Option[UriOrCurie] = None,
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
+    alias: Option[String] = None,
     typeof: Option[Reference[TypeDefinition]] = None,
     base: Option[String] = None,
     repr: Option[String] = None,
@@ -135,6 +136,23 @@ abstract class TypeDefinition extends Element, TypeExpression {
     *   Every root type must have a type uri
     */
   def typeUri: Option[UriOrCurie]
+
+  /** The alternative name to be used in serializations of an instance instead of the canonical
+    * name.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
+    * @note
+    *   Not to be confused with aliases, which indicates a set of terms to be used for search
+    *   purposes.
+    * @note
+    *   This should be used for describing the structure of already existing instances.
+    * @note
+    *   For human-readable labels, prefer 'title' instead.
+    */
+  def alias: Option[String]
 
   /** A parent type from which type properties are inherited
     *

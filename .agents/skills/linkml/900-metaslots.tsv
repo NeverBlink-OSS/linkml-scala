@@ -21,7 +21,7 @@
 # slot	used_on	range	cardinality	tier	description
 abbreviation	UnitOfMeasure	string	single	-	An abbreviation for a unit is a short ASCII string that is used in place of the full name…
 abstract	definition	boolean	single	spec,basic,oo	Indicates the class or slot cannot be directly instantiated and is intended for grouping…
-alias	slot_definition,class_definition,dimension_expression	string	single	spec	the name used for a slot in the context of its owning class. If present, this is used ins…
+alias	type_definition,enum_definition,slot_definition,+3	string	single	spec	The alternative name to be used in serializations of an instance instead of the canonical…
 alias_contexts	structured_alias	uri	multi	-	The context in which an alias should be applied
 alias_predicate	structured_alias	alias_predicate_enum	single	-	The relationship between an element and its alias.
 aliases	common_metadata	string	multi	basic	Alternate names/labels for the element. These do not alter the semantics of the schema, b…
@@ -42,13 +42,13 @@ bidirectional	class_rule	boolean	single	spec	in addition to preconditions entail
 bindings	schema_definition,slot_expression	enum_binding	multi	spec	A collection of enum bindings that specify how a slot can be bound to a permissible value…
 binds_value_of	enum_binding	string	single	spec	A path to a slot that is being bound to a permissible value from an enumeration.
 boolean_slot	-	expression	multi	-	A grouping of slots that expression a boolean operator over a list of operands
-broad mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have broader meaning.
+broad_mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have broader meaning.
 categories	common_metadata,structured_alias	uriorcurie	multi	basic	Controlled terms used to categorize an element.
 children_are_mutually_disjoint	slot_definition,class_definition	boolean	single	-	If true then all direct is_a children are mutually disjoint and share no instances in com…
 class_uri	class_definition	uriorcurie	single	spec,basic	URI of the class that provides a semantic interpretation of the element in a linked data…
 classes	schema_definition	class_definition	multi	spec,min,basic,rel,oo	An index to the collection of all class definitions in the schema
 classification_rules	class_definition	anonymous_class_expression	multi	spec	The collection of classification rules that apply to all members of this class. Classific…
-close mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have close meaning.
+close_mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have close meaning.
 code_set	enum_expression	uriorcurie	single	spec,basic	the identifier of an enumeration code set.
 code_set_tag	enum_expression	string	single	basic	the version tag of the enumeration code set
 code_set_version	enum_expression	string	single	basic	the version identifier of the enumeration code set
@@ -66,8 +66,8 @@ default_range	schema_definition	type_definition	single	spec,min,basic	default sl
 defining_slots	class_definition	slot_definition	multi	-	The combination of is a plus defining slots form a genus-differentia definition, or the s…
 definition_uri	element	uriorcurie	single	-	The native URI of the element. This is always within the namespace of the containing sche…
 deprecated	common_metadata	string	single	basic	Description of why and when this element will no longer be used
-deprecated element has exact replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be automatically replaced by this uri or curie
-deprecated element has possible replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be potentially replaced by this uri or curie
+deprecated_element_has_exact_replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be automatically replaced by this uri or curie
+deprecated_element_has_possible_replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be potentially replaced by this uri or curie
 derivation	UnitOfMeasure	string	single	-	Expression for deriving this unit from other units
 description	common_metadata,permissible_value	langstring	single	basic	a textual description of the element's purpose and use
 descriptive_name	UnitOfMeasure	string	single	-	the spelled out name of the unit, for example, meter
@@ -86,8 +86,8 @@ equals_number	type_expression,slot_expression	integer	single	-	the slot must hav
 equals_number_in	-	integer	multi	spec	the slot must have range number and the value of the slot must equal one of the specified…
 equals_string	type_expression,slot_expression	string	single	spec	the slot must have range string and the value of the slot must equal the specified value
 equals_string_in	type_expression,slot_expression	string	multi	spec	the slot must have range string and the value of the slot must equal one of the specified…
-exact mappings	common_metadata,UnitOfMeasure	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have identical meaning.
 exact_cardinality	slot_expression,dimension_expression	integer	single	spec	the exact number of entries for a multivalued slot
+exact_mappings	common_metadata,UnitOfMeasure	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have identical meaning.
 exact_number_dimensions	array_expression	integer	single	-	exact number of dimensions in the array
 exactly_one_of	type_expression,path_expression,slot_expression,+1	expression	single	spec	holds if only one of the expressions hold
 examples	common_metadata	example	multi	basic	example usages of an element
@@ -163,7 +163,7 @@ mixins	definition,permissible_value	definition	multi	spec,basic,oo	A collection 
 modified_by	common_metadata	uriorcurie	single	basic	agent that modified the element
 multivalued	slot_expression	boolean	single	spec,min,basic,oo	true means that slot can have more than one value and should be represented using a list…
 name	element	string	single	spec,min,basic,rel,oo	the unique name of the element within the context of the schema. Name is combined with th…
-narrow mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have narrower meaning.
+narrow_mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have narrower meaning.
 none_of	type_expression,path_expression,slot_expression,+1	expression	single	spec	holds if none of the expressions hold
 notes	common_metadata	string	multi	basic	editorial notes about an element intended primarily for internal consumption
 obligation_level	enum_binding	obligation_level_enum	single	spec	The level of obligation or recommendation strength for a metadata element
@@ -189,7 +189,7 @@ readonly	slot_definition	string	single	-	If present, slot is read only. Text exp
 recommended	slot_expression	boolean	single	spec,basic	true means that the slot should be present in instances of the class definition, but this…
 reflexive	slot_definition	string	single	spec	If s is reflexive, then i.s=i for all instances i
 reflexive_transitive_form_of	slot_definition	string	single	spec	transitive_form_of including the reflexive case
-related mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have related meaning.
+related_mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have related meaning.
 relational_logical_characteristic	slot_definition	boolean	single	-	An abstract grouping for metaslots that describe logical properties of a slot
 relational_role	slot_definition	relational_role_enum	single	-	the role a slot on a relationship class plays, for example, the subject, object or predic…
 relationship_types	reachability_query	uriorcurie	multi	spec	A list of relationship types (properties) that are used in a reachability query

@@ -11,6 +11,7 @@ import eu.neverblink.linkml.runtime.*
 final case class PermissibleValueImpl(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
+    alias: Option[String] = None,
     @named("is_a")
     isA: Option[Reference[PermissibleValue]] = None,
     mixins: Seq[Reference[PermissibleValue]] = Seq(),
@@ -97,6 +98,23 @@ abstract class PermissibleValue extends Extensible, Annotatable, CommonMetadata 
     *   From schema: https://w3id.org/linkml/meta
     */
   def description: Option[LocalizedText]
+
+  /** The alternative name to be used in serializations of an instance instead of the canonical
+    * name.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
+    * @note
+    *   Not to be confused with aliases, which indicates a set of terms to be used for search
+    *   purposes.
+    * @note
+    *   This should be used for describing the structure of already existing instances.
+    * @note
+    *   For human-readable labels, prefer 'title' instead.
+    */
+  def alias: Option[String]
 
   /** A primary parent class or slot from which inheritable metaslots are propagated from. While
     * multiple inheritance is not allowed, mixins can be provided effectively providing the same

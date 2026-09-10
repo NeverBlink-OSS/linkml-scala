@@ -6,7 +6,6 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
-import eu.neverblink.linkml.validation.NonStandardSeparatorImpl
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -240,15 +239,13 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
       SchemaView.single(
         LinkMlGenerator(using sv).generate(),
-        // TODO LNK-207: fix the metamodel
-      ).lintProblems.filter(!_.isInstanceOf[NonStandardSeparatorImpl]) shouldBe empty
+      ).lint() shouldBe empty
 
       SchemaView.single(
         LinkMlGenerator(using sv).generate(
           LinkMlGenerator.Options(skipClassDerivation = true),
         ),
-        // TODO LNK-207: fix the metamodel
-      ).lintProblems.filter(!_.isInstanceOf[NonStandardSeparatorImpl]) shouldBe empty
+      ).lint() shouldBe empty
     }
 
     "serialize yaml format without errors" in {
