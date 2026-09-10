@@ -36,6 +36,13 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
   final def serialize(in: InputStream, options: O = defaultOptions): String =
     JsonUtil.write(Codec.codec.encode(importSchema(in, options)), options.outputFormat)
 
+  /** The same, for a document that is already in memory. */
+  final def serializeFromString(input: String, options: O = defaultOptions): String =
+    JsonUtil.write(
+      Codec.codec.encode(importSchemaFromString(input, options)),
+      options.outputFormat,
+    )
+
   /** Write the schema to `out`. Flushes, but closes neither stream. */
   final def writeTo(in: InputStream, out: OutputStream, options: O = defaultOptions): Unit =
     JsonUtil.write(Codec.codec.encode(importSchema(in, options)), options.outputFormat, out)

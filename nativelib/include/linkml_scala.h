@@ -67,6 +67,9 @@ char *linkml_ossie(long long handle, const char *options, char **error);
 char *linkml_scala(long long handle, const char *options, char **error);
 char *linkml_frictionless(long long handle, const char *options, char **error);
 
+/* Importers. Each takes a document and returns the LinkML schema it describes. */
+char *linkml_from_ossie(const char *ontology, const char *options, char **error);
+
 /* Release anything the library returned. NULL-safe. */
 void linkml_free(char *buffer);
 

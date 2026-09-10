@@ -93,6 +93,15 @@ object LinkMlCApi {
   @exported("linkml_init_threads")
   def initThreads(): CInt = Attach.linkml_init_threads_impl()
 
+  /** Read an Apache Ossie ontology and return the LinkML schema it describes.
+    *
+    * Takes a document rather than a schema handle, so it is hand-written here rather than generated
+    * into `LinkMlCGenerators` with the rest.
+    */
+  @exported("linkml_from_ossie")
+  def fromOssie(ontology: CString, options: CString, error: Ptr[CString]): CString =
+    write(error, out => LinkMlNativeApi.fromOssie(string(ontology), string(options), out))
+
   // Internals
 
   private[nativelib] def document(

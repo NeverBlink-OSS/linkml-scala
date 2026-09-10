@@ -6,7 +6,7 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.ossie.OssieGenerator
+import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
@@ -86,6 +86,9 @@ private object Options {
   }
 
   // Unknown fields are rejected rather than skipped.
+  private given fromOssieOptions: JsonValueCodec[OssieImporter.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
   private given jsonSchemaOptions: JsonValueCodec[JsonSchemaGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
@@ -148,6 +151,8 @@ private object Options {
     apply(json, ErDiagramGenerator.Options())
 
   def ossie(json: String): OssieGenerator.Options = apply(json, OssieGenerator.Options())
+
+  def fromOssie(json: String): OssieImporter.Options = apply(json, OssieImporter.Options())
 
   def scala(json: String): ScalaGenerator.Options = apply(json, ScalaGenerator.Options())
 

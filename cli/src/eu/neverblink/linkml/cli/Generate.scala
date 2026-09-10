@@ -51,17 +51,6 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
         else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
     }
 
-  private def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
-    file.foldFast {
-      // `out` is the command's stdout (redirected in tests). Flush but never close it.
-      write(outStream)
-      outStream.flush()
-    } { value =>
-      val stream = os.write.over.outputStream(os.Path(value, os.pwd))
-      try write(stream)
-      finally stream.close()
-    }
-
   private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
     if files.isEmpty then err("No files generated.")
     to.foldFast {

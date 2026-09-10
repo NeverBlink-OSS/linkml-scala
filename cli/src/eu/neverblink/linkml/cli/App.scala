@@ -38,6 +38,7 @@ final class App private[cli] (
     ErDiagram,
     Translation,
     Ossie,
+    FromOssie,
     Version,
   )
 

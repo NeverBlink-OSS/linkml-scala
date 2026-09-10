@@ -29,6 +29,8 @@ Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkm
 `frictionless()`, `graphql()`, `er_diagram()`, `translation()`, `ossie()`, and `scala()`, plus
 `lint()` for validation.
 
+Going the other way, `linkml_scala.from_ossie()` reads an Apache Ossie (incubating) ontology and returns the corresponding LinkML schema as YAML or JSON.
+
 To work from memory instead of the file system, use `load_string()` for a single schema or
 `load_path()` when imports are involved:
 
