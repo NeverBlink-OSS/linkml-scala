@@ -456,8 +456,8 @@ object LinkMlJsApi {
 
   /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[ossie]]. Feed the result to [[loadFromString]]
-    * if you want to run a generator over it.
+    * The opposite of [[ossie]]. Feed the result to [[loadFromString]] if you want to run a
+    * generator over it.
     *
     * @param ontology
     *   The ontology document, as YAML or JSON.
