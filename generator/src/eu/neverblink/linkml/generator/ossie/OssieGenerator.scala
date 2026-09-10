@@ -1,13 +1,13 @@
 package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.{json, yaml}
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode, Utf8ByteSink}
+import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
+import eu.neverblink.linkml.generator.ossie.expression.{Constraints, Expression, Literal, Ref}
+import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
 import eu.neverblink.linkml.metamodel.Extensible
-import eu.neverblink.linkml.runtime.LinkmlAny
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.*
-import org.virtuslab.yaml.{Node, NodeOps, parseYaml}
+import org.virtuslab.yaml.{Node, parseYaml}
 
 import java.io.OutputStream
 import scala.collection.mutable
@@ -78,23 +78,11 @@ class OssieGenerator(using sv: SchemaView)
       .find(_.extensionTag.original == "ai_context")
       .flatMap(ext => parseYaml(ext.extensionValue.toString).toOption)
 
-  override def serialize(options: Options = Options()): String = {
-    val node = OssieOntology.codec.encode(generate(options))
-    if options.outputFormat == json then JsonUtil.yamlToJson(node)
-    else node.asYaml
-  }
+  override def serialize(options: Options = Options()): String =
+    JsonUtil.write(OssieOntology.codec.encode(generate(options)), options.outputFormat)
 
-  /** JSON streams out through jsoniter. YAML builds the whole string first.
-    */
-  override def writeTo(out: OutputStream, options: Options = Options()): Unit = {
-    val node = OssieOntology.codec.encode(generate(options))
-    if options.outputFormat == json then JsonUtil.writeJson(node, out)
-    else {
-      val sink = new Utf8ByteSink(out)
-      sink.append(node.asYaml)
-      sink.flush()
-    }
-  }
+  override def writeTo(out: OutputStream, options: Options = Options()): Unit =
+    JsonUtil.write(OssieOntology.codec.encode(generate(options)), options.outputFormat, out)
 
   /** A class, plus the relationships it declares rather than inherits. */
   private def classConcept(
@@ -114,7 +102,8 @@ class OssieGenerator(using sv: SchemaView)
         .flatMap(slot => declared(cv.name).find(_.slotName == slot))
         .map(_.relationship.name),
       // Only this concept's own required relationships - a supertype already states its own.
-      requires = own.filter(_.required).map(r => s"$name.${r.relationship.name}"),
+      requires =
+        own.filter(_.required).map(r => Expression.Member(Ref(name), r.relationship.name).render),
       relationships = own.map(_.relationship),
     )
   }
@@ -210,7 +199,7 @@ class OssieGenerator(using sv: SchemaView)
       extendsConcepts = Seq(BuiltInConcept.string),
       requires =
         if values.isEmpty then Nil
-        else Seq(s"$name IN (${values.map(sqlLiteral).mkString(", ")})"),
+        else Seq(Expression.InList(Ref(name), values.map(Literal.Text.apply)).render),
     )
   }
 
@@ -221,12 +210,11 @@ class OssieGenerator(using sv: SchemaView)
       conceptType = ConceptType.ValueType,
       description = tv._type.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       extendsConcepts = Seq(builtInForType(tv)),
-      requires = constraints(
-        name,
+      requires = Constraints(
         tv._type.minimumValue,
         tv._type.maximumValue,
         tv._type.pattern,
-      ),
+      ).render(Ref(name)).map(_.render),
     )
 
   /** The value constraints the slot itself adds, as expressions over the role that corresponds to
@@ -239,42 +227,10 @@ class OssieGenerator(using sv: SchemaView)
   private def slotConstraints(av: AttributeView, ref: String): Seq[String] = av match {
     case _: TypeAttributeView | _: EnumAttributeView =>
       val slot = av.slotView.slot
-      constraints(ref, slot.minimumValue, slot.maximumValue, slot.pattern)
+      Constraints(slot.minimumValue, slot.maximumValue, slot.pattern)
+        .render(Ref(ref))
+        .map(_.render)
     case _ => Nil
-  }
-
-  private def constraints(
-      ref: String,
-      minimum: Option[LinkmlAny],
-      maximum: Option[LinkmlAny],
-      pattern: Option[String],
-  ): Seq[String] = {
-    val out = Seq.newBuilder[String]
-    minimum.flatMap(bound).foreachFast(v => out += s"$ref >= $v")
-    maximum.flatMap(bound).foreachFast(v => out += s"$ref <= $v")
-    pattern.foreachFast(p => out += s"REGEXP_LIKE($ref, ${sqlLiteral(p)})")
-    out.result()
-  }
-
-  /** Make an Ossie value bound out of a LinkML value, or None if it cannot be expressed. This is
-    * used in the constraint expressions.
-    */
-  private def bound(value: LinkmlAny): Option[String] = {
-    val raw = value.value.strip()
-    val unquoted =
-      if raw.length >= 2 && (raw.head == '"' || raw.head == '\'') && raw.last == raw.head then
-        raw.substring(1, raw.length - 1)
-      else raw
-    if unquoted.isEmpty || unquoted.exists(c => c == '\n' || c == '\r') then None
-    else
-      Some(
-        try {
-          BigDecimal(unquoted)
-          unquoted
-        } catch {
-          case _: NumberFormatException => sqlLiteral(unquoted)
-        },
-      )
   }
 
   /** The concept that plays the role in the range of a slot. */
@@ -355,8 +311,4 @@ object OssieGenerator {
     case _: AnyType.type => BuiltInConcept.any
     case _: UnknownType.type => BuiltInConcept.any
   }
-
-  /** A single-quoted SQL string literal. */
-  private def sqlLiteral(value: String): String = s"'${value.replace("'", "''")}'"
-
 }

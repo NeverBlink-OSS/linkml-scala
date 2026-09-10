@@ -361,7 +361,7 @@ object schemaview extends Module, NativeOptional {
     )
 
     // fastparse's `rep`/`StringIn` macros trip -Xcheck-macros ("Expression created in a splice was
-    // used outside of that splice") on Scala 3.8. The generated parsers are correct -- it's a
+    // used outside of that splice") on Scala 3.9. The generated parsers are correct -- it's a
     // scope-tracking bug in fastparse's quotes, fixed upstream but unreleased (3.1.1 is latest).
     // Scoped to this module so the rest of the build keeps the check.
     override def scalacOptions = super.scalacOptions().filterNot(_ == "-Xcheck-macros")
@@ -539,6 +539,9 @@ object generator extends Module, NativeOptional {
       mvn"com.softwaremill.sttp.apispec::apispec-model::0.11.10",
       mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros::2.40.1",
     )
+
+    // Same fastparse macro bug as in SchemaViewModule
+    override def scalacOptions = super.scalacOptions().filterNot(_ == "-Xcheck-macros")
   }
 }
 
