@@ -4,28 +4,30 @@ How the `ossie` generator and importer map between LinkML and [Apache Ossie](htt
 
 ## Document
 
-| Ossie field         | From LinkML                                    |
-|---------------------|------------------------------------------------|
-| `version`           | Hardcoded `0.2.0.dev0`                         |
-| `name`              | `name`                                         |
-| `description`       | `description`                                  |
-| `ontology`          | One component per class, enum, and named type. |
-| `ai_context`        | `extensions.ai_context`                        |
-| `requires`          | **Not emitted.**                               |
-| `ontology_mappings` | **Not emitted.**                               |
+| From LinkML                                    | Ossie field         | To LinkML     |
+|------------------------------------------------|---------------------|---------------|
+| Hardcoded `0.2.0.dev0`                         | `version`           | **Not read.** |
+| `name`                                         | `name`              | Inverse.      |
+| `description`                                  | `description`       | Inverse.      |
+| One component per class, enum, and named type. | `ontology`          | Inverse.      |
+| `extensions.ai_context`                        | `ai_context`        | Inverse.      |
+| **Not emitted.**                               | `requires`          | **Not read.** |
+| **Not emitted.**                               | `ontology_mappings` | **Not read.** |
+
+By default, the importer invents an identifier for the LinkML schema as `https://example.org/` + `name` in snake_case, unless the caller supplies it.
 
 ## Concept (`OntologyComponent`)
 
-| Ossie field     | From LinkML                                                                                                                                          |
-|-----------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `concept`       | Element name in PascalCase.                                                                                                                          |
-| `type`          | `EntityType` for classes, `ValueType` for enums and types.                                                                                           |
-| `description`   | Element `description`, in `--metadata-language`.                                                                                                     |
-| `extends`       | Classes: `is_a` + `mixins`. Enums and types: the built-in value type for their base.                                                                 |
-| `identify_by`   | `identifier`, `key`, or `unique_keys`                                                                                                                |
-| `requires`      | Required slots, as `Concept.relationship`. Enums: `Concept IN ('a', 'b')`. Named types also get their `minimum_value` / `maximum_value` / `pattern`. |
-| `relationships` | The class' derived slots, minus the ones stated identically in a supertype.                                                                          |
-| `derived_by`    | **Not emitted.**                                                                                                                                     |
+| From LinkML                                                                          | Ossie field     | To LinkML                                                                                                         |
+|--------------------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------|
+| Element name in PascalCase.                                                          | `concept`       | Inverse. Original spelling kept in `alias`.                                                                       |
+| `EntityType` for classes, `ValueType` for enums and types.                           | `type`          | Inverse.                                                                                                          |
+| Element `description`, in `--metadata-language`.                                     | `description`   | Inverse.                                                                                                          |
+| Classes: `is_a` + `mixins`. Enums and types: the built-in value type for their base. | `extends`       | Last entry is `is_a`, the rest are `mixins`. For a value type it is `typeof`, or `string` if the base is unknown. |
+| `identifier`, `key`, or `unique_keys`                                                | `identify_by`   | One entry, `OneToOne`, or scalar range → `identifier`. Otherwise `unique_keys`.                                   |
+| Required slots: `Concept.relationship`. Enums and named types: see Expressions.      | `requires`      | Inverse. Any other restriction is ignored.                                                                        |
+| The class' derived slots, minus the ones stated identically in a supertype.          | `relationships` | One attribute each.                                                                                               |
+| **Not emitted.**                                                                     | `derived_by`    | **Not read.**                                                                                                     |
 
 Abstract classes and mixins become ordinary concepts – Ossie has no abstract elements.
 
@@ -35,15 +37,15 @@ A subtype only declares what it does not inherit unchanged. If it narrows a slot
 
 One per derived slot of the class. Identified as `Concept.name`, so names only need to be unique within their concept.
 
-| Ossie field    | From LinkML                                                                        |
-|----------------|------------------------------------------------------------------------------------|
-| `name`         | Slot `alias`, else slot name in snake_case.                                        |
-| `verbalizes`   | `{Concept} <title or space-case name> {Range}`                                     |
-| `description`  | Slot `description`, in `--metadata-language`.                                      |
-| `roles`        | Always exactly one, played by the slot's range concept.                            |
-| `multiplicity` | Single-valued identifier/key slot → `OneToOne`. Other single-valued → `ManyToOne`. |
-| `requires`     | Slot `minimum_value` / `maximum_value` / `pattern`, as expressions over the role.  |
-| `derived_by`   | **Not emitted.**                                                                   |
+| From LinkML                                                                       | Ossie field    | To LinkML                                                      |
+|-----------------------------------------------------------------------------------|----------------|----------------------------------------------------------------|
+| Slot `alias`, else slot name in snake_case.                                       | `name`         | Slot name in snake_case, original spelling in `alias`.         |
+| `{Concept} <title or space-case name> {Range}`                                    | `verbalizes`   | **Not read.**                                                  |
+| Slot `description`, in `--metadata-language`.                                     | `description`  | Inverse.                                                       |
+| Always exactly one, played by the slot's range concept.                           | `roles`        | The first role's concept is the range. Any others are dropped. |
+| Single-valued identifier/key slot → `OneToOne`. Others → `ManyToOne`.             | `multiplicity` | Absent → `multivalued: true`.                                  |
+| Slot `minimum_value` / `maximum_value` / `pattern`, as expressions over the role. | `requires`     | Inverse.                                                       |
+| **Not emitted.**                                                                  | `derived_by`   | **Not read.**                                                  |
 
 ### Roles
 
@@ -54,22 +56,33 @@ range is its own class. `Person.parent_of` becomes `roles: [{concept: Person, na
 
 Primitive LinkML types map straight onto Ossie's built-in concepts:
 
-| LinkML                                           | Ossie      |
-|--------------------------------------------------|------------|
-| `string`, `uri`, `uriorcurie`, `curie`, `ncname` | `String`   |
-| `integer`                                        | `Integer`  |
-| `float`, `double`                                | `Float`    |
-| `decimal`                                        | `Decimal`  |
-| `boolean`                                        | `Boolean`  |
-| `date`                                           | `Date`     |
-| `datetime`                                       | `DateTime` |
-| `time`                                           | `String`   |
-| localized text                                   | `String`   |
-| `linkml:Any`, unknown base                       | `Any`      |
+| From LinkML                                      | Ossie      | To LinkML                            |
+|--------------------------------------------------|------------|--------------------------------------|
+| `string`, `uri`, `uriorcurie`, `curie`, `ncname` | `String`   | `string`                             |
+| `integer`                                        | `Integer`  | `integer`                            |
+| `float`, `double`                                | `Float`    | `float`                              |
+| `decimal`                                        | `Decimal`  | `decimal`                            |
+| `boolean`                                        | `Boolean`  | `boolean`                            |
+| `date`                                           | `Date`     | `date`                               |
+| `datetime`                                       | `DateTime` | `datetime`                           |
+| `time`                                           | `String`   | `string`                             |
+| localized text                                   | `String`   | `string`                             |
+| `linkml:Any`, unknown base                       | `Any`      | A class with `class_uri: linkml:Any` |
+
+Several LinkML types share one Ossie concept, so the last column is not the inverse of the first: a `uri` comes back as a `string`, and a `double` as a `float`.
 
 A non-primitive LinkML type becomes its own `ValueType` concept extending a built-in.
 
 An **enum** becomes a `ValueType` extending `String`, with its permissible values as a `requires` expression. Enum inheritance and dynamic enums are not mapped.
+
+## Expressions
+
+| From LinkML                      | Ossie                   | To LinkML |
+|----------------------------------|-------------------------|-----------|
+| `required: true`                 | `Concept.relationship`  | Inverse.  |
+| `permissible_values`             | `Ref IN ('a', 'b')`     | Inverse.  |
+| `minimum_value`, `maximum_value` | `Ref >= v`, `Ref <= v`  | Inverse.  |
+| `pattern`                        | `REGEXP_LIKE(Ref, 'p')` | Inverse.  |
 
 ## Not mapped from LinkML
 
