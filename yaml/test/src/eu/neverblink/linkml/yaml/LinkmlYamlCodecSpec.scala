@@ -433,7 +433,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |^""".stripMargin,
       )
     }
-    "not use the collapsed form for simple dictionaries with a collection value" in {
+    "not use the SimpleDict form for dictionaries with a collection value" in {
       case class SeqEntry(@id k: String, @value v: Seq[String])
       case class MapEntry(@id k: String, @value v: Map[String, String])
 
