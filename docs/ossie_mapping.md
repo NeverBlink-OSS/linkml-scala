@@ -1,6 +1,6 @@
-# LinkML → Apache Ossie ontology mapping
+# LinkML <-> Apache Ossie ontology mapping
 
-How the `ossie` generator maps LinkML onto [Apache Ossie](https://github.com/apache/ossie) ontology spec (`ontology/ontology.json`, version `0.2.0.dev0`).
+How the `ossie` generator and importer map between LinkML and [Apache Ossie](https://github.com/apache/ossie) ontologies (`ontology/ontology.json`, version `0.2.0.dev0`).
 
 ## Document
 
@@ -38,7 +38,7 @@ One per derived slot of the class. Identified as `Concept.name`, so names only n
 | Ossie field    | From LinkML                                                                        |
 |----------------|------------------------------------------------------------------------------------|
 | `name`         | Slot `alias`, else slot name in snake_case.                                        |
-| `verbalizes`   | `{Concept} <space-case name> {Range}`                                              |
+| `verbalizes`   | `{Concept} <title or space-case name> {Range}`                                     |
 | `description`  | Slot `description`, in `--metadata-language`.                                      |
 | `roles`        | Always exactly one, played by the slot's range concept.                            |
 | `multiplicity` | Single-valued identifier/key slot → `OneToOne`. Other single-valued → `ManyToOne`. |
@@ -76,7 +76,7 @@ An **enum** becomes a `ValueType` extending `String`, with its permissible value
 Ossie does not support arbitrary extensions, so the following LinkML features are not mapped:
 
 - URIs and CURIEs of any kind (`class_uri`, `slot_uri`, `prefixes`)
-- `title`, `deprecated`, `annotations`, `extensions`, `subsets`, `see_also` and other metadata
+- `deprecated`, `annotations`, `extensions`, `subsets`, `see_also` and other metadata
 - `unit`, `default` / `ifabsent`, `recommended`
 - Cardinality counts (`minimum_cardinality`, `maximum_cardinality`)
 - `rules`, `any_of` / `all_of` / `none_of` / `exactly_one_of`
