@@ -471,7 +471,10 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                     case n: Node.MappingNode =>
                       val kvs = LinkmlYamlCodec.getFields(n)
                       ${ genDecodeFields('kvs) }
-                    case _: Node.ScalarNode =>
+                    // Anything that is not a map is the SimpleDict form, where the node only has
+                    // the '@value' field set. It may be a sequence, since the primary value slot
+                    // can be multivalued.
+                    case _ =>
                       ${
                         var index = -1
                         classInfo.genNew(
@@ -504,7 +507,6 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                           }.toList),
                         ).asExpr
                       }
-                    case n => LinkmlYamlCodec.decodeError("map, string or null value", n)
                   }
                 case _ =>
                   val kvs = $node match {
@@ -580,7 +582,13 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
         case '[ft] => genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId)
       }
     } else if (
-      fields.exists(_.kind == FieldKind.Id) && fields.exists(_.kind == FieldKind.Value) &&
+      fields.exists(_.kind == FieldKind.Id) &&
+      fields.exists(f =>
+        // The LinkML spec allows a multivalued primary value, but LinkML-Py only reads a
+        // collapsed sequence since 1.10.0, and its own dumper writes the full form anyway.
+        // Keep the full form for clarity.
+        f.kind == FieldKind.Value && !isCollectionTpe(f.resolvedTpe),
+      ) &&
       // A '@serializeDefault' field must always be written, so the class cannot collapse to the
       // compact (bare value) form. Decoding of that form stays supported either way.
       fields.forall(x =>

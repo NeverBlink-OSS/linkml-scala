@@ -108,19 +108,42 @@ private trait MacroValidator[T] {
   *   Whether to treat omitted ranges as an error
   * @param isRange
   *   Whether this particular slot is a range and should be additionally checked
+  * @param classScope
+  *   Name of the class definition this slot is nested in, if any
+  * @param slotsMayBeLocal
+  *   Whether a slot reference here may reference a slot (attribute) of [[classScope]] rather than
+  *   only a top-level one
   */
 final class ValidatorContext private (
     val defaultRangeAllowed: Boolean,
     val isRange: Boolean,
     val fromSchema: Uri,
+    val classScope: Option[String],
+    val slotsMayBeLocal: Boolean,
 ):
   /** Mark continue validating this slot as a range. SHOULD NOT BE USED OUTSIDE THE MACRO */
   def asRange: ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, true, fromSchema)
+    new ValidatorContext(defaultRangeAllowed, true, fromSchema, classScope, slotsMayBeLocal)
+
+  /** Enter the scope of a class definition. SHOULD NOT BE USED OUTSIDE THE MACRO */
+  def withClassScope(className: String): ValidatorContext =
+    new ValidatorContext(
+      defaultRangeAllowed,
+      isRange,
+      fromSchema,
+      Some(className),
+      slotsMayBeLocal,
+    )
+
+  /** Allow this slot reference to reference a slot (attribute) local to the enclosing class. SHOULD
+    * NOT BE USED OUTSIDE THE MACRO
+    */
+  def asLocalSlotRef: ValidatorContext =
+    new ValidatorContext(defaultRangeAllowed, isRange, fromSchema, classScope, true)
 
 object ValidatorContext:
   def apply(defaultRangeAllowed: Boolean, fromSchema: Uri): ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, false, fromSchema)
+    new ValidatorContext(defaultRangeAllowed, false, fromSchema, None, false)
 
 private object MacroValidator {
   given MacroValidator[LinkmlAny] = new MacroValidator[LinkmlAny] {
@@ -141,6 +164,13 @@ private object MacroValidator {
     }
   }
 
+  /** Whether the reference references a slot of the enclosing class rather than a top-level one. */
+  private def isLocalSlot(
+      name: String,
+  )(using sv: SchemaView, vc: ValidatorContext): Boolean =
+    vc.slotsMayBeLocal && vc.classScope.flatMap(sv.classes.get)
+      .exists(_.isSlotFromAttributes(new Reference[SlotDefinition](name)))
+
   given referenceValidator[T <: Element]: MacroValidator[Reference[T]] =
     new MacroValidator[Reference[T]] {
       def validate(
@@ -156,6 +186,7 @@ private object MacroValidator {
             ValidatorResult(invalidRanges =
               Seq(InvalidRange("", t.value, formatRangeType(value), vc.fromSchema)),
             )
+        case None if isLocalSlot(t.value) => ValidatorResult.ok
         case None =>
           ValidatorResult(unknownReferences = Seq(UnknownReference("", t.value, vc.fromSchema)))
       }
@@ -268,6 +299,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
 
     def genValidateFields(
         kvs: Expr[mutable.Growable[ValidatorResult]],
+        vc: Expr[ValidatorContext],
     )(using Quotes): Expr[Unit] = {
       Block(
         fields.map { fieldInfo =>
@@ -280,8 +312,13 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
                 fTpe,
                 getter.asInstanceOf[Expr[ft]],
                 sv,
-                if fieldInfo.mappedName != "range" then vc
-                else '{ $vc.asRange },
+                fieldInfo.mappedName match {
+                  case "range" => '{ $vc.asRange }
+                  // LinkML scopes these to the enclosing class, they may reference its attributes.
+                  case "unique_key_slots" | "defining_slots" | "slot_group" =>
+                    '{ $vc.asLocalSlotRef }
+                  case _ => vc
+                },
               )
               '{
                 // Skip ok results to save on array expansion and folding
@@ -293,9 +330,15 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
         '{}.asTerm,
       ).asExpr.asInstanceOf[Expr[Unit]]
     }
+    // Class-scoped slot references nested anywhere under this class resolve against its attributes
+    val enterScope =
+      if (tpe <:< classDefinitionTpe)
+        '{ $vc.withClassScope(${ x.asInstanceOf[Expr[ClassDefinition]] }.name) }
+      else vc
     '{
       val kvs = Seq.newBuilder[ValidatorResult]
-      ${ genValidateFields('kvs) }
+      val fieldVc = $enterScope
+      ${ genValidateFields('kvs, 'fieldVc) }
       kvs.result().fold(ValidatorResult.ok)(_ + _)
     }
   }
@@ -356,6 +399,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
     new mutable.HashMap[TypeRepr, Option[Expr[MacroValidator[?]]]]
   private val validateRefs = new mutable.HashMap[TypeRepr, Ref]
   private val defs = new mutable.ListBuffer[Definition]
+  private val classDefinitionTpe = TypeRepr.of[ClassDefinition]
   private val referenceValidatorTpe =
     Symbol.requiredClass("eu.neverblink.linkml.schemaview.MacroValidator").typeRef
   private val schemaViewTpe =

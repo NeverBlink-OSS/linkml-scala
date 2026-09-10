@@ -205,6 +205,147 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "resolve unique_key_slots against the class's own attributes" in {
+      load(
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      a:
+           |        range: string
+           |      b:
+           |        range: string
+           |    unique_keys:
+           |      k:
+           |        unique_key_slots: [a, b]
+           |""".stripMargin,
+      )
+    }
+
+    "resolve defining_slots and slot_group against the class's own attributes" in {
+      load(
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      a:
+           |        range: string
+           |        slot_group: b
+           |      b:
+           |        range: string
+           |        is_grouping_slot: true
+           |    defining_slots: [b]
+           |""".stripMargin,
+      )
+    }
+
+    "find unknown references in defining_slots and slot_group" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      a:
+           |        range: string
+           |        slot_group: typo
+           |    defining_slots: [alsoTypo]
+           |""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'typo' at /classes/SomeClass/attributes/a/slot_group/
+          |Unknown reference 'alsoTypo' at /classes/SomeClass/defining_slots/0/""".stripMargin
+    }
+
+    "keep slot_group strict on a top-level slot, which has no class scope" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |slots:
+           |  a:
+           |    range: string
+           |    slot_group: nope
+           |""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'nope' at /slots/a/slot_group/""".stripMargin
+    }
+
+    "resolve unique_key_slots against inherited attributes" in {
+      load(
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |classes:
+           |  Base:
+           |    attributes:
+           |      inherited:
+           |        range: string
+           |  Mix:
+           |    mixin: true
+           |    attributes:
+           |      mixed:
+           |        range: string
+           |  SomeClass:
+           |    is_a: Base
+           |    mixins: [Mix]
+           |    unique_keys:
+           |      k:
+           |        unique_key_slots: [inherited, mixed]
+           |""".stripMargin,
+      )
+    }
+
+    "find unknown references in unique_key_slots" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |classes:
+           |  Unrelated:
+           |    attributes:
+           |      elsewhere:
+           |        range: string
+           |  SomeClass:
+           |    attributes:
+           |      a:
+           |        range: string
+           |    unique_keys:
+           |      k:
+           |        unique_key_slots: [typo, elsewhere]
+           |""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'typo' at /classes/SomeClass/unique_keys/k/unique_key_slots/0/
+          |Unknown reference 'elsewhere' at /classes/SomeClass/unique_keys/k/unique_key_slots/1/""".stripMargin
+    }
+
+    "not let the unique_key_slots scope leak into a class's slots" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    base: str
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      a:
+           |        range: string
+           |    slots: [a]
+           |""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'a' at /classes/SomeClass/slots/0/""".stripMargin
+    }
+
     "fail on ranges referencing slots" in {
       val schemaYaml =
         s"""$schemaShared

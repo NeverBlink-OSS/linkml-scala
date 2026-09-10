@@ -433,6 +433,47 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |^""".stripMargin,
       )
     }
+    "not use the SimpleDict form for dictionaries with a collection value" in {
+      case class SeqEntry(@id k: String, @value v: Seq[String])
+      case class MapEntry(@id k: String, @value v: Map[String, String])
+
+      case class MyClass(
+          @simpleDict s: Map[String, SeqEntry] = Map(),
+          @simpleDict m: Map[String, MapEntry] = Map(),
+          x: Option[Int] = None,
+      ) derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(s = Map("a" -> SeqEntry("a", Seq("x", "y")))),
+        """s:
+          |  a:
+          |    v:
+          |      - x
+          |      - y
+          |""".stripMargin,
+      )
+      roundTrip(
+        MyClass(m = Map("a" -> MapEntry("a", Map("x" -> "y")))),
+        """m:
+          |  a:
+          |    v:
+          |      x: y
+          |""".stripMargin,
+      )
+      // A collapsed sequence is still accepted on decode, as is a lone scalar
+      decode[MyClass](
+        """s:
+          |  a:
+          |    - x
+          |    - y
+          |""".stripMargin,
+        MyClass(s = Map("a" -> SeqEntry("a", Seq("x", "y")))),
+      )
+      decode[MyClass](
+        "s:\n  a: x\n",
+        MyClass(s = Map("a" -> SeqEntry("a", Seq("x")))),
+      )
+    }
     "decode and encode case classes with compact dictionaries" in {
       case class DictEntry(@id k: String, v: Int, e: Boolean)
 
