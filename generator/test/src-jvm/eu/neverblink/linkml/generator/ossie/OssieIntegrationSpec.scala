@@ -6,10 +6,23 @@ import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
+import org.virtuslab.yaml.parseYaml
+
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets.UTF_8
 
 /** Checks the `ossie` generator's output against Apache Ossie's own JSON Schema. */
 class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   import OssieIntegrationSpec.*
+
+  /** The Ossie flights example, or a cancelled test when there is no checkout to read it from. */
+  private def flightsExample: os.Path =
+    ossieRepo.map(_ / "examples" / "flights.yaml").filter(os.exists).getOrElse(
+      cancel(
+        "No apache/ossie checkout to read the examples from. Set LINKML_OSSIE_REPO to one - the " +
+          "`ossieRepo` mill task clones it.",
+      ),
+    )
 
   "OssieGenerator" should {
     for entry <- ModelCatalogue.all do
@@ -63,6 +76,28 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
           }
         }
       }
+  }
+
+  // A real ontology from the Ossie repo.
+  "the flights example" when {
+    lazy val original = os.read(flightsExample)
+    lazy val once = OssieGenerator(using linkmlFor(original)).serialize()
+
+    "every concept round-trips" in {
+      conceptsOf(once) should contain theSameElementsAs conceptsOf(original)
+    }
+
+    "every relationship round-trips, on the same concept" in {
+      relationshipsOf(once) shouldBe relationshipsOf(original)
+    }
+
+    "a second pass changes nothing" in {
+      OssieGenerator(using linkmlFor(once)).serialize() shouldBe once
+    }
+
+    "the result is still a valid ontology" in {
+      OssieSchema.validate(once, InputFormat.YAML) shouldBe empty
+    }
   }
 
   "ai_context" should {
@@ -137,17 +172,37 @@ object OssieIntegrationSpec {
   private val repoRoot: os.Path =
     Option(System.getenv("MILL_WORKSPACE_ROOT")).map(os.Path(_)).getOrElse(os.pwd)
 
+  /** The apache/ossie checkout, if one is configured. */
+  private lazy val ossieRepo: Option[os.Path] =
+    Option(System.getenv("LINKML_OSSIE_REPO")).filter(_.nonEmpty).map(os.Path(_, os.pwd))
+
   /** Python interpreter and apache/ossie checkout to run the upstream validator with, if both are
     * available.
     */
   private lazy val upstreamValidator: Option[(os.Path, os.Path)] = {
     val python = repoRoot / ".venv" / "bin" / "python"
-    val repo = Option(System.getenv("LINKML_OSSIE_REPO")).filter(_.nonEmpty).map(os.Path(_, os.pwd))
     for
-      r <- repo
+      r <- ossieRepo
       if os.exists(r / "validation" / "validate.py") && os.exists(r / "ontology" / "ontology.json")
       if os.exists(python)
       if os.call((python, "-c", "import jsonschema, yaml"), check = false).exitCode == 0
     yield (python, r)
   }
+
+  private def linkmlFor(ontology: String): SchemaView =
+    SchemaIssues.orThrow(
+      SchemaView.loadSchemaViewFromString(
+        OssieImporter().serialize(ByteArrayInputStream(ontology.getBytes(UTF_8))),
+      ),
+    )
+
+  private def decode(document: String): OssieOntology =
+    OssieOntology.codec.decode(
+      parseYaml(document).getOrElse(throw AssertionError(s"not readable YAML:\n$document")),
+    )
+
+  private def conceptsOf(document: String): Seq[String] = decode(document).ontology.map(_.concept)
+
+  private def relationshipsOf(document: String): Map[String, Set[String]] =
+    decode(document).ontology.map(c => c.concept -> c.relationships.map(_.name).toSet).toMap
 }
