@@ -4,6 +4,7 @@ import {
   targetById,
   type BuildInfo,
   type IssueLocation,
+  type Option,
   type OptionValues,
   type ReportIssue,
   type Target,
@@ -77,8 +78,13 @@ classes:
 // ── State ─────────────────────────────────────────────────────────────────
 
 let activeTargetId = TARGETS[0]!.id;
+
+function optionDefault(opt: Option): string | number | boolean {
+  return opt.default ?? (opt.type === "checkbox" ? false : "");
+}
+
 const optionValues: Record<string, OptionValues> = Object.fromEntries(
-  TARGETS.map((t) => [t.id, Object.fromEntries(t.options.map((o) => [o.key, o.default ?? (o.type === "checkbox" ? false : "")]))]),
+  TARGETS.map((t) => [t.id, Object.fromEntries(t.options.map((o) => [o.key, optionDefault(o)]))]),
 );
 // Which file tab is open, per target.
 const activeFile: Record<string, string | null> = {};
@@ -853,6 +859,30 @@ $clearInput.addEventListener("click", () => {
   scheduleGenerate(0);
 });
 
+/** Swap a text-only button's label for a moment, to confirm something happened. Ignored while a
+ * previous flash is still up, so a double click cannot leave "Copied!" as the permanent label. */
+function flashDone(btn: HTMLButtonElement, label: string): void {
+  if (btn.classList.contains("btn--done")) return;
+  const original = btn.textContent;
+  btn.textContent = label;
+  btn.classList.add("btn--done");
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove("btn--done");
+  }, 1200);
+}
+
+/** Close a dialog on its header X, on any extra close button named here, and on a backdrop click -
+ * which lands on the dialog element itself, since its content fills it. */
+function wireDialog(dialog: HTMLDialogElement, ...closeSelectors: string[]): void {
+  for (const selector of [".modal-close", ...closeSelectors]) {
+    dialog.querySelector<HTMLElement>(selector)!.addEventListener("click", () => dialog.close());
+  }
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+}
+
 $copyOutput.addEventListener("click", async () => {
   // While the report is shown the output editor is hidden and still holds the previously
   // generated target's text, so copying it would hand back content from another tab.
@@ -860,13 +890,7 @@ $copyOutput.addEventListener("click", async () => {
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    const original = $copyOutput.textContent;
-    $copyOutput.textContent = "Copied!";
-    $copyOutput.classList.add("btn-secondary--done");
-    setTimeout(() => {
-      $copyOutput.textContent = original;
-      $copyOutput.classList.remove("btn-secondary--done");
-    }, 1200);
+    flashDone($copyOutput, "Copied!");
   } catch {
     /* clipboard permission denied – nothing sensible to do */
   }
@@ -964,6 +988,17 @@ function showUrlError(message: string): void {
   $urlError.hidden = false;
 }
 
+/** Load a link, and on failure hand it back in the dialog to be fixed. Nothing else on screen
+ * would explain why the editor stayed empty. */
+async function loadOrPrompt(link: string): Promise<void> {
+  const res = await loadFromUrl(link);
+  if (res.ok) return;
+  $urlInput.value = link;
+  showUrlError(res.error);
+  $urlDialog.showModal();
+  scheduleGenerate(0);
+}
+
 $loadUrl.addEventListener("click", () => {
   $urlInput.value = sharedLink() ?? "";
   $urlError.hidden = true;
@@ -985,11 +1020,262 @@ $urlForm.addEventListener("submit", async (e) => {
   else showUrlError(res.error);
 });
 
-$urlDialog.querySelector<HTMLButtonElement>(".modal-close")!.addEventListener("click", () => $urlDialog.close());
-$urlDialog.querySelector<HTMLButtonElement>(".url-cancel")!.addEventListener("click", () => $urlDialog.close());
-$urlDialog.addEventListener("click", (e) => {
-  if (e.target === $urlDialog) $urlDialog.close();
+wireDialog($urlDialog, ".url-cancel");
+
+// ── Share link ─────────────────────────────────────────────────────────────
+
+// The playground's state, deflated and base64url-encoded, behind this in the fragment. A fragment
+// rather than a query parameter: the browser never sends it, so the schema still never leaves the
+// device, and it is not subject to the URL length a server or CDN is willing to accept.
+const SHARE_PREFIX = "s=";
+// Bump only when making BREAKING changes
+const SHARE_VERSION = 1;
+/** Past this a link still works in a browser, but chat clients and mail wrap or truncate it. */
+const SHARE_LONG = 8_000;
+/** Past this it approaches what Safari accepts at all (~80 000) and is unusable most other places. */
+const SHARE_HUGE = 32_000;
+/** Cap on what a link is allowed to decompress to. Nothing anyone would open in a playground comes
+ * near it, and without one a hand-made fragment could inflate a thousandfold and wedge the tab. */
+const SHARE_MAX_CHARS = 2_000_000;
+/** Marks the one failure [[unpack]] raises deliberately, to tell it from a corrupt payload. */
+const TOO_LARGE = "share-payload-too-large";
+/** Baseline since May 2023, so this is about old browsers rather than exotic ones. */
+const CAN_SHARE = typeof CompressionStream !== "undefined" && typeof DecompressionStream !== "undefined";
+
+/** What a share link carries. Short keys mostly for legibility in a hand-decoded payload - deflate
+ * makes their length nearly free. */
+interface SharedState {
+  v: number;
+  /** The schema text, when the editor holds something no link would serve. */
+  s?: string;
+  /** The link it came from instead, when the editor still holds exactly what that link serves. */
+  u?: string;
+  /** Active target id, left out when it is the default one. */
+  t?: string;
+  /** Only the options that differ from their default. */
+  o?: OptionValues;
+}
+
+// deflate-raw rather than gzip: the same compression without the header and checksum. It runs at
+// about 3.5-4x on schema-sized YAML, so a 100 KB schema comes out as a ~28 000 character link.
+async function pack(text: string): Promise<string> {
+  const stream = new Blob([new TextEncoder().encode(text)])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate-raw"));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  // A byte at a time rather than `String.fromCharCode(...bytes)`, which blows the argument limit
+  // somewhere around a 100 KB schema.
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function unpack(encoded: string): Promise<string> {
+  // `atob` is specified as forgiving-base64, so the stripped padding does not need putting back.
+  const binary = atob(encoded.replace(/-/g, "+").replace(/_/g, "/"));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  // Read it chunk by chunk rather than with `Response.text()`, so [[SHARE_MAX_CHARS]] can stop an
+  // oversized payload part way instead of after the whole thing is already in memory.
+  const reader = (stream as ReadableStream<Uint8Array>).getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+    if (text.length > SHARE_MAX_CHARS) {
+      await reader.cancel();
+      throw new Error(TOO_LARGE);
+    }
+  }
+  return text + decoder.decode();
+}
+
+function changedOptions(target: Target): OptionValues | undefined {
+  const values = optionValues[target.id]!;
+  const changed = Object.fromEntries(
+    target.options.filter((o) => values[o.key] !== optionDefault(o)).map((o) => [o.key, values[o.key]!]),
+  );
+  return Object.keys(changed).length ? changed : undefined;
+}
+
+/** Filter options that arrived in a link down to ones this build can honour: an unknown key, or a
+ * select value that is not on offer, would leave the widget showing nothing while still being what
+ * the generator is handed. */
+function knownOptions(target: Target, shared: OptionValues | undefined): OptionValues {
+  const kept: OptionValues = {};
+  for (const opt of target.options) {
+    const value = shared?.[opt.key];
+    if (value === undefined) continue;
+    if (opt.type === "select" && !opt.choices?.includes(String(value))) continue;
+    kept[opt.key] = value;
+  }
+  return kept;
+}
+
+function currentState(): SharedState {
+  const target = activeTarget();
+  const text = inputView.state.doc.toString();
+  const link = sharedLink();
+  const state: SharedState = { v: SHARE_VERSION };
+  // A link is far shorter than the schema, and stays current if the file behind it changes - but
+  // only while the editor still holds exactly what it serves.
+  if (link !== null && text === remoteText) state.u = link;
+  else state.s = text;
+  if (target.id !== TARGETS[0]!.id) state.t = target.id;
+  const options = changedOptions(target);
+  if (options) state.o = options;
+  return state;
+}
+
+/** A share link, plus whether it is the readable `?url=` kind - which the hint text has to match. */
+async function shareUrl(): Promise<{ href: string; plain: boolean }> {
+  const state = currentState();
+  const here = new URL(location.href);
+  here.search = "";
+  here.hash = "";
+  // With nothing but a link to pass on, `?url=` says the same thing in about the same space and a
+  // recipient can see where it points, so there is no reason to bury it in an opaque fragment.
+  if (state.u !== undefined && state.t === undefined && state.o === undefined) {
+    here.searchParams.set(URL_PARAM, state.u);
+    return { href: here.href, plain: true };
+  }
+  here.hash = SHARE_PREFIX + (await pack(JSON.stringify(state)));
+  return { href: here.href, plain: false };
+}
+
+function shareFragment(): string | null {
+  const hash = location.hash.slice(1);
+  return hash.startsWith(SHARE_PREFIX) ? hash.slice(SHARE_PREFIX.length) : null;
+}
+
+/** Put the state a share link carries on screen. */
+async function applySharedState(encoded: string): Promise<LoadResult> {
+  if (!CAN_SHARE) {
+    return { ok: false, error: "This browser cannot read share links: it has no Compression Streams support." };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await unpack(encoded));
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error && err.message === TOO_LARGE
+        ? "This share link unpacks to far more text than the playground will open."
+        : "This share link is damaged. It may have been cut short on the way here.",
+    };
+  }
+  // Anything at all can come out of a fragment, including `null`, which would throw on the version
+  // check rather than be reported.
+  if (typeof parsed !== "object" || parsed === null || (parsed as SharedState).v !== SHARE_VERSION) {
+    return { ok: false, error: "This link was made by a different version of the playground and cannot be read." };
+  }
+  const state = parsed as SharedState;
+
+  // An id this build does not know (a link from a newer playground) leaves the default target
+  // selected, and its options with it - they would not mean anything here either.
+  const target = targetById(state.t ?? TARGETS[0]!.id);
+  if (target) {
+    activeTargetId = target.id;
+    Object.assign(optionValues[target.id]!, knownOptions(target, state.o));
+    renderTargetTabs();
+    renderOptions();
+  }
+
+  if (state.u !== undefined) {
+    void loadOrPrompt(state.u);
+  } else {
+    remoteText = null;
+    setDoc(inputView, state.s ?? "");
+    scheduleGenerate(0);
+  }
+  return { ok: true };
+}
+
+const $share = $<HTMLButtonElement>("share");
+const $shareDialog = $<HTMLDialogElement>("shareDialog");
+const $shareTitle = $("shareTitle");
+const $shareBody = $("shareBody");
+const $shareLink = $<HTMLInputElement>("shareLink");
+const $shareSize = $("shareSize");
+const $shareHint = $("shareHint");
+const $shareError = $("shareError");
+const $shareCopy = $<HTMLButtonElement>("shareCopy");
+
+// Nothing here works without Compression Streams, so do not offer it. The read path still explains
+// itself, because a link can arrive from someone whose browser could make one.
+$share.hidden = !CAN_SHARE;
+
+/** The dialog doubles as the place a broken incoming link is reported, where there is no link to
+ * offer and nothing to copy - so everything but the error line comes off, heading included. */
+function showShareBody(visible: boolean): void {
+  $shareBody.hidden = !visible;
+  $shareCopy.hidden = !visible;
+  $shareTitle.textContent = visible ? "Share this playground" : "This share link did not work";
+}
+
+function showShareError(message: string): void {
+  $shareError.textContent = message;
+  $shareError.hidden = false;
+}
+
+function showShareSize(length: number): void {
+  const count = `${length.toLocaleString("en-US")} characters`;
+  $shareSize.classList.toggle("share-size--warn", length > SHARE_LONG);
+  if (length <= SHARE_LONG) {
+    $shareSize.textContent = `${count}.`;
+  } else if (length <= SHARE_HUGE) {
+    $shareSize.textContent = `${count} – long. Some chat apps and mail clients cut links this long.`;
+  } else {
+    $shareSize.textContent =
+      `${count} – very long. Most places will cut a link this size. Consider putting the schema ` +
+      "online and sharing that with 'Load from URL' instead.";
+  }
+}
+
+$share.addEventListener("click", async () => {
+  $shareError.hidden = true;
+  showShareBody(true);
+  $shareLink.value = "";
+  $shareSize.textContent = "";
+  $shareSize.classList.remove("share-size--warn");
+  $shareDialog.showModal();
+  try {
+    const { href, plain } = await shareUrl();
+    $shareLink.value = href;
+    showShareSize(href.length);
+    $shareHint.textContent = "Your data is not sent to the server nor stored anywhere.";
+    $shareLink.select();
+  } catch {
+    showShareError("Could not build a share link for this schema.");
+  }
 });
+
+$shareCopy.addEventListener("click", async () => {
+  if (!$shareLink.value) return;
+  try {
+    await navigator.clipboard.writeText($shareLink.value);
+    flashDone($shareCopy, "Copied!");
+  } catch {
+    // Clipboard permission denied - the link is already selected, so leave it to be copied by hand.
+    $shareLink.select();
+  }
+});
+
+wireDialog($shareDialog, ".share-done");
+
+/** Apply an incoming share link, and on failure say so in the dialog it came from. */
+async function applyShareOrPrompt(encoded: string): Promise<void> {
+  const res = await applySharedState(encoded);
+  if (res.ok) return;
+  // Nothing else on screen would explain why the link did not bring anything with it.
+  showShareError(res.error);
+  showShareBody(false);
+  $shareDialog.showModal();
+  scheduleGenerate(0);
+}
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -1051,11 +1337,7 @@ $footerVersion.addEventListener("click", () => {
   openFaq();
   $("buildSection").scrollIntoView({ block: "nearest" });
 });
-$faqDialog.querySelector<HTMLButtonElement>(".modal-close")!.addEventListener("click", () => $faqDialog.close());
-// Click on the backdrop (the dialog element itself, since content fills it) closes it.
-$faqDialog.addEventListener("click", (e) => {
-  if (e.target === $faqDialog) $faqDialog.close();
-});
+wireDialog($faqDialog);
 
 // ── GitHub repo stats (mkdocs-material style) ────────────────────────────────
 
@@ -1098,8 +1380,18 @@ function renderRepoStats(stars: number, forks: number): void {
 renderTargetTabs();
 renderOptions();
 
+const initialShare = shareFragment();
 const initialLink = sharedLink();
-if (initialLink === null) {
+if (initialShare !== null) {
+  // Read once, then dropped from the address bar: it keeps the URL legible, and stops an
+  // edit-then-reload resurrecting the state the link came with. The schema itself survives a
+  // reload either way, through localStorage.
+  const clean = new URL(location.href);
+  clean.hash = "";
+  history.replaceState(null, "", clean);
+  getWorker();
+  void applyShareOrPrompt(initialShare);
+} else if (initialLink === null) {
   // Starts the worker, which begins loading the LinkML bundle immediately. The request waits on
   // that load inside the worker, so the page is interactive while the multi-MB bundle parses.
   scheduleGenerate(0);
@@ -1107,12 +1399,5 @@ if (initialLink === null) {
   // Same warm-up, minus the request: the download generates once it lands, so asking for a
   // generation here as well would parse the previous session's schema for nothing.
   getWorker();
-  void loadFromUrl(initialLink).then((res) => {
-    if (res.ok) return;
-    // Nothing on screen would explain a link that failed, so hand it back in the dialog to fix.
-    $urlInput.value = initialLink;
-    showUrlError(res.error);
-    $urlDialog.showModal();
-    scheduleGenerate(0);
-  });
+  void loadOrPrompt(initialLink);
 }
