@@ -12,8 +12,10 @@ on:
         default: >-
           [{"os":"macos-14","platform":"macos-arm64"},
            {"os":"macos-15-intel","platform":"macos-x86_64"},
-           {"os":"ubuntu-22.04","platform":"linux-x86_64"},
-           {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+           {"os":"ubuntu-22.04","platform":"linux-x86_64",
+            "container":"quay.io/pypa/manylinux_2_28_x86_64"},
+           {"os":"ubuntu-22.04-arm","platform":"linux-arm64",
+            "container":"quay.io/pypa/manylinux_2_28_aarch64"},
            {"os":"windows-latest","platform":"windows-x86_64"},
            {"os":"windows-11-arm","platform":"windows-arm64"}]
       musl:
@@ -38,8 +40,10 @@ on:
         default: >-
           [{"os":"macos-14","platform":"macos-arm64"},
            {"os":"macos-15-intel","platform":"macos-x86_64"},
-           {"os":"ubuntu-22.04","platform":"linux-x86_64"},
-           {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},
+           {"os":"ubuntu-22.04","platform":"linux-x86_64",
+            "container":"quay.io/pypa/manylinux_2_28_x86_64"},
+           {"os":"ubuntu-22.04-arm","platform":"linux-arm64",
+            "container":"quay.io/pypa/manylinux_2_28_aarch64"},
            {"os":"windows-latest","platform":"windows-x86_64"},
            {"os":"windows-11-arm","platform":"windows-arm64"}]
       musl:
@@ -61,6 +65,8 @@ jobs:
   library:
     name: Library and wheel for ${{ matrix.platform }}
     runs-on: ${{ matrix.os }}
+    # Use a container to target a lower glibc.
+    container: ${{ matrix.container }}
     strategy:
       matrix:
         include: ${{ fromJSON(inputs.targets) }}
@@ -98,9 +104,16 @@ jobs:
           arch: ${{ matrix.platform == 'windows-arm64' && 'arm64' || 'x64' }}
 
       - name: Setup Python
+        if: '!matrix.container'
         uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.platform == 'windows-arm64' && '3.12' || '3.10' }}
+
+      - name: Setup the manylinux Toolchain
+        if: matrix.container
+        run: |
+          dnf install -y -q clang
+          echo "/opt/python/cp310-cp310/bin" >> "$GITHUB_PATH"
 
       - name: Show the LLVM toolchain
         run: clang --version
