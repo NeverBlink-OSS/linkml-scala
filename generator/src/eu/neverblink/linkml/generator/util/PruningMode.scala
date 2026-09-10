@@ -63,9 +63,29 @@ enum PruningMode:
   }
 
 object PruningMode:
+
+  /** The mode the caller named, or None if it is not one we know.
+    *
+    * Accepts camel, kebab and snake case (`treeRoot`, `tree-root`, `tree_root`).
+    */
+  def parse(mode: String): Option[PruningMode] = Case.base(mode) match {
+    case "tree_root" => Some(PruningMode.treeRoot(None))
+    case "schema" => Some(PruningMode.schemaRoot)
+    case "skip" => Some(PruningMode.skip)
+    case _ => None
+  }
+
+  def unknownMode(mode: String): String =
+    s"Unknown pruning mode '$mode'. Supported modes: treeRoot, schema, skip."
+
+  /** The named mode, with treeRootOverride applied when it is the tree-root one.
+    *
+    * @throws IllegalArgumentException
+    *   if `mode` is not a mode we know
+    */
   def apply(mode: String, treeRootOverride: Option[String]): PruningMode =
-    Case.base(mode) match {
-      case "tree_toot" => PruningMode.treeRoot(treeRootOverride)
-      case "schema" => PruningMode.schemaRoot
-      case "skip" => PruningMode.skip
+    parse(mode) match {
+      case Some(PruningMode.treeRoot(_)) => PruningMode.treeRoot(treeRootOverride)
+      case Some(other) => other
+      case None => throw IllegalArgumentException(unknownMode(mode))
     }

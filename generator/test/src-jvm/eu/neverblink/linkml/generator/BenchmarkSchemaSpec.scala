@@ -1,13 +1,17 @@
 package eu.neverblink.linkml.generator
 
+import com.networknt.schema.InputFormat
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
+import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieSchema}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import io.circe.parser.parse as parseJson
@@ -15,6 +19,8 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
+import sangria.parser.{ParserConfig, QueryParser}
+import sangria.schema.Schema
 
 import java.io.StringReader
 
@@ -51,6 +57,27 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
     parseYaml(s) match {
       case Right(_) => ()
       case Left(err) => fail(s"output did not parse as YAML: $err\n$s")
+    }
+  }
+
+  private def assertIsGraphQlSchema(name: String, s: String): Unit = {
+    withClue("output is empty: ") { s.trim should not be empty }
+    val document = "type Query {\n  test: String\n}\n" + s
+    try {
+      Schema.buildFromAst(QueryParser.parse(document, ParserConfig()).get)
+      ()
+    } catch {
+      case err: Throwable =>
+        val path = os.Path(s"$name.graphql", os.pwd)
+        os.write.over(path, document)
+        fail(s"output is not a valid GraphQL schema: ${err.getMessage}\noutput stored in $path")
+    }
+  }
+
+  private def assertIsOssieOntology(s: String, format: InputFormat): Unit = {
+    withClue("output is empty: ") { s.trim should not be empty }
+    withClue("output is not a valid Ossie ontology:\n") {
+      OssieSchema.validate(s, format) shouldBe empty
     }
   }
 
@@ -102,7 +129,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assume(!skip.contains((name, "linkml-yaml")), skip.getOrElse((name, "linkml-yaml"), ""))
             assertParsesAsYaml(
               LinkMlGenerator(using sv).serialize(
-                LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.yaml),
+                LinkMlGenerator.Options(outputFormat = JsonOutputFormat.yaml),
               ),
             )
           }
@@ -112,8 +139,33 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assertParsesAsJson(
               name,
               LinkMlGenerator(using sv).serialize(
-                LinkMlGenerator.Options(outputFormat = LinkMlGenerator.OutputFormat.json),
+                LinkMlGenerator.Options(outputFormat = JsonOutputFormat.json),
               ),
+            )
+          }
+
+          "GraphQL output is a well-formed GraphQL schema" in {
+            assume(!skip.contains((name, "graphql")), skip.getOrElse((name, "graphql"), ""))
+            assertIsGraphQlSchema(name, GraphQlGenerator(using sv).serialize())
+          }
+
+          "Ossie ontology (YAML) output validates against the Ossie ontology schema" in {
+            assume(!skip.contains((name, "ossie-yaml")), skip.getOrElse((name, "ossie-yaml"), ""))
+            assertIsOssieOntology(
+              OssieGenerator(using sv).serialize(
+                OssieGenerator.Options(outputFormat = JsonOutputFormat.yaml),
+              ),
+              InputFormat.YAML,
+            )
+          }
+
+          "Ossie ontology (JSON) output validates against the Ossie ontology schema" in {
+            assume(!skip.contains((name, "ossie-json")), skip.getOrElse((name, "ossie-json"), ""))
+            assertIsOssieOntology(
+              OssieGenerator(using sv).serialize(
+                OssieGenerator.Options(outputFormat = JsonOutputFormat.json),
+              ),
+              InputFormat.JSON,
             )
           }
 
@@ -176,5 +228,22 @@ object BenchmarkSchemaSpec {
     "iso27001" -> "validation" -> "LNK-209: Vendored linkml:types?",
     "nmdc_microbiome" -> "validation" -> "LNK-208, LNK-209: '%'-named PV",
     "tc57cim" -> "validation" -> "LNK-208, LNK-209: '%'-named PV",
+    "ai-atlas-nexus" -> "graphql" ->
+      ("Bug: emits `enum X {}` for an enum with no permissible values, " +
+        "which is a syntax error in GraphQL"),
+    "tc57cim" -> "graphql" ->
+      ("Bug: emits `enum X {}` for an enum with no permissible values, " +
+        "which is a syntax error in GraphQL"),
+    "iso27001" -> "graphql" ->
+      ("Bug: two slots whose aliases collide become one duplicated field - " +
+        "ManagementReview gets `review_date` twice, from the slots `review_date` and " +
+        "`ManagementReview_review_date`"),
+    "nmdc_microbiome" -> "graphql" ->
+      ("Bug: a subclass narrowing a slot's range to an enum breaks GraphQL " +
+        "field covariance - NucleotideSequencing.analyte_category is an enum where the " +
+        "DataGeneration interface declares String"),
+    "sssom" -> "graphql" ->
+      ("A permissible value of \"1.0\" becomes the enum " +
+        "value `1_0`, and a GraphQL name may not start with a digit."),
   )
 }

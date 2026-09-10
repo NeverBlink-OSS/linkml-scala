@@ -135,6 +135,12 @@ Generate a standard JSON Schema from your model:
 linkml-scala generate json-schema <input-file>
 ```
 
+Generate an [Apache Ossie](https://github.com/apache/ossie) ontology:
+
+```shell
+linkml-scala generate ossie --to <output-path> <input-file>
+```
+
 Generate SHACL (Shapes Constraint Language) graphs for RDF validation:
 
 ```shell
@@ -173,8 +179,8 @@ const jsonSchema = LinkML.jsonSchema(view);
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
 import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
-`rdfs`, `linkml`, `scala`, `frictionless`, `graphQl`, `erDiagram`, or `lint` against the returned
-handle.
+`rdfs`, `linkml`, `scala`, `frictionless`, `graphQl`, `erDiagram`, `ossie`, or `lint` against the
+returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
 ## Python library

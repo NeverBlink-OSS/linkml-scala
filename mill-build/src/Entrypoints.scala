@@ -108,6 +108,15 @@ object Entrypoints {
       "Generate a Mermaid entity relationship diagram.",
     ),
     Entrypoint(
+      "ossie",
+      "linkml_ossie",
+      "ossie",
+      "OssieGenerator",
+      "str",
+      "Generate an Apache Ossie ontology, serialized as YAML or JSON.",
+      "Generate an Apache Ossie ontology.",
+    ),
+    Entrypoint(
       "scala",
       "linkml_scala",
       "scalaFiles",

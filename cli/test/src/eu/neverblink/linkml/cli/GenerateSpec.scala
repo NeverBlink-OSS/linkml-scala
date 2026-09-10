@@ -33,6 +33,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (GraphQl, "graphql", Seq("type Root", "name: String")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
     (Translation, "translation", Seq("\"Root\": \"root\"")),
+    (Ossie, "ossie", Seq("concept: Root", "type: EntityType", "name: name")),
   )
 
   /** A schema with a class that pruning can remove: `Other` is reachable only through the `Root`

@@ -61,6 +61,7 @@ char *linkml_rdfs(long long handle, const char *options, char **error);
 char *linkml_linkml(long long handle, const char *options, char **error);
 char *linkml_graphql(long long handle, const char *options, char **error);
 char *linkml_er_diagram(long long handle, const char *options, char **error);
+char *linkml_ossie(long long handle, const char *options, char **error);
 
 /* Generators producing several files, returned as a JSON object of filename to content. */
 char *linkml_scala(long long handle, const char *options, char **error);

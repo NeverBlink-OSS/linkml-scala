@@ -5,7 +5,9 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
+import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -174,6 +176,12 @@ private object RdfOutput {
     s"Unknown RDF format '$format'. Supported formats: nt, ttl."
 }
 
+/** The `--format` flag the LinkML and Ossie generate commands share. The spellings themselves live
+  * on `OutputFormat`, since the JS facade and the C options take the same ones.
+  */
+private val outputFormatHelp: String =
+  "Serialization format: 'yaml' (the default) or 'json'. Default: yaml"
+
 // LinkML -> LinkML
 
 @HelpMessage(
@@ -188,7 +196,7 @@ final case class LinkMlOptions(
     skipDerivation: Boolean = false,
     @Recurse
     pruning: PruningOptions = PruningOptions(),
-    @HelpMessage("Format to serialize the model in. One of yaml|json. Default: yaml.")
+    @HelpMessage(outputFormatHelp)
     format: String = "yaml",
 ) extends HasGenerateOptions
 
@@ -197,23 +205,16 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
 
   override protected[cli] def generate(options: LinkMlOptions, out: OutputStream)(using
       SchemaView,
-  ): Unit = {
-    val format = options.format.toLowerCase match {
-      case "yaml" => LinkMlGenerator.OutputFormat.yaml
-      case "yml" => LinkMlGenerator.OutputFormat.yaml
-      case "json" => LinkMlGenerator.OutputFormat.json
-      case s => err(s"Unknown output format: $s")
-    }
-
+  ): Unit =
     LinkMlGenerator().writeTo(
       out,
       LinkMlGenerator.Options(
         pruningMode = options.pruning.resolvedPruningMode,
         skipClassDerivation = options.skipDerivation,
-        outputFormat = format,
+        outputFormat = JsonOutputFormat.parse(options.format)
+          .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
       ),
     )
-  }
 }
 
 // Table Schema
@@ -285,6 +286,39 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
     GraphQlGenerator().writeTo(
       out,
       GraphQlGenerator.Options(options.pruning.resolvedPruningMode),
+    )
+}
+
+// Apache Ossie ontology
+
+@HelpMessage(
+  "Generate an Apache Ossie ontology from a LinkML model. " +
+    "Classes become entity types, enums and named types become value types, and slots become " +
+    "the relationships grouped under the concept that plays their first role.",
+)
+@ArgsName("<input-file>")
+final case class OssieOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
+    @HelpMessage(outputFormatHelp)
+    format: String = "yaml",
+) extends HasGenerateOptions
+
+object Ossie extends StreamGenerate[OssieOptions] {
+  override protected def generatorName: String = "ossie"
+
+  override protected[cli] def generate(options: OssieOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    OssieGenerator().writeTo(
+      out,
+      OssieGenerator.Options(
+        pruningMode = options.pruning.resolvedPruningMode,
+        outputFormat = JsonOutputFormat.parse(options.format)
+          .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+      ),
     )
 }
 

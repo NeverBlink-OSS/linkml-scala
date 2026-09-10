@@ -34,6 +34,8 @@ const frictionless: Record<string, string> = LinkML.frictionless(view);
 const frictionlessRoot: Record<string, string> = LinkML.frictionless(view, "treeRoot", "Person", true);
 const erDiagram: string = LinkML.erDiagram(view);
 const erDiagramFull: string = LinkML.erDiagram(view, "skip", "Person", false);
+const ossie: string = LinkML.ossie(view);
+const ossieFull: string = LinkML.ossie(view, "treeRoot", "Person", "json");
 const lint: any = LinkML.lint(view);
 const lintIssues: unknown[] = lint.issues;
 const lintNoMessages: any = LinkML.lint(view, false);
@@ -55,6 +57,8 @@ void [
   frictionlessRoot,
   erDiagram,
   erDiagramFull,
+  ossie,
+  ossieFull,
   lint,
   lintIssues,
   lintNoMessages,

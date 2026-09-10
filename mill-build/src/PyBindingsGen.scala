@@ -147,7 +147,7 @@ object PyBindingsGen {
     case "Int" | "Long" => "int"
     case "String" => "str"
     case "Option[String]" => "str | None"
-    // LinkMlGenerator.OutputFormat and friends: enums the boundary spells as their name.
+    // JsonOutputFormat, PruningMode and friends: enums the boundary spells as their name.
     case _ => "str"
   }
 

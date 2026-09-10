@@ -6,13 +6,14 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
+import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.{JsonOutputFormat, PruningMode}
 
 import scala.util.control.NonFatal
 
@@ -38,7 +39,8 @@ private object Options {
         mode
       } else {
         in.rollbackToken()
-        named(in.readString(null), in)
+        val value = in.readString(null)
+        PruningMode.parse(value).getOrElse(in.decodeError(PruningMode.unknownMode(value)))
       }
 
     override def encodeValue(x: PruningMode, out: JsonWriter): Unit = x match {
@@ -53,31 +55,21 @@ private object Options {
     }
 
     override def nullValue: PruningMode = null
-
-    private def named(value: String, in: JsonReader): PruningMode = value match {
-      case "treeRoot" | "tree_root" | "tree-root" => PruningMode.treeRoot(None)
-      case "schema" => PruningMode.schemaRoot
-      case "skip" => PruningMode.skip
-      case other =>
-        in.decodeError(s"unknown pruning mode '$other', expected treeRoot, schema or skip")
-    }
   }
 
-  private given outputFormatCodec: JsonValueCodec[LinkMlGenerator.OutputFormat] =
-    new JsonValueCodec[LinkMlGenerator.OutputFormat] {
-      override def decodeValue(
-          in: JsonReader,
-          default: LinkMlGenerator.OutputFormat,
-      ): LinkMlGenerator.OutputFormat = in.readString(null) match {
-        case "yaml" | "yml" => LinkMlGenerator.OutputFormat.yaml
-        case "json" => LinkMlGenerator.OutputFormat.json
-        case other => in.decodeError(s"unknown output format '$other', expected yaml or json")
+  private given outputFormatCodec: JsonValueCodec[JsonOutputFormat] =
+    new JsonValueCodec[JsonOutputFormat] {
+      override def decodeValue(in: JsonReader, default: JsonOutputFormat): JsonOutputFormat = {
+        val value = in.readString(null)
+        JsonOutputFormat.parse(value).getOrElse(
+          in.decodeError(JsonOutputFormat.unknownFormat(value)),
+        )
       }
 
-      override def encodeValue(x: LinkMlGenerator.OutputFormat, out: JsonWriter): Unit =
+      override def encodeValue(x: JsonOutputFormat, out: JsonWriter): Unit =
         out.writeVal(x.toString)
 
-      override def nullValue: LinkMlGenerator.OutputFormat = null
+      override def nullValue: JsonOutputFormat = null
     }
 
   private given rdfFormatCodec: JsonValueCodec[RdfFormat] = new JsonValueCodec[RdfFormat] {
@@ -113,6 +105,9 @@ private object Options {
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
   private given erDiagramOptions: JsonValueCodec[ErDiagramGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
+  private given ossieOptions: JsonValueCodec[OssieGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
   private given scalaOptions: JsonValueCodec[ScalaGenerator.Options] =
@@ -151,6 +146,8 @@ private object Options {
 
   def erDiagram(json: String): ErDiagramGenerator.Options =
     apply(json, ErDiagramGenerator.Options())
+
+  def ossie(json: String): OssieGenerator.Options = apply(json, OssieGenerator.Options())
 
   def scala(json: String): ScalaGenerator.Options = apply(json, ScalaGenerator.Options())
 

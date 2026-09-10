@@ -4,7 +4,6 @@ import caseapp.*
 import caseapp.core.Error
 import caseapp.core.argparser.{ArgParser, SimpleArgParser}
 import eu.neverblink.linkml.generator.util.PruningMode
-import eu.neverblink.linkml.schemaview.Case
 
 /** The `--pruning-mode` / `--tree-root` pair, shared by the generate commands that prune unused
   * elements (classes, types, enums) from the schema.
@@ -39,18 +38,9 @@ object PruningOptions {
     * `tree_root`).
     */
   given parser: ArgParser[PruningMode] = SimpleArgParser.from(names.mkString("|")) { value =>
-    Case.base(value) match {
-      case "tree_root" => Right(PruningMode.treeRoot(None))
-      case "schema" => Right(PruningMode.schemaRoot)
-      case "skip" => Right(PruningMode.skip)
-      case _ =>
-        Left(
-          Error.MalformedValue(
-            "pruning mode",
-            s"$value (expected one of: ${names.mkString(", ")})",
-          ),
-        )
-    }
+    PruningMode.parse(value).toRight(
+      Error.MalformedValue("pruning mode", s"$value (expected one of: ${names.mkString(", ")})"),
+    )
   }
 
   given Parser[PruningOptions] = Parser.derive

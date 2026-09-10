@@ -1,8 +1,8 @@
 package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.linkml.LinkMlGenerator.OutputFormat.{json, yaml}
-import eu.neverblink.linkml.generator.util.{JsonUtil, PruningMode, Utf8ByteSink}
+import eu.neverblink.linkml.generator.util.JsonOutputFormat.{json, yaml}
+import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode, Utf8ByteSink}
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.virtuslab.yaml.NodeOps
@@ -137,7 +137,7 @@ object LinkMlGenerator {
   final case class Options(
       pruningMode: PruningMode = PruningMode.skip,
       skipClassDerivation: Boolean = false,
-      outputFormat: OutputFormat = yaml,
+      outputFormat: JsonOutputFormat = yaml,
   )
 
   // TODO LNK-48: Don't do these horrible casts
@@ -150,8 +150,4 @@ object LinkMlGenerator {
   extension (inline enumDef: EnumDefinition)
     private inline def impl: EnumDefinitionImpl = enumDef.asInstanceOf
 
-  /** Serialization format for LinkML models
-    */
-  enum OutputFormat:
-    case yaml, json
 }

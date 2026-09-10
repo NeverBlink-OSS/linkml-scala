@@ -112,7 +112,7 @@ linkml-scala generate json-schema --to out/schema.json schema.yaml
 ```
 
 Generators: `json-schema`, `shacl`, `rdfs`, `frictionless`, `scala`, `linkml`, `graphql`,
-`er-diagram`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
+`er-diagram`, `ossie`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
 instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared properties. `scala` and
 `frictionless` write several files, so point their `--to` at a directory. For flags run
 `linkml-scala generate <generator> --help` — do not guess.

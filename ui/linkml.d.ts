@@ -130,6 +130,16 @@ export interface LinkMLApi {
   translation(schema: SchemaView, target: string): string;
 
   /**
+   * Generate an Apache Ossie ontology from a loaded LinkML schema. Classes become entity types, enums and named types become value types, and slots become the relationships grouped under the concept that plays their first role.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Pruning mode to use for choosing which elements become concepts. One of treeRoot|schema|skip. treeRoot - only elements reachable from the tree_root class. schema - only elements reachable from any of the classes defined in the root schema. skip - every element. Default: skip
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
+   * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
+   * @returns The ontology, serialized in the specified format.
+   */
+  ossie(schema: SchemaView, pruningMode?: string, treeRoot?: string, outFormat?: string): string;
+
+  /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.  TODO: consider typing the return value in TypeScript using a TypeScript generator. See: https://github.com/NeverBlink-OSS/linkml-scala/issues/127
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details` from the model's `equals_expression`s. Turn it off to get only the structured fields.

@@ -33,6 +33,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_frictionless",
     "linkml_graphql",
     "linkml_er_diagram",
+    "linkml_ossie",
     "linkml_scala",
     "linkml_translation",
 )
@@ -212,6 +213,30 @@ class Generators:
             "linkml_er_diagram",
             pruningMode=_pruning(pruning_mode, tree_root),
             optionalMarker=optional_marker,
+        )
+
+    def ossie(
+        self,
+        *,
+        pruning_mode: str = "skip",
+        tree_root: str | None = None,
+        output_format: str = "yaml",
+        metadata_language: str = "en",
+    ) -> str:
+        """Generate an Apache Ossie ontology, serialized as YAML or JSON.
+
+        :param pruning_mode: Which elements become concepts.
+        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
+            valid with `pruning_mode="treeRoot"`.
+        :param output_format: Output serialization format to use.
+        :param metadata_language: Which language to use for metadata fields (description) in the
+            generated ontology.
+        """
+        return self._document(
+            "linkml_ossie",
+            pruningMode=_pruning(pruning_mode, tree_root),
+            outputFormat=output_format,
+            metadataLanguage=metadata_language,
         )
 
     def scala(

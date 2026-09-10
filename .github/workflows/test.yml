@@ -64,6 +64,9 @@ jobs:
       - name: Install the Mermaid ER diagram validator
         run: ./mill --no-server generator.jvm.test.mermaidValidator
 
+      - name: Clone apache/ossie for the upstream ontology validator
+        run: ./mill --no-server generator.jvm.test.ossieRepo
+
       - name: Build and test
         # testForked, not test: otherwise tests in the `tests` module don't run...
         run: |

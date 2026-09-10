@@ -55,6 +55,12 @@ object LinkMlCGenerators {
   def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.erDiagram)
 
+  /** Generate an Apache Ossie ontology. Options: `pruningMode`, `outputFormat`, `metadataLanguage`.
+    */
+  @exported("linkml_ossie")
+  def ossie(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.ossie)
+
   /** Generate Scala sources, as a JSON object mapping filename to source. Options: `package`,
     * `generateEmitPrefixes`, `metadataLanguage`.
     */
