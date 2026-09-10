@@ -6,7 +6,6 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
-import eu.neverblink.linkml.validation.NonStandardSeparatorImpl
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 
