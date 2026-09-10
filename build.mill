@@ -23,7 +23,7 @@ import mill.scalajslib.*
 import mill.scalajslib.api.ModuleKind
 import scalalib.*
 import scalanativelib.*
-import mill.scalanativelib.api.{BuildTarget, ReleaseMode}
+import mill.scalanativelib.api.{BuildTarget, LTO, ReleaseMode}
 import io.github.alexarchambault.millnativeimage.NativeImage
 import com.carlosedp.aliases.*
 import mill.contrib.buildinfo.BuildInfo
@@ -639,6 +639,14 @@ object nativelib extends Module, NativeOptional {
     override def releaseMode = Task { ReleaseMode.ReleaseFast }
     override def nativeTarget = Task.Input { Task.env.get("LINKML_SCALA_TARGET") }
 
+    /** Link-time optimisation. Thin LTO is not supported on macOS. */
+    override def nativeLTO = Task {
+      val isMac = nativeTarget()
+        .map(t => t.contains("apple") || t.contains("darwin"))
+        .getOrElse(_root_.scala.util.Properties.isMac)
+      if isMac then LTO.Full else LTO.Thin
+    }
+
     /** Override needed for Scala Native 0.15.2. Remove after upgrading. */
     override def runClasspath = Task {
       val ours = compile().classes.path
@@ -656,8 +664,11 @@ object nativelib extends Module, NativeOptional {
       if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=14.0")
       else Seq.empty
 
+    /** _LIBUNWIND_IS_NATIVE_ONLY: see https://github.com/scala-native/scala-native/pull/5034
+      */
     override def nativeCompileOptions = Task {
-      super.nativeCompileOptions() ++ macosTarget :+ "-O3"
+      super.nativeCompileOptions() ++ macosTarget ++
+        Seq("-O3", "-D_LIBUNWIND_IS_NATIVE_ONLY")
     }
 
     override def nativeLinkingOptions = Task {
