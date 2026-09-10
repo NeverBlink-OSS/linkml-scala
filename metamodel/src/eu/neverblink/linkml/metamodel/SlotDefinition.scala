@@ -90,10 +90,10 @@ final case class SlotDefinitionImpl(
     equalsString: Option[String] = None,
     @named("equals_string_in")
     equalsStringIn: Seq[String] = Seq(),
-    @named("exact_mappings")
-    exactMappings: Seq[UriOrCurie] = Seq(),
     @named("exact_cardinality")
     exactCardinality: Option[Int] = None,
+    @named("exact_mappings")
+    exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
@@ -277,9 +277,9 @@ final case class SlotDefinitionImpl(
       equalsNumber = combineOption(this.equalsNumber, other.equalsNumber, combineFallback),
       equalsString = combineOption(this.equalsString, other.equalsString, combineFallback),
       equalsStringIn = combineSeq(this.equalsStringIn, other.equalsStringIn),
-      exactMappings = combineSeq(this.exactMappings, other.exactMappings),
       exactCardinality =
         combineOption(this.exactCardinality, other.exactCardinality, combineFallback),
+      exactMappings = combineSeq(this.exactMappings, other.exactMappings),
       examples = combineSeq(this.examples, other.examples),
       extensions = combineMap(this.extensions, other.extensions),
       fromSchema = combineOption(this.fromSchema, other.fromSchema, combineFallback),
@@ -473,8 +473,8 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def identifier: Boolean
 
-  /** The name used for a slot in the context of its owning class. If present, this is used instead
-    * of the actual slot name.
+  /** The alternative name to be used in serializations of an instance instead of the canonical
+    * name.
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
@@ -483,6 +483,10 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     * @note
     *   Not to be confused with aliases, which indicates a set of terms to be used for search
     *   purposes.
+    * @note
+    *   This should be used for describing the structure of already existing instances.
+    * @note
+    *   For human-readable labels, prefer 'title' instead.
     */
   def alias: Option[String]
 
