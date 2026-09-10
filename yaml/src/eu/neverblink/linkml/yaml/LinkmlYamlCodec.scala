@@ -414,7 +414,23 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                   }
                 case v =>
                   ${
-                    Assign(Ref(valDef.symbol), genDecode[ft](fTpe, 'v, '{ None }).asTerm).asExpr
+                    val assign =
+                      Assign(Ref(valDef.symbol), genDecode[ft](fTpe, 'v, '{ None }).asTerm).asExpr
+                    // A class inlined in a dict has its id written twice: as the enclosing key and,
+                    // optionally, as a field of its own body. We raise an error if the two disagree.
+                    if (fieldInfo.kind == FieldKind.Id) {
+                      val fromBody = genDecode[ft](fTpe, 'v, '{ None })
+                      val fromKey = Ref(valDef.symbol).asExpr
+                      '{
+                        if ($id.isDefined && $fromBody != $fromKey) {
+                          LinkmlYamlCodec.decodeError(
+                            s"field '${$mappedName}' of '${$tpeName}' to match the enclosing key '${$id.get}'",
+                            v,
+                          )
+                        }
+                        $assign
+                      }
+                    } else assign
                   }
               }
             }.asTerm.changeOwner(Symbol.spliceOwner))
@@ -589,8 +605,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
         case '[ft] =>
           val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId)
           '{
-            if ($skipId) $encodeVal
-            else {
+            def fullForm: Node = {
               val kvs = ListMap.newBuilder[
                 Node,
                 Node,
@@ -598,6 +613,12 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
               ${ genEncodeFields('kvs) }
               Node.MappingNode(kvs.result())
             }
+            if ($skipId) {
+              val collapsed = $encodeVal
+              // A map in the collapsed position cannot be distinguished from the full form when
+              // decoding (both are an object). So, for this case we always keep the full form.
+              if (collapsed.isInstanceOf[Node.MappingNode]) fullForm else collapsed
+            } else fullForm
           }
       }
     } else {
