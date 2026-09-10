@@ -101,10 +101,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
                 $ref = new Some(ref.concat("__identifier_optional")),
               ).dictOf // TODO LNK-34: or null
             case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
+              needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
               needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
-              new Schema($ref =
-                new Some(ref.concat("__simple_dict_value")),
-              ).dictOf // TODO LNK-34: or null
+              simpleDictSchema(ref).dictOf // TODO LNK-34: or null
           }
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
           typeToRuntime(identifierView.typeView)
@@ -189,10 +188,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
           ).dictOf
         case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
           val mappedClassName = className(treeRoot)
+          needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
           needValue.add((mappedClassName, slotName(treeRoot.derivedAttributes(value))))
-          new Schema(
-            $ref = new Some("#/$defs/" + mappedClassName + "__simple_dict_value"),
-          ).dictOf
+          simpleDictSchema("#/$defs/" + mappedClassName).dictOf
       }
     }
     // Generate the needed keyless/value refs
@@ -306,6 +304,21 @@ object JsonSchemaGenerator {
 
   type MappedClassName = String
   type MappedSlotName = String
+
+  /** Schema for one entry of a dict inlined in the SimpleDict form: either the bare primary value,
+    * or the full object with the key slot made optional. Both should be in principle accepted by
+    * LinkML parsers.
+    *
+    * @param ref
+    *   `$defs` reference of the inlined class, without a form suffix
+    */
+  private def simpleDictSchema(ref: String): Schema = Schema.oneOf(
+    List(
+      new Schema($ref = Some(ref.concat("__simple_dict_value"))),
+      new Schema($ref = Some(ref.concat("__identifier_optional"))),
+    ),
+    discriminator = None,
+  )
 
   extension (schema: Schema)
     /** Wrap this Schema in an array

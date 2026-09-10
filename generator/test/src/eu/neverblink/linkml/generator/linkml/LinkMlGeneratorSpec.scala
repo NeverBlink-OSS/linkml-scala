@@ -356,6 +356,60 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       yaml should include("""description: "3.14"""")
     }
 
+    "round-trip unique_keys" in {
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""name: unique_keys
+          |id: https://example.org/unique-keys
+          |types:
+          |  string:
+          |    base: str
+          |classes:
+          |  SomeClass:
+          |    slots:
+          |      - a
+          |      - b
+          |    unique_keys:
+          |      compound:
+          |        unique_key_slots:
+          |          - a
+          |          - b
+          |      collapsed_list:
+          |        - a
+          |      collapsed_scalar: b
+          |slots:
+          |  a:
+          |    range: string
+          |  b:
+          |    range: string
+          |""".stripMargin))
+
+      // Derivation turns the slots into attributes.
+      // The macro validator must be aware of the class context (attributes) to load such
+      // a schema, so we test it here.
+      for options <- Seq(
+          LinkMlGenerator.Options(),
+          LinkMlGenerator.Options(skipClassDerivation = true),
+        )
+      do {
+        val yaml = LinkMlGenerator(using sv).serialize(options)
+        // The two collapsed input forms normalize to the full form as well
+        yaml should include("""    unique_keys:
+            |      compound:
+            |        unique_key_slots:
+            |          - a
+            |          - b
+            |      collapsed_list:
+            |        unique_key_slots:
+            |          - a
+            |      collapsed_scalar:
+            |        unique_key_slots:
+            |          - b
+            |""".stripMargin)
+
+        val reloaded = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
+        LinkMlGenerator(using reloaded).serialize(options) shouldBe yaml
+      }
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.all.filter(m => !skipModels.contains(m.model.root.name)) do
         s"model '${entry.model.root.name}'" in {
