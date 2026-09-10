@@ -140,7 +140,7 @@ export interface LinkMLApi {
   ossie(schema: SchemaView, pruningMode?: string, treeRoot?: string, outFormat?: string): string;
 
   /**
-   * Read an Apache Ossie ontology and produce the LinkML schema it describes.  The opposite of [[ossie]], and the only method here that starts from a document rather than from a loaded schema, so it takes no [[SchemaViewJs]]. Feed the result to [[loadFromString]] if you want to run a generator over it. See `docs/ossie_mapping.md` for what survives.
+   * Read an Apache Ossie ontology and produce the LinkML schema it describes.  The opposite of [[ossie]]. Feed the result to [[loadFromString]] if you want to run a generator over it.
    * @param ontology The ontology document, as YAML or JSON.
    * @param schemaId The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it is a placeholder built from the ontology's name.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
