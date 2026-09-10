@@ -6,13 +6,22 @@ import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import sttp.apispec.circe.encoderSchema
-import sttp.apispec.{ExampleSingleValue, Pattern, Schema, SchemaType}
+import sttp.apispec.{ExampleSingleValue, Pattern, Schema, SchemaLike, SchemaType}
 
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
   def load(schemaYaml: String): SchemaView = {
     SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
   }
+
+  /** Assert that one entry of a dict inlined in the SimpleDict form accepts both the bare primary
+    * value and the full object with an optional key.
+    */
+  def shouldBeSimpleDictEntryOf(entry: SchemaLike, cls: String): Unit =
+    entry.asInstanceOf[Schema].oneOf.map(_.asInstanceOf[Schema].$ref) shouldBe List(
+      Some(s"#/$$defs/${cls}__simple_dict_value"),
+      Some(s"#/$$defs/${cls}__identifier_optional"),
+    )
 
   "JsonSchemaGenerator" should {
     // Shared part of the schema
@@ -222,8 +231,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
       val someSlot = c.properties("some_slot").asInstanceOf[Schema]
       someSlot.`type` shouldBe Some(List(SchemaType.Object))
-      someSlot.additionalProperties.get.asInstanceOf[Schema]
-        .$ref shouldBe Some("#/$defs/SomeOtherClass__simple_dict_value")
+      shouldBeSimpleDictEntryOf(someSlot.additionalProperties.get, "SomeOtherClass")
       schema.$defs.get.keys.toSeq should contain("SomeOtherClass__simple_dict_value")
       val value = schema.$defs.get("SomeOtherClass__simple_dict_value").asInstanceOf[Schema]
       value.`type` shouldBe Some(List(SchemaType.String))
@@ -269,8 +277,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
       val someSlot = c.properties("some_slot").asInstanceOf[Schema]
       someSlot.`type` shouldBe Some(List(SchemaType.Object))
-      someSlot.additionalProperties.get.asInstanceOf[Schema]
-        .$ref shouldBe Some("#/$defs/SomeOtherClass__simple_dict_value")
+      shouldBeSimpleDictEntryOf(someSlot.additionalProperties.get, "SomeOtherClass")
       schema.$defs.get.keys.toSeq should contain("SomeOtherClass__simple_dict_value")
       val value = schema.$defs.get("SomeOtherClass__simple_dict_value").asInstanceOf[Schema]
       value.`type` shouldBe Some(List(SchemaType.String))
@@ -444,13 +451,11 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val someSlot = node.properties("children").asInstanceOf[Schema]
       someSlot.`type` shouldBe Some(List(SchemaType.Object))
       someSlot.description shouldBe Some("Dictionary of child nodes")
-      val additionalProperties = someSlot.additionalProperties.get.asInstanceOf[Schema]
-      additionalProperties.$ref shouldBe Some("#/$defs/Node__simple_dict_value")
+      shouldBeSimpleDictEntryOf(someSlot.additionalProperties.get, "Node")
       node.description shouldBe Some("Tree of nodes")
       val value = schema.$defs.get("Node__simple_dict_value").asInstanceOf[Schema]
       value.`type` shouldBe Some(List(SchemaType.Object))
-      val valueAdditionalProperties = value.additionalProperties.get.asInstanceOf[Schema]
-      valueAdditionalProperties.$ref shouldBe Some("#/$defs/Node__simple_dict_value")
+      shouldBeSimpleDictEntryOf(value.additionalProperties.get, "Node")
     }
 
     "carry over the titles and descriptions" in {
@@ -766,8 +771,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema = JsonSchemaGenerator().generate()
-        schema.additionalProperties.get.asInstanceOf[Schema]
-          .$ref shouldBe Some("#/$defs/C1__simple_dict_value")
+        shouldBeSimpleDictEntryOf(schema.additionalProperties.get, "C1")
 
         schema.$defs.get.keys should contain("C1__simple_dict_value")
       }
@@ -853,8 +857,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
             JsonSchemaGenerator.Options(treeRootInlineType = Some("simple_dict")),
           )
 
-        schema.additionalProperties.get.asInstanceOf[Schema]
-          .$ref shouldBe Some("#/$defs/C1__simple_dict_value")
+        shouldBeSimpleDictEntryOf(schema.additionalProperties.get, "C1")
 
         schema.$defs.get.keys should contain("C1__simple_dict_value")
       }
