@@ -1103,6 +1103,31 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("Langstring.scala") should include("type Langstring = LocalizedText")
     }
 
+    "dodge reserved words with underscores" in {
+      val input =
+        s"""$schemaShared
+           |types:
+           |  Int:
+           |    base: int
+           |classes:
+           |  LocalizedText:
+           |    attributes:
+           |      hashCode:
+           |        range: Int
+           |""".stripMargin
+      val files =
+        ScalaGenerator(using decode(input)).generate(ScalaGenerator.Options(testPkg)).toMap
+
+      files.keys should contain theSameElementsAs Seq(
+        "_LocalizedText.scala",
+        "_Int.scala",
+      )
+
+      files("_LocalizedText.scala") should include("_hashCode: Option[_Int]")
+      files("_Int.scala") should include("type _Int = Int")
+
+    }
+
     "generate the metamodel" in {
       val sv =
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
