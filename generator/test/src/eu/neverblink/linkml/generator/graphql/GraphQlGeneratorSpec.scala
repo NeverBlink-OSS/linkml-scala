@@ -267,5 +267,66 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
         result should not include (snippet)
       }
     }
+
+    "handle leading digits in names" in {
+      given SchemaView = SchemaView.loadSchemaViewFromString(
+        """id: urn:digit
+          |name: digit
+          |
+          |types:
+          |  1t:
+          |
+          |classes:
+          |  1C:
+          |    slots:
+          |     - 1s
+          |     - 2s
+          |slots:
+          |  1s:
+          |    range: 1t
+          |  2s:
+          |    range: 1E
+          |enums:
+          |  1E:
+          |    permissible_values:
+          |      1V:
+          |      2V:
+          |""".stripMargin,
+      ).getOrElse(fail("bad schema"))
+
+      val result =
+        GraphQlGenerator().serialize()
+      Seq(
+        "_1T",
+        "_1C",
+        "_1_s",
+        "_2_s",
+        "_1E",
+        "_1_V",
+        "_2_V",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
+    }
+
+    "not throw on empty names" in {
+      // the output is likely invalid, but it's reported as a LinkML error earlier
+      given SchemaView = SchemaView.loadSchemaViewFromString(
+        """id: urn:digit
+          |name: digit
+          |
+          |classes:
+          |  '%':
+          |""".stripMargin,
+      ).getOrElse(fail("bad schema"))
+
+      val result =
+        GraphQlGenerator().serialize()
+      Seq(
+        "type _  {",
+      ).foreach { snippet =>
+        result should include(snippet)
+      }
+    }
   }
 }
