@@ -5,24 +5,27 @@ import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
 import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, TypeView}
 
 trait ScalaRenamer extends Renamer {
-  private val scalaKeywords: Set[String] = (
-    "abstract case catch class def do else extends final finally for " +
-      "forSome if implicit import lazy match new object override package protected return sealed super " +
-      "this throw trait try type val var while with yield inline derives end extension using as"
-  ).split(' ').toSet
 
+  /** Get the scala `PascalCase` name, dodge leading digits/reserved words with an underscore. No
+    * need to check for keywords - all start with lowercase.
+    */
   protected def scalaPascal(baseName: String): String = {
     val name = Case.baseToPascal(baseName)
     if name.isEmpty then "__"
     else if Case.isNumeric(name.head) then "_" + name
+    else if ScalaWords.reserved.contains(name) then "_" + name
     else name
   }
 
+  /** Get the scala `camelCase` name, dodge leading digits/reserved words with an underscore, and
+    * quote Scala keywords in backticks.
+    */
   protected def scalaCamel(baseName: String): String = {
     val name = Case.baseToCamel(baseName)
     if name.isEmpty then "__"
     else if Case.isNumeric(name.head) then "_" + name
-    else if scalaKeywords.contains(name) then s"`$name`"
+    else if ScalaWords.keywords.contains(name) then s"`$name`"
+    else if ScalaWords.reserved.contains(name) then "_" + name
     else name
   }
 
@@ -32,9 +35,6 @@ trait ScalaRenamer extends Renamer {
     el.derivedAttributes(attr.name),
   )
 
-  /** Get the scala `lowerCamelCase` name for a slot, dodge leading digits with an underscore, and
-    * quote Scala keywords in backticks.
-    */
   override def slotName(el: SlotView): String = scalaCamel(el.baseName)
 
   override def typeName(el: TypeView): String = scalaPascal(el.baseName)
