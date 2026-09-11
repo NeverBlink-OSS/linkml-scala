@@ -87,6 +87,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
 | `lint(view, inferMessages?)`                                                 | `object`                 | `SchemaValidationReport` (JSON)                                                |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
+| `fromOssie(ontology, schemaId?, outFormat?)`                                 | `string`                 | the LinkML schema from an Apache Ossie ontology                                |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

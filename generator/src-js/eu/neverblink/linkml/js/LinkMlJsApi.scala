@@ -3,7 +3,7 @@ package eu.neverblink.linkml.js
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
-import eu.neverblink.linkml.generator.ossie.OssieGenerator
+import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -453,6 +453,34 @@ object LinkMlJsApi {
       ),
     )
   }
+
+  /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
+    *
+    * The opposite of [[ossie]]. Feed the result to [[loadFromString]] if you want to run a
+    * generator over it.
+    *
+    * @param ontology
+    *   The ontology document, as YAML or JSON.
+    * @param schemaId
+    *   The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it
+    *   is a placeholder built from the ontology's name.
+    * @param outFormat
+    *   Output serialization format to use. One of yaml|json. Default: yaml
+    * @return
+    *   The LinkML schema, serialized in the specified format.
+    */
+  def fromOssie(
+      ontology: String,
+      schemaId: js.UndefOr[String] = js.undefined,
+      outFormat: String = "yaml",
+  ): String =
+    OssieImporter().serializeFromString(
+      ontology,
+      OssieImporter.Options(
+        schemaId = schemaId.toOption,
+        outputFormat = outputFormat(outFormat),
+      ),
+    )
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This
     * method returns a structured JSON that follows the validation-report.yaml model.

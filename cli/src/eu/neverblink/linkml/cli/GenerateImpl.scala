@@ -185,8 +185,7 @@ private val outputFormatHelp: String =
 // LinkML -> LinkML
 
 @HelpMessage(
-  "Materialize a derived LinkML schema from a LinkML model. " +
-    "Resolves imports, derives classes, and prunes unreachable elements.",
+  "Materialize a derived LinkML schema from a LinkML model.",
 )
 @ArgsName("<input-file>")
 final case class LinkMlOptions(
@@ -221,11 +220,9 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
 
 @HelpMessage(
   "Generate a Frictionless Data Package from a LinkML model. " +
-    "Every class becomes a CSV table, described by its own Table Schema, and references between " +
-    "classes become foreign keys between the tables.\n" +
     "If --to is a directory, the package is written as a datapackage.json file plus one " +
     "schemas/<table>.json per table. If --to is a .json file, or with no --to at all, it is " +
-    "written as a single descriptor with every table schema inlined.",
+    "written as a single file with table schemas inlined.",
 )
 @ArgsName("<input-file>")
 final case class FrictionlessOptions(
@@ -266,7 +263,6 @@ object Frictionless extends SplitGenerate[FrictionlessOptions] {
 
 @HelpMessage(
   "Generate a GraphQL Schema from a LinkML model. " +
-    "Provides a @linkml_uri directive for all elements with an URI. " +
     "Only generates types/interfaces/scalar/enums, queries must be added manually.",
 )
 @ArgsName("<input-file>")
@@ -292,9 +288,7 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
 // Apache Ossie ontology
 
 @HelpMessage(
-  "Generate an Apache Ossie ontology from a LinkML model. " +
-    "Classes become entity types, enums and named types become value types, and slots become " +
-    "the relationships grouped under the concept that plays their first role.",
+  "Generate an Apache Ossie ontology from a LinkML model.",
 )
 @ArgsName("<input-file>")
 final case class OssieOptions(
@@ -360,7 +354,8 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
 }
 
 @HelpMessage(
-  "Generate translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs.",
+  "Generate translation dictionaries (in JSON), " +
+    "from the original names used in the schema to the names used in generated outputs.",
 )
 @ArgsName("<input-file>")
 final case class TranslationOptions(

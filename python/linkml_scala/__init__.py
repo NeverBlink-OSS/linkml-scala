@@ -42,6 +42,7 @@ __all__ = [
     "Schema",
     "SchemaLoadError",
     "build_info",
+    "from_ossie",
     "library_path",
     "load_file",
     "load_path",
@@ -244,6 +245,30 @@ def load_path(
     return _schema(
         current,
         *current.load_string(path, None, imports, {"inferMessages": infer_messages}),
+    )
+
+
+def from_ossie(
+    ontology: str,
+    *,
+    schema_id: str | None = None,
+    output_format: str = "yaml",
+) -> str:
+    """Read an Apache Ossie ontology and return the LinkML schema it describes.
+
+    The opposite of :meth:`Schema.ossie`. Pass the result to :func:`load_string`
+    to run a generator over it.
+
+    :param ontology: The ontology document, as YAML or JSON.
+    :param schema_id: The ``id`` of the schema to produce. An Ossie ontology has none of its own,
+        so by default it is a placeholder built from the ontology's name.
+    :param output_format: Output serialization format to use, ``yaml`` or ``json``.
+    :raises LinkMlError: if the document could not be read.
+    """
+    return runtime().import_document(
+        "linkml_from_ossie",
+        ontology,
+        {"schemaId": schema_id, "outputFormat": output_format},
     )
 
 

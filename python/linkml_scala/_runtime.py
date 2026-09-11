@@ -273,6 +273,29 @@ class Runtime:
             raise LinkMlError(message or "linkml_build_info failed without saying why")
         return json.loads(text)
 
+    def import_document(
+        self, function: str, document: str, options: Mapping[str, Any] | None = None
+    ) -> str:
+        """Call an importer, by its exported name, and return the schema it produced.
+
+        Unlike :meth:`document` there is no handle: an importer is what makes schemas.
+
+        :raises LinkMlError: if the library reported a failure.
+        """
+        error = _Chars()
+        result = self._call(
+            getattr(self._lib, function),
+            document.encode("utf-8"),
+            _options(options),
+            ctypes.byref(error),
+        )
+        # Take both, so neither leaks whichever way the call went.
+        message = self._take(error)
+        text = self._take(result)
+        if text is None:
+            raise LinkMlError(message or f"{function} failed without saying why")
+        return text
+
     # Internals
 
     def _loaded(self, handle: int, report: Any, error: Any) -> tuple[int, dict[str, Any]]:
@@ -326,6 +349,10 @@ class Runtime:
         # Takes no schema, so it does not fit the generator shape below.
         self._lib.linkml_build_info.argtypes = [chars_out]
         self._lib.linkml_build_info.restype = _Chars
+
+        # Importers take a document instead of a handle, so they do not fit either.
+        self._lib.linkml_from_ossie.argtypes = [ctypes.c_char_p, ctypes.c_char_p, chars_out]
+        self._lib.linkml_from_ossie.restype = _Chars
 
         # linkml_lint has the same shape but is not a generator, so it is not in the generated
         # list and gets declared alongside it.

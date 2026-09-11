@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.ossie.OssieGenerator
+import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -16,7 +16,8 @@ import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, S
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
 import org.virtuslab.yaml.{Node, StringNode}
 
-import java.io.OutputStream
+import java.io.{ByteArrayInputStream, OutputStream}
+import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
@@ -35,6 +36,7 @@ object LinkMlNativeApi {
     *   - 2: added `linkml_build_info`; replaced `tableSchema` with `frictionless`.
     *   - 3: rebuilt with Scala Native. The isolate arguments were removed. `linkml_init_threads`
     *     replaces `graal_create_isolate`. `platform` in `linkml_build_info` is now `SCALA_NATIVE`.
+    *     Added `linkml_from_ossie`.
     */
   final val abiVersion: Int = 3
 
@@ -146,6 +148,18 @@ object LinkMlNativeApi {
   def ossie(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     OssieGenerator().writeTo(out, Options.ossie(optionsJson))
+  }
+
+  /** The LinkML schema an Apache Ossie ontology describes, as YAML or JSON depending on the
+    * `outputFormat` option.
+    */
+  def fromOssie(ontology: String, optionsJson: String, out: OutputStream): Unit = {
+    if ontology eq null then throw BadRequest("no ontology document was given")
+    OssieImporter().writeTo(
+      ByteArrayInputStream(ontology.getBytes(UTF_8)),
+      out,
+      Options.fromOssie(optionsJson),
+    )
   }
 
   // Results that are structured, and so come back as JSON

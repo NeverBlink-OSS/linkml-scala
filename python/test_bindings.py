@@ -79,6 +79,53 @@ BROKEN = schema(
 FIXED = BROKEN.replace("NoSuchThing", "string")
 
 
+class FromOssieTest(unittest.TestCase):
+    ONTOLOGY = textwrap.dedent(
+        """
+        version: 0.2.0.dev0
+        name: flights
+        ontology:
+          - concept: Airport
+            type: EntityType
+            identify_by: [code]
+            relationships:
+              - name: code
+                roles: [{concept: String}]
+                multiplicity: OneToOne
+                verbalizes: ['{Airport} is identified by {String}']
+        """
+    ).strip()
+
+    def test_reads_an_ontology_into_a_schema(self):
+        schema = linkml_scala.from_ossie(self.ONTOLOGY)
+        self.assertIn("name: flights", schema)
+        self.assertIn("Airport:", schema)
+        self.assertIn("identifier: true", schema)
+
+    def test_writes_json_when_asked(self):
+        schema = json.loads(linkml_scala.from_ossie(self.ONTOLOGY, output_format="json"))
+        self.assertEqual("flights", schema["name"])
+
+    def test_uses_the_schema_id_it_was_given(self):
+        schema = linkml_scala.from_ossie(self.ONTOLOGY, schema_id="https://example.com/mine")
+        self.assertIn("id: https://example.com/mine", schema)
+
+    # The point of the round trip: what comes out is a schema the library can load again.
+    def test_result_loads_as_a_schema(self):
+        with linkml_scala.load_string(linkml_scala.from_ossie(self.ONTOLOGY)) as schema:
+            self.assertIn("concept: Airport", schema.ossie())
+
+    def test_unreadable_document_is_rejected(self):
+        with self.assertRaises(LinkMlError) as raised:
+            linkml_scala.from_ossie("name: [unclosed")
+        self.assertIn("Ossie ontology", str(raised.exception))
+
+    def test_unknown_output_format_is_rejected(self):
+        with self.assertRaises(LinkMlError) as raised:
+            linkml_scala.from_ossie(self.ONTOLOGY, output_format="toml")
+        self.assertIn("toml", str(raised.exception))
+
+
 class BuildInfoTest(unittest.TestCase):
     def test_build_info_describes_the_library(self):
         info = linkml_scala.build_info()
