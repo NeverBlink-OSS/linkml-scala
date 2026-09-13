@@ -1,17 +1,23 @@
 import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
+import { EXAMPLE_SCHEMA } from "./examples.js";
 import {
+  IMPORTERS,
   TARGETS,
+  importerById,
   targetById,
   type BuildInfo,
+  type Importer,
   type IssueLocation,
   type Option,
   type OptionValues,
   type ReportIssue,
+  type Step,
   type Target,
   type ValidationReport,
 } from "./targets.js";
-import type { GenerateRequest, GenerateResponse, WorkerMessage } from "./worker.js";
+import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
 
+// The LinkML schema lives here; each importer's own input document gets this plus a suffix.
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 // Query parameter holding the link the schema was loaded from, so the address bar is a share link.
 const URL_PARAM = "url";
@@ -22,69 +28,50 @@ const WORKER_URL = "./worker.js";
 // are ~210 KB gzipped, which nobody who never opens the ER diagram tab should pay for.
 const MERMAID_URL = "./mermaid/mermaid.js";
 
-const EXAMPLE_SCHEMA = `id: https://example.org/library
-name: library
-description: A tiny example schema, showing classes, slots, enums and a tree root.
-prefixes:
-  linkml: https://w3id.org/linkml/
-  library: https://example.org/library/
-emit_prefixes:
-  - library
-default_range: string
-imports:
-  - linkml:types
-
-enums:
-  LoanStatus:
-    permissible_values:
-      AVAILABLE:
-      ON_LOAN:
-      LOST:
-
-classes:
-  Book:
-    description: A book that can be borrowed from the library.
-    attributes:
-      title:
-        required: true
-      isbn:
-        description: International Standard Book Number
-      published_year:
-        range: integer
-      status:
-        range: LoanStatus
-      author:
-        range: Person
-        inlined: true
-
-  Person:
-    description: An author or a library member.
-    attributes:
-      name:
-        required: true
-      email:
-
-  Library:
-    tree_root: true
-    attributes:
-      name:
-        required: true
-      books:
-        range: Book
-        multivalued: true
-        inlined_as_list: true
-`;
-
 // ── State ─────────────────────────────────────────────────────────────────
 
+/** Which way the conversion runs: `fromLinkml` picks a generator, `toLinkml` an importer. */
+let direction: Direction = "fromLinkml";
 let activeTargetId = TARGETS[0]!.id;
+let activeImporterId = IMPORTERS[0]!.id;
+
+const DIRECTIONS = ["fromLinkml", "toLinkml"] as const;
+
+function steps(dir: Direction): Step[] {
+  return dir === "fromLinkml" ? TARGETS : IMPORTERS;
+}
+
+/** Generators and importers each have their own ids and the two sets overlap - "ossie" is both - so
+ * anything stored per step is keyed by the direction as well. */
+function stepKey(dir: Direction, id: string): string {
+  return `${dir}:${id}`;
+}
+
+function activeStep(): Step {
+  return direction === "fromLinkml"
+    ? TARGETS.find((t) => t.id === activeTargetId)!
+    : IMPORTERS.find((i) => i.id === activeImporterId)!;
+}
+
+function activeKey(): string {
+  return stepKey(direction, activeStep().id);
+}
+
+function stepById(dir: Direction, id: string): Step | undefined {
+  return dir === "fromLinkml" ? targetById(id) : importerById(id);
+}
 
 function optionDefault(opt: Option): string | number | boolean {
   return opt.default ?? (opt.type === "checkbox" ? false : "");
 }
 
 const optionValues: Record<string, OptionValues> = Object.fromEntries(
-  TARGETS.map((t) => [t.id, Object.fromEntries(t.options.map((o) => [o.key, optionDefault(o)]))]),
+  DIRECTIONS.flatMap((dir) =>
+    steps(dir).map((s) => [
+      stepKey(dir, s.id),
+      Object.fromEntries(s.options.map((o) => [o.key, optionDefault(o)])),
+    ]),
+  ),
 );
 // Which file tab is open, per target.
 const activeFile: Record<string, string | null> = {};
@@ -105,9 +92,60 @@ let busyTimer: ReturnType<typeof setTimeout> | undefined;
 // burst of tab clicks would otherwise let a slow earlier result land on top of a fast later one.
 let requestId = 0;
 let pendingId: number | null = null;
-// The schema as the link served it, while one is loaded. The change listener compares against it
-// to tell "this is what the link gives you" apart from "the user has edited it since".
-let remoteText: string | null = null;
+
+// ── Input documents ─────────────────────────────────────────────────────────
+
+/** One document per input format: the LinkML schema every generator reads, plus one of its own per
+ * importer. */
+interface InputDoc {
+  text: string;
+  /** The link it was loaded from, and exactly what that link served, while it still holds it. The
+   * change listener compares the two to tell "this is what the link gives you" apart from "the user
+   * has edited it since". */
+  link: string | null;
+  remote: string | null;
+}
+
+const LINKML_INPUT = "linkml";
+
+function inputKey(): string {
+  return direction === "fromLinkml" ? LINKML_INPUT : stepKey(direction, activeImporterId);
+}
+
+function storageKey(key: string): string {
+  return key === LINKML_INPUT ? INPUT_STORAGE_KEY : `${INPUT_STORAGE_KEY}:${key}`;
+}
+
+/** What Load example puts in the pane, and what a first-time visitor starts with. */
+function exampleInput(): string {
+  return direction === "fromLinkml" ? EXAMPLE_SCHEMA : (activeStep() as Importer).example;
+}
+
+const inputDocs: Record<string, InputDoc> = {};
+
+function inputDoc(): InputDoc {
+  const key = inputKey();
+  return (inputDocs[key] ??= {
+    text: localStorage.getItem(storageKey(key)) ?? exampleInput(),
+    link: null,
+    remote: null,
+  });
+}
+
+/** Which document the editor is showing, so that switching target within one direction does not
+ * needlessly replace it. */
+let shownInput = "";
+
+function swapInput(): void {
+  const key = inputKey();
+  if (key === shownInput) return;
+  shownInput = key;
+  const doc = inputDoc();
+  setDoc(inputView, doc.text);
+  // The address bar holds the link for whichever document is on screen, so it moves with it.
+  if (doc.link) setUrlParam(doc.link);
+  else clearUrlParam();
+}
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
@@ -118,12 +156,17 @@ const $outputPanel = $("outputPanel");
 const $reportView = $("reportView");
 const $diagramView = $("diagramView");
 const $outputEditorHost = $("outputEditor");
-const $targetTabs = $("targetTabs");
+const $targetInput = $<HTMLInputElement>("targetInput");
+const $targetList = $("targetList");
+const $dirToggle = $("dirToggle");
+const $inputSub = $("inputSub");
+const $outputSub = $("outputSub");
 const $optionsRow = $("optionsRow");
 const $generateBtn = $<HTMLButtonElement>("generateBtn");
 const $statusPill = $("statusPill");
 const $autoGenerate = $<HTMLInputElement>("autoGenerate");
 const $copyOutput = $<HTMLButtonElement>("copyOutput");
+const $reverseOutput = $<HTMLButtonElement>("reverseOutput");
 const $loadExample = $<HTMLButtonElement>("loadExample");
 const $loadUrl = $<HTMLButtonElement>("loadUrl");
 const $clearInput = $<HTMLButtonElement>("clearInput");
@@ -133,55 +176,213 @@ const $themeIconSun = $("themeIconSun");
 
 // ── Editors ───────────────────────────────────────────────────────────────
 
-const storedInput = localStorage.getItem(INPUT_STORAGE_KEY);
-const inputView = createInput($("inputEditor"), storedInput ?? EXAMPLE_SCHEMA, (value) => {
-  localStorage.setItem(INPUT_STORAGE_KEY, value);
+const inputView = createInput($("inputEditor"), inputDoc().text, (value) => {
+  const doc = inputDoc();
+  doc.text = value;
+  localStorage.setItem(storageKey(inputKey()), value);
   // Once the text on screen differs from what the link serves, a shared address would hand the
   // other person something other than what you are looking at, so drop the link.
-  if (value !== remoteText) clearUrlParam();
+  if (value !== doc.remote) {
+    doc.link = null;
+    clearUrlParam();
+  }
   scheduleGenerate();
 });
 const outputView = createOutput($("outputEditor"));
 
-function activeTarget(): Target {
-  return TARGETS.find((t) => t.id === activeTargetId)!;
+function stepLang(step: Step, dir: Direction = direction): OutputLang {
+  return typeof step.lang === "function" ? step.lang(optionValues[stepKey(dir, step.id)]!) : step.lang;
 }
 
-function targetLang(t: Target): OutputLang {
-  return typeof t.lang === "function" ? t.lang(optionValues[t.id]!) : t.lang;
+// ── Direction and labels ────────────────────────────────────────────────────
+
+/** Everything that follows from the direction and the step selected within it. */
+function renderStep(): void {
+  renderCombo();
+  renderOptions();
+  renderLabels();
+  updateReverseButton();
 }
 
-// ── Target tabs ─────────────────────────────────────────────────────────────
+/** Take a new direction or step, including the input document that goes with it. */
+function selectStep(): void {
+  renderStep();
+  swapInput();
+  scheduleGenerate(0);
+}
 
-function renderTargetTabs(): void {
-  $targetTabs.innerHTML = "";
-  for (const t of TARGETS) {
-    const btn = document.createElement("button");
-    btn.className = "tab-btn" + (t.id === activeTargetId ? " tab-btn--active" : "");
-    btn.textContent = t.label;
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", String(t.id === activeTargetId));
-    btn.addEventListener("click", () => {
-      activeTargetId = t.id;
-      renderTargetTabs();
-      renderOptions();
-      scheduleGenerate(0);
-    });
-    $targetTabs.appendChild(btn);
+function pickStep(step: Step): void {
+  if (direction === "fromLinkml") activeTargetId = step.id;
+  else activeImporterId = step.id;
+  closeCombo();
+  selectStep();
+}
+
+function renderLabels(): void {
+  const importer = direction === "toLinkml" ? (activeStep() as Importer) : null;
+  $inputSub.textContent = importer ? importer.inputLabel : "LinkML YAML";
+  $outputSub.textContent = importer ? "LinkML" : "";
+  // Phrased without an article, so it reads right whatever an importer calls its input format.
+  $("urlLabel").textContent = `${importer ? importer.inputLabel : "LinkML schema (YAML)"} to load`;
+  for (const btn of $dirToggle.querySelectorAll<HTMLButtonElement>(".dir-btn")) {
+    const on = btn.dataset.dir === direction;
+    btn.classList.toggle("dir-btn--active", on);
+    btn.setAttribute("aria-pressed", String(on));
   }
 }
 
+$dirToggle.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".dir-btn");
+  if (!btn || btn.dataset.dir === direction) return;
+  direction = btn.dataset.dir as Direction;
+  selectStep();
+});
+
+// ── Target combobox ─────────────────────────────────────────────────────────
+
+/** What the user has typed to narrow the list. Null means they have not typed anything since the
+ * list opened, so the input is still showing the selected label and every option is on offer. */
+let comboQuery: string | null = null;
+/** The options currently listed, in the order they are shown, with the element for each. */
+let comboItems: { step: Step; el: HTMLElement }[] = [];
+/** Index into [[comboItems]] of the option the arrow keys are on. */
+let comboActive = 0;
+
+function comboOpen(): boolean {
+  return !$targetList.hidden;
+}
+
+/** Show the label of whatever is selected. Called on every render, so a change of direction or a
+ * reverse lands in the input too. */
+function renderCombo(): void {
+  if (comboOpen()) renderComboList();
+  else $targetInput.value = activeStep().label;
+}
+
+function openCombo(): void {
+  $targetList.hidden = false;
+  $targetInput.setAttribute("aria-expanded", "true");
+  renderComboList();
+}
+
+function closeCombo(): void {
+  if (!comboOpen()) return;
+  $targetList.hidden = true;
+  $targetInput.setAttribute("aria-expanded", "false");
+  $targetInput.removeAttribute("aria-activedescendant");
+  comboQuery = null;
+  comboItems = [];
+  $targetInput.value = activeStep().label;
+}
+
+function renderComboList(): void {
+  const query = (comboQuery ?? "").trim().toLowerCase();
+  const matches = query ? steps(direction).filter((s) => s.label.toLowerCase().includes(query)) : steps(direction);
+  const selectedId = activeStep().id;
+
+  $targetList.innerHTML = "";
+  comboItems = matches.map((step) => {
+    const el = document.createElement("li");
+    el.id = `target-opt-${step.id}`;
+    el.className = "combo-option" + (step.id === selectedId ? " combo-option--selected" : "");
+    el.setAttribute("role", "option");
+    el.setAttribute("aria-selected", String(step.id === selectedId));
+    el.textContent = step.label;
+    // mousedown, not click: the input's blur fires first and would close the list out from under it.
+    el.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      pickStep(step);
+    });
+    el.addEventListener("mousemove", () => setComboActive(comboItems.findIndex((it) => it.el === el)));
+    $targetList.appendChild(el);
+    return { step, el };
+  });
+
+  if (!comboItems.length) {
+    const empty = document.createElement("li");
+    empty.className = "combo-empty";
+    empty.textContent = "No match";
+    $targetList.appendChild(empty);
+    $targetInput.removeAttribute("aria-activedescendant");
+    return;
+  }
+  // Start on what is selected when the list opens unfiltered, and on the first hit once filtering.
+  const start = comboQuery === null ? comboItems.findIndex((it) => it.step.id === selectedId) : 0;
+  setComboActive(Math.max(0, start));
+}
+
+/** Move the keyboard highlight, wrapping at both ends. `index` may be -1 or the length itself: one
+ * step off either end wraps round to the other. */
+function setComboActive(index: number): void {
+  if (!comboItems.length) return;
+  comboActive = (index + comboItems.length) % comboItems.length;
+  comboItems.forEach((it, i) => it.el.classList.toggle("combo-option--active", i === comboActive));
+  const current = comboItems[comboActive]!;
+  $targetInput.setAttribute("aria-activedescendant", current.el.id);
+  current.el.scrollIntoView({ block: "nearest" });
+}
+
+// Opening on click rather than on focus, so tabbing through the toolbar does not drop a list over
+// the page. The caret is pointer-events: none, so a click on it lands here too.
+$targetInput.addEventListener("click", () => {
+  if (comboOpen()) closeCombo();
+  else openCombo();
+});
+
+// Whatever is typed replaces the label outright, which is what selecting it on focus achieves.
+$targetInput.addEventListener("focus", () => $targetInput.select());
+$targetInput.addEventListener("blur", () => closeCombo());
+
+$targetInput.addEventListener("input", () => {
+  comboQuery = $targetInput.value;
+  if (!comboOpen()) openCombo();
+  else renderComboList();
+});
+
+$targetInput.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (!comboOpen()) openCombo();
+    else setComboActive(comboActive + (e.key === "ArrowDown" ? 1 : -1));
+  } else if (e.key === "Enter" && comboOpen()) {
+    e.preventDefault();
+    const pick = comboItems[comboActive];
+    if (pick) pickStep(pick.step);
+  } else if (e.key === "Escape" && comboOpen()) {
+    // Kept off the page: Escape would otherwise reach an enclosing dialog or reset the field.
+    e.preventDefault();
+    e.stopPropagation();
+    closeCombo();
+  } else if (e.key === "Tab") {
+    closeCombo();
+  }
+});
+
 // ── Options ─────────────────────────────────────────────────────────────────
 
-function renderOptions(): void {
-  const target = activeTarget();
-  const values = optionValues[target.id]!;
-  $optionsRow.innerHTML = "";
+/** The widgets on screen, so [[updateOptionVisibility]] can reach them. */
+let optionFields: { opt: Option; field: HTMLElement }[] = [];
 
-  for (const opt of target.options) {
+/** Some options only mean anything alongside another - the tree root is dead weight unless the
+ * pruning mode is tree-root. Hidden rather than rebuilt, so showing or hiding one never takes
+ * focus away from the widget that is being used. */
+function updateOptionVisibility(): void {
+  const values = optionValues[activeKey()]!;
+  for (const { opt, field } of optionFields) {
+    field.hidden = opt.showIf !== undefined && !opt.showIf(values);
+  }
+}
+
+function renderOptions(): void {
+  const step = activeStep();
+  const values = optionValues[activeKey()]!;
+  $optionsRow.innerHTML = "";
+  optionFields = [];
+
+  for (const opt of step.options) {
     const field = document.createElement("div");
     field.className = "opt-field";
-    const id = `opt-${target.id}-${opt.key}`;
+    const id = `opt-${activeKey()}-${opt.key}`;
 
     if (opt.type === "checkbox") {
       field.innerHTML = `<input type="checkbox" id="${id}"><label for="${id}">${opt.label}</label>`;
@@ -190,6 +391,7 @@ function renderOptions(): void {
       if (opt.title) field.title = opt.title;
       input.addEventListener("change", () => {
         values[opt.key] = input.checked;
+        updateOptionVisibility();
         scheduleGenerate();
       });
     } else if (opt.type === "select") {
@@ -208,6 +410,7 @@ function renderOptions(): void {
       field.append(label, select);
       select.addEventListener("change", () => {
         values[opt.key] = select.value;
+        updateOptionVisibility();
         scheduleGenerate();
       });
     } else {
@@ -222,12 +425,16 @@ function renderOptions(): void {
       field.append(label, input);
       input.addEventListener("input", () => {
         values[opt.key] = input.value;
+        updateOptionVisibility();
         scheduleGenerate();
       });
     }
 
     $optionsRow.appendChild(field);
+    optionFields.push({ opt, field });
   }
+
+  updateOptionVisibility();
 }
 
 // ── Output rendering ─────────────────────────────────────────────────────
@@ -292,12 +499,9 @@ function diagramSize(text: string): { entities: number; relationships: number } 
   return { entities, relationships };
 }
 
-/** Above this, drawing takes long enough to be worth asking first. Measured on a mid-range laptop:
- * 20 entities ≈ 0.7 s, 40 ≈ 2.3 s, 80 ≈ 11.6 s - the cost climbs roughly with the square of the
- * entity count, and Mermaid's layout blocks this thread throughout. */
+/** Above this, drawing takes long enough to be worth asking first. */
 const DIAGRAM_SOFT_LIMIT = { entities: 40, relationships: 120 };
-/** Above this it is not offered at all: 182 entities / 826 relationships wedged the tab for minutes
- * and would not even let the page navigate away. Mermaid's own default edge cap is 500. */
+/** Above this it is not offered at all. */
 const DIAGRAM_HARD_LIMIT = { entities: 150, relationships: 500 };
 
 function over(size: { entities: number; relationships: number }, limit: typeof DIAGRAM_SOFT_LIMIT): boolean {
@@ -714,7 +918,8 @@ function showFiles(target: Target, dict: Record<string, string>): void {
   }
 
   outputView.dom.classList.remove("cm-output--error");
-  setOutput(outputView, (active && dict[active]) || "", targetLang(target));
+  // Only a generator produces files, so this is always the generator direction.
+  setOutput(outputView, (active && dict[active]) || "", stepLang(target, "fromLinkml"));
 }
 
 function setStatus(ok: boolean, text: string, title = ""): void {
@@ -785,31 +990,33 @@ function scheduleGenerate(delay = 400): void {
 }
 
 function runGenerate(): void {
-  const schema = inputView.state.doc.toString();
+  const input = inputView.state.doc.toString();
 
-  if (!schema.trim()) {
+  if (!input.trim()) {
     pendingId = null;
     setBusy(false);
     $statusPill.hidden = true;
+    setReversibleOutput(null);
     showOutputText("", "text");
     return;
   }
 
-  const target = activeTarget();
+  const step = activeStep();
   const id = ++requestId;
   pendingId = id;
   setBusy(true);
-  const request: GenerateRequest = { id, schema, targetId: target.id, options: optionValues[target.id]! };
+  const request: ConvertRequest = { id, direction, input, stepId: step.id, options: optionValues[activeKey()]! };
   getWorker().postMessage(request);
 }
 
-function onResult(res: GenerateResponse): void {
+function onResult(res: ConvertResponse): void {
   // Superseded by a newer request - its answer is the one that should land.
   if (res.id !== pendingId) return;
   pendingId = null;
   setBusy(false);
 
   if (!res.ok) {
+    setReversibleOutput(null);
     showOutputError(res.error);
     setStatus(false, "error");
     return;
@@ -817,17 +1024,21 @@ function onResult(res: GenerateResponse): void {
 
   // Rendering is the one part still on this thread, so it counts towards what the user waited for.
   const start = performance.now();
+  const step = stepById(res.direction, res.stepId) ?? activeStep();
   if (res.kind === "report") {
     showReport(res.result as ValidationReport);
   } else if (res.kind === "files") {
-    showFiles(targetById(res.targetId) ?? activeTarget(), res.result as Record<string, string>);
+    showFiles(step as Target, res.result as Record<string, string>);
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else {
-    const target = targetById(res.targetId) ?? activeTarget();
-    showOutputText((res.result as string) || "Schema is clean", targetLang(target));
+    showOutputText((res.result as string) || "Schema is clean", stepLang(step, res.direction));
   }
   const displayMs = Math.round(performance.now() - start);
+
+  // Only a plain document can be handed back to the other direction - file tabs, reports and
+  // diagrams are not one.
+  setReversibleOutput(res.kind === "text" ? (res.result as string) || null : null);
 
   // The pill reports the LinkML work itself: the parse when one happened, plus generation.
   setStatus(!res.fatal, `${(res.loadMs ?? 0) + res.genMs}ms`, breakdown(res, displayMs));
@@ -835,26 +1046,78 @@ function onResult(res: GenerateResponse): void {
 
 /** Where the time went, for the pill's tooltip. Spells out when a parse was reused, which is what
  * makes the headline number jump between a cold load and a tab switch. */
-function breakdown(res: Extract<GenerateResponse, { ok: true }>, displayMs: number): string {
-  const parts = [res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`];
-  if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+function breakdown(res: Extract<ConvertResponse, { ok: true }>, displayMs: number): string {
+  const parts: string[] = [];
+  if (res.direction === "toLinkml") {
+    // An importer parses its own input inside the call, so there is no separate load step.
+    parts.push(`convert ${res.genMs}ms`);
+  } else {
+    parts.push(res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`);
+    if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+  }
   parts.push(`display ${displayMs}ms`);
   return parts.join(" · ");
 }
+
+// ── Reverse ──────────────────────────────────────────────────────────────
+
+/** The step that would undo what is on screen: for a generator, the importer that reads its output
+ * back; for an importer, the generator it undoes. */
+function reverseStep(): Step | undefined {
+  return direction === "toLinkml"
+    ? targetById((activeStep() as Importer).reverses ?? "")
+    : IMPORTERS.find((i) => i.reverses === activeTargetId);
+}
+
+/** The output as it would be handed over, while there is one to hand over. */
+let reversibleOutput: string | null = null;
+
+function setReversibleOutput(text: string | null): void {
+  reversibleOutput = text;
+  updateReverseButton();
+}
+
+function updateReverseButton(): void {
+  const step = reverseStep();
+  $reverseOutput.hidden = step === undefined || reversibleOutput === null;
+  if ($reverseOutput.hidden) return;
+  const label = `Convert back to ${direction === "toLinkml" ? step!.label : "LinkML"}`;
+  $reverseOutput.title = label;
+  $reverseOutput.setAttribute("aria-label", label);
+}
+
+$reverseOutput.addEventListener("click", () => {
+  const step = reverseStep();
+  const text = reversibleOutput;
+  if (!step || text === null) return;
+
+  direction = direction === "fromLinkml" ? "toLinkml" : "fromLinkml";
+  if (direction === "toLinkml") activeImporterId = step.id;
+  else activeTargetId = step.id;
+
+  // The one place the two sides meet: what was generated becomes the other side's input, replacing
+  // whatever was sitting there.
+  const doc = inputDoc();
+  doc.text = text;
+  doc.link = null;
+  doc.remote = null;
+  selectStep();
+});
 
 $generateBtn.addEventListener("click", () => scheduleGenerate(0));
 
 // ── Toolbar actions ──────────────────────────────────────────────────────
 
+// Both let the change listener do the storing: it already writes to the key the active document
+// belongs to.
 $loadExample.addEventListener("click", () => {
-  setDoc(inputView, EXAMPLE_SCHEMA);
-  localStorage.setItem(INPUT_STORAGE_KEY, EXAMPLE_SCHEMA);
+  setDoc(inputView, exampleInput());
   scheduleGenerate(0);
 });
 
 $clearInput.addEventListener("click", () => {
   setDoc(inputView, "");
-  localStorage.removeItem(INPUT_STORAGE_KEY);
+  localStorage.removeItem(storageKey(inputKey()));
   inputView.focus();
   scheduleGenerate(0);
 });
@@ -904,7 +1167,9 @@ const $urlInput = $<HTMLInputElement>("urlInput");
 const $urlError = $("urlError");
 const $urlSubmit = $<HTMLButtonElement>("urlSubmit");
 
-function sharedLink(): string | null {
+/** The `?url=` the page was opened with. Once a document is loaded, its own `link` is what counts -
+ * the address bar just follows whichever document is on screen. */
+function incomingLink(): string | null {
   return new URL(location.href).searchParams.get(URL_PARAM);
 }
 
@@ -976,7 +1241,9 @@ async function loadFromUrl(link: string): Promise<LoadResult> {
   }
 
   // Set before the change lands, so the listener sees an unedited document either way.
-  remoteText = text;
+  const doc = inputDoc();
+  doc.remote = text;
+  doc.link = link;
   setDoc(inputView, text);
   setUrlParam(link);
   scheduleGenerate(0);
@@ -1000,7 +1267,7 @@ async function loadOrPrompt(link: string): Promise<void> {
 }
 
 $loadUrl.addEventListener("click", () => {
-  $urlInput.value = sharedLink() ?? "";
+  $urlInput.value = inputDoc().link ?? "";
   $urlError.hidden = true;
   $urlDialog.showModal();
   $urlInput.select();
@@ -1046,12 +1313,14 @@ const CAN_SHARE = typeof CompressionStream !== "undefined" && typeof Decompressi
  * makes their length nearly free. */
 interface SharedState {
   v: number;
-  /** The schema text, when the editor holds something no link would serve. */
+  /** The input text, when the editor holds something no link would serve. */
   s?: string;
   /** The link it came from instead, when the editor still holds exactly what that link serves. */
   u?: string;
-  /** Active target id, left out when it is the default one. */
+  /** Active target id, left out when it is the default one or when `i` is set. */
   t?: string;
+  /** Active importer id. Present exactly when the link was made in the "to LinkML" direction. */
+  i?: string;
   /** Only the options that differ from their default. */
   o?: OptionValues;
 }
@@ -1093,10 +1362,10 @@ async function unpack(encoded: string): Promise<string> {
   return text + decoder.decode();
 }
 
-function changedOptions(target: Target): OptionValues | undefined {
-  const values = optionValues[target.id]!;
+function changedOptions(): OptionValues | undefined {
+  const values = optionValues[activeKey()]!;
   const changed = Object.fromEntries(
-    target.options.filter((o) => values[o.key] !== optionDefault(o)).map((o) => [o.key, values[o.key]!]),
+    activeStep().options.filter((o) => values[o.key] !== optionDefault(o)).map((o) => [o.key, values[o.key]!]),
   );
   return Object.keys(changed).length ? changed : undefined;
 }
@@ -1104,9 +1373,9 @@ function changedOptions(target: Target): OptionValues | undefined {
 /** Filter options that arrived in a link down to ones this build can honour: an unknown key, or a
  * select value that is not on offer, would leave the widget showing nothing while still being what
  * the generator is handed. */
-function knownOptions(target: Target, shared: OptionValues | undefined): OptionValues {
+function knownOptions(step: Step, shared: OptionValues | undefined): OptionValues {
   const kept: OptionValues = {};
-  for (const opt of target.options) {
+  for (const opt of step.options) {
     const value = shared?.[opt.key];
     if (value === undefined) continue;
     if (opt.type === "select" && !opt.choices?.includes(String(value))) continue;
@@ -1116,16 +1385,17 @@ function knownOptions(target: Target, shared: OptionValues | undefined): OptionV
 }
 
 function currentState(): SharedState {
-  const target = activeTarget();
+  const step = activeStep();
   const text = inputView.state.doc.toString();
-  const link = sharedLink();
+  const doc = inputDoc();
   const state: SharedState = { v: SHARE_VERSION };
   // A link is far shorter than the schema, and stays current if the file behind it changes - but
   // only while the editor still holds exactly what it serves.
-  if (link !== null && text === remoteText) state.u = link;
+  if (doc.link !== null && text === doc.remote) state.u = doc.link;
   else state.s = text;
-  if (target.id !== TARGETS[0]!.id) state.t = target.id;
-  const options = changedOptions(target);
+  if (direction === "toLinkml") state.i = step.id;
+  else if (step.id !== TARGETS[0]!.id) state.t = step.id;
+  const options = changedOptions();
   if (options) state.o = options;
   return state;
 }
@@ -1138,7 +1408,7 @@ async function shareUrl(): Promise<{ href: string; plain: boolean }> {
   here.hash = "";
   // With nothing but a link to pass on, `?url=` says the same thing in about the same space and a
   // recipient can see where it points, so there is no reason to bury it in an opaque fragment.
-  if (state.u !== undefined && state.t === undefined && state.o === undefined) {
+  if (state.u !== undefined && state.t === undefined && state.i === undefined && state.o === undefined) {
     here.searchParams.set(URL_PARAM, state.u);
     return { href: here.href, plain: true };
   }
@@ -1174,20 +1444,28 @@ async function applySharedState(encoded: string): Promise<LoadResult> {
   }
   const state = parsed as SharedState;
 
-  // An id this build does not know (a link from a newer playground) leaves the default target
+  // An id this build does not know (a link from a newer playground) leaves the default generator
   // selected, and its options with it - they would not mean anything here either.
-  const target = targetById(state.t ?? TARGETS[0]!.id);
-  if (target) {
-    activeTargetId = target.id;
-    Object.assign(optionValues[target.id]!, knownOptions(target, state.o));
-    renderTargetTabs();
-    renderOptions();
+  const importer = state.i === undefined ? undefined : importerById(state.i);
+  if (importer) {
+    direction = "toLinkml";
+    activeImporterId = importer.id;
+  } else {
+    direction = "fromLinkml";
+    activeTargetId = targetById(state.t ?? "")?.id ?? TARGETS[0]!.id;
   }
+  Object.assign(optionValues[activeKey()]!, knownOptions(activeStep(), state.o));
+  renderStep();
 
+  // The direction decides which document the link's text belongs to, so it is set first and the
+  // editor only pointed at that document once the answer is known.
+  shownInput = inputKey();
   if (state.u !== undefined) {
     void loadOrPrompt(state.u);
   } else {
-    remoteText = null;
+    const doc = inputDoc();
+    doc.link = null;
+    doc.remote = null;
     setDoc(inputView, state.s ?? "");
     scheduleGenerate(0);
   }
@@ -1377,11 +1655,12 @@ function renderRepoStats(stars: number, forks: number): void {
 
 // ── Init ─────────────────────────────────────────────────────────────────
 
-renderTargetTabs();
-renderOptions();
+// The editor was built from this document, so record it rather than swapping it back in.
+shownInput = inputKey();
+renderStep();
 
 const initialShare = shareFragment();
-const initialLink = sharedLink();
+const initialLink = incomingLink();
 if (initialShare !== null) {
   // Read once, then dropped from the address bar: it keeps the URL legible, and stops an
   // edit-then-reload resurrecting the state the link came with. The schema itself survives a
