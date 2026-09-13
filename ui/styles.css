@@ -124,6 +124,9 @@ body { background: var(--bg); }
 .repo-link {
   display: inline-flex;
   align-items: center;
+  /* Keeps its natural width whatever else is in the header: squeezing it only ever cuts into the
+     repo name and the counts, which are the whole point of it. */
+  flex-shrink: 0;
   gap: 9px;
   padding: 5px 11px;
   border: 1px solid var(--border);
@@ -343,34 +346,116 @@ body { background: var(--bg); }
   padding: 8px 10px;
 }
 
-.target-tabs { display: flex; flex-wrap: wrap; gap: 2px; }
-.tab-btn {
+/* Segmented control, set apart from the tabs next to it by its border and its own background. */
+.dir-toggle {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+/* Deliberately tight: the toolbar already has eleven target tabs to fit, and a wider control here
+   costs a whole extra row of toolbar on a 1280px window. */
+.dir-btn {
   appearance: none;
   border: none;
   background: none;
   cursor: pointer;
-  padding: 8px 13px;
-  font-size: 13px;
+  padding: 6px 9px;
+  font: inherit;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-secondary);
-  border-radius: var(--radius-sm);
+  border-radius: calc(var(--radius-sm) - 2px);
   white-space: nowrap;
   transition: background 0.1s, color 0.1s;
 }
-.tab-btn:hover { color: var(--text); background: var(--accent-soft); }
-.tab-btn--active { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
-.tab-btn--active:hover { color: var(--text-on-accent); background: var(--accent); }
+.dir-btn:hover { color: var(--text); background: var(--accent-soft); }
+/* A raised-pill treatment does not work here: in the dark theme --surface is darker than the
+   --surface-2 track, so the selected half would recede instead of standing out. */
+.dir-btn--active,
+.dir-btn--active:hover { color: var(--text-on-accent); background: var(--accent); font-weight: 600; }
+
+/* ── Target combobox ── */
+
+.combo { position: relative; }
+.combo-input {
+  width: 150px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  /* Room on the right for the caret, which sits over the field. */
+  padding: 7px 30px 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+}
+.combo-input:focus { border-color: var(--accent); cursor: text; }
+.combo-input::placeholder { color: var(--text-muted); font-weight: 400; }
+.combo-caret {
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  translate: 0 -50%;
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+  /* So a click anywhere on the field, caret included, reaches the input. */
+  pointer-events: none;
+}
+
+.combo-list {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 100%;
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+.combo-list[hidden] { display: none; }
+
+.combo-option {
+  padding: 7px 11px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: calc(var(--radius-sm) - 2px);
+  white-space: nowrap;
+  cursor: pointer;
+}
+/* Two marks that stack: which one is selected, and which one the keyboard is on. */
+.combo-option--selected { color: var(--text); font-weight: 600; }
+.combo-option--active { background: var(--accent-soft); color: var(--text); }
+
+.combo-empty { padding: 7px 11px; font-size: 13px; color: var(--text-muted); }
 
 .toolbar-right {
   margin-left: auto;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
 }
 
-.options-row { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+/* `contents` rather than `flex`: the options are a group in the markup only, because app.ts
+   refills them wholesale. As a flex item the group would wrap internally and leave the slack on
+   its own last line, where the Auto toggle beside it cannot reach - so Auto dropped to a line of
+   its own with half the row empty. Dissolving the box puts every control in one wrap context. */
+.options-row { display: contents; }
 .opt-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; }
+/* Same reason as `.ic[hidden]`: the `display: flex` above beats the UA `[hidden]` rule. */
+.opt-field[hidden] { display: none; }
 /* Divider after each option (incl. the last, to fence it off from the Auto
    toggle) so adjacent controls don't read as one blur. */
 .opt-field::after {
@@ -478,6 +563,12 @@ body { background: var(--bg); }
 .panel-title-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); }
 /* Wraps because the input panel's four buttons do not fit a narrow window on one line. */
 .panel-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* Sized to sit level with the Copy button next to it. Same reason as `.btn[hidden]`: the
+   `display: grid` on .icon-btn beats the UA [hidden] rule. */
+.reverse-btn { width: 26px; height: 26px; }
+.reverse-btn[hidden] { display: none; }
+.reverse-btn .ic { width: 15px; height: 15px; }
 
 .status-pill {
   font-size: 11px;
@@ -624,7 +715,28 @@ body { background: var(--bg); }
   .brand-mark { display: none; }
   .brand { gap: 8px; }
   .header-actions { gap: 8px; }
+  /* The repo name and its star/fork counts say the same thing in less width. */
   .repo-link { padding: 4px 9px; }
+  .repo-icon { display: none; }
+
+  /* With Auto on, Generate only repeats what has already happened, so the row is better spent on
+     the options. It comes back the moment Auto is switched off, which is when it is the only way
+     to run anything. */
+  .toolbar-right:has(#autoGenerate:checked) #generateBtn { display: none; }
+
+  /* Clear is the one of the four that the editor itself can do, so it goes first when the row
+     runs out of width. Dropping the format sub-label buys the rest: it is what pushes the
+     remaining buttons onto a second line, and the direction toggle above says the same thing. */
+  #clearInput { display: none; }
+  .panel-title-sub { display: none; }
+
+  /* Share keeps its icon but loses its label; the other two buttons have no icon to fall back
+     on. The button carries an aria-label, so what it does is still announced. */
+  #share .btn-label { display: none; }
+  /* `.ic` is 1em, so with the label gone the button would come out shorter than the ones beside
+     it. 1.5em is the line box the text had, which puts it back at the same height. */
+  #share .ic { width: 1.5em; height: 1.5em; }
+  #share { padding: 5px 8px; }
 
   /* Footer: keep just the "Built by NeverBlink" mark; the link row is too much. */
   .footer-links { display: none; }
