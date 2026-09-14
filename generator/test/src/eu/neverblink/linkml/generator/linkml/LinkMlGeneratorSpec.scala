@@ -430,6 +430,5 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
 object LinkMlGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "unionRange" -> "Not yet implemented: LNK-110",
-    "equals_expression" -> "Warning in lint - non-standard separator for PV: LNK-208",
   )
 }

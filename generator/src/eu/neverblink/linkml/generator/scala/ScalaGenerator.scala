@@ -84,7 +84,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         val name = enumName(ev)
         val enumCases = en.permissibleValues.values.map(v =>
           ScalaEnumCase(
-            caseName = v.text,
+            caseName = v.alias.getOrElseFast(v.text),
             objectName = permissibleValueName(ev, v),
             enumName = name,
             doc = ScalaDoc(v, ev.definingSchema.id, options)(using prefixResolver),
