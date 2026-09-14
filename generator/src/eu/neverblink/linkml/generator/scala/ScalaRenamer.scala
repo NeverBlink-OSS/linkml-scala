@@ -22,10 +22,13 @@ trait ScalaRenamer extends Renamer {
     */
   protected def scalaCamel(baseName: String): String = {
     val name = Case.baseToCamel(baseName)
-    if name.isEmpty then "__"
-    else if Case.isNumeric(name.head) then "_" + name
-    else if ScalaWords.keywords.contains(name) then s"`$name`"
-    else if ScalaWords.reserved.contains(name) then "_" + name
+    val len = name.length
+    if (len == 0) "__"
+    else if (
+      Case.isNumeric(name.charAt(0)) ||
+      len <= ScalaWords.maxReservedLength && ScalaWords.reserved.contains(name)
+    ) "_".concat(name)
+    else if (len <= ScalaWords.maxKeywordLength && ScalaWords.keywords.contains(name)) s"`$name`"
     else name
   }
 
