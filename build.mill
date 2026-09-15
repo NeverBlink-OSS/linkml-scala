@@ -211,7 +211,6 @@ object metamodel extends Module, NativeOptional {
         (
           "git",
           "clone",
-          "--depth=1",
           "https://github.com/NeverBlink-OSS/linkml-model",
           Task.dest,
         ),
@@ -220,7 +219,6 @@ object metamodel extends Module, NativeOptional {
       (
         "git",
         "fetch",
-        "--depth=1",
         "origin",
         definitionsBranch(),
       ),
@@ -488,6 +486,7 @@ object generator extends Module, NativeOptional {
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
         "LINKML_OSSIE_REPO" -> ossieDir.toString,
+        "LINKML_CONFORMANCE_TEST_DIR" -> (tests.conformanceDefinitions().path / "demo-suite").toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
     }
