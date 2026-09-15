@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.util
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
-import org.virtuslab.yaml.{Node, Tag}
+import org.virtuslab.yaml.{Node, NodeOps, Tag}
 
 import java.io.OutputStream
 import scala.util.control.NonFatal
@@ -17,6 +17,19 @@ object JsonUtil {
   /** Serialize scala-yaml [[Node]] as pretty JSON straight to [[out]], skipping the string. */
   def writeJson(yaml: Node, out: OutputStream): Unit =
     writeToStream(yaml, out, WriterConfig.withIndentionStep(2))
+
+  /** Serialize scala-yaml [[Node]] in [[format]]. */
+  def write(yaml: Node, format: JsonOutputFormat): String =
+    if (format == JsonOutputFormat.json) yamlToJson(yaml) else yaml.asYaml
+
+  /** Serialize scala-yaml [[Node]] in [[format]] straight to [[out]]. */
+  def write(yaml: Node, format: JsonOutputFormat, out: OutputStream): Unit =
+    if (format == JsonOutputFormat.json) writeJson(yaml, out)
+    else {
+      val sink = new Utf8ByteSink(out)
+      sink.append(yaml.asYaml)
+      sink.flush()
+    }
 
   private implicit val yamlCodec: JsonValueCodec[Node] = new JsonValueCodec[Node] {
     override def decodeValue(in: JsonReader, default: Node): Node = ???

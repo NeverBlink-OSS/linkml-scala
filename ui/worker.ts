@@ -1,5 +1,13 @@
-// Generation worker. Owns the LinkML API, the parsed `SchemaView` and all generator calls.
-import { targetById, type BuildInfo, type OptionValues, type TargetResult, type ValidationReport } from "./targets.js";
+// Conversion worker. Owns the LinkML API, the parsed `SchemaView` and all generator and importer
+// calls.
+import {
+  importerById,
+  targetById,
+  type BuildInfo,
+  type OptionValues,
+  type TargetResult,
+  type ValidationReport,
+} from "./targets.js";
 import type { LinkMLApi, LoadResult } from "./linkml";
 
 const LINKML_BUNDLE_URL = "./linkml.js";
@@ -11,10 +19,17 @@ const LINKML_BUNDLE_URL = "./linkml.js";
 // Requests that arrive before it resolves simply await it.
 const apiPromise: Promise<LinkMLApi> = import(LINKML_BUNDLE_URL).then((m: { LinkML: LinkMLApi }) => m.LinkML);
 
-export interface GenerateRequest {
+/** `fromLinkml` runs a generator over the schema in `input`; `toLinkml` runs an importer over the
+ * source document in `input`. */
+export type Direction = "fromLinkml" | "toLinkml";
+
+export interface ConvertRequest {
   id: number;
-  schema: string;
-  targetId: string;
+  direction: Direction;
+  /** The LinkML schema, or the document to import. */
+  input: string;
+  /** Target id for `fromLinkml`, importer id for `toLinkml`. The two sets overlap. */
+  stepId: string;
   options: OptionValues;
 }
 
@@ -22,15 +37,17 @@ export interface GenerateRequest {
  * as a Mermaid diagram. */
 export type ResultKind = "text" | "files" | "report" | "diagram";
 
-export type GenerateResponse =
+export type ConvertResponse =
   | {
       id: number;
       ok: true;
-      /** Echoed back so the UI renders with the target that was asked for, not the current one. */
-      targetId: string;
+      /** Both echoed back so the UI renders with what was asked for, not what is selected now. */
+      direction: Direction;
+      stepId: string;
       kind: ResultKind;
       result: TargetResult;
-      /** Time spent parsing, or null when the cached parse was reused. */
+      /** Time spent parsing the schema: null when the cached parse was reused, and for an importer,
+       * which has no schema to parse. */
       loadMs: number | null;
       genMs: number;
       /** Set when the schema failed to load at all, so the report is a failure rather than a result. */
@@ -44,13 +61,13 @@ export interface BuildMessage {
   build: BuildInfo;
 }
 
-export type WorkerMessage = GenerateResponse | BuildMessage;
+export type WorkerMessage = ConvertResponse | BuildMessage;
 
 // The UI tsconfig ships the DOM lib rather than webworker, and pulling lib.webworker in here would
 // collide with it. Only these two globals are used, so declare them exactly - which also types
 // both ends of the protocol instead of leaving them as `any`.
 declare const self: {
-  onmessage: ((e: MessageEvent<GenerateRequest>) => void) | null;
+  onmessage: ((e: MessageEvent<ConvertRequest>) => void) | null;
   postMessage: (message: WorkerMessage) => void;
 };
 
@@ -67,10 +84,20 @@ apiPromise
 // text actually changes.
 let cachedSchema: { text: string; loaded: LoadResult } | null = null;
 
-self.onmessage = async (e: MessageEvent<GenerateRequest>) => {
-  const { id, schema, targetId, options } = e.data;
+self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
+  const { id, direction, input: schema, stepId, options } = e.data;
   try {
     const api = await apiPromise;
+
+    if (direction === "toLinkml") {
+      const importer = importerById(stepId);
+      if (!importer) throw new Error(`Unknown importer: ${stepId}`);
+      const t0 = performance.now();
+      const result = importer.call(api, schema, options);
+      const genMs = Math.round(performance.now() - t0);
+      reply({ id, ok: true, direction, stepId, kind: "text", result, loadMs: null, genMs });
+      return;
+    }
 
     let loadMs: number | null = null;
     if (!cachedSchema || cachedSchema.text !== schema) {
@@ -88,12 +115,12 @@ self.onmessage = async (e: MessageEvent<GenerateRequest>) => {
 
     // Fatal problems mean there is no view to generate from, so every target shows the report.
     if (!view) {
-      reply({ id, ok: true, targetId, kind: "report", result: plain(report), loadMs, genMs: 0, fatal: true });
+      reply({ id, ok: true, direction, stepId, kind: "report", result: plain(report), loadMs, genMs: 0, fatal: true });
       return;
     }
 
-    const target = targetById(targetId);
-    if (!target) throw new Error(`Unknown target: ${targetId}`);
+    const target = targetById(stepId);
+    if (!target) throw new Error(`Unknown target: ${stepId}`);
 
     const t1 = performance.now();
     const result = target.call(api, view, options);
@@ -106,13 +133,13 @@ self.onmessage = async (e: MessageEvent<GenerateRequest>) => {
       : typeof result === "object"
       ? "files"
       : "text";
-    reply({ id, ok: true, targetId, kind, result: kind === "report" ? plain(result) : result, loadMs, genMs });
+    reply({ id, ok: true, direction, stepId, kind, result: kind === "report" ? plain(result) : result, loadMs, genMs });
   } catch (err) {
     reply({ id, ok: false, error: err instanceof Error ? err.toString() : String(err) });
   }
 };
 
-function reply(msg: GenerateResponse): void {
+function reply(msg: ConvertResponse): void {
   self.postMessage(msg);
 }
 

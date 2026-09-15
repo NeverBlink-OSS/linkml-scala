@@ -52,7 +52,5 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
 
 object ScalaGeneratorCompileSpec {
   val skipModels: Map[String, String] = Map(
-    "nonHermetic" ->
-      "LNK-169: a type whose base has the same name generates a cyclic alias (`type Int = Int`)",
   )
 }

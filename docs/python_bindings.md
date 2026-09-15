@@ -54,7 +54,7 @@ All three take `infer_messages=True`, which fills in each issue's human-readable
 Fatal problems raise `SchemaLoadError`, which carries the report as `.report`. Errors and warnings do
 not: a schema can load and still have things to say about it.
 
-### Generating
+### Generating from LinkML
 
 ```python
 schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, indentation_step=2)
@@ -75,7 +75,15 @@ which return a filename-to-content dict.
 `shacl()` and `rdfs()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
 pretty-printed, or `"nt"` for N-Triples.
 
-**These are generated, not written.** Each method mirrors the `Options` case class of the generator it calls – `ShaclGenerator.Options` and so on – so the names, types, defaults and docstrings are whatever the Scala declares. See [`mill-build/src/PyBindingsGen.scala`](../mill-build/src/PyBindingsGen.scala).
+### Converting to LinkML
+
+We currently support one importer for Apache Ossie (incubating) ontologies:
+
+```python
+linkml_scala.from_ossie(ontology, schema_id=None, output_format="yaml")
+```
+
+It returns the LinkML schema as a string. Pass that to `load_string()` to run a generator over it.
 
 ### Validating
 

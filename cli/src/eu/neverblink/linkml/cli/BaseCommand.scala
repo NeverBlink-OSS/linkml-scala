@@ -4,7 +4,7 @@ import caseapp.*
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.runtime.FastUtils.*
 
-import java.io.{ByteArrayOutputStream, PrintStream}
+import java.io.{ByteArrayOutputStream, OutputStream, PrintStream}
 
 /** Thrown instead of a real process exit when a command runs in test mode. */
 final case class ExitException(code: Int) extends RuntimeException
@@ -42,6 +42,18 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
           )
           err("Cannot load schema: " + formatted)
       }
+    }
+
+  /** Write to `file`, or to the command's stdout when there is none. */
+  protected final def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
+    file.foldFast {
+      // `out` is the command's stdout (redirected in tests). Flush but never close it.
+      write(outStream)
+      outStream.flush()
+    } { value =>
+      val stream = os.write.over.outputStream(os.Path(value, os.pwd))
+      try write(stream)
+      finally stream.close()
     }
 
   /** Runs the whole CLI (via [[App]]) with the given args, capturing stdout and stderr. For tests

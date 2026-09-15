@@ -1,16 +1,23 @@
 import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
+import { EXAMPLE_SCHEMA } from "./examples.js";
 import {
+  IMPORTERS,
   TARGETS,
+  importerById,
   targetById,
   type BuildInfo,
+  type Importer,
   type IssueLocation,
+  type Option,
   type OptionValues,
   type ReportIssue,
+  type Step,
   type Target,
   type ValidationReport,
 } from "./targets.js";
-import type { GenerateRequest, GenerateResponse, WorkerMessage } from "./worker.js";
+import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
 
+// The LinkML schema lives here; each importer's own input document gets this plus a suffix.
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 // Query parameter holding the link the schema was loaded from, so the address bar is a share link.
 const URL_PARAM = "url";
@@ -21,64 +28,50 @@ const WORKER_URL = "./worker.js";
 // are ~210 KB gzipped, which nobody who never opens the ER diagram tab should pay for.
 const MERMAID_URL = "./mermaid/mermaid.js";
 
-const EXAMPLE_SCHEMA = `id: https://example.org/library
-name: library
-description: A tiny example schema, showing classes, slots, enums and a tree root.
-prefixes:
-  linkml: https://w3id.org/linkml/
-  library: https://example.org/library/
-emit_prefixes:
-  - library
-default_range: string
-imports:
-  - linkml:types
-
-enums:
-  LoanStatus:
-    permissible_values:
-      AVAILABLE:
-      ON_LOAN:
-      LOST:
-
-classes:
-  Book:
-    description: A book that can be borrowed from the library.
-    attributes:
-      title:
-        required: true
-      isbn:
-        description: International Standard Book Number
-      published_year:
-        range: integer
-      status:
-        range: LoanStatus
-      author:
-        range: Person
-        inlined: true
-
-  Person:
-    description: An author or a library member.
-    attributes:
-      name:
-        required: true
-      email:
-
-  Library:
-    tree_root: true
-    attributes:
-      name:
-        required: true
-      books:
-        range: Book
-        multivalued: true
-        inlined_as_list: true
-`;
-
 // ── State ─────────────────────────────────────────────────────────────────
 
+/** Which way the conversion runs: `fromLinkml` picks a generator, `toLinkml` an importer. */
+let direction: Direction = "fromLinkml";
 let activeTargetId = TARGETS[0]!.id;
+let activeImporterId = IMPORTERS[0]!.id;
+
+const DIRECTIONS = ["fromLinkml", "toLinkml"] as const;
+
+function steps(dir: Direction): Step[] {
+  return dir === "fromLinkml" ? TARGETS : IMPORTERS;
+}
+
+/** Generators and importers each have their own ids and the two sets overlap - "ossie" is both - so
+ * anything stored per step is keyed by the direction as well. */
+function stepKey(dir: Direction, id: string): string {
+  return `${dir}:${id}`;
+}
+
+function activeStep(): Step {
+  return direction === "fromLinkml"
+    ? TARGETS.find((t) => t.id === activeTargetId)!
+    : IMPORTERS.find((i) => i.id === activeImporterId)!;
+}
+
+function activeKey(): string {
+  return stepKey(direction, activeStep().id);
+}
+
+function stepById(dir: Direction, id: string): Step | undefined {
+  return dir === "fromLinkml" ? targetById(id) : importerById(id);
+}
+
+function optionDefault(opt: Option): string | number | boolean {
+  return opt.default ?? (opt.type === "checkbox" ? false : "");
+}
+
 const optionValues: Record<string, OptionValues> = Object.fromEntries(
-  TARGETS.map((t) => [t.id, Object.fromEntries(t.options.map((o) => [o.key, o.default ?? (o.type === "checkbox" ? false : "")]))]),
+  DIRECTIONS.flatMap((dir) =>
+    steps(dir).map((s) => [
+      stepKey(dir, s.id),
+      Object.fromEntries(s.options.map((o) => [o.key, optionDefault(o)])),
+    ]),
+  ),
 );
 // Which file tab is open, per target.
 const activeFile: Record<string, string | null> = {};
@@ -99,9 +92,60 @@ let busyTimer: ReturnType<typeof setTimeout> | undefined;
 // burst of tab clicks would otherwise let a slow earlier result land on top of a fast later one.
 let requestId = 0;
 let pendingId: number | null = null;
-// The schema as the link served it, while one is loaded. The change listener compares against it
-// to tell "this is what the link gives you" apart from "the user has edited it since".
-let remoteText: string | null = null;
+
+// ── Input documents ─────────────────────────────────────────────────────────
+
+/** One document per input format: the LinkML schema every generator reads, plus one of its own per
+ * importer. */
+interface InputDoc {
+  text: string;
+  /** The link it was loaded from, and exactly what that link served, while it still holds it. The
+   * change listener compares the two to tell "this is what the link gives you" apart from "the user
+   * has edited it since". */
+  link: string | null;
+  remote: string | null;
+}
+
+const LINKML_INPUT = "linkml";
+
+function inputKey(): string {
+  return direction === "fromLinkml" ? LINKML_INPUT : stepKey(direction, activeImporterId);
+}
+
+function storageKey(key: string): string {
+  return key === LINKML_INPUT ? INPUT_STORAGE_KEY : `${INPUT_STORAGE_KEY}:${key}`;
+}
+
+/** What Load example puts in the pane, and what a first-time visitor starts with. */
+function exampleInput(): string {
+  return direction === "fromLinkml" ? EXAMPLE_SCHEMA : (activeStep() as Importer).example;
+}
+
+const inputDocs: Record<string, InputDoc> = {};
+
+function inputDoc(): InputDoc {
+  const key = inputKey();
+  return (inputDocs[key] ??= {
+    text: localStorage.getItem(storageKey(key)) ?? exampleInput(),
+    link: null,
+    remote: null,
+  });
+}
+
+/** Which document the editor is showing, so that switching target within one direction does not
+ * needlessly replace it. */
+let shownInput = "";
+
+function swapInput(): void {
+  const key = inputKey();
+  if (key === shownInput) return;
+  shownInput = key;
+  const doc = inputDoc();
+  setDoc(inputView, doc.text);
+  // The address bar holds the link for whichever document is on screen, so it moves with it.
+  if (doc.link) setUrlParam(doc.link);
+  else clearUrlParam();
+}
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
 
@@ -112,12 +156,17 @@ const $outputPanel = $("outputPanel");
 const $reportView = $("reportView");
 const $diagramView = $("diagramView");
 const $outputEditorHost = $("outputEditor");
-const $targetTabs = $("targetTabs");
+const $targetInput = $<HTMLInputElement>("targetInput");
+const $targetList = $("targetList");
+const $dirToggle = $("dirToggle");
+const $inputSub = $("inputSub");
+const $outputSub = $("outputSub");
 const $optionsRow = $("optionsRow");
 const $generateBtn = $<HTMLButtonElement>("generateBtn");
 const $statusPill = $("statusPill");
 const $autoGenerate = $<HTMLInputElement>("autoGenerate");
 const $copyOutput = $<HTMLButtonElement>("copyOutput");
+const $reverseOutput = $<HTMLButtonElement>("reverseOutput");
 const $loadExample = $<HTMLButtonElement>("loadExample");
 const $loadUrl = $<HTMLButtonElement>("loadUrl");
 const $clearInput = $<HTMLButtonElement>("clearInput");
@@ -127,55 +176,213 @@ const $themeIconSun = $("themeIconSun");
 
 // ── Editors ───────────────────────────────────────────────────────────────
 
-const storedInput = localStorage.getItem(INPUT_STORAGE_KEY);
-const inputView = createInput($("inputEditor"), storedInput ?? EXAMPLE_SCHEMA, (value) => {
-  localStorage.setItem(INPUT_STORAGE_KEY, value);
+const inputView = createInput($("inputEditor"), inputDoc().text, (value) => {
+  const doc = inputDoc();
+  doc.text = value;
+  localStorage.setItem(storageKey(inputKey()), value);
   // Once the text on screen differs from what the link serves, a shared address would hand the
   // other person something other than what you are looking at, so drop the link.
-  if (value !== remoteText) clearUrlParam();
+  if (value !== doc.remote) {
+    doc.link = null;
+    clearUrlParam();
+  }
   scheduleGenerate();
 });
 const outputView = createOutput($("outputEditor"));
 
-function activeTarget(): Target {
-  return TARGETS.find((t) => t.id === activeTargetId)!;
+function stepLang(step: Step, dir: Direction = direction): OutputLang {
+  return typeof step.lang === "function" ? step.lang(optionValues[stepKey(dir, step.id)]!) : step.lang;
 }
 
-function targetLang(t: Target): OutputLang {
-  return typeof t.lang === "function" ? t.lang(optionValues[t.id]!) : t.lang;
+// ── Direction and labels ────────────────────────────────────────────────────
+
+/** Everything that follows from the direction and the step selected within it. */
+function renderStep(): void {
+  renderCombo();
+  renderOptions();
+  renderLabels();
+  updateReverseButton();
 }
 
-// ── Target tabs ─────────────────────────────────────────────────────────────
+/** Take a new direction or step, including the input document that goes with it. */
+function selectStep(): void {
+  renderStep();
+  swapInput();
+  scheduleGenerate(0);
+}
 
-function renderTargetTabs(): void {
-  $targetTabs.innerHTML = "";
-  for (const t of TARGETS) {
-    const btn = document.createElement("button");
-    btn.className = "tab-btn" + (t.id === activeTargetId ? " tab-btn--active" : "");
-    btn.textContent = t.label;
-    btn.setAttribute("role", "tab");
-    btn.setAttribute("aria-selected", String(t.id === activeTargetId));
-    btn.addEventListener("click", () => {
-      activeTargetId = t.id;
-      renderTargetTabs();
-      renderOptions();
-      scheduleGenerate(0);
-    });
-    $targetTabs.appendChild(btn);
+function pickStep(step: Step): void {
+  if (direction === "fromLinkml") activeTargetId = step.id;
+  else activeImporterId = step.id;
+  closeCombo();
+  selectStep();
+}
+
+function renderLabels(): void {
+  const importer = direction === "toLinkml" ? (activeStep() as Importer) : null;
+  $inputSub.textContent = importer ? importer.inputLabel : "LinkML YAML";
+  $outputSub.textContent = importer ? "LinkML" : "";
+  // Phrased without an article, so it reads right whatever an importer calls its input format.
+  $("urlLabel").textContent = `${importer ? importer.inputLabel : "LinkML schema (YAML)"} to load`;
+  for (const btn of $dirToggle.querySelectorAll<HTMLButtonElement>(".dir-btn")) {
+    const on = btn.dataset.dir === direction;
+    btn.classList.toggle("dir-btn--active", on);
+    btn.setAttribute("aria-pressed", String(on));
   }
 }
 
+$dirToggle.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".dir-btn");
+  if (!btn || btn.dataset.dir === direction) return;
+  direction = btn.dataset.dir as Direction;
+  selectStep();
+});
+
+// ── Target combobox ─────────────────────────────────────────────────────────
+
+/** What the user has typed to narrow the list. Null means they have not typed anything since the
+ * list opened, so the input is still showing the selected label and every option is on offer. */
+let comboQuery: string | null = null;
+/** The options currently listed, in the order they are shown, with the element for each. */
+let comboItems: { step: Step; el: HTMLElement }[] = [];
+/** Index into [[comboItems]] of the option the arrow keys are on. */
+let comboActive = 0;
+
+function comboOpen(): boolean {
+  return !$targetList.hidden;
+}
+
+/** Show the label of whatever is selected. Called on every render, so a change of direction or a
+ * reverse lands in the input too. */
+function renderCombo(): void {
+  if (comboOpen()) renderComboList();
+  else $targetInput.value = activeStep().label;
+}
+
+function openCombo(): void {
+  $targetList.hidden = false;
+  $targetInput.setAttribute("aria-expanded", "true");
+  renderComboList();
+}
+
+function closeCombo(): void {
+  if (!comboOpen()) return;
+  $targetList.hidden = true;
+  $targetInput.setAttribute("aria-expanded", "false");
+  $targetInput.removeAttribute("aria-activedescendant");
+  comboQuery = null;
+  comboItems = [];
+  $targetInput.value = activeStep().label;
+}
+
+function renderComboList(): void {
+  const query = (comboQuery ?? "").trim().toLowerCase();
+  const matches = query ? steps(direction).filter((s) => s.label.toLowerCase().includes(query)) : steps(direction);
+  const selectedId = activeStep().id;
+
+  $targetList.innerHTML = "";
+  comboItems = matches.map((step) => {
+    const el = document.createElement("li");
+    el.id = `target-opt-${step.id}`;
+    el.className = "combo-option" + (step.id === selectedId ? " combo-option--selected" : "");
+    el.setAttribute("role", "option");
+    el.setAttribute("aria-selected", String(step.id === selectedId));
+    el.textContent = step.label;
+    // mousedown, not click: the input's blur fires first and would close the list out from under it.
+    el.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      pickStep(step);
+    });
+    el.addEventListener("mousemove", () => setComboActive(comboItems.findIndex((it) => it.el === el)));
+    $targetList.appendChild(el);
+    return { step, el };
+  });
+
+  if (!comboItems.length) {
+    const empty = document.createElement("li");
+    empty.className = "combo-empty";
+    empty.textContent = "No match";
+    $targetList.appendChild(empty);
+    $targetInput.removeAttribute("aria-activedescendant");
+    return;
+  }
+  // Start on what is selected when the list opens unfiltered, and on the first hit once filtering.
+  const start = comboQuery === null ? comboItems.findIndex((it) => it.step.id === selectedId) : 0;
+  setComboActive(Math.max(0, start));
+}
+
+/** Move the keyboard highlight, wrapping at both ends. `index` may be -1 or the length itself: one
+ * step off either end wraps round to the other. */
+function setComboActive(index: number): void {
+  if (!comboItems.length) return;
+  comboActive = (index + comboItems.length) % comboItems.length;
+  comboItems.forEach((it, i) => it.el.classList.toggle("combo-option--active", i === comboActive));
+  const current = comboItems[comboActive]!;
+  $targetInput.setAttribute("aria-activedescendant", current.el.id);
+  current.el.scrollIntoView({ block: "nearest" });
+}
+
+// Opening on click rather than on focus, so tabbing through the toolbar does not drop a list over
+// the page. The caret is pointer-events: none, so a click on it lands here too.
+$targetInput.addEventListener("click", () => {
+  if (comboOpen()) closeCombo();
+  else openCombo();
+});
+
+// Whatever is typed replaces the label outright, which is what selecting it on focus achieves.
+$targetInput.addEventListener("focus", () => $targetInput.select());
+$targetInput.addEventListener("blur", () => closeCombo());
+
+$targetInput.addEventListener("input", () => {
+  comboQuery = $targetInput.value;
+  if (!comboOpen()) openCombo();
+  else renderComboList();
+});
+
+$targetInput.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    if (!comboOpen()) openCombo();
+    else setComboActive(comboActive + (e.key === "ArrowDown" ? 1 : -1));
+  } else if (e.key === "Enter" && comboOpen()) {
+    e.preventDefault();
+    const pick = comboItems[comboActive];
+    if (pick) pickStep(pick.step);
+  } else if (e.key === "Escape" && comboOpen()) {
+    // Kept off the page: Escape would otherwise reach an enclosing dialog or reset the field.
+    e.preventDefault();
+    e.stopPropagation();
+    closeCombo();
+  } else if (e.key === "Tab") {
+    closeCombo();
+  }
+});
+
 // ── Options ─────────────────────────────────────────────────────────────────
 
-function renderOptions(): void {
-  const target = activeTarget();
-  const values = optionValues[target.id]!;
-  $optionsRow.innerHTML = "";
+/** The widgets on screen, so [[updateOptionVisibility]] can reach them. */
+let optionFields: { opt: Option; field: HTMLElement }[] = [];
 
-  for (const opt of target.options) {
+/** Some options only mean anything alongside another - the tree root is dead weight unless the
+ * pruning mode is tree-root. Hidden rather than rebuilt, so showing or hiding one never takes
+ * focus away from the widget that is being used. */
+function updateOptionVisibility(): void {
+  const values = optionValues[activeKey()]!;
+  for (const { opt, field } of optionFields) {
+    field.hidden = opt.showIf !== undefined && !opt.showIf(values);
+  }
+}
+
+function renderOptions(): void {
+  const step = activeStep();
+  const values = optionValues[activeKey()]!;
+  $optionsRow.innerHTML = "";
+  optionFields = [];
+
+  for (const opt of step.options) {
     const field = document.createElement("div");
     field.className = "opt-field";
-    const id = `opt-${target.id}-${opt.key}`;
+    const id = `opt-${activeKey()}-${opt.key}`;
 
     if (opt.type === "checkbox") {
       field.innerHTML = `<input type="checkbox" id="${id}"><label for="${id}">${opt.label}</label>`;
@@ -184,6 +391,7 @@ function renderOptions(): void {
       if (opt.title) field.title = opt.title;
       input.addEventListener("change", () => {
         values[opt.key] = input.checked;
+        updateOptionVisibility();
         scheduleGenerate();
       });
     } else if (opt.type === "select") {
@@ -202,6 +410,7 @@ function renderOptions(): void {
       field.append(label, select);
       select.addEventListener("change", () => {
         values[opt.key] = select.value;
+        updateOptionVisibility();
         scheduleGenerate();
       });
     } else {
@@ -216,12 +425,16 @@ function renderOptions(): void {
       field.append(label, input);
       input.addEventListener("input", () => {
         values[opt.key] = input.value;
+        updateOptionVisibility();
         scheduleGenerate();
       });
     }
 
     $optionsRow.appendChild(field);
+    optionFields.push({ opt, field });
   }
+
+  updateOptionVisibility();
 }
 
 // ── Output rendering ─────────────────────────────────────────────────────
@@ -286,12 +499,9 @@ function diagramSize(text: string): { entities: number; relationships: number } 
   return { entities, relationships };
 }
 
-/** Above this, drawing takes long enough to be worth asking first. Measured on a mid-range laptop:
- * 20 entities ≈ 0.7 s, 40 ≈ 2.3 s, 80 ≈ 11.6 s - the cost climbs roughly with the square of the
- * entity count, and Mermaid's layout blocks this thread throughout. */
+/** Above this, drawing takes long enough to be worth asking first. */
 const DIAGRAM_SOFT_LIMIT = { entities: 40, relationships: 120 };
-/** Above this it is not offered at all: 182 entities / 826 relationships wedged the tab for minutes
- * and would not even let the page navigate away. Mermaid's own default edge cap is 500. */
+/** Above this it is not offered at all. */
 const DIAGRAM_HARD_LIMIT = { entities: 150, relationships: 500 };
 
 function over(size: { entities: number; relationships: number }, limit: typeof DIAGRAM_SOFT_LIMIT): boolean {
@@ -708,7 +918,8 @@ function showFiles(target: Target, dict: Record<string, string>): void {
   }
 
   outputView.dom.classList.remove("cm-output--error");
-  setOutput(outputView, (active && dict[active]) || "", targetLang(target));
+  // Only a generator produces files, so this is always the generator direction.
+  setOutput(outputView, (active && dict[active]) || "", stepLang(target, "fromLinkml"));
 }
 
 function setStatus(ok: boolean, text: string, title = ""): void {
@@ -779,31 +990,33 @@ function scheduleGenerate(delay = 400): void {
 }
 
 function runGenerate(): void {
-  const schema = inputView.state.doc.toString();
+  const input = inputView.state.doc.toString();
 
-  if (!schema.trim()) {
+  if (!input.trim()) {
     pendingId = null;
     setBusy(false);
     $statusPill.hidden = true;
+    setReversibleOutput(null);
     showOutputText("", "text");
     return;
   }
 
-  const target = activeTarget();
+  const step = activeStep();
   const id = ++requestId;
   pendingId = id;
   setBusy(true);
-  const request: GenerateRequest = { id, schema, targetId: target.id, options: optionValues[target.id]! };
+  const request: ConvertRequest = { id, direction, input, stepId: step.id, options: optionValues[activeKey()]! };
   getWorker().postMessage(request);
 }
 
-function onResult(res: GenerateResponse): void {
+function onResult(res: ConvertResponse): void {
   // Superseded by a newer request - its answer is the one that should land.
   if (res.id !== pendingId) return;
   pendingId = null;
   setBusy(false);
 
   if (!res.ok) {
+    setReversibleOutput(null);
     showOutputError(res.error);
     setStatus(false, "error");
     return;
@@ -811,17 +1024,21 @@ function onResult(res: GenerateResponse): void {
 
   // Rendering is the one part still on this thread, so it counts towards what the user waited for.
   const start = performance.now();
+  const step = stepById(res.direction, res.stepId) ?? activeStep();
   if (res.kind === "report") {
     showReport(res.result as ValidationReport);
   } else if (res.kind === "files") {
-    showFiles(targetById(res.targetId) ?? activeTarget(), res.result as Record<string, string>);
+    showFiles(step as Target, res.result as Record<string, string>);
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else {
-    const target = targetById(res.targetId) ?? activeTarget();
-    showOutputText((res.result as string) || "Schema is clean", targetLang(target));
+    showOutputText((res.result as string) || "Schema is clean", stepLang(step, res.direction));
   }
   const displayMs = Math.round(performance.now() - start);
+
+  // Only a plain document can be handed back to the other direction - file tabs, reports and
+  // diagrams are not one.
+  setReversibleOutput(res.kind === "text" ? (res.result as string) || null : null);
 
   // The pill reports the LinkML work itself: the parse when one happened, plus generation.
   setStatus(!res.fatal, `${(res.loadMs ?? 0) + res.genMs}ms`, breakdown(res, displayMs));
@@ -829,29 +1046,105 @@ function onResult(res: GenerateResponse): void {
 
 /** Where the time went, for the pill's tooltip. Spells out when a parse was reused, which is what
  * makes the headline number jump between a cold load and a tab switch. */
-function breakdown(res: Extract<GenerateResponse, { ok: true }>, displayMs: number): string {
-  const parts = [res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`];
-  if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+function breakdown(res: Extract<ConvertResponse, { ok: true }>, displayMs: number): string {
+  const parts: string[] = [];
+  if (res.direction === "toLinkml") {
+    // An importer parses its own input inside the call, so there is no separate load step.
+    parts.push(`convert ${res.genMs}ms`);
+  } else {
+    parts.push(res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`);
+    if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+  }
   parts.push(`display ${displayMs}ms`);
   return parts.join(" · ");
 }
+
+// ── Reverse ──────────────────────────────────────────────────────────────
+
+/** The step that would undo what is on screen: for a generator, the importer that reads its output
+ * back; for an importer, the generator it undoes. */
+function reverseStep(): Step | undefined {
+  return direction === "toLinkml"
+    ? targetById((activeStep() as Importer).reverses ?? "")
+    : IMPORTERS.find((i) => i.reverses === activeTargetId);
+}
+
+/** The output as it would be handed over, while there is one to hand over. */
+let reversibleOutput: string | null = null;
+
+function setReversibleOutput(text: string | null): void {
+  reversibleOutput = text;
+  updateReverseButton();
+}
+
+function updateReverseButton(): void {
+  const step = reverseStep();
+  $reverseOutput.hidden = step === undefined || reversibleOutput === null;
+  if ($reverseOutput.hidden) return;
+  const label = `Convert back to ${direction === "toLinkml" ? step!.label : "LinkML"}`;
+  $reverseOutput.title = label;
+  $reverseOutput.setAttribute("aria-label", label);
+}
+
+$reverseOutput.addEventListener("click", () => {
+  const step = reverseStep();
+  const text = reversibleOutput;
+  if (!step || text === null) return;
+
+  direction = direction === "fromLinkml" ? "toLinkml" : "fromLinkml";
+  if (direction === "toLinkml") activeImporterId = step.id;
+  else activeTargetId = step.id;
+
+  // The one place the two sides meet: what was generated becomes the other side's input, replacing
+  // whatever was sitting there.
+  const doc = inputDoc();
+  doc.text = text;
+  doc.link = null;
+  doc.remote = null;
+  selectStep();
+});
 
 $generateBtn.addEventListener("click", () => scheduleGenerate(0));
 
 // ── Toolbar actions ──────────────────────────────────────────────────────
 
+// Both let the change listener do the storing: it already writes to the key the active document
+// belongs to.
 $loadExample.addEventListener("click", () => {
-  setDoc(inputView, EXAMPLE_SCHEMA);
-  localStorage.setItem(INPUT_STORAGE_KEY, EXAMPLE_SCHEMA);
+  setDoc(inputView, exampleInput());
   scheduleGenerate(0);
 });
 
 $clearInput.addEventListener("click", () => {
   setDoc(inputView, "");
-  localStorage.removeItem(INPUT_STORAGE_KEY);
+  localStorage.removeItem(storageKey(inputKey()));
   inputView.focus();
   scheduleGenerate(0);
 });
+
+/** Swap a text-only button's label for a moment, to confirm something happened. Ignored while a
+ * previous flash is still up, so a double click cannot leave "Copied!" as the permanent label. */
+function flashDone(btn: HTMLButtonElement, label: string): void {
+  if (btn.classList.contains("btn--done")) return;
+  const original = btn.textContent;
+  btn.textContent = label;
+  btn.classList.add("btn--done");
+  setTimeout(() => {
+    btn.textContent = original;
+    btn.classList.remove("btn--done");
+  }, 1200);
+}
+
+/** Close a dialog on its header X, on any extra close button named here, and on a backdrop click -
+ * which lands on the dialog element itself, since its content fills it. */
+function wireDialog(dialog: HTMLDialogElement, ...closeSelectors: string[]): void {
+  for (const selector of [".modal-close", ...closeSelectors]) {
+    dialog.querySelector<HTMLElement>(selector)!.addEventListener("click", () => dialog.close());
+  }
+  dialog.addEventListener("click", (e) => {
+    if (e.target === dialog) dialog.close();
+  });
+}
 
 $copyOutput.addEventListener("click", async () => {
   // While the report is shown the output editor is hidden and still holds the previously
@@ -860,13 +1153,7 @@ $copyOutput.addEventListener("click", async () => {
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    const original = $copyOutput.textContent;
-    $copyOutput.textContent = "Copied!";
-    $copyOutput.classList.add("btn-secondary--done");
-    setTimeout(() => {
-      $copyOutput.textContent = original;
-      $copyOutput.classList.remove("btn-secondary--done");
-    }, 1200);
+    flashDone($copyOutput, "Copied!");
   } catch {
     /* clipboard permission denied – nothing sensible to do */
   }
@@ -880,7 +1167,9 @@ const $urlInput = $<HTMLInputElement>("urlInput");
 const $urlError = $("urlError");
 const $urlSubmit = $<HTMLButtonElement>("urlSubmit");
 
-function sharedLink(): string | null {
+/** The `?url=` the page was opened with. Once a document is loaded, its own `link` is what counts -
+ * the address bar just follows whichever document is on screen. */
+function incomingLink(): string | null {
   return new URL(location.href).searchParams.get(URL_PARAM);
 }
 
@@ -952,7 +1241,9 @@ async function loadFromUrl(link: string): Promise<LoadResult> {
   }
 
   // Set before the change lands, so the listener sees an unedited document either way.
-  remoteText = text;
+  const doc = inputDoc();
+  doc.remote = text;
+  doc.link = link;
   setDoc(inputView, text);
   setUrlParam(link);
   scheduleGenerate(0);
@@ -964,8 +1255,19 @@ function showUrlError(message: string): void {
   $urlError.hidden = false;
 }
 
+/** Load a link, and on failure hand it back in the dialog to be fixed. Nothing else on screen
+ * would explain why the editor stayed empty. */
+async function loadOrPrompt(link: string): Promise<void> {
+  const res = await loadFromUrl(link);
+  if (res.ok) return;
+  $urlInput.value = link;
+  showUrlError(res.error);
+  $urlDialog.showModal();
+  scheduleGenerate(0);
+}
+
 $loadUrl.addEventListener("click", () => {
-  $urlInput.value = sharedLink() ?? "";
+  $urlInput.value = inputDoc().link ?? "";
   $urlError.hidden = true;
   $urlDialog.showModal();
   $urlInput.select();
@@ -985,11 +1287,273 @@ $urlForm.addEventListener("submit", async (e) => {
   else showUrlError(res.error);
 });
 
-$urlDialog.querySelector<HTMLButtonElement>(".modal-close")!.addEventListener("click", () => $urlDialog.close());
-$urlDialog.querySelector<HTMLButtonElement>(".url-cancel")!.addEventListener("click", () => $urlDialog.close());
-$urlDialog.addEventListener("click", (e) => {
-  if (e.target === $urlDialog) $urlDialog.close();
+wireDialog($urlDialog, ".url-cancel");
+
+// ── Share link ─────────────────────────────────────────────────────────────
+
+// The playground's state, deflated and base64url-encoded, behind this in the fragment. A fragment
+// rather than a query parameter: the browser never sends it, so the schema still never leaves the
+// device, and it is not subject to the URL length a server or CDN is willing to accept.
+const SHARE_PREFIX = "s=";
+// Bump only when making BREAKING changes
+const SHARE_VERSION = 1;
+/** Past this a link still works in a browser, but chat clients and mail wrap or truncate it. */
+const SHARE_LONG = 8_000;
+/** Past this it approaches what Safari accepts at all (~80 000) and is unusable most other places. */
+const SHARE_HUGE = 32_000;
+/** Cap on what a link is allowed to decompress to. Nothing anyone would open in a playground comes
+ * near it, and without one a hand-made fragment could inflate a thousandfold and wedge the tab. */
+const SHARE_MAX_CHARS = 2_000_000;
+/** Marks the one failure [[unpack]] raises deliberately, to tell it from a corrupt payload. */
+const TOO_LARGE = "share-payload-too-large";
+/** Baseline since May 2023, so this is about old browsers rather than exotic ones. */
+const CAN_SHARE = typeof CompressionStream !== "undefined" && typeof DecompressionStream !== "undefined";
+
+/** What a share link carries. Short keys mostly for legibility in a hand-decoded payload - deflate
+ * makes their length nearly free. */
+interface SharedState {
+  v: number;
+  /** The input text, when the editor holds something no link would serve. */
+  s?: string;
+  /** The link it came from instead, when the editor still holds exactly what that link serves. */
+  u?: string;
+  /** Active target id, left out when it is the default one or when `i` is set. */
+  t?: string;
+  /** Active importer id. Present exactly when the link was made in the "to LinkML" direction. */
+  i?: string;
+  /** Only the options that differ from their default. */
+  o?: OptionValues;
+}
+
+// deflate-raw rather than gzip: the same compression without the header and checksum. It runs at
+// about 3.5-4x on schema-sized YAML, so a 100 KB schema comes out as a ~28 000 character link.
+async function pack(text: string): Promise<string> {
+  const stream = new Blob([new TextEncoder().encode(text)])
+    .stream()
+    .pipeThrough(new CompressionStream("deflate-raw"));
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer());
+  // A byte at a time rather than `String.fromCharCode(...bytes)`, which blows the argument limit
+  // somewhere around a 100 KB schema.
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function unpack(encoded: string): Promise<string> {
+  // `atob` is specified as forgiving-base64, so the stripped padding does not need putting back.
+  const binary = atob(encoded.replace(/-/g, "+").replace(/_/g, "/"));
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+  // Read it chunk by chunk rather than with `Response.text()`, so [[SHARE_MAX_CHARS]] can stop an
+  // oversized payload part way instead of after the whole thing is already in memory.
+  const reader = (stream as ReadableStream<Uint8Array>).getReader();
+  const decoder = new TextDecoder();
+  let text = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    text += decoder.decode(value, { stream: true });
+    if (text.length > SHARE_MAX_CHARS) {
+      await reader.cancel();
+      throw new Error(TOO_LARGE);
+    }
+  }
+  return text + decoder.decode();
+}
+
+function changedOptions(): OptionValues | undefined {
+  const values = optionValues[activeKey()]!;
+  const changed = Object.fromEntries(
+    activeStep().options.filter((o) => values[o.key] !== optionDefault(o)).map((o) => [o.key, values[o.key]!]),
+  );
+  return Object.keys(changed).length ? changed : undefined;
+}
+
+/** Filter options that arrived in a link down to ones this build can honour: an unknown key, or a
+ * select value that is not on offer, would leave the widget showing nothing while still being what
+ * the generator is handed. */
+function knownOptions(step: Step, shared: OptionValues | undefined): OptionValues {
+  const kept: OptionValues = {};
+  for (const opt of step.options) {
+    const value = shared?.[opt.key];
+    if (value === undefined) continue;
+    if (opt.type === "select" && !opt.choices?.includes(String(value))) continue;
+    kept[opt.key] = value;
+  }
+  return kept;
+}
+
+function currentState(): SharedState {
+  const step = activeStep();
+  const text = inputView.state.doc.toString();
+  const doc = inputDoc();
+  const state: SharedState = { v: SHARE_VERSION };
+  // A link is far shorter than the schema, and stays current if the file behind it changes - but
+  // only while the editor still holds exactly what it serves.
+  if (doc.link !== null && text === doc.remote) state.u = doc.link;
+  else state.s = text;
+  if (direction === "toLinkml") state.i = step.id;
+  else if (step.id !== TARGETS[0]!.id) state.t = step.id;
+  const options = changedOptions();
+  if (options) state.o = options;
+  return state;
+}
+
+/** A share link, plus whether it is the readable `?url=` kind - which the hint text has to match. */
+async function shareUrl(): Promise<{ href: string; plain: boolean }> {
+  const state = currentState();
+  const here = new URL(location.href);
+  here.search = "";
+  here.hash = "";
+  // With nothing but a link to pass on, `?url=` says the same thing in about the same space and a
+  // recipient can see where it points, so there is no reason to bury it in an opaque fragment.
+  if (state.u !== undefined && state.t === undefined && state.i === undefined && state.o === undefined) {
+    here.searchParams.set(URL_PARAM, state.u);
+    return { href: here.href, plain: true };
+  }
+  here.hash = SHARE_PREFIX + (await pack(JSON.stringify(state)));
+  return { href: here.href, plain: false };
+}
+
+function shareFragment(): string | null {
+  const hash = location.hash.slice(1);
+  return hash.startsWith(SHARE_PREFIX) ? hash.slice(SHARE_PREFIX.length) : null;
+}
+
+/** Put the state a share link carries on screen. */
+async function applySharedState(encoded: string): Promise<LoadResult> {
+  if (!CAN_SHARE) {
+    return { ok: false, error: "This browser cannot read share links: it has no Compression Streams support." };
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await unpack(encoded));
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error && err.message === TOO_LARGE
+        ? "This share link unpacks to far more text than the playground will open."
+        : "This share link is damaged. It may have been cut short on the way here.",
+    };
+  }
+  // Anything at all can come out of a fragment, including `null`, which would throw on the version
+  // check rather than be reported.
+  if (typeof parsed !== "object" || parsed === null || (parsed as SharedState).v !== SHARE_VERSION) {
+    return { ok: false, error: "This link was made by a different version of the playground and cannot be read." };
+  }
+  const state = parsed as SharedState;
+
+  // An id this build does not know (a link from a newer playground) leaves the default generator
+  // selected, and its options with it - they would not mean anything here either.
+  const importer = state.i === undefined ? undefined : importerById(state.i);
+  if (importer) {
+    direction = "toLinkml";
+    activeImporterId = importer.id;
+  } else {
+    direction = "fromLinkml";
+    activeTargetId = targetById(state.t ?? "")?.id ?? TARGETS[0]!.id;
+  }
+  Object.assign(optionValues[activeKey()]!, knownOptions(activeStep(), state.o));
+  renderStep();
+
+  // The direction decides which document the link's text belongs to, so it is set first and the
+  // editor only pointed at that document once the answer is known.
+  shownInput = inputKey();
+  if (state.u !== undefined) {
+    void loadOrPrompt(state.u);
+  } else {
+    const doc = inputDoc();
+    doc.link = null;
+    doc.remote = null;
+    setDoc(inputView, state.s ?? "");
+    scheduleGenerate(0);
+  }
+  return { ok: true };
+}
+
+const $share = $<HTMLButtonElement>("share");
+const $shareDialog = $<HTMLDialogElement>("shareDialog");
+const $shareTitle = $("shareTitle");
+const $shareBody = $("shareBody");
+const $shareLink = $<HTMLInputElement>("shareLink");
+const $shareSize = $("shareSize");
+const $shareHint = $("shareHint");
+const $shareError = $("shareError");
+const $shareCopy = $<HTMLButtonElement>("shareCopy");
+
+// Nothing here works without Compression Streams, so do not offer it. The read path still explains
+// itself, because a link can arrive from someone whose browser could make one.
+$share.hidden = !CAN_SHARE;
+
+/** The dialog doubles as the place a broken incoming link is reported, where there is no link to
+ * offer and nothing to copy - so everything but the error line comes off, heading included. */
+function showShareBody(visible: boolean): void {
+  $shareBody.hidden = !visible;
+  $shareCopy.hidden = !visible;
+  $shareTitle.textContent = visible ? "Share this playground" : "This share link did not work";
+}
+
+function showShareError(message: string): void {
+  $shareError.textContent = message;
+  $shareError.hidden = false;
+}
+
+function showShareSize(length: number): void {
+  const count = `${length.toLocaleString("en-US")} characters`;
+  $shareSize.classList.toggle("share-size--warn", length > SHARE_LONG);
+  if (length <= SHARE_LONG) {
+    $shareSize.textContent = `${count}.`;
+  } else if (length <= SHARE_HUGE) {
+    $shareSize.textContent = `${count} – long. Some chat apps and mail clients cut links this long.`;
+  } else {
+    $shareSize.textContent =
+      `${count} – very long. Most places will cut a link this size. Consider putting the schema ` +
+      "online and sharing that with 'Load from URL' instead.";
+  }
+}
+
+$share.addEventListener("click", async () => {
+  $shareError.hidden = true;
+  showShareBody(true);
+  $shareLink.value = "";
+  $shareSize.textContent = "";
+  $shareSize.classList.remove("share-size--warn");
+  $shareDialog.showModal();
+  try {
+    const { href, plain } = await shareUrl();
+    $shareLink.value = href;
+    showShareSize(href.length);
+    $shareHint.textContent = "Your data is not sent to the server nor stored anywhere.";
+    $shareLink.select();
+  } catch {
+    showShareError("Could not build a share link for this schema.");
+  }
 });
+
+$shareCopy.addEventListener("click", async () => {
+  if (!$shareLink.value) return;
+  try {
+    await navigator.clipboard.writeText($shareLink.value);
+    flashDone($shareCopy, "Copied!");
+  } catch {
+    // Clipboard permission denied - the link is already selected, so leave it to be copied by hand.
+    $shareLink.select();
+  }
+});
+
+wireDialog($shareDialog, ".share-done");
+
+/** Apply an incoming share link, and on failure say so in the dialog it came from. */
+async function applyShareOrPrompt(encoded: string): Promise<void> {
+  const res = await applySharedState(encoded);
+  if (res.ok) return;
+  // Nothing else on screen would explain why the link did not bring anything with it.
+  showShareError(res.error);
+  showShareBody(false);
+  $shareDialog.showModal();
+  scheduleGenerate(0);
+}
 
 // ── Theme ──────────────────────────────────────────────────────────────────
 
@@ -1051,11 +1615,7 @@ $footerVersion.addEventListener("click", () => {
   openFaq();
   $("buildSection").scrollIntoView({ block: "nearest" });
 });
-$faqDialog.querySelector<HTMLButtonElement>(".modal-close")!.addEventListener("click", () => $faqDialog.close());
-// Click on the backdrop (the dialog element itself, since content fills it) closes it.
-$faqDialog.addEventListener("click", (e) => {
-  if (e.target === $faqDialog) $faqDialog.close();
-});
+wireDialog($faqDialog);
 
 // ── GitHub repo stats (mkdocs-material style) ────────────────────────────────
 
@@ -1095,11 +1655,22 @@ function renderRepoStats(stars: number, forks: number): void {
 
 // ── Init ─────────────────────────────────────────────────────────────────
 
-renderTargetTabs();
-renderOptions();
+// The editor was built from this document, so record it rather than swapping it back in.
+shownInput = inputKey();
+renderStep();
 
-const initialLink = sharedLink();
-if (initialLink === null) {
+const initialShare = shareFragment();
+const initialLink = incomingLink();
+if (initialShare !== null) {
+  // Read once, then dropped from the address bar: it keeps the URL legible, and stops an
+  // edit-then-reload resurrecting the state the link came with. The schema itself survives a
+  // reload either way, through localStorage.
+  const clean = new URL(location.href);
+  clean.hash = "";
+  history.replaceState(null, "", clean);
+  getWorker();
+  void applyShareOrPrompt(initialShare);
+} else if (initialLink === null) {
   // Starts the worker, which begins loading the LinkML bundle immediately. The request waits on
   // that load inside the worker, so the page is interactive while the multi-MB bundle parses.
   scheduleGenerate(0);
@@ -1107,12 +1678,5 @@ if (initialLink === null) {
   // Same warm-up, minus the request: the download generates once it lands, so asking for a
   // generation here as well would parse the previous session's schema for nothing.
   getWorker();
-  void loadFromUrl(initialLink).then((res) => {
-    if (res.ok) return;
-    // Nothing on screen would explain a link that failed, so hand it back in the dialog to fix.
-    $urlInput.value = initialLink;
-    showUrlError(res.error);
-    $urlDialog.showModal();
-    scheduleGenerate(0);
-  });
+  void loadOrPrompt(initialLink);
 }

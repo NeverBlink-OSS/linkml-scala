@@ -11,8 +11,9 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     """id: https://neverblink.eu/test/
       |name: test
       |default_range: string
-      |types:
-      |  string:
+      |imports:
+      |  - linkml:types
+      |
       |classes:
       |  Root:
       |    tree_root: true
@@ -43,8 +44,9 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     """id: https://neverblink.eu/test/
       |name: test
       |default_range: string
-      |types:
-      |  string:
+      |imports:
+      |  - linkml:types
+      |
       |classes:
       |  Root:
       |    tree_root: true

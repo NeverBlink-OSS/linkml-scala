@@ -140,6 +140,15 @@ export interface LinkMLApi {
   ossie(schema: SchemaView, pruningMode?: string, treeRoot?: string, outFormat?: string): string;
 
   /**
+   * Read an Apache Ossie ontology and produce the LinkML schema it describes.  The opposite of [[ossie]]. Feed the result to [[loadFromString]] if you want to run a generator over it.
+   * @param ontology The ontology document, as YAML or JSON.
+   * @param schemaId The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it is a placeholder built from the ontology's name.
+   * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
+   * @returns The LinkML schema, serialized in the specified format.
+   */
+  fromOssie(ontology: string, schemaId?: string, outFormat?: string): string;
+
+  /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.  TODO: consider typing the return value in TypeScript using a TypeScript generator. See: https://github.com/NeverBlink-OSS/linkml-scala/issues/127
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details` from the model's `equals_expression`s. Turn it off to get only the structured fields.

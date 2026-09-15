@@ -1,11 +1,10 @@
 package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.{json, yaml}
-import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode, Utf8ByteSink}
+import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
+import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode}
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.schemaview.SchemaView
-import org.virtuslab.yaml.NodeOps
 
 import java.io.OutputStream
 
@@ -97,30 +96,15 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
     */
   override def serialize(
       options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
-  ): String = {
-    val node = Codec.codec.encode(generate(options))
-    if (options.outputFormat == json) JsonUtil.yamlToJson(node)
-    else node.asYaml
-  }
+  ): String =
+    JsonUtil.write(Codec.codec.encode(generate(options)), options.outputFormat)
 
-  /** Generate a derived [[SchemaDefinition]] and write it to [[out]].
-    *
-    * JSON goes straight out through jsoniter. YAML still builds the whole document as a string
-    * first, because scala-yaml's writer has no streaming form. This could be improved in the future
-    * to reduce peak memory usage.
-    */
+  /** Generate a derived [[SchemaDefinition]] and write it to [[out]]. */
   override def writeTo(
       out: OutputStream,
       options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
-  ): Unit = {
-    val node = Codec.codec.encode(generate(options))
-    if (options.outputFormat == json) JsonUtil.writeJson(node, out)
-    else {
-      val sink = new Utf8ByteSink(out)
-      sink.append(node.asYaml)
-      sink.flush()
-    }
-  }
+  ): Unit =
+    JsonUtil.write(Codec.codec.encode(generate(options)), options.outputFormat, out)
 }
 
 object LinkMlGenerator {

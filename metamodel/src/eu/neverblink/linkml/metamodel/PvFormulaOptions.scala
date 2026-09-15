@@ -25,14 +25,14 @@ object PvFormulaOptions {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  @named("CURIE") case object Curie extends PvFormulaOptions
+  @named("CURIE") case object _Curie extends PvFormulaOptions
 
   /** The permissible values are the set of code URIs in the code set
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  @named("URI") case object Uri extends PvFormulaOptions
+  @named("URI") case object _Uri extends PvFormulaOptions
 
   /** The permissible values are the set of FHIR coding elements derived from the code set
     *
