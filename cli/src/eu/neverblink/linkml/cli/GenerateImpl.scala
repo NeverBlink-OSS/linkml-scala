@@ -68,6 +68,8 @@ final case class JsonSchemaOptions(
         "See the documentation for more information.",
     )
     treeRootInlineTypeOverride: Option[String] = None,
+    @HelpMessage("Allow null values for optional slots. Default: false")
+    includeNull: Boolean = false,
 ) extends HasGenerateOptions
 
 object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
@@ -82,6 +84,8 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
         options.open,
         options.treeRootOverride,
         options.treeRootInlineTypeOverride,
+        // indentationStep and metadataLanguage are currently not passed to the generator
+        includeNull = options.includeNull,
       ),
     )
 }

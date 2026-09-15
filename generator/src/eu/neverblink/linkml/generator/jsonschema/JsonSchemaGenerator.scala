@@ -81,6 +81,20 @@ class JsonSchemaGenerator(using sv: SchemaView)
     // SimpleDict form inlining. The slot will be the value to omit from required fields.
     val needValue = mutable.Set.empty[(MappedClassName, MappedSlotName)]
 
+    def allowNullDictEntry(
+        schema: Schema,
+        classView: ClassView,
+        key: String,
+    ): Schema = {
+      val hasRequiredContent = classView.derivedAttributes.exists { case (name, slot) =>
+        name != key && slot.slot.required
+      }
+
+      if (options.includeNull && !hasRequiredContent)
+        new Schema(anyOf = List(schema, Schema.Null))
+      else schema
+    }
+
     // Generate a Schema for a specific attribute, which maps to a JSON Schema property
     def generateSlotSchema(attribute: AttributeView): Schema = {
       val slotSchema = attribute match {
@@ -90,20 +104,21 @@ class JsonSchemaGenerator(using sv: SchemaView)
           val ref = "#/$defs/".concat(mappedClassName)
           inlineType match {
             case InlineType.plain =>
-              new Schema($ref = new Some(ref))
+              new Schema($ref = Some(ref))
             case InlineType.optional =>
-              new Schema($ref = new Some(ref)) // TODO LNK-34: or null
+              new Schema($ref = Some(ref))
             case InlineType.list =>
-              new Schema($ref = new Some(ref)).arrayOf // TODO LNK-34: or null
+              new Schema($ref = Some(ref)).arrayOf
             case InlineType.dict(CollectionForm.CompactDict(key)) =>
               needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
-              new Schema(
-                $ref = new Some(ref.concat("__identifier_optional")),
-              ).dictOf // TODO LNK-34: or null
+              val entrySchema = new Schema(
+                $ref = Some(ref.concat("__identifier_optional")),
+              )
+              allowNullDictEntry(entrySchema, classView, key).dictOf
             case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
               needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
               needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
-              simpleDictSchema(ref).dictOf // TODO LNK-34: or null
+              simpleDictSchema(ref).dictOf
           }
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
           typeToRuntime(identifierView.typeView)
@@ -128,12 +143,21 @@ class JsonSchemaGenerator(using sv: SchemaView)
           ).arrayOfIf(slotView.slot.multivalued)
       }
       val sv = attribute.slotView
-      withCardinality(slotSchema, sv.slot).copy(
+      // withCardinality inspects the schema's direct type
+      val constrainedSchema = withCardinality(slotSchema, sv.slot)
+
+      val valueSchema =
+        if (options.includeNull && !sv.slot.required)
+          new Schema(anyOf = List(constrainedSchema, Schema.Null))
+        else constrainedSchema
+
+      valueSchema.copy(
         title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
           Some(sv.slot.name),
         ),
         description = sv.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       )
+
     }
 
     // Accumulator of all schema definitions, reused to search definition for
@@ -183,9 +207,10 @@ class JsonSchemaGenerator(using sv: SchemaView)
         case InlineType.dict(CollectionForm.CompactDict(key)) =>
           val mappedClassName = className(treeRoot)
           needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
-          new Schema(
+          val entrySchema = new Schema(
             $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
-          ).dictOf
+          )
+          allowNullDictEntry(entrySchema, treeRoot, key).dictOf
         case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
           val mappedClassName = className(treeRoot)
           needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
@@ -256,6 +281,9 @@ object JsonSchemaGenerator {
     *   Number of spaces in pretty print indentation of the serialized JSON Schema.
     * @param metadataLanguage
     *   Which language to use for metadata fields (description, title) in the generated JSON Schema.
+    * @param includeNull
+    *   Allows null values for optional slots and compact dictionary entries without required
+    *   content beyond the key. Default: false
     */
   final case class Options(
       open: Boolean = false,
@@ -263,6 +291,7 @@ object JsonSchemaGenerator {
       treeRootInlineType: Option[String] = None,
       indentationStep: Int = 2,
       metadataLanguage: String = "en",
+      includeNull: Boolean = false,
   )
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.

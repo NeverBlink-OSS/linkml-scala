@@ -15,7 +15,7 @@ import scala.scalanative.unsafe.*
 object LinkMlCGenerators {
 
   /** Generate JSON Schema. Options: `open`, `treeRoot`, `treeRootInlineType`, `indentationStep`,
-    * `metadataLanguage`.
+    * `metadataLanguage`, `includeNull`.
     */
   @exported("linkml_json_schema")
   def jsonSchema(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
