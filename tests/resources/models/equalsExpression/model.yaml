@@ -10,7 +10,8 @@ imports:
 enums:
   StatusEnum:
     permissible_values:
-      in progress:
+      in_progress:
+        alias: in progress
       done:
 
 classes:

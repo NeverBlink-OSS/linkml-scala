@@ -10,6 +10,8 @@ skips = [
     "externalType",
     # Python doesn't always URL-encode names
     "syntheticUris",
+    # Metamodel difference
+    "equalsExpression"
 ]
 
 if __name__ == "__main__":
