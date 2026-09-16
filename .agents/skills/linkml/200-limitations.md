@@ -21,8 +21,14 @@ The following features are not yet supported or are partially supported in LinkM
 - Partial support for type designators (`designates_type`)
   - Supported in the Scala generator and in YAML/JSON serialization. Not yet in JSON Schema or SHACL.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
+- Runtime union generation and codecs for `union_of` (references are resolved and preserved)
 - Rules (`rules`)
 - Null semantics (see below)
+
+## Inherited type constraints
+
+LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
+Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
 
 ## Eager validation of references
 

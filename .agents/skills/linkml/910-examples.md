@@ -60,6 +60,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `referenceInteger` | 6 | 3 |  |
 | `syntheticUris` | 0 | 0 |  |
 | `treeRootless` | 0 | 0 |  |
+| `typeDerivation` | 2 | 8 |  |
 | `typeDesignator` | 10 | 12 |  |
 | `typeDesignator2` | 9 | 7 | Type designators on classes with different attributes. This… |
 | `typed` | 8 | 19 |  |
