@@ -50,6 +50,7 @@ class Generators:
         tree_root_inline_type: str | None = None,
         indentation_step: int = 2,
         metadata_language: str = "en",
+        include_null: bool = False,
     ) -> str:
         """Generate a JSON Schema.
 
@@ -64,6 +65,8 @@ class Generators:
             JSON Schema.
         :param metadata_language: Which language to use for metadata fields (description, title)
             in the generated JSON Schema.
+        :param include_null: Allows null values for optional slots and compact dictionary
+            entries without required content beyond the key. Default: false
         """
         return self._document(
             "linkml_json_schema",
@@ -72,6 +75,7 @@ class Generators:
             treeRootInlineType=tree_root_inline_type,
             indentationStep=indentation_step,
             metadataLanguage=metadata_language,
+            includeNull=include_null,
         )
 
     def shacl(
