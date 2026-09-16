@@ -89,6 +89,29 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       o.ontology.map(_.concept) should not contain "Weird"
     }
 
+    "preserve an unknown base override instead of falling back to a primitive ancestor" in {
+      val o = ontologyOf("""
+        |types:
+        |  External:
+        |    typeof: integer
+        |    base: SomeExternalType
+        |  InheritedExternal:
+        |    typeof: External
+        |classes:
+        |  Thing:
+        |    attributes:
+        |      direct:
+        |        range: External
+        |      inherited:
+        |        range: InheritedExternal
+        """)
+
+      role(o, "Thing", "direct").concept shouldBe BuiltInConcept.any
+      role(o, "Thing", "inherited").concept shouldBe BuiltInConcept.any
+      o.ontology.map(_.concept) should not contain "External"
+      o.ontology.map(_.concept) should not contain "InheritedExternal"
+    }
+
     "point a class-ranged slot at the target concept, inlined or not" in {
       val o = ontologyOf(classRanges)
       role(o, "Book", "by").concept shouldBe "Author"
@@ -170,6 +193,36 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       val o = ontologyOf(typeConstraints)
       concept(o, "SmallInt").requires shouldBe Seq("SmallInt >= 1")
       relationship(o, "Thing", "n").requires shouldBe empty
+    }
+
+    "put inherited constraints and child overrides on the derived value type" in {
+      val o = ontologyOf("""
+        |types:
+        |  BoundedInt:
+        |    typeof: integer
+        |    minimum_value: 1
+        |    maximum_value: 10
+        |  SmallInt:
+        |    typeof: BoundedInt
+        |    maximum_value: 5
+        |  Code:
+        |    typeof: string
+        |    pattern: '^[A-Z]{3}$'
+        |  ProductCode:
+        |    typeof: Code
+        |classes:
+        |  Thing:
+        |    attributes:
+        |      n:
+        |        range: SmallInt
+        |      code:
+        |        range: ProductCode
+        """)
+
+      concept(o, "SmallInt").requires shouldBe Seq("SmallInt >= 1", "SmallInt <= 5")
+      concept(o, "ProductCode").requires shouldBe Seq("REGEXP_LIKE(ProductCode, '^[A-Z]{3}$')")
+      relationship(o, "Thing", "n").requires shouldBe empty
+      relationship(o, "Thing", "code").requires shouldBe empty
     }
   }
 

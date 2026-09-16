@@ -530,9 +530,15 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   lazy val parents: Seq[TypeView] =
     _type.typeof.toSeq.map(ref => sv.types(ref.value))
 
-  /** This type followed by its `typeof` ancestors, nearest first. */
-  lazy val ancestorsWithSelf: Iterable[TypeView] =
-    Closure.get(
+  /** The types declared in `union_of`, in declaration order. Members do not supply inherited scalar
+    * properties and do not imply support for runtime union values.
+    */
+  lazy val unionMembers: Seq[TypeView] =
+    _type.unionOf.map(ref => sv.types(ref.value))
+
+  /** This type followed by its `typeof` ancestors, nearest first. Rejects inheritance cycles. */
+  lazy val ancestorsWithSelf: Iterable[TypeView] = {
+    val ancestors = Closure.get(
       Seq(this),
       _.parents,
       reflexive = true,
@@ -540,18 +546,39 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
       useHashCode = true,
       toUniqueValue = _.name,
     )
+    // In a single-parent chain, the last visited node has a parent only if it closes a cycle.
+    ancestors.last.parents.headOption.foreach { repeated =>
+      val path = (ancestors.map(_.name) :+ repeated.name).mkString(" -> ")
+      throw new IllegalArgumentException(s"Cyclic typeof inheritance: $path")
+    }
+    ancestors
+  }
 
-  /** This type with an inherited `base` and datatype URI values filled in. */
+  /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. The
+    * original declaration remains available through [[inner]].
+    */
   lazy val derivedType: TypeDefinitionImpl =
-    ancestorsWithSelf.iterator.drop(1) // skip child
+    ancestorsWithSelf.iterator.drop(1)
       .foldLeft(_type.asInstanceOf[TypeDefinitionImpl]) { (derived, ancestor) =>
-        derived.copy( // Expand the inherited URi so its meaning survives being inherited
-          base = derived.base.orElseFast(ancestor._type.base),
+        val parent = ancestor._type
+        derived.copy(
+          base = derived.base.orElseFast(parent.base),
           typeUri = derived.typeUri.orElseFast {
-            ancestor._type.typeUri.mapFast { value =>
+            // Preserve the declaring schema's prefix meaning across imports.
+            parent.typeUri.mapFast { value =>
               new Uri(value.uri(using ancestor.definingPrefixResolver))
             }
           },
+          repr = derived.repr.orElseFast(parent.repr),
+          pattern = derived.pattern.orElseFast(parent.pattern),
+          structuredPattern = derived.structuredPattern.orElseFast(parent.structuredPattern),
+          equalsString = derived.equalsString.orElseFast(parent.equalsString),
+          equalsStringIn =
+            if derived.equalsStringIn.nonEmpty then derived.equalsStringIn
+            else parent.equalsStringIn,
+          equalsNumber = derived.equalsNumber.orElseFast(parent.equalsNumber),
+          minimumValue = derived.minimumValue.orElseFast(parent.minimumValue),
+          maximumValue = derived.maximumValue.orElseFast(parent.maximumValue),
         )
       }
 
@@ -593,8 +620,9 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case "Bool" => BooleanType
     case "double" => DoubleType
     case "float" =>
-      // thanks, python
-      if (inner.typeUri.contains("xsd:double")) DoubleType
+      // "thanks, python" => LinkML's float and double both use the Python base `float`.
+      if derivedType.typeUri.exists(_.uri == "http://www.w3.org/2001/XMLSchema#double") then
+        DoubleType
       else FloatType
     case "Decimal" => DecimalType
     case "URI" => UriType

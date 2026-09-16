@@ -11,6 +11,101 @@ import org.scalatest.matchers.should.Matchers
 
 class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
   "LinkMlGenerator" should {
+    "derive type properties even when class derivation is skipped" in {
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""
+          |id: https://example.org/derived-types
+          |name: derived_types
+          |imports:
+          |  - linkml:types
+          |types:
+          |  Code:
+          |    typeof: string
+          |    repr: str
+          |    pattern: '^[A-Z]{3}$'
+          |    description: Parent description.
+          |  ProductCode:
+          |    typeof: Code
+          |    description: Product code.
+          |""".stripMargin))
+
+      Seq(false, true).foreach { skipClasses =>
+        withClue(s"skipClassDerivation=$skipClasses: ") {
+          val options = LinkMlGenerator.Options(skipClassDerivation = skipClasses)
+          val generated = LinkMlGenerator(using sv).generate(options)
+          val child = generated.types("ProductCode")
+
+          child.base shouldBe Some("str")
+          child.repr shouldBe Some("str")
+          child.pattern shouldBe Some("^[A-Z]{3}$")
+          child.typeUri.map(_.original) shouldBe Some("http://www.w3.org/2001/XMLSchema#string")
+          child.typeof.map(_.value) shouldBe Some("Code")
+          child.description shouldBe sv.types("ProductCode").inner.description
+
+          val yaml = LinkMlGenerator(using sv).serialize(options)
+          val reloaded = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))
+          val reloadedChild = reloaded.types("ProductCode").inner
+          reloadedChild.base shouldBe child.base
+          reloadedChild.repr shouldBe child.repr
+          reloadedChild.pattern shouldBe child.pattern
+          reloadedChild.typeUri shouldBe child.typeUri
+          reloadedChild.typeof shouldBe child.typeof
+          reloadedChild.description shouldBe child.description
+        }
+      }
+    }
+
+    "preserve type unions and their dependencies through pruning and reload" in {
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""
+          |id: https://example.org/type-unions
+          |name: type_unions
+          |imports:
+          |  - linkml:types
+          |types:
+          |  Text:
+          |    typeof: string
+          |    pattern: '^[A-Z]{3}$'
+          |  Count:
+          |    typeof: integer
+          |    minimum_value: 0
+          |    maximum_value: 10
+          |  Choice:
+          |    union_of:
+          |      - Text
+          |      - Count
+          |  ChoiceChild:
+          |    typeof: Choice
+          |  Unused:
+          |    typeof: float
+          |classes:
+          |  Record:
+          |    tree_root: true
+          |    attributes:
+          |      value:
+          |        range: ChoiceChild
+          |""".stripMargin))
+      val options = LinkMlGenerator.Options(pruningMode = treeRoot(None))
+      val generator = LinkMlGenerator(using sv)
+      val generated = generator.generate(options)
+      val reloaded = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(generator.serialize(options)),
+      )
+
+      Seq(generated, reloaded.root).foreach { schema =>
+        schema.types.keys should contain theSameElementsAs
+          Seq("Choice", "ChoiceChild", "Text", "Count", "string", "integer")
+        schema.types("Choice").unionOf.map(_.value) shouldBe Seq("Text", "Count")
+        schema.types("ChoiceChild").typeof.map(_.value) shouldBe Some("Choice")
+        schema.types("Text").typeof.map(_.value) shouldBe Some("string")
+        schema.types("Count").typeof.map(_.value) shouldBe Some("integer")
+        schema.types("Choice").base shouldBe None
+        schema.types("ChoiceChild").base shouldBe None
+        schema.types("Text").pattern shouldBe Some("^[A-Z]{3}$")
+        schema.types("Count").minimumValue.map(_.value.trim) shouldBe Some("0")
+        schema.types("Count").maximumValue.map(_.value.trim) shouldBe Some("10")
+      }
+      reloaded.lint() shouldBe empty
+    }
+
     "inline imports into the schema" in {
       val sv = ModelCatalogue.pruning.model
       val schema =

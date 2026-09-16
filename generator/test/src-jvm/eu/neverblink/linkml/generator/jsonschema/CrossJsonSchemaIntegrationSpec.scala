@@ -26,6 +26,9 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     // This seems to contradict the description of the `alias` slot
     // https://linkml.io/linkml-model/latest/docs/alias/
     "aliases" -> "nonRdf" -> "LinkML-py allows unaliased names to be used in addition to aliased ones",
+    "typeDerivation" -> "lowercaseCode" -> "LinkML-py does not emit inherited type patterns",
+    "typeDerivation" -> "negativeCount" -> "LinkML-py does not emit inherited type bounds",
+    "typeDerivation" -> "excessiveCount" -> "LinkML-py does not emit inherited type bounds",
   )
 
   "LinkML Python Json Schema generator" should {
