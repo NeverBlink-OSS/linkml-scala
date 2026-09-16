@@ -526,6 +526,35 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   override def aliasedName: String = canonicalName
 
+  /** The parent declared through `typeof`, if present. */
+  lazy val parents: Seq[TypeView] =
+    _type.typeof.toSeq.map(ref => sv.types(ref.value))
+
+  /** This type followed by its `typeof` ancestors, nearest first. */
+  lazy val ancestorsWithSelf: Iterable[TypeView] =
+    Closure.get(
+      Seq(this),
+      _.parents,
+      reflexive = true,
+      resultBuilder = Vector.newBuilder,
+      useHashCode = true,
+      toUniqueValue = _.name,
+    )
+
+  /** This type with an inherited `base` and datatype URI values filled in. */
+  lazy val derivedType: TypeDefinitionImpl =
+    ancestorsWithSelf.iterator.drop(1) // skip child
+      .foldLeft(_type.asInstanceOf[TypeDefinitionImpl]) { (derived, ancestor) =>
+        derived.copy( // Expand the inherited URi so its meaning survives being inherited
+          base = derived.base.orElseFast(ancestor._type.base),
+          typeUri = derived.typeUri.orElseFast {
+            ancestor._type.typeUri.mapFast { value =>
+              new Uri(value.uri(using ancestor.definingPrefixResolver))
+            }
+          },
+        )
+      }
+
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
     * the RDF representations.
     */
@@ -558,7 +587,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
     * names into the enum. Falls back to [[UnknownType]].
     */
-  def runtimeType: RuntimeType = inner.base.foldFast(UnknownType) {
+  def runtimeType: RuntimeType = derivedType.base.foldFast(UnknownType) {
     case "str" => StringType
     case "int" => IntegerType
     case "Bool" => BooleanType
@@ -583,7 +612,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast(modelUri)
+  def uriOrCurie: UriOrCurie = derivedType.typeUri.getOrElseFast(modelUri)
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
