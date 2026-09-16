@@ -238,7 +238,7 @@ export const TARGETS: Target[] = [
     label: "Key translations",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram"], default: "base" },
     ],
     call: (api, v, o) => api.translation(v, String(o.target))
   },

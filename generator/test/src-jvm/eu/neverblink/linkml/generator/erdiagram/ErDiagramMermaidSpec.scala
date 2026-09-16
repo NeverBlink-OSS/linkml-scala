@@ -7,8 +7,8 @@ import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-/** Checks the generated ER diagrams against the real Mermaid parser, for every model in the
-  * catalogue and for the LinkML metamodel.
+/** Checks generated ER diagrams and writer escaping against the real Mermaid parser, including
+  * every model in the catalogue and the LinkML metamodel.
   *
   * Parsing alone would be too weak a check. A handful of constructs make Mermaid throw a whole
   * statement away without reporting anything. So, we also parse validator outputs to assert if the
@@ -20,7 +20,7 @@ import org.scalatest.wordspec.AnyWordSpec
 class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   import ErDiagramMermaidSpec.*
 
-  /** Schemas whose names Mermaid would choke on, quote away or silently reinterpret.
+  /** Schemas whose source names need normalization or Mermaid escaping.
     */
   private val adversary: Seq[(String, String)] = Seq(
     "keywordNames" -> """  one:
@@ -45,47 +45,38 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
                         |    attributes:
                         |      x:
                         |""".stripMargin,
-    // `"`, `%` and `\` cannot appear inside a quoted entity name at all, and there is no escape for
-    // them.
-    "unrepresentableInNames" -> """  A:
-                                  |    alias: say "hi"
-                                  |    attributes:
-                                  |      x:
-                                  |  B:
-                                  |    alias: 100% of it
-                                  |    attributes:
-                                  |      x:
-                                  |  C:
-                                  |    alias: back\slash
-                                  |    attributes:
-                                  |      x:
-                                  |  D:
-                                  |    alias: a name with spaces
-                                  |    attributes:
-                                  |      x:
-                                  |""".stripMargin,
-    // A line holding `direction` plus a direction keyword is swallowed whole, quotes and all.
-    "directionStatement" -> """  Root:
-                              |    attributes:
-                              |      a:
-                              |        alias: direction LR
-                              |        range: Other
-                              |      b:
-                              |        alias: goes direction BT now
-                              |        range: Other
-                              |  Other:
-                              |    alias: x direction TB
-                              |    attributes:
-                              |      x:
-                              |""".stripMargin,
+    "normalizedSourceNames" -> """  say "hi":
+                                 |    attributes:
+                                 |      x:
+                                 |  100% of it:
+                                 |    attributes:
+                                 |      x:
+                                 |  back\slash:
+                                 |    attributes:
+                                 |      x:
+                                 |  a name with spaces:
+                                 |    attributes:
+                                 |      has "quotes":
+                                 |""".stripMargin,
+    "directionLikeSourceNames" -> """  Root:
+                                    |    attributes:
+                                    |      direction LR:
+                                    |        range: x direction TB
+                                    |      goes direction BT now:
+                                    |        range: x direction TB
+                                    |  x direction TB:
+                                    |    attributes:
+                                    |      x:
+                                    |""".stripMargin,
     // Inside an entity block these lex as key constraints rather than as names.
     "keyConstraintNames" -> """  Root:
                               |    attributes:
                               |      pk:
                               |      fk:
                               |      uk:
+                              |  Uppercase:
+                              |    attributes:
                               |      PK:
-                              |        alias: PK
                               |""".stripMargin,
     // A class with nothing but class-ranged slots has no attribute block, so its name has to stand
     // on its own - while still quoted.
@@ -102,20 +93,18 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
                     |      łączony [slot]:
                     |      Zamówienie:
                     |""".stripMargin,
-    // A digit is legal in an attribute name, but not as its first character. An entity name may not
-    // begin with one at all, since Mermaid's lexer reaches for `NUM` first.
-    // TODO LNK-206: Port ErDiagramGenerator into the renaming framework
-//    "leadingDigitNames" -> """  1class:
-//                             |    attributes:
-//                             |      1st slot:
-//                             |      2nd:
-//                             |  42:
-//                             |    attributes:
-//                             |      x:
-//                             |  4.2:
-//                             |    attributes:
-//                             |      x:
-//                             |""".stripMargin,
+    // Numeric class names such as 42 and 4.2 must remain distinct.
+    "leadingDigitNames" -> """  1class:
+                             |    attributes:
+                             |      1st slot:
+                             |      2nd:
+                             |  42:
+                             |    attributes:
+                             |      x:
+                             |  4.2:
+                             |    attributes:
+                             |      x:
+                             |""".stripMargin,
   )
 
   /** Every model in the catalogue, the adversary ones above, plus the metamodel.
@@ -144,16 +133,50 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta")),
       )
 
-  /** Every diagram to check. All are generated with defaults except the last, which covers the
-    * `optionalMarker = false` output kept for renderers older than Mermaid 11.16.
+  /** Direct writer inputs preserve escaping coverage independently of schema-name normalization.
     */
+  private val escapedNamesDiagram: ErDiagram = {
+    val names = Seq(
+      "say \"hi\"",
+      "100% of it",
+      "back\\slash",
+      "a name with spaces",
+      "x direction TB",
+    ).map(ErName.entity)
+    val attributes = Seq("has \"quotes\"", "PK").map(name =>
+      ErAttribute(
+        dataType = "string",
+        name = ErName.attributeToken(name),
+        keys = Nil,
+        multivalued = false,
+        optional = false,
+      ),
+    )
+    ErDiagram(
+      entities = names.map(name => ErEntity(name, attributes)),
+      relationships = Seq("direction LR", "goes direction BT now").map(label =>
+        ErRelationship(
+          from = names.head,
+          to = names.last,
+          fromCardinality = ErCardinality.exactlyOne,
+          toCardinality = ErCardinality.zeroOrOne,
+          identifying = true,
+          label = label,
+        ),
+      ),
+    )
+  }
+
+  /** Generated schemas plus fixtures for optional markers and writer escaping. */
   private lazy val diagrams: Seq[(String, ErDiagram)] =
-    schemas.map((name, sv) => (name, ErDiagramGenerator(using sv).generate())) :+
+    schemas.map((name, sv) => (name, ErDiagramGenerator(using sv).generate())) ++ Seq(
       (
         "cardinalityWithoutOptionalMarker",
         ErDiagramGenerator(using ModelCatalogue.cardinality.model)
           .generate(ErDiagramGenerator.Options(optionalMarker = false)),
-      )
+      ),
+      "escapedWriterNames" -> escapedNamesDiagram,
+    )
 
   /** Generated diagrams, and what Mermaid made of them. Both are computed once: Node startup costs
     * far more than parsing every diagram in the catalogue.
@@ -236,12 +259,45 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         }
         val want = expected(diagram)
         withClue(s"Mermaid read the diagram differently than intended:\n${diagram.print}\n") {
-          // Mermaid keeps entities in source order and we emit them sorted, so these line up
-          // without further sorting - and if they ever stop lining up, that is worth knowing.
+          // Mermaid should preserve the entity and relationship order emitted by the writer.
           parsed.entities shouldBe want.entities
           parsed.relationships shouldBe want.relationships
         }
       }
+
+    "normalize unusual source names before Mermaid reads them" in {
+      requireValidator()
+      val (_, parsed) = checked("normalizedSourceNames")
+
+      parsed.entities.map(e => e.name -> e.attributes.map(_.name)).sortBy(_._1) shouldBe Seq(
+        "100OfIt" -> Seq("x"),
+        "ANameWithSpaces" -> Seq("has_quotes"),
+        "BackSlash" -> Seq("x"),
+        "SayHi" -> Seq("x"),
+      )
+    }
+
+    "preserve relationships with direction-like source names" in {
+      requireValidator()
+      val (_, parsed) = checked("directionLikeSourceNames")
+
+      parsed.entities.map(_.name).sorted shouldBe Seq("Root", "XDirectionTb")
+      parsed.relationships.map(r => (r.from, r.to, r.label)).sortBy(_._3) shouldBe Seq(
+        ("Root", "XDirectionTb", "direction_lr"),
+        ("Root", "XDirectionTb", "goes_direction_bt_now"),
+      )
+    }
+
+    "preserve all three classes in leadingDigitNames" in {
+      requireValidator()
+      val (_, parsed) = checked("leadingDigitNames")
+
+      parsed.entities.map(e => e.name -> e.attributes.map(_.name)).sortBy(_._1) shouldBe Seq(
+        "1Class" -> Seq("_1_st_slot", "_2_nd"),
+        "42" -> Seq("x"),
+        "4_2" -> Seq("x"),
+      )
+    }
   }
 }
 

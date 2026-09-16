@@ -14,7 +14,8 @@ import eu.neverblink.linkml.schemaview.*
   * referenced) become relationship lines instead of rows.
   */
 final class ErDiagramGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[ErDiagramGenerator.Options] {
+    extends CharDocumentGenerator[ErDiagramGenerator.Options],
+      ErDiagramRenamer {
 
   override protected def defaultOptions: ErDiagramGenerator.Options =
     ErDiagramGenerator.Options()
@@ -33,8 +34,7 @@ final class ErDiagramGenerator(using sv: SchemaView)
     val classes = sv.sortedClasses
       .filter(cv => query.reachable(cv) && !cv.isAny) // Never plot linkml:Any
 
-    val entities =
-      classes.map(cv => ErEntity(ErName.entity(cv.aliasedName), attributesOf(cv, optionalMarker)))
+    val entities = classes.map(cv => ErEntity(className(cv), attributesOf(cv, optionalMarker)))
 
     // Only draw an edge if both ends are on the diagram. Mermaid would otherwise conjure the
     // missing end up as an empty box.
@@ -60,20 +60,20 @@ final class ErDiagramGenerator(using sv: SchemaView)
     cv.sortedAttributeViews.flatMap { av =>
       val slot = av.slotView.slot
       val dataType: Option[String] = av match {
-        // A class-ranged slot is an edge, not a row.
+        // A class-ranged slot is an edge (relationship)
         case _: ClassAttributeView => None
         case AnyView(_, _) => Some("Any")
-        case TypeAttributeView(_, _, typeView) => Some(typeView.aliasedName)
-        case EnumAttributeView(_, _, enumView) => Some(enumView.aliasedName)
+        case TypeAttributeView(_, _, typeView) => Some(typeName(typeView))
+        case EnumAttributeView(_, _, enumView) => Some(enumName(enumView))
       }
-      dataType.map { base =>
+      dataType.map { typeToken =>
         val keys =
           if slot.identifier then Seq(ErKey.PK)
           else if slot.key then Seq(ErKey.UK)
           else Nil
         ErAttribute(
-          dataType = ErName.attributeToken(base),
-          name = ErName.attributeToken(av.slotView.aliasedName),
+          dataType = typeToken,
+          name = classAttributeName(cv, slot),
           keys = keys,
           multivalued = slot.multivalued,
           optional = optionalMarker && !slot.required,
@@ -96,8 +96,8 @@ final class ErDiagramGenerator(using sv: SchemaView)
   ): ErRelationship = {
     val slot = av.slotView.slot
     ErRelationship(
-      from = ErName.entity(cv.aliasedName),
-      to = ErName.entity(range.aliasedName),
+      from = className(cv),
+      to = className(range),
       // Nothing in LinkML states how many parents a child may have, so the owning end is left at
       // "exactly one".
       fromCardinality = ErCardinality.exactlyOne,
@@ -108,7 +108,7 @@ final class ErDiagramGenerator(using sv: SchemaView)
         case (false, false) => ErCardinality.zeroOrOne
       },
       identifying = identifying,
-      label = av.slotView.aliasedName,
+      label = classAttributeName(cv, slot),
     )
   }
 }

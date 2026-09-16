@@ -23,6 +23,9 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       ),
     )
 
+  private def withoutAliases(classes: String): String =
+    classes.linesIterator.filterNot(_.trim.startsWith("alias:")).mkString("\n")
+
   "ErDiagramGenerator" should {
     "generate entities for classes" in {
       given SchemaView = ModelCatalogue.basic2.model
@@ -227,12 +230,40 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       result should not include "SomeOtherClass {"
     }
 
-    "respect aliases" in {
-      given SchemaView = ModelCatalogue.aliases.model
+    "ignore class and slot aliases" in {
+      val classes =
+        """  Person:
+          |    alias: Human
+          |    attributes:
+          |      full_name:
+          |        alias: display_name
+          |        required: true
+          |      address:
+          |        alias: home
+          |        range: Address
+          |        required: true
+          |        inlined: true
+          |  Address:
+          |    alias: Location
+          |    attributes:
+          |      street:
+          |        required: true
+          |""".stripMargin
 
-      val result = ErDiagramGenerator().serialize()
-      result should include("AliasedClass {")
-      result should include("aliased_slot")
+      val classesWithoutAliases = classes.linesIterator
+        .filterNot(_.trim.startsWith("alias:"))
+        .mkString("\n")
+
+      val baseline =
+        ErDiagramGenerator(using schemaOf(classesWithoutAliases)).serialize()
+      val result =
+        ErDiagramGenerator(using schemaOf(classes)).serialize()
+
+      baseline should include("  Person {")
+      baseline should include("  Address {")
+      baseline should include("    string full_name")
+      baseline should include("Person ||--|| Address : \"address\"")
+      result shouldBe baseline
     }
 
     "prune in tree_root mode if requested" in {
@@ -264,35 +295,49 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       ErDiagramGenerator().serialize() should include("\"One\" {")
     }
 
-    "quote entity names that cannot stand bare" in {
-      given SchemaView = schemaOf("""  Root:
-                                    |    alias: My Class
-                                    |    attributes:
-                                    |      x:
-                                    |""".stripMargin)
+    "ignore class aliases containing spaces" in {
+      val classes =
+        """  Root:
+          |    alias: My Class
+          |    attributes:
+          |      x:
+          |""".stripMargin
 
-      ErDiagramGenerator().serialize() should include("\"My Class\" {")
+      val baseline = ErDiagramGenerator(using schemaOf(withoutAliases(classes))).serialize()
+      val result = ErDiagramGenerator(using schemaOf(classes)).serialize()
+
+      baseline should include("Root {")
+      result shouldBe baseline
     }
 
-    "replace characters that Mermaid cannot represent in a quoted entity name" in {
-      // There is no escape mechanism anywhere in the grammar, so `"` cannot be kept.
-      given SchemaView = schemaOf("""  Root:
-                                    |    alias: say "hi"
-                                    |    attributes:
-                                    |      x:
-                                    |""".stripMargin)
+    "ignore class aliases containing quotation marks" in {
+      val classes =
+        """  Root:
+          |    alias: say "hi"
+          |    attributes:
+          |      x:
+          |""".stripMargin
 
-      ErDiagramGenerator().serialize() should include("\"say 'hi'\" {")
+      val baseline = ErDiagramGenerator(using schemaOf(withoutAliases(classes))).serialize()
+      val result = ErDiagramGenerator(using schemaOf(classes)).serialize()
+
+      baseline should include("Root {")
+      result shouldBe baseline
     }
 
-    "replace characters that Mermaid cannot represent in an attribute name" in {
-      given SchemaView = schemaOf("""  Root:
-                                    |    attributes:
-                                    |      some slot:
-                                    |        alias: has "quotes"
-                                    |""".stripMargin)
+    "ignore slot aliases containing quotation marks" in {
+      val classes =
+        """  Root:
+          |    attributes:
+          |      some slot:
+          |        alias: has "quotes"
+          |""".stripMargin
 
-      ErDiagramGenerator().serialize() should include("string? has__quotes_")
+      val baseline = ErDiagramGenerator(using schemaOf(withoutAliases(classes))).serialize()
+      val result = ErDiagramGenerator(using schemaOf(classes)).serialize()
+
+      baseline should include("string? some_slot")
+      result shouldBe baseline
     }
 
     "quote entity names starting with a digit, which Mermaid lexes as a number" in {
@@ -322,22 +367,23 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       ErDiagramGenerator().serialize() should include("string? pk_")
     }
 
-    "defuse relationship labels that Mermaid would read as a direction statement" in {
-      // `direction` followed by whitespace and a direction keyword swallows the whole line, quotes
-      // and all, and Mermaid reports no error for it.
-      given SchemaView = schemaOf("""  Root:
-                                    |    attributes:
-                                    |      link:
-                                    |        alias: direction LR
-                                    |        range: Other
-                                    |  Other:
-                                    |    attributes:
-                                    |      x:
-                                    |""".stripMargin)
+    "ignore relationship aliases resembling direction statements" in {
+      val classes =
+        """  Root:
+          |    attributes:
+          |      link:
+          |        alias: direction LR
+          |        range: Other
+          |  Other:
+          |    attributes:
+          |      x:
+          |""".stripMargin
 
-      val result = ErDiagramGenerator().serialize()
-      result should include("\"direction_LR\"")
-      result should not include "direction LR"
+      val baseline = ErDiagramGenerator(using schemaOf(withoutAliases(classes))).serialize()
+      val result = ErDiagramGenerator(using schemaOf(classes)).serialize()
+
+      baseline should include("Root ||--o| Other : \"link\"")
+      result shouldBe baseline
     }
   }
 }
