@@ -406,7 +406,8 @@ object LinkMlJsApi {
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param target
-    *   Target framework to generate translations for. One of "base", "uri", "scala", or "graphql".
+    *   Target framework to generate translations for. One of "base", "uri", "scala", "graphql",
+    *   "frictionless", "ossie", or "erdiagram".
     * @return
     *   Translation dictionary for translating the linkml names to framework names.
     */

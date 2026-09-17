@@ -134,12 +134,23 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
         "ordered_by" -> "orderedBy",
       )
     }
+    "translate ER diagram names without aliases" in {
+      val result = TranslationGenerator(using ModelCatalogue.aliases.model)
+        .generate(Options("erdiagram"))
+
+      result.classes("SomeOtherClass") shouldBe "SomeOtherClass"
+      result.classAttributes("SomeOtherClass") shouldBe Map(
+        "some_slot" -> "some_slot",
+        "some_other_slot" -> "some_other_slot",
+      )
+    }
   }
 
   "generate all catalogue models without errors" when {
     for entry <- ModelCatalogue.all do
       s"model is '${entry.model.root.name}'" when {
-        for target <- Seq("base", "URI", "Scala", "GraphQL", "Frictionless", "Ossie") do
+        for target <- Seq("base", "URI", "Scala", "GraphQL", "Frictionless", "Ossie", "erdiagram")
+        do
           s"target is $target" in {
             val result = TranslationGenerator(using entry.model).generate(
               TranslationGenerator.Options(target),
