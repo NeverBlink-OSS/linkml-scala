@@ -185,7 +185,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     case CurieType => "Curie"
     case NcNameType => "NcName"
     case LocalizedTextType => "LocalizedText"
-    case UnknownType => tv.inner.base.getOrElse("Unknown")
+    case UnknownType => tv.derivedType.base.getOrElse("Unknown")
   }
 
   /** Translates an attribute's resolved range to the appropriate Scala type.

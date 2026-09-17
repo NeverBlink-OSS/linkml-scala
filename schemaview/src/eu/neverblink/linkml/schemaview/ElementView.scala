@@ -526,6 +526,63 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   override def aliasedName: String = canonicalName
 
+  /** The parent declared through `typeof`, if present. */
+  lazy val parents: Seq[TypeView] =
+    _type.typeof.toSeq.map(ref => sv.types(ref.value))
+
+  /** The types declared in `union_of`, in declaration order. Members do not supply inherited scalar
+    * properties and do not imply support for runtime union values.
+    */
+  lazy val unionMembers: Seq[TypeView] =
+    _type.unionOf.map(ref => sv.types(ref.value))
+
+  /** This type followed by its `typeof` ancestors, nearest first. Rejects inheritance cycles. */
+  lazy val ancestorsWithSelf: Iterable[TypeView] = {
+    val ancestors = Closure.get(
+      Seq(this),
+      _.parents,
+      reflexive = true,
+      resultBuilder = Vector.newBuilder,
+      useHashCode = true,
+      toUniqueValue = _.name,
+    )
+    // In a single-parent chain, the last visited node has a parent only if it closes a cycle.
+    ancestors.last.parents.headOption.foreach { repeated =>
+      val path = (ancestors.map(_.name) :+ repeated.name).mkString(" -> ")
+      throw new IllegalArgumentException(s"Cyclic typeof inheritance: $path")
+    }
+    ancestors
+  }
+
+  /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. The
+    * original declaration remains available through [[inner]].
+    */
+  lazy val derivedType: TypeDefinitionImpl =
+    ancestorsWithSelf.iterator.drop(1)
+      .foldLeft(_type.asInstanceOf[TypeDefinitionImpl]) { (derived, ancestor) =>
+        val parent = ancestor._type
+        derived.copy(
+          base = combineOption(derived.base, parent.base, combineFallback),
+          typeUri = derived.typeUri.orElseFast {
+            // Preserve the declaring schema's prefix meaning across imports.
+            parent.typeUri.mapFast { value =>
+              new Uri(value.uri(using ancestor.definingPrefixResolver))
+            }
+          },
+          repr = combineOption(derived.repr, parent.repr, combineFallback),
+          pattern = combineOption(derived.pattern, parent.pattern, combinePattern),
+          structuredPattern =
+            combineOption(derived.structuredPattern, parent.structuredPattern, combineFallback),
+          equalsString = combineOption(derived.equalsString, parent.equalsString, combineFallback),
+          equalsStringIn =
+            if derived.equalsStringIn.nonEmpty then derived.equalsStringIn
+            else parent.equalsStringIn,
+          equalsNumber = combineOption(derived.equalsNumber, parent.equalsNumber, combineFallback),
+          minimumValue = combineOption(derived.minimumValue, parent.minimumValue, combineMin),
+          maximumValue = combineOption(derived.maximumValue, parent.maximumValue, combineMax),
+        )
+      }
+
   /** Return the RDF subject type that corresponds to this type. This is used to create subjects in
     * the RDF representations.
     */
@@ -558,14 +615,15 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
     * names into the enum. Falls back to [[UnknownType]].
     */
-  def runtimeType: RuntimeType = inner.base.foldFast(UnknownType) {
+  def runtimeType: RuntimeType = derivedType.base.foldFast(UnknownType) {
     case "str" => StringType
     case "int" => IntegerType
     case "Bool" => BooleanType
     case "double" => DoubleType
     case "float" =>
-      // thanks, python
-      if (inner.typeUri.contains("xsd:double")) DoubleType
+      // "thanks, python" => LinkML's float and double both use the Python base `float`.
+      if derivedType.typeUri.exists(_.uri == "http://www.w3.org/2001/XMLSchema#double") then
+        DoubleType
       else FloatType
     case "Decimal" => DecimalType
     case "URI" => UriType
@@ -583,7 +641,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uriOrCurie: UriOrCurie = _type.typeUri.getOrElseFast(modelUri)
+  def uriOrCurie: UriOrCurie = derivedType.typeUri.getOrElseFast(modelUri)
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using

@@ -16,7 +16,6 @@ import eu.neverblink.linkml.schemaview.*
 import org.virtuslab.yaml.{Node, parseYaml}
 
 import java.io.OutputStream
-import scala.collection.mutable
 
 /** Generator for [[https://github.com/apache/ossie Apache Ossie]] ontologies.
   *
@@ -220,9 +219,9 @@ class OssieGenerator(using sv: SchemaView)
       description = tv._type.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       extendsConcepts = Seq(builtInForType(tv)),
       requires = Constraints(
-        tv._type.minimumValue,
-        tv._type.maximumValue,
-        tv._type.pattern,
+        tv.derivedType.minimumValue,
+        tv.derivedType.maximumValue,
+        tv.derivedType.pattern,
       ).render(Ref(name)).map(_.render),
     )
 
@@ -255,28 +254,7 @@ class OssieGenerator(using sv: SchemaView)
       conceptOf.getOrElse(tv.typeView.name, builtInForType(tv.typeView))
   }
 
-  /** The Ossie built-in behind a type, following `typeof` until something declares a `base`.
-    *
-    * TODO LNK-126: this should probably use type derivation?
-    */
-  private def builtInForType(tv: TypeView): String = {
-    val seen = mutable.Set.empty[String]
-    var current: Option[TypeView] = Some(tv)
-    var result = BuiltInConcept.any
-    while current.isDefined do {
-      val view = current.get
-      if !seen.add(view.name) then current = None // `typeof` cycle
-      else
-        view.runtimeType match {
-          case _: UnknownType.type =>
-            current = view._type.typeof.flatMap(parent => sv.types.get(parent.value))
-          case rt =>
-            result = builtInFor(rt)
-            current = None
-        }
-    }
-    result
-  }
+  private def builtInForType(tv: TypeView): String = builtInFor(tv.runtimeType)
 }
 
 object OssieGenerator {

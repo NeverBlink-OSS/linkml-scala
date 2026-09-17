@@ -1,0 +1,41 @@
+id: https://neverblink.eu/linkml/tests/typeDerivation/
+name: typeDerivation
+imports:
+  - linkml:types
+prefixes:
+  xsd: http://www.w3.org/2001/XMLSchema#
+
+types:
+  Base64Binary:
+    typeof: string
+    uri: xsd:base64Binary
+  Code:
+    typeof: string
+    pattern: '^[A-Z]{3}$'
+  ProductCode:
+    typeof: Code
+  Count:
+    typeof: integer
+    minimum_value: 0
+    maximum_value: 10
+  ItemCount:
+    typeof: Count
+  Measurement:
+    typeof: double
+
+classes:
+  Record:
+    tree_root: true
+    attributes:
+      payload:
+        rank: 1
+        range: Base64Binary
+        required: true
+      code:
+        rank: 2
+        range: ProductCode
+        required: true
+      count:
+        rank: 3
+        range: ItemCount
+        required: true

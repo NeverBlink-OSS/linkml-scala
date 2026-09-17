@@ -82,7 +82,7 @@ final case class TypeAttributeView(
     typeView: TypeView,
 ) extends AttributeView:
   private val slot: SlotDefinition = slotView.slot
-  private val _type: TypeDefinition = typeView._type
+  private val _type: TypeDefinition = typeView.derivedType
 
   private def upgradeToImplicit(st: SubjectType): SubjectType = slot.implicitPrefix.foldFast(st) {
     value =>

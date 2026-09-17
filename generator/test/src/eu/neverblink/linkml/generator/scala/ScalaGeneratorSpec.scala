@@ -1066,6 +1066,35 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("Custom.scala") should include("type Custom = String")
     }
 
+    "generate a string alias for a custom type derived from string" in {
+      given SchemaView = decode(s"""$schemaShared
+          |types:
+          |  base64Binary:
+          |    typeof: string
+          |    uri: xsd:base64Binary
+          |    description: Base 64 encoded string.
+          |""".stripMargin)
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files("Base64Binary.scala") should include("type Base64Binary = String")
+      files("Base64Binary.scala") should include("Base 64 encoded string.")
+    }
+
+    "generate an inherited external base without falling back to its primitive ancestor" in {
+      given SchemaView = decode(s"""$schemaShared
+          |types:
+          |  External:
+          |    typeof: string
+          |    base: SomeExternalType
+          |  InheritedExternal:
+          |    typeof: External
+          |""".stripMargin)
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files("External.scala") should include("type External = SomeExternalType")
+      files("InheritedExternal.scala") should include("type InheritedExternal = SomeExternalType")
+    }
+
     "not generate aliases for primitive types" in {
       given SchemaView = ModelCatalogue.basic.model
 

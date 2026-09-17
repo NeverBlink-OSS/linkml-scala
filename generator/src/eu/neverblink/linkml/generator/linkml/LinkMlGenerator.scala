@@ -14,8 +14,8 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
   override protected def defaultOptions: Options = Options()
 
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]]. Merges imports,
-    * runs class derivation and if a `tree_root` class is present, prunes the schema to only include
-    * the reachable elements.
+    * derives classes and types and if a `tree_root` class is present, prunes the schema to only
+    * include the reachable elements.
     * @param options
     *   What to generate. See [[LinkMlGenerator.Options]].
     * @return
@@ -52,7 +52,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
         case (k, v) if query.reachable(v._type) =>
           (
             k,
-            v._type.impl.copy(
+            v.derivedType.copy(
               typeUri = new Some(v.uriOrCurie),
               fromSchema = new Some(v.definingSchema.id),
             ),
@@ -87,8 +87,8 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]] and serialize it
     * as YAML.
     *
-    * Merges imports, runs class derivation and if a `tree_root` class is present, prunes the schema
-    * to only include the reachable elements.
+    * Merges imports, derives classes and types and if a `tree_root` class is present, prunes the
+    * schema to only include the reachable elements.
     * @param options
     *   What to generate. See [[LinkMlGenerator.Options]].
     * @return
@@ -127,8 +127,6 @@ object LinkMlGenerator {
   // TODO LNK-48: Don't do these horrible casts
   extension (inline classDef: ClassDefinition)
     private inline def impl: ClassDefinitionImpl = classDef.asInstanceOf
-  extension (inline typeDef: TypeDefinition)
-    private inline def impl: TypeDefinitionImpl = typeDef.asInstanceOf
   extension (inline slotDef: SlotDefinition)
     private inline def impl: SlotDefinitionImpl = slotDef.asInstanceOf
   extension (inline enumDef: EnumDefinition)
