@@ -562,23 +562,24 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
       .foldLeft(_type.asInstanceOf[TypeDefinitionImpl]) { (derived, ancestor) =>
         val parent = ancestor._type
         derived.copy(
-          base = derived.base.orElseFast(parent.base),
+          base = combineOption(derived.base, parent.base, combineFallback),
           typeUri = derived.typeUri.orElseFast {
             // Preserve the declaring schema's prefix meaning across imports.
             parent.typeUri.mapFast { value =>
               new Uri(value.uri(using ancestor.definingPrefixResolver))
             }
           },
-          repr = derived.repr.orElseFast(parent.repr),
-          pattern = derived.pattern.orElseFast(parent.pattern),
-          structuredPattern = derived.structuredPattern.orElseFast(parent.structuredPattern),
-          equalsString = derived.equalsString.orElseFast(parent.equalsString),
+          repr = combineOption(derived.repr, parent.repr, combineFallback),
+          pattern = combineOption(derived.pattern, parent.pattern, combinePattern),
+          structuredPattern =
+            combineOption(derived.structuredPattern, parent.structuredPattern, combineFallback),
+          equalsString = combineOption(derived.equalsString, parent.equalsString, combineFallback),
           equalsStringIn =
             if derived.equalsStringIn.nonEmpty then derived.equalsStringIn
             else parent.equalsStringIn,
-          equalsNumber = derived.equalsNumber.orElseFast(parent.equalsNumber),
-          minimumValue = derived.minimumValue.orElseFast(parent.minimumValue),
-          maximumValue = derived.maximumValue.orElseFast(parent.maximumValue),
+          equalsNumber = combineOption(derived.equalsNumber, parent.equalsNumber, combineFallback),
+          minimumValue = combineOption(derived.minimumValue, parent.minimumValue, combineMin),
+          maximumValue = combineOption(derived.maximumValue, parent.maximumValue, combineMax),
         )
       }
 
