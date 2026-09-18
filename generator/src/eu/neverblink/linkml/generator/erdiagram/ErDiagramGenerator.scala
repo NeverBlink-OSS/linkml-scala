@@ -171,7 +171,7 @@ private final class ErBody(sink: CharSink) {
 /** An entity, i.e. a LinkML class.
   *
   * @param name
-  *   Entity name, already escaped by [[ErName.entity]]
+  *   Entity name, already escaped by the renamer
   * @param attributes
   *   Attribute rows to list in the entity's block
   */
@@ -194,9 +194,9 @@ final case class ErEntity(name: String, attributes: Seq[ErAttribute]):
 /** An attribute row of an entity.
   *
   * @param dataType
-  *   The range's name, already escaped by [[ErName.attributeToken]]
+  *   The range's name, already escaped by the renamer
   * @param name
-  *   The slot's name, already escaped by [[ErName.attributeToken]]
+  *   The slot's name, already escaped by the renamer
   * @param keys
   *   Key constraints to mark the attribute with
   * @param multivalued
@@ -250,9 +250,9 @@ enum ErCardinality(val fromGlyph: String, val toGlyph: String):
 /** A relationship line between two entities.
   *
   * @param from
-  *   Name of the entity that owns the slot, already escaped by [[ErName.entity]]
+  *   Name of the entity that owns the slot, already escaped by the renamer
   * @param to
-  *   Name of the entity in the slot's range, already escaped by [[ErName.entity]]
+  *   Name of the entity in the slot's range, already escaped by the renamer
   * @param fromCardinality
   *   Cardinality at the owning end
   * @param toCardinality
@@ -260,7 +260,7 @@ enum ErCardinality(val fromGlyph: String, val toGlyph: String):
   * @param identifying
   *   Whether the range end is owned by the owning end (solid line) or independent (dashed line)
   * @param label
-  *   The slot's name, escaped by [[ErName.label]] when written
+  *   The slot's name, escaped by quoting when written
   */
 case class ErRelationship(
     from: String,
@@ -279,96 +279,10 @@ case class ErRelationship(
     body.append(toCardinality.toGlyph)
     body.append(' ')
     body.append(to)
-    body.append(" : ")
-    body.append(ErName.label(label))
+    body.append(" : \"")
+    body.append(label)
+    body.append("\"")
   }
-
-/** Escaping of LinkML names into Mermaid ER tokens.
-  *
-  * The character classes below are transcribed from Mermaid's `erDiagram.jison` grammar. Mermaid
-  * offers no escape mechanism anywhere - not in quoted entity names, labels or comments - so
-  * characters it cannot represent are replaced rather than escaped.
-  */
-private[erdiagram] object ErName {
-
-  /** Entity names may go unquoted if they match `UNICODE_TEXT`. */
-  private val unquotedEntity = "^([^\\x00-\\x7F]|\\w|-|\\*|\\.)+$".r
-
-  /** Mermaid's lexer is case-insensitive, so these cannot be unquoted entity names. `u` is included
-    * because `u` directly before a connector lexes as `MD_PARENT`. `end` and `subgraph` are still
-    * free in Mermaid 11, but are reserved by its unreleased subgraph support.
-    */
-  private val reservedEntities =
-    Set("one", "many", "to", "class", "classdef", "style", "erdiagram", "u", "end", "subgraph")
-
-  /** Any line containing `direction` followed by whitespace and a direction keyword is swallowed
-    * whole by Mermaid's lexer and silently reinterpreted as a direction statement - the enclosing
-    * quotes do not protect it. Joining the two words defuses that without dropping either.
-    */
-  private val directionStatement = "(?i)(direction)(\\s+)(TB|BT|RL|LR)".r
-
-  /** Legal first characters of an `ATTRIBUTE_WORD`. Has to use \x escapes to work on Scala Native.
-    */
-  private val attributeHead = "[*A-Za-z_\\x{00C0}-\\x{FFFF}]".r
-
-  /** Legal subsequent characters of an `ATTRIBUTE_WORD`. */
-  private val attributeTail = "[A-Za-z0-9\\-_\\[\\]().,\\x{00C0}-\\x{FFFF}*]".r
-
-  private def defuseDirection(s: String): String =
-    directionStatement.replaceAllIn(s, m => s"${m.group(1)}_${m.group(3)}")
-
-  /** Escape a name for use as an entity name, quoting it if it cannot stand bare. */
-  def entity(raw: String): String = {
-    val defused = defuseDirection(raw)
-    val bare =
-      unquotedEntity.matches(defused) &&
-        !reservedEntities.contains(defused.toLowerCase) &&
-        // Mermaid's lexer takes the first matching rule rather than the longest, and `NUM` comes
-        // before `UNICODE_TEXT`. So a name like `1class` lexes as a number followed by a stray
-        // keyword instead of as one name, and has to be quoted.
-        !defused.head.isDigit
-    if bare then defused else quote(defused)
-  }
-
-  /** Quote a string as an `ENTITY_NAME`, dropping the characters that cannot appear inside one. */
-  private def quote(s: String): String = {
-    val cleaned = s.map {
-      // `"` ends the token, and `%`, `\` and the control characters are excluded from the rule.
-      case '"' => '\''
-      case '%' => '_'
-      case '\\' => '/'
-      case c if c.isControl => ' '
-      case c => c
-    }
-    // The rule needs at least one character.
-    if cleaned.isEmpty then "\"_\"" else s"\"$cleaned\""
-  }
-
-  /** Escape a name for use as an attribute type or attribute name. These cannot be quoted at all,
-    * so anything outside the permitted character class is replaced with an underscore.
-    */
-  def attributeToken(raw: String): String = {
-    // The tail class is a superset of the head class, so every character is held to the tail rule
-    // and only the first position may then need help.
-    val mapped = raw.map(c => if attributeTail.matches(c.toString) then c else '_')
-    // A digit is legal in the tail but not the head, so the first character gets a prefix rather
-    // than a replacement, which would throw it away.
-    val headed =
-      if mapped.isEmpty then "_"
-      else if attributeHead.matches(mapped.head.toString) then mapped
-      else "_" + mapped
-    // Inside an entity block these three lex as `ATTRIBUTE_KEY`, never as a type or a name.
-    if ErKey.values.exists(_.toString.equalsIgnoreCase(headed)) then headed + "_" else headed
-  }
-
-  /** Escape a string for use as a relationship label. Labels are always quoted: unquoted ones
-    * cannot hold spaces, break on Mermaid's keywords, and let anything following them on the line
-    * start a new statement.
-    */
-  def label(raw: String): String =
-    // A `WORD` is `"[^"]*"`, so only the quote itself has to go.
-    "\"" + defuseDirection(raw).replace('"', '\'').map(c => if c.isControl then ' ' else c) + "\""
-}
 
 object ErDiagramGenerator {
 

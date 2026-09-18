@@ -105,24 +105,47 @@ object Case {
   def baseToScreamingSnake(input: String): String =
     input.toUpperCase()
 
-  /** Convert a base_name to a PascalCase name. Outputs a strict subset of PascalCase that can be
+  /** Convert a base_name to a PascalCase name. Outputs a LinkML variant of PascalCase that can be
     * round-tripped back to the base form via [[base]].
+    *
+    * Will output underscores as a fallback when:
+    *   - two consecutive numbers are present: `my_1_1_mapping` -> `My1_1Mapping` instead of
+    *     `My11Mapping`
+    *   - single-letter words would be merged into an uppercase word: `a_b_c` becomes `A_B_C`
+    *     instead of `ABC` (interpreted back as `abc`)
     */
   def baseToPascal(input: String): String =
     baseToCapital(input, true)
 
-  /** Convert a base_name to a camelCase name. Outputs a strict subset of camelCase that can be
+  /** Convert a base_name to a camelCase name. Outputs a LinkML variant of camelCase that can be
     * round-tripped back to the base form via [[base]].
+    *
+    * Will output underscores as a fallback when:
+    *   - two consecutive numbers are present: `my_1_1_mapping` -> `my1_1Mapping` instead of
+    *     `my11Mapping`
+    *   - single-letter words would be merged into an uppercase word: `a_b_c` becomes `aB_C` instead
+    *     of `aBC` (interpreted back as `a_bc`)
     */
   def baseToCamel(input: String): String =
     baseToCapital(input, false)
 
-  private inline def baseToCapital(input: String, inline pascal: Boolean): String = {
+  private def baseToCapital(input: String, pascal: Boolean): String = {
     val sb = lang.StringBuilder(input.length)
     var capitalize = pascal
     for i <- 0 until input.length do {
       val c = input.charAt(i)
       if capitalize then {
+        val numeric = isNumeric(c)
+
+        if i < 2 then ()
+        else if numeric && isNumeric(input.charAt(i - 2)) then sb.append('_')
+        else if !numeric
+          && sb.charAt(sb.length() - 1).isUpper
+          && (
+            i == input.length - 1
+              || input.charAt(i + 1) == '_'
+          )
+        then sb.append('_')
         sb.append(c.toUpper)
         capitalize = false
       } else if c == '_' then capitalize = true
