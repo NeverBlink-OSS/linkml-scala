@@ -1,0 +1,76 @@
+package build.schemaview
+
+import mill.*
+import mill.javalib.Dep
+import mill.scalalib.*
+import millbuild.*
+import com.carlosedp.aliases.*
+import mill.api.Evaluator
+import mill.contrib.buildinfo.BuildInfo
+
+object `package` extends Module, NativeOptional {
+  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
+    Task.Command(exclusive = true) {
+      AliasesModule.run(ev, "regenerateBuildInfo")
+    }
+
+  object jvm extends SchemaViewModule {
+    def moduleDeps = Seq(
+      build.metamodel.jvm,
+      build.validation.jvm,
+    )
+
+    object test extends ScalaTests, CommonTestModule
+  }
+
+  object js extends SchemaViewModule, NoBspModule, CommonScalaJsModule {
+    def moduleDeps = Seq(
+      build.metamodel.js,
+      build.validation.js,
+    )
+
+    object test extends ScalaJSTests, CommonTestModule
+  }
+
+  object native extends SchemaViewModule, NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.metamodel.native,
+      build.validation.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule {
+      override def mvnDeps: T[Seq[Dep]] = Task {
+        super[ScalaNativeTests].mvnDeps() ++ super[CommonTestModule].mvnDeps()
+      }
+    }
+  }
+
+  trait SchemaViewModule extends CommonModule, BuildInfo {
+    def mvnDeps = Seq(
+      mvn"com.lihaoyi::fastparse::3.1.1",
+    )
+
+    def buildInfoPackageName = "eu.neverblink.linkml.schemaview.buildinfo"
+
+    // `BuildInfo` is the LinkML-generated class in that package, so the constants need another name.
+    override def buildInfoObjectName = "BuildConstants"
+
+    // Compile the values into the class file instead of reading them from a properties resource.
+    // Scala.js has no resources at all, and on the JVM side the native image would otherwise need
+    // the properties file registered by hand.
+    override def buildInfoStaticCompiled = true
+
+    def buildInfoMembers = Seq(
+      BuildInfo.Value("version", publishVersion()),
+      BuildInfo.Value("scalaVersion", scalaVersion()),
+      BuildInfo.Value("scalaJsVersion", Version.scalaJS),
+      BuildInfo.Value("metamodelVersion", build.metamodel.metamodelVersion()),
+    )
+
+    // fastparse's `rep`/`StringIn` macros trip -Xcheck-macros ("Expression created in a splice was
+    // used outside of that splice") on Scala 3.9. The generated parsers are correct -- it's a
+    // scope-tracking bug in fastparse's quotes, fixed upstream but unreleased (3.1.1 is latest).
+    // Scoped to this module so the rest of the build keeps the check.
+    override def scalacOptions = super.scalacOptions().filterNot(_ == "-Xcheck-macros")
+  }
+}

@@ -120,12 +120,12 @@ jobs:
 
       - name: Regenerate UI LinkML types and check they are committed
         run: |
-          ./mill --no-server uiTypes
+          ./mill --no-server ui.types
           git diff --exit-code -- ui/linkml.d.ts \
-            || (echo "ui/linkml.d.ts is stale – run ./mill uiTypes and commit the result"; exit 1)
+            || (echo "ui/linkml.d.ts is stale – run ./mill ui.types and commit the result"; exit 1)
 
       - name: Type-check and bundle the UI
-        run: ./mill --no-server uiCheck
+        run: ./mill --no-server ui.check
 
   scalafix-lint:
     name: Scalafix lint

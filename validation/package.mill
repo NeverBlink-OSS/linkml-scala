@@ -1,0 +1,50 @@
+package build.validation
+
+import mill.*
+import millbuild.*
+import com.carlosedp.aliases.*
+import mill.api.Evaluator
+import mill.javalib.Dep
+
+/** The LinkML validation report model, generated into Scala by this project's own Scala
+ * generator.
+ *
+ * @note
+ *   The sources are checked in, because regenerating them needs `cli`, which transitively
+ *   depends on this module. If they ever stop compiling, revert them before running
+ *   `validation.regenerate`.
+ */
+object `package` extends Module, NativeOptional {
+  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
+    Task.Command(exclusive = true) {
+      AliasesModule.run(ev, "regenerateValidation")
+    }
+
+  object jvm extends CommonModule {
+    def moduleDeps = Seq(
+      build.yaml.jvm,
+    )
+
+    object test extends ScalaTests, CommonTestModule
+  }
+
+  object js extends NoBspModule, CommonScalaJsModule {
+    def moduleDeps = Seq(
+      build.yaml.js,
+    )
+
+    object test extends ScalaJSTests, CommonTestModule
+  }
+
+  object native extends NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.yaml.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule {
+      override def mvnDeps: T[Seq[Dep]] = Task {
+        super[ScalaNativeTests].mvnDeps() ++ super[CommonTestModule].mvnDeps()
+      }
+    }
+  }
+}
