@@ -78,11 +78,11 @@ jobs:
 
       - name: Re-generate the metamodel and check if it's unchanged
         run: |
-          cp -r metamodel/ metamodel_prev/
+          cp -r metamodel/ .metamodel_prev/
           ./mill --no-server cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta
           ./mill --no-server metamodel.jvm.fix
           ./mill --no-server metamodel.jvm.reformat
-          diff -r metamodel metamodel_prev
+          diff -r metamodel .metamodel_prev
 
       - name: Re-generate the model-derived sources and check they are committed
         run: |
@@ -187,10 +187,10 @@ jobs:
       # Native modules cannot be compiled in parallel. See CommonScalaNativeModule in build.mill.
       - name: Regenerate the bindings and check they are committed
         run: |
-          ./mill --no-server -j 1 bindings
+          ./mill --no-server -j 1 nativelib.bindings
           git diff --exit-code -- python/linkml_scala/_generated.py \
             nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.scala \
-            || (echo "generated bindings are stale – run LINKML_NATIVE=1 ./mill bindings and commit the result"; exit 1)
+            || (echo "generated bindings are stale – run LINKML_NATIVE=1 ./mill nativelib.bindings and commit the result"; exit 1)
 
       - name: Build the shared library and test the bindings on the oldest supported Python
         env:

@@ -1,0 +1,38 @@
+package build.benchmark
+
+import mill.*
+import mill.javalib.Dep
+import mill.scalalib.*
+import millbuild.*
+import com.goyeau.mill.scalafix.ScalafixModule
+import mill.contrib.jmh.JmhModule
+import mill.scalalib.scalafmt.ScalafmtModule
+
+/** JMH benchmarks for the code generators. JVM-only, not published. Run with:
+  * `./mill benchmark.runJmh`
+  */
+object `package` extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule {
+  def scalaVersion = Version.scala
+
+  // JMH forks a JVM using this runtime
+  override def jvmVersion = "temurin:25"
+
+  def jmhCoreVersion = "1.37"
+
+  def moduleDeps = Seq(
+    build.cli.jvm,
+  )
+
+  // RDF4J Rio and Jena ARQ/RIOT, to compare against in the streaming-serializer benchmark.
+  override def mvnDeps = super.mvnDeps() ++ Seq(
+    mvn"dev.zio::zio-blocks-schema-yaml::0.0.51",
+    mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:${Version.rdf4j}",
+    mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:${Version.rdf4j}",
+    mvn"org.apache.jena:jena-arq:6.2.0",
+  )
+
+  def scalacOptions = Seq(
+    "-release",
+    "17",
+  )
+}

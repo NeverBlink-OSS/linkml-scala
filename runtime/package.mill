@@ -1,0 +1,24 @@
+package build.runtime
+
+import mill.*
+import mill.javalib.Dep
+import mill.scalalib.*
+import millbuild.*
+
+object `package` extends Module, NativeOptional {
+  object jvm extends CommonModule {
+    object test extends ScalaTests, CommonTestModule
+  }
+
+  object js extends CommonModule, NoBspModule, CommonScalaJsModule {
+    object test extends ScalaJSTests, CommonTestModule
+  }
+
+  object native extends CommonModule, NoBspModule, CommonScalaNativeModule {
+    object test extends ScalaNativeTests, CommonTestModule {
+      override def mvnDeps: T[Seq[Dep]] = Task {
+        super[ScalaNativeTests].mvnDeps() ++ super[CommonTestModule].mvnDeps()
+      }
+    }
+  }
+}

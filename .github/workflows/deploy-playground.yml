@@ -48,7 +48,7 @@ jobs:
       - name: Build browser UI
         run: |
           ./mill --no-server generator.js.fullLinkJS
-          ./mill --no-server uiBundle
+          ./mill --no-server ui.bundle
 
       - name: Assemble playground site
         run: |
