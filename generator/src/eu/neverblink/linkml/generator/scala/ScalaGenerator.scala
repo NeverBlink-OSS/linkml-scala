@@ -505,8 +505,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
 object ScalaGenerator {
 
-  /** Options for [[ScalaGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.scala
+  /** Options for generating Scala classes. This is primarily used for the metamodel.
     * @param package
     *   Scala package to generate the classes in.
     * @param generateEmitPrefixes
@@ -519,6 +519,7 @@ object ScalaGenerator {
       generateEmitPrefixes: Boolean = true,
       metadataLanguage: String = "en",
   )
+  // END GENERATED OPTIONS core.scala
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a
     * LinkML [[ClassDefinition]]

@@ -5,13 +5,26 @@ import org.scalatest.wordspec.AnyWordSpec
 
 /** Checks that every generator is reachable from every binding.
   *
-  * It reads the repository's own sources, so it needs to know where the checkout is;
-  * `generator.jvm.test.forkEnv` passes `LINKML_REPO_ROOT`.
+  * It reads the repository's own sources. `generator.jvm.test.forkEnv` passes the checkout path in
+  * `MILL_WORKSPACE_ROOT`.
   */
 class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
   private val repoRoot: Option[os.Path] =
     sys.env.get("MILL_WORKSPACE_ROOT").map(os.Path(_)).filter(os.exists)
+
+  private val expectedPythonMethods = Map(
+    "JsonSchemaGenerator" -> "json_schema",
+    "ShaclGenerator" -> "shacl",
+    "RdfsGenerator" -> "rdfs",
+    "LinkMlGenerator" -> "linkml",
+    "FrictionlessGenerator" -> "frictionless",
+    "GraphQlGenerator" -> "graphql",
+    "ErDiagramGenerator" -> "er_diagram",
+    "OssieGenerator" -> "ossie",
+    "ScalaGenerator" -> "scala",
+    "TranslationGenerator" -> "translation",
+  )
 
   /** Every generator in the generator module: a `*Generator.scala` declaring an `Options` case
     * class. The `Options` is what makes it a public generator rather than an internal helper.
@@ -86,10 +99,16 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
     "be listed in the shared entry-point table" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val table = os.read(root / "mill-build" / "src" / "Entrypoints.scala")
-      val missing = generators(root).filterNot(name => table.contains(s"\"$name\""))
+      val discovered = generators(root)
+      discovered shouldBe expectedPythonMethods.keys.toSeq.sorted
+      val table = os.read(
+        root / "optiongen" / "src" / "eu" / "neverblink" / "linkml" / "optiongen" /
+          "Entrypoints.scala",
+      )
+      val missing = discovered.filterNot(name => table.contains(s"\"$name\""))
       withClue(
-        "add a row to mill-build/src/Entrypoints.scala, then run LINKML_NATIVE=1 ./mill bindings: ",
+        "add a row to optiongen/src/eu/neverblink/linkml/optiongen/Entrypoints.scala, " +
+          "then run LINKML_NATIVE=1 ./mill bindings: ",
       )(missing shouldBe empty)
     }
 
@@ -122,18 +141,17 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
           "LinkMlCGenerators.scala",
       )
       // Generated from the table, so this catches a stale checked-in copy rather than a missing row.
-      val exported = "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(generated).size
+      val exported = "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(generated)
+        .map(_.group(1)).toSeq.sorted
       withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
-        exported shouldBe generators(root).size,
+        exported shouldBe expectedPythonMethods.values.toSeq.map(name => s"linkml_$name").sorted,
       )
     }
 
     "be exposed as a Python method" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val generated = os.read(root / "python" / "linkml_scala" / "_generated.py")
-      val methods = "\\n    def (\\w+)\\(".r.findAllMatchIn(generated).size
       withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
-        methods shouldBe generators(root).size,
+        pythonMethods(root).sorted shouldBe expectedPythonMethods.values.toSeq.sorted,
       )
     }
 

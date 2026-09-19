@@ -1,9 +1,8 @@
-# AUTO-GENERATED from mill-build/src/Entrypoints.scala and the generators' Options case
-# classes. Do not edit by hand - regenerate with LINKML_NATIVE=1 ./mill bindings.
+# AUTO-GENERATED from model/generator-options.yaml and the optiongen Entrypoints registry.
+# Do not edit by hand - regenerate with LINKML_NATIVE=1 ./mill bindings.
 """The generator methods of :class:`linkml_scala.Schema`.
 
-Each one mirrors an ``Options`` case class in the Scala sources, so the keyword arguments,
-their defaults and their documentation are whatever the generator itself declares.
+Keyword arguments, defaults and documentation come from the Python option profiles.
 """
 
 from __future__ import annotations
@@ -52,7 +51,7 @@ class Generators:
         metadata_language: str = "en",
         include_null: bool = False,
     ) -> str:
-        """Generate a JSON Schema.
+        """Options for generating JSON Schema.
 
         :param open: Whether the generated JSON Schema should allow `additionalProperties` for
             classes.
@@ -66,7 +65,7 @@ class Generators:
         :param metadata_language: Which language to use for metadata fields (description, title)
             in the generated JSON Schema.
         :param include_null: Allows null values for optional slots and compact dictionary
-            entries without required content beyond the key. Default: false
+            entries without required content beyond the key.
         """
         return self._document(
             "linkml_json_schema",
@@ -85,16 +84,16 @@ class Generators:
         only_classes_from_root_schema: bool = False,
         format: str = "ttl",
     ) -> str:
-        """Generate SHACL shapes, serialized as N-Triples or Turtle.
+        """Options for generating SHACL shapes.
 
         :param open: Whether the generated shapes should be open, allowing properties the schema
-            does not mention (turned off by default).
+            does not mention.
         :param only_classes_from_root_schema: Whether to include only classes from the root
-            schema (turned off by default). This is useful if you intend to generate SHACL
-            shapes for each schema file separately, and you don't need the imported classes to
-            be included in the generated SHACL shapes.
-        :param format: Which RDF serialization to write: `ttl` for Turtle (the default), which
-            is prefixed and pretty-printed, or `nt` for N-Triples.
+            schema. This is useful if you intend to generate SHACL shapes for each schema file
+            separately, and you don't need the imported classes to be included in the generated
+            SHACL shapes.
+        :param format: Which RDF serialization to write: `ttl` for Turtle, which is prefixed and
+            pretty-printed, or `nt` for N-Triples.
         """
         return self._document(
             "linkml_shacl",
@@ -109,14 +108,13 @@ class Generators:
         only_classes_from_root_schema: bool = False,
         format: str = "ttl",
     ) -> str:
-        """Generate RDFS, serialized as N-Triples or Turtle.
+        """Options for generating RDF schema.
 
         :param only_classes_from_root_schema: Whether to include only classes and enums from the
-            root schema (turned off by default). This is useful if you intend to generate RDFS
-            for each schema file separately, and you don't need the imported classes to be
-            included.
-        :param format: Which RDF serialization to write: `ttl` for Turtle (the default), which
-            is prefixed and pretty-printed, or `nt` for N-Triples.
+            root schema. This is useful if you intend to generate RDFS for each schema file
+            separately, and you don't need the imported classes to be included.
+        :param format: Which RDF serialization to write: `ttl` for Turtle, which is prefixed and
+            pretty-printed, or `nt` for N-Triples.
         """
         return self._document(
             "linkml_rdfs",
@@ -132,11 +130,11 @@ class Generators:
         skip_class_derivation: bool = False,
         output_format: str = "yaml",
     ) -> str:
-        """Materialize a derived LinkML schema: imports resolved, slots pushed into attributes.
+        """Options for materializing a derived LinkML schema. Derives classes and can prune unreachable elements.
 
         :param pruning_mode: Method to use for schema definition pruning.
-        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
-            valid with `pruning_mode="treeRoot"`.
+        :param tree_root: Tree root class name to use instead of the schema-defined tree_root.
+            Only valid with `pruning_mode=\"treeRoot\"`.
         :param skip_class_derivation: If true, will not derive classes and instead copy them
             as-is.
         :param output_format: Output serialization format to use.
@@ -156,11 +154,11 @@ class Generators:
         skip_classes_without_identifier: bool = False,
         metadata_language: str = "en",
     ) -> dict[str, str]:
-        """Generate a Frictionless Data Package, as a filename to content mapping.
+        """Options for generating a Frictionless Data Package. Each selected class becomes a CSV table, described by its own Table Schema, and references between classes can become foreign keys between the tables. Returns a filename-to-content mapping.
 
         :param pruning_mode: Which classes to turn into tables.
-        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
-            valid with `pruning_mode="treeRoot"`.
+        :param tree_root: Tree root class name to use instead of the schema-defined tree_root.
+            Only valid with `pruning_mode=\"treeRoot\"`.
         :param skip_classes_without_identifier: Whether to skip classes that have no identifier
             slot. Such a table gets no primary key and nothing can reference it, so it is often
             not useful.
@@ -181,13 +179,13 @@ class Generators:
         tree_root: str | None = None,
         metadata_language: str = "en",
     ) -> str:
-        """Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries.
+        """Options for generating a GraphQL schema. Only types/interfaces/scalar/enums, queries must be provided for a specific implementation.
 
-        :param pruning_mode: How to prune the generated definitions, schemaRoot by default
-            (elements reachable from any root schema defined elements) to omit unnecessary
+        :param pruning_mode: How to prune the generated definitions. Schema mode retains
+            elements reachable from classes defined in the root schema to omit unnecessary
             linkml:types scalar definitions.
-        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
-            valid with `pruning_mode="treeRoot"`.
+        :param tree_root: Tree root class name to use instead of the schema-defined tree_root.
+            Only valid with `pruning_mode=\"treeRoot\"`.
         :param metadata_language: Which language to use for metadata fields (description etc.)
             in the output GraphQL.
         """
@@ -204,12 +202,12 @@ class Generators:
         tree_root: str | None = None,
         optional_marker: bool = True,
     ) -> str:
-        """Generate a Mermaid entity relationship diagram.
+        """Options for generating Mermaid entity relationship diagrams. Classes become entities, type- and enum-ranged slots become their attributes, and class-ranged slots become relationship lines.
 
-        :param pruning_mode: How to prune the generated entities, schemaRoot by default (classes
-            reachable from any element defined in the root schema).
-        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
-            valid with `pruning_mode="treeRoot"`.
+        :param pruning_mode: How to prune the generated entities. Schema mode retains classes
+            reachable from classes defined in the root schema.
+        :param tree_root: Tree root class name to use instead of the schema-defined tree_root.
+            Only valid with `pruning_mode=\"treeRoot\"`.
         :param optional_marker: Whether to mark optional attributes with a trailing `?` on their
             type, which requires Mermaid 11.16 or newer.
         """
@@ -227,11 +225,11 @@ class Generators:
         output_format: str = "yaml",
         metadata_language: str = "en",
     ) -> str:
-        """Generate an Apache Ossie ontology, serialized as YAML or JSON.
+        """Options for generating an Apache Ossie ontology. Classes become entity types, enums and named types become value types, and slots become the relationships grouped under the concept that plays their first role.
 
         :param pruning_mode: Which elements become concepts.
-        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
-            valid with `pruning_mode="treeRoot"`.
+        :param tree_root: Tree root class name to use instead of the schema-defined tree_root.
+            Only valid with `pruning_mode=\"treeRoot\"`.
         :param output_format: Output serialization format to use.
         :param metadata_language: Which language to use for metadata fields (description) in the
             generated ontology.
@@ -250,7 +248,7 @@ class Generators:
         generate_emit_prefixes: bool = True,
         metadata_language: str = "en",
     ) -> dict[str, str]:
-        """Generate Scala classes, as a filename to source mapping.
+        """Options for generating Scala classes. This is primarily used for the metamodel. Returns a filename-to-content mapping.
 
         :param package: Scala package to generate the classes in.
         :param generate_emit_prefixes: Whether to generate a `Prefixes` object holding the
@@ -271,7 +269,11 @@ class Generators:
         to: str = "base",
         indentation_step: int = 2,
     ) -> str:
-        """Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs."""
+        """Options for generating JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
+
+        :param to: Framework whose names appear in the translation dictionary.
+        :param indentation_step: Number of spaces per JSON indentation level.
+        """
         return self._document(
             "linkml_translation",
             to=to,

@@ -9,18 +9,14 @@ import eu.neverblink.linkml.generator.util.PruningMode
   * elements (classes, types, enums) from the schema.
   */
 final case class PruningOptions(
+    // BEGIN GENERATED OPTIONS cli.pruning.fields
     @HelpMessage(
-      "Which unused elements (classes, types, enums) to remove.\n" +
-        "treeRoot - remove all elements unreachable from the tree_root class.\n" +
-        "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
-        "skip - do not remove unused elements.\n" +
-        "Default: skip.",
+      "Which unused elements (classes, types, enums) to remove.\ntreeRoot - remove all elements unreachable from the tree_root class.\nschema - remove all elements unreachable from any of the classes defined in the root schema.\nskip - do not remove unused elements.\nDefault: skip.",
     )
     pruningMode: PruningMode = PruningMode.skip,
-    @HelpMessage(
-      "Tree root class name to use instead of the schema-defined tree_root.",
-    )
+    @HelpMessage("Tree root class name to use instead of the schema-defined tree_root.")
     treeRoot: Option[String] = None,
+    // END GENERATED OPTIONS cli.pruning.fields
 ) {
 
   /** The pruning mode to hand to a generator, including the tree root override if one was provided.
@@ -32,7 +28,9 @@ final case class PruningOptions(
 }
 
 object PruningOptions {
+  // BEGIN GENERATED OPTIONS cli.pruning.names
   private val names = Seq("treeRoot", "schema", "skip")
+  // END GENERATED OPTIONS cli.pruning.names
 
   /** Parses `--pruning-mode`, accepting camel, kebab and snake case alike (`treeRoot`, `tree-root`,
     * `tree_root`).

@@ -26,8 +26,16 @@ Common tasks with mill:
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
 - Build native binary: `./mill cli.jvm.nativeImage` (requires Coursier (cs) to be installed)
-- Assemble the npm package: `./mill generator.js.npmPackage` (TS declarations are generated from the Scala facade)
+- Assemble the npm package: `./mill generator.js.npmPackage` (includes generated TS declarations)
 - Verify the npm package (README examples run + types compile): `./mill generator.js.verifyPackage` (requires Node.js and npm)
+
+### Generator options
+
+Edit [`model/generator-options.yaml`](model/generator-options.yaml) for option types, defaults, descriptions, and interface exposure. The versioned `optgen` annotations preserve interface-specific names, order, and defaults. Handwritten dispatch stays in `optiongen`. Nongenerator TS declarations stay in `generator/npm/api.d.ts.template`.
+
+Run `./mill --no-server optiongen.regenerate` and commit all changed outputs. Generated regions retain the existing Scala APIs. Normal compilation uses checked-in sources and does not regenerate them. CI runs `./mill --no-server optiongen.check` to report stale outputs without changing them. The reader rejects option attributes that carry LinkML value constraints, structural changes to the pruning support class, and a bounded set of names reserved by an emitted language, and names the schema location in each diagnostic.
+
+See [Generator options](docs/generator-options.md) for the interface defaults and mappings.
 
 ### Scala Native
 
@@ -52,9 +60,9 @@ The browser playground lives in [`ui/`](ui/) – a TypeScript app (CodeMirror ed
 - Serve it locally: `./mill ui` – builds the Scala.js bundle **and** the UI bundle, then serves at <http://localhost:8000/ui/>
 - Build the UI bundle only: `./mill uiBundle` → `ui/dist/app.js`
 - Type-check and bundle (what CI runs): `./mill uiCheck`
-- Regenerate the LinkML API types: `./mill uiTypes` – run after changing `generator/src-js/.../LinkMlJsApi.scala`
+- Regenerate the LinkML API types: `./mill uiTypes`
 
-`ui/linkml.d.ts` is generated from the Scala facade and **committed** (so editors resolve types without a build). CI regenerates it and fails if it's stale, so re-run `./mill uiTypes` and commit the result when the facade changes.
+`ui/linkml.d.ts` is generated from the option schema and TS template and **committed** so editors resolve types without a build. Update the template alongside handwritten nongenerator facade changes. `optiongen.check` checks its freshness. npm packaging generates an isolated type artifact without reading Scala source regions.
 
 You can also work in `ui/` directly with npm:
 

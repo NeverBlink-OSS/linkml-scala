@@ -1,8 +1,7 @@
 package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
-import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode}
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.schemaview.SchemaView
 
@@ -109,8 +108,9 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
 
 object LinkMlGenerator {
 
-  /** Options for [[LinkMlGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.linkml
+  /** Options for materializing a derived LinkML schema. Derives classes and can prune unreachable
+    * elements.
     * @param pruningMode
     *   Method to use for schema definition pruning.
     * @param skipClassDerivation
@@ -119,10 +119,13 @@ object LinkMlGenerator {
     *   Output serialization format to use.
     */
   final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
+      pruningMode: _root_.eu.neverblink.linkml.generator.util.PruningMode =
+        _root_.eu.neverblink.linkml.generator.util.PruningMode.skip,
       skipClassDerivation: Boolean = false,
-      outputFormat: JsonOutputFormat = yaml,
+      outputFormat: _root_.eu.neverblink.linkml.generator.util.JsonOutputFormat =
+        _root_.eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml,
   )
+  // END GENERATED OPTIONS core.linkml
 
   // TODO LNK-48: Don't do these horrible casts
   extension (inline classDef: ClassDefinition)

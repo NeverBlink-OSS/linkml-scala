@@ -1,0 +1,677 @@
+id: https://linkml.neverblink.eu/model/generator-options
+name: generator_options
+prefixes:
+  options: https://linkml.neverblink.eu/model/generator-options#
+  optgen: https://linkml.neverblink.eu/model/generator-options/annotations/
+  linkml: https://w3id.org/linkml/
+default_prefix: options
+imports:
+  - linkml:types
+annotations:
+  optgen:catalog:
+    tag: optgen:catalog
+    value:
+      version: 1
+
+enums:
+  JsonOutputFormat:
+    description: JSON or YAML serialization.
+    annotations:
+      optgen:binding: json_format
+    permissible_values:
+      yaml:
+        description: YAML document.
+      json:
+        description: JSON document.
+  RdfFormat:
+    description: RDF serialization.
+    annotations:
+      optgen:binding: rdf_format
+    permissible_values:
+      ttl:
+        description: Turtle with prefixes and pretty printing.
+      nt:
+        description: N-Triples, one statement per line.
+  PruningKind:
+    description: Schema elements retained during generation.
+    annotations:
+      optgen:binding: pruning_kind
+    permissible_values:
+      tree_root:
+        description: remove all elements unreachable from the tree_root class.
+      schema:
+        description: remove all elements unreachable from any of the classes defined in the root schema.
+      skip:
+        description: do not remove unused elements.
+
+# CLI descriptions are complete help text. Update default wording when defaults change.
+classes:
+  PruningChoice:
+    description: Pruning mode and optional tree-root override.
+    annotations:
+      optgen:binding: pruning
+    attributes:
+      mode:
+        range: PruningKind
+        required: true
+        rank: 1
+        description: Which unused elements (classes, types, enums) to remove.
+      treeRoot:
+        range: string
+        required: false
+        rank: 2
+        description: Tree root class name to use instead of the schema-defined tree_root.
+    rules:
+      - preconditions:
+          slot_conditions:
+            mode:
+              equals_string_in: [skip, schema]
+        postconditions:
+          slot_conditions:
+            treeRoot:
+              value_presence: ABSENT
+
+  JsonSchemaOptions:
+    description: Options for generating JSON Schema.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: json_schema
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - selector: open
+                  name: open
+                  description: >-
+                    Whether the JSON Schema should allow `additionalProperties` or not.
+                - selector: treeRoot
+                  name: treeRootOverride
+                  description: >-
+                    Override for the LinkML `tree_root` class which will be at the root of the
+                    JSON Schema.
+              omitted: [treeRootInlineType, indentationStep, metadataLanguage, includeNull]
+            cli:
+              parameters:
+                - selector: open
+                  name: open
+                  description: >-
+                    Whether the generated JSON Schema should allow additionalProperties for classes.
+                    Default: false
+                - selector: treeRoot
+                  name: treeRootOverride
+                  description: >-
+                    If provided, override the schema tree_root with this class
+                - selector: treeRootInlineType
+                  name: treeRootInlineTypeOverride
+                  description: >-
+                    If provided, override the tree_root class' tree_root_as extension. One of:
+                    'plain', 'optional', 'list', 'compact_dict', 'simple_dict'. If no extension or
+                    override is provided, the default behavior is 'plain'.See the documentation for
+                    more information.
+                - selector: includeNull
+                  name: includeNull
+                  description: >-
+                    Allow null values for optional slots. Default: false
+              omitted: [indentationStep, metadataLanguage]
+    attributes:
+      open:
+        range: boolean
+        required: true
+        rank: 1
+        ifabsent: 'False'
+        description: >-
+          Whether the generated JSON Schema should allow `additionalProperties` for classes.
+      treeRoot:
+        range: string
+        required: false
+        rank: 2
+        description: >-
+          If defined, override the schema `tree_root` class with the one provided.
+      treeRootInlineType:
+        range: string
+        required: false
+        rank: 3
+        description: >-
+          If defined, override the `tree_root_as` extension of the tree root class with the one
+          provided. One of `plain`, `optional`, `list`, `compact_dict`, `simple_dict`.
+      indentationStep:
+        range: integer
+        required: true
+        rank: 4
+        ifabsent: int(2)
+        description: >-
+          Number of spaces in pretty print indentation of the serialized JSON Schema.
+      metadataLanguage:
+        range: string
+        required: true
+        rank: 5
+        ifabsent: string(en)
+        description: >-
+          Which language to use for metadata fields (description, title) in the generated JSON
+          Schema.
+      includeNull:
+        range: boolean
+        required: true
+        rank: 6
+        ifabsent: 'False'
+        description: >-
+          Allows null values for optional slots and compact dictionary entries without required
+          content beyond the key.
+
+  ShaclOptions:
+    description: Options for generating SHACL shapes.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: shacl
+          scala_parent: rdf_options
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - selector: open
+                  name: open
+                  description: >-
+                    Whether the SHACL shapes should be open (`_:b sh:closed false .`, allowing
+                    additional properties).
+                - {selector: onlyClassesFromRootSchema, name: onlyClassesFromRootSchema}
+                - selector: format
+                  name: format
+                  description: >-
+                    RDF serialization format.
+              omitted: []
+            cli:
+              parameters:
+                - selector: open
+                  name: open
+                  description: >-
+                    Whether the generated SHACL should allow additional properties for classes.
+                    Default: false
+                - selector: onlyClassesFromRootSchema
+                  name: onlyClassesFromRootSchema
+                  description: >-
+                    Whether to include only classes from the root schema. This is useful if you
+                    intend to generate SHACL shapes for each schema file separately, and you don't
+                    need the imported classes to be included in the generated SHACL shapes. Default:
+                    false
+                - selector: format
+                  name: format
+                  description: >-
+                    RDF serialization format: 'ttl' (Turtle – prefixed and pretty-printed, the
+                    default) or 'nt' (N-Triples – one statement per line). Default: ttl
+              omitted: []
+    attributes:
+      open:
+        range: boolean
+        required: true
+        rank: 1
+        ifabsent: 'False'
+        description: >-
+          Whether the generated shapes should be open, allowing properties the schema does not
+          mention.
+      onlyClassesFromRootSchema:
+        range: boolean
+        required: true
+        rank: 2
+        ifabsent: 'False'
+        description: >-
+          Whether to include only classes from the root schema. This is useful if you intend to
+          generate SHACL shapes for each schema file separately, and you don't need the imported
+          classes to be included in the generated SHACL shapes.
+      format:
+        range: RdfFormat
+        required: true
+        rank: 3
+        ifabsent: RdfFormat(ttl)
+        description: >-
+          Which RDF serialization to write: `ttl` for Turtle, which is prefixed and
+          pretty-printed, or `nt` for N-Triples.
+
+  RdfsOptions:
+    description: Options for generating RDF schema.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: rdfs
+          scala_parent: rdf_options
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - {selector: onlyClassesFromRootSchema, name: onlyClassesFromRootSchema}
+                - selector: format
+                  name: format
+                  description: >-
+                    RDF serialization format.
+              omitted: []
+            cli:
+              parameters:
+                - selector: onlyClassesFromRootSchema
+                  name: onlyClassesFromRootSchema
+                  description: >-
+                    Whether to include only classes from the root schema. This is useful if you
+                    intend to generate RDFS for each schema file separately, and you don't need the
+                    imported classes to be included in the RDFS. Default: false
+                - selector: format
+                  name: format
+                  description: >-
+                    RDF serialization format: 'ttl' (Turtle – prefixed and pretty-printed, the
+                    default) or 'nt' (N-Triples – one statement per line). Default: ttl
+              omitted: []
+    attributes:
+      onlyClassesFromRootSchema:
+        range: boolean
+        required: true
+        rank: 1
+        ifabsent: 'False'
+        description: >-
+          Whether to include only classes and enums from the root schema. This is useful if you
+          intend to generate RDFS for each schema file separately, and you don't need the imported
+          classes to be included.
+      format:
+        range: RdfFormat
+        required: true
+        rank: 2
+        ifabsent: RdfFormat(ttl)
+        description: >-
+          Which RDF serialization to write: `ttl` for Turtle, which is prefixed and
+          pretty-printed, or `nt` for N-Triples.
+
+  LinkMlOptions:
+    description: >-
+      Options for materializing a derived LinkML schema. Derives classes and can prune unreachable
+      elements.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: linkml
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              defaults: {pruningMode: {mode: tree_root}}
+              parameters:
+                - selector: pruningMode.mode
+                  name: pruningMode
+                  description: >-
+                    Pruning mode to use for removing unused elements (classes, types, enums).
+                - {selector: skipClassDerivation, name: skipDerivation}
+                - {selector: pruningMode.treeRoot, name: treeRoot}
+                - {selector: outputFormat, name: outFormat}
+              omitted: []
+            cli:
+              defaults: {pruningMode: {mode: skip}}
+              parameters:
+                - selector: skipClassDerivation
+                  name: skipDerivation
+                  description: >-
+                    Whether to skip the class derivation. Default: false.
+                - {selector: pruningMode, name: pruning, adapter: pruning_options}
+                - selector: outputFormat
+                  name: format
+                  description: >-
+                    Serialization format: 'yaml' or 'json'. Default: yaml
+              omitted: []
+    attributes:
+      pruningMode:
+        range: PruningChoice
+        required: true
+        inlined: true
+        rank: 1
+        description: >-
+          Method to use for schema definition pruning.
+        annotations:
+          optgen:default:
+            tag: optgen:default
+            value: {mode: skip}
+      skipClassDerivation:
+        range: boolean
+        required: true
+        rank: 2
+        ifabsent: 'False'
+        description: >-
+          If true, will not derive classes and instead copy them as-is.
+      outputFormat:
+        range: JsonOutputFormat
+        required: true
+        rank: 3
+        ifabsent: JsonOutputFormat(yaml)
+        description: >-
+          Output serialization format to use.
+
+  FrictionlessOptions:
+    description: >-
+      Options for generating a Frictionless Data Package. Each selected class becomes a CSV table,
+      described by its own Table Schema, and references between classes can become foreign keys
+      between the tables.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: frictionless
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - selector: pruningMode.mode
+                  name: pruningMode
+                  description: >-
+                    Pruning mode to use for choosing which classes become tables.
+                - {selector: pruningMode.treeRoot, name: treeRoot}
+                - {selector: skipClassesWithoutIdentifier, name: skipClassesWithoutIdentifier}
+              omitted: [metadataLanguage]
+            cli:
+              defaults: {pruningMode: {mode: skip}}
+              parameters:
+                - {selector: pruningMode, name: pruning, adapter: pruning_options}
+                - selector: skipClassesWithoutIdentifier
+                  name: skipClassesWithoutIdentifier
+                  description: >-
+                    Whether to skip classes that have no identifier slot. Such a table gets no
+                    primary key and nothing can reference it, so it is often not useful. Default:
+                    false
+              omitted: [metadataLanguage]
+    attributes:
+      pruningMode:
+        range: PruningChoice
+        required: true
+        inlined: true
+        rank: 1
+        description: >-
+          Which classes to turn into tables.
+        annotations:
+          optgen:default:
+            tag: optgen:default
+            value: {mode: skip}
+      skipClassesWithoutIdentifier:
+        range: boolean
+        required: true
+        rank: 2
+        ifabsent: 'False'
+        description: >-
+          Whether to skip classes that have no identifier slot. Such a table gets no primary key
+          and nothing can reference it, so it is often not useful.
+      metadataLanguage:
+        range: string
+        required: true
+        rank: 3
+        ifabsent: string(en)
+        description: >-
+          Which language to use for metadata fields (description) in the generated Table Schema.
+
+  GraphQlOptions:
+    description: >-
+      Options for generating a GraphQL schema. Only types/interfaces/scalar/enums, queries must be
+      provided for a specific implementation.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: graphql
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              defaults: {pruningMode: {mode: tree_root}}
+              parameters:
+                - selector: pruningMode.mode
+                  name: pruningMode
+                  description: >-
+                    Pruning mode to use for removing unused elements (classes, types, enums).
+                - {selector: pruningMode.treeRoot, name: treeRoot}
+              omitted: [metadataLanguage]
+            cli:
+              defaults: {pruningMode: {mode: skip}}
+              parameters:
+                - {selector: pruningMode, name: pruning, adapter: pruning_options}
+              omitted: [metadataLanguage]
+    attributes:
+      pruningMode:
+        range: PruningChoice
+        required: true
+        inlined: true
+        rank: 1
+        description: >-
+          How to prune the generated definitions. Schema mode retains elements reachable from
+          classes defined in the root schema to omit unnecessary linkml:types scalar definitions.
+        annotations:
+          optgen:default:
+            tag: optgen:default
+            value: {mode: schema}
+      metadataLanguage:
+        range: string
+        required: true
+        rank: 2
+        ifabsent: string(en)
+        description: >-
+          Which language to use for metadata fields (description etc.) in the output GraphQL.
+
+  ErDiagramOptions:
+    description: >-
+      Options for generating Mermaid entity relationship diagrams. Classes become entities, type-
+      and enum-ranged slots become their attributes, and class-ranged slots become relationship
+      lines.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: er_diagram
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              defaults: {pruningMode: {mode: tree_root}}
+              parameters:
+                - selector: pruningMode.mode
+                  name: pruningMode
+                  description: >-
+                    Pruning mode to use for removing unused elements (classes, types, enums).
+                - {selector: pruningMode.treeRoot, name: treeRoot}
+                - selector: optionalMarker
+                  name: optionalMarker
+                  description: >-
+                    Whether to mark optional attributes with a trailing '?' on their type. Mermaid
+                    understands this from version 11.16 onwards, older renderers throw an error
+                    instead.
+              omitted: []
+            cli:
+              defaults: {pruningMode: {mode: skip}}
+              parameters:
+                - {selector: pruningMode, name: pruning, adapter: pruning_options}
+                - selector: optionalMarker
+                  name: optionalMarker
+                  description: >-
+                    Whether to mark optional attributes with a trailing '?' on their type. Mermaid
+                    understands this from version 11.16 onwards, and older renderers reject the
+                    whole diagram rather than just the marker, so pass --optional-marker=false when
+                    the diagram is headed somewhere that pins an older Mermaid. Default value: true
+              omitted: []
+    attributes:
+      pruningMode:
+        range: PruningChoice
+        required: true
+        inlined: true
+        rank: 1
+        description: >-
+          How to prune the generated entities. Schema mode retains classes reachable from classes
+          defined in the root schema.
+        annotations:
+          optgen:default:
+            tag: optgen:default
+            value: {mode: schema}
+      optionalMarker:
+        range: boolean
+        required: true
+        rank: 2
+        ifabsent: 'True'
+        description: >-
+          Whether to mark optional attributes with a trailing `?` on their type, which requires
+          Mermaid 11.16 or newer.
+
+  OssieOptions:
+    description: >-
+      Options for generating an Apache Ossie ontology. Classes become entity types, enums and
+      named types become value types, and slots become the relationships grouped under the concept
+      that plays their first role.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: ossie
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - selector: pruningMode.mode
+                  name: pruningMode
+                  description: >-
+                    Pruning mode to use for choosing which elements become concepts.
+                - {selector: pruningMode.treeRoot, name: treeRoot}
+                - {selector: outputFormat, name: outFormat}
+              omitted: [metadataLanguage]
+            cli:
+              defaults: {pruningMode: {mode: skip}}
+              parameters:
+                - {selector: pruningMode, name: pruning, adapter: pruning_options}
+                - selector: outputFormat
+                  name: format
+                  description: >-
+                    Serialization format: 'yaml' or 'json'. Default: yaml
+              omitted: [metadataLanguage]
+    attributes:
+      pruningMode:
+        range: PruningChoice
+        required: true
+        inlined: true
+        rank: 1
+        description: >-
+          Which elements become concepts.
+        annotations:
+          optgen:default:
+            tag: optgen:default
+            value: {mode: skip}
+      outputFormat:
+        range: JsonOutputFormat
+        required: true
+        rank: 2
+        ifabsent: JsonOutputFormat(yaml)
+        description: >-
+          Output serialization format to use.
+      metadataLanguage:
+        range: string
+        required: true
+        rank: 3
+        ifabsent: string(en)
+        description: >-
+          Which language to use for metadata fields (description) in the generated ontology.
+
+  ScalaOptions:
+    description: >-
+      Options for generating Scala classes. This is primarily used for the metamodel.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: scala
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - selector: package
+                  description: >-
+                    Package to generate the classes in
+                  name: package
+                  ts_name: packageName
+                  default: {kind: none}
+              omitted: [generateEmitPrefixes, metadataLanguage]
+            cli:
+              parameters:
+                - selector: package
+                  name: package
+                  description: >-
+                    Package name for generated Scala classes. Default value:
+                    eu.neverblink.linkml.metamodel
+                - selector: generateEmitPrefixes
+                  name: generateEmitPrefixes
+                  description: >-
+                    Whether to generate a 'Prefixes' object with the model's emit_prefixes inside.
+                    Default value: true
+              omitted: [metadataLanguage]
+    attributes:
+      package:
+        range: string
+        required: true
+        rank: 1
+        ifabsent: string(eu.neverblink.linkml.metamodel)
+        description: >-
+          Scala package to generate the classes in.
+      generateEmitPrefixes:
+        range: boolean
+        required: true
+        rank: 2
+        ifabsent: 'True'
+        description: >-
+          Whether to generate a `Prefixes` object holding the model's `emit_prefixes`.
+      metadataLanguage:
+        range: string
+        required: true
+        rank: 3
+        ifabsent: string(en)
+        description: >-
+          Which language to use for metadata fields (description etc.) in ScalaDocs.
+
+  TranslationOptions:
+    description: >-
+      Options for generating JSON dictionaries that translate the LinkML name to specific
+      frameworks. This is useful when the framework symbols are significant and must be known,
+      like when constructing a query that is meant to be executed against a database conformant
+      to a LinkML schema.
+    annotations:
+      optgen:generator:
+        tag: optgen:generator
+        value:
+          id: translation
+          interfaces:
+            native: {preset: core}
+            python: {preset: core_python}
+            js:
+              parameters:
+                - selector: to
+                  name: target
+                  default: {kind: none}
+                  description: >-
+                    Target framework to generate translations for. One of "base", "uri", "scala",
+                    "graphql", "frictionless", "ossie", or "erdiagram".
+              omitted: [indentationStep]
+            cli:
+              parameters:
+                - selector: to
+                  name: target
+                  adapter: translation_targets
+                  description: >-
+                    Framework name to generate a translation dict for.
+              omitted: [indentationStep]
+    attributes:
+      to:
+        range: string
+        required: true
+        rank: 1
+        ifabsent: string(base)
+        description: Framework whose names appear in the translation dictionary.
+      indentationStep:
+        range: integer
+        required: true
+        rank: 2
+        ifabsent: int(2)
+        description: Number of spaces per JSON indentation level.
