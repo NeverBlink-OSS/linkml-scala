@@ -6,7 +6,6 @@
 //| - com.lihaoyi::mill-contrib-scoverage:$MILL_VERSION
 //| - com.lihaoyi::mill-contrib-jmh:$MILL_VERSION
 //| - com.carlosedp::mill-aliases::1.1.0
-//| - org.scalameta::scalameta:4.13.4
 //| - com.lihaoyi::mill-contrib-buildinfo:$MILL_VERSION
 //| bspScriptIgnore: [".idea/**"]
 //| mill-jvm-opts: ["-Xss256m", "-Xmx10G"]
@@ -37,6 +36,15 @@ val scala = "3.9.0"
 val scalaJS = "1.22.0"
 val scalaNative = "0.5.12"
 val rdf4j = "6.1.0"
+
+val projectScalacOptions = Seq(
+  "-release",
+  "17",
+  "-Wunused:all",
+  "-Xcheck-macros",
+  "-explain",
+  "-opt", // the scala 3 optimizer for libraries
+)
 
 require(
   scalaNative == "0.5.12",
@@ -103,8 +111,7 @@ def uiBundle(args: String*) = Task.Command(exclusive = true) {
   buildUiBundle()
 }
 
-/** Regenerate ui/linkml.d.ts (the LinkML API types the UI is checked against) from the Scala
-  * facade. Run after changing LinkMlJsApi.scala.
+/** Regenerate ui/linkml.d.ts from the option schemas and TypeScript scaffold.
   */
 def uiTypes(args: String*) = Task.Command(exclusive = true) {
   os.copy.over(generator.js.tsDefs().path, mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts")
@@ -391,7 +398,8 @@ object generator extends Module, NativeOptional {
 
       override def javaHome = build.jdk25.javaHome
 
-      override def moduleDeps = super.moduleDeps ++ Seq(build.tests.jvm, build.cli.jvm)
+      override def moduleDeps =
+        super.moduleDeps ++ Seq(build.tests.jvm, build.cli.jvm, build.optiongen.jvm)
 
       override def mvnDeps = super.mvnDeps() ++ Seq(
         mvn"org.eclipse.rdf4j:rdf4j-shacl:$rdf4j",
@@ -451,6 +459,7 @@ object generator extends Module, NativeOptional {
       // ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`, and
       // OssieIntegrationSpec at the checkout prepared by `ossieRepo`.
       override def forkEnv = super.forkEnv() ++ Map(
+        "OPTION_SCHEMA" -> build.optiongen.schema().path.toString,
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
         "LINKML_OSSIE_REPO" -> ossieDir.toString,
@@ -467,16 +476,7 @@ object generator extends Module, NativeOptional {
     // README and the TS usage sample; the .d.ts itself is generated.
     def npmMetadata = Task.Source(mill.api.BuildCtx.workspaceRoot / "generator" / "npm")
 
-    def jsApiSource = Task.Source(
-      mill.api.BuildCtx.workspaceRoot /
-        "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
-    )
-
-    def tsDefs = Task {
-      val out = Task.dest / "index.d.ts"
-      os.write(out, TsDefsGen(os.read(jsApiSource().path)))
-      PathRef(out)
-    }
+    def tsDefs = Task { optiongen.tsDefs() }
 
     /** Assemble the npm-publishable `@neverblink/linkml` package. */
     def npmPackage = Task {
@@ -503,8 +503,34 @@ object generator extends Module, NativeOptional {
       val pkg = npmPackage().path
       val script = npmMetadata().path / "verify-package.mjs"
       val usageSample = npmMetadata().path / "usage.test.ts"
+      val schemaText = os.read(optiongen.schema().path)
+      val start = schemaText.indexOf("  ShaclOptions:\n")
+      val end = schemaText.indexOf("            cli:\n", start)
+      require(start >= 0 && end > start, "Missing SHACL JS fixture")
+      val jsProfile = schemaText.substring(start, end)
+      val format = "                  name: format\n"
+      require(jsProfile.sliding(format.length).count(_ == format) == 1)
+      val orderingSchema = Task.dest / "ordering.yaml"
+      val orderingTypes = Task.dest / "ordering.d.ts"
+      os.write(
+        orderingSchema,
+        schemaText.take(start) + jsProfile.replace(
+          format,
+          format + "                  default: {kind: none}\n",
+        ) + schemaText.drop(end),
+      )
+      optiongen.jvm.runner().run(
+        mainClass = "eu.neverblink.linkml.optiongen.Main",
+        args = Seq(
+          "ts", "--root", mill.api.BuildCtx.workspaceRoot.toString,
+          "--schema", orderingSchema.toString,
+          "--template", optiongen.tsTemplate().path.toString,
+          "--output", orderingTypes.toString,
+        ),
+        workingDir = mill.api.BuildCtx.workspaceRoot,
+      )
       os.call(
-        ("node", script.toString, pkg.toString, usageSample.toString),
+        ("node", script.toString, pkg.toString, usageSample.toString, orderingTypes.toString),
         stdout = os.Inherit,
         stderr = os.Inherit,
       )
@@ -542,6 +568,118 @@ object generator extends Module, NativeOptional {
 
     // Same fastparse macro bug as in SchemaViewModule
     override def scalacOptions = super.scalacOptions().filterNot(_ == "-Xcheck-macros")
+  }
+}
+
+/** Development-only option schema reader and generators. */
+object optiongen extends Module {
+  private def root = mill.api.BuildCtx.workspaceRoot
+
+  def schema = Task.Source(mill.api.BuildCtx.workspaceRoot / "model" / "generator-options.yaml")
+
+  def formatterConfig = Task.Source(root / ".scalafmt.conf")
+
+  def coreHosts = Task.Source(root / "generator" / "src")
+
+  def bindingHosts = Task.Sources(root / "python" / "linkml_scala", root / "nativelib" / "src")
+
+  def jsHosts = Task.Sources(
+    Seq(root / "generator" / "src-js", root / "ui" / "linkml.d.ts").filter(os.exists)*,
+  )
+
+  def tsTemplate = Task.Source(root / "generator" / "npm" / "api.d.ts.template")
+
+  def cliHosts = Task.Source(root / "cli" / "src")
+
+  def docsHosts = Task.Sources(
+    Seq(
+      root / "docs" / "generator-options.md",
+      root / "docs" / "python_bindings.md",
+      root / "generator" / "npm" / "README.md",
+    ).filter(os.exists)*,
+  )
+
+  // Reload transitive schema imports on each generation. Tool compilation stays cached.
+  def tsDefs = Task.Uncached {
+    val output = Task.dest / "index.d.ts"
+    jvm.runner().run(
+      mainClass = "eu.neverblink.linkml.optiongen.Main",
+      args = Seq(
+        "ts", "--root", root.toString, "--schema", schema().path.toString,
+        "--template", tsTemplate().path.toString, "--output", output.toString,
+      ),
+      workingDir = root,
+    )
+    PathRef(output)
+  }
+
+  def render = Task.Uncached {
+    val _ = coreHosts()
+    val _ = bindingHosts()
+    val _ = jsHosts()
+    val _ = tsTemplate()
+    val _ = cliHosts()
+    val _ = docsHosts()
+    val bundle = Task.dest / "bundle"
+    jvm.runner().run(
+      mainClass = "eu.neverblink.linkml.optiongen.Main",
+      args = Seq(
+        "render", "--root", root.toString, "--schema", schema().path.toString,
+        "--config", formatterConfig().path.toString, "--output", bundle.toString,
+      ),
+      workingDir = root,
+    )
+    PathRef(bundle)
+  }
+
+  def renderBindings = Task.Uncached {
+    val _ = bindingHosts()
+    val bundle = Task.dest / "bundle"
+    jvm.runner().run(
+      mainClass = "eu.neverblink.linkml.optiongen.Main",
+      args = Seq(
+        "render", "--root", root.toString, "--schema", schema().path.toString,
+        "--config", formatterConfig().path.toString, "--output", bundle.toString,
+        "--group", "bindings",
+      ),
+      workingDir = root,
+    )
+    PathRef(bundle)
+  }
+
+  def check(args: String*) = Task.Command(exclusive = true) {
+    jvm.runner().run(
+      mainClass = "eu.neverblink.linkml.optiongen.Main",
+      args = Seq("check", "--root", root.toString, "--bundle", render().path.toString) ++ args,
+      workingDir = root,
+    )
+  }
+
+  def regenerate(args: String*) = Task.Command(exclusive = true) {
+    jvm.runner().run(
+      mainClass = "eu.neverblink.linkml.optiongen.Main",
+      args = Seq("apply", "--root", root.toString, "--bundle", render().path.toString) ++ args,
+      workingDir = root,
+    )
+  }
+
+  object jvm extends ScalaModule, PlatformScalaModule, ScalafixModule, ScalafmtModule {
+    def scalaVersion = scala
+
+    def jvmVersion = "17"
+
+    def scalacOptions = projectScalacOptions
+
+    def moduleDeps = Seq(build.schemaview.jvm)
+
+    def mvnDeps = Seq(mvn"org.scalameta:scalafmt-dynamic_2.13:3.11.5")
+
+    object test extends ScalaTests, CommonTestModule {
+      override def forkEnv = super.forkEnv() ++ Map(
+        "OPTION_SCHEMA" -> optiongen.schema().path.toString,
+        "PYTHON" -> Python.executable,
+      )
+    }
   }
 }
 
@@ -587,8 +725,7 @@ object cli extends Module {
   }
 }
 
-/** Regenerate the C and Python bindings from mill-build/src/Entrypoints.scala and each generator's
-  * `Options` case class, then format the result. Run after adding a generator or an option.
+/** Regenerate C and Python bindings from model/generator-options.yaml, then lint and format them.
   *
   * Needs `LINKML_NATIVE=1`: the C bindings are Scala Native sources, so formatting them means
   * resolving that module.
@@ -601,15 +738,13 @@ def bindings(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
   else AliasesModule.run(ev, "regenerateBindings")
 }
 
-/** Writes the generated sources, unformatted. Use `bindings`, which formats them afterwards. */
+/** Regenerates Python and C bindings from the option schemas. */
 def generateBindings(args: String*) = Task.Command(exclusive = true) {
   val root = mill.api.BuildCtx.workspaceRoot
-  def read(path: String): String = os.read(root / os.RelPath(path))
-  os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
-  os.write.over(
-    root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
-      "LinkMlCGenerators.scala",
-    CApiGen(read),
+  optiongen.jvm.runner().run(
+    mainClass = "eu.neverblink.linkml.optiongen.Main",
+    args = Seq("apply", "--root", root.toString, "--bundle", optiongen.renderBindings().path.toString) ++ args,
+    workingDir = root,
   )
 }
 
@@ -939,14 +1074,7 @@ trait CommonModule
 
   final def scalaVersion = scala
 
-  def scalacOptions = Seq(
-    "-release",
-    "17",
-    "-Wunused:all",
-    "-Xcheck-macros",
-    "-explain",
-    "-opt", // the scala 3 optimizer for libraries
-  )
+  def scalacOptions = projectScalacOptions
 }
 
 trait CommonTestModule extends ScalaModule, TestModule.ScalaTest, ScalafixModule, ScalafmtModule {

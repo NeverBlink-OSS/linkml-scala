@@ -268,8 +268,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
 
 object JsonSchemaGenerator {
 
-  /** Options for [[JsonSchemaGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.json_schema
+  /** Options for generating JSON Schema.
     * @param open
     *   Whether the generated JSON Schema should allow `additionalProperties` for classes.
     * @param treeRoot
@@ -283,7 +283,7 @@ object JsonSchemaGenerator {
     *   Which language to use for metadata fields (description, title) in the generated JSON Schema.
     * @param includeNull
     *   Allows null values for optional slots and compact dictionary entries without required
-    *   content beyond the key. Default: false
+    *   content beyond the key.
     */
   final case class Options(
       open: Boolean = false,
@@ -293,6 +293,7 @@ object JsonSchemaGenerator {
       metadataLanguage: String = "en",
       includeNull: Boolean = false,
   )
+  // END GENERATED OPTIONS core.json_schema
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
     * Provides formats for date-times and URI/CURIE.

@@ -30,15 +30,29 @@ const rdfsFull: string = LinkML.rdfs(view, false, "ttl");
 const linkml: string = LinkML.linkml(view);
 const linkmlFull: string = LinkML.linkml(view, "skip", true, "Person", "json");
 const scala: Record<string, string> = LinkML.scala(view, "com.example");
+const graphQl: string = LinkML.graphQl(view);
+const graphQlFull: string = LinkML.graphQl(view, "schema", "Person");
+const translation: string = LinkML.translation(view, "erdiagram");
 const frictionless: Record<string, string> = LinkML.frictionless(view);
 const frictionlessRoot: Record<string, string> = LinkML.frictionless(view, "treeRoot", "Person", true);
 const erDiagram: string = LinkML.erDiagram(view);
 const erDiagramFull: string = LinkML.erDiagram(view, "skip", "Person", false);
 const ossie: string = LinkML.ossie(view);
 const ossieFull: string = LinkML.ossie(view, "treeRoot", "Person", "json");
+const fromOssie: string = LinkML.fromOssie(ossie);
+const fromOssieFull: string = LinkML.fromOssie(ossie, "https://example.org/s", "json");
 const lint: any = LinkML.lint(view);
 const lintIssues: unknown[] = lint.issues;
 const lintNoMessages: any = LinkML.lint(view, false);
+
+// @ts-expect-error Scala requires an explicit package.
+LinkML.scala(view);
+// @ts-expect-error Translation requires an explicit target.
+LinkML.translation(view);
+// @ts-expect-error A document string is not a loaded schema handle.
+LinkML.jsonSchema(schema);
+// @ts-expect-error Optional markers are Boolean, not string options.
+LinkML.erDiagram(view, "skip", undefined, "false");
 
 void [
   build,
@@ -53,12 +67,17 @@ void [
   linkml,
   linkmlFull,
   scala,
+  graphQl,
+  graphQlFull,
+  translation,
   frictionless,
   frictionlessRoot,
   erDiagram,
   erDiagramFull,
   ossie,
   ossieFull,
+  fromOssie,
+  fromOssieFull,
   lint,
   lintIssues,
   lintNoMessages,

@@ -20,9 +20,11 @@ import textwrap
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import linkml_scala
 from linkml_scala import LinkMlError, SchemaLoadError
+from linkml_scala._runtime import _options
 
 REPO_ROOT = Path(os.environ.get("LINKML_SCALA_REPO") or Path(__file__).resolve().parents[1])
 
@@ -379,6 +381,32 @@ class GeneratorTest(unittest.TestCase):
             self.assertIn("Orphan", loaded.linkml(pruning_mode="skip"))
             self.assertNotIn("Orphan", loaded.linkml(pruning_mode="treeRoot"))
 
+    def test_pruning_defaults_and_root_payload(self):
+        fixture = REPO_ROOT / "tests/resources/models/pruning/model.yaml"
+        with linkml_scala.load_file(fixture) as loaded:
+            for name, defaults in (
+                ("linkml", (True, True)),
+                ("graphql", (True, False)),
+                ("er_diagram", (True, False)),
+                ("frictionless", (True, True)),
+                ("ossie", (True, True)),
+            ):
+                generate = getattr(loaded, name)
+                markers = (
+                    ("schemas/not_tree_root_class.json", "schemas/unused_class.json")
+                    if name == "frictionless"
+                    else ("NotTreeRootClass", "UnusedClass")
+                )
+                for options, expected in (
+                    ({}, defaults),
+                    ({"pruning_mode": "tree-root", "tree_root": "UnusedClass"}, (False, True)),
+                ):
+                    with self.subTest(generator=name, options=options):
+                        output = generate(**options)
+                        self.assertEqual(expected, tuple(marker in output for marker in markers))
+                with self.subTest(generator=name), self.assertRaises(ValueError):
+                    generate(pruning_mode="skip", tree_root="UnusedClass")
+
     def test_frictionless(self):
         files = self.schema.frictionless()
         self.assertIn("datapackage.json", files)
@@ -444,6 +472,23 @@ class GeneratorTest(unittest.TestCase):
                 "linkml_json_schema", self.schema._handle, {"opne": True}
             )
         self.assertIn("opne", str(caught.exception))
+
+    def test_option_encoding_preserves_explicit_falsy_values(self):
+        self.assertEqual(
+            {"open": False, "indentationStep": 0, "metadataLanguage": ""},
+            json.loads(_options({"open": False, "indentationStep": 0, "metadataLanguage": "", "treeRoot": None})),
+        )
+
+    def test_native_options_defaults_and_invalid_values(self):
+        runtime = linkml_scala.runtime()
+        baseline = self.schema.json_schema()
+        for raw in (None, b"", b"{}"):
+            with self.subTest(raw=raw), patch("linkml_scala._runtime._options", return_value=raw):
+                self.assertEqual(baseline, runtime.document("linkml_json_schema", self.schema._handle))
+        for raw in (b"null", b'{"open":"false"}', b'{"indentationStep":true}'):
+            with self.subTest(raw=raw), patch("linkml_scala._runtime._options", return_value=raw):
+                with self.assertRaisesRegex(LinkMlError, "malformed options"):
+                    runtime.document("linkml_json_schema", self.schema._handle)
 
 
 class LintTest(unittest.TestCase):

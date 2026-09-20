@@ -1,8 +1,7 @@
 package eu.neverblink.linkml.generator.erdiagram
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{CharSink, PruningMode, StringSink}
+import eu.neverblink.linkml.generator.util.{CharSink, StringSink}
 import eu.neverblink.linkml.schemaview.*
 
 /** Generator for
@@ -372,18 +371,21 @@ private[erdiagram] object ErName {
 
 object ErDiagramGenerator {
 
-  /** Options for [[ErDiagramGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.er_diagram
+  /** Options for generating Mermaid entity relationship diagrams. Classes become entities, type-
+    * and enum-ranged slots become their attributes, and class-ranged slots become relationship
+    * lines.
     * @param pruningMode
-    *   How to prune the generated entities, schemaRoot by default (classes reachable from any
-    *   element defined in the root schema).
-    *
+    *   How to prune the generated entities. Schema mode retains classes reachable from classes
+    *   defined in the root schema.
     * @param optionalMarker
     *   Whether to mark optional attributes with a trailing `?` on their type, which requires
     *   Mermaid 11.16 or newer.
     */
   final case class Options(
-      pruningMode: PruningMode = schemaRoot,
+      pruningMode: _root_.eu.neverblink.linkml.generator.util.PruningMode =
+        _root_.eu.neverblink.linkml.generator.util.PruningMode.schemaRoot,
       optionalMarker: Boolean = true,
   )
+  // END GENERATED OPTIONS core.er_diagram
 }

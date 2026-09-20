@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.generator.ossie.expression.{
   Constraints,
   Expression,
@@ -9,7 +8,7 @@ import eu.neverblink.linkml.generator.ossie.expression.{
   Ref,
   Verbalization,
 }
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.Extensible
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.*
@@ -262,8 +261,10 @@ object OssieGenerator {
   /** A relationship, plus the bits of its slot that the containing concept needs. */
   private final case class Rel(relationship: Relationship, required: Boolean, slotName: String)
 
-  /** Options for [[OssieGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.ossie
+  /** Options for generating an Apache Ossie ontology. Classes become entity types, enums and named
+    * types become value types, and slots become the relationships grouped under the concept that
+    * plays their first role.
     * @param pruningMode
     *   Which elements become concepts.
     * @param outputFormat
@@ -272,10 +273,13 @@ object OssieGenerator {
     *   Which language to use for metadata fields (description) in the generated ontology.
     */
   final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
-      outputFormat: JsonOutputFormat = yaml,
+      pruningMode: _root_.eu.neverblink.linkml.generator.util.PruningMode =
+        _root_.eu.neverblink.linkml.generator.util.PruningMode.skip,
+      outputFormat: _root_.eu.neverblink.linkml.generator.util.JsonOutputFormat =
+        _root_.eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml,
       metadataLanguage: String = "en",
   )
+  // END GENERATED OPTIONS core.ossie
 
   /** The Ossie built-in concept standing in for a LinkML type's base. */
   private def builtInFor(rt: RuntimeType): String = rt match {

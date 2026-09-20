@@ -3,7 +3,6 @@ package eu.neverblink.linkml.generator.graphql
 import eu.neverblink
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
@@ -169,18 +168,21 @@ class GraphQlGenerator(using sv: SchemaView)
 
 object GraphQlGenerator extends GraphQlRenamer {
 
-  /** Options for [[GraphQlGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.graphql
+  /** Options for generating a GraphQL schema. Only types/interfaces/scalar/enums, queries must be
+    * provided for a specific implementation.
     * @param pruningMode
-    *   How to prune the generated definitions, schemaRoot by default (elements reachable from any
-    *   root schema defined elements) to omit unnecessary linkml:types scalar definitions.
+    *   How to prune the generated definitions. Schema mode retains elements reachable from classes
+    *   defined in the root schema to omit unnecessary linkml:types scalar definitions.
     * @param metadataLanguage
     *   Which language to use for metadata fields (description etc.) in the output GraphQL.
     */
   final case class Options(
-      pruningMode: PruningMode = schemaRoot,
+      pruningMode: _root_.eu.neverblink.linkml.generator.util.PruningMode =
+        _root_.eu.neverblink.linkml.generator.util.PruningMode.schemaRoot,
       metadataLanguage: String = "en",
   )
+  // END GENERATED OPTIONS core.graphql
 
   /** Remap a runtime type to a GraphQL built-in scalar, if possible.
     */

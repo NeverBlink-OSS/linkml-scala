@@ -283,22 +283,24 @@ object ShaclGenerator {
   /** The implied cardinality of a `required` / single-valued slot. */
   private val one: Option[Int] = new Some(1)
 
-  /** Options for [[ShaclGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.shacl
+  /** Options for generating SHACL shapes.
     * @param open
-    *   Whether the generated shapes should be open, allowing properties the schema does not mention
-    *   (turned off by default).
+    *   Whether the generated shapes should be open, allowing properties the schema does not
+    *   mention.
     * @param onlyClassesFromRootSchema
-    *   Whether to include only classes from the root schema (turned off by default). This is useful
-    *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
-    *   the imported classes to be included in the generated SHACL shapes.
+    *   Whether to include only classes from the root schema. This is useful if you intend to
+    *   generate SHACL shapes for each schema file separately, and you don't need the imported
+    *   classes to be included in the generated SHACL shapes.
     * @param format
-    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
+    *   Which RDF serialization to write: `ttl` for Turtle, which is prefixed and pretty-printed, or
+    *   `nt` for N-Triples.
     */
   final case class Options(
       open: Boolean = false,
       onlyClassesFromRootSchema: Boolean = false,
-      format: RdfFormat = RdfFormat.ttl,
-  ) extends RdfOptions
+      format: _root_.eu.neverblink.linkml.generator.rdf.RdfFormat =
+        _root_.eu.neverblink.linkml.generator.rdf.RdfFormat.ttl,
+  ) extends _root_.eu.neverblink.linkml.generator.rdf.RdfOptions
+  // END GENERATED OPTIONS core.shacl
 }

@@ -75,19 +75,32 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 |------------------------------------------------------------------------------|--------------------------|--------------------------------------------------------------------------------|
 | `loadFromString(schema, importMap, inferMessages?)`                          | `LoadResult`             | parse from YAML text; `{ view?, report }`                                      |
 | `loadFromPath(path, importMap, inferMessages?)`                              | `LoadResult`             | parse from a path in the import map; cycle-safe for the root                   |
-| `jsonSchema(view, open?, treeRootOverride?)`                                 | `string`                 | JSON Schema                                                                    |
-| `shacl(view, open?, onlyClassesFromRootSchema?, format?)`                    | `string`                 | SHACL shapes, `ttl` (default) or `nt`                                          |
-| `rdfs(view, onlyClassesFromRootSchema?, format?)`                            | `string`                 | RDFS, `ttl` (default) or `nt`                                                  |
-| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)`         | `string`                 | derived/pruned LinkML schema                                                   |
-| `scala(view, packageName)`                                                   | `Record<string, string>` | filename → generated Scala                                                     |
-| `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
-| `graphQl(view, pruningMode?, treeRoot?)`                                     | `string`                 | GraphQL                                                                        |
-| `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`                  | `string`                 | Mermaid entity relationship diagram                                            |
-| `ossie(view, pruningMode?, treeRoot?, outFormat?)`                           | `string`                 | Apache Ossie ontology, `yaml` (default) or `json`                              |
-| `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
 | `lint(view, inferMessages?)`                                                 | `object`                 | `SchemaValidationReport` (JSON)                                                |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 | `fromOssie(ontology, schemaId?, outFormat?)`                                 | `string`                 | the LinkML schema from an Apache Ossie ontology                                |
+
+<!-- BEGIN GENERATED OPTIONS docs.npm.generators -->
+
+| Function | Returns | Notes |
+| --- | --- | --- |
+| ` jsonSchema(view, open?, treeRootOverride?) ` | ` string ` | Options for generating JSON Schema. |
+ ` shacl(view, open?, onlyClassesFromRootSchema?, format?) ` | ` string ` | Options for generating SHACL shapes. |
+ ` rdfs(view, onlyClassesFromRootSchema?, format?) ` | ` string ` | Options for generating RDF schema. |
+ ` linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?) ` | ` string ` | Options for materializing a derived LinkML schema. Derives classes and can prune unreachable elements. |
+ ` frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?) ` | ` Record<string, string> ` | Options for generating a Frictionless Data Package. Each selected class becomes a CSV table, described by its own Table Schema, and references between classes can become foreign keys between the tables. |
+ ` graphQl(view, pruningMode?, treeRoot?) ` | ` string ` | Options for generating a GraphQL schema. Only types/interfaces/scalar/enums, queries must be provided for a specific implementation. |
+ ` erDiagram(view, pruningMode?, treeRoot?, optionalMarker?) ` | ` string ` | Options for generating Mermaid entity relationship diagrams. Classes become entities, type- and enum-ranged slots become their attributes, and class-ranged slots become relationship lines. |
+ ` ossie(view, pruningMode?, treeRoot?, outFormat?) ` | ` string ` | Options for generating an Apache Ossie ontology. Classes become entity types, enums and named types become value types, and slots become the relationships grouped under the concept that plays their first role. |
+ ` scala(view, packageName) ` | ` Record<string, string> ` | Options for generating Scala classes. This is primarily used for the metamodel. |
+ ` translation(view, target) ` | ` string ` | Options for generating JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema. |
+
+See the [generator option reference](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/generator-options.md)
+for defaults, CLI flags, Python keywords, and native JSON fields.
+
+<!-- END GENERATED OPTIONS docs.npm.generators -->
+
+Scala and Frictionless return maps from filenames to content. Frictionless includes
+`datapackage.json` and `schemas/*.json`.
 
 See [`index.d.ts`](./index.d.ts) for full type signatures.
 

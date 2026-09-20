@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.cli
 
+import eu.neverblink.linkml.tests.Resources
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -78,6 +79,61 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     else Map(os.sub -> os.read(path))
 
   "a generate command" when {
+    "asked for help" should {
+      "advertise each generator's public flags and choices" in {
+        val pruningFlags = Seq("--pruning-mode", "--tree-root")
+        val pruningModes = Seq("treeRoot", "schema", "skip")
+        val rdfFlags = Seq("--only-classes-from-root-schema", "--format")
+        val formats = Seq("yaml", "json")
+        val expected = Map(
+          "json-schema" -> (
+            Seq(
+              "--open",
+              "--tree-root-override",
+              "--tree-root-inline-type-override",
+              "--include-null",
+            ),
+            Seq("plain", "optional", "list", "compact_dict", "simple_dict"),
+          ),
+          "shacl" -> (Seq("--open") ++ rdfFlags, Seq("ttl", "nt")),
+          "scala" -> (Seq("--package", "--generate-emit-prefixes"), Seq.empty[String]),
+          "rdfs" -> (rdfFlags, Seq("ttl", "nt")),
+          "linkml" -> (
+            pruningFlags ++ Seq("--skip-derivation", "--format"),
+            pruningModes ++ formats,
+          ),
+          "frictionless" -> (pruningFlags :+ "--skip-classes-without-identifier", pruningModes),
+          "graphql" -> (pruningFlags, pruningModes),
+          "er-diagram" -> (pruningFlags :+ "--optional-marker", pruningModes),
+          "translation" -> (
+            Seq("--target"),
+            Seq("base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram"),
+          ),
+          "ossie" -> (pruningFlags :+ "--format", pruningModes ++ formats),
+        )
+        val guidance = Map(
+          "json-schema" -> Seq("the default behavior is 'plain'"),
+          "er-diagram" -> Seq("older renderers reject the whole diagram", "--optional-marker=false"),
+        )
+        for (command, name, _) <- generators do {
+          val (out, err, code) =
+            command.runTestCommandWithExitCode(List("generate", name, "--help"))
+          // Remove terminal colors. Token matching and normalization avoids failures caused by wrapping or indentation.
+          val plain = out.replaceAll("\u001b\\[[0-9;]*m", "")
+          val words = "[A-Za-z0-9_-]+".r.findAllIn(plain).toSet
+          val (flags, choices) = expected(name)
+          withClue(s"generate $name --help: $err\n$out\n") {
+            code shouldBe 0
+            err shouldBe empty
+            (flags ++ choices).foreach(words should contain(_))
+            guidance.getOrElse(name, Seq.empty).foreach { text =>
+              plain.replaceAll("\\s+", " ") should include(text)
+            }
+          }
+        }
+      }
+    }
+
     "given a single input file" should {
       for (command, name, markers) <- generators do
         s"generate $name from it" in {
@@ -132,7 +188,57 @@ class GenerateSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    // Tests can't cover all possible cli configurations.
+    // It asks "which plausible migration mistakes could still pass our tests?" to avoid regressions.
     "given a pruning mode" should {
+      "preserve defaults and overrides across generators" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-pruning")
+        try {
+          Seq("model.yaml", "imported.yaml").foreach { file =>
+            os.write(dir / file, Resources.read(s"/models/pruning/$file"))
+          }
+          val cases = Seq(
+            (List.empty[String], Seq(true, true, true)),
+            (List("--pruning-mode", "schema"), Seq(true, true, false)),
+            (
+              List("--pruning-mode", "treeRoot", "--tree-root", "NotTreeRootClass"),
+              Seq(false, true, false),
+            ),
+          )
+          val pruningGenerators: Seq[(BaseCommand[?], String, Seq[String])] = Seq(
+            (LinkMl, "linkml", Seq("SomeClass:", "NotTreeRootClass:", "UnusedClass:")),
+            (
+              GraphQl,
+              "graphql",
+              Seq("type SomeClass", "type NotTreeRootClass", "type UnusedClass"),
+            ),
+            (ErDiagram, "er-diagram", Seq("SomeClass {", "NotTreeRootClass {", "UnusedClass {")),
+            (
+              Ossie,
+              "ossie",
+              Seq("concept: SomeClass", "concept: NotTreeRootClass", "concept: UnusedClass"),
+            ),
+            (
+              Frictionless,
+              "frictionless",
+              Seq("\"some_class\"", "\"not_tree_root_class\"", "\"unused_class\""),
+            ),
+          )
+          for
+            (command, name, markers) <- pruningGenerators
+            (args, expected) <- cases
+          do {
+            val (out, err, code) = command.runTestCommandWithExitCode(
+              List("generate", name) ++ args :+ (dir / "model.yaml").toString,
+            )
+            withClue(s"$name ${args.mkString(" ")}: $err\n$out\n") {
+              code shouldBe 0
+              markers.map(out.contains) shouldBe expected
+            }
+          }
+        } finally os.remove.all(dir)
+      }
+
       def graphQl(args: String*): (String, String, Int) =
         withSchemas(1, prunableSchema) { paths =>
           GraphQl.runTestCommandWithExitCode(List("generate", "graphql") ++ args ++ paths)

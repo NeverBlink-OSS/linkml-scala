@@ -56,24 +56,49 @@ not: a schema can load and still have things to say about it.
 
 ### Generating from LinkML
 
+<!-- BEGIN GENERATED OPTIONS docs.python.generators -->
+
 ```python
-schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, indentation_step=2)
+schema.json_schema(
+    open=False,
+    tree_root=None,
+    tree_root_inline_type=None,
+    indentation_step=2,
+    metadata_language="en",
+    include_null=False,
+)
 schema.shacl(open=False, only_classes_from_root_schema=False, format="ttl")
 schema.rdfs(only_classes_from_root_schema=False, format="ttl")
-schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, output_format="yaml")
-schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_identifier=False)
-schema.graphql(pruning_mode="schema", tree_root=None)
+schema.linkml(
+    pruning_mode="skip",
+    tree_root=None,
+    skip_class_derivation=False,
+    output_format="yaml",
+)
+schema.frictionless(
+    pruning_mode="skip",
+    tree_root=None,
+    skip_classes_without_identifier=False,
+    metadata_language="en",
+)
+schema.graphql(pruning_mode="schema", tree_root=None, metadata_language="en")
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
-schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml")
-schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
-schema.translation(to="base")
+schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml", metadata_language="en")
+schema.scala(
+    package="eu.neverblink.linkml.metamodel",
+    generate_emit_prefixes=True,
+    metadata_language="en",
+)
+schema.translation(to="base", indentation_step=2)
 ```
 
-All arguments are keyword-only. Every one returns a string, except `scala()` and `frictionless()`,
-which return a filename-to-content dict.
+All arguments are keyword-only. ` frictionless() ` and ` scala() ` return filename-to-content
+dicts. Other generators return strings.
 
-`shacl()` and `rdfs()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
-pretty-printed, or `"nt"` for N-Triples.
+See the [generator option reference](generator-options.md) for every option, interface default,
+format alias, and pruning mode.
+
+<!-- END GENERATED OPTIONS docs.python.generators -->
 
 ### Converting to LinkML
 

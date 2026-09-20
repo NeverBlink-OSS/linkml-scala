@@ -168,18 +168,20 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
 
 object RdfsGenerator {
 
-  /** Options for [[RdfsGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.rdfs
+  /** Options for generating RDF schema.
     * @param onlyClassesFromRootSchema
-    *   Whether to include only classes and enums from the root schema (turned off by default). This
-    *   is useful if you intend to generate RDFS for each schema file separately, and you don't need
-    *   the imported classes to be included.
+    *   Whether to include only classes and enums from the root schema. This is useful if you intend
+    *   to generate RDFS for each schema file separately, and you don't need the imported classes to
+    *   be included.
     * @param format
-    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
+    *   Which RDF serialization to write: `ttl` for Turtle, which is prefixed and pretty-printed, or
+    *   `nt` for N-Triples.
     */
   final case class Options(
       onlyClassesFromRootSchema: Boolean = false,
-      format: RdfFormat = RdfFormat.ttl,
-  ) extends RdfOptions
+      format: _root_.eu.neverblink.linkml.generator.rdf.RdfFormat =
+        _root_.eu.neverblink.linkml.generator.rdf.RdfFormat.ttl,
+  ) extends _root_.eu.neverblink.linkml.generator.rdf.RdfOptions
+  // END GENERATED OPTIONS core.rdfs
 }

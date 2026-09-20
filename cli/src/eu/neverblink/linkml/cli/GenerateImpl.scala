@@ -24,6 +24,7 @@ import java.io.OutputStream
 final case class ScalaOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.scala.fields
     @HelpMessage(
       "Package name for generated Scala classes. Default value: eu.neverblink.linkml.metamodel",
     )
@@ -32,6 +33,7 @@ final case class ScalaOptions(
       "Whether to generate a 'Prefixes' object with the model's emit_prefixes inside. Default value: true",
     )
     generateEmitPrefixes: Boolean = true,
+    // END GENERATED OPTIONS cli.scala.fields
 ) extends HasGenerateOptions
 
 object Scala extends ManyFilesGenerate[ScalaOptions] {
@@ -41,10 +43,12 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
       options: ScalaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     ScalaGenerator().generate(
+      // BEGIN GENERATED OPTIONS cli.scala.options
       ScalaGenerator.Options(
         `package` = options.`package`,
         generateEmitPrefixes = options.generateEmitPrefixes,
       ),
+      // END GENERATED OPTIONS cli.scala.options
     )
 }
 
@@ -55,6 +59,7 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
 final case class JsonSchemaOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.json_schema.fields
     @HelpMessage(
       "Whether the generated JSON Schema should allow additionalProperties for classes. Default: false",
     )
@@ -62,14 +67,12 @@ final case class JsonSchemaOptions(
     @HelpMessage("If provided, override the schema tree_root with this class")
     treeRootOverride: Option[String] = None,
     @HelpMessage(
-      "If provided, override the tree_root class' tree_root_as extension. " +
-        "One of: 'plain', 'optional', 'list', 'compact_dict', 'simple_dict'. " +
-        "If no extension or override is provided, the default behavior is 'plain'." +
-        "See the documentation for more information.",
+      "If provided, override the tree_root class' tree_root_as extension. One of: 'plain', 'optional', 'list', 'compact_dict', 'simple_dict'. If no extension or override is provided, the default behavior is 'plain'.See the documentation for more information.",
     )
     treeRootInlineTypeOverride: Option[String] = None,
     @HelpMessage("Allow null values for optional slots. Default: false")
     includeNull: Boolean = false,
+    // END GENERATED OPTIONS cli.json_schema.fields
 ) extends HasGenerateOptions
 
 object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
@@ -80,13 +83,14 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
   ): Unit =
     JsonSchemaGenerator().writeTo(
       out,
+      // BEGIN GENERATED OPTIONS cli.json_schema.options
       JsonSchemaGenerator.Options(
-        options.open,
-        options.treeRootOverride,
-        options.treeRootInlineTypeOverride,
-        // indentationStep and metadataLanguage are currently not passed to the generator
+        open = options.open,
+        treeRoot = options.treeRootOverride,
+        treeRootInlineType = options.treeRootInlineTypeOverride,
         includeNull = options.includeNull,
       ),
+      // END GENERATED OPTIONS cli.json_schema.options
     )
 }
 
@@ -97,18 +101,20 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
 final case class ShaclOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.shacl.fields
     @HelpMessage(
       "Whether the generated SHACL should allow additional properties for classes. Default: false",
     )
     open: Boolean = false,
     @HelpMessage(
-      "Whether to include only classes from the root schema. " +
-        "This is useful if you intend to generate SHACL shapes for each schema file separately, " +
-        "and you don't need the imported classes to be included in the generated SHACL shapes. Default: false",
+      "Whether to include only classes from the root schema. This is useful if you intend to generate SHACL shapes for each schema file separately, and you don't need the imported classes to be included in the generated SHACL shapes. Default: false",
     )
     onlyClassesFromRootSchema: Boolean = false,
-    @HelpMessage(RdfOutput.formatHelp)
-    format: String = RdfOutput.defaultFormat,
+    @HelpMessage(
+      "RDF serialization format: 'ttl' (Turtle – prefixed and pretty-printed, the default) or 'nt' (N-Triples – one statement per line). Default: ttl",
+    )
+    format: String = "ttl",
+    // END GENERATED OPTIONS cli.shacl.fields
 ) extends HasGenerateOptions
 
 object Shacl extends StreamGenerate[ShaclOptions] {
@@ -119,12 +125,14 @@ object Shacl extends StreamGenerate[ShaclOptions] {
   ): Unit =
     ShaclGenerator().writeTo(
       out,
+      // BEGIN GENERATED OPTIONS cli.shacl.options
       ShaclGenerator.Options(
         open = options.open,
         onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
         format =
           RdfOutput.parse(options.format).getOrElse(err(RdfOutput.unknownFormat(options.format))),
       ),
+      // END GENERATED OPTIONS cli.shacl.options
     )
 }
 
@@ -135,14 +143,16 @@ object Shacl extends StreamGenerate[ShaclOptions] {
 final case class RdfsOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.rdfs.fields
     @HelpMessage(
-      "Whether to include only classes from the root schema. " +
-        "This is useful if you intend to generate RDFS for each schema file separately, " +
-        "and you don't need the imported classes to be included in the RDFS. Default: false",
+      "Whether to include only classes from the root schema. This is useful if you intend to generate RDFS for each schema file separately, and you don't need the imported classes to be included in the RDFS. Default: false",
     )
     onlyClassesFromRootSchema: Boolean = false,
-    @HelpMessage(RdfOutput.formatHelp)
-    format: String = RdfOutput.defaultFormat,
+    @HelpMessage(
+      "RDF serialization format: 'ttl' (Turtle – prefixed and pretty-printed, the default) or 'nt' (N-Triples – one statement per line). Default: ttl",
+    )
+    format: String = "ttl",
+    // END GENERATED OPTIONS cli.rdfs.fields
 ) extends HasGenerateOptions
 
 object Rdfs extends StreamGenerate[RdfsOptions] {
@@ -153,21 +163,18 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
   ): Unit =
     RdfsGenerator().writeTo(
       out,
+      // BEGIN GENERATED OPTIONS cli.rdfs.options
       RdfsGenerator.Options(
         onlyClassesFromRootSchema = options.onlyClassesFromRootSchema,
         format =
           RdfOutput.parse(options.format).getOrElse(err(RdfOutput.unknownFormat(options.format))),
       ),
+      // END GENERATED OPTIONS cli.rdfs.options
     )
 }
 
 /** The `--format` flag the SHACL and RDFS generate commands share. */
 private object RdfOutput {
-  val defaultFormat: String = "ttl"
-
-  val formatHelp: String =
-    "RDF serialization format: 'ttl' (Turtle – prefixed and pretty-printed, the default) " +
-      "or 'nt' (N-Triples – one statement per line). Default: ttl"
 
   /** The format named on the command line, or None if it is not one this tool writes. */
   def parse(format: String): Option[RdfFormat] = format.toLowerCase match {
@@ -180,11 +187,8 @@ private object RdfOutput {
     s"Unknown RDF format '$format'. Supported formats: nt, ttl."
 }
 
-/** The `--format` flag the LinkML and Ossie generate commands share. The spellings themselves live
-  * on `OutputFormat`, since the JS facade and the C options take the same ones.
-  */
 private val outputFormatHelp: String =
-  "Serialization format: 'yaml' (the default) or 'json'. Default: yaml"
+  "Serialization format: 'yaml' or 'json'. Default: yaml"
 
 // LinkML -> LinkML
 
@@ -195,12 +199,14 @@ private val outputFormatHelp: String =
 final case class LinkMlOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.linkml.fields
     @HelpMessage("Whether to skip the class derivation. Default: false.")
     skipDerivation: Boolean = false,
     @Recurse
     pruning: PruningOptions = PruningOptions(),
-    @HelpMessage(outputFormatHelp)
+    @HelpMessage("Serialization format: 'yaml' or 'json'. Default: yaml")
     format: String = "yaml",
+    // END GENERATED OPTIONS cli.linkml.fields
 ) extends HasGenerateOptions
 
 object LinkMl extends StreamGenerate[LinkMlOptions] {
@@ -211,12 +217,15 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
   ): Unit =
     LinkMlGenerator().writeTo(
       out,
+      // BEGIN GENERATED OPTIONS cli.linkml.options
       LinkMlGenerator.Options(
         pruningMode = options.pruning.resolvedPruningMode,
         skipClassDerivation = options.skipDerivation,
-        outputFormat = JsonOutputFormat.parse(options.format)
-          .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+        outputFormat = JsonOutputFormat.parse(options.format).getOrElse(
+          err(JsonOutputFormat.unknownFormat(options.format)),
+        ),
       ),
+      // END GENERATED OPTIONS cli.linkml.options
     )
 }
 
@@ -232,13 +241,14 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
 final case class FrictionlessOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.frictionless.fields
     @Recurse
     pruning: PruningOptions = PruningOptions(),
     @HelpMessage(
-      "Whether to skip classes that have no identifier slot. Such a table gets no primary key and " +
-        "nothing can reference it, so it is often not useful. Default: false",
+      "Whether to skip classes that have no identifier slot. Such a table gets no primary key and nothing can reference it, so it is often not useful. Default: false",
     )
     skipClassesWithoutIdentifier: Boolean = false,
+    // END GENERATED OPTIONS cli.frictionless.fields
 ) extends HasGenerateOptions
 
 object Frictionless extends SplitGenerate[FrictionlessOptions] {
@@ -247,10 +257,12 @@ object Frictionless extends SplitGenerate[FrictionlessOptions] {
   override protected def singleFileExtension: String = ".json"
 
   private def generator(options: FrictionlessOptions): FrictionlessGenerator.Options =
+    // BEGIN GENERATED OPTIONS cli.frictionless.options
     FrictionlessGenerator.Options(
       pruningMode = options.pruning.resolvedPruningMode,
       skipClassesWithoutIdentifier = options.skipClassesWithoutIdentifier,
     )
+    // END GENERATED OPTIONS cli.frictionless.options
 
   override protected[cli] def generateSingle(options: FrictionlessOptions, out: OutputStream)(using
       SchemaView,
@@ -273,8 +285,10 @@ object Frictionless extends SplitGenerate[FrictionlessOptions] {
 final case class GraphQlOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.graphql.fields
     @Recurse
     pruning: PruningOptions = PruningOptions(),
+    // END GENERATED OPTIONS cli.graphql.fields
 ) extends HasGenerateOptions
 
 object GraphQl extends StreamGenerate[GraphQlOptions] {
@@ -285,7 +299,11 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
   ): Unit =
     GraphQlGenerator().writeTo(
       out,
-      GraphQlGenerator.Options(options.pruning.resolvedPruningMode),
+      // BEGIN GENERATED OPTIONS cli.graphql.options
+      GraphQlGenerator.Options(
+        pruningMode = options.pruning.resolvedPruningMode,
+      ),
+      // END GENERATED OPTIONS cli.graphql.options
     )
 }
 
@@ -298,10 +316,12 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
 final case class OssieOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.ossie.fields
     @Recurse
     pruning: PruningOptions = PruningOptions(),
-    @HelpMessage(outputFormatHelp)
+    @HelpMessage("Serialization format: 'yaml' or 'json'. Default: yaml")
     format: String = "yaml",
+    // END GENERATED OPTIONS cli.ossie.fields
 ) extends HasGenerateOptions
 
 object Ossie extends StreamGenerate[OssieOptions] {
@@ -312,11 +332,14 @@ object Ossie extends StreamGenerate[OssieOptions] {
   ): Unit =
     OssieGenerator().writeTo(
       out,
+      // BEGIN GENERATED OPTIONS cli.ossie.options
       OssieGenerator.Options(
         pruningMode = options.pruning.resolvedPruningMode,
-        outputFormat = JsonOutputFormat.parse(options.format)
-          .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+        outputFormat = JsonOutputFormat.parse(options.format).getOrElse(
+          err(JsonOutputFormat.unknownFormat(options.format)),
+        ),
       ),
+      // END GENERATED OPTIONS cli.ossie.options
     )
 }
 
@@ -331,15 +354,14 @@ object Ossie extends StreamGenerate[OssieOptions] {
 final case class ErDiagramOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.er_diagram.fields
     @Recurse
     pruning: PruningOptions = PruningOptions(),
     @HelpMessage(
-      "Whether to mark optional attributes with a trailing '?' on their type. " +
-        "Mermaid understands this from version 11.16 onwards, and older renderers reject the " +
-        "whole diagram rather than just the marker, so pass --optional-marker=false when the " +
-        "diagram is headed somewhere that pins an older Mermaid. Default value: true",
+      "Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands this from version 11.16 onwards, and older renderers reject the whole diagram rather than just the marker, so pass --optional-marker=false when the diagram is headed somewhere that pins an older Mermaid. Default value: true",
     )
     optionalMarker: Boolean = true,
+    // END GENERATED OPTIONS cli.er_diagram.fields
 ) extends HasGenerateOptions
 
 object ErDiagram extends StreamGenerate[ErDiagramOptions] {
@@ -350,10 +372,12 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
   ): Unit =
     ErDiagramGenerator().writeTo(
       out,
+      // BEGIN GENERATED OPTIONS cli.er_diagram.options
       ErDiagramGenerator.Options(
         pruningMode = options.pruning.resolvedPruningMode,
         optionalMarker = options.optionalMarker,
       ),
+      // END GENERATED OPTIONS cli.er_diagram.options
     )
 }
 
@@ -365,10 +389,12 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
 final case class TranslationOptions(
     @Recurse
     common: GenerateOptions,
+    // BEGIN GENERATED OPTIONS cli.translation.fields
     @HelpMessage(
-      s"Framework name to generate a translation dict for. One of: ${TranslationGenerator.availableValues}",
+      "Framework name to generate a translation dict for. One of: " + TranslationGenerator.availableValues,
     )
     target: String = "base",
+    // END GENERATED OPTIONS cli.translation.fields
 ) extends HasGenerateOptions
 
 object Translation extends StreamGenerate[TranslationOptions] {
@@ -377,6 +403,13 @@ object Translation extends StreamGenerate[TranslationOptions] {
   override protected[cli] def generate(options: TranslationOptions, out: OutputStream)(using
       sv: SchemaView,
   ): Unit = {
-    TranslationGenerator(using sv).writeTo(out, TranslationGenerator.Options(options.target))
+    TranslationGenerator(using sv).writeTo(
+      out,
+      // BEGIN GENERATED OPTIONS cli.translation.options
+      TranslationGenerator.Options(
+        to = options.target,
+      ),
+      // END GENERATED OPTIONS cli.translation.options
+    )
   }
 }

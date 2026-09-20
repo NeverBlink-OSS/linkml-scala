@@ -264,8 +264,10 @@ object FrictionlessGenerator {
   /** A class that was rendered as a table, and the name the for it inside the data package. */
   private final case class Table(cv: ClassView, resource: String)
 
-  /** Options for [[FrictionlessGenerator]].
-    *
+  // BEGIN GENERATED OPTIONS core.frictionless
+  /** Options for generating a Frictionless Data Package. Each selected class becomes a CSV table,
+    * described by its own Table Schema, and references between classes can become foreign keys
+    * between the tables.
     * @param pruningMode
     *   Which classes to turn into tables.
     * @param skipClassesWithoutIdentifier
@@ -275,10 +277,12 @@ object FrictionlessGenerator {
     *   Which language to use for metadata fields (description) in the generated Table Schema.
     */
   final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
+      pruningMode: _root_.eu.neverblink.linkml.generator.util.PruningMode =
+        _root_.eu.neverblink.linkml.generator.util.PruningMode.skip,
       skipClassesWithoutIdentifier: Boolean = false,
       metadataLanguage: String = "en",
   )
+  // END GENERATED OPTIONS core.frictionless
 
   private def schemaPath(resource: String): String = s"schemas/$resource.json"
   private def dataPath(resource: String): String = s"data/$resource.csv"

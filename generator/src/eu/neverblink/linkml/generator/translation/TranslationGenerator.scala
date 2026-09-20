@@ -74,7 +74,21 @@ object TranslationGenerator {
       permissibleValues: Map[String, Map[String, String]],
   )
 
-  final case class Options(to: String = "base", indentationStep: Int = 2)
+  // BEGIN GENERATED OPTIONS core.translation
+  /** Options for generating JSON dictionaries that translate the LinkML name to specific
+    * frameworks. This is useful when the framework symbols are significant and must be known, like
+    * when constructing a query that is meant to be executed against a database conformant to a
+    * LinkML schema.
+    * @param to
+    *   Framework whose names appear in the translation dictionary.
+    * @param indentationStep
+    *   Number of spaces per JSON indentation level.
+    */
+  final case class Options(
+      to: String = "base",
+      indentationStep: Int = 2,
+  )
+  // END GENERATED OPTIONS core.translation
 
   object UriRenamer extends Renamer {
     def className(el: ClassView): String = el.uriStr
