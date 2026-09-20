@@ -1,10 +1,7 @@
 # @neverblink/linkml
 
 JavaScript / TypeScript bindings for [LinkML-Scala](https://github.com/NeverBlink-OSS/linkml-scala) –
-LinkML schema validation and multi-format code generation (JSON Schema, SHACL, RDFS, Scala),
-compiled from Scala 3 to JavaScript via [Scala.js](https://www.scala-js.org/).
-
-The package ships a single self-contained ES module. It has no runtime dependencies.
+LinkML schema validation and multi-format code generation (JSON Schema, SHACL, RDFS, Scala).
 
 ## Installation
 
