@@ -83,6 +83,16 @@ object LinkMlAliases extends Aliases {
     "schemaview.jvm.fix",
     "schemaview.jvm.reformat",
   )
+
+  def regenerateTests: Seq[String] = alias(
+    "tests.conformanceDefinitions",
+    "cli.jvm.run generate scala --to tests/src/eu/neverblink/linkml/tests/conformance " +
+      "--package eu.neverblink.linkml.tests.conformance " +
+      // TODO LNK-218: We should pass this as the output from tests.conformanceDefinitions, somehow
+      "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
+    "tests.jvm.fix",
+    "tests.jvm.reformat",
+  )
 }
 
 def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
@@ -192,19 +202,34 @@ object metamodel extends Module, NativeOptional {
       AliasesModule.run(ev, "regenerateMetamodel")
     }
 
-  def definitions = Task(persistent = true) {
-    if Task.offline then Task.fail("Can't fetch linkml-model offline")
-    val cloneDir = os.temp.dir()
+  def definitionsBranch: Task.Simple[String] = Task { "main" }
+
+  def definitionsRepo: T[PathRef] = Task(persistent = true) {
+    if os.list(Task.dest).isEmpty && Task.offline then Task.fail("Can't fetch linkml-model offline")
+    if os.list(Task.dest).isEmpty then
+      os.call(
+        (
+          "git",
+          "clone",
+          "https://github.com/NeverBlink-OSS/linkml-model",
+          Task.dest,
+        ),
+      )
     os.call(
       (
         "git",
-        "clone",
-        "--depth=1",
-        "https://github.com/NeverBlink-OSS/linkml-model",
+        "fetch",
+        "origin",
+        definitionsBranch(),
       ),
-      cwd = cloneDir,
+      cwd = Task.dest,
     )
-    os.copy.over(cloneDir / "linkml-model" / "linkml_model" / "model" / "schema", Task.dest)
+    os.call(("git", "reset", "--hard", s"origin/${definitionsBranch()}"), cwd = Task.dest)
+    PathRef(Task.dest)
+  }
+
+  def definitions: T[PathRef] = Task {
+    os.copy.over(definitionsRepo().path / "linkml_model" / "model" / "schema", Task.dest)
     PathRef(Task.dest)
   }
 
@@ -834,6 +859,14 @@ object benchmark extends ScalaModule, ScalafmtModule, ScalafixModule, JmhModule 
 }
 
 object tests extends Module, NativeOptional {
+  def conformanceDefinitions: T[PathRef] = Task {
+    PathRef(build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml")
+  }
+
+  def regenerate(evaluator: Evaluator, args: String*) = Task.Command(exclusive = true) {
+    AliasesModule.run(evaluator, "regenerateTests")
+  }
+
   object jvm extends ResourcesAsStrings("tests"), CommonModule, CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.jvm,
