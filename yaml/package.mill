@@ -1,0 +1,41 @@
+package build.yaml
+
+import mill.*
+import millbuild.*
+import mill.javalib.{Dep, DepSyntax}
+
+object `package` extends Module, NativeOptional {
+  object jvm extends YamlModule {
+    def moduleDeps = Seq(
+      build.runtime.jvm,
+    )
+
+    object test extends ScalaTests, CommonTestModule
+  }
+
+  object js extends YamlModule, NoBspModule, CommonScalaJsModule {
+    def moduleDeps = Seq(
+      build.runtime.js,
+    )
+
+    object test extends ScalaJSTests, CommonTestModule
+  }
+
+  object native extends YamlModule, NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.runtime.native,
+    )
+
+    object test extends ScalaNativeTests, CommonTestModule {
+      override def mvnDeps: T[Seq[Dep]] = Task {
+        super[ScalaNativeTests].mvnDeps() ++ super[CommonTestModule].mvnDeps()
+      }
+    }
+  }
+
+  trait YamlModule extends CommonModule {
+    def mvnDeps = Seq(
+      mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.19",
+    )
+  }
+}
