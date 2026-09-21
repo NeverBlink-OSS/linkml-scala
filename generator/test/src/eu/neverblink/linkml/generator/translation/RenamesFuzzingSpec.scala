@@ -17,6 +17,7 @@ class RenamesFuzzingSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks
 
   val renamerNames: Seq[String] = Seq(
     "base",
+    // TODO LNK-220: uri is aliasing
 //    "uri",
     "scala",
     "graphql",
