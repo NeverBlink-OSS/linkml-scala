@@ -2,9 +2,6 @@
 
 Fast and robust [LinkML](https://linkml.io/) schema validation and code generation for Python, backed by [LinkML-Scala](https://github.com/NeverBlink-OSS/linkml-scala) compiled to a native shared library.
 
-No JVM, no subprocess per schema, and no dependency on the `linkml` Python package. In our
-[benchmarks](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/benchmarks.md) the generators are 22.9–38.5x faster than the reference Python implementation.
-
 ## Install
 
 ```shell
