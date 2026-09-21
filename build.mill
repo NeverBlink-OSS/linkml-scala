@@ -224,14 +224,7 @@ object metamodel extends Module, NativeOptional {
       ),
       cwd = Task.dest,
     )
-    os.call(
-      (
-        "git",
-        "checkout",
-        definitionsBranch(),
-      ),
-      cwd = Task.dest,
-    )
+    os.call(("git", "reset", "--hard", s"origin/${definitionsBranch()}"), cwd = Task.dest)
     PathRef(Task.dest)
   }
 
@@ -486,7 +479,6 @@ object generator extends Module, NativeOptional {
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
         "LINKML_OSSIE_REPO" -> ossieDir.toString,
-        "LINKML_CONFORMANCE_TEST_DIR" -> (tests.conformanceDefinitions().path / "demo-suite").toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
     }
