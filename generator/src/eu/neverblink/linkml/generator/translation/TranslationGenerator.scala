@@ -49,6 +49,13 @@ class TranslationGenerator(using sv: SchemaView)
   override protected def defaultOptions: TranslationGenerator.Options =
     TranslationGenerator.Options()
 
+  def resolveRenames(id: String): Renamer = TranslationGenerator.resolveRenames(id)
+}
+
+object TranslationGenerator {
+  val availableValues =
+    """"base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram""""
+
   def resolveRenames(id: String): Renamer = id match {
     case "base" => TranslationGenerator.BaseRenamer
     case "uri" => TranslationGenerator.UriRenamer
@@ -59,11 +66,6 @@ class TranslationGenerator(using sv: SchemaView)
     case "erdiagram" => ErDiagramRenamer
     case other => throw IllegalArgumentException(s"Unknown translation target: '$other'")
   }
-}
-
-object TranslationGenerator {
-  val availableValues =
-    """"base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram""""
 
   final case class Translation(
       classes: Map[String, String],
