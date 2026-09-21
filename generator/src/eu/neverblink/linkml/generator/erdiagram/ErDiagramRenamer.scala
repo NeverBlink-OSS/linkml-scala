@@ -6,29 +6,55 @@ import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, Typ
 
 trait ErDiagramRenamer extends Renamer {
 
-  /** Keep the base form when PascalCase would lose word boundaries. */
-  private def pascalOrBase(baseName: String): String = {
-    val pascal = Case.baseToPascal(baseName)
-    if Case.base(pascal) == baseName then pascal else baseName
-  }
+  /** Any line containing `direction` followed by whitespace and a direction keyword is swallowed
+    * whole by Mermaid's lexer and silently reinterpreted as a direction statement - the enclosing
+    * quotes do not protect it.
+    */
+  private val reserved = Set(
+    "direction",
+    "TB",
+    "BT",
+    "RL",
+    "LR",
+  )
+
+  private val keyKeywords = ErKey.values.map(_.toString.toLowerCase).toSet
+
+  /** Mermaid's lexer is case-insensitive, so these cannot be unquoted entity names. `u` is included
+    * because `u` directly before a connector lexes as `MD_PARENT`. `end` and `subgraph` are still
+    * free in Mermaid 11, but are reserved by its unreleased subgraph support.
+    */
+  private val reservedEntities =
+    Set("one", "many", "to", "class", "classdef", "style", "erdiagram", "u", "end", "subgraph")
+
+  private def prefix(str: String): String =
+    if str.isEmpty then "_"
+    else if str.head.isDigit || reserved.contains(str) then "_" + str
+    else if keyKeywords.contains(str) then str + "_"
+    else str
 
   override def className(el: ClassView): String =
-    ErName.entity(pascalOrBase(el.baseName))
+    val str = Case.baseToPascal(el.baseName)
+    val lower = str.toLowerCase
+    if str.isEmpty then "_"
+    else if str.head.isDigit || reservedEntities.contains(lower) then "\"" + str + "\""
+    else if reserved.contains(lower) then "_" + str
+    else str
 
   override def classAttributeName(el: ClassView, attr: SlotDefinition): String =
     slotName(el.derivedAttributes(attr.name))
 
   override def slotName(el: SlotView): String =
-    ErName.attributeToken(el.baseName)
+    prefix(el.baseName)
 
   override def typeName(el: TypeView): String =
-    ErName.attributeToken(el.baseName)
+    prefix(el.baseName)
 
   override def enumName(el: EnumView): String =
-    ErName.attributeToken(pascalOrBase(el.baseName))
+    prefix(Case.baseToPascal(el.baseName))
 
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
-    ErName.attributeToken(Case.base(pv.text))
+    prefix(Case.base(pv.text))
 }
 
 object ErDiagramRenamer extends ErDiagramRenamer

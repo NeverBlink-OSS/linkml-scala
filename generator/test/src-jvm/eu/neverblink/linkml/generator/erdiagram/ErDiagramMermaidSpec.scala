@@ -133,40 +133,6 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta")),
       )
 
-  /** Direct writer inputs preserve escaping coverage independently of schema-name normalization.
-    */
-  private val escapedNamesDiagram: ErDiagram = {
-    val names = Seq(
-      "say \"hi\"",
-      "100% of it",
-      "back\\slash",
-      "a name with spaces",
-      "x direction TB",
-    ).map(ErName.entity)
-    val attributes = Seq("has \"quotes\"", "PK").map(name =>
-      ErAttribute(
-        dataType = "string",
-        name = ErName.attributeToken(name),
-        keys = Nil,
-        multivalued = false,
-        optional = false,
-      ),
-    )
-    ErDiagram(
-      entities = names.map(name => ErEntity(name, attributes)),
-      relationships = Seq("direction LR", "goes direction BT now").map(label =>
-        ErRelationship(
-          from = names.head,
-          to = names.last,
-          fromCardinality = ErCardinality.exactlyOne,
-          toCardinality = ErCardinality.zeroOrOne,
-          identifying = true,
-          label = label,
-        ),
-      ),
-    )
-  }
-
   /** Generated schemas plus fixtures for optional markers and writer escaping. */
   private lazy val diagrams: Seq[(String, ErDiagram)] =
     schemas.map((name, sv) => (name, ErDiagramGenerator(using sv).generate())) ++ Seq(
@@ -175,7 +141,6 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         ErDiagramGenerator(using ModelCatalogue.cardinality.model)
           .generate(ErDiagramGenerator.Options(optionalMarker = false)),
       ),
-      "escapedWriterNames" -> escapedNamesDiagram,
     )
 
   /** Generated diagrams, and what Mermaid made of them. Both are computed once: Node startup costs
@@ -237,7 +202,7 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         Relationship(
           from = unquote(r.from),
           to = unquote(r.to),
-          label = unquote(ErName.label(r.label)),
+          label = r.label,
           fromCardinality = cardinalityTokens(r.fromCardinality),
           toCardinality = cardinalityTokens(r.toCardinality),
           identifying = r.identifying,

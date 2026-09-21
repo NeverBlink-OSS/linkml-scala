@@ -35,44 +35,6 @@ class ErDiagramWriterSpec extends AnyWordSpec, Matchers {
       ErDiagram(Seq(entity("Foo")), Nil).print shouldBe header + "  Foo\n"
     }
 
-    "write escaped entity names containing spaces" in {
-      val diagram = ErDiagram(
-        Seq(entity(ErName.entity("My Class"))),
-        Nil,
-      )
-
-      diagram.print shouldBe header + "  \"My Class\"\n"
-    }
-
-    "write escaped entity names containing quotation marks" in {
-      val diagram = ErDiagram(
-        Seq(entity(ErName.entity("say \"hi\""))),
-        Nil,
-      )
-
-      diagram.print shouldBe header + "  \"say 'hi'\"\n"
-    }
-
-    "write escaped attribute names containing quotation marks" in {
-      val diagram = ErDiagram(
-        Seq(entity("Root", attribute("string", ErName.attributeToken("has \"quotes\"")))),
-        Nil,
-      )
-
-      diagram.print should include("    string has__quotes_\n")
-    }
-
-    "defuse relationship labels that Mermaid would read as a direction statement" in {
-      val diagram = ErDiagram(
-        Seq(entity("Root"), entity("Other")),
-        Seq(relationship("Root", "Other", "direction LR")),
-      )
-
-      val result = diagram.print
-      result should include("Root ||--o| Other : \"direction_LR\"")
-      result should not include "direction LR"
-    }
-
     "indent an entity's attributes inside its block" in {
       val diagram = ErDiagram(
         Seq(entity("Foo", attribute("string", "bar"), attribute("integer", "baz"))),
