@@ -18,22 +18,14 @@
 
 # LinkML-Scala
 
-**[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple programming languages and data formats (e.g., JSON Schema, CSV, RDF/SHACL...).
+**[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple languages and formats, such as JSON Schema, CSV, RDFS/SHACL...
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), [Python](https://pypi.org/project/neverblink-linkml/), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 > [!NOTE]
 > ⭐ If you like LinkML-Scala, consider giving it a star – it helps others find the project!
 
 ## Why LinkML-Scala?
-
-### 🚀 It's really fast!
-
-LinkML-Scala was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](docs/benchmarks.md) than the Python implementation**:
-
-![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
-
-[**📊 See the benchmarks.**](docs/benchmarks.md)
 
 ### 🌐 Works in the browser, Node.js, JVM, Python, and C/C++/Rust
 
@@ -59,15 +51,23 @@ LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
 The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
 
-We engineered it to be as consistent as possible, so you are much less likely to run into "fun surprises" when using it with different generators. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
+We engineered LinkML-Scala to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
 
-In some cases, LinkML-Scala diverges from the Python implementation, or is missing some features. You can find the list of implementation differences [here](docs/implementation_differences.md). 
+In some cases, LinkML-Scala diverges from the Python implementation. You can find the list of implementation differences [here](docs/implementation_differences.md).
+
+### 🚀 It's really fast!
+
+LinkML-Scala was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](docs/benchmarks.md) than the Python implementation**:
+
+![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
+
+[**📊 See the benchmarks.**](docs/benchmarks.md)
 
 ## CLI tool installation
 
 ### Method 1: Install script (recommended for Unix/macOS)
 
-If you are on Linux (x86-64, ARM64), macOS (x86-64, ARM64), or using WSL on Windows, the easiest way to grab the latest release is via our installation script:
+If you are on Linux, macOS, or WSL on Windows, the easiest installation method is with our script:
 
 ```shell
 . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/refs/heads/main/cli/install.sh)
@@ -87,7 +87,7 @@ linkml-scala
 
 ### Method 3: Manual download
 
-If you prefer a manual setup, head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest) and download the pre-compiled binary for your specific OS and architecture.
+Head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest) and download the pre-compiled binary for your specific OS and architecture.
 
 *For macOS and Linux:*
 Rename the downloaded file, make it executable, and run it:
@@ -106,8 +106,7 @@ ren linkml-scala-windows-x86_64.exe linkml-scala.exe
 linkml-scala.exe
 ```
 
-Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm
-a download came from our release workflow. **[See how to verify it.](docs/verifying_downloads.md)**
+Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm a download came from our release workflow. **[See how to verify it.](docs/verifying_downloads.md)**
 
 ### CLI – getting started
 
@@ -124,27 +123,16 @@ The CLI outputs issues directly to your terminal, categorized into three severit
 - Errors: structural violations (multiple keys or ID slots, multiple tree roots, ID collisions)
 - Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root)
 
-All generators require that there are no *fatal* issues in the schema. 
-The process will report these and exit immediately, as generation cannot proceed.
+All generators require that there are no *fatal* issues in the schema.
 
 #### Generators
 
-Generate a standard JSON Schema from your model:
+Generate a standard JSON Schema, [Apache Ossie](https://github.com/apache/ossie) ontology, or SHACL from your model:
 
 ```shell
 linkml-scala generate json-schema <input-file>
-```
-
-Generate an [Apache Ossie](https://github.com/apache/ossie) ontology:
-
-```shell
-linkml-scala generate ossie --to <output-path> <input-file>
-```
-
-Generate SHACL (Shapes Constraint Language) graphs for RDF validation:
-
-```shell
-linkml-scala generate shacl --to <output-path> <input-file>
+linkml-scala generate ossie <input-file>
+linkml-scala generate shacl <input-file>
 ```
 
 **There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator.
@@ -162,7 +150,7 @@ Generate a LinkML model that:
 
 ## JavaScript / TypeScript library
 
-The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml) – a single self-contained ES module (with TypeScript declarations) compiled from Scala via Scala.js, with no runtime dependencies.
+The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml) – a single ES module with TypeScript declarations, with no runtime dependencies.
 
 ```shell
 npm install @neverblink/linkml
@@ -199,7 +187,7 @@ with linkml_scala.load_file("model.yaml") as schema:
     print(schema.shacl())
 ```
 
-See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and for the C ABI for C, C++ and Rust.
+See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and for the ABI for C, C++ and Rust.
 
 ## Scala library
 
@@ -207,13 +195,13 @@ All modules are published to Maven Central under the `eu.neverblink.linkml` grou
 
 ## GitHub Action (CI)
 
-We have a pre-packaged GitHub Action that can do schema validation and generation in your CI pipelines. See **[NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action)** for more details.
+We have a pre-packaged GitHub Action that can do schema validation and generation in your CI pipelines. See **[NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action)** for details.
 
 ## Agent skill (Claude Code, Codex, …)
 
-We ship an [agent skill](https://agentskills.io/specification) that teaches coding agents to author, validate, review and release LinkML schemas with LinkML-Scala. See [.agents/README.md](.agents/README.md) for what it covers.
+We ship an [agent skill](https://agentskills.io/specification) that teaches AI agents to author, validate, review and release LinkML schemas with LinkML-Scala. See [.agents/README.md](.agents/README.md) for what it covers.
 
-It drives the CLI, so install that first (see [CLI tool installation](#cli-tool-installation)). Version 0.12.0 or newer is required.
+It drives the CLI, so install that first (see [CLI tool installation](#cli-tool-installation)).
 
 **Claude Code** – install it as a plugin:
 
