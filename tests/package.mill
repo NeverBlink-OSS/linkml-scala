@@ -10,6 +10,14 @@ import mill.scalajslib.TestScalaJSModule
 import mill.scalanativelib.TestScalaNativeModule
 
 object `package` extends Module, NativeOptional {
+  def conformanceDefinitions: T[PathRef] = Task {
+    PathRef(build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml")
+  }
+
+  def regenerate(evaluator: Evaluator, args: String*) = Task.Command(exclusive = true) {
+    AliasesModule.run(evaluator, "regenerateTests")
+  }
+
   object jvm extends ResourcesAsStrings("tests"), CommonModule, CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.jvm,
@@ -17,22 +25,22 @@ object `package` extends Module, NativeOptional {
   }
 
   object js
-    extends NoBspModule,
-      ResourcesAsStrings("tests"),
-      CommonScalaJsModule,
-      TestScalaJSModule,
-      CommonTestModule {
+      extends NoBspModule,
+        ResourcesAsStrings("tests"),
+        CommonScalaJsModule,
+        TestScalaJSModule,
+        CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.js,
     )
   }
 
   object native
-    extends NoBspModule,
-      ResourcesAsStrings("tests"),
-      CommonScalaNativeModule,
-      TestScalaNativeModule,
-      CommonTestModule {
+      extends NoBspModule,
+        ResourcesAsStrings("tests"),
+        CommonScalaNativeModule,
+        TestScalaNativeModule,
+        CommonTestModule {
     override def mvnDeps: T[Seq[Dep]] = Task {
       super[TestScalaNativeModule].mvnDeps() ++ super[CommonTestModule].mvnDeps()
     }
