@@ -34,7 +34,7 @@ object `package` extends Module, NativeOptional {
       )
 
       /** Fetch the linkml-benchmark-schemas datasets used by `BenchmarkSchemaSpec`.
-       */
+        */
       def benchmarkSchemas = Task(persistent = true) {
         if Task.offline then Task.fail("Can't fetch linkml-benchmark-schemas offline")
         val cloneDir = os.temp.dir()
@@ -52,13 +52,13 @@ object `package` extends Module, NativeOptional {
       }
 
       /** The npm project whose `validate.mjs` checks the generated ER diagrams against the real
-       * Mermaid parser, used by `ErDiagramMermaidSpec`.
-       */
+        * Mermaid parser, used by `ErDiagramMermaidSpec`.
+        */
       def mermaidDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "mermaid"
 
       /** Install the pinned Mermaid that `ErDiagramMermaidSpec` validates its output against.
-       * Requires Node.js 18+ and npm on the PATH.
-       */
+        * Requires Node.js 18+ and npm on the PATH.
+        */
       def mermaidValidator(args: String*) = Task.Command(exclusive = true) {
         if !os.exists(mermaidDir / "node_modules") then
           os.call(("npm", "ci"), cwd = mermaidDir, stdout = os.Inherit, stderr = os.Inherit)
@@ -68,8 +68,8 @@ object `package` extends Module, NativeOptional {
       def ossieDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "ossie-repo"
 
       /** Clone apache/ossie, so that `OssieIntegrationSpec` also checks the generated ontologies
-       * with the upstream `validation/validate.py`.
-       */
+        * with the upstream `validation/validate.py`.
+        */
       def ossieRepo(args: String*) = Task.Command(exclusive = true) {
         if !os.exists(ossieDir) then
           os.call(
@@ -129,8 +129,8 @@ object `package` extends Module, NativeOptional {
     }
 
     /** Pack and install the package, then run the README examples and type-check the usage sample
-     * against it. Requires Node.js and npm on the PATH.
-     */
+      * against it. Requires Node.js and npm on the PATH.
+      */
     def verifyPackage(args: String*) = Task.Command {
       val pkg = npmPackage().path
       val script = npmMetadata().path / "verify-package.mjs"
@@ -169,7 +169,7 @@ object `package` extends Module, NativeOptional {
   trait GeneratorDeps extends CommonModule {
     override def mvnDeps = super.mvnDeps() ++ Seq(
       mvn"com.softwaremill.sttp.apispec::apispec-model::0.11.10",
-      mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros::2.40.1",
+      mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-macros::2.41.0",
     )
 
     // Same fastparse macro bug as in SchemaViewModule
