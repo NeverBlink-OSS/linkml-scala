@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
+import sys
 import textwrap
 import threading
 import unittest
@@ -513,6 +515,23 @@ class HandleTest(unittest.TestCase):
             with linkml_scala.load_string(FIXED) as second:
                 self.assertIn("Person", first.json_schema())
                 self.assertIn("Thing", second.json_schema())
+
+    def test_exiting_with_a_schema_still_open_does_not_hang(self):
+        # The schema's finaliser runs during shutdown, after Python has stopped the worker thread
+        # for good. A close that waited for the worker then would never return.
+        script = textwrap.dedent(
+            f"""
+            import linkml_scala
+            loaded = linkml_scala.load_string({PERSON!r})
+            loaded.json_schema()
+            """
+        )
+        # Import the same package this test did, whether from a checkout or an installed wheel.
+        env = dict(os.environ, PYTHONPATH=str(Path(linkml_scala.__file__).resolve().parents[1]))
+        finished = subprocess.run(
+            [sys.executable, "-c", script], env=env, capture_output=True, text=True, timeout=60
+        )
+        self.assertEqual(0, finished.returncode, finished.stderr)
 
 
 class RuntimeTest(unittest.TestCase):

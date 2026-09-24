@@ -139,6 +139,10 @@ class _Worker:
             # Re-entrant: a finaliser the worker itself triggered. Running it inline is both
             # correct and the only option, since the worker cannot wait for itself.
             return call()
+        if sys.is_finalizing():
+            # The worker is a daemon thread, and Python stops those once shutdown starts.
+            # Waiting for it would hang the process on exit.
+            raise LinkMlError("Python is shutting down, so the library can no longer be called")
         box: queue.SimpleQueue = queue.SimpleQueue()
         self._work.put((call, box))
         ok, value = box.get()
@@ -230,6 +234,10 @@ class Runtime:
 
     def close(self, handle: int) -> None:
         """Release a schema handle. Releasing one that is already gone does nothing."""
+        if sys.is_finalizing():
+            # Too late to reach the library (see _Worker.run), and pointless: the process is
+            # exiting.
+            return
         self._call(self._lib.linkml_close, handle)
 
     # Generating
