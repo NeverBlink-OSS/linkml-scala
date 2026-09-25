@@ -100,7 +100,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       val slotSchema = attribute match {
         case _: AnyView => Schema.Empty
         case ClassInlineAttributeView(_, _, classView, inlineType) =>
-          val mappedClassName = className(classView)
+          val mappedClassName = classView.aliasedName
           val ref = "#/$defs/".concat(mappedClassName)
           inlineType match {
             case InlineType.plain =>
@@ -179,7 +179,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
         if (sv.slot.required) requiredSlots.addOne(name)
       }
       defs.update(
-        className(cls),
+        cls.aliasedName,
         objectSchema.copy(
           required = requiredSlots.toList,
           properties =
@@ -195,7 +195,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
     val baseSchema = maybeTreeRoot.foldFast(Schema.Empty) { treeRoot =>
       val classSchema =
         new Schema(
-          $ref = new Some("#/$defs/".concat(className(treeRoot))),
+          $ref = new Some("#/$defs/".concat(treeRoot.aliasedName)),
         )
       val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
       inlineType match {
@@ -205,14 +205,14 @@ class JsonSchemaGenerator(using sv: SchemaView)
         case InlineType.list =>
           arraySchema.copy(items = Some(classSchema)) // array of objects
         case InlineType.dict(CollectionForm.CompactDict(key)) =>
-          val mappedClassName = className(treeRoot)
+          val mappedClassName = treeRoot.aliasedName
           needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
           val entrySchema = new Schema(
             $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
           )
           allowNullDictEntry(entrySchema, treeRoot, key).dictOf
         case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-          val mappedClassName = className(treeRoot)
+          val mappedClassName = treeRoot.aliasedName
           needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
           needValue.add((mappedClassName, slotName(treeRoot.derivedAttributes(value))))
           simpleDictSchema("#/$defs/" + mappedClassName).dictOf

@@ -152,10 +152,10 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       definitions.flatMap(_.parents).map(_.uriStr).distinct.foreach { parent =>
         sink.triple(enumIri, Rdfs.subClassOf, Iri(parent))
       }
-      e.derivedValues.foreach { (pv, meaning) =>
-        val pvIri = Iri(meaning.uri(using prefixResolver))
+      e.derivedValues.foreach { pvv =>
+        val pvIri = Iri(pvv.meaning.uri(using prefixResolver))
         val usages = valueUsages(pvIri.value)
-        if ((usages.head._1 eq e) && (usages.head._2 eq pv)) {
+        if ((usages.head._1 eq e) && (usages.head._2 eq pvv.pv)) {
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }

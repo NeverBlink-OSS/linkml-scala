@@ -39,20 +39,35 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
     */
   def inner: E
 
-  /** The name of the underlying Element
+  /** The raw name of the underlying Element. In generators, this should be only used for lookups
+    * within LinkML. Symbolic names should use the `Renamer` framework, serialized names should use
+    * [[aliasedName]] or [[uriStr]] instead.
     */
   final def name: String = inner.name
 
-  /** The base name
+  /** The base name: [[name]] converted to strict snake_case. This should be used as the base for
+    * the `Renamer` methods.
+    * @see
+    *   [[Case.base]]
+    * @see
+    *   [[Case.baseToPascal]]
     */
   final lazy val baseName: String = Case.base(name)
 
+  /** The "canonical" name of this element. This should be used for serialization if an alias is not
+    * provided.
+    */
   def canonicalName: String
 
+  /** Model URI of this element. This is the fallback URI to be used for an element that does not
+    * have an explicit `???_uri`, like `class_uri`.
+    */
   final def modelUri: Uri = Uri.synthetic(defaultPrefixUri, canonicalName)
 
-  /** The name of the underlying Element, aliased with the `alias` slot if defined, re-cased
-    * appropriately if needed.
+  /** The name of the underlying Element, overridden with the `alias` slot if defined, re-cased
+    * appropriately.
+    *
+    * This MUST be used when serializing to non-RDF formats.
     */
   def aliasedName: String
 
@@ -79,13 +94,15 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
 
   /** Get the URI of this element in string form, using the default prefix of the implicit
     * [[SchemaView]] if not explicitly defined.
+    *
+    * This MUST be used when serializing to RDF formats.
     */
   lazy val uriStr: String = uriOrCurie.uri
 
   /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
     * schema ID (this fallback mirrors the python implementation).
     */
-  final def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
+  final private[schemaview] def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
 }
 
 private object ClassView:
@@ -472,7 +489,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def canonicalName: String = Case.baseToPascal(baseName)
 
-  override def aliasedName: String = canonicalName
+  override def aliasedName: String = _enum.alias.getOrElse(canonicalName)
 
   lazy val parents: Iterable[EnumView | ClassView] =
     (_enum.isA ++ _enum.mixins).flatMap(_.resolve).collect {
@@ -487,28 +504,75 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
     _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.baseToPascal(canonicalName)))
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
-  lazy val derivedValues: Seq[(pv: PermissibleValue, meaning: UriOrCurie)] =
+  lazy val derivedValues: Seq[PermissibleValueView] =
     _enum.permissibleValues.values
-      .foldLeft(new ListBuffer[(pv: PermissibleValue, meaning: UriOrCurie)]) { (acc, x) =>
-        acc.addOne(
-          (
-            x,
-            x.meaning.getOrElseFast {
-              Uri.synthetic(defaultPrefixUri, canonicalName + "." + Case.base(x.text).toUpperCase)
-            },
-          ),
-        )
+      .foldLeft(new ListBuffer[PermissibleValueView]) { (acc, pv) =>
+        acc.addOne(PermissibleValueView(pv, this))
       }.toList
 
+  /** The aliased names (non-RDF serialization form) of the permissible values of this enum.
+    */
+  def aliasedNames: Seq[String] =
+    derivedValues.map(_.aliasedName)
+
+  /** The meanings (RDF serialization form) of the permissible values of this enum.
+    */
+  def meanings: Seq[Uri] =
+    derivedValues.map(_.meaning)
+
+  /** Map of aliased names to meanings
+    */
   lazy val toMeaning: Map[String, UriOrCurie] =
-    derivedValues.foldLeft(Map.newBuilder[String, UriOrCurie]) { case (acc, (x, meaning)) =>
-      acc.addOne((x.text, meaning))
+    derivedValues.foldLeft(Map.newBuilder[String, UriOrCurie]) { case (acc, valueView) =>
+      acc.addOne((valueView.aliasedName, valueView.meaning))
     }.result()
 
+  /** Map of meanings to aliased names
+    */
   lazy val fromMeaning: Map[UriOrCurie, String] =
-    derivedValues.foldLeft(Map.newBuilder[UriOrCurie, String]) { case (acc, (x, meaning)) =>
-      acc.addOne((meaning, x.text))
+    derivedValues.foldLeft(Map.newBuilder[UriOrCurie, String]) { case (acc, valueView) =>
+      acc.addOne((valueView.meaning, valueView.aliasedName))
     }.result()
+}
+
+/** View of a [[PermissibleValue]], which is not an element, but has quite a large overlap in
+  * methods
+  */
+final case class PermissibleValueView(pv: PermissibleValue, enumView: EnumView) {
+  private given PrefixResolver = enumView.definingPrefixResolver
+
+  /** @see
+    *   [[ElementView.baseName]]
+    */
+  def baseName: String = Case.base(pv.text)
+
+  /** @see
+    *   [[ElementView.canonicalName]]
+    */
+  def canonicalName: String = Case.baseToScreamingSnake(baseName)
+
+  /** @see
+    *   [[ElementView.aliasedName]]
+    */
+  def aliasedName: String = pv.alias.getOrElseFast(canonicalName)
+
+  /** @see
+    *   [[ElementView.modelUri]]
+    */
+  def modelUri: Uri = Uri.synthetic(
+    enumView.defaultPrefixUri,
+    enumView.canonicalName + "." + Case.base(pv.text).toUpperCase,
+  )
+
+  /** @see
+    *   [[PermissibleValue.meaning]]
+    */
+  def meaning: Uri = pv.meaning.foldFast(modelUri)(x => Uri(x.uri))
+
+  /** @see
+    *   [[ElementView.uriStr]]
+    */
+  def uriStr: String = meaning.original
 }
 
 // TODO LNK-63:
@@ -524,7 +588,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   def canonicalName: String = baseName
 
-  override def aliasedName: String = canonicalName
+  override def aliasedName: String = _type.alias.getOrElseFast(canonicalName)
 
   /** The parent declared through `typeof`, if present. */
   lazy val parents: Seq[TypeView] =

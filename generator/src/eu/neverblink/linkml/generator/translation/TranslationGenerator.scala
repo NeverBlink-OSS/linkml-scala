@@ -33,8 +33,8 @@ class TranslationGenerator(using sv: SchemaView)
       sv.enums.values.map(el => el.name -> renamer.enumName(el)).toMap,
       sv.slotDefinitions.values.map(el => el.name -> renamer.slotName(el)).toMap,
       sv.enums.values.map { el =>
-        el.name -> el.derivedValues.map { (pv, _) =>
-          pv.text -> renamer.permissibleValueName(el, pv)
+        el.name -> el.derivedValues.map { pvv =>
+          pvv.pv.text -> renamer.permissibleValueName(el, pvv.pv)
         }.toMap
       }.toMap,
     )

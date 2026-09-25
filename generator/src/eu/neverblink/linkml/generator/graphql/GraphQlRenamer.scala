@@ -23,7 +23,7 @@ trait GraphQlRenamer extends Renamer {
   override def classAttributeName(el: ClassView, attr: SlotDefinition): String =
     Case.base(attr.name)
 
-  override def slotName(el: SlotView): String = fix(el.canonicalName)
+  override def slotName(el: SlotView): String = fix(el.baseName)
 
   override def typeName(el: TypeView): String = graphQlPascal(el.baseName)
 

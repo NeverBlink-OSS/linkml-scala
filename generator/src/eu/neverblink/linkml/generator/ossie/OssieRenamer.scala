@@ -10,7 +10,7 @@ import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, Typ
   * present.
   */
 trait OssieRenamer extends Renamer {
-  override def className(el: ClassView): String = el.canonicalName
+  override def className(el: ClassView): String = Case.baseToPascal(el.baseName)
 
   override def classAttributeName(el: ClassView, attr: SlotDefinition): String = slotName(
     el.derivedAttributes(attr.name),
@@ -22,7 +22,7 @@ trait OssieRenamer extends Renamer {
     */
   override def typeName(el: TypeView): String = Case.baseToPascal(el.baseName)
 
-  override def enumName(el: EnumView): String = el.canonicalName
+  override def enumName(el: EnumView): String = Case.baseToPascal(el.baseName)
 
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String = pv.text
 }
