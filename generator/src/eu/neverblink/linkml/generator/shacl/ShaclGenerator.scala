@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
 import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.SlotExpression
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.*

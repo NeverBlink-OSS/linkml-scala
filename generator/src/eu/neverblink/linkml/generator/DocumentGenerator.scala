@@ -6,7 +6,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.{
   writeToStream,
   writeToString,
 }
-import eu.neverblink.linkml.generator.util.{CharSink, StringSink, Utf8ByteSink}
+import eu.neverblink.linkml.rdf.io.{CharSink, StringSink, Utf8ByteSink}
 
 import java.io.OutputStream
 

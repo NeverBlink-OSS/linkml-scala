@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.shacl
 
-import eu.neverblink.linkml.generator.rdf.RdfUtils
+import eu.neverblink.linkml.rdf.RdfUtils
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.rio.RDFFormat

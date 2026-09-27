@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.generator.rdf
 
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.{CharSink, StringSink, Utf8ByteSink}
+import eu.neverblink.linkml.rdf.*
+import eu.neverblink.linkml.rdf.io.{CharSink, StringSink, Utf8ByteSink}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
 import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
 import eu.neverblink.linkml.schemaview.SchemaView

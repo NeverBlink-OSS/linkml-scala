@@ -1,11 +1,11 @@
 package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
-import eu.neverblink.linkml.generator.rdf.*
-import eu.neverblink.linkml.generator.rdf.NTriplesWriter as LinkMlNTriplesWriter
-import eu.neverblink.linkml.generator.rdf.TurtleWriter as LinkMlTurtleWriter
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.util.Utf8ByteSink
+import eu.neverblink.linkml.rdf.*
+import eu.neverblink.linkml.rdf.NTriplesWriter as LinkMlNTriplesWriter
+import eu.neverblink.linkml.rdf.TurtleWriter as LinkMlTurtleWriter
+import eu.neverblink.linkml.rdf.io.Utf8ByteSink
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.apache.jena.datatypes.TypeMapper

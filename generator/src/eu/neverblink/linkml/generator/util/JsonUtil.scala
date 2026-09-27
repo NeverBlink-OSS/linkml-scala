@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.util
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import eu.neverblink.linkml.rdf.io.Utf8ByteSink
 import org.virtuslab.yaml.{Node, NodeOps, Tag}
 
 import java.io.OutputStream

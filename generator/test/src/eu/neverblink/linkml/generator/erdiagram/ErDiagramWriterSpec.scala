@@ -99,7 +99,7 @@ class ErDiagramWriterSpec extends AnyWordSpec, Matchers {
         Seq(entity("Foo", attribute("string", "id", ErKey.PK))),
         Seq(relationship("Foo", "Foo", "self")),
       )
-      val streamed = new eu.neverblink.linkml.generator.util.StringSink
+      val streamed = new eu.neverblink.linkml.rdf.io.StringSink
       diagram.writeTo(streamed)
       streamed.result shouldBe diagram.print
     }
