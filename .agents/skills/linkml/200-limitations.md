@@ -114,6 +114,42 @@ But rejects:
 * `simple_dict`: dict object mapping the key field to the value field of the object instances
 
 
+## Language strings
+
+LinkML-Scala uses a [fork of the metamodel](https://github.com/linkml/linkml-model/compare/main...NeverBlink-OSS:linkml-model:main) that adds support for language strings in LinkML schemas.
+
+The `title` and `description` of schema elements can be a plain string or a mapping from language tag to text:
+
+```yaml
+classes:
+  Book:
+    title:
+      en: Book
+      pl: Książka
+      de: Buch
+    description:
+      en: It's a book, obviously.
+
+  Person:
+    title: Person
+    description: You can also still use the plain string syntax!
+```
+
+The RDFS and SHACL generators emit plain strings as `xsd:string` literals and language mappings as `rdf:langString` literals:
+
+```turtle
+library:Book a rdfs:Class ;
+  rdfs:label "Book"@en , "Książka"@pl , "Buch"@de ;
+  rdfs:comment "It's a book, obviously."@en .
+  
+library:Person a rdfs:Class ;
+  rdfs:label "Person" ;
+  rdfs:comment "You can also still use the plain string syntax!" .
+```
+
+Schemas can also use language strings in their own data using the `langstring` type imported from `linkml:types`.
+The value is a plain string or a non-empty mapping from language tag to text.
+
 ## Inline type semantics
 
 Different forms:
