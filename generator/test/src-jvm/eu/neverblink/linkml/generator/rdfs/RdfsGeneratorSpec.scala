@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.rdfs
 
-import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue

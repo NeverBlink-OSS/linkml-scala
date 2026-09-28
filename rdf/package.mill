@@ -1,0 +1,35 @@
+package build.rdf
+
+import mill.*
+import mill.javalib.Dep
+import mill.scalalib.*
+import millbuild.*
+
+/** RDF terms, streaming writers and parsers. No dependencies on the rest of the project. */
+object `package` extends Module, NativeOptional {
+  object jvm extends CommonModule {
+    // RDF4J 6.x, used as the reference implementation in tests, needs JDK 25.
+    object test extends ScalaTests, CommonTestModule, ResourcesAsStrings("rdf") {
+      override def jvmVersion = "25"
+
+      override def javaHome = build.jdk25.javaHome
+
+      override def mvnDeps = super.mvnDeps() ++ Seq(
+        mvn"org.eclipse.rdf4j:rdf4j-rio-ntriples:${v.rdf4j}",
+        mvn"org.eclipse.rdf4j:rdf4j-rio-turtle:${v.rdf4j}",
+      )
+    }
+  }
+
+  object js extends CommonModule, NoBspModule, CommonScalaJsModule {
+    object test extends ScalaJSTests, CommonTestModule, ResourcesAsStrings("rdf")
+  }
+
+  object native extends CommonModule, NoBspModule, CommonScalaNativeModule {
+    object test extends ScalaNativeTests, CommonTestModule, ResourcesAsStrings("rdf") {
+      override def mvnDeps: T[Seq[Dep]] = Task {
+        super[ScalaNativeTests].mvnDeps() ++ super[CommonTestModule].mvnDeps()
+      }
+    }
+  }
+}
