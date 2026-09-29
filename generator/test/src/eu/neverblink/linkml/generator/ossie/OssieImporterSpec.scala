@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.ossie.expression.{Expression, Literal}
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{SchemaDefinitionImpl, SlotDefinitionImpl}
-import eu.neverblink.linkml.runtime.{PlainText, Reference}
+import eu.neverblink.linkml.runtime.{Curie, PlainText, Reference, Uri}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -512,6 +512,79 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         """,
         "x",
       ).range shouldBe Some(Reference("NeverDeclared"))
+    }
+  }
+
+  "global identifiers" should {
+    "carry the prefixes over, after linkml" in {
+      importOf(ossie("""
+        |prefixes:
+        |  foaf: http://xmlns.com/foaf/0.1/
+        |  org: http://www.w3.org/ns/org#
+        |ontology:
+        |  - concept: Thing
+        |    type: EntityType
+        """)).prefixes.values.toSeq.map(p => p.prefixPrefix -> p.prefixReference.original) shouldBe
+        Seq(
+          "linkml" -> "https://w3id.org/linkml/",
+          "foaf" -> "http://xmlns.com/foaf/0.1/",
+          "org" -> "http://www.w3.org/ns/org#",
+        )
+    }
+
+    "put each iri where LinkML keeps the element's URI, keeping a QName as a CURIE" in {
+      val schema = importOf(ossie("""
+        |prefixes:
+        |  foaf: http://xmlns.com/foaf/0.1/
+        |ontology:
+        |  - concept: Agent
+        |    type: EntityType
+        |    iri: foaf:Agent
+        |    relationships:
+        |      - name: homepage
+        |        iri: foaf:homepage
+        |        roles: [{concept: String}]
+        |        multiplicity: ManyToOne
+        |        verbalizes: ["{Agent} homepage {String}"]
+        |  - concept: Status
+        |    type: ValueType
+        |    iri: http://www.w3.org/ns/org#Status
+        |    extends: [String]
+        |    requires:
+        |      - Status IN ('OK')
+        """))
+      schema.classes("Agent").classUri shouldBe Some(Curie("foaf:Agent"))
+      schema.classes("Agent").attributes("homepage").slotUri shouldBe Some(Curie("foaf:homepage"))
+      schema.enums("Status").enumUri shouldBe Some(Uri("http://www.w3.org/ns/org#Status"))
+    }
+
+    "keep a named type's iri as an exact mapping, not as its uri" in {
+      val t = importOf(ossie("""
+        |ontology:
+        |  - concept: Year
+        |    type: ValueType
+        |    iri: http://www.w3.org/2001/XMLSchema#gYear
+        |    extends: [Integer]
+        """)).types("Year")
+      t.typeUri shouldBe None
+      t.exactMappings shouldBe Seq(Uri("http://www.w3.org/2001/XMLSchema#gYear"))
+    }
+
+    "write out in full a QName over a linkml prefix that means something else" in {
+      val schema = importOf(ossie("""
+        |prefixes:
+        |  linkml: http://other.org/
+        |ontology:
+        |  - concept: Thing
+        |    type: EntityType
+        |    iri: linkml:Thing
+        """))
+      schema.classes("Thing").classUri shouldBe Some(Uri("http://other.org/Thing"))
+      schema.prefixes("linkml").prefixReference.original shouldBe "https://w3id.org/linkml/"
+    }
+
+    "produce a schema that has nothing wrong with it" in {
+      reimport(yamlOf(globalIdentifiers)).validationProblems shouldBe empty
     }
   }
 

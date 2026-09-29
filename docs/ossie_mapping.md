@@ -4,15 +4,18 @@ How the `ossie` generator and importer map between LinkML and [Apache Ossie](htt
 
 ## Document
 
-| From LinkML                                    | Ossie field         | To LinkML     |
-|------------------------------------------------|---------------------|---------------|
-| Hardcoded `0.2.0.dev0`                         | `version`           | **Not read.** |
-| `name`                                         | `name`              | Inverse.      |
-| `description`                                  | `description`       | Inverse.      |
-| One component per class, enum, and named type. | `ontology`          | Inverse.      |
-| `extensions.ai_context`                        | `ai_context`        | Inverse.      |
-| **Not emitted.**                               | `requires`          | **Not read.** |
-| **Not emitted.**                               | `ontology_mappings` | **Not read.** |
+| From LinkML                                    | Ossie field         | To LinkML                         |
+|------------------------------------------------|---------------------|-----------------------------------|
+| Hardcoded `0.2.0.dev0`                         | `version`           | **Not read.**                     |
+| `name`                                         | `name`              | Inverse.                          |
+| `description`                                  | `description`       | Inverse.                          |
+| One component per class, enum, and named type. | `ontology`          | Inverse.                          |
+| `extensions.ai_context`                        | `ai_context`        | Inverse.                          |
+| The root schema's `prefixes` that `iri`s use.  | `prefixes`          | Inverse, declared after `linkml`. |
+| **Not emitted.**                               | `requires`          | **Not read.**                     |
+| **Not emitted.**                               | `ontology_mappings` | **Not read.**                     |
+
+See [IRIs](#iris) for how `prefixes` and `iri` are handled.
 
 By default, the importer invents an identifier for the LinkML schema as `https://example.org/` + `name` in snake_case, unless the caller supplies it.
 
@@ -22,6 +25,7 @@ By default, the importer invents an identifier for the LinkML schema as `https:/
 |--------------------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------|
 | Element name in PascalCase.                                                          | `concept`       | Inverse. Original spelling kept in `alias`.                                                                       |
 | `EntityType` for classes, `ValueType` for enums and types.                           | `type`          | Inverse.                                                                                                          |
+| Classes: `class_uri`. Enums: `enum_uri`. Types: first of `exact_mappings`.           | `iri`           | Inverse. See [IRIs](#iris).                                                                                       |
 | Element `description`, in `--metadata-language`.                                     | `description`   | Inverse.                                                                                                          |
 | Classes: `is_a` + `mixins`. Enums and types: the built-in value type for their base. | `extends`       | Last entry is `is_a`, the rest are `mixins`. For a value type it is `typeof`, or `string` if the base is unknown. |
 | `identifier`, `key`, or `unique_keys`                                                | `identify_by`   | One entry, `OneToOne`, or scalar range → `identifier`. Otherwise `unique_keys`.                                   |
@@ -40,6 +44,7 @@ One per derived slot of the class. Identified as `Concept.name`, so names only n
 | From LinkML                                                                       | Ossie field            | To LinkML                                                                                            |
 |-----------------------------------------------------------------------------------|------------------------|------------------------------------------------------------------------------------------------------|
 | Slot `alias`, else slot name in snake_case.                                       | `name`                 | Slot name in snake_case, original spelling in `alias`.                                               |
+| `slot_uri`. See [IRIs](#iris).                                                    | `iri`                  | `slot_uri`.                                                                                          |
 | `{Concept} <title or space-case name> {Range}`                                    | `verbalizes`           | The phrase becomes the slot `title`, unless it is just the space-cased name. Only the first is read. |
 | Slot `description`, in `--metadata-language`.                                     | `description`          | Inverse.                                                                                             |
 | Always exactly one, played by the slot's range concept.                           | `roles`                | The first role's concept is the range. Any others are dropped.                                       |
@@ -85,11 +90,19 @@ An **enum** becomes a `ValueType` extending `String`, with its permissible value
 | `minimum_value`, `maximum_value` | `Ref >= v`, `Ref <= v`  | Inverse.  |
 | `pattern`                        | `REGEXP_LIKE(Ref, 'p')` | Inverse.  |
 
+## IRIs
+
+The LinkML → Ossie generator gives every class, slot and enum an `iri`: its `class_uri`, `slot_uri` or `enum_uri`, or the URI LinkML derives from the default prefix when there is none. An IRI is written as a QName (basically, same thing as short IRIs in Turtle) when one of the root schema's `prefixes` covers it, and as a full IRI otherwise. Only the prefixes that some `iri` uses go into the ontology's `prefixes`.
+
+A named type's `iri` is the first of its `exact_mappings`, if present. Its `uri` is not used: a LinkML type's `uri` is the datatype its values are written in (usually inherited from its base, like `xsd:integer`), not an identifier for the type itself. Going the other way, the importer puts a value type's `iri` into `exact_mappings`.
+
+The Ossie → LinkML importer copies the ontology's `prefixes` into the schema and leaves each `iri` as it was written, so `iri: foaf:Agent` becomes `class_uri: foaf:Agent`. The one exception is a `linkml` prefix that points anywhere other than `https://w3id.org/linkml/`. The schema needs `linkml` for its own imports, so that prefix is not copied, and any `iri` using it is written out as a full IRI instead.
+
 ## Not mapped from LinkML
 
 Ossie does not support arbitrary extensions, so the following LinkML features are not mapped:
 
-- URIs and CURIEs of any kind (`class_uri`, `slot_uri`, `prefixes`)
+- A type's `uri`, permissible value `meaning`, and the `*_mappings` metaslots (apart from a type's first exact mapping)
 - `deprecated`, `annotations`, `extensions`, `subsets`, `see_also` and other metadata
 - `unit`, `default` / `ifabsent`, `recommended`
 - Cardinality counts (`minimum_cardinality`, `maximum_cardinality`)

@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.ossie.expression.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{LinkmlAny, PlainText, Reference, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, PlainText, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.schemaview.Case
 import org.virtuslab.yaml.{NodeOps, parseYaml}
 
@@ -58,6 +58,8 @@ object OssieImporter {
     BuiltInConcept.any -> "string", // TODO: decide what to do with Any as a type...
   )
 
+  private val linkmlNamespace = "https://w3id.org/linkml/"
+
   /** The class standing in for Ossie's `Any`, declared only when something actually refers to it.
     */
   private val anyClass = "Any"
@@ -92,6 +94,28 @@ object OssieImporter {
 
     private val typeNames: Set[String] = typeConcepts.map(c => elementNames(c.concept)).toSet
 
+    /** The ontology's prefixes that the schema can declare as they are.
+      *
+      * `linkml` is taken, because the schema needs it for its own imports.
+      */
+    private val keptPrefixes: VectorMap[String, String] =
+      VectorMap.from(ontology.prefixes.filter((p, ns) => p != "linkml" || ns == linkmlNamespace))
+
+    /** An `iri` as a LinkML URI or CURIE.
+      *
+      * A QName over a declared prefix stays a CURIE. Anything else is assumed to be a full IRI -
+      * including a QName over an undeclared prefix.
+      */
+    private def uriOf(iri: String): UriOrCurie = {
+      val colon = iri.indexOf(':')
+      val prefix = Option.when(colon > 0)(iri.substring(0, colon))
+      prefix.flatMap(p => ontology.prefixes.get(p).map(p -> _)) match {
+        case Some((p, _)) if keptPrefixes.contains(p) => Curie(iri)
+        case Some((_, ns)) => Uri(ns + iri.substring(colon + 1))
+        case None => Uri(iri)
+      }
+    }
+
     def schema: SchemaDefinitionImpl = {
       val classes = entityTypes.map(classOf)
       // Any class is only declared when something actually refers to it.
@@ -109,8 +133,8 @@ object OssieImporter {
         name = ontology.name,
         description = ontology.description.map(PlainText.apply),
         prefixes = VectorMap(
-          "linkml" -> PrefixImpl("linkml", Uri("https://w3id.org/linkml/")),
-        ),
+          "linkml" -> PrefixImpl("linkml", Uri(linkmlNamespace)),
+        ) ++ keptPrefixes.map((p, ns) => p -> PrefixImpl(p, Uri(ns))),
         defaultRange = Some(Reference("string")),
         imports = Seq(UriOrCurie("linkml:types")),
         extensions = aiContext,
@@ -154,6 +178,7 @@ object OssieImporter {
       ClassDefinitionImpl(
         name = name,
         alias = Option.when(name != concept.concept)(concept.concept),
+        classUri = concept.iri.map(uriOf),
         description = concept.description.map(PlainText.apply),
         isA = parents.lastOption.map(Reference.apply),
         mixins = parents.dropRight(1).map(Reference.apply),
@@ -199,6 +224,7 @@ object OssieImporter {
         name = name,
         rank = Some(rank),
         alias = Option.when(name != relationship.name)(relationship.name),
+        slotUri = relationship.iri.map(uriOf),
         title = title.map(PlainText.apply),
         description = relationship.description.map(PlainText.apply),
         range = role.map(r => Reference(rangeOf(r.concept))),
@@ -214,6 +240,7 @@ object OssieImporter {
     private def enumOf(concept: Concept): EnumDefinitionImpl =
       EnumDefinitionImpl(
         name = elementNames(concept.concept),
+        enumUri = concept.iri.map(uriOf),
         description = concept.description.map(PlainText.apply),
         permissibleValues = VectorMap.from(
           permissibleValues(concept).getOrElse(Nil).map(v => v -> PermissibleValueImpl(text = v)),
@@ -226,6 +253,8 @@ object OssieImporter {
       TypeDefinitionImpl(
         name = elementNames(concept.concept),
         description = concept.description.map(PlainText.apply),
+        // Not `uri`: that is the datatype values are written in, not what the type stands for.
+        exactMappings = concept.iri.map(uriOf).toSeq,
         typeof =
           Some(Reference(concept.extendsConcepts.headOption.map(baseOf).getOrElse("string"))),
         minimumValue = constraints.minimumValue,
