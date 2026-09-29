@@ -558,7 +558,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
       schema.enums("Status").enumUri shouldBe Some(Uri("http://www.w3.org/ns/org#Status"))
     }
 
-    "keep a named type's iri as an exact mapping, not as its uri" in {
+    "make a value type's iri the uri of the type" in {
       val t = importOf(ossie("""
         |ontology:
         |  - concept: Year
@@ -566,8 +566,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         |    iri: http://www.w3.org/2001/XMLSchema#gYear
         |    extends: [Integer]
         """)).types("Year")
-      t.typeUri shouldBe None
-      t.exactMappings shouldBe Seq(Uri("http://www.w3.org/2001/XMLSchema#gYear"))
+      t.typeUri shouldBe Some(Uri("http://www.w3.org/2001/XMLSchema#gYear"))
     }
 
     "write out in full a QName over a linkml prefix that means something else" in {

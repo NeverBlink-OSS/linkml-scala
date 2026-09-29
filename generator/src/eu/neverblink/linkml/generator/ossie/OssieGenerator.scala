@@ -19,7 +19,6 @@ import java.io.OutputStream
 
 import scala.collection.immutable.VectorMap
 import scala.collection.mutable
-import scala.util.Try
 
 /** Generator for [[https://github.com/apache/ossie Apache Ossie]] ontologies.
   *
@@ -76,18 +75,19 @@ class OssieGenerator(using sv: SchemaView)
     // IRIs are built in full, and only shortened here, where it is known which prefixes they need.
     val namespaces = Namespaces(sv)
     val compact = (iri: Option[String]) => iri.mapFast(namespaces.compact)
+    val ontology = components.map(c =>
+      c.copy(
+        iri = compact(c.iri),
+        relationships = c.relationships.map(r => r.copy(iri = compact(r.iri))),
+      ),
+    )
 
     OssieOntology(
       name = sv.root.name,
       description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       aiContext = aiContext(sv.root),
       prefixes = namespaces.used,
-      ontology = components.map(c =>
-        c.copy(
-          iri = compact(c.iri),
-          relationships = c.relationships.map(r => r.copy(iri = compact(r.iri))),
-        ),
-      ),
+      ontology = ontology,
     )
   }
 
@@ -233,9 +233,7 @@ class OssieGenerator(using sv: SchemaView)
     Concept(
       concept = name,
       conceptType = ConceptType.ValueType,
-      iri = tv._type.exactMappings.headOption.flatMap(m =>
-        Try(m.uri(using tv.definingPrefixResolver)).toOption,
-      ),
+      iri = Some(tv.uriStr),
       description = tv._type.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       extendsConcepts = Seq(builtInForType(tv)),
       requires = Constraints(

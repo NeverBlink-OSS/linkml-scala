@@ -25,7 +25,7 @@ By default, the importer invents an identifier for the LinkML schema as `https:/
 |--------------------------------------------------------------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------|
 | Element name in PascalCase.                                                          | `concept`       | Inverse. Original spelling kept in `alias`.                                                                       |
 | `EntityType` for classes, `ValueType` for enums and types.                           | `type`          | Inverse.                                                                                                          |
-| Classes: `class_uri`. Enums: `enum_uri`. Types: first of `exact_mappings`.           | `iri`           | Inverse. See [IRIs](#iris).                                                                                       |
+| `class_uri`, `enum_uri`, or the type's `uri`. See [IRIs](#iris).                     | `iri`           | Inverse.                                                                                                          |
 | Element `description`, in `--metadata-language`.                                     | `description`   | Inverse.                                                                                                          |
 | Classes: `is_a` + `mixins`. Enums and types: the built-in value type for their base. | `extends`       | Last entry is `is_a`, the rest are `mixins`. For a value type it is `typeof`, or `string` if the base is unknown. |
 | `identifier`, `key`, or `unique_keys`                                                | `identify_by`   | One entry, `OneToOne`, or scalar range → `identifier`. Otherwise `unique_keys`.                                   |
@@ -92,9 +92,7 @@ An **enum** becomes a `ValueType` extending `String`, with its permissible value
 
 ## IRIs
 
-The LinkML → Ossie generator gives every class, slot and enum an `iri`: its `class_uri`, `slot_uri` or `enum_uri`, or the URI LinkML derives from the default prefix when there is none. An IRI is written as a QName (basically, same thing as short IRIs in Turtle) when one of the root schema's `prefixes` covers it, and as a full IRI otherwise. Only the prefixes that some `iri` uses go into the ontology's `prefixes`.
-
-A named type's `iri` is the first of its `exact_mappings`, if present. Its `uri` is not used: a LinkML type's `uri` is the datatype its values are written in (usually inherited from its base, like `xsd:integer`), not an identifier for the type itself. Going the other way, the importer puts a value type's `iri` into `exact_mappings`.
+The LinkML → Ossie generator gives every class, slot, enum and named type an `iri`: its `class_uri`, `slot_uri`, `enum_uri` or `uri`, or the URI LinkML derives when there is none. An IRI is written as a QName (basically, same thing as short IRIs in Turtle) when one of the root schema's `prefixes` covers it, and as a full IRI otherwise. Only the prefixes that some `iri` uses go into the ontology's `prefixes`.
 
 The Ossie → LinkML importer copies the ontology's `prefixes` into the schema and leaves each `iri` as it was written, so `iri: foaf:Agent` becomes `class_uri: foaf:Agent`. The one exception is a `linkml` prefix that points anywhere other than `https://w3id.org/linkml/`. The schema needs `linkml` for its own imports, so that prefix is not copied, and any `iri` using it is written out as a full IRI instead.
 
@@ -102,7 +100,7 @@ The Ossie → LinkML importer copies the ontology's `prefixes` into the schema a
 
 Ossie does not support arbitrary extensions, so the following LinkML features are not mapped:
 
-- A type's `uri`, permissible value `meaning`, and the `*_mappings` metaslots (apart from a type's first exact mapping)
+- Permissible value `meaning`, and the `*_mappings` metaslots
 - `deprecated`, `annotations`, `extensions`, `subsets`, `see_also` and other metadata
 - `unit`, `default` / `ifabsent`, `recommended`
 - Cardinality counts (`minimum_cardinality`, `maximum_cardinality`)

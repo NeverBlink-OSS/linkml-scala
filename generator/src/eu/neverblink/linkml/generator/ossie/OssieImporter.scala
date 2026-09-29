@@ -253,8 +253,7 @@ object OssieImporter {
       TypeDefinitionImpl(
         name = elementNames(concept.concept),
         description = concept.description.map(PlainText.apply),
-        // Not `uri`: that is the datatype values are written in, not what the type stands for.
-        exactMappings = concept.iri.map(uriOf).toSeq,
+        typeUri = concept.iri.map(uriOf),
         typeof =
           Some(Reference(concept.extendsConcepts.headOption.map(baseOf).getOrElse("string"))),
         minimumValue = constraints.minimumValue,

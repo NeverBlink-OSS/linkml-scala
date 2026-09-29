@@ -404,9 +404,7 @@ object OssieCases {
     |types:
     |  Year:
     |    typeof: integer
-    |    exact_mappings:
-    |      - xsd:gYear
-    |      - ex:year
+    |    uri: xsd:gYear
     |enums:
     |  Status:
     |    enum_uri: http://www.w3.org/ns/org#Status

@@ -291,12 +291,9 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       )
     }
 
-    "take a named type's iri from its first exact mapping" in {
+    "give a named type its uri, inherited or not" in {
       concept(ontologyOf(globalIdentifiers), "Year").iri shouldBe Some("xsd:gYear")
-    }
-
-    "not take a named type's iri from its uri, which is only the datatype of its values" in {
-      concept(ontologyOf(namedType), "SmallInt").iri shouldBe None
+      concept(ontologyOf(typeofChain), "PositiveInt").iri shouldBe Some("xsd:integer")
     }
 
     "use the longest namespace when several cover an IRI" in {
