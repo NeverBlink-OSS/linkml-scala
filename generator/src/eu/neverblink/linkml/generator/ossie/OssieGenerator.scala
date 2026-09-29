@@ -17,6 +17,9 @@ import org.virtuslab.yaml.{Node, parseYaml}
 
 import java.io.OutputStream
 
+import scala.collection.immutable.VectorMap
+import scala.collection.mutable
+
 /** Generator for [[https://github.com/apache/ossie Apache Ossie]] ontologies.
   *
   * Targets the ontology spec (`ontology/ontology.json`), which describes a conceptual model:
@@ -69,11 +72,22 @@ class OssieGenerator(using sv: SchemaView)
           "Check the pruning mode, and whether the schema defines any classes, enums or types.",
       )
 
+    // IRIs are built in full, and only shortened here, where it is known which prefixes they need.
+    val namespaces = Namespaces(sv)
+    val compact = (iri: Option[String]) => iri.mapFast(namespaces.compact)
+    val ontology = components.map(c =>
+      c.copy(
+        iri = compact(c.iri),
+        relationships = c.relationships.map(r => r.copy(iri = compact(r.iri))),
+      ),
+    )
+
     OssieOntology(
       name = sv.root.name,
       description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       aiContext = aiContext(sv.root),
-      ontology = components,
+      prefixes = namespaces.used,
+      ontology = ontology,
     )
   }
 
@@ -100,6 +114,7 @@ class OssieGenerator(using sv: SchemaView)
     Concept(
       concept = name,
       conceptType = ConceptType.EntityType,
+      iri = Some(cv.uriStr),
       description = cv.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       // Ancestors that were pruned away are simply not extended.
       extendsConcepts = cv.parents.flatMap(p => conceptOf.get(p.name)).distinct,
@@ -175,6 +190,7 @@ class OssieGenerator(using sv: SchemaView)
       Rel(
         relationship = Relationship(
           name = name,
+          iri = Some(av.slotView.uriStr),
           // Ossie requires at least one verbalization.
           verbalizes = Seq(
             Verbalization(
@@ -203,6 +219,7 @@ class OssieGenerator(using sv: SchemaView)
     Concept(
       concept = name,
       conceptType = ConceptType.ValueType,
+      iri = Some(ev.uriStr),
       description = ev._enum.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       extendsConcepts = Seq(BuiltInConcept.string),
       requires =
@@ -216,6 +233,7 @@ class OssieGenerator(using sv: SchemaView)
     Concept(
       concept = name,
       conceptType = ConceptType.ValueType,
+      iri = Some(tv.uriStr),
       description = tv._type.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       extendsConcepts = Seq(builtInForType(tv)),
       requires = Constraints(
@@ -258,6 +276,32 @@ class OssieGenerator(using sv: SchemaView)
 }
 
 object OssieGenerator {
+
+  /** The prefixes declared in the root schema, for writing IRIs as QNames.
+    *
+    * Remembers which prefixes `compact` has used, so that only those get declared.
+    */
+  private final class Namespaces(sv: SchemaView) {
+    private val all: Seq[(String, String)] =
+      sv.root.prefixes.keys.toSeq.flatMap(p => sv.rootPrefixResolver.resolvePrefix(p).map(p -> _))
+
+    private val usedPrefixes = mutable.Set.empty[String]
+
+    /** `iri` as a QName if a declared prefix covers it, else unchanged. */
+    def compact(iri: String): String =
+      namespaceFor(iri).fold(iri) { (prefix, ns) =>
+        usedPrefixes += prefix
+        prefix + ":" + iri.substring(ns.length)
+      }
+
+    /** The prefixes `compact` has used so far, in the order the schema declares them. */
+    def used: VectorMap[String, String] =
+      VectorMap.from(all.filter((prefix, _) => usedPrefixes.contains(prefix)))
+
+    /** The longest namespace that `iri` starts with, leaving a local part behind. */
+    private def namespaceFor(iri: String): Option[(String, String)] =
+      all.filter((_, ns) => iri.length > ns.length && iri.startsWith(ns)).maxByOption(_._2.length)
+  }
 
   /** A relationship, plus the bits of its slot that the containing concept needs. */
   private final case class Rel(relationship: Relationship, required: Boolean, slotName: String)

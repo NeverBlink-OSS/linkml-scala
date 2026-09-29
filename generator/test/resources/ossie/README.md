@@ -3,7 +3,7 @@
 `ontology.json` is the JSON Schema for Apache Ossie ontology definitions, taken verbatim from
 [apache/ossie](https://github.com/apache/ossie) (`ontology/ontology.json`, spec version
 `0.2.0.dev0`), at commit
-[`50457d3`](https://github.com/apache/ossie/commit/50457d308f2e48c4e7b0294502d0f40db11f52c0).
+[`26fb449`](https://github.com/apache/ossie/commit/26fb4498aa4664ab4b0e9d9561a17337fdeb0e74).
 
 Distributed under the Apache License 2.0, see `LICENSE`.
 
