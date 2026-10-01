@@ -244,7 +244,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       c.cls.description.foreachFast { d =>
         langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
-      val closed = !(open || c.cls.`abstract` || c.cls.mixin)
+      val closed = !open && c.isConcrete
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       sink.list(
         classNameIri,

@@ -66,6 +66,19 @@ object `package` extends Module, NativeOptional {
           os.call(("npm", "ci"), cwd = mermaidDir, stdout = os.Inherit, stderr = os.Inherit)
       }
 
+      /** The npm project with the pinned TypeScript compiler that `TypeScriptCompileSpec` checks
+        * the generated TypeScript with.
+        */
+      def typescriptDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "typescript"
+
+      /** Install the pinned TypeScript compiler for `TypeScriptCompileSpec`. Requires Node.js 22+
+        * and npm on the PATH.
+        */
+      def typescriptCompiler(args: String*) = Task.Command(exclusive = true) {
+        if !os.exists(typescriptDir / "node_modules") then
+          os.call(("npm", "ci"), cwd = typescriptDir, stdout = os.Inherit, stderr = os.Inherit)
+      }
+
       /** Where `ossieRepo` puts the apache/ossie checkout. */
       def ossieDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "ossie-repo"
 
@@ -82,11 +95,13 @@ object `package` extends Module, NativeOptional {
       }
 
       // Point BenchmarkSchemaSpec at the fetched datasets, so they are cloned before the tests run,
-      // ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`, and
+      // ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`,
+      // TypeScriptCompileSpec at the compiler installed by `typescriptCompiler`, and
       // OssieIntegrationSpec at the checkout prepared by `ossieRepo`.
       override def forkEnv = super.forkEnv() ++ Map(
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
+        "LINKML_TYPESCRIPT_COMPILER" -> typescriptDir.toString,
         "LINKML_OSSIE_REPO" -> ossieDir.toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
@@ -124,6 +139,8 @@ object `package` extends Module, NativeOptional {
         .foreach(p => os.copy.into(p, dest))
       os.copy.into(npmMetadata().path / "README.md", dest)
       os.copy.into(tsDefs().path, dest)
+      // Generated from the models by `./mill validation.regenerate` and `./mill schemaview.regenerate`
+      TsDefsGen.modelTypes.foreach(m => os.copy.into(npmMetadata().path / m.file, dest))
       os.write(
         dest / "package.json",
         NpmPackage.packageJson(publishVersion(), pomSettings().description, mainFile),

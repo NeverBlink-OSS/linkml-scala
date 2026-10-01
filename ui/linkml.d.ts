@@ -1,6 +1,15 @@
 // AUTO-GENERATED from generator/src-js/eu/neverblink/linkml/js/LinkMlJsApi.scala.
 // Do not edit by hand – regenerate with ./mill uiTypes (or generator.js.npmPackage).
 
+// The validation report, generated from model/issue-types.yaml. Each issue's `issue_type`
+// names its kind, so a `switch` on it narrows the issue to that kind.
+import type { SchemaValidationReport } from "../generator/npm/validation-report.js";
+export * from "../generator/npm/validation-report.js";
+
+// The build info, generated from model/build-info.yaml.
+import type { BuildInfo } from "../generator/npm/build-info.js";
+export * from "../generator/npm/build-info.js";
+
 /**
  * Opaque handle to a loaded, import-resolved LinkML schema. Create one with
  * {@link LinkMLApi.load} and pass it to the generator functions. Parse a schema
@@ -17,7 +26,7 @@ export interface SchemaView {
  */
 export interface LoadResult {
   readonly view?: SchemaView;
-  readonly report: any;
+  readonly report: SchemaValidationReport;
 }
 
 export interface LinkMLApi {
@@ -25,7 +34,7 @@ export interface LinkMLApi {
    * Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML metamodel it was built against, and what it is running on.  Useful in bug reports, and for checking that the version you loaded is the one you meant to.
    * @returns A `BuildInfo` object, as described by https://linkml.neverblink.eu/model/build-info
    */
-  buildInfo(): any;
+  buildInfo(): BuildInfo;
 
   /**
    * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the schema's YAML text.  The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of its imports (transitively) imports the main schema back by filename, that import cannot be matched against the root and the main schema will be loaded a second time. Use [[loadFromPath]] instead when the root schema takes part in an import cycle.  See [[loadFromPath]] for the correct key format.
@@ -112,6 +121,17 @@ export interface LinkMLApi {
   graphQl(schema: SchemaView, pruningMode?: string, treeRoot?: string): string;
 
   /**
+   * Generate TypeScript types from a loaded LinkML schema. The types describe the same JSON as [[jsonSchema]], with no runtime code: load data with `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: skip
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
+   * @param includeNull Whether optional slots may also be `null`.
+   * @param open Whether the interfaces should allow additional properties.
+   * @returns TypeScript source code
+   */
+  typeScript(schema: SchemaView, pruningMode?: string, treeRoot?: string, includeNull?: boolean, open?: boolean): string;
+
+  /**
    * Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become entities, type- and enum-ranged slots become their attributes, and class-ranged slots become relationship lines.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
@@ -124,7 +144,7 @@ export interface LinkMLApi {
   /**
    * Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", or "erdiagram".
+   * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", or "typescript".
    * @returns Translation dictionary for translating the linkml names to framework names.
    */
   translation(schema: SchemaView, target: string): string;
@@ -149,12 +169,12 @@ export interface LinkMLApi {
   fromOssie(ontology: string, schemaId?: string, outFormat?: string): string;
 
   /**
-   * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.  TODO: consider typing the return value in TypeScript using a TypeScript generator. See: https://github.com/NeverBlink-OSS/linkml-scala/issues/127
+   * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details` from the model's `equals_expression`s. Turn it off to get only the structured fields.
    * @returns A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean.
    */
-  lint(schema: SchemaView, inferMessages?: boolean): any;
+  lint(schema: SchemaView, inferMessages?: boolean): SchemaValidationReport;
 }
 
 export declare const LinkML: LinkMLApi;

@@ -28,7 +28,8 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 class JsonSchemaGenerator(using sv: SchemaView)
-    extends JsonDocumentGenerator[JsonSchemaGenerator.Options, Schema] {
+    extends JsonDocumentGenerator[JsonSchemaGenerator.Options, Schema],
+      JsonRenamer {
   import JsonSchemaGenerator.*
 
   override protected def defaultOptions: Options = Options()
@@ -37,16 +38,6 @@ class JsonSchemaGenerator(using sv: SchemaView)
 
   override protected def writerConfig(options: Options): WriterConfig =
     WriterConfig.withIndentionStep(options.indentationStep)
-
-  /** Translate a class name into a JSON Schema form, respecting aliases and LinkML casing rules
-    */
-  protected def className(cls: ClassView): MappedClassName =
-    cls.cls.alias.getOrElseFast(cls.canonicalName)
-
-  /** Translate a slot name into a JSON Schema form, respecting aliases and LinkML casing rules
-    */
-  protected def slotName(slot: SlotView): MappedSlotName =
-    slot.slot.alias.getOrElseFast(slot.baseName)
 
   private def toBigDecimalOpt(x: Option[LinkmlAny]): Option[BigDecimal] =
     try x.mapFast(v => BigDecimal(v.value.trim))
@@ -139,7 +130,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
             .arrayOfIf(typeAttribute.slotView.slot.multivalued)
         case EnumAttributeView(slotView, _, enumView) =>
           new Schema(
-            $ref = new Some("#/$defs/".concat(enumView._enum.name)),
+            $ref = new Some("#/$defs/".concat(enumName(enumView))),
           ).arrayOfIf(slotView.slot.multivalued)
       }
       val sv = attribute.slotView
@@ -235,11 +226,11 @@ class JsonSchemaGenerator(using sv: SchemaView)
     }
     for ev <- enums do {
       val enum_ = ev._enum
-      val enumValues = enum_.permissibleValues.keys.foldLeft(new mutable.ListBuffer[ExampleValue]) {
-        (acc, v) => acc.addOne(new ExampleSingleValue(v))
-      }.toList
+      val enumValues = enum_.permissibleValues.values.foldLeft(
+        new mutable.ListBuffer[ExampleValue],
+      )((acc, pv) => acc.addOne(new ExampleSingleValue(permissibleValueName(ev, pv)))).toList
       defs.update(
-        enum_.name,
+        enumName(ev),
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),

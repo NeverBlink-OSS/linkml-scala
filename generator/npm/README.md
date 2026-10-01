@@ -79,14 +79,18 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `scala(view, packageName)`                                                   | `Record<string, string>` | filename → generated Scala                                                     |
 | `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
 | `graphQl(view, pruningMode?, treeRoot?)`                                     | `string`                 | GraphQL                                                                        |
+| `typeScript(view, pruningMode?, treeRoot?, includeNull?, open?)`             | `string`                 | TypeScript types for the JSON data (no runtime code)                           |
 | `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`                  | `string`                 | Mermaid entity relationship diagram                                            |
 | `ossie(view, pruningMode?, treeRoot?, outFormat?)`                           | `string`                 | Apache Ossie ontology, `yaml` (default) or `json`                              |
 | `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
-| `lint(view, inferMessages?)`                                                 | `object`                 | `SchemaValidationReport` (JSON)                                                |
+| `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 | `fromOssie(ontology, schemaId?, outFormat?)`                                 | `string`                 | the LinkML schema from an Apache Ossie ontology                                |
 
-See [`index.d.ts`](./index.d.ts) for full type signatures.
+See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
+`loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind
+(e.g. `"UnknownReference"`), and checking it narrows the issue to that kind's fields. For how to use the generated TypeScript,
+see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/typescript.md).
 
 ## Browser use
 

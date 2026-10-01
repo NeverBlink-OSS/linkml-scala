@@ -135,7 +135,7 @@ classes:
         range: CodeRegion
         recommended: true
         title: code region
-        inline: true
+        inlined: true
         description: >-
           A region of code in the schema where the issue was found.
 

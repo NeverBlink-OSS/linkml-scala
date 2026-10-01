@@ -32,6 +32,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
     (Frictionless, "frictionless", Seq("\"fields\"", "\"name\": \"name\"")),
     (GraphQl, "graphql", Seq("type Root", "name: String")),
+    (TypeScript, "typescript", Seq("export interface Root {", "name?: string;")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
     (Translation, "translation", Seq("\"Root\": \"root\"")),
     (Ossie, "ossie", Seq("concept: Root", "type: EntityType", "name: name")),

@@ -32,6 +32,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_linkml",
     "linkml_frictionless",
     "linkml_graphql",
+    "linkml_typescript",
     "linkml_er_diagram",
     "linkml_ossie",
     "linkml_scala",
@@ -194,6 +195,38 @@ class Generators:
         return self._document(
             "linkml_graphql",
             pruningMode=_pruning(pruning_mode, tree_root),
+            metadataLanguage=metadata_language,
+        )
+
+    def typescript(
+        self,
+        *,
+        pruning_mode: str = "skip",
+        tree_root: str | None = None,
+        include_null: bool = False,
+        open: bool = False,
+        metadata_language: str = "en",
+    ) -> str:
+        """Generate TypeScript types for the schema's JSON data, with no runtime code.
+
+        :param pruning_mode: Which classes and enums to generate. `skip` (the default) generates
+            all of them. The members of a designated union are always generated along with the
+            union.
+        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
+            valid with `pruning_mode="treeRoot"`.
+        :param include_null: Allows null values for optional slots and compact dictionary
+            entries without required content beyond the key, as in the JSON Schema generator.
+            Default: false
+        :param open: Whether interfaces should allow additional properties (`[key: string]:
+            unknown`), as `additionalProperties` in the JSON Schema generator. Default: false
+        :param metadata_language: Which language to use for titles and descriptions in doc
+            comments.
+        """
+        return self._document(
+            "linkml_typescript",
+            pruningMode=_pruning(pruning_mode, tree_root),
+            includeNull=include_null,
+            open=open,
             metadataLanguage=metadata_language,
         )
 

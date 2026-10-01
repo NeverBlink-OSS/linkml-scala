@@ -135,7 +135,7 @@ linkml-scala generate ossie <input-file>
 linkml-scala generate shacl <input-file>
 ```
 
-**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator.
+**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. Additional generator documentation is in the [docs/](docs) directory.
 
 #### LinkML schema derivation and pruning 
 
@@ -167,8 +167,8 @@ const jsonSchema = LinkML.jsonSchema(view);
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
 import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
-`rdfs`, `linkml`, `scala`, `frictionless`, `graphQl`, `erDiagram`, `ossie`, or `lint` against the
-returned handle.
+`rdfs`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `erDiagram`, `ossie`, or `lint`
+against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
 ## Python library

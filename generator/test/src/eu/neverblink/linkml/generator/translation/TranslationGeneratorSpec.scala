@@ -149,7 +149,17 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
   "generate all catalogue models without errors" when {
     for entry <- ModelCatalogue.all do
       s"model is '${entry.model.root.name}'" when {
-        for target <- Seq("base", "URI", "Scala", "GraphQL", "Frictionless", "Ossie", "erdiagram")
+        for target <- Seq(
+            "base",
+            "URI",
+            "Scala",
+            "GraphQL",
+            "Frictionless",
+            "Ossie",
+            "erdiagram",
+            "json",
+            "TypeScript",
+          )
         do
           s"target is $target" in {
             val result = TranslationGenerator(using entry.model).generate(
