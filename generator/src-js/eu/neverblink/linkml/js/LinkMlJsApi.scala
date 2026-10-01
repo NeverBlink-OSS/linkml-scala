@@ -3,6 +3,7 @@ package eu.neverblink.linkml.js
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
@@ -28,13 +29,23 @@ import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
   */
 final class SchemaViewJs private[js] (private[js] val underlying: SchemaView)
 
+/** A `SchemaValidationReport` (model/validation-report.yaml) as a plain JS object. Only a name for
+  * the TypeScript declarations. In TS it is the type generated from model/issue-types.yaml.
+  */
+type SchemaValidationReport = js.Any
+
+/** A `BuildInfo` (model/build-info.yaml) as a plain JS object. Only a name for the TypeScript
+  * declarations: there, it is the type generated from model/build-info.yaml.
+  */
+type BuildInfo = js.Any
+
 /** What loading a schema produced: always a validation report, and a usable handle if the schema
   * could be loaded at all.
   */
 @JSExportAll
 final class LoadResult private[js] (
     val view: js.UndefOr[SchemaViewJs],
-    val report: js.Any,
+    val report: SchemaValidationReport,
 )
 
 @JSExportTopLevel("LinkML")
@@ -55,7 +66,7 @@ object LinkMlJsApi {
     * @return
     *   A `BuildInfo` object, as described by https://linkml.neverblink.eu/model/build-info
     */
-  def buildInfo(): js.Any =
+  def buildInfo(): BuildInfo =
     js.JSON.parse(JsonUtil.yamlToJson(CurrentBuild.node()))
 
   /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the
@@ -153,7 +164,7 @@ object LinkMlJsApi {
       issues: Seq[SchemaIssue],
       runId: Option[String],
       inferMessages: Boolean,
-  ): js.Any = {
+  ): SchemaValidationReport = {
     val report = SchemaValidationReportImpl(
       issues = if inferMessages then issues.map(_.infer()) else issues,
       validationRunId = runId,
@@ -367,6 +378,41 @@ object LinkMlJsApi {
       GraphQlGenerator.Options(PruningMode(pruningMode, treeRoot.toOption)),
     )
 
+  /** Generate TypeScript types from a loaded LinkML schema. The types describe the same JSON as
+    * [[jsonSchema]], with no runtime code: load data with `JSON.parse(text) as X` and dump it with
+    * `JSON.stringify(x)`.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip.
+    *   treeRoot - remove all elements unreachable from the tree_root class. schema - remove all
+    *   elements unreachable from any of the classes defined in the root schema. skip - do not
+    *   remove unused elements. Default: skip
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root.
+    * @param includeNull
+    *   Whether optional slots may also be `null`.
+    * @param open
+    *   Whether the interfaces should allow additional properties.
+    * @return
+    *   TypeScript source code
+    */
+  def typeScript(
+      schema: SchemaViewJs,
+      pruningMode: String = "skip",
+      treeRoot: js.UndefOr[String] = js.undefined,
+      includeNull: Boolean = false,
+      open: Boolean = false,
+  ): String =
+    TypeScriptGenerator(using schema.underlying).serialize(
+      TypeScriptGenerator.Options(
+        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+        includeNull = includeNull,
+        open = open,
+      ),
+    )
+
   /** Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become
     * entities, type- and enum-ranged slots become their attributes, and class-ranged slots become
     * relationship lines.
@@ -407,7 +453,7 @@ object LinkMlJsApi {
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param target
     *   Target framework to generate translations for. One of "base", "uri", "scala", "graphql",
-    *   "frictionless", "ossie", or "erdiagram".
+    *   "frictionless", "ossie", "erdiagram", "json", or "typescript".
     * @return
     *   Translation dictionary for translating the linkml names to framework names.
     */
@@ -486,9 +532,6 @@ object LinkMlJsApi {
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This
     * method returns a structured JSON that follows the validation-report.yaml model.
     *
-    * TODO: consider typing the return value in TypeScript using a TypeScript generator. See:
-    * https://github.com/NeverBlink-OSS/linkml-scala/issues/127
-    *
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param inferMessages
@@ -497,6 +540,6 @@ object LinkMlJsApi {
     * @return
     *   A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean.
     */
-  def lint(schema: SchemaViewJs, inferMessages: Boolean = true): js.Any =
+  def lint(schema: SchemaViewJs, inferMessages: Boolean = true): SchemaValidationReport =
     reportJson(SchemaValidator(using schema.underlying).lintProblems, None, inferMessages)
 }

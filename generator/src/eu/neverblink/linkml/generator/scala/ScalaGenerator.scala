@@ -58,7 +58,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             scalaFields,
             (cls.isA ++ cls.mixins).map(ref => scalaPascal(ref.value)).toSeq,
             interfaceFields,
-            cls.`abstract` || cls.mixin,
+            !classView.isConcrete,
             shouldBeTrait,
             isSlotDefinitionClass,
             makeInferredFields(classView),
@@ -208,8 +208,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
         // one has to be typed as the interface instead.
         val name = className(classView)
-        val hasImpl = !classView.cls.`abstract` && !classView.cls.mixin
-        (if hasImpl then s"${name}Impl" else name, None)
+        (if classView.isConcrete then s"${name}Impl" else name, None)
       case ClassReferenceAttributeView(_, _, classView, _) =>
         val name = className(classView)
         (s"Reference[$name]", None)

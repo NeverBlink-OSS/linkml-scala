@@ -13,6 +13,7 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
+import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
@@ -286,6 +287,43 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
     GraphQlGenerator().writeTo(
       out,
       GraphQlGenerator.Options(options.pruning.resolvedPruningMode),
+    )
+}
+
+// TypeScript
+
+@HelpMessage(
+  "Generate TypeScript types from a LinkML model. " +
+    "The types describe the same JSON as the generated JSON Schema, with no runtime code: " +
+    "load data with JSON.parse and a type cast, dump it with JSON.stringify.",
+)
+@ArgsName("<input-file>")
+final case class TypeScriptOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
+    @HelpMessage(
+      "Whether the generated interfaces should allow additional properties. Default: false",
+    )
+    open: Boolean = false,
+    @HelpMessage("Allow null values for optional slots. Default: false")
+    includeNull: Boolean = false,
+) extends HasGenerateOptions
+
+object TypeScript extends StreamGenerate[TypeScriptOptions] {
+  override protected def generatorName: String = "typescript"
+
+  override protected[cli] def generate(options: TypeScriptOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    TypeScriptGenerator().writeTo(
+      out,
+      TypeScriptGenerator.Options(
+        pruningMode = options.pruning.resolvedPruningMode,
+        includeNull = options.includeNull,
+        open = options.open,
+      ),
     )
 }
 

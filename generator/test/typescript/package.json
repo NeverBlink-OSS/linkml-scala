@@ -1,0 +1,10 @@
+{
+  "name": "linkml-scala-typescript-compiler",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Test-only: type-checks the generated TypeScript and the catalogue data against it. See TypeScriptCompileSpec.",
+  "dependencies": {
+    "typescript": "7.0.2"
+  }
+}

@@ -50,6 +50,13 @@ object LinkMlCGenerators {
   def graphql(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.graphQl)
 
+  /** Generate TypeScript types for the schema's JSON data. Options: `pruningMode`, `includeNull`,
+    * `open`, `metadataLanguage`.
+    */
+  @exported("linkml_typescript")
+  def typescript(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.typeScript)
+
   /** Generate a Mermaid entity relationship diagram. Options: `pruningMode`, `optionalMarker`. */
   @exported("linkml_er_diagram")
   def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

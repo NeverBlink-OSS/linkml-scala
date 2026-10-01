@@ -99,6 +99,15 @@ object Entrypoints {
       "Generate a GraphQL schema.",
     ),
     Entrypoint(
+      "typescript",
+      "linkml_typescript",
+      "typeScript",
+      "TypeScriptGenerator",
+      "str",
+      "Generate TypeScript types for the schema's JSON data, with no runtime code.",
+      "Generate TypeScript types for the schema's JSON data.",
+    ),
+    Entrypoint(
       "er_diagram",
       "linkml_er_diagram",
       "erDiagram",

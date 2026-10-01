@@ -3,6 +3,7 @@ import { EXAMPLE_SCHEMA } from "./examples.js";
 import {
   IMPORTERS,
   TARGETS,
+  DEFAULT_TARGET_ID,
   importerById,
   targetById,
   type BuildInfo,
@@ -10,10 +11,10 @@ import {
   type IssueLocation,
   type Option,
   type OptionValues,
-  type ReportIssue,
+  type SchemaIssue,
   type Step,
   type Target,
-  type ValidationReport,
+  type SchemaValidationReport,
 } from "./targets.js";
 import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
 
@@ -32,7 +33,7 @@ const MERMAID_URL = "./mermaid/mermaid.js";
 
 /** Which way the conversion runs: `fromLinkml` picks a generator, `toLinkml` an importer. */
 let direction: Direction = "fromLinkml";
-let activeTargetId = TARGETS[0]!.id;
+let activeTargetId = DEFAULT_TARGET_ID;
 let activeImporterId = IMPORTERS[0]!.id;
 
 const DIRECTIONS = ["fromLinkml", "toLinkml"] as const;
@@ -770,13 +771,13 @@ async function renderDiagram(text: string): Promise<void> {
 /** Most severe first, so the report reads top-down in order of urgency. */
 const SEVERITY_ORDER = ["FATAL", "ERROR", "WARNING"];
 
-function severityRank(issue: ReportIssue): number {
+function severityRank(issue: SchemaIssue): number {
   const i = SEVERITY_ORDER.indexOf(String(issue.severity ?? "").toUpperCase());
   return i === -1 ? SEVERITY_ORDER.length : i;
 }
 
 /** e.g. "1 error, 2 warnings" - counts per severity, most severe first, only non-zero. */
-function severitySummary(issues: ReportIssue[]): string {
+function severitySummary(issues: SchemaIssue[]): string {
   const parts: string[] = [];
   for (const sev of SEVERITY_ORDER) {
     const n = issues.filter((i) => String(i.severity ?? "").toUpperCase() === sev).length;
@@ -809,7 +810,7 @@ function hideReport(): void {
   $outputEditorHost.hidden = false;
 }
 
-function showReport(report: ValidationReport): void {
+function showReport(report: SchemaValidationReport): void {
   hideDiagram();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
@@ -875,7 +876,7 @@ function showReport(report: ValidationReport): void {
   reportText = textLines.join("\n\n");
 }
 
-function severityClass(issue: ReportIssue): string {
+function severityClass(issue: SchemaIssue): string {
   const sev = String(issue.severity ?? "").toUpperCase();
   return SEVERITY_ORDER.includes(sev) ? sev.toLowerCase() : "other";
 }
@@ -885,7 +886,7 @@ function severityClass(issue: ReportIssue): string {
  * Multivalued slots arrive as arrays, so join them rather than dropping them. Nested objects (only
  * `location`, which is shown separately) are skipped.
  */
-function rawSummary(issue: ReportIssue): string {
+function rawSummary(issue: SchemaIssue): string {
   const slots = Object.entries(issue)
     .filter(([k]) => k !== "severity" && k !== "location")
     .flatMap(([k, v]) => {
@@ -1026,7 +1027,7 @@ function onResult(res: ConvertResponse): void {
   const start = performance.now();
   const step = stepById(res.direction, res.stepId) ?? activeStep();
   if (res.kind === "report") {
-    showReport(res.result as ValidationReport);
+    showReport(res.result as SchemaValidationReport);
   } else if (res.kind === "files") {
     showFiles(step as Target, res.result as Record<string, string>);
   } else if (res.kind === "diagram") {
@@ -1394,7 +1395,7 @@ function currentState(): SharedState {
   if (doc.link !== null && text === doc.remote) state.u = doc.link;
   else state.s = text;
   if (direction === "toLinkml") state.i = step.id;
-  else if (step.id !== TARGETS[0]!.id) state.t = step.id;
+  else if (step.id !== DEFAULT_TARGET_ID) state.t = step.id;
   const options = changedOptions();
   if (options) state.o = options;
   return state;
@@ -1452,7 +1453,7 @@ async function applySharedState(encoded: string): Promise<LoadResult> {
     activeImporterId = importer.id;
   } else {
     direction = "fromLinkml";
-    activeTargetId = targetById(state.t ?? "")?.id ?? TARGETS[0]!.id;
+    activeTargetId = targetById(state.t ?? "")?.id ?? DEFAULT_TARGET_ID;
   }
   Object.assign(optionValues[activeKey()]!, knownOptions(activeStep(), state.o));
   renderStep();
