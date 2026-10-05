@@ -7,7 +7,7 @@ package eu.neverblink.linkml.runtime
   * @tparam T
   *   Type that this reference points to
   */
-final case class Reference[+T](value: String):
+@flatten final case class Reference[+T](value: String):
   /** Resolve the reference using an implicitly provided [[ReferenceResolver]]
     * @param rr
     *   [[ReferenceResolver]] to resolve the reference with

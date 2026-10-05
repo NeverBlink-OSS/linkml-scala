@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
 import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.SlotExpression
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.*
@@ -243,7 +244,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       c.cls.description.foreachFast { d =>
         langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
-      val closed = !(open || c.cls.`abstract` || c.cls.mixin)
+      val closed = !open && c.isConcrete
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       sink.list(
         classNameIri,

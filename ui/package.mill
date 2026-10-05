@@ -30,7 +30,12 @@ object `package` extends Module {
    * facade. Run after changing LinkMlJsApi.scala.
    */
   def types(args: String*) = Task.Command(exclusive = true) {
-    os.copy.over(build.generator.js.tsDefs().path, mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts")
+    // The same as the package's index.d.ts, except that it takes the types generated from the
+    // models straight from generator/npm
+    os.write.over(
+      mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts",
+      TsDefsGen(os.read(build.generator.js.jsApiSource().path), "../generator/npm/"),
+    )
   }
 
   /** Type-check the UI against the LinkML types and confirm it bundles. Requires Node.js and npm on

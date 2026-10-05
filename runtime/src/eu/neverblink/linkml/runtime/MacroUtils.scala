@@ -23,12 +23,16 @@ trait MacroUtils(using val quotes: Quotes) {
     * @param paramLists
     *   A nested list of `FieldInfo` corresponding to the parameter lists of the primary
     *   constructor.
+    * @param isFlattened
+    *   Whether the class is annotated with `@flatten`, so it is serialized as the value of its only
+    *   field.
     */
   class ClassInfo(
       val tpe: TypeRepr,
       val tpeTypeArgs: List[TypeRepr],
       val primaryConstructor: Symbol,
       val paramLists: List[List[FieldInfo]],
+      val isFlattened: Boolean,
   ) {
 
     /** A flattened list of all fields defined in the primary constructor parameter lists. */
@@ -49,6 +53,12 @@ trait MacroUtils(using val quotes: Quotes) {
       }
       if (fields.count(_.kind == FieldKind.Value) > 1) {
         fail(s"More than one field is defined with '@value' annotation in '${tpe.show}'.")
+      }
+      if (isFlattened && fields.size != 1) {
+        fail(
+          s"'${flattenTpe.show}' is defined for '${tpe.show}', which has ${fields.size} fields. " +
+            "The annotation is only valid on classes with exactly one field.",
+        )
       }
     }
 
@@ -373,6 +383,7 @@ trait MacroUtils(using val quotes: Quotes) {
           case tps :: pss if tps.exists(_.isTypeParam) => pss.map(ps => createFieldInfos(ps, tps))
           case pss => pss.map(ps => createFieldInfos(ps, Nil))
         },
+        tpeClassSym.annotations.exists(_.tpe =:= flattenTpe),
       )
     },
   )
@@ -553,4 +564,5 @@ trait MacroUtils(using val quotes: Quotes) {
     Symbol.requiredClass("eu.neverblink.linkml.runtime.expandedDict").typeRef
   private val serializeDefaultTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.serializeDefault").typeRef
+  private val flattenTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.flatten").typeRef
 }

@@ -4,6 +4,7 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -127,6 +128,11 @@ object LinkMlNativeApi {
   def graphQl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     GraphQlGenerator().writeTo(out, Options.graphQl(optionsJson))
+  }
+
+  def typeScript(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    TypeScriptGenerator().writeTo(out, Options.typeScript(optionsJson))
   }
 
   def erDiagram(handle: Long, optionsJson: String, out: OutputStream): Unit = {

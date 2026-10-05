@@ -61,11 +61,14 @@ jobs:
           uv pip install -r requirements.txt
           python cross_test.py 
 
-      - name: Install the Mermaid ER diagram validator
-        run: ./mill --no-server generator.jvm.test.mermaidValidator
-
-      - name: Clone apache/ossie for the upstream ontology validator
-        run: ./mill --no-server generator.jvm.test.ossieRepo
+      - name: Install test deps
+        run: |
+          # Mermaid, to validate the generated ER diagrams
+          ./mill --no-server generator.jvm.test.mermaidValidator
+          # The TypeScript compiler, to type-check the generated TypeScript
+          ./mill --no-server generator.jvm.test.typescriptCompiler
+          # apache/ossie, for the upstream ontology validator
+          ./mill --no-server generator.jvm.test.ossieRepo
 
       - name: Build and test
         # testForked, not test: otherwise tests in the `tests` module don't run...
@@ -89,6 +92,7 @@ jobs:
           ./mill --no-server validation.regenerate
           ./mill --no-server schemaview.regenerate
           git diff --exit-code -- validation/src/eu/neverblink/linkml/validation/ \
+            generator/npm/validation-report.d.ts generator/npm/build-info.d.ts \
             schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ \
             || (echo "generated sources are stale – run ./mill validation.regenerate and ./mill schemaview.regenerate, then commit the result"; exit 1)
 

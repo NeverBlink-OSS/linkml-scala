@@ -59,6 +59,8 @@ object `package` extends Module {
         "--package eu.neverblink.linkml.validation model/issue-types.yaml",
       "validation.jvm.fix",
       "validation.jvm.reformat",
+      "cli.jvm.run generate typescript --to generator/npm/validation-report.d.ts " +
+        "model/issue-types.yaml",
     )
 
     def regenerateBindings: Seq[String] = alias(
@@ -67,11 +69,14 @@ object `package` extends Module {
       "nativelib.native.reformat",
     )
 
+    // Also regenerates the TypeScript types of the build info, which the npm package's index.d.ts
+    // includes as the return type of `buildInfo`.
     def regenerateBuildInfo: Seq[String] = alias(
       "cli.jvm.run generate scala --to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
         "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
       "schemaview.jvm.fix",
       "schemaview.jvm.reformat",
+      "cli.jvm.run generate typescript --to generator/npm/build-info.d.ts model/build-info.yaml",
     )
 
     def regenerateTests: Seq[String] = alias(

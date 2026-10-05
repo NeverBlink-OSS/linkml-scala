@@ -23,7 +23,8 @@ with linkml_scala.load_file("model.yaml") as schema:
 `load_file()` will automatically resolve imports and parse the schema. You can reuse the `Schema` object for multiple generator calls, and it will automatically cache the parsed form of any imported schemas.
 
 Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkml()`,
-`frictionless()`, `graphql()`, `er_diagram()`, `translation()`, `ossie()`, and `scala()`, plus
+`frictionless()`, `graphql()`, `typescript()`, `er_diagram()`, `translation()`, `ossie()`, and
+`scala()`, plus
 `lint()` for validation.
 
 Going the other way, `linkml_scala.from_ossie()` reads an Apache Ossie (incubating) ontology and returns the corresponding LinkML schema as YAML or JSON.

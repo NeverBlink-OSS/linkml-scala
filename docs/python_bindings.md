@@ -63,6 +63,7 @@ schema.rdfs(only_classes_from_root_schema=False, format="ttl")
 schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, output_format="yaml")
 schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_identifier=False)
 schema.graphql(pruning_mode="schema", tree_root=None)
+schema.typescript(pruning_mode="skip", tree_root=None, include_null=False, open=False)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
 schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml")
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
@@ -128,7 +129,7 @@ The library is compiled with [Scala Native](https://scala-native.org/), and expo
 ```c
 char* linkml_shacl      (long long handle, const char* opts, char** err);
 char* linkml_json_schema(long long handle, const char* opts, char** err);
-/* rdfs, linkml, frictionless, graphql, er_diagram, scala, lint - same shape */
+/* rdfs, linkml, frictionless, graphql, typescript, er_diagram, scala, lint - same shape */
 
 long long linkml_load_file(const char* path, const char* opts, char** report, char** err);
 void      linkml_close    (long long handle);

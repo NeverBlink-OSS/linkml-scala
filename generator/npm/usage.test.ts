@@ -1,7 +1,13 @@
 // Type-level smoke test for the generated index.d.ts, type-checked by
 // verify-package.mjs. Not shipped in the package.
 
-import { LinkML, type LoadResult, type SchemaView } from "@neverblink/linkml";
+import {
+  LinkML,
+  type LoadResult,
+  type SchemaIssue,
+  type SchemaValidationReport,
+  type SchemaView,
+} from "@neverblink/linkml";
 
 const schema = "id: https://example.org/s\nname: s";
 const importMap: Record<string, string> = {};
@@ -12,7 +18,7 @@ const buildVersion: string = build.linkml_scala_version;
 
 // Loading always yields a report; `view` is absent when the schema has fatal problems.
 const loaded: LoadResult = LinkML.loadFromString(schema, importMap);
-const loadReport: unknown = loaded.report;
+const loadReport: SchemaValidationReport = loaded.report;
 if (!loaded.view) throw new Error("schema did not load");
 const view: SchemaView = loaded.view;
 
@@ -36,9 +42,18 @@ const erDiagram: string = LinkML.erDiagram(view);
 const erDiagramFull: string = LinkML.erDiagram(view, "skip", "Person", false);
 const ossie: string = LinkML.ossie(view);
 const ossieFull: string = LinkML.ossie(view, "treeRoot", "Person", "json");
-const lint: any = LinkML.lint(view);
-const lintIssues: unknown[] = lint.issues;
-const lintNoMessages: any = LinkML.lint(view, false);
+const lint: SchemaValidationReport = LinkML.lint(view);
+const lintIssues: SchemaIssue[] = lint.issues;
+const lintNoMessages: SchemaValidationReport = LinkML.lint(view, false);
+// `issue_type` tells the kinds of issue apart, so checking it narrows the issue.
+for (const issue of lintIssues) {
+  if (issue.issue_type === "UnknownReference") {
+    const reference: string = issue.reference_value;
+    void reference;
+  }
+  // @ts-expect-error only an UnknownReference has a reference_value
+  void issue.reference_value;
+}
 
 void [
   build,

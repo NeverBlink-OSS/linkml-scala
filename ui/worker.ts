@@ -6,7 +6,6 @@ import {
   type BuildInfo,
   type OptionValues,
   type TargetResult,
-  type ValidationReport,
 } from "./targets.js";
 import type { LinkMLApi, LoadResult } from "./linkml";
 
@@ -72,10 +71,10 @@ declare const self: {
 };
 
 // Announced rather than asked for: there is nothing to ask about, and the page wants the version
-// whether or not anyone has generated anything yet. Already plain data - `buildInfo` hands back a
-// parsed JSON object - so unlike a report it needs no normalizing before it crosses the boundary.
+// whether or not anyone has generated anything yet. Like the reports, the build info is a parsed
+// JSON object, so it crosses the boundary as it is.
 apiPromise
-  .then((api) => self.postMessage({ build: api.buildInfo() as BuildInfo }))
+  .then((api) => self.postMessage({ build: api.buildInfo() }))
   .catch(() => {
     // A bundle that failed to load reports itself through the first generation request.
   });
@@ -115,7 +114,7 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
 
     // Fatal problems mean there is no view to generate from, so every target shows the report.
     if (!view) {
-      reply({ id, ok: true, direction, stepId, kind: "report", result: plain(report), loadMs, genMs: 0, fatal: true });
+      reply({ id, ok: true, direction, stepId, kind: "report", result: report, loadMs, genMs: 0, fatal: true });
       return;
     }
 
@@ -133,7 +132,7 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
       : typeof result === "object"
       ? "files"
       : "text";
-    reply({ id, ok: true, direction, stepId, kind, result: kind === "report" ? plain(result) : result, loadMs, genMs });
+    reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs });
   } catch (err) {
     reply({ id, ok: false, error: err instanceof Error ? err.toString() : String(err) });
   }
@@ -141,14 +140,4 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
 
 function reply(msg: ConvertResponse): void {
   self.postMessage(msg);
-}
-
-/** Reduce a Scala.js-produced report to plain data.
- *
- * Reports are the only structured (non-string) values that cross the boundary, and structured
- * clone throws on anything the bundle might hang off them. They are small, so normalizing is
- * cheap insurance against a DataCloneError taking down the whole response.
- */
-function plain(report: unknown): ValidationReport {
-  return JSON.parse(JSON.stringify(report ?? {})) as ValidationReport;
 }

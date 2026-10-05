@@ -2,7 +2,8 @@ package eu.neverblink.linkml.generator.erdiagram
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{CharSink, PruningMode, StringSink}
+import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.schemaview.*
 
 /** Generator for

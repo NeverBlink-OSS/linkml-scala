@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec

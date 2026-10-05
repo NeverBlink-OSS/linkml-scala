@@ -14,6 +14,7 @@ object `package` extends Module, NativeOptional {
 
     def moduleDeps = Seq(
       build.schemaview.jvm,
+      build.rdf.jvm,
     )
 
     // Tests parse the generated RDF back and cross-validate it with rdf4j-shacl, so they compile
@@ -23,12 +24,13 @@ object `package` extends Module, NativeOptional {
 
       override def javaHome = build.jdk25.javaHome
 
-      override def moduleDeps = super.moduleDeps ++ Seq(build.tests.jvm, build.cli.jvm)
+      override def moduleDeps =
+        super.moduleDeps ++ Seq(build.tests.jvm, build.cli.jvm, build.rdf.jvm.test)
 
       override def mvnDeps = super.mvnDeps() ++ Seq(
         mvn"org.eclipse.rdf4j:rdf4j-shacl:${v.rdf4j}",
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.11.10",
-        mvn"com.networknt:json-schema-validator:3.0.7",
+        mvn"com.networknt:json-schema-validator:3.0.8",
         mvn"org.sangria-graphql::sangria:4.2.19",
         mvn"org.scala-lang::scala3-compiler:${v.scala}",
       )
@@ -64,6 +66,19 @@ object `package` extends Module, NativeOptional {
           os.call(("npm", "ci"), cwd = mermaidDir, stdout = os.Inherit, stderr = os.Inherit)
       }
 
+      /** The npm project with the pinned TypeScript compiler that `TypeScriptCompileSpec` checks
+        * the generated TypeScript with.
+        */
+      def typescriptDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "typescript"
+
+      /** Install the pinned TypeScript compiler for `TypeScriptCompileSpec`. Requires Node.js 22+
+        * and npm on the PATH.
+        */
+      def typescriptCompiler(args: String*) = Task.Command(exclusive = true) {
+        if !os.exists(typescriptDir / "node_modules") then
+          os.call(("npm", "ci"), cwd = typescriptDir, stdout = os.Inherit, stderr = os.Inherit)
+      }
+
       /** Where `ossieRepo` puts the apache/ossie checkout. */
       def ossieDir = mill.api.BuildCtx.workspaceRoot / "generator" / "test" / "ossie-repo"
 
@@ -80,11 +95,13 @@ object `package` extends Module, NativeOptional {
       }
 
       // Point BenchmarkSchemaSpec at the fetched datasets, so they are cloned before the tests run,
-      // ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`, and
+      // ErDiagramMermaidSpec at the Mermaid install prepared by `mermaidValidator`,
+      // TypeScriptCompileSpec at the compiler installed by `typescriptCompiler`, and
       // OssieIntegrationSpec at the checkout prepared by `ossieRepo`.
       override def forkEnv = super.forkEnv() ++ Map(
         "LINKML_BENCHMARK_SCHEMAS" -> benchmarkSchemas().path.toString,
         "LINKML_MERMAID_VALIDATOR" -> mermaidDir.toString,
+        "LINKML_TYPESCRIPT_COMPILER" -> typescriptDir.toString,
         "LINKML_OSSIE_REPO" -> ossieDir.toString,
       ) ++
         sys.env.view.filterKeys(Set("PATH", "CI")).toMap
@@ -94,6 +111,7 @@ object `package` extends Module, NativeOptional {
   object js extends NoBspModule, CommonScalaJsModule, GeneratorDeps {
     def moduleDeps = Seq(
       build.schemaview.js,
+      build.rdf.js,
     )
 
     // README and the TS usage sample; the .d.ts itself is generated.
@@ -121,6 +139,8 @@ object `package` extends Module, NativeOptional {
         .foreach(p => os.copy.into(p, dest))
       os.copy.into(npmMetadata().path / "README.md", dest)
       os.copy.into(tsDefs().path, dest)
+      // Generated from the models by `./mill validation.regenerate` and `./mill schemaview.regenerate`
+      TsDefsGen.modelTypes.foreach(m => os.copy.into(npmMetadata().path / m.file, dest))
       os.write(
         dest / "package.json",
         NpmPackage.packageJson(publishVersion(), pomSettings().description, mainFile),
@@ -155,6 +175,7 @@ object `package` extends Module, NativeOptional {
   object native extends NoBspModule, CommonScalaNativeModule, GeneratorDeps {
     def moduleDeps = Seq(
       build.schemaview.native,
+      build.rdf.native,
     )
 
     object test extends ScalaNativeTests, CommonTestModule {

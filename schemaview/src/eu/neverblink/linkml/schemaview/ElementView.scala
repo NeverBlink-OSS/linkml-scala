@@ -206,6 +206,11 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def isAny: Boolean = "https://w3id.org/linkml/Any".equals(uriStr)
 
+  /** @return
+    *   true if the class can have instances of its own: it is neither `abstract` nor a `mixin`
+    */
+  def isConcrete: Boolean = !cls.`abstract` && !cls.mixin
+
   /** The collection form of this class, checking whether dict inlines are applicable.
     */
   lazy val collectionForm: CollectionForm = CollectionForm.of(this)

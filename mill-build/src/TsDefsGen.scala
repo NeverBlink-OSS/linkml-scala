@@ -4,12 +4,45 @@ import _root_.scala.meta.*
 
 /** Generates the npm package's TypeScript declarations from the Scala.js facade ([[LinkMlJsApi]]),
   * so the types can never drift from the implementation. Syntactic parse only – no compiler needed.
+  *
+  * The types of the values that follow a LinkML model (the validation report, the build info) are
+  * generated from the models by the TypeScript generator into generator/npm (see
+  * `regenerateValidation` and `regenerateBuildInfo`). They ship next to index.d.ts as they are,
+  * and index.d.ts imports and re-exports them.
   */
 object TsDefsGen {
   private val exportedName = "LinkML"
   private val objectName = "LinkMlJsApi"
 
-  def apply(scalaSource: String): String = {
+  /** A file of TypeScript types generated from a LinkML model.
+    *
+    * @param name
+    *   file name in generator/npm and in the package, without `.d.ts`
+    * @param uses
+    *   the types the API's signatures use, which index.d.ts imports
+    * @param comment
+    *   what the types are, put above the import
+    */
+  final case class ModelTypes(name: String, uses: Seq[String], comment: String) {
+    def file: String = s"$name.d.ts"
+  }
+
+  val modelTypes: Seq[ModelTypes] = Seq(
+    ModelTypes(
+      "validation-report",
+      Seq("SchemaValidationReport"),
+      "The validation report, generated from model/issue-types.yaml. Each issue's `issue_type`\n" +
+        "names its kind, so a `switch` on it narrows the issue to that kind.",
+    ),
+    ModelTypes("build-info", Seq("BuildInfo"), "The build info, generated from model/build-info.yaml."),
+  )
+
+  /** @param scalaSource
+    *   source of `LinkMlJsApi.scala`
+    * @param modelTypesDir
+    *   where index.d.ts finds the [[modelTypes]] files: `./` in the package
+    */
+  def apply(scalaSource: String, modelTypesDir: String = "./"): String = {
     val parsed = dialects.Scala3(scalaSource).parse[Source].get
     val obj = findObject(parsed).getOrElse(sys.error(s"object $objectName not found"))
 
@@ -19,10 +52,19 @@ object TsDefsGen {
       .filterNot(_.mods.exists(_.is[Mod.Private]))
 
     val members = methods.map(renderMethod(scalaSource, _)).mkString("\n\n")
+    val imports = modelTypes.map { m =>
+      val module = s"$modelTypesDir${m.name}.js"
+      val comment = m.comment.linesIterator.map("// ".concat).mkString("\n")
+      s"""$comment
+         |import type { ${m.uses.mkString(", ")} } from "$module";
+         |export * from "$module";
+         |""".stripMargin
+    }.mkString("\n")
 
     s"""// AUTO-GENERATED from generator/src-js/eu/neverblink/linkml/js/LinkMlJsApi.scala.
        |// Do not edit by hand – regenerate with ./mill uiTypes (or generator.js.npmPackage).
        |
+       |$imports
        |/**
        | * Opaque handle to a loaded, import-resolved LinkML schema. Create one with
        | * {@link ${exportedName}Api.load} and pass it to the generator functions. Parse a schema
@@ -39,7 +81,7 @@ object TsDefsGen {
        | */
        |export interface LoadResult {
        |  readonly view?: SchemaView;
-       |  readonly report: any;
+       |  readonly report: SchemaValidationReport;
        |}
        |
        |export interface ${exportedName}Api {
@@ -100,9 +142,6 @@ object TsDefsGen {
           case "Boolean" => "boolean"
           case "Int" | "Long" | "Double" | "Float" => "number"
           case "js.Dictionary[String]" => "Record<string, string>"
-          // TODO: `js.Any` becomes an untyped `any`. Generating TS declarations from the LinkML
-          // model itself would let return values like the validation report be properly typed.
-          // https://github.com/NeverBlink-OSS/linkml-scala/issues/127
           case "js.Any" | "js.Dynamic" => "any"
           case "SchemaViewJs" => "SchemaView"
           case other => other

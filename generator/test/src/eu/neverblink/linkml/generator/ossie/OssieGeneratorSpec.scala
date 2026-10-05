@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
@@ -269,6 +270,46 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       // Only the tuple is unique - neither slot identifies a line on its own.
       relationship(o, "OrderLine", "order").multiplicity shouldBe Some(Multiplicity.ManyToOne)
       relationship(o, "OrderLine", "nr").multiplicity shouldBe Some(Multiplicity.ManyToOne)
+    }
+  }
+
+  "global identifiers" should {
+    "give each class, slot and enum its URI, as a QName where a declared prefix covers it" in {
+      val o = ontologyOf(globalIdentifiers)
+      concept(o, "Agent").iri shouldBe Some("foaf:Agent")
+      relationship(o, "Agent", "homepage").iri shouldBe Some("foaf:homepage")
+      concept(o, "Person").iri shouldBe Some("ex:Person")
+      relationship(o, "Agent", "status").iri shouldBe Some("ex:status")
+      concept(o, "Status").iri shouldBe Some("http://www.w3.org/ns/org#Status")
+    }
+
+    "declare only the prefixes the IRIs use, in the schema's order" in {
+      ontologyOf(globalIdentifiers).prefixes.toSeq shouldBe Seq(
+        "xsd" -> "http://www.w3.org/2001/XMLSchema#",
+        "ex" -> "https://example.org/",
+        "foaf" -> "http://xmlns.com/foaf/0.1/",
+      )
+    }
+
+    "give a named type its uri, inherited or not" in {
+      concept(ontologyOf(globalIdentifiers), "Year").iri shouldBe Some("xsd:gYear")
+      concept(ontologyOf(typeofChain), "PositiveInt").iri shouldBe Some("xsd:integer")
+    }
+
+    "use the longest namespace when several cover an IRI" in {
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""
+        |id: https://example.org/spec
+        |name: spec
+        |prefixes:
+        |  ex: https://example.org/
+        |  exv: https://example.org/vocab/
+        |classes:
+        |  Thing:
+        |    class_uri: exv:Thing
+        |""".stripMargin))
+      val o = OssieGenerator(using sv).generate()
+      concept(o, "Thing").iri shouldBe Some("exv:Thing")
+      o.prefixes.keys.toSeq shouldBe Seq("exv")
     }
   }
 

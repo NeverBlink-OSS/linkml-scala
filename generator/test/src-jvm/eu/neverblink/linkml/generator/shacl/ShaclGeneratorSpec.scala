@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.shacl
 
-import eu.neverblink.linkml.generator.rdf.{CollectingRdfSink, RdfUtils}
+import eu.neverblink.linkml.rdf.{CollectingRdfSink, RdfUtils}
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue

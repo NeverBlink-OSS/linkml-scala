@@ -76,7 +76,7 @@ class FrictionlessGenerator(using sv: SchemaView)
       // Without identifiers, we cannot reference the table.
       .filter(cv =>
         treeRoot.contains(cv) || (
-          !cv.cls.`abstract` && !cv.cls.mixin &&
+          cv.isConcrete &&
             (!options.skipClassesWithoutIdentifier || cv.hasIdentifier)
         ),
       )

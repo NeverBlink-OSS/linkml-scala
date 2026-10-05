@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}

@@ -400,6 +400,30 @@ object OssieCases {
     |        multivalued: true
     """)
 
+  val globalIdentifiers: Case = of("classes, slots, an enum and a type with their IRIs")("""
+    |types:
+    |  Year:
+    |    typeof: integer
+    |    uri: xsd:gYear
+    |enums:
+    |  Status:
+    |    enum_uri: http://www.w3.org/ns/org#Status
+    |    permissible_values:
+    |      OK: {}
+    |classes:
+    |  Agent:
+    |    class_uri: foaf:Agent
+    |    attributes:
+    |      homepage:
+    |        slot_uri: foaf:homepage
+    |      status:
+    |        range: Status
+    |      founded:
+    |        range: Year
+    |  Person:
+    |    is_a: Agent
+    """)
+
   /** Every case, for the specs that walk all of them. */
   val all: Seq[Case] = Seq(
     classWithDescription,
@@ -438,5 +462,6 @@ object OssieCases {
     plain,
     treeRoot,
     severalKinds,
+    globalIdentifiers,
   )
 }

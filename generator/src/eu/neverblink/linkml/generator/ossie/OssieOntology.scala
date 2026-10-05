@@ -34,6 +34,8 @@ final case class Role(concept: String, name: Option[String] = None) {
   *
   * @param name
   *   Unique only within the containing concept - the full identifier is `Concept.name`.
+  * @param iri
+  *   Global identifier: a full IRI, or a QName over the ontology's `prefixes`.
   * @param roles
   *   The roles after the first. Empty for a unary relationship.
   * @param verbalizes
@@ -41,6 +43,7 @@ final case class Role(concept: String, name: Option[String] = None) {
   */
 final case class Relationship(
     name: String,
+    iri: Option[String] = None,
     description: Option[String] = None,
     roles: Seq[Role] = Nil,
     multiplicity: Option[Multiplicity] = None,
@@ -58,6 +61,8 @@ final case class Relationship(
 
 /** One component of an ontology: a concept plus the relationships that play their first role in it.
   *
+  * @param iri
+  *   Global identifier: a full IRI, or a QName over the ontology's `prefixes`.
   * @param extendsConcepts
   *   Supertypes.
   * @param identifyBy
@@ -67,6 +72,7 @@ final case class Concept(
     concept: String,
     @named("type")
     conceptType: ConceptType,
+    iri: Option[String] = None,
     description: Option[String] = None,
     @named("extends")
     extendsConcepts: Seq[String] = Nil,
@@ -84,6 +90,8 @@ final case class Concept(
   * @param aiContext
   *   Passed through as a node rather than a string, because Ossie accepts either a string or an
   *   object.
+  * @param prefixes
+  *   Namespaces that the `iri` QNames of concepts and relationships expand against.
   */
 final case class OssieOntology(
     @serializeDefault
@@ -92,6 +100,7 @@ final case class OssieOntology(
     description: Option[String] = None,
     @named("ai_context")
     aiContext: Option[Node] = None,
+    prefixes: Map[String, String] = Map.empty,
     ontology: Seq[Concept],
 )
 

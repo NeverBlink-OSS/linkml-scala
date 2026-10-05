@@ -1,10 +1,13 @@
 // Packs and installs the built package into a throwaway project, then runs the
 // packaged README's JS examples (skipping blocks tagged `no-test`) and, if a TS
 // usage sample is given, type-checks it against the generated index.d.ts.
+// Finally, it checks that what the API really returns for the build info and for
+// validation reports fits the types generated from their LinkML models.
 //
 //   node verify-package.mjs <package-dir> [usage-sample.ts]
 //
-// Non-zero exit = install failed, an example threw, or the sample did not compile.
+// Non-zero exit = install failed, an example threw, the sample did not compile, or
+// a real return value does not fit its declared type.
 
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, writeFileSync, readdirSync, copyFileSync, existsSync } from "node:fs";
@@ -63,17 +66,22 @@ blocks.forEach((code, i) => {
   }
 });
 
+run("npm", ["install", "--no-save", "--no-audit", "--no-fund", "typescript"], work);
+
+function typeCheck(file) {
+  run(
+    "npx",
+    ["tsc", "--noEmit", "--strict", "--module", "nodenext", "--moduleResolution", "nodenext", file],
+    work,
+  );
+}
+
 // 2. Type-check the usage sample against the generated declarations.
 if (usageSample && existsSync(usageSample)) {
   console.log("Type-checking usage sample against generated index.d.ts");
   copyFileSync(usageSample, join(work, "usage.ts"));
   try {
-    run("npm", ["install", "--no-save", "--no-audit", "--no-fund", "typescript"], work);
-    run(
-      "npx",
-      ["tsc", "--noEmit", "--strict", "--module", "nodenext", "--moduleResolution", "nodenext", "usage.ts"],
-      work,
-    );
+    typeCheck("usage.ts");
     console.log("  type check: OK");
   } catch (e) {
     failures++;
@@ -81,8 +89,56 @@ if (usageSample && existsSync(usageSample)) {
   }
 }
 
+// 3. Check real return values against the types generated from their LinkML models. The
+// values are written out as object literals, so `tsc` also rejects keys the types don't have.
+console.log("Type-checking real build info and validation reports against index.d.ts");
+const collect = `
+import { writeFileSync } from "node:fs";
+import { LinkML } from "@neverblink/linkml";
+
+const head = "id: https://example.org/s\\nname: s\\nimports:\\n  - linkml:types\\n";
+const schemas = [
+  // clean
+  head + "classes:\\n  A:\\n    tree_root: true\\n    attributes:\\n      x:\\n        range: string\\n",
+  // fatal: an unknown range
+  head + "classes:\\n  A:\\n    attributes:\\n      x:\\n        range: Nope\\n",
+  // warnings: no tree root, slot_usage of an unknown slot, a non-standard separator
+  head + "classes:\\n  b-b:\\n    slot_usage:\\n      zz: {}\\n",
+  // errors: two identifiers, an undefined prefix
+  head + "classes:\\n  A:\\n    tree_root: true\\n    class_uri: nope:A\\n    attributes:\\n" +
+    "      a:\\n        identifier: true\\n      b:\\n        identifier: true\\n",
+  // not YAML at all
+  "id: [",
+];
+const reports = [];
+for (const schema of schemas)
+  for (const inferMessages of [true, false]) {
+    const loaded = LinkML.loadFromString(schema, {}, inferMessages);
+    reports.push(loaded.report);
+    if (loaded.view) reports.push(LinkML.lint(loaded.view, inferMessages));
+  }
+const issueTypes = new Set(reports.flatMap((r) => r.issues.map((i) => i.issue_type)));
+writeFileSync(
+  "outputs.ts",
+  'import type { BuildInfo, SchemaValidationReport } from "@neverblink/linkml";\\n' +
+    "export const build: BuildInfo = " + JSON.stringify(LinkML.buildInfo(), null, 2) + ";\\n" +
+    "export const reports: SchemaValidationReport[] = " + JSON.stringify(reports, null, 2) + ";\\n",
+);
+console.log([...issueTypes].sort().join(", "));
+`;
+writeFileSync(join(work, "collect.mjs"), collect);
+try {
+  const issueTypes = run("node", ["collect.mjs"], work).trim();
+  console.log(`  issue types covered: ${issueTypes}`);
+  typeCheck("outputs.ts");
+  console.log("  real values fit the types: OK");
+} catch (e) {
+  failures++;
+  console.error(`  real values fit the types: FAILED\n${e.stdout || ""}${e.stderr || ""}`);
+}
+
 if (failures > 0) {
   console.error(`\n${failures} package check(s) failed.`);
   process.exit(1);
 }
-console.log("\nPackage verified: README examples run and types compile.");
+console.log("\nPackage verified: README examples run, types compile, and real values fit them.");

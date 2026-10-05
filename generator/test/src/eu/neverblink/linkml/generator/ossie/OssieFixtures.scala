@@ -15,6 +15,7 @@ trait OssieFixtures {
          |  linkml: https://w3id.org/linkml/
          |  xsd: http://www.w3.org/2001/XMLSchema#
          |  ex: https://example.org/
+         |  foaf: http://xmlns.com/foaf/0.1/
          |default_prefix: ex
          |default_range: string
          |imports:

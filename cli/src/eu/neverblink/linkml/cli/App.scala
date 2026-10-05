@@ -35,6 +35,7 @@ final class App private[cli] (
     LinkMl,
     Frictionless,
     GraphQl,
+    TypeScript,
     ErDiagram,
     Translation,
     Ossie,
