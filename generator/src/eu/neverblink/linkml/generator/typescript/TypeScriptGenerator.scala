@@ -22,7 +22,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       TypeScriptRenamer {
   import TypeScriptGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: Options = new Options()
 
   /** Name of the union type standing for a class and its subclasses, if the class needs one. */
   def unionName(cls: ClassView): Option[String] =
@@ -34,11 +34,11 @@ final class TypeScriptGenerator(using sv: SchemaView)
   /** TS type to use where the class is the range of a slot: the union if there is one, otherwise
     * the interface.
     */
-  private def classRef(cls: ClassView): String = unionName(cls).getOrElse(className(cls))
+  private def classRef(cls: ClassView): String = unionName(cls).getOrElseFast(className(cls))
 
   /** Does the class have an interface of its own? Abstract designated classes are only a union. */
   private def hasInterface(cls: ClassView): Boolean =
-    !(unionName(cls).isDefined && !cls.isConcrete)
+    cls.isConcrete || !cls.isTypeDesignatorUnion
 
   /** What to generate: whatever the pruning mode keeps, plus the members of any designated union it
     * keeps, and whatever those reach in turn. A slot ranging over a designated class uses the
@@ -104,11 +104,15 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def docLines(element: CommonMetadata, options: Options): Seq[String] = {
     val title = element.title.flatMapFast(_.inLanguage(options.metadataLanguage))
     val description = element.description.flatMapFast(_.inLanguage(options.metadataLanguage))
-    val text = (title, description) match {
-      case (Some(t), Some(d)) => Some(s"$t: $d")
-      case (t, d) => t.orElse(d)
+    val text = title match {
+      case Some(t) =>
+        description match {
+          case Some(d) => new Some(s"$t: $d")
+          case _ => title
+        }
+      case _ => description
     }
-    text.toSeq.flatMap(_.strip.linesIterator.map(_.stripTrailing))
+    text.foldFast(Nil: Seq[String])(t => splitLines(t.strip))
   }
 
   private def writeDoc(sink: CharSink, lines: Seq[String], indent: String): Unit =
@@ -185,7 +189,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def checkNames(classes: Seq[ClassView], enums: Seq[EnumView]): Unit = {
     val seen = mutable.HashMap.empty[String, String]
     def claim(name: String, owner: String): Unit =
-      seen.put(name, owner).foreach { other =>
+      seen.put(name, owner).foreachFast { other =>
         throw new IllegalArgumentException(
           s"$owner and $other both map to the TypeScript name '$name'. " +
             "Rename one of them to generate TypeScript.",
@@ -194,16 +198,17 @@ final class TypeScriptGenerator(using sv: SchemaView)
     claim("KeyOptional", "the KeyOptional helper type")
     classes.foreach { cls =>
       if hasInterface(cls) then claim(className(cls), s"class '${cls.name}'")
-      unionName(cls).filter(_ => cls.isConcrete).foreach { name =>
-        claim(name, s"the union of class '${cls.name}' and its subclasses")
-      }
+      if cls.isConcrete then
+        unionName(cls).foreachFast { name =>
+          claim(name, s"the union of class '${cls.name}' and its subclasses")
+        }
       if !hasInterface(cls) then claim(className(cls), s"the union of abstract class '${cls.name}'")
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    val ctx = Context(options)
+    val ctx = new Context(options)
     val query = reachability(options.pruningMode)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums =
@@ -216,7 +221,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     classes.foreach { cls =>
       sink.append('\n')
       if hasInterface(cls) then writeInterface(sink, cls, ctx)
-      unionName(cls).foreach { name =>
+      unionName(cls).foreachFast { name =>
         if hasInterface(cls) then sink.append('\n')
         writeUnion(sink, cls, name, options)
       }
@@ -275,18 +280,45 @@ object TypeScriptGenerator {
     * are plain strings in JSON.
     */
   def runtimeType(tv: TypeView): String = tv.coreType match {
-    case IntegerType | FloatType | DoubleType | DecimalType => "number"
-    case BooleanType => "boolean"
-    case AnyType => "unknown"
-    case StringType => "string"
+    case _: StringType.type => "string"
+    case _: BooleanType.type => "boolean"
+    case _: AnyType.type => "unknown"
+    case _ => "number" // integer, float, double and decimal: the rest of the core types
   }
 
-  private def isPlainKey(key: String): Boolean =
-    key.nonEmpty && {
-      val first = key.head
-      (Case.isAlphaUpper(first) || Case.isAlphaLower(first) || first == '_' || first == '$') &&
-      key.forall(c => Case.isStandard(c) || c == '$')
+  /** Split `text` into lines with trailing whitespace removed, breaking at `\n`, `\r` and `\r\n`
+    * like `linesIterator` does.
+    */
+  private def splitLines(text: String): List[String] = {
+    val lines = new mutable.ListBuffer[String]
+    val len = text.length
+    var start = 0
+    var i = 0
+    while (i < len) {
+      val c = text.charAt(i)
+      i += 1
+      if (c == '\n' || c == '\r') {
+        lines.addOne(text.substring(start, i - 1).stripTrailing)
+        if (c == '\r' && i < len && text.charAt(i) == '\n') i += 1
+        start = i
+      }
     }
+    if (start < len) lines.addOne(text.substring(start).stripTrailing)
+    lines.toList
+  }
+
+  private def isPlainKey(key: String): Boolean = {
+    val len = key.length
+    len > 0 && {
+      val first = key.charAt(0)
+      (Case.isAlphaUpper(first) || Case.isAlphaLower(first) || first == '_' || first == '$') && {
+        // The first char passed the stricter check above
+        var i = 1
+        while (i < len && { val c = key.charAt(i); Case.isStandard(c) || c == '$' }) i += 1
+        i == len
+      }
+    }
+  }
 
   /** A property key, quoted if it is not a plain identifier. */
   def propertyKey(key: String): String = if isPlainKey(key) then key else stringLiteral(key)
@@ -295,21 +327,30 @@ object TypeScriptGenerator {
   def stringLiteral(value: String): String = {
     val sb = new java.lang.StringBuilder(value.length + 2)
     sb.append('"')
-    value.foreach {
-      case '"' => sb.append("\\\"")
-      case '\\' => sb.append("\\\\")
-      case '\n' => sb.append("\\n")
-      case '\r' => sb.append("\\r")
-      case '\t' => sb.append("\\t")
-      case c if c < ' ' || c == '\u2028' || c == '\u2029' =>
-        sb.append("\\u").append("%04x".format(c.toInt))
-      case c => sb.append(c)
+    val len = value.length
+    var i = 0
+    while (i < len) {
+      value.charAt(i) match {
+        case '"' => sb.append("\\\"")
+        case '\\' => sb.append("\\\\")
+        case '\n' => sb.append("\\n")
+        case '\r' => sb.append("\\r")
+        case '\t' => sb.append("\\t")
+        case c if c < ' ' || c == '\u2028' || c == '\u2029' =>
+          sb.append('\\').append('u').append(hexDigit(c >> 12)).append(hexDigit(c >> 8))
+            .append(hexDigit(c >> 4)).append(hexDigit(c))
+        case c => sb.append(c)
+      }
+      i += 1
     }
     sb.append('"').toString
   }
 
+  /** Lowercase hex digit of the lowest 4 bits of `x`, as in `%04x`. */
+  private def hexDigit(x: Int): Char = "0123456789abcdef".charAt(x & 0xf)
+
   private def arrayOf(tpe: String): String =
-    if tpe.contains('|') || tpe.contains(' ') then s"($tpe)[]" else tpe.concat("[]")
+    if tpe.indexOf('|') >= 0 || tpe.indexOf(' ') >= 0 then s"($tpe)[]" else tpe.concat("[]")
 
   private def arrayOfIf(condition: Boolean, tpe: String): String =
     if condition then arrayOf(tpe) else tpe

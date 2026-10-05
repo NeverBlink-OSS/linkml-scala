@@ -32,7 +32,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       JsonRenamer {
   import JsonSchemaGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: Options = new Options()
 
   override protected def codec: JsonValueCodec[Schema] = JsonSchemaGenerator.codec
 
@@ -53,7 +53,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
     *   JSON Schema in the [[Schema]] model
     */
   override final def generate(
-      options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
+      options: JsonSchemaGenerator.Options = new JsonSchemaGenerator.Options(),
   ): Schema = {
     import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
     val maybeTreeRoot = sv.treeRootWithOverride(options.treeRoot) match {
@@ -87,26 +87,27 @@ class JsonSchemaGenerator(using sv: SchemaView)
       else schema
     }
 
-    // Classes that an inlined value of `classView` can be: the class itself or, if it has a type
-    // designator, any of the concrete classes the designator can pick.
-    def inlinedClasses(classView: ClassView): Seq[ClassView] =
-      if (classView.isTypeDesignatorUnion) classView.typeDesignatorMembers else classView :: Nil
+    // Reference to the `$defs` of `classView` with the given suffix
+    def classRefSchema(classView: ClassView, suffix: String): Schema =
+      new Schema($ref = new Some("#/$defs/" + className(classView) + suffix))
 
-    // Schema for an inlined value of `classView`, referring to its `$defs` with the given suffix
+    // Schema for an inlined value of `classView`, referring to `$defs` with the given suffix. If the
+    // class has a type designator, the value can be any of the concrete classes it can pick.
     def inlinedClassSchema(classView: ClassView, suffix: String): Schema =
-      inlinedClasses(classView).map { c =>
-        new Schema($ref = new Some("#/$defs/" + className(c) + suffix))
-      } match {
-        case single :: Nil => single
-        case members => new Schema(anyOf = members.toList)
-      }
+      if (classView.isTypeDesignatorUnion) {
+        val members = new mutable.ListBuffer[Schema]
+        classView.typeDesignatorMembers.foreach(c => members.addOne(classRefSchema(c, suffix)))
+        new Schema(anyOf = members.toList)
+      } else classRefSchema(classView, suffix)
 
     // Schema for `classView` inlined as a dict in the given form
     def dictSchema(classView: ClassView, form: DictForm): Schema = {
       def keyless(key: String): Schema = {
-        inlinedClasses(classView).foreach { c =>
+        def addKeyless(c: ClassView): Unit =
           needKeyless.add((className(c), slotName(c.derivedAttributes(key))))
-        }
+
+        if (classView.isTypeDesignatorUnion) classView.typeDesignatorMembers.foreach(addKeyless)
+        else addKeyless(classView)
         inlinedClassSchema(classView, "__identifier_optional")
       }
 
@@ -137,7 +138,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
           typeToRuntime(identifierView.typeView)
             .copy(
-              $comment = Some(s"Reference to ${classView.name} class"),
+              $comment = new Some(s"Reference to ${classView.name} class"),
               minimum = toBigDecimalOpt(identifierView.minimumValue),
               maximum = toBigDecimalOpt(identifierView.maximumValue),
               pattern = identifierView.pattern.mapFast(new Pattern(_)),
@@ -174,8 +175,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
         else constrainedSchema
 
       valueSchema.copy(
-        title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
-          Some(sv.slot.name),
+        title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
+          new Some(sv.slot.name),
         ),
         description = sv.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       )
@@ -207,8 +208,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
           properties =
             immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
-          title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
-            Some(cls.cls.name),
+          title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
+            new Some(cls.cls.name),
           ),
           description = cls.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
@@ -220,9 +221,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
       inlineType match {
         case InlineType.plain => classSchema // object (mandatory)
         case InlineType.optional =>
-          Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
+          new Schema(oneOf = List(classSchema, Schema.Null)) // object or null
         case InlineType.list =>
-          arraySchema.copy(items = Some(classSchema)) // array of objects
+          arraySchema.copy(items = new Some(classSchema)) // array of objects
         case InlineType.dict(form) => dictSchema(treeRoot, form)
       }
     }
@@ -251,8 +252,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),
-          title = enum_.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
-            Some(enum_.name),
+          title = enum_.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
+            new Some(enum_.name),
           ),
           description = enum_.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
@@ -261,8 +262,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
-      title = sv.root.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElse(
-        Some(sv.root.name),
+      title = sv.root.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
+        new Some(sv.root.name),
       ),
       description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       $defs = new Some(
@@ -332,9 +333,12 @@ object JsonSchemaGenerator {
     if (min.isEmpty && max.isEmpty) schema
     else
       schema.`type` match {
-        case Some(SchemaType.Array :: Nil) => schema.copy(minItems = min, maxItems = max)
-        case Some(SchemaType.Object :: Nil) =>
-          schema.copy(minProperties = min, maxProperties = max)
+        case Some(t :: tail) if tail eq Nil =>
+          t match {
+            case _: SchemaType.Array.type => schema.copy(minItems = min, maxItems = max)
+            case _: SchemaType.Object.type => schema.copy(minProperties = min, maxProperties = max)
+            case _ => schema
+          }
         case _ => schema
       }
   }
@@ -351,10 +355,8 @@ object JsonSchemaGenerator {
     * @param keyless
     *   Schema of the full object with the key slot made optional
     */
-  private def simpleDictSchema(valueRef: String, keyless: Schema): Schema = Schema.oneOf(
-    List(new Schema($ref = Some(valueRef)), keyless),
-    discriminator = None,
-  )
+  private def simpleDictSchema(valueRef: String, keyless: Schema): Schema =
+    new Schema(oneOf = List(new Schema($ref = new Some(valueRef)), keyless))
 
   extension (schema: Schema)
     /** Wrap this Schema in an array
