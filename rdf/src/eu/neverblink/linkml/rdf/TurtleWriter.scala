@@ -18,7 +18,7 @@ import scala.compiletime.uninitialized
   *     number or boolean token, and `"""..."""` for strings containing newlines.
   *
   * Unlike [[NTriplesWriter]], characters outside ASCII are written as themselves rather than
-  * escaped.
+  * escaped, except for surrogates without their partner, which UTF-8 cannot encode.
   *
   * Single-use and not thread-safe. Call [[finish]] exactly once at the end - the last statement has
   * no terminating `.` until you do.
@@ -505,7 +505,7 @@ private object TurtleEscape {
     var i = 0
     while (i < len) {
       val c = s.charAt(i)
-      if (c >= 0x80) sink.append(c)
+      if (c >= 0x80) appendNonAscii(sink, s, i, c)
       else if (safe(c)) sink.appendAscii(c)
       else appendUnicodeEscape(sink, c)
       i += 1
@@ -528,7 +528,7 @@ private object TurtleEscape {
       val c = s.charAt(i)
       // Above ASCII nothing needs escaping, so the sink takes the character as it is and encodes it
       // as UTF-8 (holding on to a high surrogate until its partner arrives).
-      if (c >= 0x80) sink.append(c)
+      if (c >= 0x80) appendNonAscii(sink, s, i, c)
       else if (safe(c)) sink.appendAscii(c)
       else
         // There is deliberately no line-feed case. A value containing one is written in the `"""`
@@ -544,6 +544,19 @@ private object TurtleEscape {
       i += 1
     }
   }
+
+  /** Append `c`, at index `i` of `s`, as itself, unless it is a surrogate without its partner.
+    * UTF-8 cannot encode that, so it is escaped instead.
+    */
+  private def appendNonAscii(sink: CharSink, s: String, i: Int, c: Char): Unit =
+    if (!Character.isSurrogate(c)) sink.append(c)
+    else {
+      val paired =
+        if (Character.isHighSurrogate(c))
+          i + 1 < s.length && Character.isLowSurrogate(s.charAt(i + 1))
+        else i > 0 && Character.isHighSurrogate(s.charAt(i - 1))
+      if (paired) sink.append(c) else appendUnicodeEscape(sink, c)
+    }
 
   /** Write `c` as a `\\uXXXX` escape, the one form both string literals and IRIs accept. */
   private def appendUnicodeEscape(sink: CharSink, c: Char): Unit = {

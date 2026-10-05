@@ -3,16 +3,6 @@ package eu.neverblink.linkml.rdf
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets.{ISO_8859_1, UTF_8}
 
-/** A syntax error in an RDF document.
-  *
-  * @param line
-  *   1-based line number
-  * @param column
-  *   1-based column, in code points
-  */
-final class RdfParseException(val reason: String, val line: Int, val column: Int)
-    extends RuntimeException(s"$reason (line $line, column $column)")
-
 /** Streaming RDF 1.1 N-Triples parser. Each triple is pushed into the sink as soon as its line has
   * been read. The parser never calls [[RdfSink.finish]], that is left to the caller.
   *
@@ -31,40 +21,11 @@ object NTriplesParser {
 
   def parse(document: String, sink: RdfSink): Unit =
     parse(new ByteArrayInputStream(document.getBytes(UTF_8)), sink)
-
-  /** ASCII bytes allowed as themselves in an IRIREF: 0x21..0x7E except `<>"{}|^`\\`. */
-  private val IriSafe: Array[Boolean] = {
-    val a = new Array[Boolean](256)
-    var c = 0x21
-    while (c <= 0x7e) { a(c) = true; c += 1 }
-    "<>\"{}|^`\\".foreach(ch => a(ch) = false)
-    a
-  }
-
-  /** ASCII bytes allowed as themselves in a string literal: anything but `"`, `\\`, LF and CR. */
-  private val StringSafe: Array[Boolean] = {
-    val a = new Array[Boolean](256)
-    var c = 0
-    while (c < 0x80) { a(c) = true; c += 1 }
-    "\"\\\n\r".foreach(ch => a(ch) = false)
-    a
-  }
-
-  /** ASCII bytes in PN_CHARS, plus `.`, which a blank node label may contain but not end with. */
-  private val LabelAscii: Array[Boolean] = {
-    val a = new Array[Boolean](256)
-    ('a' to 'z').foreach(a(_) = true)
-    ('A' to 'Z').foreach(a(_) = true)
-    ('0' to '9').foreach(a(_) = true)
-    "_-.".foreach(a(_) = true)
-    a
-  }
 }
 
-final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: Int) {
-  import NTriplesParser.*
-
-  private var buf = new Array[Byte](math.max(bufferSize, 16))
+final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: Int)
+    extends RdfParserBase(bufferSize) {
+  import RdfSyntax.*
 
   /** The unparsed data is `buf[pos, limit)`. */
   private var pos = 0
@@ -78,12 +39,6 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
   /** The parse position within the current line, and where that line ends. */
   private var cur = 0
   private var end = 0
-
-  /** Scratch space for the terms that need decoding (escapes or non-ASCII). */
-  private var chars = new Array[Char](256)
-  private var nChars = 0
-
-  private var lastLanguage = ""
 
   def run(): Unit = {
     var afterCr = false
@@ -193,22 +148,10 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
     while (i < e && IriSafe(b(i) & 0xff)) i += 1
     if (i < e && b(i) == '>') {
       val value = new String(b, start, i - start, ISO_8859_1)
-      if (!isAbsolute(value)) fail("Relative IRIs are not allowed", start)
+      if (!hasScheme(value)) fail("Relative IRIs are not allowed", start)
       cur = i + 1
       new Iri(value)
     } else readIriSlow(start)
-  }
-
-  private def sameAscii(s: String, start: Int, stop: Int): Boolean = {
-    var k = stop - start
-    if (s.length != k) return false
-    val b = buf
-    k -= 1
-    while (k >= 0) {
-      if (s.charAt(k) != b(start + k)) return false
-      k -= 1
-    }
-    true
   }
 
   /** An IRI with escapes or non-ASCII characters in it, starting just after its `<`. */
@@ -228,33 +171,16 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
         done = true
         i += 1
       } else if (c == '\\') {
-        if (i + 1 < e && (b(i + 1) == 'u' || b(i + 1) == 'U')) i = readUchar(i)
+        if (i + 1 < e && (b(i + 1) == 'u' || b(i + 1) == 'U')) i = readUchar(i, e)
         else fail("Only \\u and \\U escapes are allowed in an IRI", i)
-      } else if (c >= 0x80) i = readUtf8(i)
+      } else if (c >= 0x80) i = readUtf8(i, e)
       else fail(f"Character U+$c%04X is not allowed in an IRI", i)
     }
     val value = new String(chars, 0, nChars)
-    if (!isAbsolute(value)) fail("Relative IRIs are not allowed", start)
+    if (!hasScheme(value)) fail("Relative IRIs are not allowed", start)
     cur = i
     new Iri(value)
   }
-
-  /** Whether `iri` starts with a scheme: `[A-Za-z][A-Za-z0-9+.-]*:`. */
-  private def isAbsolute(iri: String): Boolean = {
-    val len = iri.length
-    if (len == 0 || !isAsciiLetter(iri.charAt(0))) return false
-    var i = 1
-    while (i < len) {
-      val c = iri.charAt(i)
-      if (c == ':') return true
-      if (!(isAsciiLetter(c) || (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.'))
-        return false
-      i += 1
-    }
-    false
-  }
-
-  private def isAsciiLetter(c: Char): Boolean = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 
   /** A string literal with its datatype or language tag, starting at its opening quote. */
   private def readLiteral(): Node = {
@@ -262,7 +188,7 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
     val e = end
     val start = cur + 1
     var i = start
-    while (i < e && StringSafe(b(i) & 0xff)) i += 1
+    while (i < e && DoubleQuoteSafe(b(i) & 0xff)) i += 1
     val value =
       if (i < e && b(i) == '"') {
         cur = i + 1
@@ -291,7 +217,7 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
     while (!done) {
       if (i >= e) fail("Unterminated string literal", i)
       val c = b(i) & 0xff
-      if (StringSafe(c)) {
+      if (DoubleQuoteSafe(c)) {
         appendChar(c.toChar)
         i += 1
       } else if (c == '"') {
@@ -299,19 +225,8 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
         i += 1
       } else if (c == '\\') {
         if (i + 1 >= e) fail("Unterminated string literal", i + 1)
-        b(i + 1).toChar match {
-          case 'u' | 'U' => i = readUchar(i)
-          case 't' => appendChar('\t'); i += 2
-          case 'b' => appendChar('\b'); i += 2
-          case 'n' => appendChar('\n'); i += 2
-          case 'r' => appendChar('\r'); i += 2
-          case 'f' => appendChar('\f'); i += 2
-          case '"' => appendChar('"'); i += 2
-          case '\'' => appendChar('\''); i += 2
-          case '\\' => appendChar('\\'); i += 2
-          case _ => fail("Invalid escape sequence", i)
-        }
-      } else i = readUtf8(i)
+        i = if (b(i + 1) == 'u' || b(i + 1) == 'U') readUchar(i, e) else readEchar(i)
+      } else i = readUtf8(i, e)
     }
     cur = i
     new String(chars, 0, nChars)
@@ -332,11 +247,7 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
       if (i == subtag) fail("Invalid language tag", subtag)
     }
     cur = i
-    if (sameAscii(lastLanguage, start, i)) lastLanguage
-    else {
-      lastLanguage = new String(b, start, i - start, ISO_8859_1)
-      lastLanguage
-    }
+    language(start, i)
   }
 
   /** `_:` followed by a label, per BLANK_NODE_LABEL. */
@@ -351,11 +262,11 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
     var done = false
     while (!done && i < e) {
       val c = b(i) & 0xff
-      if (LabelAscii(c)) i += 1
+      if (LabelChars(c)) i += 1
       else if (c >= 0x80) {
-        val cp = decodeUtf8(i)
+        val cp = decodeUtf8(i, e)
         val first = i == start
-        if (!(if (first) isLabelStart(cp) else isLabelChar(cp))) done = true
+        if (!(if (first) isPnCharsBase(cp) else isPnChars(cp))) done = true
         else {
           ascii = false
           i += utf8Length(c)
@@ -369,92 +280,8 @@ final class NTriplesParser private (in: InputStream, sink: RdfSink, bufferSize: 
     new BlankNode(new String(b, start, i - start, if (ascii) ISO_8859_1 else UTF_8))
   }
 
-  /** PN_CHARS_U or a digit, minus the ASCII handled by [[LabelAscii]]. */
-  private def isLabelStart(cp: Int): Boolean =
-    (cp >= 0xc0 && cp <= 0xd6) || (cp >= 0xd8 && cp <= 0xf6) || (cp >= 0xf8 && cp <= 0x2ff) ||
-      (cp >= 0x370 && cp <= 0x37d) || (cp >= 0x37f && cp <= 0x1fff) ||
-      (cp >= 0x200c && cp <= 0x200d) || (cp >= 0x2070 && cp <= 0x218f) ||
-      (cp >= 0x2c00 && cp <= 0x2fef) || (cp >= 0x3001 && cp <= 0xd7ff) ||
-      (cp >= 0xf900 && cp <= 0xfdcf) || (cp >= 0xfdf0 && cp <= 0xfffd) ||
-      (cp >= 0x10000 && cp <= 0xeffff)
+  private def fail(reason: String, at: Int = cur): Nothing = failAt(reason, at)
 
-  /** PN_CHARS, minus the ASCII handled by [[LabelAscii]]. */
-  private def isLabelChar(cp: Int): Boolean =
-    isLabelStart(cp) || cp == 0xb7 || (cp >= 0x300 && cp <= 0x36f) ||
-      (cp >= 0x203f && cp <= 0x2040)
-
-  /** A `\\uXXXX` or `\\UXXXXXXXX` escape at `i`, appended to [[chars]]. Returns the index after it.
-    */
-  private def readUchar(i: Int): Int = {
-    val digits = if (buf(i + 1) == 'u') 4 else 8
-    if (i + 2 + digits > end) fail("Truncated \\u escape", i)
-    var cp = 0
-    var k = i + 2
-    while (k < i + 2 + digits) {
-      val d = Character.digit(buf(k).toChar, 16)
-      if (d < 0) fail("Invalid hex digit in \\u escape", k)
-      cp = (cp << 4) | d
-      k += 1
-    }
-    if (cp < 0 || cp > Character.MAX_CODE_POINT) fail("Escape is not a Unicode code point", i)
-    appendCodePoint(cp)
-    k
-  }
-
-  /** The multi-byte UTF-8 sequence at `i`, appended to [[chars]]. Returns the index after it. */
-  private def readUtf8(i: Int): Int = {
-    appendCodePoint(decodeUtf8(i))
-    i + utf8Length(buf(i) & 0xff)
-  }
-
-  private def utf8Length(lead: Int): Int =
-    if (lead < 0xe0) 2 else if (lead < 0xf0) 3 else 4
-
-  /** Decode the multi-byte UTF-8 sequence at `i`, rejecting anything malformed. */
-  private def decodeUtf8(i: Int): Int = {
-    val b = buf
-    val lead = b(i) & 0xff
-    val len =
-      if (lead >= 0xc2 && lead <= 0xdf) 2
-      else if (lead >= 0xe0 && lead <= 0xef) 3
-      else if (lead >= 0xf0 && lead <= 0xf4) 4
-      else fail("Invalid UTF-8", i)
-    if (i + len > end) fail("Invalid UTF-8", i)
-    var cp = lead & (0x7f >> len)
-    var k = 1
-    while (k < len) {
-      val cont = b(i + k) & 0xff
-      if ((cont & 0xc0) != 0x80) fail("Invalid UTF-8", i)
-      cp = (cp << 6) | (cont & 0x3f)
-      k += 1
-    }
-    val overlong = (len == 3 && cp < 0x800) || (len == 4 && cp < 0x10000)
-    if (overlong || cp > Character.MAX_CODE_POINT || (cp >= 0xd800 && cp <= 0xdfff))
-      fail("Invalid UTF-8", i)
-    cp
-  }
-
-  private def appendCodePoint(cp: Int): Unit =
-    if (cp < 0x10000) appendChar(cp.toChar)
-    else {
-      appendChar(Character.highSurrogate(cp))
-      appendChar(Character.lowSurrogate(cp))
-    }
-
-  private def appendChar(c: Char): Unit = {
-    if (nChars == chars.length) chars = java.util.Arrays.copyOf(chars, nChars * 2)
-    chars(nChars) = c
-    nChars += 1
-  }
-
-  private def fail(reason: String, at: Int = cur): Nothing = {
-    // Count code points, not bytes: skip UTF-8 continuation bytes.
-    var column = 1
-    var i = lineStart
-    while (i < at) {
-      if ((buf(i) & 0xc0) != 0x80) column += 1
-      i += 1
-    }
-    throw new RdfParseException(reason, line, column)
-  }
+  protected def failAt(reason: String, at: Int): Nothing =
+    throw new RdfParseException(reason, line, codePoints(lineStart, at) + 1)
 }

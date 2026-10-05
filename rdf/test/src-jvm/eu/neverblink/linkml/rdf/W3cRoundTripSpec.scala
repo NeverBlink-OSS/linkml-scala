@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 /** Shared harness for running a writer over the result files of the
   * [[https://www.w3.org/2013/TurtleTests/ W3C Turtle test suite]].
   *
-  * We use RDF4J for parsing, because we don't implement parsers at all.
+  * RDF4J reads the output, so that the writers are not only checked against our own parsers.
   */
 abstract class W3cRoundTripSpec(format: RDFFormat) extends AnyWordSpec, Matchers {
   import W3cRoundTripSpec.*
