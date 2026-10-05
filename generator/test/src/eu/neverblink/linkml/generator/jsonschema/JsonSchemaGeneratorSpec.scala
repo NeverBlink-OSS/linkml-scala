@@ -947,7 +947,9 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
           |        designates_type: true
           |        range: uriorcurie
           |        required: true
-          |""".stripMargin + (if (extraSlots) "      label:\n        range: string\n        required: true\n" else "") +
+          |""".stripMargin + (if (extraSlots)
+                                "      label:\n        range: string\n        required: true\n"
+                              else "") +
           """  A:
           |    is_a: Base
           |    class_uri: ex:A
@@ -983,7 +985,12 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         given SchemaView = load(designatorSchema(false))
         val defs = JsonSchemaGenerator().generate().$defs.get
 
-        defs.keys should contain allOf ("A", "B", "A__identifier_optional", "B__identifier_optional")
+        defs.keys should contain allOf (
+          "A",
+          "B",
+          "A__identifier_optional",
+          "B__identifier_optional",
+        )
         defs("A__identifier_optional").asInstanceOf[Schema].required shouldBe List("kind")
         val entry = itemsEntry(defs)
         entry.oneOf.head.asInstanceOf[Schema].$ref shouldBe Some("#/$defs/Base__simple_dict_value")
