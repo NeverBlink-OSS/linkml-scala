@@ -1,0 +1,182 @@
+id: https://linkml.neverblink.eu/model/owl-import-config
+name: owl-import-config
+title: OWL import config
+description: >-
+  Settings for importing an OWL ontology into LinkML (`linkml-scala from owl --config`). 
+  Properties and datatypes can be written as CURIEs over the ontology's prefixes, `prefixes`, 
+  or well-known ones such as `rdfs`.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  owlconf: https://linkml.neverblink.eu/model/owl-import-config#
+default_prefix: owlconf
+imports:
+  - linkml:types
+
+classes:
+  OwlImportConfig:
+    title: OWL import config
+    tree_root: true
+    description: Settings for the OWL importer.
+    attributes:
+      schema_id:
+        range: string
+        description: The schema `id`. Defaults to the ontology IRI.
+      name:
+        range: string
+        description: >-
+          The schema `name`. Defaults to the ontology's `rdfs:label` if it is a valid name, else
+          the default prefix.
+      default_prefix:
+        range: string
+        description: >-
+          Prefix of the namespace most of the ontology's terms are in. Detected if not set.
+      prefixes:
+        range: NamespacePrefix
+        multivalued: true
+        inlined: true
+        description: Extra prefixes, on top of the ones the ontology declares.
+      naming:
+        range: Naming
+        inlined: true
+        description: How names are made from IRIs.
+      renames:
+        range: TermRename
+        multivalued: true
+        inlined: true
+        description: Fixed names for specific terms, keyed by IRI or CURIE.
+      metadata:
+        range: MetadataSources
+        multivalued: true
+        inlined: true
+        description: >-
+          Annotation properties to read each metaslot from, in order of preference. Replaces the
+          default list only for the metaslots it lists.
+      annotations:
+        range: boolean
+        ifabsent: "true"
+        description: Whether to keep annotations that no metaslot uses, as LinkML `annotations`.
+      multivalued:
+        range: boolean
+        ifabsent: "true"
+        description: >-
+          Whether slots are multivalued unless the property is functional. On by default, because
+          OWL allows any number of values.
+      some_values_from:
+        range: SomeValuesFrom
+        ifabsent: SomeValuesFrom(required)
+        description: How to read `owl:someValuesFrom`.
+      enums_from_individuals:
+        range: boolean
+        ifabsent: "true"
+        description: >-
+          Whether a class that is just a set of named individuals, and is the range of some
+          property, becomes an enum. A class defined with `owl:oneOf` always does.
+      datatypes:
+        range: DatatypeMapping
+        multivalued: true
+        inlined: true
+        description: LinkML types for datatype IRIs, on top of the built-in XSD and RDF ones.
+      imports:
+        range: ImportMapping
+        multivalued: true
+        inlined: true
+        description: >-
+          LinkML schemas to import instead of `owl:imports`, keyed by ontology IRI. Other
+          `owl:imports` are left out with a warning.
+
+  NamespacePrefix:
+    description: A prefix and the namespace it stands for.
+    attributes:
+      prefix:
+        identifier: true
+        range: string
+      namespace:
+        required: true
+        range: string
+
+  Naming:
+    description: How names are made from the local part of IRIs.
+    attributes:
+      classes:
+        range: NameStyle
+        ifabsent: NameStyle(keep)
+        description: Style of class and enum names.
+      slots:
+        range: NameStyle
+        ifabsent: NameStyle(snake)
+        description: Style of slot names.
+      permissible_values:
+        range: NameStyle
+        ifabsent: NameStyle(keep)
+        description: Style of permissible value names made from individuals.
+
+  TermRename:
+    description: A fixed name for a term.
+    attributes:
+      term:
+        identifier: true
+        range: string
+        description: The term's IRI or CURIE.
+      new_name:
+        required: true
+        range: string
+
+  MetadataSources:
+    description: The annotation properties a metaslot is read from, in order of preference.
+    attributes:
+      metaslot:
+        identifier: true
+        range: string
+      properties:
+        required: true
+        multivalued: true
+        range: string
+
+  DatatypeMapping:
+    description: The LinkML type for a datatype IRI.
+    attributes:
+      datatype:
+        identifier: true
+        range: string
+      type_name:
+        required: true
+        range: string
+
+  ImportMapping:
+    description: The LinkML schema to import instead of an ontology.
+    attributes:
+      ontology:
+        identifier: true
+        range: string
+        description: The IRI of the imported ontology.
+      schema:
+        required: true
+        range: string
+        description: Path to the LinkML schema, relative to where the new schema is written.
+
+enums:
+  NameStyle:
+    description: >-
+      How a name is made from the local part of an IRI. In every style, characters that are not
+      allowed in names become underscores.
+    permissible_values:
+      keep:
+        description: As it is.
+      snake:
+        description: "`has_value`"
+      pascal:
+        description: "`HasValue`"
+      upper_snake:
+        description: "`HAS_VALUE`"
+
+  SomeValuesFrom:
+    description: How to import `C rdfs:subClassOf [ owl:someValuesFrom F ; owl:onProperty p ]`.
+    permissible_values:
+      required:
+        description: >-
+          Sets `required: true` on `p` in `C`. If `F` is narrower than the range of `p`, also adds
+          `has_member: {range: F}`, which matches the axiom exactly.
+      range:
+        description: >-
+          Sets `required: true` and `range: F`. This is stricter than the axiom, since every value
+          must be an `F`, not just one.

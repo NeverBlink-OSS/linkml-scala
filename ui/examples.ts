@@ -136,3 +136,31 @@ ontology:
     requires:
       - LoanStatus IN ('AVAILABLE', 'ON_LOAN', 'LOST')
 `;
+
+/** A small ontology in Turtle. */
+export const EXAMPLE_OWL = `@prefix lib: <https://example.org/library/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<https://example.org/library> a owl:Ontology ;
+  rdfs:comment "A tiny example ontology of books and their authors." .
+
+lib:Book a owl:Class ;
+  rdfs:comment "A written work." ;
+  rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty lib:hasAuthor ;
+    owl:someValuesFrom lib:Person
+  ] .
+
+lib:Person a owl:Class .
+
+lib:hasAuthor a owl:ObjectProperty ;
+  rdfs:domain lib:Book ;
+  rdfs:range lib:Person .
+
+lib:title a owl:DatatypeProperty, owl:FunctionalProperty ;
+  rdfs:domain lib:Book ;
+  rdfs:range xsd:string .
+`;

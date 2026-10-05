@@ -1,0 +1,61 @@
+package eu.neverblink.linkml.generator.owl.config
+
+// GENERATED FROM LINKML
+
+import eu.neverblink.linkml.runtime.*
+
+/** Base implementation of the [[Naming]] LinkML class
+  *
+  * @inheritdoc
+  */
+final case class NamingImpl(
+    @serializeDefault
+    classes: Option[NameStyle] = Some(NameStyle.Keep),
+    @named("permissible_values")
+    @serializeDefault
+    permissibleValues: Option[NameStyle] = Some(NameStyle.Keep),
+    @serializeDefault
+    slots: Option[NameStyle] = Some(NameStyle.Snake),
+) extends Naming {
+
+  override def infer(): NamingImpl =
+    this
+}
+
+/** How names are made from the local part of IRIs.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+  */
+abstract class Naming {
+
+  /** Style of class and enum names.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def classes: Option[NameStyle]
+
+  /** Style of permissible value names made from individuals.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def permissibleValues: Option[NameStyle]
+
+  /** Style of slot names.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def slots: Option[NameStyle]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): Naming
+}

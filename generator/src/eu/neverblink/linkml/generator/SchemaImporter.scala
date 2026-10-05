@@ -47,6 +47,18 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
   final def writeTo(in: InputStream, out: OutputStream, options: O = defaultOptions): Unit =
     JsonUtil.write(Codec.codec.encode(importSchema(in, options)), options.outputFormat, out)
 
+  /** A schema this importer made, as a document, for callers that look at more than the schema. */
+  final def serializeSchema(schema: SchemaDefinitionImpl, format: JsonOutputFormat): String =
+    JsonUtil.write(Codec.codec.encode(schema), format)
+
+  /** Write a schema this importer made, for callers that look at more than the schema first. */
+  final def writeSchema(
+      schema: SchemaDefinitionImpl,
+      out: OutputStream,
+      format: JsonOutputFormat,
+  ): Unit =
+    JsonUtil.write(Codec.codec.encode(schema), format, out)
+
   protected final def readUtf8(in: InputStream): String = {
     val buffer = ByteArrayOutputStream()
     val chunk = new Array[Byte](8 * 1024)

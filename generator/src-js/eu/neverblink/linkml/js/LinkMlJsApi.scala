@@ -5,6 +5,8 @@ import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
+import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
+import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -265,6 +267,93 @@ object LinkMlJsApi {
         format = rdfFormat(format),
       ),
     )
+
+  /** Generate an OWL 2 ontology from a loaded LinkML schema. Classes, slots, enums and types become
+    * OWL classes, properties, classes of individuals and datatypes, with the same IRIs as [[shacl]]
+    * and [[rdfs]].
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param onlyRootSchema
+    *   Whether to describe only the root schema, with an `owl:imports` for each schema it imports
+    *   (turned off by default, which merges the imported schemas in).
+    * @param metadataProfile
+    *   Which annotation property holds descriptions: `rdfs` for `rdfs:comment` (the default) or
+    *   `linkml` for `skos:definition`, as in the LinkML metamodel.
+    * @param permissibleValues
+    *   What permissible values become: `individual` (the default) or `class`.
+    * @param format
+    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
+    *   pretty-printed, or `nt` for N-Triples.
+    * @return
+    *   The ontology in the requested format
+    */
+  def owl(
+      schema: SchemaViewJs,
+      onlyRootSchema: Boolean = false,
+      metadataProfile: String = "rdfs",
+      permissibleValues: String = "individual",
+      format: String = "ttl",
+  ): String =
+    OwlGenerator(using schema.underlying).serialize(
+      OwlGenerator.Options(
+        onlyRootSchema = onlyRootSchema,
+        metadataProfile = OwlGenerator.MetadataProfile.values.find(_.toString == metadataProfile)
+          .getOrElse(throw RuntimeException(s"Unknown metadata profile: $metadataProfile")),
+        permissibleValues = OwlGenerator.PermissibleValueKind.values.find(
+          _.toString == permissibleValues,
+        )
+          .getOrElse(throw RuntimeException(s"Unknown permissible value kind: $permissibleValues")),
+        format = rdfFormat(format),
+      ),
+    )
+
+  /** Read an OWL ontology and produce the LinkML schema it describes.
+    *
+    * The opposite of [[owl]]. Feed the result to [[loadFromString]] if you want to run a generator
+    * over it.
+    *
+    * @param ontology
+    *   The ontology, as Turtle (or N-Triples, which is Turtle too).
+    * @param config
+    *   How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a
+    *   file (see `docs/owl.md`). By default, settings that suit most ontologies.
+    * @param outFormat
+    *   Output serialization format to use. One of yaml|json. Default: yaml
+    * @param listNotImported
+    *   Whether to list what could not be imported, in comments at the top of the YAML. Default:
+    *   false
+    * @param importMap
+    *   The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]].
+    *   The schema then uses their terms by name rather than copying them in.
+    * @param inputFormat
+    *   RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
+    * @return
+    *   The LinkML schema, serialized in the specified format.
+    */
+  def fromOwl(
+      ontology: String,
+      config: js.UndefOr[String] = js.undefined,
+      outFormat: String = "yaml",
+      listNotImported: Boolean = false,
+      importMap: js.UndefOr[js.Dictionary[String]] = js.undefined,
+      inputFormat: String = "ttl",
+  ): String = {
+    val format = outputFormat(outFormat)
+    val importer = OwlImporter()
+    val result = importer.importWithWarnings(
+      java.io.ByteArrayInputStream(ontology.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+      OwlImporter.Options(
+        config = config.toOption.fold(OwlImportConfigImpl())(OwlImportConfigs.parse),
+        schemas = JsImporter(importMap.getOrElse(js.Dictionary())),
+        inputFormat = rdfFormat(inputFormat),
+      ),
+    )
+    val schema = importer.serializeSchema(result.schema, format)
+    if listNotImported && format == JsonOutputFormat.yaml then
+      result.warnings.map(w => s"# Not imported: $w\n").mkString + schema
+    else schema
+  }
 
   /** The YAML-or-JSON format the caller named, as the generators spell it. */
   private def outputFormat(format: String): JsonOutputFormat =

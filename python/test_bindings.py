@@ -81,6 +81,72 @@ BROKEN = schema(
 FIXED = BROKEN.replace("NoSuchThing", "string")
 
 
+class FromOwlTest(unittest.TestCase):
+    ONTOLOGY = textwrap.dedent(
+        """
+        <https://example.org/Person> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .
+        <https://example.org/name> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#DatatypeProperty> .
+        <https://example.org/name> <http://www.w3.org/2000/01/rdf-schema#domain> <https://example.org/Person> .
+        <https://example.org/name> <http://www.w3.org/2000/01/rdf-schema#range> <http://www.w3.org/2001/XMLSchema#string> .
+        <https://example.org/name> <http://www.w3.org/2002/07/owl#propertyChainAxiom> _:list .
+        """
+    ).strip()
+
+    def test_reads_an_ontology_into_a_schema(self):
+        schema = linkml_scala.from_owl(self.ONTOLOGY)
+        self.assertIn("Person:", schema)
+        self.assertIn("range: string", schema)
+
+    def test_reads_turtle(self):
+        turtle = "@prefix ex: <https://example.org/> .\nex:Book a <http://www.w3.org/2002/07/owl#Class> .\n"
+        self.assertIn("Book:", linkml_scala.from_owl(turtle))
+
+    def test_reads_n_triples_with_its_own_parser_when_asked(self):
+        self.assertIn("Person:", linkml_scala.from_owl(self.ONTOLOGY, input_format="nt"))
+
+    def test_lists_what_it_left_out_when_asked(self):
+        self.assertNotIn("# Not imported:", linkml_scala.from_owl(self.ONTOLOGY))
+        self.assertIn("# Not imported:", linkml_scala.from_owl(self.ONTOLOGY, list_not_imported=True))
+
+    def test_uses_the_terms_of_a_mapped_import(self):
+        ontology = self.ONTOLOGY + textwrap.dedent(
+            """
+            <https://example.org/onto> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Ontology> .
+            <https://example.org/onto> <http://www.w3.org/2002/07/owl#imports> <https://other.example.com/onto> .
+            <https://example.org/Person> <http://www.w3.org/2000/01/rdf-schema#subClassOf> <https://other.example.com/Agent> .
+            """
+        )
+        imported = textwrap.dedent(
+            """
+            id: https://other.example.com/schema
+            name: other
+            prefixes:
+              other: https://other.example.com/
+            default_prefix: other
+            classes:
+              Agent:
+            """
+        )
+        config = "imports:\n  https://other.example.com/onto: other.yaml\n"
+        schema = linkml_scala.from_owl(ontology, config=config, imports={"other.yaml": imported})
+        self.assertIn("is_a: Agent", schema)
+        self.assertIn("- other.yaml", schema)
+        self.assertNotIn("Agent:", schema)
+
+    def test_follows_the_config(self):
+        schema = linkml_scala.from_owl(self.ONTOLOGY, config="default_prefix: mine\nprefixes:\n  mine: https://example.org/\n")
+        self.assertIn("default_prefix: mine", schema)
+
+    def test_writes_json_when_asked(self):
+        schema = json.loads(linkml_scala.from_owl(self.ONTOLOGY, output_format="json"))
+        self.assertIn("Person", schema["classes"])
+
+    def test_unreadable_config_is_rejected(self):
+        with self.assertRaises(LinkMlError) as raised:
+            linkml_scala.from_owl(self.ONTOLOGY, config="naming: [unclosed")
+        self.assertIn("config", str(raised.exception))
+
+
 class FromOssieTest(unittest.TestCase):
     ONTOLOGY = textwrap.dedent(
         """
@@ -401,6 +467,18 @@ class GeneratorTest(unittest.TestCase):
 
     def test_typescript(self):
         self.assertIn("export interface Person {", self.schema.typescript())
+
+    def test_owl(self):
+        generated = self.schema.owl()
+        # Turtle by default, with classes as OWL classes.
+        self.assertIn("a owl:Class", generated)
+        self.assertIn("owl:Ontology", generated)
+        self.assertIn("> .", self.schema.owl(format="nt"))
+
+    def test_owl_round_trips_through_from_owl(self):
+        ontology = self.schema.owl()
+        with linkml_scala.load_string(linkml_scala.from_owl(ontology)) as reloaded:
+            self.assertEqual(self.schema.owl(format="nt").count("\n"), reloaded.owl(format="nt").count("\n"))
 
     def test_er_diagram(self):
         generated = self.schema.er_diagram()

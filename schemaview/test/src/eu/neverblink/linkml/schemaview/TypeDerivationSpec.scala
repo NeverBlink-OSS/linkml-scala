@@ -339,6 +339,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       text.description shouldBe None
       text.implicitPrefix shouldBe None
       view.types("TextChild").inner.pattern shouldBe None
+      view.types("TextChild").pattern.map(_.xsd) shouldBe Some("[A-Z]+")
 
       val number = view.types("NumberChild").derivedType
       number.equalsNumber shouldBe Some(7)

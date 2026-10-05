@@ -40,6 +40,8 @@ final class App private[cli] (
     Translation,
     Ossie,
     FromOssie,
+    Owl,
+    FromOwl,
     Version,
   )
 

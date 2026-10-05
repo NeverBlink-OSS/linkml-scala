@@ -35,6 +35,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_typescript",
     "linkml_er_diagram",
     "linkml_ossie",
+    "linkml_owl",
     "linkml_scala",
     "linkml_translation",
 )
@@ -274,6 +275,34 @@ class Generators:
             pruningMode=_pruning(pruning_mode, tree_root),
             outputFormat=output_format,
             metadataLanguage=metadata_language,
+        )
+
+    def owl(
+        self,
+        *,
+        only_root_schema: bool = False,
+        metadata_profile: str = "rdfs",
+        permissible_values: str = "individual",
+        format: str = "ttl",
+    ) -> str:
+        """Generate an OWL 2 ontology, serialized as Turtle or N-Triples.
+
+        :param only_root_schema: Whether to describe only the root schema, with an `owl:imports`
+            for each schema it imports (turned off by default, which merges the imported schemas
+            in, as `gen-owl --mergeimports`).
+        :param metadata_profile: Which annotation property to write descriptions with:
+            `rdfs:comment` (the default) or `skos:definition`.
+        :param permissible_values: Whether permissible values become individuals (the default)
+            or classes.
+        :param format: Which RDF serialization to write: `ttl` for Turtle (the default) or `nt`
+            for N-Triples.
+        """
+        return self._document(
+            "linkml_owl",
+            onlyRootSchema=only_root_schema,
+            metadataProfile=metadata_profile,
+            permissibleValues=permissible_values,
+            format=format,
         )
 
     def scala(

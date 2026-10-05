@@ -124,6 +124,8 @@ const appTheme = EditorView.theme({
 
 const shared = [appTheme, syntaxHighlighting(highlight), EditorView.lineWrapping];
 
+const inputLang = new Compartment();
+
 export function createInput(parent: HTMLElement, doc: string, onChange: (v: string) => void): EditorView {
   return new EditorView({
     parent,
@@ -138,7 +140,7 @@ export function createInput(parent: HTMLElement, doc: string, onChange: (v: stri
         indentOnInput(),
         bracketMatching(),
         keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
-        yaml(),
+        inputLang.of(LANGS.yaml as never),
         ...shared,
         EditorView.updateListener.of((u) => {
           if (u.docChanged) onChange(u.state.doc.toString());
@@ -146,6 +148,11 @@ export function createInput(parent: HTMLElement, doc: string, onChange: (v: stri
       ],
     }),
   });
+}
+
+/** Highlight the input as `lang`, for importers that read something other than YAML. */
+export function setInputLang(view: EditorView, lang: OutputLang): void {
+  view.dispatch({ effects: inputLang.reconfigure(LANGS[lang] as never) });
 }
 
 const outputLang = new Compartment();

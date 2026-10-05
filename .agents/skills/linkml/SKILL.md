@@ -111,7 +111,7 @@ it changes the shape of every generated artifact. The decision table is in
 linkml-scala generate json-schema --to out/schema.json schema.yaml
 ```
 
-Generators: `json-schema`, `shacl`, `rdfs`, `frictionless`, `scala`, `linkml`, `graphql`,
+Generators: `json-schema`, `shacl`, `rdfs`, `owl`, `frictionless`, `scala`, `linkml`, `graphql`,
 `typescript`, `er-diagram`, `ossie`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
 instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared properties. `scala` and
 `frictionless` write several files, so point their `--to` at a directory. For flags run

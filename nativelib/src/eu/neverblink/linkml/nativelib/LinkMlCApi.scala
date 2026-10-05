@@ -102,6 +102,11 @@ object LinkMlCApi {
   def fromOssie(ontology: CString, options: CString, error: Ptr[CString]): CString =
     write(error, out => LinkMlNativeApi.fromOssie(string(ontology), string(options), out))
 
+  /** Read an OWL ontology, as Turtle or N-Triples, and return the LinkML schema it describes. */
+  @exported("linkml_from_owl")
+  def fromOwl(ontology: CString, options: CString, error: Ptr[CString]): CString =
+    write(error, out => LinkMlNativeApi.fromOwl(string(ontology), string(options), out))
+
   // Internals
 
   private[nativelib] def document(

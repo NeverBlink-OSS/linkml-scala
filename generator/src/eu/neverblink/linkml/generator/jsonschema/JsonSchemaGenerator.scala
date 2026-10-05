@@ -141,7 +141,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
               $comment = Some(s"Reference to ${classView.name} class"),
               minimum = toBigDecimalOpt(identifierView.minimumValue),
               maximum = toBigDecimalOpt(identifierView.maximumValue),
-              pattern = identifierView.pattern.mapFast(new Pattern(_)),
+              pattern = identifierView.pattern.mapFast(p => new Pattern(p.linkml)),
             )
             .arrayOfIf(slotView.slot.multivalued)
         case typeAttribute: TypeAttributeView =>
@@ -154,7 +154,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
             .copy(
               minimum = toBigDecimalOpt(typeAttribute.minimumValue),
               maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-              pattern = typeAttribute.pattern.mapFast(new Pattern(_)),
+              pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
               `enum` =
                 if (designatorValues.isEmpty) None
                 else Some(designatorValues.map(ExampleSingleValue(_)).toList),

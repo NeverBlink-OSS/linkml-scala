@@ -6,17 +6,15 @@ import scala.scalanative.unsafe.*
 
 /** The generator entry points of the C ABI, one per generator.
   *
-  * All of them have the same shape: a schema handle, an options JSON that may be NULL for defaults,
-  * and an error out-param. They return the generated document, or NULL with `*error` set. Release
-  * returned strings with `linkml_free`.
+  * All of them have the same shape: a schema handle, an options JSON that may be NULL for
+  * defaults, and an error out-param. They return the generated document, or NULL with
+  * `*error` set. Release returned strings with `linkml_free`.
   *
   * See [[LinkMlCApi]] for loading, linting and the lifecycle.
   */
 object LinkMlCGenerators {
 
-  /** Generate JSON Schema. Options: `open`, `treeRoot`, `treeRootInlineType`, `indentationStep`,
-    * `metadataLanguage`, `includeNull`.
-    */
+  /** Generate JSON Schema. Options: `open`, `treeRoot`, `treeRootInlineType`, `indentationStep`, `metadataLanguage`, `includeNull`. */
   @exported("linkml_json_schema")
   def jsonSchema(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.jsonSchema)
@@ -31,16 +29,12 @@ object LinkMlCGenerators {
   def rdfs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.rdfs)
 
-  /** Materialize a derived LinkML schema. Options: `pruningMode`, `skipClassDerivation`,
-    * `outputFormat`.
-    */
+  /** Materialize a derived LinkML schema. Options: `pruningMode`, `skipClassDerivation`, `outputFormat`. */
   @exported("linkml_linkml")
   def linkml(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.linkml)
 
-  /** Generate a Frictionless Data Package, as a JSON object mapping filename to content. Options:
-    * `pruningMode`, `skipClassesWithoutIdentifier`, `metadataLanguage`.
-    */
+  /** Generate a Frictionless Data Package, as a JSON object mapping filename to content. Options: `pruningMode`, `skipClassesWithoutIdentifier`, `metadataLanguage`. */
   @exported("linkml_frictionless")
   def frictionless(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.frictionlessFiles)
@@ -50,9 +44,7 @@ object LinkMlCGenerators {
   def graphql(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.graphQl)
 
-  /** Generate TypeScript types for the schema's JSON data. Options: `pruningMode`, `includeNull`,
-    * `open`, `metadataLanguage`.
-    */
+  /** Generate TypeScript types for the schema's JSON data. Options: `pruningMode`, `includeNull`, `open`, `metadataLanguage`. */
   @exported("linkml_typescript")
   def typescript(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.typeScript)
@@ -62,22 +54,22 @@ object LinkMlCGenerators {
   def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.erDiagram)
 
-  /** Generate an Apache Ossie ontology. Options: `pruningMode`, `outputFormat`, `metadataLanguage`.
-    */
+  /** Generate an Apache Ossie ontology. Options: `pruningMode`, `outputFormat`, `metadataLanguage`. */
   @exported("linkml_ossie")
   def ossie(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.ossie)
 
-  /** Generate Scala sources, as a JSON object mapping filename to source. Options: `package`,
-    * `generateEmitPrefixes`, `metadataLanguage`.
-    */
+  /** Generate an OWL 2 ontology. Options: `onlyRootSchema`, `metadataProfile`, `permissibleValues`, `format`. */
+  @exported("linkml_owl")
+  def owl(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.owl)
+
+  /** Generate Scala sources, as a JSON object mapping filename to source. Options: `package`, `generateEmitPrefixes`, `metadataLanguage`. */
   @exported("linkml_scala")
   def scala(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.scalaFiles)
 
-  /** Generate Translation dictionaries (in JSON), from the original names used in the schema to the
-    * names used in generated outputs. Options: `to`, `indentationStep`.
-    */
+  /** Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs. Options: `to`, `indentationStep`. */
   @exported("linkml_translation")
   def translation(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.translation)

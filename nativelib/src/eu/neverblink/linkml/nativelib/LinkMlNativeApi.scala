@@ -7,11 +7,12 @@ import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
+import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
-import eu.neverblink.linkml.generator.util.JsonUtil
+import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
@@ -166,6 +167,27 @@ object LinkMlNativeApi {
       out,
       Options.fromOssie(optionsJson),
     )
+  }
+
+  /** An OWL ontology, as Turtle or N-Triples depending on the `format` option. */
+  def owl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    OwlGenerator().writeTo(out, Options.owl(optionsJson))
+  }
+
+  /** The LinkML schema an OWL ontology (in Turtle or N-Triples) describes, as YAML or JSON depending on the
+    * `outputFormat` option. With `listNotImported`, what could not be imported is listed in
+    * comments at the top of YAML.
+    */
+  def fromOwl(ontology: String, optionsJson: String, out: OutputStream): Unit = {
+    if ontology eq null then throw BadRequest("no ontology document was given")
+    val (options, listNotImported) = Options.fromOwl(optionsJson)
+    val importer = OwlImporter()
+    val result =
+      importer.importWithWarnings(ByteArrayInputStream(ontology.getBytes(UTF_8)), options)
+    if listNotImported && options.outputFormat == JsonOutputFormat.yaml then
+      result.warnings.foreach(w => out.write(s"# Not imported: $w\n".getBytes(UTF_8)))
+    importer.writeSchema(result.schema, out, options.outputFormat)
   }
 
   // Results that are structured, and so come back as JSON

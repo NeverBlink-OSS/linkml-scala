@@ -1,0 +1,47 @@
+package eu.neverblink.linkml.generator.owl.config
+
+// GENERATED FROM LINKML
+
+import eu.neverblink.linkml.runtime.*
+
+/** Base implementation of the [[MetadataSources]] LinkML class
+  *
+  * @inheritdoc
+  */
+final case class MetadataSourcesImpl(
+    @id
+    metaslot: String,
+    @value
+    properties: Seq[String],
+) extends MetadataSources {
+
+  override def infer(): MetadataSourcesImpl =
+    this
+}
+
+/** The annotation properties a metaslot is read from, in order of preference.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+  */
+abstract class MetadataSources {
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def metaslot: String
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def properties: Seq[String]
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): MetadataSources
+}

@@ -1032,6 +1032,30 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       code should not include "@serializeDefault\nnoIfabsent"
     }
 
+    "generate ifabsent default values for boolean slots" in {
+      given SchemaView = decode(
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      on:
+           |        range: boolean
+           |        ifabsent: "true"
+           |      off:
+           |        range: boolean
+           |        ifabsent: "false"
+           |      plain:
+           |        range: boolean
+           |""".stripMargin,
+      )
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+        .apply("SomeClass.scala").linesIterator.map(_.stripLeading()).mkString("\n")
+      code should include("@serializeDefault\non: Boolean = true")
+      code should include("@serializeDefault\noff: Boolean = false")
+      code should include("plain: Boolean = false")
+      code should not include "@serializeDefault\nplain"
+    }
+
     "generate an emit_prefixes object" in {
       val files = ScalaGenerator(using ModelCatalogue.emitPrefixes.model).generate(
         ScalaGenerator.Options(testPkg),

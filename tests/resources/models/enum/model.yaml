@@ -1,6 +1,9 @@
 id: https://neverblink.eu/linkml/tests/enum/
 name: enum
 
+prefixes:
+  ex: https://example.org/
+
 imports:
   - linkml:types
 
@@ -15,6 +18,6 @@ enums:
   SomeEnum:
     permissible_values:
       SOME_OPTION:
-        meaning: rdf:subject
+        meaning: ex:some_option
       SOME_OTHER_OPTION:
       YET_ANOTHER_OPTION:
