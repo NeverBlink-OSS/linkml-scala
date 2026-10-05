@@ -319,15 +319,14 @@ object TypeScriptGenerator {
       |  : never;
       |""".stripMargin
 
-  /** TS type of a LinkML runtime type. All string-based types (dates, URIs...) are strings in JSON.
+  /** TS type of a LinkML type. Its core type is enough: all the string-based types (dates, URIs...)
+    * are plain strings in JSON.
     */
-  def runtimeType(tv: TypeView): String = tv.runtimeType match {
+  def runtimeType(tv: TypeView): String = tv.coreType match {
     case IntegerType | FloatType | DoubleType | DecimalType => "number"
     case BooleanType => "boolean"
-    case AnyType | UnknownType => "unknown"
-    case StringType | DateType | DateTimeType | TimeType | UriOrCurieType | UriType | CurieType |
-        NcNameType | LocalizedTextType =>
-      "string"
+    case AnyType => "unknown"
+    case StringType => "string"
   }
 
   private def isPlainKey(key: String): Boolean =

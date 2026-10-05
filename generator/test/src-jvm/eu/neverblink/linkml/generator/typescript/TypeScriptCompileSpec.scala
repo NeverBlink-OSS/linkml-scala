@@ -39,16 +39,14 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   private val bounds = "TypeScript types cannot express minimum_value/maximum_value"
   private val pattern = "TypeScript types cannot express patterns"
 
-  /** Invalid instances whose problem the types cannot catch. Only applies to invalid instances,
-    * because valid and invalid instances share names.
-    */
-  val inexpressible: Map[(String, String), String] = Map(
-    "constraints" -> "example1" -> bounds,
-    "constraints" -> "example2" -> bounds,
-    "constraints" -> "example3" -> pattern,
-    "constraintsOnTypes" -> "example1" -> bounds,
-    "constraintsOnTypes" -> "example2" -> bounds,
-    "constraintsOnTypes" -> "example3" -> pattern,
+  /** Invalid instances whose problem the types cannot catch. */
+  override val skipInstances: Map[(String, String), String] = Map(
+    "constraints" -> "floatAboveMaximum" -> bounds,
+    "constraints" -> "intBelowMinimum" -> bounds,
+    "constraints" -> "stringNotMatchingPattern" -> pattern,
+    "constraintsOnTypes" -> "floatAboveMaximum" -> bounds,
+    "constraintsOnTypes" -> "intBelowMinimum" -> bounds,
+    "constraintsOnTypes" -> "stringNotMatchingPattern" -> pattern,
     "typeDerivation" -> "excessiveCount" -> bounds,
     "typeDerivation" -> "negativeCount" -> bounds,
     "typeDerivation" -> "lowercaseCode" -> pattern,
@@ -250,11 +248,6 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
           val kind = if valid then "valid" else "invalid"
           s"$kind instance '${instance.name}'" in {
             processSkip(entry, instance)
-            if !valid then
-              assume(
-                !inexpressible.contains((entry.name, instance.name)),
-                inexpressible.getOrElse((entry.name, instance.name), ""),
-              )
             val errors = documentErrors(entry.name, valid, instance.name)
             if valid then errors shouldBe empty
             else errors should not be empty
