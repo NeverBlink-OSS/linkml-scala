@@ -1,5 +1,5 @@
 package eu.neverblink.linkml.runtime
 
-case class LinkmlDate(value: String)
-case class LinkmlTime(value: String)
-case class LinkmlDateTime(value: String)
+@flatten case class LinkmlDate(value: String)
+@flatten case class LinkmlTime(value: String)
+@flatten case class LinkmlDateTime(value: String)

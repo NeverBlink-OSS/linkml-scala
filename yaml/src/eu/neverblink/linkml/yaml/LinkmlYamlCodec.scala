@@ -445,7 +445,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
       Block(readBlock.result(), construct).asExpr.asInstanceOf[Expr[T]]
     }
 
-    if (fields.size == 1) {
+    if (classInfo.isFlattened) {
       val fieldInfo = fields.head
       val fTpe = fieldInfo.resolvedTpe
       fTpe.asType match {
@@ -572,7 +572,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
       ).asExpr.asInstanceOf[Expr[Unit]]
     }
 
-    if (fields.size == 1) {
+    if (classInfo.isFlattened) {
       val fieldInfo = fields.head
       val fTpe = fieldInfo.resolvedTpe
       val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
