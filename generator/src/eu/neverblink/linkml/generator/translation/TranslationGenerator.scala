@@ -89,7 +89,7 @@ object TranslationGenerator {
     def permissibleValueName(
         el: EnumView,
         pv: PermissibleValue,
-    ): String = el.toMeaning(pv.text).uri(using el.definingPrefixResolver)
+    ): String = PermissibleValueView(pv, el).uriStr
 
     def slotName(el: SlotView): String = el.uriStr
 

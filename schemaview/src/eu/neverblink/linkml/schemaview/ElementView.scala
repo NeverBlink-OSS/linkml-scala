@@ -522,15 +522,15 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   /** Map of aliased names to meanings
     */
-  lazy val toMeaning: Map[String, UriOrCurie] =
-    derivedValues.foldLeft(Map.newBuilder[String, UriOrCurie]) { case (acc, valueView) =>
+  lazy val toMeaning: Map[String, Uri] =
+    derivedValues.foldLeft(Map.newBuilder[String, Uri]) { case (acc, valueView) =>
       acc.addOne((valueView.aliasedName, valueView.meaning))
     }.result()
 
   /** Map of meanings to aliased names
     */
-  lazy val fromMeaning: Map[UriOrCurie, String] =
-    derivedValues.foldLeft(Map.newBuilder[UriOrCurie, String]) { case (acc, valueView) =>
+  lazy val fromMeaning: Map[Uri, String] =
+    derivedValues.foldLeft(Map.newBuilder[Uri, String]) { case (acc, valueView) =>
       acc.addOne((valueView.meaning, valueView.aliasedName))
     }.result()
 }

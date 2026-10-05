@@ -10,8 +10,12 @@ class EnumViewSpec extends AnyWordSpec, Matchers {
 
     "provide meaning mappings" in {
       val pv_formula_options = sv.enums("relational_role_enum")
-      pv_formula_options.toMeaning("SUBJECT") shouldBe Curie("rdf:subject")
-      pv_formula_options.fromMeaning(Curie("rdf:subject")) shouldBe "SUBJECT"
+      pv_formula_options.toMeaning("SUBJECT") shouldBe Uri(
+        "http://www.w3.org/1999/02/22-rdf-syntax-ns#subject",
+      )
+      pv_formula_options.fromMeaning(
+        Uri("http://www.w3.org/1999/02/22-rdf-syntax-ns#subject"),
+      ) shouldBe "SUBJECT"
     }
     "provide fallback with default prefix for missing meanings" in {
       val pv_formula_options = sv.enums("pv_formula_options")
