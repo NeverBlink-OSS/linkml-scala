@@ -183,6 +183,47 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   ): DerivedReachabilityQuery =
     new DerivedReachabilityQuery(from, inlinedOnly, includeClassAncestors)
 
+  /** Extend a reachability query with the [[ClassView.typeDesignatorMembers]] of every class it
+    * reaches, and whatever those reach in turn. A slot ranging over a class with a type designator
+    * can hold any of them, so they must not be pruned.
+    *
+    * @param query
+    *   The query to extend. [[IncludeAllReachabilityQuery]] is returned as is.
+    * @param inlinedOnly
+    *   See [[derivedReachabilityQuery]].
+    * @param includeClassAncestors
+    *   See [[derivedReachabilityQuery]].
+    */
+  def withTypeDesignatorMembers(
+      query: SchemaReachabilityQuery,
+      inlinedOnly: Boolean,
+      includeClassAncestors: Boolean,
+  ): SchemaReachabilityQuery = {
+    if (query.isInstanceOf[IncludeAllReachabilityQuery]) return query
+    var result = query
+    val from = Vector.newBuilder[ClassView]
+    // The condition collects the reachable classes and their unreachable members, and the body
+    // rebuilds the query from them. It stops once all members of reachable classes are reachable
+    // too. A member can be added more than once, but the closure skips repeated nodes.
+    while ({
+      var grown = false
+      from.clear()
+      sortedClasses.foreach { c =>
+        if (result.reachable(c)) {
+          from.addOne(c)
+          c.typeDesignatorMembers.foreach { m =>
+            if (!result.reachable(m)) {
+              from.addOne(m)
+              grown = true
+            }
+          }
+        }
+      }
+      grown
+    }) result = derivedReachabilityQuery(from.result(), inlinedOnly, includeClassAncestors)
+    result
+  }
+
   /** Get a schema element by its ID
     */
   def getElement(name: String): Option[ElementView[?, ?]] = elements.get(name)

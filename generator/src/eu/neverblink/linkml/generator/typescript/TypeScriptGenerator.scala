@@ -24,31 +24,12 @@ final class TypeScriptGenerator(using sv: SchemaView)
 
   override protected def defaultOptions: Options = Options()
 
-  // TODO: move the type designator / type union machinery to SchemaView, reuse in JSON Schema
-
-  /** The type designator slot of a class. */
-  private def designator(cls: ClassView): Option[SlotView] =
-    cls.derivedAttributes.values.find(_.slot.designatesType)
-
-  /** Concrete classes that a designated class stands for: itself (if concrete) and all its concrete
-    * descendants, in the common order. Empty if the class has no type designator.
-    */
-  private lazy val unionMembers: Map[String, Seq[ClassView]] =
-    sv.classes.values.flatMap { cls =>
-      designator(cls).map { _ =>
-        cls.name -> sv.sortedClasses.filter(c =>
-          c.isConcrete && c.ancestorsWithSelf.exists(_.name == cls.name),
-        )
-      }
-    }.toMap
-
   /** Name of the union type standing for a class and its subclasses, if the class needs one. */
   def unionName(cls: ClassView): Option[String] =
-    unionMembers.get(cls.name).flatMap { members =>
-      if cls.isConcrete then if members.sizeIs > 1 then Some("Any".concat(className(cls))) else None
-      else if members.nonEmpty then Some(className(cls))
-      else None
-    }
+    if cls.isTypeDesignatorUnion then {
+      val name = className(cls)
+      new Some(if cls.isConcrete then "Any".concat(name) else name)
+    } else None
 
   /** TS type to use where the class is the range of a slot: the union if there is one, otherwise
     * the interface.
@@ -63,22 +44,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
     * keeps, and whatever those reach in turn. A slot ranging over a designated class uses the
     * union, so its members must be there too.
     */
-  private def reachability(mode: PruningMode): SchemaReachabilityQuery = {
-    var query = mode.derivedQuery(true, false)
-    if mode != PruningMode.skip then {
-      var from = sv.sortedClasses.filter(query.reachable)
-      var done = false
-      while !done do {
-        val more = (from ++ from.flatMap(c => unionMembers.getOrElse(c.name, Nil))).distinct
-        done = more.sizeIs == from.size
-        if !done then {
-          query = sv.derivedReachabilityQuery(more, true, false)
-          from = sv.sortedClasses.filter(query.reachable)
-        }
-      }
-    }
-    query
-  }
+  private def reachability(mode: PruningMode): SchemaReachabilityQuery =
+    sv.withTypeDesignatorMembers(mode.derivedQuery(true, false), true, false)
 
   private def hasRequiredContent(cls: ClassView, key: String): Boolean =
     cls.derivedAttributes.exists { case (name, slot) => name != key && slot.slot.required }
@@ -106,20 +73,6 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def keyOptional(ref: String, cls: ClassView, key: String): String =
     s"KeyOptional<$ref, ${stringLiteral(slotName(cls.derivedAttributes(key)))}>"
 
-  /** Literal values of a type designator slot in the given concrete class, if the range supports
-    * them.
-    */
-  private def designatorLiterals(attribute: TypeAttributeView, owner: ClassView): Seq[String] = {
-    given eu.neverblink.linkml.runtime.PrefixResolver = owner.definingPrefixResolver
-    attribute.typeView.runtimeType match {
-      case StringType => Seq(owner.cls.name)
-      case UriType => Seq(owner.uriOrCurie.uri)
-      case CurieType => Seq(owner.uriOrCurie.curie)
-      case UriOrCurieType => Seq(owner.uriOrCurie.uri, owner.uriOrCurie.curie).distinct
-      case _ => Nil
-    }
-  }
-
   /** TS type of an attribute, without the `| null` added for optional slots. */
   private def attributeType(attribute: AttributeView, owner: ClassView, ctx: Context): String = {
     val multivalued = attribute.slotView.slot.multivalued
@@ -131,8 +84,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
         arrayOfIf(multivalued, runtimeType(identifierView.typeView))
       case tav: TypeAttributeView =>
         val literals =
-          if tav.slotView.slot.designatesType && owner.isConcrete then
-            designatorLiterals(tav, owner)
+          if tav.slotView.slot.designatesType && owner.isConcrete then owner.typeDesignatorValues
           else Nil
         val base =
           if literals.isEmpty then runtimeType(tav.typeView)
@@ -207,7 +159,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append("export type ")
     sink.append(name)
     sink.append(" =")
-    unionMembers(cls.name).foreach { member =>
+    cls.typeDesignatorMembers.foreach { member =>
       sink.append("\n  | ")
       sink.append(className(member))
     }

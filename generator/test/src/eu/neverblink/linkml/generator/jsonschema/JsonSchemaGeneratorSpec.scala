@@ -916,6 +916,103 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "type designators" should {
+      // With `extraSlots`, `Base` has two required non-key slots, so it is inlined as a CompactDict
+      // instead of a SimpleDict
+      def designatorSchema(extraSlots: Boolean): String =
+        """id: https://example.org/designators/
+          |name: designators
+          |prefixes:
+          |  ex: https://example.org/
+          |  linkml: https://w3id.org/linkml/
+          |imports:
+          |  - linkml:types
+          |default_prefix: ex
+          |classes:
+          |  Container:
+          |    tree_root: true
+          |    attributes:
+          |      items:
+          |        range: Base
+          |        multivalued: true
+          |        inlined: true
+          |        inlined_as_list: false
+          |  Base:
+          |    abstract: true
+          |    attributes:
+          |      id:
+          |        identifier: true
+          |        range: string
+          |      kind:
+          |        designates_type: true
+          |        range: uriorcurie
+          |        required: true
+          |""".stripMargin + (if (extraSlots) "      label:\n        range: string\n        required: true\n" else "") +
+          """  A:
+          |    is_a: Base
+          |    class_uri: ex:A
+          |  B:
+          |    is_a: Base
+          |    class_uri: ex:B
+          |""".stripMargin
+
+      "restrict the designator of a concrete class to the URI and CURIE of the class" in {
+        given SchemaView = load(designatorSchema(false))
+        val defs = JsonSchemaGenerator().generate().$defs.get
+
+        def kind(cls: String): Schema =
+          defs(cls).asInstanceOf[Schema].properties("kind").asInstanceOf[Schema]
+
+        kind("A").`enum` shouldBe Some(
+          List(ExampleSingleValue("https://example.org/A"), ExampleSingleValue("ex:A")),
+        )
+        kind("B").`enum` shouldBe Some(
+          List(ExampleSingleValue("https://example.org/B"), ExampleSingleValue("ex:B")),
+        )
+        kind("Base").`enum` shouldBe None
+      }
+
+      def refs(schema: SchemaLike): List[Option[String]] =
+        schema.asInstanceOf[Schema].anyOf.map(_.asInstanceOf[Schema].$ref)
+
+      def itemsEntry(defs: collection.Map[String, SchemaLike]): Schema =
+        defs("Container").asInstanceOf[Schema].properties("items").asInstanceOf[Schema]
+          .additionalProperties.get.asInstanceOf[Schema]
+
+      "accept any concrete subclass in a simple dict, and keep the subclasses when pruning" in {
+        given SchemaView = load(designatorSchema(false))
+        val defs = JsonSchemaGenerator().generate().$defs.get
+
+        defs.keys should contain allOf ("A", "B", "A__identifier_optional", "B__identifier_optional")
+        defs("A__identifier_optional").asInstanceOf[Schema].required shouldBe List("kind")
+        val entry = itemsEntry(defs)
+        entry.oneOf.head.asInstanceOf[Schema].$ref shouldBe Some("#/$defs/Base__simple_dict_value")
+        refs(entry.oneOf(1)) shouldBe List(
+          Some("#/$defs/A__identifier_optional"),
+          Some("#/$defs/B__identifier_optional"),
+        )
+      }
+
+      "accept any concrete subclass in a compact dict" in {
+        given SchemaView = load(designatorSchema(true))
+        val defs = JsonSchemaGenerator().generate().$defs.get
+
+        refs(itemsEntry(defs)) shouldBe List(
+          Some("#/$defs/A__identifier_optional"),
+          Some("#/$defs/B__identifier_optional"),
+        )
+      }
+
+      "accept a concrete tree root and any of its concrete subclasses" in {
+        given SchemaView = ModelCatalogue.typeDesignator.model
+        JsonSchemaGenerator().generate().anyOf.map(_.asInstanceOf[Schema].$ref) shouldBe List(
+          Some("#/$defs/IntThing"),
+          Some("#/$defs/StringThing"),
+          Some("#/$defs/Thing"),
+        )
+      }
+    }
+
     "generate the metamodel without errors" in {
       val sv =
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
@@ -941,8 +1038,6 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
 object JsonSchemaGeneratorSpec {
   val skipModels: Map[String, String] = Map(
-    "typeDesignator" -> "Not yet implemented: LNK-101",
-    "typeDesignator2" -> "Not yet implemented: LNK-101",
     "unionRange" -> "Not yet implemented: LNK-100",
   )
 }

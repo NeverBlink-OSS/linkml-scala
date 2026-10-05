@@ -61,9 +61,10 @@ class JsonSchemaGenerator(using sv: SchemaView)
       case Failure(exception) => throw exception
     }
     // If a tree root is defined, only include classes reachable from the tree root (pruning).
-    // Otherwise, include all classes in the schema view.
+    // Otherwise, include all classes in the schema view. The classes a type designator can pick are
+    // reachable too, since a slot ranging over their designated parent accepts any of them.
     val query = maybeTreeRoot.foldFast(new IncludeAllReachabilityQuery()) { root =>
-      sv.derivedReachabilityQuery(Seq(root), true, false)
+      sv.withTypeDesignatorMembers(sv.derivedReachabilityQuery(Seq(root), true, false), true, false)
     }
     // Mutable set this method will add to if it requires a keyless class to be defined in `$defs`
     // for CompactDict form inlining. The slot will be the key to omit from required fields.
@@ -86,30 +87,52 @@ class JsonSchemaGenerator(using sv: SchemaView)
       else schema
     }
 
-    // Generate a Schema for a specific attribute, which maps to a JSON Schema property
-    def generateSlotSchema(attribute: AttributeView): Schema = {
+    // Classes that an inlined value of `classView` can be: the class itself or, if it has a type
+    // designator, any of the concrete classes the designator can pick.
+    def inlinedClasses(classView: ClassView): Seq[ClassView] =
+      if (classView.isTypeDesignatorUnion) classView.typeDesignatorMembers else classView :: Nil
+
+    // Schema for an inlined value of `classView`, referring to its `$defs` with the given suffix
+    def inlinedClassSchema(classView: ClassView, suffix: String): Schema =
+      inlinedClasses(classView).map { c =>
+        new Schema($ref = new Some("#/$defs/" + className(c) + suffix))
+      } match {
+        case single :: Nil => single
+        case members => new Schema(anyOf = members.toList)
+      }
+
+    // Schema for `classView` inlined as a dict in the given form
+    def dictSchema(classView: ClassView, form: DictForm): Schema = {
+      def keyless(key: String): Schema = {
+        inlinedClasses(classView).foreach { c =>
+          needKeyless.add((className(c), slotName(c.derivedAttributes(key))))
+        }
+        inlinedClassSchema(classView, "__identifier_optional")
+      }
+
+      form match {
+        case CollectionForm.CompactDict(key) =>
+          allowNullDictEntry(keyless(key), classView, key).dictOf
+        case CollectionForm.SimpleDict(key, value) =>
+          val mappedClassName = className(classView)
+          needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
+          simpleDictSchema(
+            "#/$defs/" + mappedClassName + "__simple_dict_value",
+            keyless(key),
+          ).dictOf
+      }
+    }
+
+    // Generate a Schema for a specific attribute of the `owner` class, which maps to a JSON Schema
+    // property
+    def generateSlotSchema(attribute: AttributeView, owner: ClassView): Schema = {
       val slotSchema = attribute match {
         case _: AnyView => Schema.Empty
         case ClassInlineAttributeView(_, _, classView, inlineType) =>
-          val mappedClassName = className(classView)
-          val ref = "#/$defs/".concat(mappedClassName)
           inlineType match {
-            case InlineType.plain =>
-              new Schema($ref = Some(ref))
-            case InlineType.optional =>
-              new Schema($ref = Some(ref))
-            case InlineType.list =>
-              new Schema($ref = Some(ref)).arrayOf
-            case InlineType.dict(CollectionForm.CompactDict(key)) =>
-              needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
-              val entrySchema = new Schema(
-                $ref = Some(ref.concat("__identifier_optional")),
-              )
-              allowNullDictEntry(entrySchema, classView, key).dictOf
-            case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-              needKeyless.add((mappedClassName, slotName(classView.derivedAttributes(key))))
-              needValue.add((mappedClassName, slotName(classView.derivedAttributes(value))))
-              simpleDictSchema(ref).dictOf
+            case InlineType.plain | InlineType.optional => inlinedClassSchema(classView, "")
+            case InlineType.list => inlinedClassSchema(classView, "").arrayOf
+            case InlineType.dict(form) => dictSchema(classView, form)
           }
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
           typeToRuntime(identifierView.typeView)
@@ -121,11 +144,19 @@ class JsonSchemaGenerator(using sv: SchemaView)
             )
             .arrayOfIf(slotView.slot.multivalued)
         case typeAttribute: TypeAttributeView =>
+          // In a concrete class, the type designator can only name that class
+          val designatorValues =
+            if (typeAttribute.slotView.slot.designatesType && owner.isConcrete)
+              owner.typeDesignatorValues
+            else Nil
           typeToRuntime(typeAttribute.typeView)
             .copy(
               minimum = toBigDecimalOpt(typeAttribute.minimumValue),
               maximum = toBigDecimalOpt(typeAttribute.maximumValue),
               pattern = typeAttribute.pattern.mapFast(new Pattern(_)),
+              `enum` =
+                if (designatorValues.isEmpty) None
+                else new Some(designatorValues.map(new ExampleSingleValue(_)).toList),
             )
             .arrayOfIf(typeAttribute.slotView.slot.multivalued)
         case EnumAttributeView(slotView, _, enumView) =>
@@ -163,7 +194,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       properties.sizeHint(attributes.knownSize) // to avoid hashmap growing
       val requiredSlots = new mutable.ListBuffer[String]
       attributes.foreach { a =>
-        val slotSchema = generateSlotSchema(a)
+        val slotSchema = generateSlotSchema(a, cls)
         val sv = a.slotView
         val name = slotName(sv)
         properties.update(name, slotSchema)
@@ -184,10 +215,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       )
     }
     val baseSchema = maybeTreeRoot.foldFast(Schema.Empty) { treeRoot =>
-      val classSchema =
-        new Schema(
-          $ref = new Some("#/$defs/".concat(className(treeRoot))),
-        )
+      val classSchema = inlinedClassSchema(treeRoot, "")
       val inlineType = treeRoot.treeRootInlineType(treeRootInlineTypeOverride)
       inlineType match {
         case InlineType.plain => classSchema // object (mandatory)
@@ -195,18 +223,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
           Schema.oneOf(List(classSchema, Schema.Null), discriminator = None) // object or null
         case InlineType.list =>
           arraySchema.copy(items = Some(classSchema)) // array of objects
-        case InlineType.dict(CollectionForm.CompactDict(key)) =>
-          val mappedClassName = className(treeRoot)
-          needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
-          val entrySchema = new Schema(
-            $ref = new Some("#/$defs/" + mappedClassName + "__identifier_optional"),
-          )
-          allowNullDictEntry(entrySchema, treeRoot, key).dictOf
-        case InlineType.dict(CollectionForm.SimpleDict(key, value)) =>
-          val mappedClassName = className(treeRoot)
-          needKeyless.add((mappedClassName, slotName(treeRoot.derivedAttributes(key))))
-          needValue.add((mappedClassName, slotName(treeRoot.derivedAttributes(value))))
-          simpleDictSchema("#/$defs/" + mappedClassName).dictOf
+        case InlineType.dict(form) => dictSchema(treeRoot, form)
       }
     }
     // Generate the needed keyless/value refs
@@ -329,14 +346,13 @@ object JsonSchemaGenerator {
     * or the full object with the key slot made optional. Both should be in principle accepted by
     * LinkML parsers.
     *
-    * @param ref
-    *   `$defs` reference of the inlined class, without a form suffix
+    * @param valueRef
+    *   `$defs` reference of the primary value
+    * @param keyless
+    *   Schema of the full object with the key slot made optional
     */
-  private def simpleDictSchema(ref: String): Schema = Schema.oneOf(
-    List(
-      new Schema($ref = Some(ref.concat("__simple_dict_value"))),
-      new Schema($ref = Some(ref.concat("__identifier_optional"))),
-    ),
+  private def simpleDictSchema(valueRef: String, keyless: Schema): Schema = Schema.oneOf(
+    List(new Schema($ref = Some(valueRef)), keyless),
     discriminator = None,
   )
 
