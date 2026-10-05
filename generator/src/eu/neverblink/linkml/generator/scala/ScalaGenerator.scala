@@ -82,14 +82,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       else {
         val prefixResolver = ev.definingPrefixResolver
         val name = enumName(ev)
-        val enumCases = en.permissibleValues.values.map(v =>
+        val enumCases = ev.derivedValues.map(v =>
           ScalaEnumCase(
-            caseName = v.alias.getOrElseFast(v.text),
-            objectName = permissibleValueName(ev, v),
+            caseName = v.aliasedName,
+            objectName = permissibleValueName(ev, v.pv),
             enumName = name,
-            doc = ScalaDoc(v, ev.definingSchema.id, options)(using prefixResolver),
+            doc = ScalaDoc(v.pv, ev.definingSchema.id, options)(using prefixResolver),
           ),
-        ).toSeq
+        )
         val enumInfo =
           ScalaEnumInfo(
             name,
