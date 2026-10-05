@@ -399,6 +399,9 @@ class GeneratorTest(unittest.TestCase):
     def test_graphql(self):
         self.assertIn("type Person", self.schema.graphql())
 
+    def test_typescript(self):
+        self.assertIn("export interface Person {", self.schema.typescript())
+
     def test_er_diagram(self):
         generated = self.schema.er_diagram()
         self.assertIn("erDiagram", generated)
@@ -584,7 +587,7 @@ class RuntimeTest(unittest.TestCase):
         # The emoji is in the slot name, not just the description, because the ER diagram renders
         # names and types but no descriptions.
         with linkml_scala.load_string(unicode_schema) as loaded:
-            for name in ("linkml", "graphql", "translation", "json_schema", "ossie"):
+            for name in ("linkml", "graphql", "typescript", "translation", "json_schema", "ossie"):
                 with self.subTest(generator=name):
                     generated = getattr(loaded, name)()
                     self.assertIn("🐍", generated)

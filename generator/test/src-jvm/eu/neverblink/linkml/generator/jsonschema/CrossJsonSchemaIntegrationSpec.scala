@@ -25,7 +25,8 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
   override val skipInstances: Map[(String, String), String] = Map(
     // This seems to contradict the description of the `alias` slot
     // https://linkml.io/linkml-model/latest/docs/alias/
-    "aliases" -> "nonRdf" -> "LinkML-py allows unaliased names to be used in addition to aliased ones",
+    "aliases" -> "unaliasedSlotName" ->
+      "LinkML-py allows unaliased names to be used in addition to aliased ones",
     "typeDerivation" -> "lowercaseCode" -> "LinkML-py does not emit inherited type patterns",
     "typeDerivation" -> "negativeCount" -> "LinkML-py does not emit inherited type bounds",
     "typeDerivation" -> "excessiveCount" -> "LinkML-py does not emit inherited type bounds",

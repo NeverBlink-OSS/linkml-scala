@@ -6,7 +6,7 @@
 // `SchemaView` handles it hands out (those are live Scala.js objects and cannot cross a
 // postMessage boundary). Keeping both halves in one file means ids and option keys have a
 // single definition that both sides are type-checked against.
-import type { LinkMLApi, SchemaView } from "./linkml";
+import type { LinkMLApi, SchemaValidationReport, SchemaView } from "./linkml";
 import type { OutputLang } from "./editor.js";
 import { EXAMPLE_OSSIE } from "./examples.js";
 
@@ -39,47 +39,13 @@ const TREE_ROOT: Option = {
   showIf: (o) => o.pruningMode === "treeRoot",
 };
 
-/** Shape of the `SchemaValidationReport` that `LinkML.lint` returns.
- *
- * Hand-written because the API is untyped for now - see the TODO on `LinkMlJsApi.lint`. Everything
- * is optional: the serializer omits slots that are empty or equal to their default.
- */
-export interface CodeRegion {
-  start_line?: number;
-  start_column?: number;
-}
-export interface IssueLocation {
-  schema_id?: string;
-  json_pointer?: string;
-  code_region?: CodeRegion;
-}
-export interface ReportIssue {
-  severity?: string;
-  message?: string;
-  details?: string;
-  location?: IssueLocation;
-}
-export interface ValidationReport {
-  validation_run_id?: string;
-  issues?: ReportIssue[];
-}
+/** The validation report types, generated from model/issue-types.yaml into linkml.d.ts. */
+export type { IssueLocation, SchemaIssue, SchemaValidationReport } from "./linkml";
 
-export type TargetResult = string | Record<string, string> | ValidationReport;
+export type TargetResult = string | Record<string, string> | SchemaValidationReport;
 
-/** Shape of the `BuildInfo` that `LinkML.buildInfo` returns, following model/build-info.yaml.
- *
- * Hand-written for the same reason as `ValidationReport`, and optional throughout for the same
- * reason too. Slots the JavaScript build never fills - `abi_version` - are left out entirely
- * rather than typed as always-absent.
- */
-export interface BuildInfo {
-  linkml_scala_version?: string;
-  metamodel_version?: string;
-  scala_version?: string;
-  scala_js_version?: string;
-  platform?: string;
-  runtime?: string;
-}
+/** The build info, generated from model/build-info.yaml into linkml.d.ts. */
+export type { BuildInfo } from "./linkml";
 
 /** What a [[Target]] and an [[Importer]] have in common: a tab, a set of option widgets and an
  * output language. The UI works in terms of this wherever the direction does not matter. */
@@ -116,39 +82,12 @@ export interface Importer extends Step {
   call: (api: LinkMLApi, input: string, o: OptionValues) => string;
 }
 
+/** The generator the playground opens with. Shared links leave it out, so it must stay the same for
+ * old links to keep working. */
+export const DEFAULT_TARGET_ID = "jsonSchema";
+
+/** Sorted by label. */
 export const TARGETS: Target[] = [
-  {
-    id: "jsonSchema",
-    label: "JSON Schema",
-    lang: "json",
-    options: [
-      { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
-      { key: "treeRootOverride", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
-    ],
-    call: (api, v, o) => api.jsonSchema(v, !!o.open, blankToUndef(o.treeRootOverride)),
-  },
-  {
-    id: "shacl",
-    label: "SHACL",
-    // N-Triples is a subset of Turtle, so one mode highlights both formats.
-    lang: "turtle",
-    options: [
-      { key: "open", type: "checkbox", label: "Open", title: "sh:closed false" },
-      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
-      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
-    ],
-    call: (api, v, o) => api.shacl(v, !!o.open, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
-  },
-  {
-    id: "rdfs",
-    label: "RDFS",
-    lang: "turtle",
-    options: [
-      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
-      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
-    ],
-    call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
-  },
   {
     id: "ossie",
     label: "Apache Ossie",
@@ -164,23 +103,17 @@ export const TARGETS: Target[] = [
         api.ossie(v, String(o.pruningMode || "skip"), blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
   },
   {
-    id: "frictionless",
-    label: "Frictionless",
-    lang: "json",
+    id: "linkml",
+    label: "Derived LinkML",
+    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     options: [
-      // Defaults to `skip`: narrower modes can leave the package empty, because a root schema may
-      // only import its classes rather than define any.
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
+      { key: "skipDerivation", type: "checkbox", label: "Skip derivation" },
       TREE_ROOT,
-      {
-        key: "skipClassesWithoutIdentifier",
-        type: "checkbox",
-        label: "Identified only",
-        title: "Skip classes that have no identifier slot",
-      },
+      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
     call: (api, v, o) =>
-      api.frictionless(v, String(o.pruningMode), blankToUndef(o.treeRoot), !!o.skipClassesWithoutIdentifier),
+      api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
   },
   {
     id: "erDiagram",
@@ -204,6 +137,25 @@ export const TARGETS: Target[] = [
         api.erDiagram(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.optionalMarker),
   },
   {
+    id: "frictionless",
+    label: "Frictionless",
+    lang: "json",
+    options: [
+      // Defaults to `skip`: narrower modes can leave the package empty, because a root schema may
+      // only import its classes rather than define any.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      TREE_ROOT,
+      {
+        key: "skipClassesWithoutIdentifier",
+        type: "checkbox",
+        label: "Identified only",
+        title: "Skip classes that have no identifier slot",
+      },
+    ],
+    call: (api, v, o) =>
+      api.frictionless(v, String(o.pruningMode), blankToUndef(o.treeRoot), !!o.skipClassesWithoutIdentifier),
+  },
+  {
     id: "graphQl",
     label: "GraphQL",
     lang: "graphql",
@@ -214,31 +166,21 @@ export const TARGETS: Target[] = [
     call: (api, v, o) => api.graphQl(v, String(o.pruningMode || "treeRoot"), blankToUndef(o.treeRoot)),
   },
   {
-    id: "scala",
-    label: "Scala code",
-    lang: "scala",
-    options: [{ key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" }],
-    call: (api, v, o) => api.scala(v, String(o.package || "eu.neverblink.linkml.metamodel")),
-  },
-  {
-    id: "linkml",
-    label: "Derived LinkML",
-    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    id: "jsonSchema",
+    label: "JSON Schema",
+    lang: "json",
     options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
-      { key: "skipDerivation", type: "checkbox", label: "Skip derivation" },
-      TREE_ROOT,
-      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+      { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
+      { key: "treeRootOverride", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
     ],
-    call: (api, v, o) =>
-      api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
+    call: (api, v, o) => api.jsonSchema(v, !!o.open, blankToUndef(o.treeRootOverride)),
   },
   {
     id: "translation",
     label: "Key translations",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript"], default: "base" },
     ],
     call: (api, v, o) => api.translation(v, String(o.target))
   },
@@ -250,7 +192,55 @@ export const TARGETS: Target[] = [
     options: [
       { key: "inferMessages", type: "checkbox", label: "Messages", default: true },
     ],
-    call: (api, v, o) => api.lint(v, !!o.inferMessages) as ValidationReport,
+    call: (api, v, o) => api.lint(v, !!o.inferMessages),
+  },
+  {
+    id: "rdfs",
+    label: "RDFS",
+    lang: "turtle",
+    options: [
+      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
+    ],
+    call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
+  },
+  {
+    id: "scala",
+    label: "Scala code",
+    lang: "scala",
+    options: [{ key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" }],
+    call: (api, v, o) => api.scala(v, String(o.package || "eu.neverblink.linkml.metamodel")),
+  },
+  {
+    id: "shacl",
+    label: "SHACL",
+    // N-Triples is a subset of Turtle, so one mode highlights both formats.
+    lang: "turtle",
+    options: [
+      { key: "open", type: "checkbox", label: "Open", title: "sh:closed false" },
+      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
+    ],
+    call: (api, v, o) => api.shacl(v, !!o.open, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
+  },
+  {
+    id: "typeScript",
+    label: "TypeScript",
+    lang: "typescript",
+    options: [
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      TREE_ROOT,
+      { key: "includeNull", type: "checkbox", label: "Nulls", title: "Allow null for optional slots" },
+      { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
+    ],
+    call: (api, v, o) =>
+      api.typeScript(
+        v,
+        String(o.pruningMode || "skip"),
+        blankToUndef(o.treeRoot),
+        !!o.includeNull,
+        !!o.open,
+      ),
   },
 ];
 

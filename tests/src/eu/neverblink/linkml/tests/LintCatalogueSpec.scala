@@ -4,6 +4,15 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class LintCatalogueSpec extends AnyWordSpec, Matchers {
+  for entry <- ModelCatalogue.allOptIn do {
+    s"Model '${entry.model.root.name}'" should {
+      "not use the same name for a valid and an invalid instance" in {
+        val valid = entry.validInstances.map(_.name).toSet
+        entry.invalidInstances.map(_.name).filter(valid.contains) shouldBe empty
+      }
+    }
+  }
+
   for entry <- ModelCatalogue.all do {
     s"Model '${entry.model.root.name}'" should {
       "lint" in {

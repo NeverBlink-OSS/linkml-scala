@@ -4,7 +4,9 @@ package millbuild
 object NpmPackage {
   val name = "@neverblink/linkml"
 
-  def packageJson(version: String, description: String, mainFile: String): String =
+  def packageJson(version: String, description: String, mainFile: String): String = {
+    // These lines have no `|` margin, so stripMargin leaves them as they are
+    val modelTypeFiles = TsDefsGen.modelTypes.map(m => "    \"" + m.file + "\",").mkString("\n")
     s"""{
        |  "name": "$name",
        |  "version": "$version",
@@ -23,6 +25,7 @@ object NpmPackage {
        |    "$mainFile",
        |    "$mainFile.map",
        |    "index.d.ts",
+       |$modelTypeFiles
        |    "README.md"
        |  ],
        |  "license": "Apache-2.0",
@@ -49,4 +52,5 @@ object NpmPackage {
        |  ]
        |}
        |""".stripMargin
+  }
 }
