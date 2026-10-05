@@ -96,8 +96,11 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |  Status:
           |    permissible_values:
           |      active:
-          |      in-active:
-          |      'say "hi"':
+          |        alias: active
+          |      in_active:
+          |        alias: in-active
+          |      say_hi:
+          |        alias: 'say "hi"'
           |  Dynamic:
           |    reachable_from:
           |      source_ontology: obo:ncbitaxon

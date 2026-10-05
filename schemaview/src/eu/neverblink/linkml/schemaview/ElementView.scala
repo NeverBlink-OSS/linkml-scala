@@ -55,14 +55,14 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
   final lazy val baseName: String = Case.base(name)
 
   /** The "canonical" name of this element. This should be used for serialization if an alias is not
-    * provided.
+    * provided. Generators should use [[aliasedName]] instead.
     */
-  def canonicalName: String
+  private[schemaview] def canonicalName: String
 
   /** Model URI of this element. This is the fallback URI to be used for an element that does not
     * have an explicit `???_uri`, like `class_uri`.
     */
-  final def modelUri: Uri = Uri.synthetic(defaultPrefixUri, canonicalName)
+  private[schemaview] final def modelUri: Uri = Uri.synthetic(defaultPrefixUri, canonicalName)
 
   /** The name of the underlying Element, overridden with the `alias` slot if defined, re-cased
     * appropriately.
