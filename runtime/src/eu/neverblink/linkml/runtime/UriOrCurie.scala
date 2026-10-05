@@ -22,7 +22,7 @@ object UriOrCurie {
     else new Curie(s)
 }
 
-final case class Uri(original: String) extends UriOrCurie {
+@flatten final case class Uri(original: String) extends UriOrCurie {
   def uri(implicit resolver: PrefixResolver): String = original
 
   def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
@@ -41,7 +41,7 @@ object Uri {
     new Uri(base.concat(URLEncoder.encode(name, StandardCharsets.UTF_8.name)))
 }
 
-final case class Curie(original: String) extends UriOrCurie {
+@flatten final case class Curie(original: String) extends UriOrCurie {
   def uri(implicit resolver: PrefixResolver): String = resolver.expand(original)
 
   def curie(implicit resolver: PrefixResolver): String = original

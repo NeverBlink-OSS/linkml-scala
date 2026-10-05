@@ -642,8 +642,30 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |^""".stripMargin,
       )
     }
-    "decode and encode generic case classes with one field as scalar nodes" in {
-      case class MyClass[A](v: A)
+    "decode and encode case classes with one field as maps" in {
+      case class MyClass(v: String) derives LinkmlYamlCodec
+
+      roundTrip(MyClass("abc"), "v: abc\n")
+      decodeError[MyClass](
+        "abc\n",
+        """Expected map or null value at 0:0 but got:
+          |abc
+          |^""".stripMargin,
+      )
+    }
+    "decode and encode case classes with one field annotated with '@flatten' as values" in {
+      @flatten case class Inner(v: String)
+
+      case class MyClass(a: Inner, b: Option[Inner] = None, c: Seq[Inner] = Seq())
+          derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(Inner("x"), Some(Inner("y")), Seq(Inner("z"))),
+        "a: x\nb: y\nc:\n  - z\n",
+      )
+    }
+    "decode and encode generic case classes with one field annotated with '@flatten' as scalar nodes" in {
+      @flatten case class MyClass[A](v: A)
 
       implicit val codec: LinkmlYamlCodec[MyClass[Int]] = LinkmlYamlCodec.derived
       roundTrip(MyClass(1), "1\n")
@@ -960,6 +982,11 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         """case class MyClass(a: String, @serializeDefault b: Int) derives LinkmlYamlCodec"""
       }).getMessage.contains {
         """'eu.neverblink.linkml.runtime.serializeDefault' is defined for 'b' of 'MyClass', which has no default value."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """@flatten case class MyClass(a: String, b: Int) derives LinkmlYamlCodec"""
+      }).getMessage.contains {
+        """'eu.neverblink.linkml.runtime.flatten' is defined for 'MyClass', which has 2 fields. The annotation is only valid on classes with exactly one field."""
       })
     }
   }
