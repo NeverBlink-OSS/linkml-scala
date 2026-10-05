@@ -63,8 +63,6 @@ object ModelCatalogue {
 
       val baseFiles = Seq(json, turtle, csv, context)
 
-      if name == "present" then println("")
-
       new InstanceInFormats(
         name,
         if Resources.map.containsKey(json) then Some(Resources.read(json)) else None,

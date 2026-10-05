@@ -5,7 +5,6 @@ import org.scalacheck.Gen
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
-import org.virtuslab.yaml.{NodeOps, StringNode}
 
 /** Tests for the Ossie expression language parsing and rendering. */
 class ExpressionSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
@@ -18,8 +17,6 @@ class ExpressionSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
 
   private def parsed(text: String): Expression =
     Expression.parse(text).getOrElse(fail(s"did not parse: '$text'"))
-
-  println(StringNode("2020-01-01").asYaml.strip())
 
   "rendering" should {
     "write a member as a dotted pair" in {
