@@ -476,9 +476,14 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn("> .", self.schema.owl(format="nt"))
 
     def test_owl_round_trips_through_from_owl(self):
+        def statements(nt):
+            # The imported schema declares the linkml prefix, which the original does not, and
+            # prefixes are written as sh:declare.
+            return [line for line in nt.splitlines() if "http://www.w3.org/ns/shacl#" not in line]
+
         ontology = self.schema.owl()
         with linkml_scala.load_string(linkml_scala.from_owl(ontology)) as reloaded:
-            self.assertEqual(self.schema.owl(format="nt").count("\n"), reloaded.owl(format="nt").count("\n"))
+            self.assertEqual(len(statements(self.schema.owl(format="nt"))), len(statements(reloaded.owl(format="nt"))))
 
     def test_er_diagram(self):
         generated = self.schema.er_diagram()

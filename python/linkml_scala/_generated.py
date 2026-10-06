@@ -287,15 +287,14 @@ class Generators:
     ) -> str:
         """Generate an OWL 2 ontology, serialized as Turtle or N-Triples.
 
-        :param only_root_schema: Whether to describe only the root schema, with an `owl:imports`
-            for each schema it imports (turned off by default, which merges the imported schemas
-            in, as `gen-owl --mergeimports`).
-        :param metadata_profile: Which annotation property to write descriptions with:
-            `rdfs:comment` (the default) or `skos:definition`.
-        :param permissible_values: Whether permissible values become individuals (the default)
-            or classes.
-        :param format: Which RDF serialization to write: `ttl` for Turtle (the default) or `nt`
-            for N-Triples.
+        :param only_root_schema: Describe only the root schema and add `owl:imports` for its
+            imports. Off by default, which merges the imported schemas in, like `gen-owl
+            --mergeimports`.
+        :param metadata_profile: Property for descriptions: `rdfs:comment` (default) or
+            `skos:definition`.
+        :param permissible_values: Whether permissible values become individuals (default) or
+            classes.
+        :param format: `ttl` for Turtle (default) or `nt` for N-Triples.
         """
         return self._document(
             "linkml_owl",
