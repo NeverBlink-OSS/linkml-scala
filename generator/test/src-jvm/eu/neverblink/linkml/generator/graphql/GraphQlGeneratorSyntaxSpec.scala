@@ -45,7 +45,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
 
       val result = parseOrThrow(schema)
 
-      result.typeList.map(_.name) should contain(sv.treeRoot.get.aliasedName)
+      result.typeList.map(_.name) should contain(GraphQlRenamer.className(sv.treeRoot.get))
     }
   }
 }

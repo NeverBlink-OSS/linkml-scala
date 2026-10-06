@@ -2,7 +2,14 @@ package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.util.Renamer
 import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
-import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, TypeView}
+import eu.neverblink.linkml.schemaview.{
+  Case,
+  ClassView,
+  EnumView,
+  PermissibleValueView,
+  SlotView,
+  TypeView,
+}
 
 /** Ossie naming.
   *
@@ -16,7 +23,7 @@ trait OssieRenamer extends Renamer {
     el.derivedAttributes(attr.name),
   )
 
-  override def slotName(el: SlotView): String = el.aliasedName
+  override def slotName(el: SlotView): String = el.baseName
 
   /** The convention for types in Ossie is PascalCase.
     */
@@ -24,7 +31,8 @@ trait OssieRenamer extends Renamer {
 
   override def enumName(el: EnumView): String = Case.baseToPascal(el.baseName)
 
-  override def permissibleValueName(el: EnumView, pv: PermissibleValue): String = pv.text
+  override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
+    PermissibleValueView(pv, el).aliasedName
 }
 
 object OssieRenamer extends OssieRenamer

@@ -78,7 +78,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |        range: string
           |""".stripMargin,
       )
-      ts should include("  my_slot?: string;")
+      ts should include("  \"my-slot\"?: string;")
       ts should include("  other_name?: string;")
       ts should include("""  "odd-name"?: string;""")
       ts should not include "renamed"

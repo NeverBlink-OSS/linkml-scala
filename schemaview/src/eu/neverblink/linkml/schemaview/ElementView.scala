@@ -122,7 +122,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     cls.classUri.getOrElseFast(modelUri)
 
   def aliasedName: String =
-    cls.alias.getOrElseFast(canonicalName)
+    cls.alias.getOrElseFast(name)
 
   /** Derived attributes for this class and the identifier slot of a class, if it has one.
     */
@@ -409,7 +409,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     baseName
 
   override def aliasedName: String =
-    slot.alias.getOrElseFast(canonicalName)
+    slot.alias.getOrElseFast(name)
 
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
@@ -494,7 +494,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def canonicalName: String = Case.baseToPascal(baseName)
 
-  override def aliasedName: String = _enum.alias.getOrElse(canonicalName)
+  override def aliasedName: String = _enum.alias.getOrElse(name)
 
   lazy val parents: Iterable[EnumView | ClassView] =
     (_enum.isA ++ _enum.mixins).flatMap(_.resolve).collect {
@@ -559,7 +559,7 @@ final case class PermissibleValueView(pv: PermissibleValue, enumView: EnumView) 
   /** @see
     *   [[ElementView.aliasedName]]
     */
-  def aliasedName: String = pv.alias.getOrElseFast(canonicalName)
+  def aliasedName: String = pv.alias.getOrElseFast(pv.text)
 
   /** @see
     *   [[ElementView.modelUri]]
@@ -593,7 +593,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   def canonicalName: String = baseName
 
-  override def aliasedName: String = _type.alias.getOrElseFast(canonicalName)
+  override def aliasedName: String = _type.alias.getOrElseFast(name)
 
   /** The parent declared through `typeof`, if present. */
   lazy val parents: Seq[TypeView] =
