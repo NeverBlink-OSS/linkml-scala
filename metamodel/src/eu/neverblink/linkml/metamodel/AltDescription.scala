@@ -14,7 +14,7 @@ final case class AltDescriptionImpl(
     altDescriptionSource: String,
     @value
     @named("description")
-    altDescriptionText: String,
+    altDescriptionText: LocalizedText,
 ) extends AltDescription {
 
   override def infer(): AltDescriptionImpl =
@@ -42,7 +42,7 @@ abstract class AltDescription {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def altDescriptionText: String
+  def altDescriptionText: LocalizedText
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

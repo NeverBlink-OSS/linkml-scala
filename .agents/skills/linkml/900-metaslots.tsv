@@ -24,12 +24,12 @@ abstract	definition	boolean	single	spec,basic,oo	Indicates the class or slot can
 alias	type_definition,enum_definition,slot_definition,+3	string	single	spec	The alternative name to be used in serializations of an instance instead of the canonical…
 alias_contexts	structured_alias	uri	multi	-	The context in which an alias should be applied
 alias_predicate	structured_alias	alias_predicate_enum	single	-	The relationship between an element and its alias.
-aliases	common_metadata	string	multi	basic	Alternate names/labels for the element. These do not alter the semantics of the schema, b…
+aliases	common_metadata	langstring	multi	basic	Alternate names/labels for the element. These do not alter the semantics of the schema, b…
 all_members	slot_expression	anonymous_slot_expression	single	spec	the value of the slot is multivalued with all members satisfying the condition
 all_of	type_expression,path_expression,slot_expression,+1	expression	single	spec	holds if all of the expressions hold
 allowed	extra_slots_expression	boolean	single	spec,basic	Whether or not something is allowed. Usage defined by context.
 alt_description_source	alt_description	string	single	basic	the source of an attributed description
-alt_description_text	alt_description	string	single,required	basic	text of an attributed description
+alt_description_text	alt_description	langstring	single,required	basic	text of an attributed description
 alt_descriptions	common_metadata	alt_description	multi	basic	A sourced alternative description for an element
 annotations	annotatable,annotation	annotation	multi	-	a collection of tag/text tuples with the semantics of OWL Annotation
 any_of	type_expression,path_expression,slot_expression,+1	expression	single	spec	holds if at least one of the expressions hold
@@ -52,7 +52,7 @@ close_mappings	common_metadata	uriorcurie	multi	-	A list of terms from different
 code_set	enum_expression	uriorcurie	single	spec,basic	the identifier of an enumeration code set.
 code_set_tag	enum_expression	string	single	basic	the version tag of the enumeration code set
 code_set_version	enum_expression	string	single	basic	the version identifier of the enumeration code set
-comments	common_metadata	string	multi	basic	notes and comments about an element intended primarily for external consumption
+comments	common_metadata	langstring	multi	basic	notes and comments about an element intended primarily for external consumption
 concepts	enum_expression	uriorcurie	multi	spec	A list of identifiers that are used to construct a set of permissible values
 conforms_to	element	string	single	basic	An established standard to which the element conforms.
 consider_nulls_inequal	unique_key	boolean	single	-	By default, None values are considered equal for the purposes of comparisons in determini…
@@ -65,7 +65,7 @@ default_prefix	schema_definition	string	single	spec,min,basic	The prefix that is
 default_range	schema_definition	type_definition	single	spec,min,basic	default slot range to be used if range element is omitted from a slot definition
 defining_slots	class_definition	slot_definition	multi	-	The combination of is a plus defining slots form a genus-differentia definition, or the s…
 definition_uri	element	uriorcurie	single	-	The native URI of the element. This is always within the namespace of the containing sche…
-deprecated	common_metadata	string	single	basic	Description of why and when this element will no longer be used
+deprecated	common_metadata	langstring	single	basic	Description of why and when this element will no longer be used
 deprecated_element_has_exact_replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be automatically replaced by this uri or curie
 deprecated_element_has_possible_replacement	common_metadata	uriorcurie	single	-	When an element is deprecated, it can be potentially replaced by this uri or curie
 derivation	UnitOfMeasure	string	single	-	Expression for deriving this unit from other units
@@ -135,7 +135,7 @@ is_direct	reachability_query	boolean	single	spec	True if the reachability query 
 is_grouping_slot	slot_definition	boolean	single	spec,basic	true if this slot is a grouping slot
 is_usage_slot	slot_definition	boolean	single	-	True means that this slot was defined in a slot_usage situation
 key	slot_definition	boolean	single	spec,basic,rel	True means that the slot is the "singular unique key" (also known more simply as the "key…
-keywords	common_metadata	string	multi	basic	Keywords or tags used to describe the element
+keywords	common_metadata	langstring	multi	basic	Keywords or tags used to describe the element
 last_updated_on	common_metadata	datetime	single	basic	time at which the element was last updated
 license	schema_definition	string	single	basic	license for the schema
 list_elements_ordered	slot_definition	boolean	single	spec	If True, then the order of elements of a multivalued slot is guaranteed to be preserved.…
@@ -143,7 +143,7 @@ list_elements_unique	slot_definition	boolean	single	spec	If True, then there mus
 list_value_specification_constant	-	string	single	-	Grouping for metamodel slots that constrain members of a multivalued slot value to equal…
 literal_form	structured_alias	string	single,required	-	The literal lexical form of a structured alias; i.e the actual alias value.
 local_name_source	local_name	ncname	single	-	the ncname of the source of the name
-local_name_value	local_name	string	single,required	-	a name assigned to an element in a given ontology
+local_name_value	local_name	langstring	single,required	-	a name assigned to an element in a given ontology
 local_names	element	local_name	multi	-	
 locally_reflexive	slot_definition	string	single	spec	If s is locally_reflexive, then i.s=i for all instances i where s is a class slot for the…
 mapped_type	type_mapping	type_definition	single	-	type to coerce to
@@ -165,7 +165,7 @@ multivalued	slot_expression	boolean	single	spec,min,basic,oo	true means that slo
 name	element	string	single	spec,min,basic,rel,oo	the unique name of the element within the context of the schema. Name is combined with th…
 narrow_mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have narrower meaning.
 none_of	type_expression,path_expression,slot_expression,+1	expression	single	spec	holds if none of the expressions hold
-notes	common_metadata	string	multi	basic	editorial notes about an element intended primarily for internal consumption
+notes	common_metadata	langstring	multi	basic	editorial notes about an element intended primarily for internal consumption
 obligation_level	enum_binding	obligation_level_enum	single	spec	The level of obligation or recommendation strength for a metadata element
 open_world	class_rule	boolean	single	spec	if true, the the postconditions may be omitted in instance data, but it is valid for an i…
 owned_by	element	uriorcurie	single	basic	agent that owns or is the steward of the element
@@ -249,7 +249,7 @@ unique_keys	class_definition	unique_key	multi	spec,basic,rel	A collection of nam
 unit	type_expression,slot_expression,permissible_value	UnitOfMeasure	single	-	an encoding of a unit
 usage_slot_name	slot_definition	string	single	-	The name of the slot referenced in the slot_usage
 value	example	string	single	basic	example value
-value_description	example	string	single	basic	description of what the value is doing
+value_description	example	langstring	single	basic	description of what the value is doing
 value_object	example	Anything	single	basic	direct object representation of the example
 value_presence	slot_expression	presence_enum	single	-	if PRESENT then a value must be present (for lists there must be at least one value). If…
 value_specification_constant	-	string	single	-	Grouping for metamodel slots that constrain the a slot value to equal a specified constant

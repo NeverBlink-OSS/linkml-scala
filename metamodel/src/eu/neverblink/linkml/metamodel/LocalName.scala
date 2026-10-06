@@ -14,7 +14,7 @@ final case class LocalNameImpl(
     localNameSource: NcName,
     @value
     @named("local_name_value")
-    localNameValue: String,
+    localNameValue: LocalizedText,
 ) extends LocalName {
 
   override def infer(): LocalNameImpl =
@@ -40,7 +40,7 @@ abstract class LocalName {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def localNameValue: String
+  def localNameValue: LocalizedText
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
