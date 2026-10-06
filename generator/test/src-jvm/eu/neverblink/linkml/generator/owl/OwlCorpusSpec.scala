@@ -113,7 +113,6 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
         }
 
         "give the same schema when the OWL generated from it is imported" in {
-          assume(name != "d3fend", "LNK-226: a scala-yaml bug cuts one of its texts short")
           val again = OwlImporter().importOntology(regenerated, configOf(name)).schema
           sameSchema(imported.schema, again)
         }

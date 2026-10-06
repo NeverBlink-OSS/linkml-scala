@@ -35,7 +35,7 @@ object `package` extends Module, NativeOptional {
 
   trait YamlModule extends CommonModule {
     def mvnDeps = Seq(
-      mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.19",
+      mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.21",
     )
   }
 }
