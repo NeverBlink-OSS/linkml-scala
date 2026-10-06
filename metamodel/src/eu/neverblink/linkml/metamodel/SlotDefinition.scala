@@ -38,7 +38,7 @@ final case class SlotDefinitionImpl(
     allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
     @named("abstract")
     `abstract`: Boolean = false,
-    aliases: Seq[String] = Seq(),
+    aliases: Seq[LocalizedText] = Seq(),
     @named("all_members")
     allMembers: Option[AnonymousSlotExpressionImpl] = None,
     @named("alt_descriptions")
@@ -58,7 +58,7 @@ final case class SlotDefinitionImpl(
     childrenAreMutuallyDisjoint: Boolean = false,
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-    comments: Seq[String] = Seq(),
+    comments: Seq[LocalizedText] = Seq(),
     @named("conforms_to")
     conformsTo: Option[String] = None,
     contributors: Seq[UriOrCurie] = Seq(),
@@ -68,7 +68,7 @@ final case class SlotDefinitionImpl(
     createdOn: Option[LinkmlDateTime] = None,
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
-    deprecated: Option[String] = None,
+    deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
@@ -126,7 +126,7 @@ final case class SlotDefinitionImpl(
     @named("is_usage_slot")
     isUsageSlot: Boolean = false,
     key: Boolean = false,
-    keywords: Seq[String] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("list_elements_ordered")
@@ -152,7 +152,7 @@ final case class SlotDefinitionImpl(
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
     owner: Option[Reference[Definition]] = None,
     @named("path_rule")
     pathRule: Option[PathExpressionImpl] = None,

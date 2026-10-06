@@ -31,7 +31,9 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
         }
         val result = parseOrThrow(schema)
 
-        result.typeList.map(_.name) should contain(entry.model.treeRoot.get.canonicalName)
+        result.typeList.map(_.name) should contain(
+          GraphQlRenamer.className(entry.model.treeRoot.get),
+        )
       }
 
     "generate the metamodel" in {
@@ -43,7 +45,7 @@ class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSp
 
       val result = parseOrThrow(schema)
 
-      result.typeList.map(_.name) should contain(sv.treeRoot.get.aliasedName)
+      result.typeList.map(_.name) should contain(GraphQlRenamer.className(sv.treeRoot.get))
     }
   }
 }

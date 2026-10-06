@@ -35,8 +35,8 @@ class TranslationGenerator(using sv: SchemaView)
       sv.enums.values.map(el => el.name -> renamer.enumName(el)).toMap,
       sv.slotDefinitions.values.map(el => el.name -> renamer.slotName(el)).toMap,
       sv.enums.values.map { el =>
-        el.name -> el.derivedValues.map { (pv, _) =>
-          pv.text -> renamer.permissibleValueName(el, pv)
+        el.name -> el.derivedValues.map { pvv =>
+          pvv.pv.text -> renamer.permissibleValueName(el, pvv.pv)
         }.toMap
       }.toMap,
     )
@@ -93,7 +93,7 @@ object TranslationGenerator {
     def permissibleValueName(
         el: EnumView,
         pv: PermissibleValue,
-    ): String = el.toMeaning(pv.text).uri(using el.definingPrefixResolver)
+    ): String = PermissibleValueView(pv, el).uriStr
 
     def slotName(el: SlotView): String = el.uriStr
 

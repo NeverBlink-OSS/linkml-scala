@@ -98,7 +98,7 @@ class GraphQlGenerator(using sv: SchemaView)
           getInterfaceName(classAttributeView.classView)
         case tav: TypeAttributeView =>
           remappedType(tav.typeView)
-        case EnumAttributeView(_, _, enumView) => enumView.aliasedName
+        case EnumAttributeView(_, _, enumView) => enumName(enumView)
       }
       GraphQlField(
         av,

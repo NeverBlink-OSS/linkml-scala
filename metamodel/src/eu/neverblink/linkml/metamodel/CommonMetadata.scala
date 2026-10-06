@@ -51,7 +51,7 @@ trait CommonMetadata {
     * @note
     *   Not be confused with the metaslot alias.
     */
-  def aliases: Seq[String]
+  def aliases: Seq[LocalizedText]
 
   /** A sourced alternative description for an element
     *
@@ -91,7 +91,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def comments: Seq[String]
+  def comments: Seq[LocalizedText]
 
   /** Agent that contributed to the element
     *
@@ -122,7 +122,7 @@ trait CommonMetadata {
     *   Note that linkml does not use a boolean to indicate deprecation status - the presence of a
     *   string value in this field is sufficient to indicate deprecation.
     */
-  def deprecated: Option[String]
+  def deprecated: Option[LocalizedText]
 
   /** When an element is deprecated, it can be automatically replaced by this uri or curie
     *
@@ -193,7 +193,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def keywords: Seq[String]
+  def keywords: Seq[LocalizedText]
 
   /** Time at which the element was last updated
     *
@@ -232,7 +232,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def notes: Seq[String]
+  def notes: Seq[LocalizedText]
 
   /** A list of terms from different schemas or terminology systems that have related meaning.
     *
