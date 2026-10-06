@@ -75,6 +75,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `jsonSchema(view, open?, treeRootOverride?)`                                 | `string`                 | JSON Schema                                                                    |
 | `shacl(view, open?, onlyClassesFromRootSchema?, format?)`                    | `string`                 | SHACL shapes, `ttl` (default) or `nt`                                          |
 | `rdfs(view, onlyClassesFromRootSchema?, format?)`                            | `string`                 | RDFS, `ttl` (default) or `nt`                                                  |
+| `owl(view, onlyRootSchema?, metadataProfile?, permissibleValues?, format?)`  | `string`                 | OWL 2 ontology, `ttl` (default) or `nt`                                        |
 | `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?)`         | `string`                 | derived/pruned LinkML schema                                                   |
 | `scala(view, packageName)`                                                   | `Record<string, string>` | filename → generated Scala                                                     |
 | `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
@@ -86,11 +87,13 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 | `fromOssie(ontology, schemaId?, outFormat?)`                                 | `string`                 | the LinkML schema from an Apache Ossie ontology                                |
+| `fromOwl(ontology, config?, outFormat?, listNotImported?, importMap?, inputFormat?)` | `string`         | the LinkML schema from an OWL ontology in Turtle or N-Triples (see the OWL guide) |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind
 (e.g. `"UnknownReference"`), and checking it narrows the issue to that kind's fields. For how to use the generated TypeScript,
-see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/typescript.md).
+see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/typescript.md). For `owl` and `fromOwl`, see
+[the OWL guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/owl.md).
 
 ## Browser use
 

@@ -43,6 +43,7 @@ __all__ = [
     "SchemaLoadError",
     "build_info",
     "from_ossie",
+    "from_owl",
     "library_path",
     "load_file",
     "load_path",
@@ -269,6 +270,51 @@ def from_ossie(
         "linkml_from_ossie",
         ontology,
         {"schemaId": schema_id, "outputFormat": output_format},
+    )
+
+
+def from_owl(
+    ontology: str,
+    *,
+    config: str | None = None,
+    schema_id: str | None = None,
+    output_format: str = "yaml",
+    list_not_imported: bool = False,
+    imports: Mapping[str, str] | None = None,
+    input_format: str = "ttl",
+) -> str:
+    """Read an OWL ontology, in Turtle or N-Triples, and return the LinkML schema it describes.
+
+    The opposite of :meth:`Schema.owl`. Pass the result to :func:`load_string` to run a
+    generator over it.
+
+    :param ontology: The ontology, as Turtle or N-Triples. Convert other RDF formats first, for
+        example with rdflib.
+    :param config: How to map the ontology: the text of the config itself, as YAML, not a path to
+        a file. It sets names, prefixes, which annotation properties fill which metaslots, and
+        more. See ``docs/owl.md``.
+    :param schema_id: The ``id`` of the schema to produce. By default, the ontology IRI.
+    :param output_format: Output serialization format to use, ``yaml`` or ``json``.
+    :param list_not_imported: Whether to list what could not be imported, in comments at the top
+        of the YAML.
+    :param imports: The LinkML schemas that ``config`` maps ``owl:imports`` to, as filename to
+        YAML text, keyed as for :func:`load_string`. The schema then uses their terms by name
+        rather than copying them in. By default they are read from the file system.
+    :param input_format: The RDF syntax of ``ontology``: ``ttl`` (Turtle, the default, which also
+        reads N-Triples) or ``nt`` (N-Triples).
+    :raises LinkMlError: if the document or the config could not be read.
+    """
+    return runtime().import_document(
+        "linkml_from_owl",
+        ontology,
+        {
+            "config": config,
+            "schemaId": schema_id,
+            "outputFormat": output_format,
+            "listNotImported": list_not_imported,
+            "imports": None if imports is None else dict(imports),
+            "inputFormat": input_format,
+        },
     )
 
 

@@ -106,8 +106,8 @@ final case class TypeAttributeView(
     }
 
   /** @see [[slot.pattern]] */
-  def pattern: Option[String] =
-    combineOption(slot.pattern, _type.pattern, combinePattern)
+  def pattern: Option[LinkmlPattern] =
+    LinkmlPattern.option(combineOption(slot.pattern, _type.pattern, combinePattern))
 
   /** @see [[slot.structuredPattern]] */
   def structuredPattern: Option[PatternExpressionImpl] =

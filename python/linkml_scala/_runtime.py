@@ -361,6 +361,8 @@ class Runtime:
         # Importers take a document instead of a handle, so they do not fit either.
         self._lib.linkml_from_ossie.argtypes = [ctypes.c_char_p, ctypes.c_char_p, chars_out]
         self._lib.linkml_from_ossie.restype = _Chars
+        self._lib.linkml_from_owl.argtypes = [ctypes.c_char_p, ctypes.c_char_p, chars_out]
+        self._lib.linkml_from_owl.restype = _Chars
 
         # linkml_lint has the same shape but is not a generator, so it is not in the generated
         # list and gets declared alongside it.

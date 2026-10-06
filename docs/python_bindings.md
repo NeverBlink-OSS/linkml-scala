@@ -66,6 +66,7 @@ schema.graphql(pruning_mode="schema", tree_root=None)
 schema.typescript(pruning_mode="skip", tree_root=None, include_null=False, open=False)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
 schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml")
+schema.owl(only_root_schema=False, metadata_profile="rdfs", permissible_values="individual", format="ttl")
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
 schema.translation(to="base")
 ```
@@ -73,18 +74,25 @@ schema.translation(to="base")
 All arguments are keyword-only. Every one returns a string, except `scala()` and `frictionless()`,
 which return a filename-to-content dict.
 
-`shacl()` and `rdfs()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
+`shacl()`, `rdfs()` and `owl()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
 pretty-printed, or `"nt"` for N-Triples.
 
 ### Converting to LinkML
 
-We currently support one importer for Apache Ossie (incubating) ontologies:
+We currently support importers for Apache Ossie (incubating) ontologies and for OWL ontologies:
 
 ```python
 linkml_scala.from_ossie(ontology, schema_id=None, output_format="yaml")
+linkml_scala.from_owl(ontology, config=None, schema_id=None, output_format="yaml", list_not_imported=False, imports=None, input_format="ttl")
 ```
 
-It returns the LinkML schema as a string. Pass that to `load_string()` to run a generator over it.
+Each returns the LinkML schema as a string. Pass that to `load_string()` to run a generator over it.
+`from_owl()` reads Turtle (and so N-Triples), or N-Triples with its own parser with
+`input_format="nt"`, and takes its mapping settings as YAML text in `config` (the text itself, not a path to a
+file). With
+`list_not_imported=True`, it lists what it could not import in comments at the top of the YAML.
+`imports` gives the LinkML schemas the config maps `owl:imports` to, as for `load_string()`; by
+default they are read from the file system. See [the OWL guide](owl.md).
 
 ### Validating
 
@@ -129,7 +137,7 @@ The library is compiled with [Scala Native](https://scala-native.org/), and expo
 ```c
 char* linkml_shacl      (long long handle, const char* opts, char** err);
 char* linkml_json_schema(long long handle, const char* opts, char** err);
-/* rdfs, linkml, frictionless, graphql, typescript, er_diagram, scala, lint - same shape */
+/* rdfs, owl, linkml, frictionless, graphql, typescript, er_diagram, scala, lint - same shape */
 
 long long linkml_load_file(const char* path, const char* opts, char** report, char** err);
 void      linkml_close    (long long handle);

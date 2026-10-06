@@ -454,6 +454,9 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   override def aliasedName: String =
     slot.alias.getOrElseFast(name)
 
+  /** @see [[slot.pattern]] */
+  def pattern: Option[LinkmlPattern] = LinkmlPattern.option(slot.pattern)
+
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
   def implicitPrefixReference: Option[String] =
@@ -665,6 +668,9 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     }
     ancestors
   }
+
+  /** The pattern of this type or the nearest ancestor that has one. */
+  def pattern: Option[LinkmlPattern] = LinkmlPattern.option(derivedType.pattern)
 
   /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. The
     * original declaration remains available through [[inner]].

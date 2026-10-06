@@ -68,6 +68,13 @@ object LinkMlCGenerators {
   def ossie(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.ossie)
 
+  /** Generate an OWL 2 ontology. Options: `onlyRootSchema`, `metadataProfile`, `permissibleValues`,
+    * `format`.
+    */
+  @exported("linkml_owl")
+  def owl(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.owl)
+
   /** Generate Scala sources, as a JSON object mapping filename to source. Options: `package`,
     * `generateEmitPrefixes`, `metadataLanguage`.
     */

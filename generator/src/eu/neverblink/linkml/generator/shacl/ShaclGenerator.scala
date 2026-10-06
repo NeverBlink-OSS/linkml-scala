@@ -94,7 +94,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
   ): Unit = attributeView match {
     case typeAttribute: TypeAttributeView =>
       typeAttribute.pattern.foreachFast { p =>
-        sink.triple(subject, Shacl.pattern, Literal(p))
+        sink.triple(subject, Shacl.pattern, Literal(p.linkml))
       }
       // Bounds (min / max values) only make sense for ordered literal ranges.
       if (typeAttribute.implicitPrefix.isEmpty)

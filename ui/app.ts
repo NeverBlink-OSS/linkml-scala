@@ -1,4 +1,4 @@
-import { createInput, createOutput, setDoc, setOutput, type OutputLang } from "./editor.js";
+import { createInput, createOutput, setDoc, setInputLang, setOutput, type OutputLang } from "./editor.js";
 import { EXAMPLE_SCHEMA } from "./examples.js";
 import {
   IMPORTERS,
@@ -199,6 +199,7 @@ function stepLang(step: Step, dir: Direction = direction): OutputLang {
 
 /** Everything that follows from the direction and the step selected within it. */
 function renderStep(): void {
+  setInputLang(inputView, direction === "toLinkml" ? ((activeStep() as Importer).inputLang ?? "yaml") : "yaml");
   renderCombo();
   renderOptions();
   renderLabels();

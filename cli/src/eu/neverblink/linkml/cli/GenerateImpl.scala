@@ -6,6 +6,7 @@ import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.OssieGenerator
+import eu.neverblink.linkml.generator.owl.OwlGenerator
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -162,8 +163,66 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
     )
 }
 
-/** The `--format` flag the SHACL and RDFS generate commands share. */
-private object RdfOutput {
+// OWL
+
+@HelpMessage(
+  "Generate an OWL 2 ontology from a LinkML model. Classes, slots, enums and types become OWL " +
+    "classes, properties, classes of individuals and datatypes, with the same IRIs as the SHACL " +
+    "and RDFS generators.",
+)
+@ArgsName("<input-file>")
+final case class OwlOptions(
+    @Recurse
+    common: GenerateOptions,
+    @HelpMessage(
+      "Whether to describe only the root schema, with an owl:imports for each schema it imports. " +
+        "By default the imported schemas are merged in. Default: false",
+    )
+    onlyRootSchema: Boolean = false,
+    @HelpMessage(
+      "Which annotation property holds descriptions: 'rdfs' (rdfs:comment, the default) or " +
+        "'linkml' (skos:definition, as in the LinkML metamodel). Default: rdfs",
+    )
+    metadataProfile: String = "rdfs",
+    @HelpMessage(
+      "What permissible values become: 'individual' (named individuals, the default) or " +
+        "'class' (subclasses of the enum). Default: individual",
+    )
+    permissibleValues: String = "individual",
+    @HelpMessage(RdfOutput.formatHelp)
+    format: String = RdfOutput.defaultFormat,
+) extends HasGenerateOptions
+
+object Owl extends StreamGenerate[OwlOptions] {
+  override protected def generatorName: String = "owl"
+
+  override protected[cli] def generate(options: OwlOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    OwlGenerator().writeTo(
+      out,
+      OwlGenerator.Options(
+        onlyRootSchema = options.onlyRootSchema,
+        metadataProfile = OwlGenerator.MetadataProfile.values
+          .find(_.toString == options.metadataProfile)
+          .getOrElse(
+            err(s"Unknown metadata profile '${options.metadataProfile}'. Use linkml or rdfs."),
+          ),
+        permissibleValues = OwlGenerator.PermissibleValueKind.values
+          .find(_.toString == options.permissibleValues)
+          .getOrElse(
+            err(
+              s"Unknown kind of permissible value '${options.permissibleValues}'. Use individual or class.",
+            ),
+          ),
+        format =
+          RdfOutput.parse(options.format).getOrElse(err(RdfOutput.unknownFormat(options.format))),
+      ),
+    )
+}
+
+/** The `--format` flag the SHACL, RDFS and OWL generate commands share. */
+private[cli] object RdfOutput {
   val defaultFormat: String = "ttl"
 
   val formatHelp: String =

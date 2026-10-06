@@ -1,0 +1,47 @@
+package eu.neverblink.linkml.generator.owl.config
+
+// GENERATED FROM LINKML
+
+import eu.neverblink.linkml.runtime.*
+
+/** Base implementation of the [[NamespacePrefix]] LinkML class
+  *
+  * @inheritdoc
+  */
+final case class NamespacePrefixImpl(
+    @value
+    namespace: String,
+    @id
+    prefix: String,
+) extends NamespacePrefix {
+
+  override def infer(): NamespacePrefixImpl =
+    this
+}
+
+/** A prefix and the namespace it stands for.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+  */
+abstract class NamespacePrefix {
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def namespace: String
+
+  /** @see
+    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
+    */
+  def prefix: String
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): NamespacePrefix
+}

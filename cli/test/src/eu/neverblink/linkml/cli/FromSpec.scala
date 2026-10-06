@@ -117,4 +117,91 @@ class FromSpec extends AnyWordSpec, Matchers {
       }
     }
   }
+
+  private val owlOntology =
+    """<https://example.org/Person> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .
+      |<https://example.org/knows> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#ObjectProperty> .
+      |<https://example.org/knows> <http://www.w3.org/2000/01/rdf-schema#domain> <https://example.org/Person> .
+      |<https://example.org/knows> <http://www.w3.org/2002/07/owl#propertyChainAxiom> _:l .
+      |""".stripMargin
+
+  "from owl" should {
+    "write the schema to stdout, and nothing else" in {
+      withOntology(owlOntology) { path =>
+        val (out, err, code) = FromOwl.runTestCommandWithExitCode(List("from", "owl", path))
+        withClue(s"stderr was: $err\nstdout was: $out\n") {
+          code shouldBe 0
+          out should include("Person:")
+          out should include("knows:")
+          err should not include "Not imported:"
+        }
+      }
+    }
+
+    "read Turtle" in {
+      val turtle =
+        """@prefix ex: <https://example.org/> .
+          |ex:Book a <http://www.w3.org/2002/07/owl#Class> .
+          |""".stripMargin
+      withOntology(turtle) { path =>
+        val (out, err, code) = FromOwl.runTestCommandWithExitCode(List("from", "owl", path))
+        withClue(s"stderr was: $err\n") {
+          code shouldBe 0
+          out should include("Book:")
+        }
+      }
+    }
+
+    "read N-Triples with its own parser when asked to" in {
+      withOntology(owlOntology) { path =>
+        val (out, _, code) = FromOwl.runTestCommandWithExitCode(
+          List("from", "owl", "--input-format", "nt", path),
+        )
+        code shouldBe 0
+        out should include("Person:")
+      }
+    }
+
+    "say so when the input format is not one it reads" in {
+      withOntology(owlOntology) { path =>
+        val (_, err, code) = FromOwl.runTestCommandWithExitCode(
+          List("from", "owl", "--input-format", "rdfxml", path),
+        )
+        code shouldBe 1
+        err should include("rdfxml")
+      }
+    }
+
+    "list what it left out on stderr when asked to" in {
+      withOntology(owlOntology) { path =>
+        val (_, err, code) =
+          FromOwl.runTestCommandWithExitCode(List("from", "owl", "--list-not-imported", path))
+        code shouldBe 0
+        err should include("Not imported:")
+      }
+    }
+
+    "follow a config" in {
+      withOntology(owlOntology) { path =>
+        val config = Files.createTempFile("linkml-owl-config", ".yaml")
+        Files.writeString(config, "default_prefix: mine\nprefixes:\n  mine: https://example.org/\n")
+        try {
+          val (out, _, code) = FromOwl.runTestCommandWithExitCode(
+            List("from", "owl", "--config", config.toString, path),
+          )
+          code shouldBe 0
+          out should include("default_prefix: mine")
+        } finally Files.deleteIfExists(config)
+      }
+    }
+
+    "say so when the config is not there" in {
+      withOntology(owlOntology) { path =>
+        val (_, err, code) =
+          FromOwl.runTestCommandWithExitCode(List("from", "owl", "--config", "nope.yaml", path))
+        code shouldBe 1
+        err should include("No such file: nope.yaml")
+      }
+    }
+  }
 }

@@ -15,7 +15,7 @@ The following features are not yet supported or are partially supported in LinkM
 - Arrays
 - Boolean expressions (`any_of`, `none_of`); initial support in SHACL
 - Partial support for default values (`ifabsent`)
-  - Only enum defaults are supported, only in the Scala generator
+  - Only enum and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
 - Partial support for type designators (`designates_type`)

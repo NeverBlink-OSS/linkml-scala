@@ -2,6 +2,8 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.generator.ossie.OssieImporter
+import eu.neverblink.linkml.generator.owl.OwlImporter
+import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 
 import java.io.{InputStream, OutputStream}
@@ -85,4 +87,64 @@ object FromOssie extends From[FromOssieOptions] {
           .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
       ),
     )
+}
+
+// OWL
+
+@HelpMessage(
+  "Read an OWL ontology in Turtle or N-Triples and produce a corresponding LinkML schema.",
+)
+@ArgsName("<input-file>")
+final case class FromOwlOptions(
+    @Recurse
+    common: FromOptions,
+    @HelpMessage(
+      "Path to a YAML file that changes how the ontology is mapped: names, prefixes, which " +
+        "annotation properties fill which metaslots, and more. See docs/owl.md.",
+    )
+    config: Option[String] = None,
+    @HelpMessage("The `id` of the schema to produce. The default is the ontology IRI.")
+    schemaId: Option[String] = None,
+    @HelpMessage("List what could not be imported, on stderr. Default: false")
+    listNotImported: Boolean = false,
+    @HelpMessage(
+      "RDF syntax of the ontology: 'ttl' (Turtle, the default) or 'nt' (N-Triples).",
+    )
+    inputFormat: String = "ttl",
+    @HelpMessage(outputFormatHelp)
+    format: String = "yaml",
+) extends HasFromOptions
+
+object FromOwl extends From[FromOwlOptions] {
+  override protected def formatName: String = "owl"
+
+  override protected def convert(
+      options: FromOwlOptions,
+      in: InputStream,
+      out: OutputStream,
+  ): Unit = {
+    val config = options.config.fold(OwlImportConfigImpl()) { file =>
+      val path = os.Path(file, os.pwd)
+      if !os.exists(path) then err(s"No such file: $file")
+      try OwlImportConfigs.parse(os.read(path))
+      catch case e: Exception => err(s"Cannot read the config $file: ${e.getMessage}")
+    }
+    val format = JsonOutputFormat.parse(options.format)
+      .getOrElse(err(JsonOutputFormat.unknownFormat(options.format)))
+    val inputFormat = RdfOutput.parse(options.inputFormat)
+      .getOrElse(err(RdfOutput.unknownFormat(options.inputFormat)))
+    // Relative imports are relative to where the schema is written.
+    val base = options.common.to.fold("")(to => (os.Path(to, os.pwd) / os.up).toString)
+    val result = OwlImporter().importWithWarnings(
+      in,
+      OwlImporter.Options(
+        config = options.schemaId.fold(config)(id => config.copy(schemaId = Some(id))),
+        base = base,
+        inputFormat = inputFormat,
+      ),
+    )
+    if options.listNotImported then
+      result.warnings.foreach(w => printLine(s"Not imported: $w", toStderr = true))
+    OwlImporter().writeSchema(result.schema, out, format)
+  }
 }

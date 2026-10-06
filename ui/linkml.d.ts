@@ -91,6 +91,29 @@ export interface LinkMLApi {
   rdfs(schema: SchemaView, onlyClassesFromRootSchema?: boolean, format?: string): string;
 
   /**
+   * Generate an OWL 2 ontology from a loaded LinkML schema. Classes, slots, enums and types become OWL classes, properties, classes of individuals and datatypes, with the same IRIs as [[shacl]] and [[rdfs]].
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param onlyRootSchema Whether to describe only the root schema, with an `owl:imports` for each schema it imports (turned off by default, which merges the imported schemas in).
+   * @param metadataProfile Which annotation property holds descriptions: `rdfs` for `rdfs:comment` (the default) or `linkml` for `skos:definition`, as in the LinkML metamodel.
+   * @param permissibleValues What permissible values become: `individual` (the default) or `class`.
+   * @param format RDF serialization format: `ttl` for Turtle (the default), which is prefixed and pretty-printed, or `nt` for N-Triples.
+   * @returns The ontology in the requested format
+   */
+  owl(schema: SchemaView, onlyRootSchema?: boolean, metadataProfile?: string, permissibleValues?: string, format?: string): string;
+
+  /**
+   * Read an OWL ontology and produce the LinkML schema it describes.  The opposite of [[owl]]. Feed the result to [[loadFromString]] if you want to run a generator over it.
+   * @param ontology The ontology, as Turtle (or N-Triples, which is Turtle too).
+   * @param config How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a file (see `docs/owl.md`). By default, settings that suit most ontologies.
+   * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
+   * @param listNotImported Whether to list what could not be imported, in comments at the top of the YAML. Default: false
+   * @param importMap The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]]. The schema then uses their terms by name rather than copying them in.
+   * @param inputFormat RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
+   * @returns The LinkML schema, serialized in the specified format.
+   */
+  fromOwl(ontology: string, config?: string, outFormat?: string, listNotImported?: boolean, importMap?: Record<string, string>, inputFormat?: string): string;
+
+  /**
    * Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes unreachable elements.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot

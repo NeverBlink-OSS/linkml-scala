@@ -8,7 +8,7 @@
 // single definition that both sides are type-checked against.
 import type { LinkMLApi, SchemaValidationReport, SchemaView } from "./linkml";
 import type { OutputLang } from "./editor.js";
-import { EXAMPLE_OSSIE } from "./examples.js";
+import { EXAMPLE_OSSIE, EXAMPLE_OWL } from "./examples.js";
 
 export interface Option {
   key: string;
@@ -79,6 +79,8 @@ export interface Importer extends Step {
   /** Id of the generator this undoes, when there is one. Both directions of that pair get the
    * reverse button in the output pane. */
   reverses?: string;
+  /** How to highlight the input pane. Defaults to YAML. */
+  inputLang?: OutputLang;
   call: (api: LinkMLApi, input: string, o: OptionValues) => string;
 }
 
@@ -195,6 +197,25 @@ export const TARGETS: Target[] = [
     call: (api, v, o) => api.lint(v, !!o.inferMessages),
   },
   {
+    id: "owl",
+    label: "OWL 2",
+    lang: "turtle",
+    options: [
+      { key: "onlyRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "metadataProfile", type: "select", label: "Descriptions", choices: ["rdfs", "linkml"], default: "rdfs" },
+      { key: "permissibleValues", type: "select", label: "Permissible values", choices: ["individual", "class"], default: "individual" },
+      { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
+    ],
+    call: (api, v, o) =>
+      api.owl(
+        v,
+        !!o.onlyRootSchema,
+        String(o.metadataProfile || "rdfs"),
+        String(o.permissibleValues || "individual"),
+        String(o.format || "ttl"),
+      ),
+  },
+  {
     id: "rdfs",
     label: "RDFS",
     lang: "turtle",
@@ -258,6 +279,26 @@ export const IMPORTERS: Importer[] = [
     ],
     call: (api, input, o) =>
       api.fromOssie(input, blankToUndef(o.schemaId), String(o.outFormat || "yaml")),
+  },
+  {
+    id: "owl",
+    label: "OWL 2",
+    inputLabel: "OWL 2 ontology (Turtle)",
+    reverses: "owl",
+    inputLang: "turtle",
+    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    example: EXAMPLE_OWL,
+    options: [
+      {
+        key: "listNotImported",
+        type: "checkbox",
+        label: "Not imported",
+        title: "List what could not be imported, in comments at the top",
+        showIf: (o) => o.outFormat !== "json",
+      },
+      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+    ],
+    call: (api, input, o) => api.fromOwl(input, undefined, String(o.outFormat || "yaml"), !!o.listNotImported),
   },
 ];
 

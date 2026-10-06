@@ -760,6 +760,16 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "read back Any text that has --- in it" in {
+      case class Holder(v: LinkmlAny) derives LinkmlYamlCodec
+      case class Outer(h: Holder) derives LinkmlYamlCodec
+
+      roundTrip(
+        Outer(Holder(LinkmlAny("has -----BEGIN CERTIFICATE----- in it\n"))),
+        "h:\n  v: has -----BEGIN CERTIFICATE----- in it\n",
+      )
+    }
+
     "reject an id field that disagrees with the enclosing dict key" in {
       case class Annotable(
           @simpleDict

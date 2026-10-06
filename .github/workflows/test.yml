@@ -91,10 +91,12 @@ jobs:
         run: |
           ./mill --no-server validation.regenerate
           ./mill --no-server schemaview.regenerate
+          ./mill --no-server generator.regenerate
           git diff --exit-code -- validation/src/eu/neverblink/linkml/validation/ \
             generator/npm/validation-report.d.ts generator/npm/build-info.d.ts \
             schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ \
-            || (echo "generated sources are stale – run ./mill validation.regenerate and ./mill schemaview.regenerate, then commit the result"; exit 1)
+            generator/src/eu/neverblink/linkml/generator/owl/config/ \
+            || (echo "generated sources are stale – run ./mill validation.regenerate, ./mill schemaview.regenerate and ./mill generator.regenerate, then commit the result"; exit 1)
 
       - name: Publish Snapshot to Sonatype Central
         if: matrix.java == 17 && github.ref == 'refs/heads/main' && github.event_name == 'push'

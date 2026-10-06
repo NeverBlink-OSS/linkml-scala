@@ -1,6 +1,9 @@
 id: https://neverblink.eu/linkml/tests/ifabsent/enums/
 name: ifabsent_enums
 
+prefixes:
+  ex: https://example.org/
+
 extensions:
   opt_in: true
 
@@ -35,7 +38,7 @@ enums:
   SomeEnum:
     permissible_values:
       SOME_OPTION:
-        meaning: rdf:subject
+        meaning: ex:some_option
       SOME_OTHER_OPTION:
       YET_ANOTHER_OPTION:
       "option with spaces":

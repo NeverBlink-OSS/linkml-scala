@@ -63,6 +63,13 @@ object `package` extends Module {
         "model/issue-types.yaml",
     )
 
+    def regenerateOwlImportConfig: Seq[String] = alias(
+      "cli.jvm.run generate scala --to generator/src/eu/neverblink/linkml/generator/owl/config/ " +
+        "--package eu.neverblink.linkml.generator.owl.config model/owl-import-config.yaml",
+      "generator.jvm.fix",
+      "generator.jvm.reformat",
+    )
+
     def regenerateBindings: Seq[String] = alias(
       "nativelib.generateBindings",
       "nativelib.native.fix",

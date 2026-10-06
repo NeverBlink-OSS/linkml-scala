@@ -8,6 +8,8 @@ import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
+import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
+import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.rdf.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
@@ -15,6 +17,7 @@ import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, PruningMode}
+import eu.neverblink.linkml.schemaview.MapImporter
 
 import scala.util.control.NonFatal
 
@@ -86,6 +89,27 @@ private object Options {
     override def nullValue: RdfFormat = null
   }
 
+  /** A Scala enum as its value's name, such as `"rdfs"`. */
+  private def enumCodec[E](values: Array[E], what: String): JsonValueCodec[E] =
+    new JsonValueCodec[E] {
+      override def decodeValue(in: JsonReader, default: E): E = {
+        val name = in.readString(null)
+        values.find(_.toString == name).getOrElse(
+          in.decodeError(s"unknown $what '$name', expected ${values.mkString(" or ")}"),
+        )
+      }
+
+      override def encodeValue(x: E, out: JsonWriter): Unit = out.writeVal(x.toString)
+
+      override def nullValue: E = null.asInstanceOf[E]
+    }
+
+  private given metadataProfileCodec: JsonValueCodec[OwlGenerator.MetadataProfile] =
+    enumCodec(OwlGenerator.MetadataProfile.values, "metadata profile")
+
+  private given permissibleValueKindCodec: JsonValueCodec[OwlGenerator.PermissibleValueKind] =
+    enumCodec(OwlGenerator.PermissibleValueKind.values, "permissible value kind")
+
   // Unknown fields are rejected rather than skipped.
   private given fromOssieOptions: JsonValueCodec[OssieImporter.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
@@ -115,6 +139,12 @@ private object Options {
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
   private given ossieOptions: JsonValueCodec[OssieGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
+  private given owlOptions: JsonValueCodec[OwlGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
+  private given fromOwlOptions: JsonValueCodec[FromOwlOptions] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
   private given scalaOptions: JsonValueCodec[ScalaGenerator.Options] =
@@ -161,6 +191,27 @@ private object Options {
 
   def fromOssie(json: String): OssieImporter.Options = apply(json, OssieImporter.Options())
 
+  def owl(json: String): OwlGenerator.Options = apply(json, OwlGenerator.Options())
+
+  /** The importer's options, and whether to list what could not be imported. The mapping config is
+    * the YAML text of a config file, not a path to one.
+    */
+  def fromOwl(json: String): (OwlImporter.Options, Boolean) = {
+    val options = apply(json, FromOwlOptions())
+    val config =
+      try options.config.fold(OwlImportConfigImpl())(OwlImportConfigs.parse)
+      catch { case ex if NonFatal(ex) => throw BadRequest(s"malformed config: ${ex.getMessage}") }
+    val importerOptions = OwlImporter.Options(
+      config = options.schemaId.fold(config)(id => config.copy(schemaId = Some(id))),
+      outputFormat = options.outputFormat,
+      inputFormat = options.inputFormat,
+    )
+    val withImports = options.imports.fold(importerOptions)(m =>
+      importerOptions.copy(schemas = MapImporter(m.toSeq*)),
+    )
+    (withImports, options.listNotImported)
+  }
+
   def scala(json: String): ScalaGenerator.Options = apply(json, ScalaGenerator.Options())
 
   def translation(json: String): TranslationGenerator.Options =
@@ -174,4 +225,19 @@ private object Options {
   */
 private final case class LoadOptions(
     inferMessages: Boolean = true,
+)
+
+/** @param config
+  *   How to map the ontology: the YAML text of the config itself, not a path to a file (see
+  *   `docs/owl.md`).
+  * @param schemaId
+  *   The `id` of the schema, instead of the ontology IRI.
+  */
+private final case class FromOwlOptions(
+    config: Option[String] = None,
+    schemaId: Option[String] = None,
+    outputFormat: JsonOutputFormat = JsonOutputFormat.yaml,
+    listNotImported: Boolean = false,
+    imports: Option[Map[String, String]] = None,
+    inputFormat: RdfFormat = RdfFormat.ttl,
 )

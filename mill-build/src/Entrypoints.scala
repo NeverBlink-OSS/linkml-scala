@@ -126,6 +126,15 @@ object Entrypoints {
       "Generate an Apache Ossie ontology.",
     ),
     Entrypoint(
+      "owl",
+      "linkml_owl",
+      "owl",
+      "OwlGenerator",
+      "str",
+      "Generate an OWL 2 ontology, serialized as Turtle or N-Triples.",
+      "Generate an OWL 2 ontology.",
+    ),
+    Entrypoint(
       "scala",
       "linkml_scala",
       "scalaFiles",

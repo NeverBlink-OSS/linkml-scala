@@ -127,11 +127,12 @@ All generators require that there are no *fatal* issues in the schema.
 
 #### Generators
 
-Generate a standard JSON Schema, [Apache Ossie](https://github.com/apache/ossie) ontology, or SHACL from your model:
+Generate a standard JSON Schema, [Apache Ossie](https://github.com/apache/ossie) ontology, OWL ontology, or SHACL from your model:
 
 ```shell
 linkml-scala generate json-schema <input-file>
 linkml-scala generate ossie <input-file>
+linkml-scala generate owl <input-file>
 linkml-scala generate shacl <input-file>
 ```
 
@@ -167,7 +168,7 @@ const jsonSchema = LinkML.jsonSchema(view);
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
 import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
-`rdfs`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `erDiagram`, `ossie`, or `lint`
+`rdfs`, `owl`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `erDiagram`, `ossie`, or `lint`
 against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 
