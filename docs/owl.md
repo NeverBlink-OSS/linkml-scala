@@ -2,7 +2,7 @@
 
 The `owl` generator writes an [OWL 2](https://www.w3.org/TR/owl2-overview/) ontology for a LinkML schema, and the `owl` importer reads an ontology into a LinkML schema. The two are each other's reverse and should preserve most axioms of an OWL ontology.
 
-OWL can say things LinkML cannot (property chains, defined classes, individuals), and LinkML can say things OWL cannot (`tree_root`, `inlined`, identifiers). Those are lost on the way. The importer lists what it left out, so you know.
+OWL can express things LinkML cannot (property chains, defined classes, individuals), and LinkML can express things OWL cannot (`tree_root`, `inlined`, identifiers). Those are lost on the way. The importer lists what it left out.
 
 The generator aims for OWL 2 DL. SAREF, SOSA, gist, PROV-O and D3FEND, after a trip through LinkML, pass ROBOT's DL profile check (`robot validate-profile --profile DL`, run by hand).
 
