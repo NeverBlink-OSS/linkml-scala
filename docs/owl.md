@@ -49,7 +49,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | permissible value                                          | `owl:NamedIndividual` with the `meaning` as its IRI, and `skos:notation` for its text when that is not the IRI's local name |
 | type                                                       | its `uri`; with constraints, a datatype restriction on it (`xsd:integer[>= 0]`)                        |
 | `pattern`, `minimum_value`, `maximum_value`                | `xsd:pattern`, `xsd:minInclusive`, `xsd:maxInclusive`. An XSD pattern matches the whole value, so `^abc$` is written `abc`, and `abc` is written `.*abc.*` |
-| `title`, or the name when there is no title                | `rdfs:label`, tagged with `in_language` when the schema has one. A term outside the schemas' own namespaces gets no label made up from its name |
+| `title`                                                    | `rdfs:label`, tagged with `in_language` when the schema has one |
 | `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`)                                  |
 | other documentation (`aliases`, `comments`, `see_also`, mappings, …) | the property the LinkML metamodel gives it, such as `skos:altLabel`, `skos:note`, `rdfs:seeAlso` |
 | `annotations`                                              | annotations with the tag as the property                                                               |
@@ -73,7 +73,6 @@ These differences are in place mostly to make the OWL describe the same RDF data
 
 - **`pattern` is translated** to XSD's form, which matches the whole value: `gen-owl` writes it as it is, so `^…$` patterns match nothing.
 - **An abstract class with only one subclass gets no covering axiom.** Consider class B, which is a subclass of an abstract class A. `gen-owl` in this case writes "every A is a B", and since every B is already an A, a reasoner treats the two classes as the same.
-- **`rdfs:label` is the title**, with the name when there is no title, rather than always the name.
 - **A single-valued slot is also marked as an `owl:FunctionalProperty`** when all classes that use this property treat it as single-valued.
 - **An attribute's property gets an `rdfs:range`** when every use of it has the same range.
 - **The announced new defaults are used**: no `owl:minCardinality 0`, which says nothing, and one `owl:cardinality` where the lower and upper bounds are equal.
@@ -94,6 +93,16 @@ Not imported: Property chain, which LinkML cannot express (29): has_feature_kind
 ```
 
 Prefix names come from `sh:declare` (which the generator writes), the document's `@prefix` lines, the config, a list of well-known ones (`rdfs`, `skos`, `dcterms`, `prov`, `sosa`, …), and the last path segment of other namespaces.
+
+### Importing RDFS vocabularies
+
+The importer also reads vocabularies written in plain RDFS, such as DC terms or Schema.org:
+
+- `rdfs:Class` is read as a class, and `rdf:Property` as a property.
+- Schema.org's `schema:domainIncludes` and `schema:rangeIncludes` are read as well.
+- RDFS can't say that a property has one value, so every slot is multivalued.
+- A range of `rdfs:Literal` or `rdfs:Resource` says nothing, so the slot gets no range.
+- A vocabulary without an `owl:Ontology` gets the namespace of most of its terms as the schema `id`. Set it with `--schema-id`.
 
 ### Mapping OWL to LinkML
 
@@ -124,7 +133,7 @@ Prefix names come from `sh:declare` (which the generator writes), the document's
 | XSD and RDF datatypes                                       | LinkML's types, plus a type for each other one that is declared or used (`int`, `gYear`, `anyURI`, …)                |
 | datatype restriction                                        | `minimum_value`, `maximum_value`, `pattern` on the slot or the type (`xsd:pattern` `abc` becomes `^abc$`)           |
 | annotations                                                 | the metaslots in the config's `metadata` table, then LinkML `annotations` for the rest. The default table means the usual vocabularies, whatever prefixes the ontology declares |
-| language tags                                               | the schema's `in_language` when nearly all text written for people (titles, descriptions, comments and so on, not code examples or identifiers) is in one language. Text in another language, or in any language when the schema has none, keeps it, such as `title: {en: Minute}`. This holds for titles, descriptions, aliases, comments, notes and keywords. In a list (`comments` and so on), texts with a different language each are one entry; otherwise each text is an entry of its own. A label that repeats the name counts as one of the languages when there are labels in others, or when it is the only title. Annotations lose their tags |
+| language tags                                               | the schema's `in_language` when nearly all text written for people (titles, descriptions, comments and so on, not code examples or identifiers) is in one language. Text in another language, or in any language when the schema has none, keeps it, such as `title: {en: Minute}`. This holds for titles, descriptions, aliases, comments, notes and keywords. In a list (`comments` and so on), texts with a different language each are one entry; otherwise each text is an entry of its own. Annotations lose their tags |
 
 **Not imported:** individuals that are not part of an enum, property values of individuals, property chains, restrictions on inverse properties, general class axioms, inverse functional properties, disjoint properties, `owl:imports` that the config does not map, what the ontology says about terms of an imported schema, and subproperties of annotation properties and of RDF, RDFS and OWL's own. Restrictions that do not fit `slot_usage` are kept in the class's `notes`, like `OWL: inverse ssn:hasInput min 1`.
 
@@ -176,7 +185,7 @@ The default `metadata` table reads each metaslot from the property the LinkML me
 | Metaslot          | Read from, in order                                                       |
 |-------------------|---------------------------------------------------------------------------|
 | `title`           | `rdfs:label`, `dcterms:title`, `dc:title`, `skos:prefLabel`                 |
-| `description`     | `skos:definition`, `dcterms:description`, `dc:description`, `obo:IAO_0000115`, `rdfs:comment` |
+| `description`     | `skos:definition`, `obo:IAO_0000115`, `rdfs:comment`, `dcterms:description`, `dc:description` |
 | `aliases`         | `skos:altLabel`, `oboInOwl:hasExactSynonym`, `rdfs:label`, `skos:prefLabel`  |
 | `comments`        | `skos:note`, `rdfs:comment`, `skos:scopeNote`                               |
 | `notes`           | `skos:editorialNote`, `skos:historyNote`, `skos:changeNote`                 |
