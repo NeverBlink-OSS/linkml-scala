@@ -17,7 +17,7 @@ object `package` extends Module, NativeOptional {
       AliasesModule.run(ev, "regenerateMetamodel")
     }
 
-  def definitionsBranch: Task.Simple[String] = Task { "piotr/multilang-metaslots" }
+  def definitionsBranch: Task.Simple[String] = Task { "main" }
 
   def definitionsRepo: T[PathRef] = Task(persistent = true) {
     if os.list(Task.dest).isEmpty && Task.offline then Task.fail("Can't fetch linkml-model offline")

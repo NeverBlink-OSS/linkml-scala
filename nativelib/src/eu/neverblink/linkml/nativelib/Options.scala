@@ -89,6 +89,27 @@ private object Options {
     override def nullValue: RdfFormat = null
   }
 
+  /** A Scala enum as its value's name, such as `"rdfs"`. */
+  private def enumCodec[E](values: Array[E], what: String): JsonValueCodec[E] =
+    new JsonValueCodec[E] {
+      override def decodeValue(in: JsonReader, default: E): E = {
+        val name = in.readString(null)
+        values.find(_.toString == name).getOrElse(
+          in.decodeError(s"unknown $what '$name', expected ${values.mkString(" or ")}"),
+        )
+      }
+
+      override def encodeValue(x: E, out: JsonWriter): Unit = out.writeVal(x.toString)
+
+      override def nullValue: E = null.asInstanceOf[E]
+    }
+
+  private given metadataProfileCodec: JsonValueCodec[OwlGenerator.MetadataProfile] =
+    enumCodec(OwlGenerator.MetadataProfile.values, "metadata profile")
+
+  private given permissibleValueKindCodec: JsonValueCodec[OwlGenerator.PermissibleValueKind] =
+    enumCodec(OwlGenerator.PermissibleValueKind.values, "permissible value kind")
+
   // Unknown fields are rejected rather than skipped.
   private given fromOssieOptions: JsonValueCodec[OssieImporter.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))

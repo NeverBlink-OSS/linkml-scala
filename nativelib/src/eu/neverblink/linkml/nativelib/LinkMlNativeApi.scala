@@ -175,9 +175,9 @@ object LinkMlNativeApi {
     OwlGenerator().writeTo(out, Options.owl(optionsJson))
   }
 
-  /** The LinkML schema an OWL ontology (in Turtle or N-Triples) describes, as YAML or JSON depending on the
-    * `outputFormat` option. With `listNotImported`, what could not be imported is listed in
-    * comments at the top of YAML.
+  /** The LinkML schema an OWL ontology (in Turtle or N-Triples) describes, as YAML or JSON
+    * depending on the `outputFormat` option. With `listNotImported`, what could not be imported is
+    * listed in comments at the top of YAML.
     */
   def fromOwl(ontology: String, optionsJson: String, out: OutputStream): Unit = {
     if ontology eq null then throw BadRequest("no ontology document was given")
