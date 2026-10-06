@@ -19,18 +19,27 @@ import scala.compiletime.uninitialized
 import scala.io.Source
 import scala.util.Using
 
-/** Compares the streaming N-Triples parsers of Jena, RDF4J, and ours.
+/** Compares the streaming N-Triples and Turtle parsers of Jena, RDF4J, and ours.
   *
   * The comparison with base RDF4J and Jena parsers is not fair, because they do a lot of IRI
   * validation, blank node renaming and so on (we don't do any of that). The rdf4jNoChecks variant
   * should be a fair comparison.
+  *
+  * The documents are the SHACL generated for the schemas. In Turtle, that means prefixed names, `;`
+  * / `,` lists, nested `[ ... ]` and `( ... )` collections.
   */
 class RdfParsingBench extends CommonParams {
 
   @Param(Array("cgmes-core.yml", "cgmes-dynamics.yml", "TC57CIM.yml"))
   var schema: String = uninitialized
 
+  @Param(Array("nt", "ttl"))
+  var format: String = uninitialized
+
   private var document: Array[Byte] = uninitialized
+
+  private var jenaLang: Lang = uninitialized
+  private var rdf4jFormat: Rdf4jFormat = uninitialized
 
   @Setup
   def setup(): Unit = {
@@ -39,31 +48,42 @@ class RdfParsingBench extends CommonParams {
     }
     val out = new ByteArrayOutputStream
     val sink = new Utf8ByteSink(out)
-    val writer = new NTriplesWriter(sink)
+    val writer = if (format == "nt") new NTriplesWriter(sink) else new TurtleWriter(sink)
     ShaclGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)))
       .generate(writer)
     writer.finish()
     sink.flush()
     document = out.toByteArray
+
+    jenaLang = format match {
+      case "nt" => Lang.NTRIPLES
+      case "ttl" => Lang.TURTLE
+      case other => throw new IllegalArgumentException(s"unknown format '$other'")
+    }
+    rdf4jFormat = format match {
+      case "nt" => Rdf4jFormat.NTRIPLES
+      case "ttl" => Rdf4jFormat.TURTLE
+      case other => throw new IllegalArgumentException(s"unknown format '$other'")
+    }
   }
 
   @Benchmark
-  def linkml(bh: Blackhole): Unit =
-    NTriplesParser.parse(
-      new ByteArrayInputStream(document),
-      new RdfSink {
-        def namespace(prefix: String, name: String): Unit = ()
-        def triple(subj: Resource, pred: Iri, obj: Node): Unit = {
-          bh.consume(subj)
-          bh.consume(pred)
-          bh.consume(obj)
-        }
-      },
-    )
+  def linkml(bh: Blackhole): Unit = {
+    val in = new ByteArrayInputStream(document)
+    val sink = new RdfSink {
+      def namespace(prefix: String, name: String): Unit = ()
+      def triple(subj: Resource, pred: Iri, obj: Node): Unit = {
+        bh.consume(subj)
+        bh.consume(pred)
+        bh.consume(obj)
+      }
+    }
+    if (format == "nt") NTriplesParser.parse(in, sink) else TurtleParser.parse(in, sink)
+  }
 
   @Benchmark
   def jena(bh: Blackhole): Unit =
-    RDFParser.source(new ByteArrayInputStream(document)).lang(Lang.NTRIPLES).parse(
+    RDFParser.source(new ByteArrayInputStream(document)).lang(jenaLang).parse(
       new StreamRDFBase {
         override def triple(triple: JenaTriple): Unit = bh.consume(triple)
       },
@@ -86,7 +106,7 @@ class RdfParsingBench extends CommonParams {
   }
 
   private def rdf4jParser(bh: Blackhole): Rdf4jParser = {
-    val parser = Rio.createParser(Rdf4jFormat.NTRIPLES)
+    val parser = Rio.createParser(rdf4jFormat)
     parser.setRDFHandler(new AbstractRDFHandler {
       override def handleStatement(st: Statement): Unit = bh.consume(st)
     })
