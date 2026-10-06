@@ -5,6 +5,7 @@ import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.metamodel.CommonMetadata
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.StringUtils.{hexDigit, splitLines}
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -286,27 +287,6 @@ object TypeScriptGenerator {
     case _ => "number" // integer, float, double and decimal: the rest of the core types
   }
 
-  /** Split `text` into lines with trailing whitespace removed, breaking at `\n`, `\r` and `\r\n`
-    * like `linesIterator` does.
-    */
-  private def splitLines(text: String): List[String] = {
-    val lines = new mutable.ListBuffer[String]
-    val len = text.length
-    var start = 0
-    var i = 0
-    while (i < len) {
-      val c = text.charAt(i)
-      i += 1
-      if (c == '\n' || c == '\r') {
-        lines.addOne(text.substring(start, i - 1).stripTrailing)
-        if (c == '\r' && i < len && text.charAt(i) == '\n') i += 1
-        start = i
-      }
-    }
-    if (start < len) lines.addOne(text.substring(start).stripTrailing)
-    lines.toList
-  }
-
   private def isPlainKey(key: String): Boolean = {
     val len = key.length
     len > 0 && {
@@ -345,9 +325,6 @@ object TypeScriptGenerator {
     }
     sb.append('"').toString
   }
-
-  /** Lowercase hex digit of the lowest 4 bits of `x`, as in `%04x`. */
-  private def hexDigit(x: Int): Char = "0123456789abcdef".charAt(x & 0xf)
 
   private def arrayOf(tpe: String): String =
     if tpe.indexOf('|') >= 0 || tpe.indexOf(' ') >= 0 then s"($tpe)[]" else tpe.concat("[]")
