@@ -195,6 +195,26 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
         empty
     }
 
+    "make an enum a subclass of its parent enums and classes" in {
+      val axioms = ontologyOf(
+        """classes:
+          |  Action: {}
+          |enums:
+          |  BaseAction:
+          |    mixin: true
+          |  ConsumeAction:
+          |    is_a: Action
+          |    mixins: [BaseAction]
+          |    permissible_values:
+          |      PAUSE:
+          |""",
+      ).axioms
+      axioms should contain allOf (
+        SubClassOf(c("ConsumeAction"), c("Action")),
+        SubClassOf(c("ConsumeAction"), c("BaseAction")),
+      )
+    }
+
     "make an enum the class of its permissible values" in {
       val axioms = ontologyOf(personinfo).axioms
       val alive = ns + "Status.ALIVE"

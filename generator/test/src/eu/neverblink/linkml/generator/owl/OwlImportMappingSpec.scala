@@ -293,8 +293,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       e.permissibleValues.keySet shouldBe Set("InForce", "NotInForce")
       e.exactMappings.map(_.original) shouldBe Seq("other:LegalForce")
       result.schema.enums("USNonprofitType").permissibleValues.keySet shouldBe Set("Nonprofit501c3")
-      // An enum can't have a parent class, so the importer warns about it.
-      result.warnings.exists(_.startsWith("Superclass of an enum")) shouldBe true
+      e.isA.map(_.value) shouldBe Some("StatusEnumeration")
       result.schema.classes.keySet should contain allOf ("StatusEnumeration", "NonprofitType")
     }
   }

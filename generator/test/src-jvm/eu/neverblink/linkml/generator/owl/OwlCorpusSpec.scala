@@ -42,14 +42,15 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
     finally in.close()
   }
 
-  /** For each ontology: its own IRIs (there can be several) and the IRIs it imports. */
+  /** For each ontology: its own IRIs, version IRIs included, and the IRIs it imports. */
   private val headers: Map[String, (Set[String], Seq[String])] =
     corpus.filter(os.exists).fold(Map.empty) { dir =>
       ontologies.map(_._1).filter(n => os.exists(dir / n / "main.nt.gz")).map { name =>
         val t = text(name)
         // Vocabularies without an `owl:Ontology`, like DC terms, are known by their namespace.
         val iris = Some(ontologyPattern.findAllMatchIn(t).map(_.group(1)).toSet).filter(_.nonEmpty)
-          .getOrElse(namespacePattern.findAllMatchIn(t).map(_.group(1)).toSet)
+          .getOrElse(namespacePattern.findAllMatchIn(t).map(_.group(1)).toSet) ++
+          versionPattern.findAllMatchIn(t).map(_.group(1))
         name -> (iris, importPattern.findAllMatchIn(t).map(_.group(1)).toSeq.distinct)
       }.toMap
     }
@@ -225,6 +226,7 @@ object OwlCorpusSpec {
     "org" -> 92,
     "time" -> 74,
     "saref" -> 85,
+    "saref4ener" -> 93,
     "gist" -> 75,
     "d3fend" -> 61,
     "fabio" -> 85,
@@ -270,6 +272,7 @@ object OwlCorpusSpec {
   private val ontologyPattern =
     "<([^>]+)> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Ontology>".r
   private val namespacePattern = "(?m)^<([^>]+[/#])> ".r
+  private val versionPattern = "<http://www.w3.org/2002/07/owl#versionIRI> <([^>]+)>".r
   private val importPattern = "<http://www.w3.org/2002/07/owl#imports> <([^>]+)>".r
 
   private val logical: Axiom => Boolean = {

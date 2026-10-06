@@ -72,9 +72,9 @@ These differences are in place mostly to make the OWL describe the same RDF data
 **Improvements over Python `gen-owl`:**
 
 - **`pattern` is translated** to XSD's form, which matches the whole value: `gen-owl` writes it as it is, so `^…$` patterns match nothing.
-- **An abstract class with one child gets no covering axiom**, since it would make the two classes the same.
+- **An abstract class with only one subclass gets no covering axiom.** Consider class B, which is a subclass of an abstract class A. `gen-owl` in this case writes "every A is a B", and since every B is already an A, a reasoner treats the two classes as the same.
 - **`rdfs:label` is the title**, with the name when there is no title, rather than always the name.
-- **A single-valued slot is also an `owl:FunctionalProperty`** when it is single-valued wherever it is used.
+- **A single-valued slot is also marked as an `owl:FunctionalProperty`** when all classes that use this property treat it as single-valued.
 - **An attribute's property gets an `rdfs:range`** when every use of it has the same range.
 - **The announced new defaults are used**: no `owl:minCardinality 0`, which says nothing, and one `owl:cardinality` where the lower and upper bounds are equal.
 - **A `license` that is a link is written as an IRI**.
@@ -101,7 +101,7 @@ Prefix names come from `sh:declare` (which the generator writes), the document's
 |-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
 | `owl:Ontology`                                              | the schema, with the ontology IRI as `id`                                                                           |
 | class, or a class used without a declaration                | class, named after the local part of its IRI, with `class_uri` when that differs from what LinkML would make. A class from another ontology becomes a class that stands for it, unless an imported schema has it (see below) |
-| named superclasses                                          | `is_a` (one in the ontology's own namespace, if there is one) and `mixins` (the rest)                               |
+| named superclasses                                          | `is_a` for the first superclass from the same namespace as the subclass. `mixin` for other superclasses. |
 | a superclass cycle                                          | broken, since LinkML has none: a parent is left out and reported                                                   |
 | `owl:allValuesFrom` on a class                              | the slot in the class's `slots`, with `slot_usage` `range` when it narrows the property's range                   |
 | `owl:someValuesFrom`                                        | `required: true`; when it narrows the range, also `has_member: {range: …}` (another one goes under `all_of`)      |
@@ -120,7 +120,7 @@ Prefix names come from `sh:declare` (which the generator writes), the document's
 | `rdfs:subPropertyOf`                                        | `is_a` and `mixins`. A parent from another ontology becomes a slot that stands for it, of the same kind as the child |
 | `owl:inverseOf`, characteristics, `owl:equivalentProperty`  | `inverse`, `transitive` and friends, `exact_mappings`                                                               |
 | class defined by `owl:oneOf`                                | enum. The text of a value is its `skos:notation`, else its local name                                               |
-| class with only individuals, used as a range                | enum (turn off with `enums_from_individuals: false`). The class, or one of its parents, can be a range through `schema:rangeIncludes` too; its named equivalents become `exact_mappings`; and its parents, which an enum cannot have, are left out and reported, as Schema.org's enumerations all have one |
+| class with only individuals, used as a range                | enum (turn off with `enums_from_individuals: false`). The class, or one of its parents, can be a range through `schema:rangeIncludes` too; its named equivalents become `exact_mappings`; and its parents become `is_a` and `mixins`, as for classes |
 | XSD and RDF datatypes                                       | LinkML's types, plus a type for each other one that is declared or used (`int`, `gYear`, `anyURI`, …)                |
 | datatype restriction                                        | `minimum_value`, `maximum_value`, `pattern` on the slot or the type (`xsd:pattern` `abc` becomes `^abc$`)           |
 | annotations                                                 | the metaslots in the config's `metadata` table, then LinkML `annotations` for the rest. The default table means the usual vocabularies, whatever prefixes the ontology declares |

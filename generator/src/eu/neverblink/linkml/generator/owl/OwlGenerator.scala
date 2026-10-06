@@ -719,8 +719,8 @@ object OwlGenerator {
       val iri = ev.uriStr
       add(Declaration(EntityKind.Class, iri))
       annotate(iri, ev)
-      (ev._enum.isA.toSeq ++ ev._enum.mixins).flatMap(r => sv.enums.get(r.value))
-        .foreach(parent => add(SubClassOf(ClassExpr.Named(iri), ClassExpr.Named(parent.uriStr))))
+      ev.parents.map(_.uriStr).toSeq.distinct
+        .foreach(parent => add(SubClassOf(ClassExpr.Named(iri), ClassExpr.Named(parent))))
       val values = ev.derivedValues.map { pvv =>
         val pv = pvv.pv
         val pvIri = pvv.meaning.uri(using ev.definingPrefixResolver)

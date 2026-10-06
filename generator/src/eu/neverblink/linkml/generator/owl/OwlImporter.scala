@@ -379,7 +379,7 @@ object OwlImporter {
         !namedSubclasses.contains(m) && !domainClasses(m) && !inEquivalence(m)
 
     /** True if nothing is said about the class's members, so it can become an enum. Named parents
-      * are allowed but dropped with a warning, since Schema.org's enumerations all have one.
+      * are allowed.
       */
     private def isOnlyASet(c: String): Boolean =
       subClassOf.getOrElse(c, Nil).forall(_._2.isInstanceOf[ClassExpr.Named]) &&
@@ -825,6 +825,8 @@ object OwlImporter {
       out.toSet
     }
 
+    private lazy val propertyOrder: Map[String, Int] = propertyKinds.keys.zipWithIndex.toMap
+
     /** Slots attached to a class through `rdfs:domain`. */
     private lazy val slotsByDomain: Map[String, Seq[String]] = propertyKinds.keys.toSeq.flatMap {
       p =>
@@ -1016,7 +1018,10 @@ object OwlImporter {
       val inherited = ancestors(c).flatMap(a =>
         slotsByDomain.getOrElse(a, Nil) ++ importedSlots.getOrElse(a, Set.empty),
       )
-      val own = attached.toSeq.filterNot(inherited.contains).map(names)
+      // In declaration order, which the generator keeps: a slot can come from `rdfs:domain` here
+      // and from a restriction in the generated OWL.
+      val own = attached.toSeq.filterNot(inherited.contains)
+        .sortBy(p => propertyOrder.getOrElse(p, Int.MaxValue)).map(names)
 
       metadata.applyTo(
         ClassDefinitionImpl(
@@ -1139,7 +1144,7 @@ object OwlImporter {
             ),
           )
         }
-        val parents = parentsOfEnum(e)
+        val (isA, mixins) = chooseParents(e, parentsOfEnum(e))
         // Named equivalents become mappings, as for classes.
         val exact = equivalents.getOrElse(e, Nil).collect { case (a, ClassExpr.Named(o)) =>
           take(a)
@@ -1151,8 +1156,8 @@ object OwlImporter {
             name = name,
             enumUri = explicitIri(e, NameGroup.Class),
             permissibleValues = VectorMap.from(values),
-            isA = parents.headOption.map(Reference(_)),
-            mixins = parents.drop(1).map(Reference(_)),
+            isA = isA.map(Reference(_)),
+            mixins = mixins.map(Reference(_)),
             annotations = annotations,
           ),
         ).copy(exactMappings =
@@ -1160,19 +1165,14 @@ object OwlImporter {
         )
       }
 
+    /** The enums and classes an enum is a subclass of. */
     private def parentsOfEnum(e: String): Seq[String] =
-      subClassOf.getOrElse(e, Nil).collect {
-        case (a, ClassExpr.Named(p)) if enumMembers.contains(p) =>
+      subClassOf.getOrElse(e, Nil).flatMap {
+        case (a, ClassExpr.Named(p)) if names.contains(p) || wellKnownClasses(p) =>
           take(a)
-          names(p)
-        case (a, ClassExpr.Named(p)) if wellKnownClasses(p) =>
-          take(a)
-          ""
-        case (a, ClassExpr.Named(p)) =>
-          take(a)
-          warn("Superclass of an enum, which LinkML cannot say", s"${names(e)}: ${short(p)}")
-          ""
-      }.filter(_.nonEmpty)
+          Option.when(!wellKnownClasses(p))(p)
+        case _ => None
+      }
 
     // The schema
 
