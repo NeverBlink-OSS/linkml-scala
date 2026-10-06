@@ -20,7 +20,7 @@ final case class EnumDefinitionImpl(
     rank: Option[Int] = None,
     @named("abstract")
     `abstract`: Boolean = false,
-    aliases: Seq[String] = Seq(),
+    aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
@@ -39,7 +39,7 @@ final case class EnumDefinitionImpl(
     codeSetTag: Option[String] = None,
     @named("code_set_version")
     codeSetVersion: Option[String] = None,
-    comments: Seq[String] = Seq(),
+    comments: Seq[LocalizedText] = Seq(),
     concepts: Seq[UriOrCurie] = Seq(),
     @named("conforms_to")
     conformsTo: Option[String] = None,
@@ -50,7 +50,7 @@ final case class EnumDefinitionImpl(
     createdOn: Option[LinkmlDateTime] = None,
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
-    deprecated: Option[String] = None,
+    deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
@@ -78,7 +78,7 @@ final case class EnumDefinitionImpl(
     include: Seq[AnonymousEnumExpressionImpl] = Seq(),
     inherits: Seq[Reference[EnumDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
-    keywords: Seq[String] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
@@ -92,7 +92,7 @@ final case class EnumDefinitionImpl(
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
     @named("permissible_values")
     @compactDict
     permissibleValues: Map[String, PermissibleValueImpl] = Map(),

@@ -13,7 +13,7 @@ final case class DimensionExpressionImpl(
     description: Option[LocalizedText] = None,
     alias: Option[String] = None,
     rank: Option[Int] = None,
-    aliases: Seq[String] = Seq(),
+    aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
@@ -24,13 +24,13 @@ final case class DimensionExpressionImpl(
     categories: Seq[UriOrCurie] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-    comments: Seq[String] = Seq(),
+    comments: Seq[LocalizedText] = Seq(),
     contributors: Seq[UriOrCurie] = Seq(),
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
     createdOn: Option[LinkmlDateTime] = None,
-    deprecated: Option[String] = None,
+    deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
@@ -50,7 +50,7 @@ final case class DimensionExpressionImpl(
     inLanguage: Option[String] = None,
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    keywords: Seq[String] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
@@ -62,7 +62,7 @@ final case class DimensionExpressionImpl(
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")

@@ -82,14 +82,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       else {
         val prefixResolver = ev.definingPrefixResolver
         val name = enumName(ev)
-        val enumCases = en.permissibleValues.values.map(v =>
+        val enumCases = ev.derivedValues.map(v =>
           ScalaEnumCase(
-            caseName = v.alias.getOrElseFast(v.text),
-            objectName = permissibleValueName(ev, v),
+            caseName = v.aliasedName,
+            objectName = permissibleValueName(ev, v.pv),
             enumName = name,
-            doc = ScalaDoc(v, ev.definingSchema.id, options)(using prefixResolver),
+            doc = ScalaDoc(v.pv, ev.definingSchema.id, options)(using prefixResolver),
           ),
-        ).toSeq
+        )
         val enumInfo =
           ScalaEnumInfo(
             name,
@@ -779,15 +779,21 @@ object ScalaGenerator {
           .mapFast(_.capitalize)
           .getOrElseFast(""),
         metadata.seeAlso.map(_.uri) ++
-          metadata.aliases.reduceOption(_ + ", " + _).mapFast("Aliases: ".concat) ++
+          metadata.aliases
+            .flatMap(_.inLanguage(options.metadataLanguage))
+            .reduceOption(_ + ", " + _)
+            .mapFast("Aliases: ".concat) ++
           Seq("From schema: ".concat(fromSchema.uri)),
-        (metadata.notes ++ metadata.comments).map(_.capitalize),
+        (metadata.notes ++ metadata.comments)
+          .flatMap(_.inLanguage(options.metadataLanguage))
+          .map(_.capitalize),
         metadata.todos.map(_.capitalize),
         metadata.examples.flatMap(ex =>
           for
             value <- ex.value
             desc <- ex.valueDescription
-          yield s"`$value`: $desc",
+            descLang <- desc.inLanguage(options.metadataLanguage)
+          yield s"`$value`: $descLang",
         ),
       )
     }

@@ -22,7 +22,7 @@ final case class AnonymousClassExpressionImpl(
     noneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
     @named("all_of")
     allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    aliases: Seq[String] = Seq(),
+    aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
@@ -33,13 +33,13 @@ final case class AnonymousClassExpressionImpl(
     categories: Seq[UriOrCurie] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-    comments: Seq[String] = Seq(),
+    comments: Seq[LocalizedText] = Seq(),
     contributors: Seq[UriOrCurie] = Seq(),
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
     createdOn: Option[LinkmlDateTime] = None,
-    deprecated: Option[String] = None,
+    deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
@@ -57,7 +57,7 @@ final case class AnonymousClassExpressionImpl(
     inLanguage: Option[String] = None,
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    keywords: Seq[String] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
@@ -65,7 +65,7 @@ final case class AnonymousClassExpressionImpl(
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")

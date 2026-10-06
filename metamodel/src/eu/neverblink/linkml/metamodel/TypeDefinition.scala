@@ -29,7 +29,7 @@ final case class TypeDefinitionImpl(
     noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
     @named("all_of")
     allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    aliases: Seq[String] = Seq(),
+    aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
@@ -40,7 +40,7 @@ final case class TypeDefinitionImpl(
     categories: Seq[UriOrCurie] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-    comments: Seq[String] = Seq(),
+    comments: Seq[LocalizedText] = Seq(),
     @named("conforms_to")
     conformsTo: Option[String] = None,
     contributors: Seq[UriOrCurie] = Seq(),
@@ -50,7 +50,7 @@ final case class TypeDefinitionImpl(
     createdOn: Option[LinkmlDateTime] = None,
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
-    deprecated: Option[String] = None,
+    deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
@@ -82,7 +82,7 @@ final case class TypeDefinitionImpl(
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
-    keywords: Seq[String] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
@@ -97,7 +97,7 @@ final case class TypeDefinitionImpl(
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")

@@ -332,7 +332,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         .properties.keys should contain theSameElementsAs Seq("aliased_slot")
     }
 
-    "remove spaces from slot names" in {
+    "not remove spaces from slot names" in {
       val input =
         s"""$schemaShared
            |classes:
@@ -351,10 +351,11 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val schema = JsonSchemaGenerator().generate()
 
       schema.$defs.get("SomeClass").asInstanceOf[Schema]
-        .properties.keys should contain theSameElementsAs Seq("some_slot")
+        .properties.keys should contain theSameElementsAs Seq("some slot")
     }
 
-    "alias class names" in {
+    "not alias class names" in {
+      // Not present in the data = no aliasing
       val input =
         s"""$schemaShared
            |classes:
@@ -375,13 +376,13 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       val schema = JsonSchemaGenerator().generate()
 
       schema.$defs.get.keys should contain theSameElementsAs Seq(
-        "SomeAliasedClass",
-        "OtherAliasedClass",
+        "SomeClass",
+        "SomeOtherClass",
       )
 
-      schema.$defs.get("SomeAliasedClass").asInstanceOf[Schema]
+      schema.$defs.get("SomeClass").asInstanceOf[Schema]
         .properties("some_slot").asInstanceOf[Schema]
-        .$ref shouldBe Some("#/$defs/OtherAliasedClass")
+        .$ref shouldBe Some("#/$defs/SomeOtherClass")
     }
 
     "pascal case class names" in {
