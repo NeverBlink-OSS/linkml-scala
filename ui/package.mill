@@ -38,10 +38,11 @@ object `package` extends Module {
     )
   }
 
-  /** Type-check the UI against the LinkML types and confirm it bundles. Requires Node.js and npm on
-   * the PATH.
+  /** Type-check the UI against the LinkML types and confirm it bundles, including the Scala.js
+   * bundle (which must load in a browser). Requires Node.js and npm on the PATH.
    */
   def check(args: String*) = Task.Command(exclusive = true) {
+    build.generator.js.fullLinkJS()
     val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
     if (!os.exists(uiDir / "node_modules"))
       os.call(("npm", "ci"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)

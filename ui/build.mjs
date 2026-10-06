@@ -67,6 +67,10 @@ async function minifyScalaBundle() {
     entryPoints: [SCALA_BUNDLE],
     format: "esm",
     outfile: "dist/linkml.js",
+    // Bundling for the browser makes esbuild fail on any import a browser cannot load, such as a
+    // Node built-in. Without it, such an import only breaks the deployed page.
+    bundle: true,
+    platform: "browser",
     minify: true,
     logLevel: "info",
     // The Scala.js source map points at .scala sources that aren't served.
