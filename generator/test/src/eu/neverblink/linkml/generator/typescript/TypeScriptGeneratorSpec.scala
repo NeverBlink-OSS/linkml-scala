@@ -304,6 +304,30 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("  /** Only a description. */\n  b?: string;\n")
     }
 
+    "split doc comments at every kind of line break" in {
+      val ts = generate(
+        """classes:
+          |  C:
+          |    description: "a\r\nb\rc\n\nd  \ne"
+          |""".stripMargin,
+      )
+      ts should include("/**\n * a\n * b\n * c\n *\n * d\n * e\n */\nexport interface C")
+    }
+
+    "escape string literals" in {
+      TypeScriptGenerator.stringLiteral("") shouldBe "\"\""
+      TypeScriptGenerator.stringLiteral(
+        "a\"b\\c\nd\re\tf\u0001g\u001fh i j\u007fk",
+      ) shouldBe "\"a\\\"b\\\\c\\nd\\re\\tf\\u0001g\\u001fh\\u2028i\\u2029j\u007fk\""
+    }
+
+    "quote property keys that are not plain identifiers" in {
+      for key <- Seq("a", "A_1", "_a", "$a", "a$b") do
+        TypeScriptGenerator.propertyKey(key) shouldBe key
+      for key <- Seq("", "1a", "a-b", "a b", "ä") do
+        TypeScriptGenerator.propertyKey(key) shouldBe TypeScriptGenerator.stringLiteral(key)
+    }
+
     "prefix names that are not valid or are reserved" in {
       val ts = generate(
         """classes:

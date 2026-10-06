@@ -493,6 +493,64 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       underived.reachable(sv.types("bar")) shouldBe true
     }
 
+    "extend reachable classes with the members of type designators" in {
+      val schema =
+        """id: https://example.org/td/
+          |name: td
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Root:
+          |    attributes:
+          |      item:
+          |        range: Base
+          |        inlined: true
+          |  Base:
+          |    abstract: true
+          |    attributes:
+          |      kind:
+          |        designates_type: true
+          |        range: string
+          |  Sub:
+          |    is_a: Base
+          |    attributes:
+          |      detail:
+          |        range: Detail
+          |        inlined: true
+          |  Detail:
+          |    abstract: true
+          |    attributes:
+          |      kind:
+          |        designates_type: true
+          |        range: string
+          |  SubDetail:
+          |    is_a: Detail
+          |  Unrelated:
+          |    attributes:
+          |      x:
+          |        range: string
+          |""".stripMargin
+
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
+
+      def reachable(query: SchemaReachabilityQuery): Seq[String] =
+        sv.sortedClasses.filter(query.reachable).map(_.name)
+
+      // Members are added until nothing changes: `SubDetail` is only reachable through `Sub`
+      val fromRoot = sv.derivedReachabilityQuery(Seq(sv.classes("Root")), true, false)
+      reachable(fromRoot) shouldBe Seq("Base", "Root")
+      reachable(sv.withTypeDesignatorMembers(fromRoot, true, false)) shouldBe
+        Seq("Base", "Detail", "Root", "Sub", "SubDetail")
+
+      // No reachable class has unreachable members, so the query is returned as is
+      val fromUnrelated = sv.derivedReachabilityQuery(Seq(sv.classes("Unrelated")), true, false)
+      sv.withTypeDesignatorMembers(fromUnrelated, true, false) should be theSameInstanceAs
+        fromUnrelated
+
+      val all = IncludeAllReachabilityQuery(using sv)
+      sv.withTypeDesignatorMembers(all, true, false) should be theSameInstanceAs all
+    }
+
     "recognize the tree_root inline mode from the extension" in {
       val model =
         """id: http://example.com/c

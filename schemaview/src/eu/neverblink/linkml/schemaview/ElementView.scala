@@ -215,6 +215,49 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   lazy val collectionForm: CollectionForm = CollectionForm.of(this)
 
+  /** The type designator slot (`designates_type: true`) of this class, if it has one.
+    *
+    * @see
+    *   https://linkml.io/linkml/schemas/type-designators.html
+    */
+  lazy val typeDesignator: Option[SlotView] =
+    derivedAttributes.values.find(_.slot.designatesType)
+
+  /** Concrete classes that a slot ranging over this class can hold, told apart by the type
+    * designator: this class (if concrete) and all its concrete descendants, in the common order.
+    * Empty if the class has no type designator.
+    */
+  lazy val typeDesignatorMembers: Seq[ClassView] =
+    if typeDesignator.isEmpty then Nil
+    else sv.sortedClasses.filter(c => c.isConcrete && c.ancestorsWithSelf.exists(_.name == name))
+
+  /** Whether a slot ranging over this class should accept any of its [[typeDesignatorMembers]],
+    * instead of just this class. False for a concrete class without concrete descendants, and for
+    * an abstract class without any.
+    */
+  def isTypeDesignatorUnion: Boolean =
+    if isConcrete then typeDesignatorMembers.sizeIs > 1 else typeDesignatorMembers.nonEmpty
+
+  /** Values the type designator slot can take in an instance of this class: the class name for a
+    * `string` range, and the class URI and / or CURIE for the URI ranges. Empty if the class has no
+    * type designator, or its range is of some other type.
+    */
+  lazy val typeDesignatorValues: Seq[String] =
+    typeDesignator.flatMapFast(d => attributeViews.get(d.slot.name)) match {
+      case Some(tav: TypeAttributeView) =>
+        tav.typeView.runtimeType match {
+          case _: StringType.type => cls.name :: Nil
+          case _: UriType.type => uriOrCurie.uri :: Nil
+          case _: CurieType.type => uriOrCurie.curie :: Nil
+          case _: UriOrCurieType.type =>
+            val uri = uriOrCurie.uri
+            val curie = uriOrCurie.curie
+            if (uri.equals(curie)) uri :: Nil else uri :: curie :: Nil
+          case _ => Nil
+        }
+      case _ => Nil
+    }
+
   /** Direct parents (mixins + inheritance) of this class
     */
   lazy val parents: Seq[ClassView] = {

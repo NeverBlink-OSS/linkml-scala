@@ -5,6 +5,7 @@ import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.metamodel.CommonMetadata
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.StringUtils.{hexDigit, splitLines}
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -24,61 +25,28 @@ final class TypeScriptGenerator(using sv: SchemaView)
 
   override protected def defaultOptions: Options = Options()
 
-  // TODO: move the type designator / type union machinery to SchemaView, reuse in JSON Schema
-
-  /** The type designator slot of a class. */
-  private def designator(cls: ClassView): Option[SlotView] =
-    cls.derivedAttributes.values.find(_.slot.designatesType)
-
-  /** Concrete classes that a designated class stands for: itself (if concrete) and all its concrete
-    * descendants, in the common order. Empty if the class has no type designator.
-    */
-  private lazy val unionMembers: Map[String, Seq[ClassView]] =
-    sv.classes.values.flatMap { cls =>
-      designator(cls).map { _ =>
-        cls.name -> sv.sortedClasses.filter(c =>
-          c.isConcrete && c.ancestorsWithSelf.exists(_.name == cls.name),
-        )
-      }
-    }.toMap
-
   /** Name of the union type standing for a class and its subclasses, if the class needs one. */
   def unionName(cls: ClassView): Option[String] =
-    unionMembers.get(cls.name).flatMap { members =>
-      if cls.isConcrete then if members.sizeIs > 1 then Some("Any".concat(className(cls))) else None
-      else if members.nonEmpty then Some(className(cls))
-      else None
-    }
+    if cls.isTypeDesignatorUnion then {
+      val name = className(cls)
+      Some(if cls.isConcrete then "Any".concat(name) else name)
+    } else None
 
   /** TS type to use where the class is the range of a slot: the union if there is one, otherwise
     * the interface.
     */
-  private def classRef(cls: ClassView): String = unionName(cls).getOrElse(className(cls))
+  private def classRef(cls: ClassView): String = unionName(cls).getOrElseFast(className(cls))
 
   /** Does the class have an interface of its own? Abstract designated classes are only a union. */
   private def hasInterface(cls: ClassView): Boolean =
-    !(unionName(cls).isDefined && !cls.isConcrete)
+    cls.isConcrete || !cls.isTypeDesignatorUnion
 
   /** What to generate: whatever the pruning mode keeps, plus the members of any designated union it
     * keeps, and whatever those reach in turn. A slot ranging over a designated class uses the
     * union, so its members must be there too.
     */
-  private def reachability(mode: PruningMode): SchemaReachabilityQuery = {
-    var query = mode.derivedQuery(true, false)
-    if mode != PruningMode.skip then {
-      var from = sv.sortedClasses.filter(query.reachable)
-      var done = false
-      while !done do {
-        val more = (from ++ from.flatMap(c => unionMembers.getOrElse(c.name, Nil))).distinct
-        done = more.sizeIs == from.size
-        if !done then {
-          query = sv.derivedReachabilityQuery(more, true, false)
-          from = sv.sortedClasses.filter(query.reachable)
-        }
-      }
-    }
-    query
-  }
+  private def reachability(mode: PruningMode): SchemaReachabilityQuery =
+    sv.withTypeDesignatorMembers(mode.derivedQuery(true, false), true, false)
 
   private def hasRequiredContent(cls: ClassView, key: String): Boolean =
     cls.derivedAttributes.exists { case (name, slot) => name != key && slot.slot.required }
@@ -106,20 +74,6 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def keyOptional(ref: String, cls: ClassView, key: String): String =
     s"KeyOptional<$ref, ${stringLiteral(slotName(cls.derivedAttributes(key)))}>"
 
-  /** Literal values of a type designator slot in the given concrete class, if the range supports
-    * them.
-    */
-  private def designatorLiterals(attribute: TypeAttributeView, owner: ClassView): Seq[String] = {
-    given eu.neverblink.linkml.runtime.PrefixResolver = owner.definingPrefixResolver
-    attribute.typeView.runtimeType match {
-      case StringType => Seq(owner.cls.name)
-      case UriType => Seq(owner.uriOrCurie.uri)
-      case CurieType => Seq(owner.uriOrCurie.curie)
-      case UriOrCurieType => Seq(owner.uriOrCurie.uri, owner.uriOrCurie.curie).distinct
-      case _ => Nil
-    }
-  }
-
   /** TS type of an attribute, without the `| null` added for optional slots. */
   private def attributeType(attribute: AttributeView, owner: ClassView, ctx: Context): String = {
     val multivalued = attribute.slotView.slot.multivalued
@@ -131,8 +85,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
         arrayOfIf(multivalued, runtimeType(identifierView.typeView))
       case tav: TypeAttributeView =>
         val literals =
-          if tav.slotView.slot.designatesType && owner.isConcrete then
-            designatorLiterals(tav, owner)
+          if tav.slotView.slot.designatesType && owner.isConcrete then owner.typeDesignatorValues
           else Nil
         val base =
           if literals.isEmpty then runtimeType(tav.typeView)
@@ -152,11 +105,15 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def docLines(element: CommonMetadata, options: Options): Seq[String] = {
     val title = element.title.flatMapFast(_.inLanguage(options.metadataLanguage))
     val description = element.description.flatMapFast(_.inLanguage(options.metadataLanguage))
-    val text = (title, description) match {
-      case (Some(t), Some(d)) => Some(s"$t: $d")
-      case (t, d) => t.orElse(d)
+    val text = title match {
+      case Some(t) =>
+        description match {
+          case Some(d) => Some(s"$t: $d")
+          case _ => title
+        }
+      case _ => description
     }
-    text.toSeq.flatMap(_.strip.linesIterator.map(_.stripTrailing))
+    text.foldFast(Nil: Seq[String])(t => splitLines(t.strip))
   }
 
   private def writeDoc(sink: CharSink, lines: Seq[String], indent: String): Unit =
@@ -207,7 +164,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append("export type ")
     sink.append(name)
     sink.append(" =")
-    unionMembers(cls.name).foreach { member =>
+    cls.typeDesignatorMembers.foreach { member =>
       sink.append("\n  | ")
       sink.append(className(member))
     }
@@ -233,7 +190,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def checkNames(classes: Seq[ClassView], enums: Seq[EnumView]): Unit = {
     val seen = mutable.HashMap.empty[String, String]
     def claim(name: String, owner: String): Unit =
-      seen.put(name, owner).foreach { other =>
+      seen.put(name, owner).foreachFast { other =>
         throw new IllegalArgumentException(
           s"$owner and $other both map to the TypeScript name '$name'. " +
             "Rename one of them to generate TypeScript.",
@@ -242,9 +199,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     claim("KeyOptional", "the KeyOptional helper type")
     classes.foreach { cls =>
       if hasInterface(cls) then claim(className(cls), s"class '${cls.name}'")
-      unionName(cls).filter(_ => cls.isConcrete).foreach { name =>
-        claim(name, s"the union of class '${cls.name}' and its subclasses")
-      }
+      if cls.isConcrete then
+        unionName(cls).foreachFast { name =>
+          claim(name, s"the union of class '${cls.name}' and its subclasses")
+        }
       if !hasInterface(cls) then claim(className(cls), s"the union of abstract class '${cls.name}'")
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
@@ -264,7 +222,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     classes.foreach { cls =>
       sink.append('\n')
       if hasInterface(cls) then writeInterface(sink, cls, ctx)
-      unionName(cls).foreach { name =>
+      unionName(cls).foreachFast { name =>
         if hasInterface(cls) then sink.append('\n')
         writeUnion(sink, cls, name, options)
       }
@@ -323,18 +281,24 @@ object TypeScriptGenerator {
     * are plain strings in JSON.
     */
   def runtimeType(tv: TypeView): String = tv.coreType match {
-    case IntegerType | FloatType | DoubleType | DecimalType => "number"
-    case BooleanType => "boolean"
-    case AnyType => "unknown"
-    case StringType => "string"
+    case _: StringType.type => "string"
+    case _: BooleanType.type => "boolean"
+    case _: AnyType.type => "unknown"
+    case _ => "number" // integer, float, double and decimal: the rest of the core types
   }
 
-  private def isPlainKey(key: String): Boolean =
-    key.nonEmpty && {
-      val first = key.head
-      (Case.isAlphaUpper(first) || Case.isAlphaLower(first) || first == '_' || first == '$') &&
-      key.forall(c => Case.isStandard(c) || c == '$')
+  private def isPlainKey(key: String): Boolean = {
+    val len = key.length
+    len > 0 && {
+      val first = key.charAt(0)
+      (Case.isAlphaUpper(first) || Case.isAlphaLower(first) || first == '_' || first == '$') && {
+        // The first char passed the stricter check above
+        var i = 1
+        while (i < len && { val c = key.charAt(i); Case.isStandard(c) || c == '$' }) i += 1
+        i == len
+      }
     }
+  }
 
   /** A property key, quoted if it is not a plain identifier. */
   def propertyKey(key: String): String = if isPlainKey(key) then key else stringLiteral(key)
@@ -343,21 +307,27 @@ object TypeScriptGenerator {
   def stringLiteral(value: String): String = {
     val sb = new java.lang.StringBuilder(value.length + 2)
     sb.append('"')
-    value.foreach {
-      case '"' => sb.append("\\\"")
-      case '\\' => sb.append("\\\\")
-      case '\n' => sb.append("\\n")
-      case '\r' => sb.append("\\r")
-      case '\t' => sb.append("\\t")
-      case c if c < ' ' || c == '\u2028' || c == '\u2029' =>
-        sb.append("\\u").append("%04x".format(c.toInt))
-      case c => sb.append(c)
+    val len = value.length
+    var i = 0
+    while (i < len) {
+      value.charAt(i) match {
+        case '"' => sb.append("\\\"")
+        case '\\' => sb.append("\\\\")
+        case '\n' => sb.append("\\n")
+        case '\r' => sb.append("\\r")
+        case '\t' => sb.append("\\t")
+        case c if c < ' ' || c == '\u2028' || c == '\u2029' =>
+          sb.append('\\').append('u').append(hexDigit(c >> 12)).append(hexDigit(c >> 8))
+            .append(hexDigit(c >> 4)).append(hexDigit(c))
+        case c => sb.append(c)
+      }
+      i += 1
     }
     sb.append('"').toString
   }
 
   private def arrayOf(tpe: String): String =
-    if tpe.contains('|') || tpe.contains(' ') then s"($tpe)[]" else tpe.concat("[]")
+    if tpe.indexOf('|') >= 0 || tpe.indexOf(' ') >= 0 then s"($tpe)[]" else tpe.concat("[]")
 
   private def arrayOfIf(condition: Boolean, tpe: String): String =
     if condition then arrayOf(tpe) else tpe
