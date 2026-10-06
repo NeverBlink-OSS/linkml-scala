@@ -214,7 +214,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.notes shouldBe Seq("note 1", "note 2")
+      result.notes shouldBe Seq(PlainText("note 1"), PlainText("note 2"))
     }
 
     "not duplicate Seqs if the contents are identical" in {
@@ -251,7 +251,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.notes shouldBe Seq("note 1")
+      result.notes shouldBe Seq(PlainText("note 1"))
     }
 
     "merge Map slots" in {

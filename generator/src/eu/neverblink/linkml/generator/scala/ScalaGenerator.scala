@@ -792,7 +792,8 @@ object ScalaGenerator {
           for
             value <- ex.value
             desc <- ex.valueDescription
-          yield s"`$value`: $desc",
+            descLang <- desc.inLanguage(options.metadataLanguage)
+          yield s"`$value`: $descLang",
         ),
       )
     }
