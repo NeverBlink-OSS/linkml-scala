@@ -17,7 +17,7 @@ final case class UnitOfMeasureImpl(
     exactMappings: Seq[UriOrCurie] = Seq(),
     @named("has_quantity_kind")
     hasQuantityKind: Option[UriOrCurie] = None,
-    @named("iec_61360_code")
+    @named("iec61360code")
     iec61360Code: Option[String] = None,
     symbol: Option[String] = None,
     @named("ucum_code")
