@@ -28,7 +28,7 @@ jobs:
     with:
       targets: >-
         ${{ contains(github.event.pull_request.labels.*.name, 'full-wheels')
-        && '[{"os":"macos-14","platform":"macos-arm64"},
+        && '[{"os":"macos-15","platform":"macos-arm64"},
              {"os":"macos-15-intel","platform":"macos-x86_64"},
              {"os":"ubuntu-22.04","platform":"linux-x86_64",
               "container":"quay.io/pypa/manylinux_2_28_x86_64"},
@@ -44,7 +44,7 @@ jobs:
         || contains(github.event.pull_request.labels.*.name, 'test-sdist') }}
       sdist-install: >-
         ${{ contains(github.event.pull_request.labels.*.name, 'test-sdist')
-        && '[{"os":"macos-14","platform":"macos-arm64"},
+        && '[{"os":"macos-15","platform":"macos-arm64"},
              {"os":"macos-15-intel","platform":"macos-x86_64"},
              {"os":"ubuntu-22.04","platform":"linux-x86_64"},
              {"os":"ubuntu-22.04-arm","platform":"linux-arm64"},

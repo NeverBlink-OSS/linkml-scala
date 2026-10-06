@@ -10,7 +10,7 @@ on:
         description: JSON array of {os, platform} pairs to build.
         type: string
         default: >-
-          [{"os":"macos-14","platform":"macos-arm64"},
+          [{"os":"macos-15","platform":"macos-arm64"},
            {"os":"macos-15-intel","platform":"macos-x86_64"},
            {"os":"ubuntu-22.04","platform":"linux-x86_64",
             "container":"quay.io/pypa/manylinux_2_28_x86_64"},
@@ -38,7 +38,7 @@ on:
         description: JSON array of {os, platform} pairs to build.
         type: string
         default: >-
-          [{"os":"macos-14","platform":"macos-arm64"},
+          [{"os":"macos-15","platform":"macos-arm64"},
            {"os":"macos-15-intel","platform":"macos-x86_64"},
            {"os":"ubuntu-22.04","platform":"linux-x86_64",
             "container":"quay.io/pypa/manylinux_2_28_x86_64"},
