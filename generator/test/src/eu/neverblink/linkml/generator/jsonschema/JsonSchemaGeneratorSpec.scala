@@ -95,8 +95,6 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       // Same test case as previous, but without tree_root defined.
       val input =
         s"""$schemaShared
-           |id: https://neverblink.eu/linkml/tests/basic2/
-           |name: basic2
            |
            |imports:
            |  - linkml:types

@@ -62,6 +62,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             shouldBeTrait,
             isSlotDefinitionClass,
             makeInferredFields(classView),
+            // An explicit `allowed` wins, even over a `range_expression`. Without it, data matching
+            // `range_expression` has to be allowed, but is not checked against it.
+            cls.extraSlots.exists(e => e.allowed.getOrElse(e.rangeExpression.isDefined)),
             ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
               prefixResolver,
             ),
@@ -255,7 +258,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     InlineType(slot) match {
       case InlineType.plain =>
         TypedDefault(scalaType, defaultValue, annotations = ifAbsentAnnotation)
-      case InlineType.optional if scalaType == "Boolean" =>
+      case InlineType.optional if isPlainBoolean(slot, scalaType) =>
         TypedDefault(
           scalaType,
           default = Some(defaultValue.getOrElse("false")),
@@ -382,9 +385,19 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * defaulting to `false`. Mirrors [[makeTypedDefault]].
     */
   private def isOptionField(attribute: AttributeView): Boolean = {
-    val isOptional = InlineType(attribute.slotView) == InlineType.optional
-    isOptional && baseRange(attribute).scalaType != "Boolean"
+    val slot = attribute.slotView
+    InlineType(slot) == InlineType.optional && !isPlainBoolean(slot, baseRange(attribute).scalaType)
   }
+
+  /** Whether an optional slot of the given Scala type is emitted as a plain `Boolean` defaulting to
+    * `false`, instead of an `Option[Boolean]`.
+    *
+    * The metamodel's `allowed` is kept as an `Option`, because its absence means something else
+    * than `false`: `extra_slots` with a `range_expression` and no `allowed` allows extra data, but
+    * with `allowed: false` it forbids it.
+    */
+  private def isPlainBoolean(slot: SlotView, scalaType: String): Boolean =
+    scalaType == "Boolean" && slot.uriStr != "https://w3id.org/linkml/allowed"
 
   /** Build the [[InferredField]]s for a class – one per in-scope slot that has an
     * `equals_expression`.
@@ -554,6 +567,9 @@ object ScalaGenerator {
     * @param inferredFields
     *   Fields whose value can be computed from an `equals_expression`. May be empty, in which case
     *   `infer()` is still generated, but does nothing.
+    * @param extraSlotsAllowed
+    *   Whether the class' `extra_slots` allows data beyond its slots, so that decoding ignores it
+    *   instead of failing. Only the class' own `extra_slots` counts, as it is not inherited.
     * @param docs
     *   ScalaDoc for generating Scaladoc for this class.
     */
@@ -567,6 +583,7 @@ object ScalaGenerator {
       traitInterface: Boolean,
       generateSlotCombining: Boolean,
       inferredFields: Seq[InferredField],
+      extraSlotsAllowed: Boolean,
       docs: ScalaDoc,
   ) extends Printable:
     /** Builds the Scala representation of a LinkML [[ClassDefinition]]
@@ -591,7 +608,9 @@ object ScalaGenerator {
             |  * 
             |  * @inheritdoc
             |  */
-            |final case class ${name}Impl(
+            |${
+              if extraSlotsAllowed then "@extraSlotsAllowed\nfinal" else "final"
+            } case class ${name}Impl(
             |    ${fields.map(_.generateCaseClassField).mkString("\n")}
             |) extends $name
             |""".stripMargin

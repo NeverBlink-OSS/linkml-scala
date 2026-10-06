@@ -143,23 +143,68 @@ object LinkmlYamlCodec {
     }
   }
 
-  inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make }
+  /** Derives a codec for `T` and the classes nested in it.
+    *
+    * As in LinkML, a mapping may not have keys that match no field of the decoded class, unless the
+    * class is annotated with [[eu.neverblink.linkml.runtime.extraSlotsAllowed]], which the Scala
+    * generator does when its `extra_slots` metaslot allows extra data. Such keys are ignored when
+    * allowed. Otherwise decoding fails on them, including on non-string keys.
+    */
+  inline def derived[T]: LinkmlYamlCodec[T] = ${ LinkmlYamlCodecImpl.make('{ false }) }
+
+  /** Derives a codec for `T` and the classes nested in it.
+    *
+    * @param extraSlotsAllowed
+    *   Whether a mapping may have keys that match no field of the decoded class, for all classes.
+    *   Such keys are ignored when allowed. Otherwise decoding fails on them, including on
+    *   non-string keys, unless the class is annotated with
+    *   [[eu.neverblink.linkml.runtime.extraSlotsAllowed]].
+    */
+  inline def derived[T](inline extraSlotsAllowed: Boolean): LinkmlYamlCodec[T] =
+    ${ LinkmlYamlCodecImpl.make('extraSlotsAllowed) }
 
   def getFields(n: Node.MappingNode): java.util.HashMap[String, Node] = {
     val m = new java.util.HashMap[String, Node](n.mappings.size << 1, 0.5f)
-    n.mappings.foreach {
-      case (n: Node.ScalarNode, v) if Tag.str eq n.tag => m.put(n.value, v)
-      case _ =>
+    n.mappings.foreachEntry { (k, v) =>
+      k match {
+        case s: Node.ScalarNode if Tag.str eq s.tag => m.put(s.value, v)
+        case _ =>
+      }
     }
     m
   }
+
+  def getKnownFields(n: Node.MappingNode, tpeName: String): java.util.HashMap[String, Node] = {
+    val m = new java.util.HashMap[String, Node](n.mappings.size << 1, 0.5f)
+    n.mappings.foreachEntry { (k, v) =>
+      k match {
+        case s: Node.ScalarNode if Tag.str eq s.tag => m.put(s.value, v)
+        case _ => decodeError(s"a known field of '$tpeName'", k)
+      }
+    }
+    m
+  }
+
+  def unknownFieldError(
+      n: Node,
+      kvs: java.util.HashMap[String, Node],
+      tpeName: String,
+  ): Nothing = decodeError(
+    s"a known field of '$tpeName'",
+    n.asInstanceOf[Node.MappingNode].mappings.keys
+      .find(k => kvs.containsKey(k.asInstanceOf[Node.ScalarNode].value)).get,
+  )
 }
 
 private object LinkmlYamlCodecImpl {
-  def make[T: Type](using Quotes): Expr[LinkmlYamlCodec[T]] = new LinkmlYamlCodecImpl().make[T]
+  def make[T: Type](extraSlotsAllowed: Expr[Boolean])(using Quotes): Expr[LinkmlYamlCodec[T]] =
+    new LinkmlYamlCodecImpl(extraSlotsAllowed.valueOrAbort).make[T]
 }
 
-private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
+/** @param extraSlotsAllowed
+  *   Whether all classes allow extra slots, not only the ones annotated with `@extraSlotsAllowed`.
+  */
+private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) extends MacroUtils {
   import quotes.reflect._
 
   def make[T: Type]: Expr[LinkmlYamlCodec[T]] = {
@@ -333,6 +378,14 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
       }
   }.asInstanceOf[Expr[Node]]
 
+  private def genGetFields(
+      n: Expr[Node.MappingNode],
+      tpeName: Expr[String],
+      rejectUnknownFields: Boolean,
+  )(using Quotes): Expr[java.util.HashMap[String, Node]] =
+    if (rejectUnknownFields) '{ LinkmlYamlCodec.getKnownFields($n, $tpeName) }
+    else '{ LinkmlYamlCodec.getFields($n) }
+
   private def genDecodeNonAbstractClass[T: Type](
       tpe: TypeRepr,
       node: Expr[Node],
@@ -341,6 +394,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
     lazy val tpeName = Expr(tpe.show)
     val classInfo = getClassInfo(tpe)
     val fields = classInfo.fields
+    val rejectUnknownFields = !(extraSlotsAllowed || classInfo.allowsExtraSlots)
 
     def genDecodeFields(kvs: Expr[java.util.HashMap[String, Node]])(using Quotes): Expr[T] = {
       val readBlock = new mutable.ListBuffer[Statement]
@@ -387,7 +441,13 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
             valDefs.addOne(valDef)
             readBlock.addOne(valDef)
             readBlock.addOne('{
-              (if ($kvs ne null) $kvs.get($mappedName) else null) match {
+              (if ($kvs ne null) {
+                 // Taking known fields out leaves only unknown ones, to be rejected after the loop
+                 ${
+                   if (rejectUnknownFields) '{ $kvs.remove($mappedName) }
+                   else '{ $kvs.get($mappedName) }
+                 }
+               } else null) match {
                 case null =>
                   ${
                     if (fieldInfo.defaultValue.isEmpty) {
@@ -435,6 +495,12 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
               }
             }.asTerm.changeOwner(Symbol.spliceOwner))
       }
+      if (rejectUnknownFields) {
+        readBlock.addOne('{
+          if (($kvs ne null) && ! $kvs.isEmpty)
+            LinkmlYamlCodec.unknownFieldError($node, $kvs, $tpeName)
+        }.asTerm.changeOwner(Symbol.spliceOwner))
+      }
       var index = -1
       val construct =
         classInfo.genNew(classInfo.paramLists.map(_.foldLeft(new mutable.ListBuffer[Term]) {
@@ -469,7 +535,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                 case Some(s) =>
                   $node match {
                     case n: Node.MappingNode =>
-                      val kvs = LinkmlYamlCodec.getFields(n)
+                      val kvs = ${ genGetFields('n, tpeName, rejectUnknownFields) }
                       ${ genDecodeFields('kvs) }
                     // Anything that is not a map is the SimpleDict form, where the node only has
                     // the '@value' field set. It may be a sequence, since the primary value slot
@@ -510,7 +576,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
                   }
                 case _ =>
                   val kvs = $node match {
-                    case n: Node.MappingNode => LinkmlYamlCodec.getFields(n)
+                    case n: Node.MappingNode => ${ genGetFields('n, tpeName, rejectUnknownFields) }
                     case n: Node.ScalarNode if Tag.nullTag eq n.tag => null
                     case n => LinkmlYamlCodec.decodeError("map or null value", n)
                   }
@@ -521,7 +587,7 @@ private class LinkmlYamlCodecImpl(using Quotes) extends MacroUtils {
       } else {
         '{
           val kvs = $node match {
-            case n: Node.MappingNode => LinkmlYamlCodec.getFields(n)
+            case n: Node.MappingNode => ${ genGetFields('n, tpeName, rejectUnknownFields) }
             case n: Node.ScalarNode if Tag.nullTag eq n.tag => null
             case n => LinkmlYamlCodec.decodeError("map or null value", n)
           }
