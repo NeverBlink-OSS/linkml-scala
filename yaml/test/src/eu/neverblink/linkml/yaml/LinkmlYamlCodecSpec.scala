@@ -923,6 +923,61 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       }
     }
 
+    "handle YAML 1.2 document markers" in {
+      {
+        case class MyClass(a: String, b: Int) derives LinkmlYamlCodec
+
+        val value = MyClass("x", 1)
+        // An optional document start marker, with or without a trailing space or comment
+        decode[MyClass]("---\na: x\nb: 1\n", value)
+        decode[MyClass]("--- \na: x\nb: 1\n", value)
+        decode[MyClass]("--- # comment\na: x\nb: 1\n", value)
+        // An optional document end marker, with or without a trailing comment
+        decode[MyClass]("a: x\nb: 1\n...\n", value)
+        decode[MyClass]("a: x\nb: 1\n... # comment\n", value)
+        decode[MyClass]("---\na: x\nb: 1\n...\n", value)
+        decode[MyClass]("---\na: x\nb: 1\n...\n# comment\n", value)
+        // Only the first document of a stream is decoded
+        decode[MyClass]("a: x\nb: 1\n---\na: y\nb: 2\n", value)
+        decode[MyClass]("a: x\nb: 1\n...\n---\na: y\nb: 2\n", value)
+        decode[MyClass]("a: x\nb: 1\n...\na: y\nb: 2\n", value)
+      }
+      {
+        implicit val codec: LinkmlYamlCodec[String] = LinkmlYamlCodec.derived
+
+        // Scalars on the document start line
+        decode[String]("--- abc\n", "abc")
+        decode[String]("--- |\n  abc\n", "abc\n")
+        // Markers are only recognized at the start of a line
+        decode[String]("a ---\n", "a ---")
+        decode[String]("'---'\n", "---")
+        decode[String]("\"...\"\n", "...")
+      }
+      {
+        implicit val codec: LinkmlYamlCodec[Map[String, String]] = LinkmlYamlCodec.derived
+
+        // Markers are only recognized when followed by a separator
+        decode[Map[String, String]]("---a: x\n...b: y\n", Map("---a" -> "x", "...b" -> "y"))
+        decode[Map[String, String]]("a: ---\nb: ...\n", Map("a" -> "---", "b" -> "..."))
+        // Indented markers are content of the enclosing scalar
+        decode[Map[String, String]]("a: x\n ---\n ...\n", Map("a" -> "x --- ..."))
+        decode[Map[String, String]]("a: |\n  ---\n  ...\n", Map("a" -> "---\n...\n"))
+        // A marker at the start of a line ends a block scalar
+        decode[Map[String, String]]("a: |\n  x\n---\n", Map("a" -> "x\n"))
+        decode[Map[String, String]]("a: >\n  x\n...\n", Map("a" -> "x\n"))
+      }
+      // Invalid usages
+      parseYaml("--- a: 1\n").isLeft shouldBe true
+      parseYaml("a: 1\n---x\n").isLeft shouldBe true
+      parseYaml("a: 1\n...x\n").isLeft shouldBe true
+      parseYaml("...\n").isLeft shouldBe true
+      parseYaml("a: \"x\n---\ny\"\n").left.map(_.msg.contains {
+        "Document marker is not allowed inside a quoted scalar"
+      }) shouldBe Left(true)
+      parseYaml("a: 'x\n...\ny'\n").left.map(_.msg.contains {
+        "Document marker is not allowed inside a quoted scalar"
+      }) shouldBe Left(true)
+    }
     "don't generate codecs for classes with private fields in the primary constructor" in {
       assert(intercept[TestFailedException](assertCompiles {
         """class MyClass(a: String, b: Int, c: Boolean) derives LinkmlYamlCodec"""
