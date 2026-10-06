@@ -27,7 +27,7 @@ final case class AnonymousSlotExpressionImpl(
     noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
     @named("all_of")
     allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    aliases: Seq[String] = Seq(),
+    aliases: Seq[LocalizedText] = Seq(),
     @named("all_members")
     allMembers: Option[AnonymousSlotExpressionImpl] = None,
     @named("alt_descriptions")
@@ -42,13 +42,13 @@ final case class AnonymousSlotExpressionImpl(
     categories: Seq[UriOrCurie] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
-    comments: Seq[String] = Seq(),
+    comments: Seq[LocalizedText] = Seq(),
     contributors: Seq[UriOrCurie] = Seq(),
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
     createdOn: Option[LinkmlDateTime] = None,
-    deprecated: Option[String] = None,
+    deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
@@ -82,7 +82,7 @@ final case class AnonymousSlotExpressionImpl(
     inLanguage: Option[String] = None,
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    keywords: Seq[String] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
@@ -98,7 +98,7 @@ final case class AnonymousSlotExpressionImpl(
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[String] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
     range: Option[Reference[Element]] = None,
     @named("range_expression")
     rangeExpression: Option[AnonymousClassExpressionImpl] = None,

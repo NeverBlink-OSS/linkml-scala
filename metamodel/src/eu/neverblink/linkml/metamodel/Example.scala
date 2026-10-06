@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.*
 final case class ExampleImpl(
     value: Option[String] = None,
     @named("description")
-    valueDescription: Option[String] = None,
+    valueDescription: Option[LocalizedText] = None,
     @named("object")
     valueObject: Option[LinkmlAny] = None,
 ) extends Example {
@@ -39,7 +39,7 @@ abstract class Example {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def valueDescription: Option[String]
+  def valueDescription: Option[LocalizedText]
 
   /** Direct object representation of the example
     *

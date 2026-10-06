@@ -244,7 +244,12 @@ class FrictionlessGenerator(using sv: SchemaView)
       title = root.title.mapFast(_.plain),
       description = root.description.mapFast(_.plain),
       version = root.version,
-      keywords = if root.keywords.isEmpty then None else new Some(root.keywords),
+      keywords = if root.keywords.isEmpty then None
+      else
+        new Some(
+          root.keywords.map(_.plain), // TODO LNK-227: localize
+        )
+      ,
       licenses = root.license.flatMap(license).mapFast(Seq(_)),
       resources = ts.map(t =>
         ResourceDescriptor(

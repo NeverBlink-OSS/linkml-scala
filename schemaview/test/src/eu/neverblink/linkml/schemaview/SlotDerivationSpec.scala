@@ -183,7 +183,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "merge Seq slots" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        notes = Seq("note 2"),
+        notes = Seq(PlainText("note 2")),
         range = Some(Reference("child")),
       )
 
@@ -198,7 +198,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         slotUsage = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            notes = Seq("note 1"),
+            notes = Seq(PlainText("note 1")),
             range = Some(Reference("child")),
           ).compact,
         ),
@@ -214,13 +214,13 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.notes shouldBe Seq("note 1", "note 2")
+      result.notes shouldBe Seq(PlainText("note 1"), PlainText("note 2"))
     }
 
     "not duplicate Seqs if the contents are identical" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        notes = Seq("note 1"),
+        notes = Seq(PlainText("note 1")),
         range = Some(Reference("base")),
       )
 
@@ -235,7 +235,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         slotUsage = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            notes = Seq("note 1"),
+            notes = Seq(PlainText("note 1")),
             range = Some(Reference("child")),
           ).compact,
         ),
@@ -251,7 +251,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
-      result.notes shouldBe Seq("note 1")
+      result.notes shouldBe Seq(PlainText("note 1"))
     }
 
     "merge Map slots" in {

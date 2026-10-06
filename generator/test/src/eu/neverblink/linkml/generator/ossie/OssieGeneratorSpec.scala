@@ -141,8 +141,8 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
     }
 
     "use a slot's alias as the name but still space-case the verbalization" in {
-      val r = relationship(ontologyOf(aliasedSlot), "Person", "fullName")
-      r.name shouldBe "fullName"
+      val r = relationship(ontologyOf(aliasedSlot), "Person", "full_name")
+      r.name shouldBe "full_name"
       r.verbalizes shouldBe Seq("{Person} full name {String}")
     }
 
