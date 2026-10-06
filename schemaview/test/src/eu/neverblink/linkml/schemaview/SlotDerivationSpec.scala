@@ -183,7 +183,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "merge Seq slots" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        notes = Seq("note 2"),
+        notes = Seq(PlainText("note 2")),
         range = Some(Reference("child")),
       )
 
@@ -198,7 +198,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         slotUsage = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            notes = Seq("note 1"),
+            notes = Seq(PlainText("note 1")),
             range = Some(Reference("child")),
           ).compact,
         ),
@@ -220,7 +220,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "not duplicate Seqs if the contents are identical" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",
-        notes = Seq("note 1"),
+        notes = Seq(PlainText("note 1")),
         range = Some(Reference("base")),
       )
 
@@ -235,7 +235,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         slotUsage = Map(
           SlotDefinitionImpl(
             name = "slot1",
-            notes = Seq("note 1"),
+            notes = Seq(PlainText("note 1")),
             range = Some(Reference("child")),
           ).compact,
         ),

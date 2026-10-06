@@ -779,9 +779,14 @@ object ScalaGenerator {
           .mapFast(_.capitalize)
           .getOrElseFast(""),
         metadata.seeAlso.map(_.uri) ++
-          metadata.aliases.reduceOption(_ + ", " + _).mapFast("Aliases: ".concat) ++
+          metadata.aliases
+            .flatMap(_.inLanguage(options.metadataLanguage))
+            .reduceOption(_ + ", " + _)
+            .mapFast("Aliases: ".concat) ++
           Seq("From schema: ".concat(fromSchema.uri)),
-        (metadata.notes ++ metadata.comments).map(_.capitalize),
+        (metadata.notes ++ metadata.comments)
+          .flatMap(_.inLanguage(options.metadataLanguage))
+          .map(_.capitalize),
         metadata.todos.map(_.capitalize),
         metadata.examples.flatMap(ex =>
           for
