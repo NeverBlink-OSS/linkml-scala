@@ -32,7 +32,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       JsonRenamer {
   import JsonSchemaGenerator.*
 
-  override protected def defaultOptions: Options = new Options()
+  override protected def defaultOptions: Options = Options()
 
   override protected def codec: JsonValueCodec[Schema] = JsonSchemaGenerator.codec
 
@@ -53,7 +53,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
     *   JSON Schema in the [[Schema]] model
     */
   override final def generate(
-      options: JsonSchemaGenerator.Options = new JsonSchemaGenerator.Options(),
+      options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
   ): Schema = {
     import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
     val maybeTreeRoot = sv.treeRootWithOverride(options.treeRoot) match {
@@ -89,7 +89,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
 
     // Reference to the `$defs` of `classView` with the given suffix
     def classRefSchema(classView: ClassView, suffix: String): Schema =
-      new Schema($ref = new Some("#/$defs/" + className(classView) + suffix))
+      Schema($ref = Some("#/$defs/" + className(classView) + suffix))
 
     // Schema for an inlined value of `classView`, referring to `$defs` with the given suffix. If the
     // class has a type designator, the value can be any of the concrete classes it can pick.
@@ -97,7 +97,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       if (classView.isTypeDesignatorUnion) {
         val members = new mutable.ListBuffer[Schema]
         classView.typeDesignatorMembers.foreach(c => members.addOne(classRefSchema(c, suffix)))
-        new Schema(anyOf = members.toList)
+        Schema(anyOf = members.toList)
       } else classRefSchema(classView, suffix)
 
     // Schema for `classView` inlined as a dict in the given form
@@ -138,7 +138,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
           typeToRuntime(identifierView.typeView)
             .copy(
-              $comment = new Some(s"Reference to ${classView.name} class"),
+              $comment = Some(s"Reference to ${classView.name} class"),
               minimum = toBigDecimalOpt(identifierView.minimumValue),
               maximum = toBigDecimalOpt(identifierView.maximumValue),
               pattern = identifierView.pattern.mapFast(new Pattern(_)),
@@ -157,7 +157,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
               pattern = typeAttribute.pattern.mapFast(new Pattern(_)),
               `enum` =
                 if (designatorValues.isEmpty) None
-                else new Some(designatorValues.map(new ExampleSingleValue(_)).toList),
+                else Some(designatorValues.map(ExampleSingleValue(_)).toList),
             )
             .arrayOfIf(typeAttribute.slotView.slot.multivalued)
         case EnumAttributeView(slotView, _, enumView) =>
@@ -176,7 +176,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
 
       valueSchema.copy(
         title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-          new Some(sv.slot.name),
+          Some(sv.slot.name),
         ),
         description = sv.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       )
@@ -209,7 +209,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
             immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
           additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
           title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-            new Some(cls.cls.name),
+            Some(cls.cls.name),
           ),
           description = cls.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
@@ -221,9 +221,9 @@ class JsonSchemaGenerator(using sv: SchemaView)
       inlineType match {
         case InlineType.plain => classSchema // object (mandatory)
         case InlineType.optional =>
-          new Schema(oneOf = List(classSchema, Schema.Null)) // object or null
+          Schema(oneOf = List(classSchema, Schema.Null)) // object or null
         case InlineType.list =>
-          arraySchema.copy(items = new Some(classSchema)) // array of objects
+          arraySchema.copy(items = Some(classSchema)) // array of objects
         case InlineType.dict(form) => dictSchema(treeRoot, form)
       }
     }
@@ -253,7 +253,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),
           title = enum_.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-            new Some(enum_.name),
+            Some(enum_.name),
           ),
           description = enum_.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
         ),
@@ -263,7 +263,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
       title = sv.root.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-        new Some(sv.root.name),
+        Some(sv.root.name),
       ),
       description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
       $defs = new Some(
@@ -356,7 +356,7 @@ object JsonSchemaGenerator {
     *   Schema of the full object with the key slot made optional
     */
   private def simpleDictSchema(valueRef: String, keyless: Schema): Schema =
-    new Schema(oneOf = List(new Schema($ref = new Some(valueRef)), keyless))
+    Schema(oneOf = List(Schema($ref = Some(valueRef)), keyless))
 
   extension (schema: Schema)
     /** Wrap this Schema in an array

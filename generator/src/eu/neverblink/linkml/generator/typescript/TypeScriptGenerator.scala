@@ -22,13 +22,13 @@ final class TypeScriptGenerator(using sv: SchemaView)
       TypeScriptRenamer {
   import TypeScriptGenerator.*
 
-  override protected def defaultOptions: Options = new Options()
+  override protected def defaultOptions: Options = Options()
 
   /** Name of the union type standing for a class and its subclasses, if the class needs one. */
   def unionName(cls: ClassView): Option[String] =
     if cls.isTypeDesignatorUnion then {
       val name = className(cls)
-      new Some(if cls.isConcrete then "Any".concat(name) else name)
+      Some(if cls.isConcrete then "Any".concat(name) else name)
     } else None
 
   /** TS type to use where the class is the range of a slot: the union if there is one, otherwise
@@ -107,7 +107,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     val text = title match {
       case Some(t) =>
         description match {
-          case Some(d) => new Some(s"$t: $d")
+          case Some(d) => Some(s"$t: $d")
           case _ => title
         }
       case _ => description
@@ -208,7 +208,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    val ctx = new Context(options)
+    val ctx = Context(options)
     val query = reachability(options.pruningMode)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums =
