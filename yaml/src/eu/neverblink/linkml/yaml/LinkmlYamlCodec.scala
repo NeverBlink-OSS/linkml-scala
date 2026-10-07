@@ -230,7 +230,10 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     val implCodec = findImplicitCodec(tpe)
     if (implCodec.isDefined) {
       '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.decode($node, $id) }
-    } else if (tpe =:= stringTpe) withDecoderFor(tpe, node, id) { (node, _) =>
+    } else if (isUnion(tpe)) withDecoderFor(tpe, node, id) { (node, id) =>
+      genDecodeUnion[T](tpe, node, id)
+    }
+    else if (tpe =:= stringTpe) withDecoderFor(tpe, node, id) { (node, _) =>
       '{
         $node match {
           case n: Node.ScalarNode
@@ -330,7 +333,10 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     val implCodec = findImplicitCodec(tpe)
     if (implCodec.isDefined) {
       '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.encode($x, $skipId) }
-    } else if (tpe =:= stringTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
+    } else if (isUnion(tpe)) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
+      genEncodeUnion[T](tpe, x, skipId)
+    }
+    else if (tpe =:= stringTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
       '{ StringNode(${ x.asInstanceOf[Expr[String]] }) }
     }
     else if (tpe =:= intTpe || tpe =:= booleanTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
@@ -385,6 +391,77 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
   )(using Quotes): Expr[java.util.HashMap[String, Node]] =
     if (rejectUnknownFields) '{ LinkmlYamlCodec.getKnownFields($n, $tpeName) }
     else '{ LinkmlYamlCodec.getFields($n) }
+
+  private def isUnion(tpe: TypeRepr): Boolean = tpe.dealias match {
+    case _: OrType => true
+    case _ => false
+  }
+
+  /** Members of a union type (LinkML `union_of`), flattened and in declaration order. */
+  private def unionMembers(tpe: TypeRepr): List[TypeRepr] = {
+    val members = new mutable.ListBuffer[TypeRepr]
+    val seen = new mutable.HashSet[TypeRepr]
+
+    def addMembers(t: TypeRepr): Unit = t.dealias match {
+      case OrType(left, right) =>
+        addMembers(left)
+        addMembers(right)
+      case other => if (seen.add(other)) members.addOne(other)
+    }
+
+    addMembers(tpe)
+    members.toList
+  }
+
+  /** Decode the first union member that accepts the node, trying them in declaration order. Unlike
+    * a plain `String`, a `String` member only accepts string scalars, so that e.g. `42` decodes to
+    * the `Int` member of `String | Int` and `true` is rejected.
+    */
+  private def genDecodeUnion[T: Type](
+      tpe: TypeRepr,
+      node: Expr[Node],
+      id: Expr[Option[Any]],
+  )(using Quotes): Expr[T] = {
+    val members = unionMembers(tpe)
+    val expected = Expr(s"value of one of the types: ${members.map(_.show).mkString(", ")}")
+    members.foldRight('{ LinkmlYamlCodec.decodeError($expected, $node) }: Expr[T]) {
+      (mTpe, orElse) =>
+        mTpe.asType match {
+          case '[m] =>
+            if (mTpe =:= stringTpe) '{
+              $node match {
+                case n: Node.ScalarNode if Tag.str eq n.tag => n.value.asInstanceOf[T]
+                case _ => $orElse
+              }
+            }
+            else
+              '{
+                try ${ genDecode[m](mTpe, node, id) }.asInstanceOf[T]
+                catch { case _: DecodeError => $orElse }
+              }
+        }
+    }
+  }
+
+  /** Encode a union value with the codec of the first member its runtime class matches. */
+  private def genEncodeUnion[T: Type](tpe: TypeRepr, x: Expr[T], skipId: Expr[Boolean])(using
+      Quotes,
+  ): Expr[Node] = {
+    val tpeName = Expr(tpe.show)
+    unionMembers(tpe).foldRight('{
+      throw new IllegalArgumentException(
+        s"Value '${$x}' of class '${$x.getClass.getName}' is not a member of '${$tpeName}'",
+      )
+    }: Expr[Node]) { (mTpe, orElse) =>
+      mTpe.asType match {
+        case '[m] =>
+          '{
+            if ($x.isInstanceOf[m]) ${ genEncode[m](mTpe, '{ $x.asInstanceOf[m] }, skipId) }
+            else $orElse
+          }
+      }
+    }
+  }
 
   private def genDecodeNonAbstractClass[T: Type](
       tpe: TypeRepr,

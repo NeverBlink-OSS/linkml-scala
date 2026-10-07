@@ -130,6 +130,61 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |^""".stripMargin,
       )
     }
+    "decode and encode union types" in {
+      implicit val codec: LinkmlYamlCodec[String | Int] = LinkmlYamlCodec.derived
+      roundTrip[String | Int]("hello", "hello\n")
+      roundTrip[String | Int](42, "42\n")
+      // A quoted number stays a string, as only the string member accepts string scalars.
+      roundTrip[String | Int]("42", "\"42\"\n")
+      decodeError[String | Int](
+        "true\n",
+        """Expected value of one of the types: java.lang.String, scala.Int at 0:0 but got:
+          |true
+          |^""".stripMargin,
+      )
+      decodeError[String | Int](
+        "1.5\n",
+        "Expected value of one of the types: java.lang.String, scala.Int",
+      )
+    }
+    "list each member of a union type once" in {
+      type Count = Int
+      implicit val codec: LinkmlYamlCodec[Int | Count | String] = LinkmlYamlCodec.derived
+      roundTrip[Int | Count | String](42, "42\n")
+      decodeError[Int | Count | String](
+        "true\n",
+        "Expected value of one of the types: scala.Int, java.lang.String at 0:0",
+      )
+    }
+    "decode a value as the first union member that accepts it" in {
+      // Both members accept any string, so only the declared order decides the result.
+      type UriFirst = UriOrCurie | String
+      type StringFirst = String | UriOrCurie
+      locally {
+        implicit val codec: LinkmlYamlCodec[UriFirst] = LinkmlYamlCodec.derived
+        roundTrip[UriFirst](UriOrCurie("ex:abc"), "ex:abc\n")
+        // A String value still encodes, as encoding picks the member by the value's class.
+        codec.encode("abc").asYaml shouldBe "abc\n"
+      }
+      locally {
+        implicit val codec: LinkmlYamlCodec[StringFirst] = LinkmlYamlCodec.derived
+        roundTrip[StringFirst]("ex:abc", "ex:abc\n")
+        codec.encode(UriOrCurie("ex:abc")).asYaml shouldBe "ex:abc\n"
+      }
+      case class MyClass(a: UriFirst, b: StringFirst) derives LinkmlYamlCodec
+
+      roundTrip(MyClass(UriOrCurie("ex:abc"), "ex:abc"), "a: ex:abc\nb: ex:abc\n")
+    }
+    "decode and encode case classes with fields of union types" in {
+      type Count = Int
+      type Choice = Boolean | Count
+      case class MyClass(a: Choice, b: Option[String | Int] = None, c: Seq[Int | String] = Seq())
+          derives LinkmlYamlCodec
+
+      roundTrip(MyClass(true, Some(1), Seq("x", 2)), "a: true\nb: 1\nc:\n  - x\n  - 2\n")
+      roundTrip(MyClass(7, Some("y")), "a: 7\nb: y\n")
+      decodeError[MyClass]("a: abc\n", "Expected value of one of the types")
+    }
     "decode and encode booleans" in {
       implicit val codec: LinkmlYamlCodec[Boolean] = LinkmlYamlCodec.derived
       forAll(arbitrary[Boolean])(x => roundTrip(x, s"$x\n"))

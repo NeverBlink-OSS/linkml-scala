@@ -64,6 +64,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `typeDesignator` | 10 | 12 |  |
 | `typeDesignator2` | 9 | 7 | Type designators on classes with different attributes. This… |
 | `typed` | 8 | 19 |  |
+| `unionOf` | 4 | 6 |  |
 | `unionRange` | 6 | 3 |  |
 | `unionRangeReference` | 8 | 3 |  |
 | `uri` | 14 | 0 |  |

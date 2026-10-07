@@ -262,6 +262,48 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       child.runtimeType shouldBe UnknownType
     }
 
+    "flatten nested unions and inherit a union through typeof" in {
+      val view = load(
+        """id: https://example.org/nested-unions
+          |name: nested_unions
+          |imports: [linkml:types]
+          |types:
+          |  Count:
+          |    typeof: integer
+          |  StringOrCount:
+          |    union_of: [string, Count]
+          |  Choice:
+          |    union_of: [StringOrCount, boolean, string]
+          |  ChoiceChild:
+          |    typeof: Choice
+          |""".stripMargin,
+      )
+      view.types("StringOrCount").unionAlternatives.map(_.name) shouldBe Seq("string", "Count")
+      view.types("Choice").unionAlternatives.map(_.name) shouldBe
+        Seq("string", "Count", "boolean")
+      view.types("ChoiceChild").unionAlternatives.map(_.name) shouldBe
+        Seq("string", "Count", "boolean")
+      view.types("ChoiceChild").isUnion shouldBe true
+      view.types("Count").unionAlternatives shouldBe empty
+      view.types("Count").isUnion shouldBe false
+    }
+
+    "reject a union that contains itself" in {
+      val view = load(
+        """id: https://example.org/cyclic-unions
+          |name: cyclic_unions
+          |imports: [linkml:types]
+          |types:
+          |  A:
+          |    union_of: [string, B]
+          |  B:
+          |    union_of: [integer, A]
+          |""".stripMargin,
+      )
+      val error = intercept[IllegalArgumentException](view.types("A").unionAlternatives)
+      error.getMessage shouldBe "Cyclic union_of: A -> B -> A"
+    }
+
     "report an unknown union member at its declaration" in {
       val error = intercept[SchemaIssues.FatalSchemaException] {
         load(

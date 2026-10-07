@@ -11,7 +11,9 @@ skips = [
     # Python doesn't always URL-encode names
     "syntheticUris",
     # Metamodel difference
-    "equalsExpression"
+    "equalsExpression",
+    # Python can't generate JSON Schema for union_of types without a base
+    "unionOf",
 ]
 
 if __name__ == "__main__":

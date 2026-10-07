@@ -646,10 +646,41 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     _type.typeof.toSeq.map(ref => sv.types(ref.value))
 
   /** The types declared in `union_of`, in declaration order. Members do not supply inherited scalar
-    * properties and do not imply support for runtime union values.
+    * properties. See [[unionAlternatives]] for the flattened members used by the generators.
     */
   lazy val unionMembers: Seq[TypeView] =
     _type.unionOf.map(ref => sv.types(ref.value))
+
+  /** The non-union types a value of this type can take, if this type is a union, in declaration
+    * order and without duplicates. Nested unions are flattened. A type that does not declare
+    * `union_of` itself takes the union of its nearest `typeof` ancestor that does. Empty for types
+    * that are not unions.
+    *
+    * @throws IllegalArgumentException
+    *   if a union contains itself, directly or through other unions
+    */
+  lazy val unionAlternatives: Seq[TypeView] = {
+    def unionOf(tv: TypeView): Option[TypeView] =
+      tv.ancestorsWithSelf.find(_._type.unionOf.nonEmpty)
+
+    def flatten(union: TypeView, path: List[String]): Seq[TypeView] =
+      union.unionMembers.flatMap { member =>
+        unionOf(member) match {
+          case Some(nested) =>
+            if (path.contains(nested.name)) {
+              val cycle = (path.reverse :+ nested.name).mkString(" -> ")
+              throw new IllegalArgumentException(s"Cyclic union_of: $cycle")
+            }
+            flatten(nested, nested.name :: path)
+          case _ => member :: Nil
+        }
+      }
+
+    unionOf(this).foldFast(Nil)(union => flatten(union, union.name :: Nil).distinctBy(_.name))
+  }
+
+  /** Whether values of this type can take more than one type, through `union_of`. */
+  def isUnion: Boolean = unionAlternatives.nonEmpty
 
   /** This type followed by its `typeof` ancestors, nearest first. Rejects inheritance cycles. */
   lazy val ancestorsWithSelf: Iterable[TypeView] = {
