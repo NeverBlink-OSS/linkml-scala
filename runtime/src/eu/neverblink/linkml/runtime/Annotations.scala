@@ -30,3 +30,12 @@ import scala.annotation.meta.field
   * Classes with one field and no such annotation are serialized as normal objects.
   */
 final class flatten extends StaticAnnotation
+
+/** Marks a class whose instances may have data beyond its fields, which decoding then ignores.
+  * Without it, decoding fails on such data, as LinkML does by default. Generated for classes whose
+  * `extra_slots` metaslot allows extra data.
+  *
+  * As `extra_slots` is not inherited in LinkML, neither is this annotation: a subclass of a class
+  * that allows extra data forbids it, unless its own `extra_slots` allows it too.
+  */
+final class extraSlotsAllowed extends StaticAnnotation

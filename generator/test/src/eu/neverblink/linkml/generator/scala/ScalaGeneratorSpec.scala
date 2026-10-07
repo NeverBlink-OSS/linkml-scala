@@ -306,6 +306,59 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("SomeClass.scala") should include("someSlot: Option[String]")
     }
 
+    "annotate classes whose extra_slots allows extra data" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Open:
+           |    extra_slots:
+           |      allowed: true
+           |    attributes:
+           |      a: {}
+           |  Typed:
+           |    extra_slots:
+           |      range_expression:
+           |        range: string
+           |    attributes:
+           |      a: {}
+           |  Closed:
+           |    extra_slots:
+           |      allowed: false
+           |    attributes:
+           |      a: {}
+           |  ClosedTyped:
+           |    extra_slots:
+           |      allowed: false
+           |      range_expression:
+           |        range: string
+           |    attributes:
+           |      a: {}
+           |  OpenChild:
+           |    is_a: Open
+           |    attributes:
+           |      b: {}
+           |  Plain:
+           |    attributes:
+           |      a: {}
+           |""".stripMargin
+
+      given SchemaView = decode(input)
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+
+      files(
+        "Open.scala",
+      ) should include regex raw"\*/\n@extraSlotsAllowed\nfinal case class OpenImpl\("
+      files("Typed.scala") should include("@extraSlotsAllowed\nfinal case class TypedImpl(")
+      // Extra data is forbidden by default, both in LinkML and by the derived codecs.
+      files("Closed.scala") should not include "@extraSlotsAllowed"
+      // An explicit `allowed: false` wins over `range_expression`, which is then ignored.
+      files("ClosedTyped.scala") should not include "@extraSlotsAllowed"
+      // `extra_slots` is not inherited, so subclasses of open classes are closed unless they say so.
+      files("OpenChild.scala") should not include "@extraSlotsAllowed"
+      files("Plain.scala") should not include "@extraSlotsAllowed"
+    }
+
     "provide annotations inlining the class compact dict style" in {
       given SchemaView = ModelCatalogue.inlines.explicitInlineImplicitlyAsCompactDict.model
 

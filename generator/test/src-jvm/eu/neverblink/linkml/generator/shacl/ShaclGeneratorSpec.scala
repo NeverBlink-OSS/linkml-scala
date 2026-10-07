@@ -437,6 +437,54 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should include("rdfs:label \"contact_info\"")
     }
 
+    "open shapes of classes whose extra_slots allows extra data" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Open:
+           |    extra_slots:
+           |      allowed: true
+           |    attributes:
+           |      a: {}
+           |  Typed:
+           |    extra_slots:
+           |      range_expression:
+           |        range: string
+           |    attributes:
+           |      a: {}
+           |  ClosedTyped:
+           |    extra_slots:
+           |      allowed: false
+           |      range_expression:
+           |        range: string
+           |    attributes:
+           |      a: {}
+           |  OpenChild:
+           |    is_a: Open
+           |  Plain:
+           |    attributes:
+           |      a: {}
+           |""".stripMargin
+      val turtle =
+        RdfUtils.toTurtle(
+          ShaclGenerator(using loadWithImports(input)).generate(_, ShaclGenerator.Options()),
+        )
+      val model = Rio.parse(StringReader(turtle), RDFFormat.TURTLE)
+      def closed(cls: String): Boolean = Models.objectLiteral(
+        model.filter(
+          vf.createIRI(s"https://neverblink.eu/linkml/shacl/test/$cls"),
+          vf.createIRI("http://www.w3.org/ns/shacl#closed"),
+          null,
+        ),
+      ).get.booleanValue
+
+      closed("Open") shouldBe false
+      closed("Typed") shouldBe false
+      closed("ClosedTyped") shouldBe true
+      closed("OpenChild") shouldBe true
+      closed("Plain") shouldBe true
+    }
+
     "enforce open shapes" in {
       val input =
         s"""$schemaShared

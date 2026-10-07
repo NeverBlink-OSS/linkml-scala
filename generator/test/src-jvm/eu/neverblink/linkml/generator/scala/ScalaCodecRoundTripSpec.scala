@@ -10,7 +10,7 @@ import java.net.URLClassLoader
   *
   * For every model this generates the Scala sources, compiles them together with a small driver
   * that derives a [[eu.neverblink.linkml.yaml.LinkmlYamlCodec]] for the tree root, and then decodes
-  * each valid `data.json` with it.
+  * each valid `data.json` with it. Unknown keys are rejected unless `extra_slots` allows them.
   *
   * JVM-only: it needs the Scala compiler.
   */

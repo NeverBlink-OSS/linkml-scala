@@ -23,6 +23,9 @@ The following features are not yet supported or are partially supported in LinkM
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Runtime union generation and codecs for `union_of` (references are resolved and preserved)
 - Rules (`rules`)
+- Partial support for extra data (`extra_slots`)
+  - A `range_expression` allows any extra data, which is not checked against it (see below)
+  - Extra data is only validated, not kept: decoding drops it, so it is lost on a round trip (see below)
 - Null semantics (see below)
 
 ## Inherited type constraints
@@ -70,7 +73,31 @@ Thanks to this, enum values can always be represented as IRIs in RDF, and LinkML
 The identifier slot for classes must have a scalar `type` range.
 It is an error to have an `enum` or `class` identifier.
 
-## Tree root extension
+## Extra data
+
+As in the [metamodel](https://w3id.org/linkml/extra_slots), instances of a class may only have data for its slots, unless the class allows more with `extra_slots`:
+
+```yaml
+classes:
+  Person:
+    extra_slots:
+      allowed: true
+    attributes:
+      name: {}
+```
+
+LinkML-Scala honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`) and TypeScript (`[key: string]: unknown`) generators.
+Python LinkML 1.11.1 does not read `extra_slots`, and closes all classes in its JSON Schema.
+
+- `allowed: true` allows any extra data.
+- `allowed: false`, or no `extra_slots`, forbids it. An explicit `allowed: false` wins over a `range_expression`.
+- A `range_expression` alone allows extra data matching it. LinkML-Scala allows any extra data then, without checking it against the expression.
+- `extra_slots` is not inherited: a subclass of a class allowing extra data forbids it, unless its own `extra_slots` allows it too.
+
+The `--open` option of the JSON Schema, SHACL and TypeScript generators allows extra data in all classes.
+
+In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. Python LinkML can attach unknown attributes to an object at runtime, which Scala classes cannot do.
+
 
 LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.
 For example, this allows specifying that the root of a JSON document should be a JSON array with instances of this class:

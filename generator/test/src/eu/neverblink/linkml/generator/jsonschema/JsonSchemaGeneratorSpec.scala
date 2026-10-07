@@ -6,7 +6,7 @@ import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import sttp.apispec.circe.encoderSchema
-import sttp.apispec.{ExampleSingleValue, Pattern, Schema, SchemaLike, SchemaType}
+import sttp.apispec.{AnySchema, ExampleSingleValue, Pattern, Schema, SchemaLike, SchemaType}
 
 class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
   import JsonSchemaGeneratorSpec.skipModels
@@ -95,8 +95,6 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       // Same test case as previous, but without tree_root defined.
       val input =
         s"""$schemaShared
-           |id: https://neverblink.eu/linkml/tests/basic2/
-           |name: basic2
            |
            |imports:
            |  - linkml:types
@@ -307,6 +305,49 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someSlot.`type` shouldBe Some(List(SchemaType.Array))
       someSlot.items.get.asInstanceOf[Schema]
         .$ref shouldBe Some("#/$defs/SomeOtherClass")
+    }
+
+    "allow additional properties for classes whose extra_slots allows them" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Open:
+           |    extra_slots:
+           |      allowed: true
+           |    attributes:
+           |      a: {}
+           |  Typed:
+           |    extra_slots:
+           |      range_expression:
+           |        range: string
+           |    attributes:
+           |      a: {}
+           |  ClosedTyped:
+           |    extra_slots:
+           |      allowed: false
+           |      range_expression:
+           |        range: string
+           |    attributes:
+           |      a: {}
+           |  OpenChild:
+           |    is_a: Open
+           |  Plain:
+           |    attributes:
+           |      a: {}
+           |""".stripMargin
+
+      given SchemaView = load(input)
+
+      val defs = JsonSchemaGenerator().generate().$defs.get
+      def additionalProperties(cls: String): SchemaLike =
+        defs(cls).asInstanceOf[Schema].additionalProperties.get
+
+      additionalProperties("Open") shouldBe AnySchema.Anything
+      // Data matching `range_expression` is allowed, but not checked against it
+      additionalProperties("Typed") shouldBe AnySchema.Anything
+      additionalProperties("ClosedTyped") shouldBe AnySchema.Nothing
+      additionalProperties("OpenChild") shouldBe AnySchema.Nothing
+      additionalProperties("Plain") shouldBe AnySchema.Nothing
     }
 
     "alias slots" in {

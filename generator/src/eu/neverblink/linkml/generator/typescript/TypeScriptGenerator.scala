@@ -155,7 +155,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       sink.append(propertyType(attribute, cls, ctx))
       sink.append(";\n")
     }
-    if ctx.options.open then sink.append("  [key: string]: unknown;\n")
+    if ctx.options.open || cls.allowsExtraSlots then sink.append("  [key: string]: unknown;\n")
     sink.append("}\n")
   }
 
@@ -250,7 +250,8 @@ object TypeScriptGenerator {
     *   content beyond the key, as in the JSON Schema generator. Default: false
     * @param open
     *   Whether interfaces should allow additional properties (`[key: string]: unknown`), as
-    *   `additionalProperties` in the JSON Schema generator. Default: false
+    *   `additionalProperties` in the JSON Schema generator. Default: false. Interfaces of classes
+    *   whose `extra_slots` allows extra data allow them anyway.
     * @param metadataLanguage
     *   Which language to use for titles and descriptions in doc comments.
     */

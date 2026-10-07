@@ -178,7 +178,8 @@ object LinkMlJsApi {
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param open
-    *   Whether the JSON Schema should allow `additionalProperties` or not.
+    *   Whether the JSON Schema should allow `additionalProperties` for all classes, not only for
+    *   those whose `extra_slots` allows them.
     * @param treeRootOverride
     *   Override for the LinkML `tree_root` class which will be at the root of the JSON Schema.
     * @return
@@ -198,8 +199,8 @@ object LinkMlJsApi {
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param open
-    *   Whether the SHACL shapes should be open (`_:b sh:closed false .`, allowing additional
-    *   properties).
+    *   Whether all SHACL shapes should be open (`_:b sh:closed false .`, allowing additional
+    *   properties), not only those of classes whose `extra_slots` allows them.
     * @param onlyClassesFromRootSchema
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
@@ -483,7 +484,8 @@ object LinkMlJsApi {
     * @param includeNull
     *   Whether optional slots may also be `null`.
     * @param open
-    *   Whether the interfaces should allow additional properties.
+    *   Whether all interfaces should allow additional properties, not only those of classes whose
+    *   `extra_slots` allows them.
     * @return
     *   TypeScript source code
     */
