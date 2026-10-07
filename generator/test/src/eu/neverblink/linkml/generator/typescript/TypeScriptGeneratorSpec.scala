@@ -282,6 +282,44 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("  [key: string]: unknown;\n}\n")
     }
 
+    "allow additional properties for classes whose extra_slots allows them" in {
+      val ts = generate(
+        """classes:
+          |  Open:
+          |    extra_slots:
+          |      allowed: true
+          |    attributes:
+          |      a: {}
+          |  Typed:
+          |    extra_slots:
+          |      range_expression:
+          |        range: string
+          |    attributes:
+          |      a: {}
+          |  ClosedTyped:
+          |    extra_slots:
+          |      allowed: false
+          |      range_expression:
+          |        range: string
+          |    attributes:
+          |      a: {}
+          |  OpenChild:
+          |    is_a: Open
+          |  Plain:
+          |    attributes:
+          |      a: {}
+          |""".stripMargin,
+      )
+      def interface(name: String): String =
+        raw"(?s)export interface $name \{.*?\n\}".r.findFirstIn(ts).get
+
+      interface("Open") should include("  [key: string]: unknown;\n")
+      interface("Typed") should include("  [key: string]: unknown;\n")
+      interface("ClosedTyped") should not include "[key: string]"
+      interface("OpenChild") should not include "[key: string]"
+      interface("Plain") should not include "[key: string]"
+    }
+
     "write titles and descriptions as doc comments" in {
       val ts = generate(
         """classes:

@@ -113,5 +113,6 @@ object OssieOntology {
     override def encode(x: Node, skipId: Boolean): Node = x
   }
 
-  given codec: LinkmlYamlCodec[OssieOntology] = LinkmlYamlCodec.derived
+  // Ossie documents may carry fields that this model does not cover yet, which are then ignored.
+  given codec: LinkmlYamlCodec[OssieOntology] = LinkmlYamlCodec.derived(extraSlotsAllowed = true)
 }

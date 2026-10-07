@@ -277,6 +277,116 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |^""".stripMargin,
       )
     }
+    "reject unknown and non-string fields of case classes by default" in {
+      case class MyClass(@named("x") a: String, b: Option[Int] = None) derives LinkmlYamlCodec
+
+      decodeError[MyClass](
+        "x: ABC\ny: 123\n",
+        """Expected a known field of 'MyClass' at 1:0 but got:
+          |y: 123
+          |^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "x: ABC\na: DEF\n",
+        """Expected a known field of 'MyClass' at 1:0 but got:
+          |a: DEF
+          |^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "x: ABC\n1: 2\n",
+        """Expected a known field of 'MyClass' at 1:0 but got:
+          |1: 2
+          |^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "x: ABC\ntrue: 2\n",
+        """Expected a known field of 'MyClass' at 1:0 but got:
+          |true: 2
+          |^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "x: ABC\nnull: 2\n",
+        """Expected a known field of 'MyClass' at 1:0 but got:
+          |null: 2
+          |^""".stripMargin,
+      )
+    }
+    "ignore unknown and non-string fields of classes annotated with @extraSlotsAllowed" in {
+      @extraSlotsAllowed case class Open(y: Int)
+
+      case class Closed(y: Int)
+
+      case class MyClass(
+          @named("x") a: String,
+          o: Option[Open] = None,
+          c: Option[Closed] = None,
+      ) derives LinkmlYamlCodec
+
+      decode[MyClass](
+        "x: ABC\no:\n  y: 1\n  z: 2\n  3: 4\n",
+        MyClass("ABC", o = Some(Open(1))),
+      )
+      decodeError[MyClass](
+        "x: ABC\nc:\n  y: 1\n  z: 2\n",
+        """Expected a known field of 'Closed' at 3:2 but got:
+          |  z: 2
+          |  ^""".stripMargin,
+      )
+    }
+    "allow unknown fields of all classes when the macro flag says so" in {
+      @extraSlotsAllowed case class Open(y: Int)
+
+      case class Closed(y: Int)
+
+      case class MyClass(o: Option[Open] = None, c: Option[Closed] = None)
+
+      decode[MyClass](
+        "c:\n  y: 1\n  z: 2\n  3: 4\nq: 5\n",
+        MyClass(c = Some(Closed(1))),
+      )(using LinkmlYamlCodec.derived(extraSlotsAllowed = true))
+      // Turning the flag off is the default, which still allows them where annotated.
+      given LinkmlYamlCodec[MyClass] = LinkmlYamlCodec.derived(extraSlotsAllowed = false)
+      decode[MyClass]("o:\n  y: 1\n  z: 2\n", MyClass(o = Some(Open(1))))
+      decodeError[MyClass](
+        "c:\n  y: 1\n  z: 2\n",
+        """Expected a known field of 'Closed' at 2:2 but got:
+          |  z: 2
+          |  ^""".stripMargin,
+      )
+    }
+    "reject unknown fields of nested and dictionary-inlined classes by default" in {
+      case class Entry(@id k: String, @value v: Int, c: Option[String] = None)
+
+      case class Inner(y: Int)
+
+      case class MyClass(
+          @simpleDict d: Map[String, Entry] = Map.empty,
+          i: Option[Inner] = None,
+      ) derives LinkmlYamlCodec
+
+      decode[MyClass](
+        "d:\n  a: 1\n  b:\n    k: b\n    v: 2\n",
+        MyClass(Map("a" -> Entry("a", 1), "b" -> Entry("b", 2))),
+      )
+      decodeError[MyClass](
+        "d:\n  a:\n    v: 1\n    w: 2\n",
+        """Expected a known field of 'Entry' at 3:4 but got:
+          |    w: 2
+          |    ^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "d:\n  a:\n    v: 1\n    2: 3\n",
+        """Expected a known field of 'Entry' at 3:4 but got:
+          |    2: 3
+          |    ^""".stripMargin,
+      )
+      decodeError[MyClass](
+        "i:\n  y: 1\n  z: 2\n",
+        """Expected a known field of 'Inner' at 2:2 but got:
+          |  z: 2
+          |  ^""".stripMargin,
+      )
+    }
     "decode and encode case classes with private constructor" in {
       case class MyClass private (a: String, b: Int, c: Boolean) derives LinkmlYamlCodec
 

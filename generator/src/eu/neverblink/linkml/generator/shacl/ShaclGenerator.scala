@@ -244,7 +244,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.O
       c.cls.description.foreachFast { d =>
         langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
-      val closed = !open && c.isConcrete
+      val closed = !open && c.isConcrete && !c.allowsExtraSlots
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       sink.list(
         classNameIri,
@@ -288,7 +288,8 @@ object ShaclGenerator {
     *
     * @param open
     *   Whether the generated shapes should be open, allowing properties the schema does not mention
-    *   (turned off by default).
+    *   (turned off by default). Shapes of classes whose `extra_slots` allows extra data are open
+    *   anyway.
     * @param onlyClassesFromRootSchema
     *   Whether to include only classes from the root schema (turned off by default). This is useful
     *   if you intend to generate SHACL shapes for each schema file separately, and you don't need

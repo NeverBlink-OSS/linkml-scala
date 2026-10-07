@@ -22,7 +22,8 @@ Options:
   [Pruning](#pruning)). Default: `skip`, i.e. all of them.
 - `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
 - `--include-null`: allow `null` for optional slots.
-- `--open`: allow extra properties on every object.
+- `--open`: allow extra properties on every object, not only on those of classes whose
+  `extra_slots` allows them.
 
 ## Loading and dumping data
 

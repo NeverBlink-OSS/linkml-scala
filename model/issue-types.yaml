@@ -253,29 +253,20 @@ classes:
 
   InvalidUriOrCurie:
     is_a: SchemaError
-    description: An element's URI or CURIE is not a valid IRI or `prefix:localname` pair.
-    slots:
-      - element_name
+    description: A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair.
     attributes:
       uri_or_curie:
         range: uriorcurie
         required: true
         title: URI or CURIE
-      element_type:
-        range: string
-        required: true
-        title: element type
     slot_usage:
       message:
-        equals_expression: >-
-          Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
-          schema '{location.schema_id}'.
+        equals_expression: "Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}"
       details:
         equals_expression: >-
-          Invalid URI or CURIE '{uri_or_curie}' in {element_type} '{element_name}' imported from
-          schema '{location.schema_id}'. A valid URI must be a valid IRI, and a valid CURIE must be
-          of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a
-          valid NCName.
+          Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}. A valid URI must be a
+          valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'localname' is a
+          valid relative IRI reference.
 
   # ---- Warning ----------------------------------------------------------------------------------
 

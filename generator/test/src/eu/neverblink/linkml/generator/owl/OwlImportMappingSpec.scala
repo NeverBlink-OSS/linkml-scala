@@ -339,7 +339,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
   }
 
   "documentation" should {
-    "fill the metaslots, leaving out a label that is just the name" in {
+    "fill the metaslots" in {
       val a = schema(
         cls("A"),
         AnnotationAssertion(ns + "A", Annotation.text(Rdfs.label.value, "A")),
@@ -351,7 +351,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
           Annotation(Owl.deprecated.value, Literal("true", XmlSchema.boolean)),
         ),
       ).classes("A")
-      a.title shouldBe None
+      a.title shouldBe Some(PlainText("A"))
       a.description shouldBe Some(PlainText("First."))
       a.comments shouldBe Seq(PlainText("Second."))
       a.seeAlso shouldBe Seq(Curie("ex:B"))
@@ -388,26 +388,6 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
         MultilingualText(Map("en" -> "Two.")),
         MultilingualText(Map("de" -> "Eins.")),
       )
-    }
-
-    "keep a label that repeats the name as one language of the title" in {
-      def label(text: String, lang: String) =
-        AnnotationAssertion(ns + "A", Annotation(Rdfs.label.value, LanguageLiteral(text, lang)))
-      schema(cls("A"), label("A", "en"), label("Ah", "de")).classes("A").title shouldBe
-        Some(MultilingualText(Map("en" -> "A", "de" -> "Ah")))
-      // The title keeps both languages even when English is the schema's language.
-      val comments = (0 until 10).map(i =>
-        AnnotationAssertion(
-          ns + "B",
-          Annotation(Rdfs.comment.value, LanguageLiteral(s"Comment $i.", "en")),
-        ),
-      )
-      val s = schema(Seq(cls("A"), cls("B"), label("A", "en"), label("Ah", "de")) ++ comments*)
-      s.inLanguage shouldBe Some("en")
-      s.classes("A").title shouldBe Some(MultilingualText(Map("en" -> "A", "de" -> "Ah")))
-      // A label that repeats the name is dropped when another label has the same language.
-      schema(cls("A"), label("A", "en"), label("Alpha", "en")).classes("A").title shouldBe
-        Some(PlainText("Alpha"))
     }
 
     "make the language of all text the schema's in_language" in {
@@ -448,16 +428,6 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       val s = schema(Seq(cls("A"), cls("B"), label("Ding")) ++ untagged*)
       s.inLanguage shouldBe None
       s.classes("A").title shouldBe Some(MultilingualText(Map("de" -> "Ding")))
-      // This holds even when the label repeats the name.
-      schema(Seq(cls("A"), cls("B"), label("A")) ++ untagged*).classes("A").title shouldBe
-        Some(MultilingualText(Map("de" -> "A")))
-      // But not when skos:prefLabel gives the title.
-      val skosPrefLabel = "http://www.w3.org/2004/02/skos/core#prefLabel"
-      val prefLabels = Seq("en" -> "A", "fr" -> "Un A").map((l, t) =>
-        AnnotationAssertion(ns + "A", Annotation(skosPrefLabel, LanguageLiteral(t, l))),
-      )
-      schema(Seq(cls("A"), cls("B"), label("A")) ++ untagged ++ prefLabels*).classes("A")
-        .title shouldBe Some(MultilingualText(Map("en" -> "A", "fr" -> "Un A")))
     }
 
     "keep other annotations as LinkML annotations" in {

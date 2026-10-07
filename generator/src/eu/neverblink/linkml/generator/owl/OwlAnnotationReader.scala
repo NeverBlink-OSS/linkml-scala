@@ -3,7 +3,7 @@ package eu.neverblink.linkml.generator.owl
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigImpl
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.metadataSources
 import eu.neverblink.linkml.metamodel.AnnotationImpl
-import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Node, Rdfs, XmlSchema}
+import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Node, XmlSchema}
 import eu.neverblink.linkml.runtime.*
 
 import scala.collection.immutable.VectorMap
@@ -27,12 +27,6 @@ private[owl] final class OwlAnnotationReader(
     config.metadataSources.flatMap((slot, properties) =>
       Metadata.byName.get(slot).map(_ -> properties.map(names.expand)),
     )
-
-  /** The annotation properties that `title` is read from. */
-  private val titleProperties: Set[String] =
-    sources.collect {
-      case (field, properties) if field.name == "title" => properties
-    }.flatten.toSet
 
   /** The annotation properties of human-readable metaslots, such as title and description. */
   private val humanTextProperties: Set[String] =
@@ -72,67 +66,28 @@ private[owl] final class OwlAnnotationReader(
     languages.forall(_.isDefined) && languages.distinct.size == languages.size
   }
 
-  /** Whether to drop `a` because its text is just the term's name. The generator writes the name as
-    * `rdfs:label` when a term has no title, so such a label is usually not a real title.
-    *
-    * It is kept in two cases:
-    *   - The same property has one text per language, so `a` is the title in its language, like
-    *     `"Catalog"@en` next to `"Katalog"@de`.
-    *   - It is its property's only value, its language tag is not the schema's, and no other title
-    *     property has a value. Dropping it would lose the tag.
-    */
-  private def repeatsName(a: Annotation, all: Iterable[Annotation], name: Option[String]): Boolean =
-    name.exists(textIn(a.value).contains) && {
-      val same = all.filter(_.property == a.property).toSeq
-      lazy val otherTitle =
-        all.exists(o => o.property != a.property && titleProperties(o.property))
-      !oneLanguageEach(same) ||
-      same.sizeIs < 2 && (!a.value.isInstanceOf[LanguageLiteral] || otherTitle)
-    }
+  def documentation(iri: String): (Metadata, Map[String, AnnotationImpl]) =
+    documentation(annotationsOf.getOrElse(iri, Nil))
 
-  /** The generator labels a term with its name only if the term is in the schema's own namespace.
-    * For other terms, a label equal to the name is a real title.
-    */
-  def documentation(iri: String, name: String): (Metadata, Map[String, AnnotationImpl]) =
-    documentation(
-      annotationsOf.getOrElse(iri, Nil),
-      name,
-      nameIsLabel = iri.startsWith(names.defaultNamespace),
-    )
-
-  def documentation(
-      annotations: Seq[Annotation],
-      name: String,
-      nameIsLabel: Boolean = true,
-  ): (Metadata, Map[String, AnnotationImpl]) = {
-    val (metadata, rest) = metadataOf(annotations, if nameIsLabel then Some(name) else None)
+  def documentation(annotations: Seq[Annotation]): (Metadata, Map[String, AnnotationImpl]) = {
+    val (metadata, rest) = metadataOf(annotations)
     (metadata, linkmlAnnotations(rest))
   }
 
-  /** Splits annotations into metadata and the leftovers. `name` is the label the generator would
-    * give the term if it had no title, or None if it would not.
+  /** Splits annotations into metadata and the leftovers.
     *
     * Each metaslot reads its properties in order. A single-valued one stops at the first property
     * with a value, or for text, takes one value per language. The values it takes, and any other
     * values with the same text, are not available to later metaslots.
     */
-  private def metadataOf(
-      annotations: Seq[Annotation],
-      name: Option[String],
-  ): (Metadata, Seq[Annotation]) = {
-    val plain = annotations.map(plainInLanguage)
-    val remaining = mutable.ArrayBuffer.from(plain.filterNot { a =>
-      a.property == Rdfs.label.value && repeatsName(a, plain, name)
-    })
+  private def metadataOf(annotations: Seq[Annotation]): (Metadata, Seq[Annotation]) = {
+    val remaining = mutable.ArrayBuffer.from(annotations.map(plainInLanguage))
     var metadata = Metadata()
     sources.foreach { (field, properties) =>
       val single = singleValued(field.name)
       val values = mutable.ArrayBuffer.empty[String | LocalizedText | UriOrCurie]
       val texts = mutable.ArrayBuffer.empty[Annotation]
       properties.iterator.takeWhile(_ => !single || values.isEmpty).foreach { property =>
-        if field.name == "title" then
-          val all = remaining.toSeq
-          remaining.filterInPlace(a => a.property != property || !repeatsName(a, all, name))
         val usable =
           remaining.filter(a => a.property == property && valueOf(field, a.value).isDefined)
         val chosen =

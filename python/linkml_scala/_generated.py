@@ -58,7 +58,7 @@ class Generators:
         """Generate a JSON Schema.
 
         :param open: Whether the generated JSON Schema should allow `additionalProperties` for
-            classes.
+            all classes. Classes whose `extra_slots` allows extra data allow them anyway.
         :param tree_root: If defined, override the schema `tree_root` class with the one
             provided.
         :param tree_root_inline_type: If defined, override the `tree_root_as` extension of the
@@ -91,7 +91,8 @@ class Generators:
         """Generate SHACL shapes, serialized as N-Triples or Turtle.
 
         :param open: Whether the generated shapes should be open, allowing properties the schema
-            does not mention (turned off by default).
+            does not mention (turned off by default). Shapes of classes whose `extra_slots`
+            allows extra data are open anyway.
         :param only_classes_from_root_schema: Whether to include only classes from the root
             schema (turned off by default). This is useful if you intend to generate SHACL
             shapes for each schema file separately, and you don't need the imported classes to
@@ -220,7 +221,8 @@ class Generators:
             entries without required content beyond the key, as in the JSON Schema generator.
             Default: false
         :param open: Whether interfaces should allow additional properties (`[key: string]:
-            unknown`), as `additionalProperties` in the JSON Schema generator. Default: false
+            unknown`), as `additionalProperties` in the JSON Schema generator. Default: false.
+            Interfaces of classes whose `extra_slots` allows extra data allow them anyway.
         :param metadata_language: Which language to use for titles and descriptions in doc
             comments.
         """

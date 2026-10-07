@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class ExtraSlotsExpressionImpl(
-    allowed: Boolean = false,
+    allowed: Option[Boolean] = None,
     @named("range_expression")
     rangeExpression: Option[AnonymousSlotExpressionImpl] = None,
 ) extends ExtraSlotsExpression {
@@ -31,7 +31,7 @@ abstract class ExtraSlotsExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def allowed: Boolean
+  def allowed: Option[Boolean]
 
   /** A range that is described as a boolean expression combining existing ranges
     *

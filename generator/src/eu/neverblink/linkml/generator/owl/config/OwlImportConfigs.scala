@@ -22,19 +22,19 @@ object OwlImportConfigs {
     * metaslot's property in the LinkML metamodel, which the OWL generator writes. The exceptions
     * are `title`, written as `rdfs:label`, and `description`, written as `rdfs:comment` unless
     * asked for `skos:definition`. If a term has both, the definition becomes the description.
+    * `rdfs:comment` comes before `dcterms:description`, which Dublin Core uses for usage notes.
     *
     * A value goes to the first metaslot that lists its property and still has room. So a second
-    * `rdfs:comment` goes to `comments` once `description` has one. An `rdfs:label` that equals the
-    * element's name is dropped.
+    * `rdfs:comment` goes to `comments` once `description` has one.
     */
   val defaultMetadata: Seq[(String, Seq[String])] = Seq(
     "title" -> Seq("rdfs:label", "dcterms:title", "dc:title", "skos:prefLabel"),
     "description" -> Seq(
       "skos:definition",
-      "dcterms:description",
-      "dc:description",
       "obo:IAO_0000115",
       "rdfs:comment",
+      "dcterms:description",
+      "dc:description",
     ),
     "aliases" -> Seq(
       "skos:altLabel",

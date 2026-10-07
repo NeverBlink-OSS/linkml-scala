@@ -15,7 +15,8 @@ object Codec {
     LinkmlYamlCodec.derived
   private val invalidRange: LinkmlYamlCodec[InvalidRangeImpl] = LinkmlYamlCodec.derived
   private val invalidSlotUsage: LinkmlYamlCodec[InvalidSlotUsageImpl] = LinkmlYamlCodec.derived
-  private val invalidUriOrCurie: LinkmlYamlCodec[InvalidUriOrCurieImpl] = LinkmlYamlCodec.derived
+  private val invalidUriOrCurie: LinkmlYamlCodec[InvalidUriOrCurieImpl] =
+    LinkmlYamlCodec.derived
   private val multipleKeyOrIdSlots: LinkmlYamlCodec[MultipleKeyOrIdSlotsImpl] =
     LinkmlYamlCodec.derived
   private val multipleTreeRoots: LinkmlYamlCodec[MultipleTreeRootsImpl] = LinkmlYamlCodec.derived
@@ -54,7 +55,11 @@ object Codec {
         ),
         TypeDesignatorEntry("InvalidRange", classOf[InvalidRangeImpl], invalidRange),
         TypeDesignatorEntry("InvalidSlotUsage", classOf[InvalidSlotUsageImpl], invalidSlotUsage),
-        TypeDesignatorEntry("InvalidUriOrCurie", classOf[InvalidUriOrCurieImpl], invalidUriOrCurie),
+        TypeDesignatorEntry(
+          "InvalidUriOrCurie",
+          classOf[InvalidUriOrCurieImpl],
+          invalidUriOrCurie,
+        ),
         TypeDesignatorEntry(
           "MultipleKeyOrIdSlots",
           classOf[MultipleKeyOrIdSlotsImpl],
