@@ -98,9 +98,9 @@ Prefix names come from `sh:declare` (which the generator writes), the document's
 
 The importer also reads vocabularies written in plain RDFS, such as DC terms or Schema.org:
 
-- `rdfs:Class` is read as a class, and `rdf:Property` as a property.
+- `rdfs:Class` is imported as a LinkML class, and `rdf:Property` as a slot.
 - Schema.org's `schema:domainIncludes` and `schema:rangeIncludes` are read as well.
-- RDFS can't say that a property has one value, so every slot is multivalued.
+- RDFS can't express that a property has one value, so every slot is multivalued.
 - A range of `rdfs:Literal` or `rdfs:Resource` says nothing, so the slot gets no range.
 - A vocabulary without an `owl:Ontology` gets the namespace of most of its terms as the schema `id`. Set it with `--schema-id`.
 
