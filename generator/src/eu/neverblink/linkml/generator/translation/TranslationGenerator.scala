@@ -13,6 +13,7 @@ import eu.neverblink.linkml.generator.frictionless.FrictionlessRenamer
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
 import eu.neverblink.linkml.generator.jsonschema.JsonRenamer
 import eu.neverblink.linkml.generator.ossie.OssieRenamer
+import eu.neverblink.linkml.generator.pydantic.PydanticRenamer
 import eu.neverblink.linkml.generator.scala.ScalaRenamer
 import eu.neverblink.linkml.generator.translation.TranslationGenerator.Translation
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
@@ -56,7 +57,7 @@ class TranslationGenerator(using sv: SchemaView)
 
 object TranslationGenerator {
   val availableValues =
-    """"base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript""""
+    """"base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic""""
 
   def resolveRenames(id: String): Renamer = id match {
     case "base" => TranslationGenerator.BaseRenamer
@@ -68,6 +69,7 @@ object TranslationGenerator {
     case "erdiagram" => ErDiagramRenamer
     case "json" => JsonRenamer
     case "typescript" => TypeScriptRenamer
+    case "pydantic" => PydanticRenamer
     case other => throw IllegalArgumentException(s"Unknown translation target: '$other'")
   }
 

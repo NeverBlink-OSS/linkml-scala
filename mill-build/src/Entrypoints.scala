@@ -108,6 +108,15 @@ object Entrypoints {
       "Generate TypeScript types for the schema's JSON data.",
     ),
     Entrypoint(
+      "pydantic",
+      "linkml_pydantic",
+      "pydantic",
+      "PydanticGenerator",
+      "str",
+      "Generate pydantic classes that load and dump the schema's JSON data.",
+      "Generate pydantic classes for the schema's JSON data.",
+    ),
+    Entrypoint(
       "er_diagram",
       "linkml_er_diagram",
       "erDiagram",

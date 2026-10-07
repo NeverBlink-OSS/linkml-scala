@@ -61,6 +61,7 @@ char *linkml_rdfs(long long handle, const char *options, char **error);
 char *linkml_linkml(long long handle, const char *options, char **error);
 char *linkml_graphql(long long handle, const char *options, char **error);
 char *linkml_typescript(long long handle, const char *options, char **error);
+char *linkml_pydantic(long long handle, const char *options, char **error);
 char *linkml_er_diagram(long long handle, const char *options, char **error);
 char *linkml_ossie(long long handle, const char *options, char **error);
 char *linkml_owl(long long handle, const char *options, char **error);

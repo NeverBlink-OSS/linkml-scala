@@ -1,11 +1,10 @@
 package eu.neverblink.linkml.generator.typescript
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
-import eu.neverblink.linkml.metamodel.CommonMetadata
+import eu.neverblink.linkml.generator.util.{DocLines, PruningMode}
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.StringUtils.{hexDigit, splitLines}
+import eu.neverblink.linkml.runtime.StringUtils.hexDigit
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -102,20 +101,6 @@ final class TypeScriptGenerator(using sv: SchemaView)
     else tpe
   }
 
-  private def docLines(element: CommonMetadata, options: Options): Seq[String] = {
-    val title = element.title.flatMapFast(_.inLanguage(options.metadataLanguage))
-    val description = element.description.flatMapFast(_.inLanguage(options.metadataLanguage))
-    val text = title match {
-      case Some(t) =>
-        description match {
-          case Some(d) => Some(s"$t: $d")
-          case _ => title
-        }
-      case _ => description
-    }
-    text.foldFast(Nil: Seq[String])(t => splitLines(t.strip))
-  }
-
   private def writeDoc(sink: CharSink, lines: Seq[String], indent: String): Unit =
     if lines.nonEmpty then {
       val escaped = lines.map(_.replace("*/", "*\\/"))
@@ -137,13 +122,13 @@ final class TypeScriptGenerator(using sv: SchemaView)
     }
 
   private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context): Unit = {
-    writeDoc(sink, docLines(cls.cls, ctx.options), "")
+    writeDoc(sink, DocLines(cls.cls, ctx.options.metadataLanguage), "")
     sink.append("export interface ")
     sink.append(className(cls))
     sink.append(" {\n")
     cls.sortedAttributeViews.foreach { attribute =>
       val slot = attribute.slotView
-      val doc = docLines(slot.slot, ctx.options) ++ (attribute match {
+      val doc = DocLines(slot.slot, ctx.options.metadataLanguage) ++ (attribute match {
         case ref: ClassReferenceAttributeView => Seq(s"Reference to ${className(ref.classView)}")
         case _ => Nil
       })
@@ -160,7 +145,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   }
 
   private def writeUnion(sink: CharSink, cls: ClassView, name: String, options: Options): Unit = {
-    if !cls.isConcrete then writeDoc(sink, docLines(cls.cls, options), "")
+    if !cls.isConcrete then writeDoc(sink, DocLines(cls.cls, options.metadataLanguage), "")
     sink.append("export type ")
     sink.append(name)
     sink.append(" =")
@@ -172,7 +157,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   }
 
   private def writeEnum(sink: CharSink, ev: EnumView, options: Options): Unit = {
-    writeDoc(sink, docLines(ev._enum, options), "")
+    writeDoc(sink, DocLines(ev._enum, options.metadataLanguage), "")
     sink.append("export type ")
     sink.append(enumName(ev))
     sink.append(" =")

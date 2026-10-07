@@ -24,9 +24,18 @@ import { json } from "@codemirror/lang-json";
 import { turtle } from "@codemirror/legacy-modes/mode/turtle";
 import { scala } from "@codemirror/legacy-modes/mode/clike";
 import { typescript } from "@codemirror/legacy-modes/mode/javascript";
+import { python } from "@codemirror/legacy-modes/mode/python";
 import { tags as t } from "@lezer/highlight";
 
-export type OutputLang = "json" | "yaml" | "turtle" | "scala" | "graphql" | "typescript" | "text";
+export type OutputLang =
+  | "json"
+  | "yaml"
+  | "turtle"
+  | "scala"
+  | "graphql"
+  | "typescript"
+  | "python"
+  | "text";
 
 // Minimal GraphQL SDL mode
 const GRAPHQL_KEYWORDS = new Set([
@@ -90,6 +99,7 @@ const LANGS: Record<OutputLang, unknown[]> = {
   scala: [StreamLanguage.define(scala)],
   graphql: [StreamLanguage.define(graphql)],
   typescript: [StreamLanguage.define(typescript)],
+  python: [StreamLanguage.define(python)],
   text: [],
 };
 

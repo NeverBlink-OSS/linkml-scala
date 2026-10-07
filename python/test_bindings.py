@@ -468,6 +468,9 @@ class GeneratorTest(unittest.TestCase):
     def test_typescript(self):
         self.assertIn("export interface Person {", self.schema.typescript())
 
+    def test_pydantic(self):
+        self.assertIn("class Person(LinkMLModel):", self.schema.pydantic())
+
     def test_owl(self):
         generated = self.schema.owl()
         # Turtle by default, with classes as OWL classes.
@@ -670,7 +673,15 @@ class RuntimeTest(unittest.TestCase):
         # The emoji is in the slot name, not just the description, because the ER diagram renders
         # names and types but no descriptions.
         with linkml_scala.load_string(unicode_schema) as loaded:
-            for name in ("linkml", "graphql", "typescript", "translation", "json_schema", "ossie"):
+            for name in (
+                "linkml",
+                "graphql",
+                "typescript",
+                "pydantic",
+                "translation",
+                "json_schema",
+                "ossie",
+            ):
                 with self.subTest(generator=name):
                     generated = getattr(loaded, name)()
                     self.assertIn("🐍", generated)

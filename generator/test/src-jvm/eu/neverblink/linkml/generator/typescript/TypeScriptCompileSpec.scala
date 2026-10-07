@@ -1,12 +1,7 @@
 package eu.neverblink.linkml.generator.typescript
 
-import eu.neverblink.linkml.schemaview.{
-  ClassView,
-  CollectionForm,
-  InlineType,
-  SchemaIssues,
-  SchemaView,
-}
+import eu.neverblink.linkml.generator.DocumentModels.*
+import eu.neverblink.linkml.schemaview.{ClassView, CollectionForm, InlineType, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -53,95 +48,6 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "typed" -> "notDate" -> "TypeScript types cannot express string formats such as dates",
   )
 
-  /** A model to check, with its valid and invalid documents by name. */
-  private case class Model(
-      name: String,
-      sv: SchemaView,
-      valid: Seq[(String, String)],
-      invalid: Seq[(String, String)],
-  )
-
-  private val catalogueModels: Seq[Model] = ModelCatalogue.all.map { entry =>
-    def jsons(instances: Seq[ModelCatalogue.InstanceInFormats]) =
-      instances.distinct.flatMap(i => i.json.map(i.name -> _))
-    Model(entry.name, entry.model, jsons(entry.validInstances), jsons(entry.invalidInstances))
-  }
-
-  /** No catalogue model has a tree root in another form than `plain`, so these cover the rest. */
-  private val documentForms: Seq[Model] = {
-    def model(name: String, form: String, attributes: String) = SchemaIssues.orThrow(
-      SchemaView.loadSchemaViewFromString(
-        s"""id: https://neverblink.eu/linkml/typescript/$name/
-           |name: $name
-           |imports:
-           |  - linkml:types
-           |classes:
-           |  Item:
-           |    tree_root: true
-           |    extensions:
-           |      tree_root_as: $form
-           |    attributes:
-           |$attributes""".stripMargin,
-      ),
-    )
-    val plainAttributes =
-      """      name:
-        |        required: true
-        |      count:
-        |        range: integer
-        |""".stripMargin
-    Seq(
-      Model(
-        "optionalDocument",
-        model("optionalDocument", "optional", plainAttributes),
-        Seq("null" -> "null", "object" -> """{"name": "a"}"""),
-        Seq("list" -> """[{"name": "a"}]"""),
-      ),
-      Model(
-        "listDocument",
-        model("listDocument", "list", plainAttributes),
-        Seq("empty" -> "[]", "two" -> """[{"name": "a"}, {"name": "b", "count": 2}]"""),
-        Seq("object" -> """{"name": "a"}""", "wrongType" -> """[{"name": "a", "count": "2"}]"""),
-      ),
-      Model(
-        "compactDictDocument",
-        model(
-          "compactDictDocument",
-          "compact_dict",
-          """      id:
-            |        identifier: true
-            |      name:
-            |      count:
-            |        range: integer
-            |""".stripMargin,
-        ),
-        Seq(
-          "entries" -> """{"a": {"name": "A", "count": 1}, "b": {"id": "b"}, "c": {}}""",
-        ),
-        Seq(
-          "number" -> """{"a": 1}""",
-          "unknownKey" -> """{"a": {"colour": "red"}}""",
-          "wrongType" -> """{"a": {"count": "1"}}""",
-        ),
-      ),
-      Model(
-        "simpleDictDocument",
-        model(
-          "simpleDictDocument",
-          "simple_dict",
-          """      key:
-            |        key: true
-            |      label:
-            |""".stripMargin,
-        ),
-        Seq(
-          "entries" -> """{"a": "A", "b": {"label": "B"}, "c": {"key": "c", "label": "C"}}""",
-        ),
-        Seq("number" -> """{"a": 1}""", "unknownKey" -> """{"a": {"colour": "red"}}"""),
-      ),
-    )
-  }
-
   /** Generated files of one model, by file name relative to the output directory. */
   private case class Generated(
       model: Try[String],
@@ -153,7 +59,7 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   private lazy val outDir: os.Path = os.temp.dir(prefix = "linkml-ts-")
 
   private lazy val generated: Map[String, Generated] =
-    (catalogueModels ++ documentForms).map { entry =>
+    (catalogue ++ documentForms).map { entry =>
       val dir = safeName(entry.name)
       val modelFile = s"$dir/model.ts"
       val model = Try(TypeScriptGenerator(using entry.sv).serialize())
@@ -299,8 +205,6 @@ object TypeScriptCompileSpec {
         s"Record<string, $ref[${key(v)}] | KeyOptional<$ref, ${key(k)}>>"
     }
   }
-
-  private def safeName(name: String): String = name.map(c => if c.isLetterOrDigit then c else '_')
 
   private val tsconfig: String =
     """{

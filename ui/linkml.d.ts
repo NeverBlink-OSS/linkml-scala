@@ -155,6 +155,17 @@ export interface LinkMLApi {
   typeScript(schema: SchemaView, pruningMode?: string, treeRoot?: string, includeNull?: boolean, open?: boolean): string;
 
   /**
+   * Generate Python classes based on pydantic from a loaded LinkML schema. The classes load and dump the same JSON as [[jsonSchema]] describes: load data with `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: skip
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
+   * @param includeNull Whether dumps keep the nulls that were loaded or set. Otherwise they leave out every field without a value.
+   * @param open Whether the classes should accept and keep additional properties.
+   * @returns Python source code
+   */
+  pydantic(schema: SchemaView, pruningMode?: string, treeRoot?: string, includeNull?: boolean, open?: boolean): string;
+
+  /**
    * Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become entities, type- and enum-ranged slots become their attributes, and class-ranged slots become relationship lines.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
@@ -167,7 +178,7 @@ export interface LinkMLApi {
   /**
    * Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", or "typescript".
+   * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", or "pydantic".
    * @returns Translation dictionary for translating the linkml names to framework names.
    */
   translation(schema: SchemaView, target: string): string;

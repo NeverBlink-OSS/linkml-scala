@@ -57,6 +57,13 @@ object LinkMlCGenerators {
   def typescript(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.typeScript)
 
+  /** Generate pydantic classes for the schema's JSON data. Options: `pruningMode`, `includeNull`,
+    * `open`, `metadataLanguage`.
+    */
+  @exported("linkml_pydantic")
+  def pydantic(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.pydantic)
+
   /** Generate a Mermaid entity relationship diagram. Options: `pruningMode`, `optionalMarker`. */
   @exported("linkml_er_diagram")
   def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

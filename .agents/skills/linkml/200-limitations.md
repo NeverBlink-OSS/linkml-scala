@@ -19,7 +19,7 @@ The following features are not yet supported or are partially supported in LinkM
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
 - Partial support for type designators (`designates_type`)
-  - Supported in the Scala, TypeScript and JSON Schema generators and in YAML/JSON serialization. Not yet in SHACL.
+  - Supported in the Scala, TypeScript, Pydantic and JSON Schema generators and in YAML/JSON serialization. Not yet in SHACL.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Runtime union generation and codecs for `union_of` (references are resolved and preserved)
 - Rules (`rules`)

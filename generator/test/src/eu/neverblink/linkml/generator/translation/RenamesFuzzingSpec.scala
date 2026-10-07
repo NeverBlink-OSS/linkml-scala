@@ -26,6 +26,7 @@ class RenamesFuzzingSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks
     "erdiagram",
     "json",
     "typescript",
+    "pydantic",
   )
 
   def schemaWithNames(
