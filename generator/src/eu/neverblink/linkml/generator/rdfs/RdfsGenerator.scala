@@ -22,11 +22,13 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       subject: Resource,
       cms: Seq[(CommonMetadata, PrefixResolver)],
   ): Unit = {
-    cms.flatMap(_._1.title).distinct.foreach { t =>
-      langStringProperty(sink, subject, Rdfs.label, t)
+    // Text without a language is in the element's language, or the schema's.
+    def language(cm: CommonMetadata) = cm.inLanguage.orElse(sv.root.inLanguage)
+    cms.flatMap(cm => cm._1.title.map((_, language(cm._1)))).distinct.foreach { (t, l) =>
+      langStringProperty(sink, subject, Rdfs.label, t, l)
     }
-    cms.flatMap(_._1.description).distinct.foreach { d =>
-      langStringProperty(sink, subject, Rdfs.comment, d)
+    cms.flatMap(cm => cm._1.description.map((_, language(cm._1)))).distinct.foreach { (d, l) =>
+      langStringProperty(sink, subject, Rdfs.comment, d, l)
     }
     cms.flatMap((cm, pr) => cm.seeAlso.map(_.uri(using pr))).distinct.foreach { uri =>
       sink.triple(subject, Rdfs.seeAlso, Iri(uri))
@@ -37,33 +39,34 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
     * metadata once, a domain per class using it, and each distinct range it derives to.
     *
     * @param usages
-    *   All (class, derived slot) pairs sharing this property URI, in class iteration order.
+    *   All derived slots sharing this property URI, in class iteration order, or the slot itself
+    *   when no class uses it.
     */
   private def emitProperty(
       sink: RdfSink,
       propertyNameIri: Iri,
-      usages: Seq[(ClassView, SlotView)],
+      usages: Seq[SlotView],
   ): Unit = {
     sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
     emitCommonMetadata(
       sink,
       propertyNameIri,
-      usages.map(u => (u._2.slot, u._2.definingPrefixResolver)),
+      usages.map(u => (u.slot, u.definingPrefixResolver)),
     )
 
     sv.lowestCommonAncestors(
       usages
-        .flatMap(_._2.slot.domain)
+        .flatMap(_.slot.domain)
         .flatMap(_.asInstanceOf[Reference[ClassView]].resolve),
     ).map(u => Iri(u.uriStr)).distinct.foreach { domain =>
       sink.triple(propertyNameIri, Rdfs.domain, domain)
     }
 
-    usages.flatMap(_._2.derivedRange.resolve.toList).map(e => Iri(e.uriStr)).distinct.foreach {
+    usages.flatMap(_.derivedRange.resolve.toList).map(e => Iri(e.uriStr)).distinct.foreach {
       range => sink.triple(propertyNameIri, Rdfs.range, range)
     }
 
-    usages.flatMap(_._2.parents).map(_.uriStr).distinct.foreach { parentUriStr =>
+    usages.flatMap(_.parents).map(_.uriStr).distinct.foreach { parentUriStr =>
       sink.triple(propertyNameIri, Rdfs.subPropertyOf, Iri(parentUriStr))
     }
   }
@@ -122,10 +125,40 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       c.derivedAttributes.values.foreach { s =>
         if (!s.inner.identifier) {
           val usages = propertyUsages(s.uriStr)
-          if (usages.head._1 eq c) emitProperty(sink, Iri(s.uriStr), usages)
+          if (usages.head._1 eq c)
+            emitProperty(sink, Iri(s.uriStr), usages.map(_._2))
         }
       }
     }
+
+    // Slots that no class uses are still properties.
+    val slots =
+      if onlyClassesFromRootSchema then
+        sv.slotDefinitions.filter(_._2.definingSchema.id == sv.root.id)
+      else sv.slotDefinitions
+    slots.values.toSeq
+      .filterNot(s => s.inner.identifier || propertyUsages.contains(s.uriStr))
+      .groupBy(_.uriStr).toSeq.sortBy(_._1)
+      .foreach((uri, definitions) => emitProperty(sink, Iri(uri), definitions.sortBy(_.name)))
+
+    // The schema's own datatypes. LinkML's built-in types are XSD's or LinkML's own.
+    val types =
+      if onlyClassesFromRootSchema then sv.types.filter(_._2.definingSchema.id == sv.root.id)
+      else sv.types
+    types.values.toSeq
+      .filterNot(t =>
+        t.definingSchema.id.original.startsWith("https://w3id.org/linkml/") ||
+          t.uriStr.startsWith(XmlSchema.prefix),
+      )
+      .groupBy(_.uriStr).toSeq.sortBy(_._1)
+      .foreach { (uri, definitions) =>
+        sink.triple(Iri(uri), Rdf.`type`, Rdfs.Datatype)
+        emitCommonMetadata(
+          sink,
+          Iri(uri),
+          definitions.sortBy(_.name).map(d => (d._type, d.definingPrefixResolver)),
+        )
+      }
 
     val enums =
       if onlyClassesFromRootSchema then sv.enums.filter(_._2.definingSchema.id == sv.root.id)
@@ -148,7 +181,11 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
       val definitions = enumDefinitions(e.uriStr)
       if (definitions.head eq e) {
         sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(sink, enumIri, definitions.map(d => (d._enum, d.definingPrefixResolver)))
+        emitCommonMetadata(
+          sink,
+          enumIri,
+          definitions.map(d => (d._enum, d.definingPrefixResolver)),
+        )
       }
       definitions.flatMap(_.parents).map(_.uriStr).distinct.foreach { parent =>
         sink.triple(enumIri, Rdfs.subClassOf, Iri(parent))
@@ -160,7 +197,11 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Opt
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }
-          emitCommonMetadata(sink, pvIri, usages.map(u => (u._2, u._1.definingPrefixResolver)))
+          emitCommonMetadata(
+            sink,
+            pvIri,
+            usages.map(u => (u._2, u._1.definingPrefixResolver)),
+          )
         }
       }
     }

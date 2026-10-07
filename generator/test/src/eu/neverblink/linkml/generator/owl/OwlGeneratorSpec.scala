@@ -141,14 +141,13 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       )
     }
 
-    "use the title as the label, falling back to the name" in {
+    "use the title as the label, and write no label without a title" in {
       val axioms = ontologyOf(personinfo).axioms
       val label = "http://www.w3.org/2000/01/rdf-schema#label"
-      axioms should contain allOf (
-        AnnotationAssertion(ns + "Person", Annotation.text(label, "A person")),
-        AnnotationAssertion(ns + "Organisation", Annotation.text(label, "Organisation")),
-      )
-      axioms should not contain AnnotationAssertion(ns + "Person", Annotation.text(label, "Person"))
+      axioms should contain(AnnotationAssertion(ns + "Person", Annotation.text(label, "A person")))
+      axioms.collect {
+        case a @ AnnotationAssertion(s, Annotation(`label`, _), _) if s == ns + "Organisation" => a
+      } shouldBe empty
     }
 
     "write descriptions as rdfs:comment, or as skos:definition when asked" in {
@@ -165,34 +164,6 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       val axioms = ontologyOf(schema, linkml).axioms
       axioms should contain(AnnotationAssertion(ns + "Dog", definition))
       axioms should not contain AnnotationAssertion(ns + "Dog", comment)
-    }
-
-    "make up no label for a class from another namespace" in {
-      val axioms = ontologyOf(
-        """prefixes:
-          |  other: https://other.example.com/
-          |classes:
-          |  Dog:
-          |    is_a: Animal
-          |  Animal:
-          |    class_uri: other:Animal
-          |  Cat:
-          |    class_uri: other:Cat
-          |    title: A cat
-          |""",
-      ).axioms
-      val label = "http://www.w3.org/2000/01/rdf-schema#label"
-      val other = "https://other.example.com/"
-      axioms should contain allOf (
-        Declaration(EntityKind.Class, other + "Animal"),
-        SubClassOf(c("Dog"), Named(other + "Animal")),
-        AnnotationAssertion(ns + "Dog", Annotation.text(label, "Dog")),
-        AnnotationAssertion(other + "Cat", Annotation.text(label, "A cat")),
-      )
-      axioms.collect {
-        case a @ AnnotationAssertion(s, _, _) if s == other + "Animal" => a
-      } shouldBe
-        empty
     }
 
     "make an enum a subclass of its parent enums and classes" in {
@@ -222,10 +193,6 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
         Declaration(EntityKind.NamedIndividual, alive),
         ClassAssertion(c("Status"), alive),
         EquivalentClasses(Seq(c("Status"), OneOf(Seq(alive, ns + "Status.DEAD")))),
-        AnnotationAssertion(
-          alive,
-          Annotation.text("http://www.w3.org/2000/01/rdf-schema#label", "ALIVE"),
-        ),
         AnnotationAssertion(
           alive,
           Annotation.text("http://www.w3.org/2000/01/rdf-schema#comment", "Living."),

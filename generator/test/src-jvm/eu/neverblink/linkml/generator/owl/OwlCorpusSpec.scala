@@ -12,6 +12,7 @@ import eu.neverblink.linkml.metamodel.Codec
 import eu.neverblink.linkml.metamodel.SchemaDefinitionImpl
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, NTriplesParser, Triple}
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaView}
+import org.scalatest.Assertions
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -20,40 +21,23 @@ import java.util.zip.GZIPInputStream
 
 import scala.collection.mutable
 
-/** Imports real ontologies from the `owl` folder of linkml-benchmark-schemas and checks the schemas
-  * and the OWL generated back from them. Ontologies that import others from the corpus are also
-  * tested with those imports mapped to their schemas.
+/** Imports real ontologies from the `owl` and `rdfs` folders of linkml-benchmark-schemas and checks
+  * the schemas and the OWL generated back from them. Ontologies that import others from the corpus
+  * are also tested with those imports mapped to their schemas.
   */
 class OwlCorpusSpec extends AnyWordSpec, Matchers {
   import OwlCorpusSpec.*
 
-  private val corpus: Option[os.Path] =
-    Option(System.getenv("LINKML_OWL_CORPUS")).filter(_.nonEmpty).map(os.Path(_, os.pwd))
-
-  private val inCi: Boolean = Option(System.getenv("CI")).exists(_.nonEmpty)
-
-  private def text(name: String): String = {
-    val file = corpus.map(_ / name / "main.nt.gz").filter(os.exists).getOrElse {
-      val hint = "Set LINKML_OWL_CORPUS to the `owl` folder of linkml-benchmark-schemas"
-      if inCi then fail(s"$name is missing. $hint") else cancel(hint)
-    }
-    val in = GZIPInputStream(os.read.inputStream(file))
-    try String(in.readAllBytes(), UTF_8)
-    finally in.close()
-  }
-
   /** For each ontology: its own IRIs, version IRIs included, and the IRIs it imports. */
   private val headers: Map[String, (Set[String], Seq[String])] =
-    corpus.filter(os.exists).fold(Map.empty) { dir =>
-      ontologies.map(_._1).filter(n => os.exists(dir / n / "main.nt.gz")).map { name =>
-        val t = text(name)
-        // Vocabularies without an `owl:Ontology`, like DC terms, are known by their namespace.
-        val iris = Some(ontologyPattern.findAllMatchIn(t).map(_.group(1)).toSet).filter(_.nonEmpty)
-          .getOrElse(namespacePattern.findAllMatchIn(t).map(_.group(1)).toSet) ++
-          versionPattern.findAllMatchIn(t).map(_.group(1))
-        name -> (iris, importPattern.findAllMatchIn(t).map(_.group(1)).toSeq.distinct)
-      }.toMap
-    }
+    ontologies.map(_._1).filter(n => fileOf(n).isDefined).map { name =>
+      val t = text(name)
+      // Vocabularies without an `owl:Ontology`, like DC terms, are known by their namespace.
+      val iris = Some(ontologyPattern.findAllMatchIn(t).map(_.group(1)).toSet).filter(_.nonEmpty)
+        .getOrElse(namespacePattern.findAllMatchIn(t).map(_.group(1)).toSet) ++
+        versionPattern.findAllMatchIn(t).map(_.group(1))
+      name -> (iris, importPattern.findAllMatchIn(t).map(_.group(1)).toSeq.distinct)
+    }.toMap
 
   private def importsOf(name: String): Seq[String] =
     headers.get(name).toSeq.flatMap(_._2).flatMap(i =>
@@ -178,15 +162,6 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
         }
     }
 
-  private def triples(source: String): Seq[Triple] = {
-    val sink = CollectingRdfSink()
-    NTriplesParser.parse(source, sink)
-    sink.triples
-  }
-
-  private def yamlOf(schema: SchemaDefinitionImpl): String =
-    JsonUtil.write(Codec.codec.encode(schema), JsonOutputFormat.yaml)
-
   /** Reports only the fields that differ: a diff of whole schemas takes too long to print. */
   private def sameSchema(first: SchemaDefinitionImpl, again: SchemaDefinitionImpl): Unit =
     if again != first then fail(differences("schema", first, again).take(8).mkString("\n"))
@@ -208,6 +183,39 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
 }
 
 object OwlCorpusSpec {
+
+  /** The `owl` and `rdfs` folders of linkml-benchmark-schemas. */
+  private val corpora: Seq[os.Path] =
+    Seq("LINKML_OWL_CORPUS", "LINKML_RDFS_CORPUS").flatMap(v =>
+      Option(System.getenv(v)).filter(_.nonEmpty).map(os.Path(_, os.pwd)),
+    )
+
+  private val inCi: Boolean = Option(System.getenv("CI")).exists(_.nonEmpty)
+
+  def fileOf(name: String): Option[os.Path] =
+    corpora.map(_ / name / "main.nt.gz").find(os.exists)
+
+  /** The N-Triples of an ontology. Cancels the test if the corpus is missing, and fails it in CI.
+    */
+  def text(name: String): String = {
+    val file = fileOf(name).getOrElse {
+      val hint = "Set LINKML_OWL_CORPUS and LINKML_RDFS_CORPUS to the `owl` and `rdfs` folders " +
+        "of linkml-benchmark-schemas"
+      if inCi then Assertions.fail(s"$name is missing. $hint") else Assertions.cancel(hint)
+    }
+    val in = GZIPInputStream(os.read.inputStream(file))
+    try String(in.readAllBytes(), UTF_8)
+    finally in.close()
+  }
+
+  def triples(source: String): Seq[Triple] = {
+    val sink = CollectingRdfSink()
+    NTriplesParser.parse(source, sink)
+    sink.triples
+  }
+
+  def yamlOf(schema: SchemaDefinitionImpl): String =
+    JsonUtil.write(Codec.codec.encode(schema), JsonOutputFormat.yaml)
 
   /** Each ontology with the minimum percent of logical axioms that must survive the round trip, set
     * a little below the current result. Most losses are things LinkML can't express: individuals,
@@ -244,12 +252,17 @@ object OwlCorpusSpec {
     "schemaorg" -> 60,
     "dcterms" -> 78,
     "odrl" -> 30,
+    "dcelements" -> 0,
+    "dcmitype" -> 100,
+    "geo-wgs84" -> 100,
+    "web-annotation" -> 100,
+    "hydra" -> 94,
   )
 
   /** PROV-O and DC terms reuse names from SKOS and from each other. DCAT imports all of them, and
     * LinkML names must be unique across schemas, so some terms are renamed.
     */
-  private def configOf(name: String): OwlImportConfigImpl = name match {
+  def configOf(name: String): OwlImportConfigImpl = name match {
     case "prov-o" =>
       OwlImportConfigs.parse(
         """renames:
