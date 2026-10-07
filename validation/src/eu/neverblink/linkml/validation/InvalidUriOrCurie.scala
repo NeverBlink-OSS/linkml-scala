@@ -10,10 +10,6 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class InvalidUriOrCurieImpl(
     details: Option[String] = None,
-    @named("element_name")
-    elementName: String,
-    @named("element_type")
-    elementType: String,
     @named("issue_type")
     @serializeDefault
     issueType: String = "InvalidUriOrCurie",
@@ -30,25 +26,23 @@ final case class InvalidUriOrCurieImpl(
       details = inferOptional(
         "details",
         details,
-        "Invalid URI or CURIE '" + stringify(
-          uriOrCurie,
-        ) + "' in " + elementType + " '" + elementName + "' imported from schema '" + stringify(
-          inferenceInput("location.schema_id", location.schemaId),
-        ) + "'. A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'prefix' is defined in the schema and 'localname' is a valid NCName.",
+        "Invalid URI or CURIE '" + stringify(uriOrCurie) + "' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ) + ". A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'localname' is a valid relative IRI reference.",
       ),
       message = inferOptional(
         "message",
         message,
-        "Invalid URI or CURIE '" + stringify(
-          uriOrCurie,
-        ) + "' in " + elementType + " '" + elementName + "' imported from schema '" + stringify(
-          inferenceInput("location.schema_id", location.schemaId),
-        ) + "'.",
+        "Invalid URI or CURIE '" + stringify(uriOrCurie) + "' at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ),
       ),
     )
 }
 
-/** An element's URI or CURIE is not a valid IRI or `prefix:localname` pair.
+/** A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
@@ -64,18 +58,6 @@ abstract class InvalidUriOrCurie extends SchemaError {
     *   report wishes to include it.
     */
   def details: Option[String]
-
-  /** Name of the element the issue was found in.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def elementName: String
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def elementType: String
 
   /** Short, human-readable message describing the issue.
     *
