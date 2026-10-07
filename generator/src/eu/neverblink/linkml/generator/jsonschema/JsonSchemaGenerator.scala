@@ -207,7 +207,10 @@ class JsonSchemaGenerator(using sv: SchemaView)
           required = requiredSlots.toList,
           properties =
             immutable.ListMap.newBuilder.addAll(properties).result(), // avoids O(n^2) complexity
-          additionalProperties = new Some(if (open) AnySchema.Anything else AnySchema.Nothing),
+          // Data matching `range_expression` of `extra_slots` is allowed, but not checked against it
+          additionalProperties = new Some(
+            if (open || cls.allowsExtraSlots) AnySchema.Anything else AnySchema.Nothing,
+          ),
           title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
             Some(cls.cls.name),
           ),
@@ -280,7 +283,8 @@ object JsonSchemaGenerator {
   /** Options for [[JsonSchemaGenerator]].
     *
     * @param open
-    *   Whether the generated JSON Schema should allow `additionalProperties` for classes.
+    *   Whether the generated JSON Schema should allow `additionalProperties` for all classes.
+    *   Classes whose `extra_slots` allows extra data allow them anyway.
     * @param treeRoot
     *   If defined, override the schema `tree_root` class with the one provided.
     * @param treeRootInlineType

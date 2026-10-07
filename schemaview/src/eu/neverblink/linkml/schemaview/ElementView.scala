@@ -211,6 +211,18 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def isConcrete: Boolean = !cls.`abstract` && !cls.mixin
 
+  /** Whether instances of this class may have data beyond its slots, as set by its `extra_slots`.
+    *
+    * An explicit `allowed` wins, even over a `range_expression`. Without it, a `range_expression`
+    * allows data matching it, so generators that cannot check the data against it allow any. Only
+    * the class' own `extra_slots` counts, since LinkML does not inherit it.
+    *
+    * @see
+    *   https://w3id.org/linkml/extra_slots
+    */
+  def allowsExtraSlots: Boolean =
+    cls.extraSlots.foldFast(false)(e => e.allowed.getOrElseFast(e.rangeExpression.isDefined))
+
   /** The collection form of this class, checking whether dict inlines are applicable.
     */
   lazy val collectionForm: CollectionForm = CollectionForm.of(this)

@@ -136,4 +136,40 @@ class ClassViewSpec extends AnyWordSpec, Matchers {
       sv.classes("Plain").isTypeDesignatorUnion shouldBe false
     }
   }
+
+  "ClassView.allowsExtraSlots" should {
+    "follow the class' own extra_slots, where an explicit allowed wins" in {
+      val sv = load(
+        """  Open:
+          |    extra_slots:
+          |      allowed: true
+          |    attributes:
+          |      a: {}
+          |  Typed:
+          |    extra_slots:
+          |      range_expression:
+          |        range: string
+          |    attributes:
+          |      a: {}
+          |  ClosedTyped:
+          |    extra_slots:
+          |      allowed: false
+          |      range_expression:
+          |        range: string
+          |    attributes:
+          |      a: {}
+          |  OpenChild:
+          |    is_a: Open
+          |  Plain:
+          |    attributes:
+          |      a: {}
+          |""".stripMargin,
+      )
+      sv.classes("Open").allowsExtraSlots shouldBe true
+      sv.classes("Typed").allowsExtraSlots shouldBe true
+      sv.classes("ClosedTyped").allowsExtraSlots shouldBe false
+      sv.classes("OpenChild").allowsExtraSlots shouldBe false
+      sv.classes("Plain").allowsExtraSlots shouldBe false
+    }
+  }
 }

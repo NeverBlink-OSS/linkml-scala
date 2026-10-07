@@ -57,7 +57,7 @@ export interface LinkMLApi {
   /**
    * Generate JSON Schema from a loaded LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param open Whether the JSON Schema should allow `additionalProperties` or not.
+   * @param open Whether the JSON Schema should allow `additionalProperties` for all classes, not only for those whose `extra_slots` allows them.
    * @param treeRootOverride Override for the LinkML `tree_root` class which will be at the root of the JSON Schema.
    * @returns Serialized JSON Schema
    */
@@ -66,7 +66,7 @@ export interface LinkMLApi {
   /**
    * Generate SHACL shapes from a loaded LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param open Whether the SHACL shapes should be open (`_:b sh:closed false .`, allowing additional properties).
+   * @param open Whether all SHACL shapes should be open (`_:b sh:closed false .`, allowing additional properties), not only those of classes whose `extra_slots` allows them.
    * @param onlyClassesFromRootSchema Whether to include only classes from the root schema (turned off by default). This is useful if you intend to generate SHACL shapes for each schema file separately, and you don't need the imported classes to be included in the generated SHACL shapes.
    * @param format RDF serialization format: `ttl` for Turtle (the default), which is prefixed and pretty-printed, or `nt` for N-Triples.
    * @returns SHACL shapes in the requested format
@@ -149,7 +149,7 @@ export interface LinkMLApi {
    * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: skip
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
    * @param includeNull Whether optional slots may also be `null`.
-   * @param open Whether the interfaces should allow additional properties.
+   * @param open Whether all interfaces should allow additional properties, not only those of classes whose `extra_slots` allows them.
    * @returns TypeScript source code
    */
   typeScript(schema: SchemaView, pruningMode?: string, treeRoot?: string, includeNull?: boolean, open?: boolean): string;

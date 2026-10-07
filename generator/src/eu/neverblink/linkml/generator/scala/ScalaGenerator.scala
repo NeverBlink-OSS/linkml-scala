@@ -62,9 +62,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             shouldBeTrait,
             isSlotDefinitionClass,
             makeInferredFields(classView),
-            // An explicit `allowed` wins, even over a `range_expression`. Without it, data matching
-            // `range_expression` has to be allowed, but is not checked against it.
-            cls.extraSlots.exists(e => e.allowed.getOrElse(e.rangeExpression.isDefined)),
+            // Data matching `range_expression` has to be allowed, but is not checked against it.
+            classView.allowsExtraSlots,
             ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
               prefixResolver,
             ),

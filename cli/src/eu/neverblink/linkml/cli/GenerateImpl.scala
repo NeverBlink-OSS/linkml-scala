@@ -58,7 +58,8 @@ final case class JsonSchemaOptions(
     @Recurse
     common: GenerateOptions,
     @HelpMessage(
-      "Whether the generated JSON Schema should allow additionalProperties for classes. Default: false",
+      "Whether the generated JSON Schema should allow additionalProperties for all classes, " +
+        "not only for those whose extra_slots allows them. Default: false",
     )
     open: Boolean = false,
     @HelpMessage("If provided, override the schema tree_root with this class")
@@ -100,7 +101,8 @@ final case class ShaclOptions(
     @Recurse
     common: GenerateOptions,
     @HelpMessage(
-      "Whether the generated SHACL should allow additional properties for classes. Default: false",
+      "Whether the generated SHACL should allow additional properties for all classes, " +
+        "not only for those whose extra_slots allows them. Default: false",
     )
     open: Boolean = false,
     @HelpMessage(
@@ -363,7 +365,8 @@ final case class TypeScriptOptions(
     @Recurse
     pruning: PruningOptions = PruningOptions(),
     @HelpMessage(
-      "Whether the generated interfaces should allow additional properties. Default: false",
+      "Whether all generated interfaces should allow additional properties, " +
+        "not only those of classes whose extra_slots allows them. Default: false",
     )
     open: Boolean = false,
     @HelpMessage("Allow null values for optional slots. Default: false")
