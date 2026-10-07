@@ -26,6 +26,9 @@ trait MacroUtils(using val quotes: Quotes) {
     * @param isFlattened
     *   Whether the class is annotated with `@flatten`, so it is serialized as the value of its only
     *   field.
+    * @param allowsExtraSlots
+    *   Whether the class is annotated with `@extraSlotsAllowed`, so its instances may have keys
+    *   that match none of its fields.
     */
   class ClassInfo(
       val tpe: TypeRepr,
@@ -33,6 +36,7 @@ trait MacroUtils(using val quotes: Quotes) {
       val primaryConstructor: Symbol,
       val paramLists: List[List[FieldInfo]],
       val isFlattened: Boolean,
+      val allowsExtraSlots: Boolean,
   ) {
 
     /** A flattened list of all fields defined in the primary constructor parameter lists. */
@@ -384,6 +388,7 @@ trait MacroUtils(using val quotes: Quotes) {
           case pss => pss.map(ps => createFieldInfos(ps, Nil))
         },
         tpeClassSym.annotations.exists(_.tpe =:= flattenTpe),
+        tpeClassSym.annotations.exists(_.tpe =:= extraSlotsAllowedTpe),
       )
     },
   )
@@ -565,4 +570,6 @@ trait MacroUtils(using val quotes: Quotes) {
   private val serializeDefaultTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.serializeDefault").typeRef
   private val flattenTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.flatten").typeRef
+  private val extraSlotsAllowedTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.extraSlotsAllowed").typeRef
 }

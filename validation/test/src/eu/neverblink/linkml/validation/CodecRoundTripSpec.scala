@@ -19,9 +19,7 @@ class CodecRoundTripSpec extends AnyWordSpec, Matchers {
       UnknownReferenceImpl(location = location, referenceValue = "Foo"),
       NoTreeRootClassImpl(location = location),
       InvalidUriOrCurieImpl(
-        location = location,
-        elementName = "SomeClass",
-        elementType = "class",
+        location = location.copy(jsonPointer = Some("/classes/SomeClass/exact_mappings/0")),
         uriOrCurie = Curie("not a curie!"),
       ),
     ),

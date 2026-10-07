@@ -151,7 +151,7 @@ object OwlGenerator {
         else
           sv.schemas.tail.map(_.id.original)
             .filterNot(_.startsWith("https://w3id.org/linkml/")).distinct
-      val header = metadataAnnotations(Some(root.name), Metadata.of(root), sv.rootPrefixResolver) ++
+      val header = metadataAnnotations(Metadata.of(root), sv.rootPrefixResolver) ++
         linkmlAnnotations(root, sv.rootPrefixResolver) ++ preferredNamespace
       val (defaultName, defaultNamespace) = defaultPrefix
       val prefixes =
@@ -232,11 +232,10 @@ object OwlGenerator {
         el: ElementView[?, ?],
         equivalent: Set[String] = Set.empty,
     ): Unit =
-      annotate(iri, el.name, el.inner, el.definingPrefixResolver, equivalent)
+      annotate(iri, el.inner, el.definingPrefixResolver, equivalent)
 
     private def annotate(
         iri: String,
-        name: String,
         metadata: CommonMetadata & Annotatable,
         resolver: PrefixResolver,
         equivalent: Set[String],
@@ -244,17 +243,15 @@ object OwlGenerator {
       val m = Metadata.of(metadata)
       val kept =
         m.copy(exactMappings = m.exactMappings.filterNot(e => equivalent(e.uri(using resolver))))
-      val fallbackLabel = Option.when(ownNamespaces.exists(iri.startsWith))(name)
-      (metadataAnnotations(fallbackLabel, kept, resolver) ++ linkmlAnnotations(metadata, resolver))
+      (metadataAnnotations(kept, resolver) ++ linkmlAnnotations(metadata, resolver))
         .foreach(a => add(AnnotationAssertion(iri, a)))
     }
 
     private def annotate(
         iri: String,
-        name: String,
         metadata: CommonMetadata & Annotatable,
         resolver: PrefixResolver,
-    ): Unit = annotate(iri, name, metadata, resolver, Set.empty)
+    ): Unit = annotate(iri, metadata, resolver, Set.empty)
 
     private lazy val classIris: Set[String] = sv.classes.values.filter(included).map(_.uriStr).toSet
     private lazy val slotIris: Set[String] =
@@ -268,18 +265,10 @@ object OwlGenerator {
         among,
       ).toSet - el.uriStr
 
-    /** The schemas' default namespaces. Terms outside them belong to other vocabularies, so we
-      * don't make up a label from their name.
-      */
-    private lazy val ownNamespaces: Seq[String] =
-      if options.onlyRootSchema then Seq(sv.getDefaultPrefix(sv.root))
-      else sv.schemas.map(sv.getDefaultPrefix).distinct
-
-    /** `rdfs:label` is the title in each of its languages, or `name` if there is no title. OWL
-      * tools show `rdfs:label`, so the title goes there and not to `dcterms:title`.
+    /** `rdfs:label` is the title in each of its languages. OWL tools show `rdfs:label`, so the
+      * title goes there and not to `dcterms:title`.
       */
     private def metadataAnnotations(
-        name: Option[String],
         metadata: Metadata,
         resolver: PrefixResolver,
     ): Seq[Annotation] = {
@@ -289,7 +278,7 @@ object OwlGenerator {
         case Some(PlainText(t)) => Seq(Annotation.text(rdfsLabel, t, language))
         case Some(MultilingualText(m)) =>
           m.toSeq.sortBy(_._1).map((lang, t) => Annotation.text(rdfsLabel, t, Some(lang)))
-        case None => name.toSeq.map(Annotation.text(rdfsLabel, _, language))
+        case None => Nil
       }
       labels ++ Metadata.annotations(
         metadata.copy(title = None),
@@ -695,7 +684,7 @@ object OwlGenerator {
         then {
           val kind = kindOf(derived)
           add(Declaration(kind, iri))
-          annotate(iri, name, attribute, cv.definingPrefixResolver)
+          annotate(iri, attribute, cv.definingPrefixResolver)
           if kind != EntityKind.AnnotationProperty then {
             // If every use of the property has the same range, that becomes its range.
             val uses = sv.classes.values.toSeq
@@ -737,7 +726,7 @@ object OwlGenerator {
         // classes, which Schema.org has.
         if OwlImportNames.localName(pvIri) != pv.text then
           add(AnnotationAssertion(pvIri, Annotation.text(skosNotation, pv.text)))
-        annotate(pvIri, pv.text, pv, ev.definingPrefixResolver)
+        annotate(pvIri, pv, ev.definingPrefixResolver)
         pvIri
       }
       if values.nonEmpty then

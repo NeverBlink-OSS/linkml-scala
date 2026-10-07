@@ -268,10 +268,14 @@ object OwlImporter {
         case Domain(p, _, _) => p -> false
         case Characteristic(p, _, _) => p -> false
         case InverseProperties(a, _, _) => a -> false
-        case SubPropertyOf(a, _, _) => a -> false
+        // An undeclared subproperty, like Hydra's `writeable`, has its parent's kind.
+        case SubPropertyOf(a, sup, _) => a -> out.get(sup).contains(EntityKind.DataProperty)
       }
+      // Hydra gives its datatype `Rfc6570Template` a range, which doesn't make it a property.
       used.groupMap(_._1)(_._2).foreach { (p, data) =>
-        if !out.contains(p) && !isDeclared(p, EntityKind.AnnotationProperty) then
+        if !out.contains(p) && !isDeclared(p, EntityKind.AnnotationProperty) &&
+          !isDeclared(p, EntityKind.Datatype)
+        then
           out(p) =
             if data.contains(true) then EntityKind.DataProperty else EntityKind.ObjectProperty
       }
@@ -399,13 +403,11 @@ object OwlImporter {
     /** If the IRI is also a permissible value (as in Schema.org and D3FEND), its `skos:notation`
       * belongs to the value, so it is left out here.
       */
-    private def termDocumentation(iri: String, name: String) =
-      if !enumIndividuals(iri) then reader.documentation(iri, name)
+    private def termDocumentation(iri: String) =
+      if !enumIndividuals(iri) then reader.documentation(iri)
       else
         reader.documentation(
           annotationsOf.getOrElse(iri, Nil).filterNot(_.property == notationProperty),
-          name,
-          nameIsLabel = iri.startsWith(naming.defaultNamespace),
         )
 
     private val classes: Seq[String] =
@@ -524,7 +526,7 @@ object OwlImporter {
     private lazy val types: Seq[TypeDefinitionImpl] = datatypes.filterNot(imported.contains).map {
       iri =>
         val name = names(iri)
-        val (metadata, annotations) = documentation(iri, name)
+        val (metadata, annotations) = documentation(iri)
         ensurePrefix(iri)
         val (typeof, facets) = datatypeDefinitions.get(iri).map(take) match {
           case Some(DatatypeDefinition(_, DataRange.Restriction(base, facets), _)) =>
@@ -661,7 +663,7 @@ object OwlImporter {
     private lazy val slots: Seq[SlotDefinitionImpl] =
       propertyKinds.toSeq.filterNot((p, _) => imported.contains(p)).map { (p, kind) =>
         val name = names(p)
-        val (metadata, annotations) = documentation(p, name)
+        val (metadata, annotations) = documentation(p)
         val characteristics =
           characteristicsOf.getOrElse(p, Nil).map(take).map(_.characteristic).toSet
         val range = slotRanges(p)
@@ -859,7 +861,7 @@ object OwlImporter {
 
     private def buildClass(c: String): ClassDefinitionImpl = {
       val name = names(c)
-      val (metadata, annotations) = termDocumentation(c, name)
+      val (metadata, annotations) = termDocumentation(c)
       val parents = classParents(c)
       val (isA, mixins) = chooseParents(c, parents)
       val notes = mutable.ArrayBuffer.empty[String]
@@ -1118,15 +1120,13 @@ object OwlImporter {
     private lazy val enums: Seq[EnumDefinitionImpl] =
       enumMembers.toSeq.filterNot((e, _) => imported.contains(e)).map { (e, members) =>
         val name = names(e)
-        val (metadata, annotations) = termDocumentation(e, name)
+        val (metadata, annotations) = termDocumentation(e)
         val values = members._1.map { m =>
           val text = permissibleValueText(e, m)
           val (pvMetadata, pvAnnotations) = documentation(
             annotationsOf.getOrElse(m, Nil).filterNot(a =>
               a.property == notationProperty && a.value == Literal(text),
             ),
-            text,
-            nameIsLabel = m.startsWith(defaultNamespace),
           )
           if members._2 then subClassOf.getOrElse(m, Nil).foreach((a, _) => take(a))
           else
@@ -1222,7 +1222,6 @@ object OwlImporter {
         ontology.annotations.filterNot(a =>
           a.property == vann + "preferredNamespaceUri" || a.property == vann + "preferredNamespacePrefix",
         ),
-        name,
       )
       // Statements about imported terms are dropped. The imported schema defines those terms.
       imported.keys.toSeq.sorted.filter(saysSomethingAbout).foreach { iri =>

@@ -26,10 +26,6 @@ import scala.collection.mutable.ListBuffer
   */
 sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
 
-  /** Element type name, e.g. "class", "slot", "type", "enum", "subset", used for error messages.
-    */
-  def elementType: String
-
   /** Schema definition that defined this Element. This schema should be used for prefixes and
     * default ranges.
     */
@@ -112,8 +108,6 @@ private object ClassView:
 final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[ClassDefinition, AnyRef] {
-  def elementType: String = "class"
-
   def inner: ClassDefinition = cls
 
   def canonicalName: String = Case.baseToPascal(baseName)
@@ -210,6 +204,18 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   true if the class can have instances of its own: it is neither `abstract` nor a `mixin`
     */
   def isConcrete: Boolean = !cls.`abstract` && !cls.mixin
+
+  /** Whether instances of this class may have data beyond its slots, as set by its `extra_slots`.
+    *
+    * An explicit `allowed` wins, even over a `range_expression`. Without it, a `range_expression`
+    * allows data matching it, so generators that cannot check the data against it allow any. Only
+    * the class' own `extra_slots` counts, since LinkML does not inherit it.
+    *
+    * @see
+    *   https://w3id.org/linkml/extra_slots
+    */
+  def allowsExtraSlots: Boolean =
+    cls.extraSlots.foldFast(false)(e => e.allowed.getOrElseFast(e.rangeExpression.isDefined))
 
   /** The collection form of this class, checking whether dict inlines are applicable.
     */
@@ -444,8 +450,6 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[SlotDefinition, Nothing] {
-  def elementType: String = "slot"
-
   def inner: SlotDefinition = slot
 
   override def canonicalName: String =
@@ -534,8 +538,6 @@ private object SlotView:
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[EnumDefinition, PermissibleValue] {
-  def elementType: String = "enum"
-
   def inner: EnumDefinition = _enum
 
   def canonicalName: String = Case.baseToPascal(baseName)
@@ -633,8 +635,6 @@ type RuntimeScalar = String | Int | Boolean | Float | Double | BigDecimal | UriO
 final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[TypeDefinition, RuntimeScalar] {
-  def elementType: String = "type"
-
   def inner: TypeDefinition = _type
 
   def canonicalName: String = baseName
@@ -765,8 +765,6 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
 ) extends ElementView[SubsetDefinition, Nothing] {
-  def elementType: String = "subset"
-
   def inner: SubsetDefinition = subset
 
   override def aliasedName: String = baseName

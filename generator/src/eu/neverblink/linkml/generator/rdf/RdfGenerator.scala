@@ -95,16 +95,23 @@ abstract class RdfGenerator[O <: RdfOptions] extends DocumentGenerator[O] {
   }
 
   /** Create triples for a [[LocalizedText]]. Sinks triples with xsd:string literals for
-    * [[PlainText]] or rdf:langString literals for [[MultilingualText]]
+    * [[PlainText]], tagged with `language` when given, or rdf:langString literals for
+    * [[MultilingualText]]
     */
   final def langStringProperty(
       sink: RdfSink,
       subject: Resource,
       predicate: Iri,
       localizedText: LocalizedText,
+      language: Option[String] = None,
   ): Unit =
     localizedText match {
-      case plain: PlainText => sink.triple(subject, predicate, Literal(plain.value))
+      case plain: PlainText =>
+        sink.triple(
+          subject,
+          predicate,
+          language.fold(Literal(plain.value))(LanguageLiteral(plain.value, _)),
+        )
       case lang: MultilingualText =>
         lang.mapping.foreach { (tag, value) =>
           sink.triple(subject, predicate, LanguageLiteral(value, tag))

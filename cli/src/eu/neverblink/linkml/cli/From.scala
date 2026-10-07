@@ -92,7 +92,7 @@ object FromOssie extends From[FromOssieOptions] {
 // OWL
 
 @HelpMessage(
-  "Read an OWL ontology in Turtle or N-Triples and produce a corresponding LinkML schema.",
+  "Read an OWL ontology or RDFS vocabulary in Turtle or N-Triples and produce a corresponding LinkML schema.",
 )
 @ArgsName("<input-file>")
 final case class FromOwlOptions(

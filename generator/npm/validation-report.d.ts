@@ -120,14 +120,10 @@ export interface InvalidSlotUsage {
   slot_names: string[];
 }
 
-/** An element's URI or CURIE is not a valid IRI or `prefix:localname` pair. */
+/** A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair. */
 export interface InvalidUriOrCurie {
   /** details: Longer, human-readable message describing the issue in more detail. */
   details?: string;
-  /** element name: Name of the element the issue was found in. */
-  element_name: string;
-  /** element type */
-  element_type: string;
   /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
   issue_type: "InvalidUriOrCurie";
   /** location: The location in the schema where the issue was found. */

@@ -669,13 +669,44 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val msg = validationFailure(sv, maxProblems = 20)
 
       Seq(
-        "Invalid URI or CURIE 'not a curie!' in class 'SomeClass'",
-        "Invalid URI or CURIE 'http://<>' in slot 'some_slot'",
-        "Invalid URI or CURIE 'http://<>' in enum 'SomeEnum'",
-        "Invalid URI or CURIE 'http://<>' in type 'string'",
+        "Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri",
+        "Invalid URI or CURIE 'http://<>' at /slots/some_slot/slot_uri",
+        "Invalid URI or CURIE 'http://<>' at /enums/SomeEnum/enum_uri",
+        "Invalid URI or CURIE 'http://<>' at /types/string/uri",
       ) foreach { part =>
         msg should include(part)
       }
+      // Explicit URIs are reported once, at their location, not again for their element
+      msg should not include "in class 'SomeClass'"
+    }
+
+    "fail on invalid URI or CURIE values anywhere in the schema" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |types:
+           |  string:
+           |    uri: xsd:string
+           |classes:
+           |  SomeClass:
+           |    exact_mappings:
+           |    - ex:fine
+           |    - "bad mapping"
+           |    attributes:
+           |      some_attr:
+           |        slot_uri: "ex:a:b"
+           |        range: string
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      val msg = validationFailure(sv, maxProblems = 20)
+
+      msg should include(
+        "Invalid URI or CURIE 'bad mapping' at /classes/SomeClass/exact_mappings/1",
+      )
+      msg should include(
+        "Invalid URI or CURIE 'ex:a:b' at /classes/SomeClass/attributes/some_attr/slot_uri",
+      )
+      msg should not include "ex:fine"
     }
 
     "catch an invalid reference in an imported file" in {
