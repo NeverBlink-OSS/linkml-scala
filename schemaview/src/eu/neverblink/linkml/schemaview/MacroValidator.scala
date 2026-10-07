@@ -20,6 +20,8 @@ import scala.quoted.*
   *   Ranges that are invalid in the schema
   * @param invalidDefaultRanges
   *   Ranges whose inferred defaults wouldn't resolve
+  * @param invalidUriOrCuries
+  *   URI or CURIE values that are malformed
   * @param isEmpty
   *   Set to true only if you are creating a ValidatorResult == ValidatorResult.ok
   */
@@ -27,6 +29,7 @@ final case class ValidatorResult private (
     unknownReferences: Seq[UnknownReference],
     invalidRanges: Seq[InvalidRange],
     invalidDefaultRanges: Seq[InvalidDefaultRange],
+    invalidUriOrCuries: Seq[InvalidUriOrCurie],
     isEmpty: Boolean,
 ):
   /** Merge the [[ValidatorResult]]s */
@@ -37,6 +40,7 @@ final case class ValidatorResult private (
         unknownReferences ++ other.unknownReferences,
         invalidRanges ++ other.invalidRanges,
         invalidDefaultRanges ++ other.invalidDefaultRanges,
+        invalidUriOrCuries ++ other.invalidUriOrCuries,
       )
 
   /** Add a [[prefix]] to each result's source path */
@@ -47,20 +51,24 @@ final case class ValidatorResult private (
         unknownReferences.map(_.prependedPath(prefix)),
         invalidRanges.map(_.prependedPath(prefix)),
         invalidDefaultRanges.map(_.prependedPath(prefix)),
+        invalidUriOrCuries.map(_.prependedPath(prefix)),
       )
 
 object ValidatorResult {
-  val ok: ValidatorResult = ValidatorResult(Seq.empty, Seq.empty, Seq.empty, isEmpty = true)
+  val ok: ValidatorResult =
+    ValidatorResult(Seq.empty, Seq.empty, Seq.empty, Seq.empty, isEmpty = true)
 
   def apply(
       unknownReferences: Seq[UnknownReference] = Seq(),
       invalidRanges: Seq[InvalidRange] = Seq(),
       invalidDefaultRanges: Seq[InvalidDefaultRange] = Seq(),
+      invalidUriOrCuries: Seq[InvalidUriOrCurie] = Seq(),
   ): ValidatorResult =
     new ValidatorResult(
       unknownReferences,
       invalidRanges,
       invalidDefaultRanges,
+      invalidUriOrCuries,
       isEmpty = false,
     )
 }
@@ -97,6 +105,17 @@ final case class InvalidRange(path: String, value: String, actualType: String, f
 final case class InvalidDefaultRange(path: String, fromSchema: Uri):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): InvalidDefaultRange = copy(path = prefix.concat(path))
+
+/** A URI or CURIE value that is malformed
+  *
+  * @param path
+  *   JSON path to the value
+  * @param value
+  *   The invalid value
+  */
+final case class InvalidUriOrCurie(path: String, value: UriOrCurie, fromSchema: Uri):
+  /** Add a [[prefix]] to this class' path */
+  def prependedPath(prefix: String): InvalidUriOrCurie = copy(path = prefix.concat(path))
 
 private trait MacroValidator[T] {
   def validate(t: T)(using SchemaView, ValidatorContext): ValidatorResult
@@ -151,10 +170,16 @@ private object MacroValidator {
       ValidatorResult.ok
   }
 
-  given MacroValidator[UriOrCurie] = new MacroValidator[UriOrCurie] {
-    def validate(t: UriOrCurie)(using SchemaView, ValidatorContext): ValidatorResult =
-      ValidatorResult.ok
-  }
+  private val uriOrCurieValidatorInstance: MacroValidator[UriOrCurie] =
+    new MacroValidator[UriOrCurie] {
+      def validate(t: UriOrCurie)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult =
+        if t.isValid then ValidatorResult.ok
+        else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", t, vc.fromSchema)))
+    }
+
+  /** Validator for [[UriOrCurie]], [[Uri]] and [[Curie]] values, sharing a single instance */
+  given uriOrCurieValidator[T <: UriOrCurie]: MacroValidator[T] =
+    uriOrCurieValidatorInstance.asInstanceOf[MacroValidator[T]]
 
   private def formatRangeType(el: Element): String = {
     el match {

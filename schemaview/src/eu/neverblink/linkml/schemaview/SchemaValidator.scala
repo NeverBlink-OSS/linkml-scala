@@ -96,6 +96,15 @@ final class SchemaValidator(using sv: SchemaView) {
     if isDefaultRangeAllowed then None
     else new Some(new UndefinedDefaultRangeImpl(location = rootLocation))
 
+  /** Any malformed URI or CURIE values in the schema. */
+  private lazy val invalidUriOrCuries: Seq[SchemaError] =
+    macroResult.invalidUriOrCuries.map(value =>
+      new InvalidUriOrCurieImpl(
+        location = at(value.path, value.fromSchema),
+        uriOrCurie = value.value,
+      ),
+    )
+
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
@@ -409,21 +418,6 @@ final class SchemaValidator(using sv: SchemaView) {
       )
   }
 
-  private lazy val invalidUris: Seq[SchemaError] = {
-    sv.elements.values.flatMap { elem =>
-      if elem.uriOrCurie.isValid then None
-      else
-        new Some(
-          new InvalidUriOrCurieImpl(
-            location = locationOf(elem),
-            uriOrCurie = elem.uriOrCurie,
-            elementType = elem.elementType,
-            elementName = elem.inner.name,
-          ),
-        )
-    }.toSeq
-  }
-
   private val repeatedSeparatorRegex: Regex = "[^A-Za-z0-9]{2,}".r.unanchored
 
   private def checkNaming(
@@ -517,7 +511,7 @@ final class SchemaValidator(using sv: SchemaView) {
       multipleTreeRoots ++
       nonUniqueNames ++
       unknownPrefixes ++
-      invalidUris ++
+      invalidUriOrCuries ++
       namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */

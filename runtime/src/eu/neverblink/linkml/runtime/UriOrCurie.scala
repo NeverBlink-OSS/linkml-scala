@@ -2,7 +2,6 @@ package eu.neverblink.linkml.runtime
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
-import scala.util.matching.Regex
 
 sealed trait UriOrCurie {
   def original: String
@@ -27,7 +26,7 @@ object UriOrCurie {
 
   def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
 
-  def isValid: Boolean = UriCurieValidator.validateUri(original).isDefined
+  def isValid: Boolean = UriCurieValidator.isValidUri(original)
 }
 
 object Uri {
@@ -46,7 +45,7 @@ object Uri {
 
   def curie(implicit resolver: PrefixResolver): String = original
 
-  def isValid: Boolean = UriCurieValidator.validateCurie(original).isDefined
+  def isValid: Boolean = UriCurieValidator.isValidCurie(original)
 }
 
 type NcName = String
@@ -145,127 +144,288 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   }
 }
 
-/** Regular-expression-based URI and CURIE validation functions
+/** URI and CURIE validation functions.
   *
-  * These regex are directly derived from the official sources mentioned in each section. They use
-  * the (?x) flag for verbose parsing (ignoring whitespace).
+  * Each function checks the whole input in a single left-to-right pass, without regular
+  * expressions, backtracking or allocations. The grammars are taken from RFC 3986 (URI and relative
+  * reference) and W3C CURIE Syntax 1.0 (CURIE). Only ASCII characters are accepted; others must be
+  * percent-encoded.
   */
 object UriCurieValidator {
-  // Define DIGIT according RFC2234 section 3.4
-  private val digit = "[0-9]"
+  // Bit flags of character classes, looked up in the `charClasses` table for ASCII characters
+  private final val Alpha = 1 // ALPHA
+  private final val Digit = 2 // DIGIT
+  private final val HexDig = 4 // HEXDIG
+  private final val SchemeChar = 8 // ALPHA / DIGIT / "+" / "-" / "."
+  private final val NcNameChar = 16 // ALPHA / DIGIT / "." / "-" / "_"
+  private final val RegNameChar = 32 // unreserved / sub-delims
 
-  // Define ALPHA according RFC2234 section 6.1
-  private val alpha = "[A-Za-z]"
+  private val charClasses: Array[Byte] = {
+    val cs = new Array[Byte](128)
+    def add(from: Char, to: Char, flags: Int): Unit = {
+      var c = from.toInt
+      while (c <= to) {
+        cs(c) = (cs(c) | flags).toByte
+        c += 1
+      }
+    }
+    def addAll(chars: String, flags: Int): Unit = chars.foreach(c => add(c, c, flags))
+    add('A', 'Z', Alpha | SchemeChar | NcNameChar | RegNameChar)
+    add('a', 'z', Alpha | SchemeChar | NcNameChar | RegNameChar)
+    add('0', '9', Digit | HexDig | SchemeChar | NcNameChar | RegNameChar)
+    add('A', 'F', HexDig)
+    add('a', 'f', HexDig)
+    addAll("+-.", SchemeChar)
+    addAll("-._", NcNameChar)
+    addAll("-._~!$&'()*+,;=", RegNameChar) // unreserved non-alphanumerics and sub-delims
+    cs
+  }
 
-  // Define HEXDIG according RFC2234 section 6.1
-  private val hexdig = "[0-9A-Fa-f]"
+  private inline def is(c: Char, flags: Int): Boolean = c < 128 && (charClasses(c) & flags) != 0
 
-  // pct-encoded = "%" HEXDIG HEXDIG
-  private val pctEncoded = raw"%$hexdig$hexdig"
+  /** Check that [[s]] is a URI: `scheme ":" hier-part [ "?" query ] [ "#" fragment ]` */
+  def isValidUri(s: String): Boolean = {
+    val len = s.length
+    len > 0 && is(s.charAt(0), Alpha) && {
+      var i = 1
+      while (i < len && is(s.charAt(i), SchemeChar)) i += 1
+      i < len && s.charAt(i) == ':' && isValidReference(s, len, i + 1, noColon = false)
+    }
+  }
 
-  // unreserved = ALPHA / DIGIT / "-" / "." / "_" / "~"
-  private val unreserved = raw"(?:$alpha|$digit|\-|\.|_|~)"
+  /** Check that [[s]] is a CURIE: `[ [ prefix ] ":" ] relative-ref`, where `prefix` is an NCName
+    * without colons.
+    */
+  def isValidCurie(s: String): Boolean = {
+    val len = s.length
+    var i = 0
+    if (len > 0 && (is(s.charAt(0), Alpha) || s.charAt(0) == '_')) {
+      i = 1
+      while (i < len && is(s.charAt(i), NcNameChar)) i += 1
+    }
+    if (i < len && s.charAt(i) == ':') isValidReference(s, len, i + 1, noColon = true)
+    else if (i == 0) isValidReference(s, len, 0, noColon = true)
+    // No colon after the prefix-like start, so it is the start of the first path segment
+    else isValidPathQueryFragment(s, len, i, noColon = true)
+  }
 
-  // gen-delims = ":" / "/" / "?" / "#" / "[" / "]" / "@"
-  // private val genDelims = raw"(?::|/|\?|\#|\[|\]|@)"
+  /** Check the tail of [[s]] starting at [[from]] as `"//" authority path-abempty` or a path,
+    * followed by optional query and fragment.
+    *
+    * @param noColon
+    *   Whether the first path segment can't contain colons, like `path-noscheme` in a relative
+    *   reference
+    */
+  private def isValidReference(s: String, len: Int, from: Int, noColon: Boolean): Boolean =
+    if (from + 1 < len && s.charAt(from) == '/' && s.charAt(from + 1) == '/') {
+      val i = authorityEnd(s, len, from + 2)
+      i >= 0 && isValidPathQueryFragment(s, len, i, noColon = false)
+    } else isValidPathQueryFragment(s, len, from, noColon)
 
-  // sub-delims = "!" / "$" / "&" / "'" / "(" ...
-  // Note: Escaping $ as $$ is required in Scala interpolation
-  private val subDelims = raw"(?:!|\$$|&|'|\(|\)|\*|\+|,|;|=)"
+  /** Check the tail of [[s]] starting at [[from]] as `path [ "?" query ] [ "#" fragment ]`, where
+    * path is any sequence of `pchar` and "/" (the authority, if any, is already consumed).
+    */
+  private def isValidPathQueryFragment(
+      s: String,
+      len: Int,
+      from: Int,
+      noColon: Boolean,
+  ): Boolean = {
+    var i = from
+    var colonForbidden = noColon
+    var inFragment = false
+    while (i < len && i >= 0) {
+      val c = s.charAt(i)
+      if (is(c, RegNameChar) || c == '@') i += 1
+      else if (c == '/' || c == '?') {
+        colonForbidden = false
+        i += 1
+      } else if (c == ':' && !colonForbidden) i += 1
+      else if (c == '%' && isPctEncoded(s, len, i)) i += 3
+      else if (c == '#' && !inFragment) {
+        colonForbidden = false
+        inFragment = true
+        i += 1
+      } else i = -1
+    }
+    i >= 0
+  }
 
-  // pchar = unreserved / pct-encoded / sub-delims / ":" / "@"
-  private val pchar = raw"(?:$unreserved|$pctEncoded|$subDelims|:|@)"
+  /** Parse `authority = [ userinfo "@" ] host [ ":" port ]` of [[s]] starting at [[from]].
+    *
+    * @return
+    *   Index after the authority, or -1 if the authority is invalid or isn't followed by "/", "?",
+    *   "#" or the end of input
+    */
+  private def authorityEnd(s: String, len: Int, from: Int): Int = {
+    // Scan the longest run of userinfo chars, which also covers `reg-name [ ":" port ]`
+    var i = from
+    var hasColon = false
+    var isPort = true // whether all chars after the first colon are digits
+    var loop = true
+    while (loop && i < len) {
+      val c = s.charAt(i)
+      if (is(c, RegNameChar)) {
+        if (hasColon && !is(c, Digit)) isPort = false
+        i += 1
+      } else if (c == ':') {
+        if (hasColon) isPort = false
+        hasColon = true
+        i += 1
+      } else if (c == '%' && isPctEncoded(s, len, i)) {
+        if (hasColon) isPort = false
+        i += 3
+      } else loop = false
+    }
+    if (i < len && s.charAt(i) == '@') i = hostPortEnd(s, len, i + 1) // it was userinfo
+    else if (i == from) i = hostPortEnd(s, len, from) // empty or IP-literal host
+    else if (!isPort) i = -1
+    if (i < 0 || i == len) i
+    else {
+      val c = s.charAt(i)
+      if (c == '/' || c == '?' || c == '#') i
+      else -1
+    }
+  }
 
-  // reserved = gen-delims / sub-delims
-  // private val reserved = raw"(?:$genDelims|$subDelims)"
+  /** Parse `host [ ":" port ]` of [[s]] starting at [[from]]. IPv4 addresses are not checked
+    * separately, as they are also valid `reg-name`s.
+    *
+    * @return
+    *   Index after the port (or the host), or -1 if the IP literal is invalid
+    */
+  private def hostPortEnd(s: String, len: Int, from: Int): Int = {
+    var i = from
+    if (i < len && s.charAt(i) == '[') i = ipLiteralEnd(s, len, i + 1)
+    else {
+      var loop = true
+      while (loop && i < len) {
+        val c = s.charAt(i)
+        if (is(c, RegNameChar)) i += 1
+        else if (c == '%' && isPctEncoded(s, len, i)) i += 3
+        else loop = false
+      }
+    }
+    if (i >= 0 && i < len && s.charAt(i) == ':') {
+      i += 1
+      while (i < len && is(s.charAt(i), Digit)) i += 1
+    }
+    i
+  }
 
-  // dec-octet = DIGIT / %x31-39 DIGIT / "1" 2DIGIT / "2" %x30-34 DIGIT / "25" %x30-35
-  private val decOctet = raw"(?:$digit|[1-9]$digit|1$digit{2}|2[0-4]$digit|25[0-5])"
+  /** Parse `( IPv6address / IPvFuture ) "]"` of [[s]] starting at [[from]] (after "[").
+    *
+    * @return
+    *   Index after "]", or -1 if invalid
+    */
+  private def ipLiteralEnd(s: String, len: Int, from: Int): Int =
+    if (from < len && (s.charAt(from) | 0x20) == 'v') ipVFutureEnd(s, len, from + 1)
+    else ipV6End(s, len, from)
 
-  // IPv4address = dec-octet "." dec-octet "." dec-octet "." dec-octet
-  private val ipV4Address = raw"$decOctet\.$decOctet\.$decOctet\.$decOctet"
+  /** Parse `1*HEXDIG "." 1*( unreserved / sub-delims / ":" ) "]"` of [[s]] starting at [[from]]
+    * (after "v").
+    */
+  private def ipVFutureEnd(s: String, len: Int, from: Int): Int = {
+    var i = from
+    while (i < len && is(s.charAt(i), HexDig)) i += 1
+    if (i == from || i >= len || s.charAt(i) != '.') -1
+    else {
+      i += 1
+      val start = i
+      while (i < len && (is(s.charAt(i), RegNameChar) || s.charAt(i) == ':')) i += 1
+      if (i == start || i >= len || s.charAt(i) != ']') -1
+      else i + 1
+    }
+  }
 
-  // h16 = 1*4HEXDIG
-  private val h16 = raw"(?:$hexdig){1,4}"
+  /** Parse `IPv6address "]"` of [[s]] starting at [[from]].
+    *
+    * Instead of matching the 9 alternatives of the RFC 3986 grammar, it counts 16-bit pieces: 8 are
+    * required without "::" and at most 7 with it, where an ending IPv4 address counts as 2.
+    */
+  private def ipV6End(s: String, len: Int, from: Int): Int = {
+    var i = from
+    var pieces = 0
+    var elided = false // whether "::" was seen
+    var canClose = false // whether "]" can follow, i.e. right after "::" or a piece
+    if (i + 1 < len && s.charAt(i) == ':' && s.charAt(i + 1) == ':') {
+      elided = true
+      canClose = true
+      i += 2
+    }
+    var end = 0 // 0 while parsing, then the index after "]" or -1
+    while (end == 0) {
+      if (i >= len) end = -1
+      else if (canClose && s.charAt(i) == ']') end = i + 1
+      else {
+        // h16 = 1*4HEXDIG, which also may be the first dec-octet of an IPv4 address
+        val start = i
+        var octet = 0
+        var isDecimal = true
+        while (i < len && i - start < 4 && is(s.charAt(i), HexDig)) {
+          val c = s.charAt(i)
+          if (c <= '9') octet = octet * 10 + (c - '0')
+          else isDecimal = false
+          i += 1
+        }
+        if (i == start || i >= len) end = -1
+        else {
+          val c = s.charAt(i)
+          if (c == '.') {
+            // The last 32 bits as an IPv4address
+            if (isDecimal && isDecOctet(s.charAt(start), i - start, octet)) {
+              i = decOctetEnd(s, len, i + 1)
+              if (i >= 0 && i < len && s.charAt(i) == '.') i = decOctetEnd(s, len, i + 1)
+              else i = -1
+              if (i >= 0 && i < len && s.charAt(i) == '.') i = decOctetEnd(s, len, i + 1)
+              else i = -1
+              pieces += 2
+              end = if (i >= 0 && i < len && s.charAt(i) == ']') i + 1 else -1
+            } else end = -1
+          } else {
+            pieces += 1
+            if (c == ']') end = i + 1
+            else if (c != ':') end = -1 // also covers a 5th hex digit
+            else if (i + 1 < len && s.charAt(i + 1) == ':') {
+              if (elided) end = -1
+              else {
+                elided = true
+                canClose = true
+                i += 2
+              }
+            } else {
+              canClose = false
+              i += 1
+            }
+          }
+        }
+      }
+    }
+    if (end > 0 && (if (elided) pieces <= 7 else pieces == 8)) end
+    else -1
+  }
 
-  // ls32 = ( h16 ":" h16 ) / IPv4address
-  private val ls32 = raw"(?:(?:$h16:$h16)|$ipV4Address)"
+  /** Parse `dec-octet` of [[s]] starting at [[from]]: a decimal number in 0-255 without leading
+    * zeros.
+    *
+    * @return
+    *   Index after the octet, or -1 if invalid
+    */
+  private def decOctetEnd(s: String, len: Int, from: Int): Int = {
+    var i = from
+    var octet = 0
+    while (i < len && i - from < 3 && is(s.charAt(i), Digit)) {
+      octet = octet * 10 + (s.charAt(i) - '0')
+      i += 1
+    }
+    if (i > from && isDecOctet(s.charAt(from), i - from, octet)) i
+    else -1
+  }
 
-  // IPv6address
-  private val ipV6Address =
-    raw"(?:(?:$h16:){6}$ls32|::(?:$h16:){5}$ls32|(?:$h16)?::(?:$h16:){4}$ls32|(?:(?:$h16:)$h16)?::(?:$h16:){3}$ls32|(?:(?:$h16:){1,2}$h16)?::(?:$h16:){2}$ls32|(?:(?:$h16:){1,3}$h16)?::$h16:$ls32|(?:(?:$h16:){1,4}$h16)?::$ls32|(?:(?:$h16:){1,5}$h16)?::$h16|(?:(?:$h16:){1,6}$h16)?::)"
+  private inline def isDecOctet(first: Char, digits: Int, octet: Int): Boolean =
+    digits == 1 || (digits <= 3 && first != '0' && octet <= 255)
 
-  // IPvFuture = "v" 1*HEXDIG "." 1*( unreserved / sub-delims / ":" )
-  private val ipVFuture = raw"v$hexdig+\.(?:$unreserved|$subDelims|:)+"
-
-  // IP-literal = "[" ( IPv6address / IPvFuture  ) "]"
-  private val ipLiteral = raw"\[(?:$ipV6Address|$ipVFuture)\]"
-
-  // reg-name = *( unreserved / pct-encoded / sub-delims )
-  private val regName = raw"(?:$unreserved|$pctEncoded|$subDelims)*"
-
-  // required for Path
-  private val segment = raw"$pchar*"
-  private val segmentNz = raw"$pchar+"
-  private val segmentNzNc = raw"(?:$unreserved|$pctEncoded|$subDelims|@)+"
-
-  // Define SCHEME according RFC3986 section 3.1
-  private val scheme = raw"(?<scheme>$alpha(?:$alpha|$digit|\+|\-|\.)*)"
-
-  // Define AUTHORITY according RFC3986 section 3.2
-  private val userinfo = raw"(?<userinfo>(?:$unreserved|$pctEncoded|$subDelims|:)*)"
-  private val host = raw"(?<host>$ipLiteral|$ipV4Address|$regName)"
-  private val port = raw"(?<port>($digit)*)"
-  private val authority = raw"(?<authority>(?:$userinfo@)?$host(?::$port)?)"
-
-  // Define different PATHs according RFC3986 section 3.3
-  private val pathAbempty = raw"(/$segment)*"
-  private val pathAbsolute = raw"(/(?:$segmentNz(?:/$segment)*)?)"
-  private val pathNoscheme = raw"($segmentNzNc(?:/$segment)*)"
-  private val pathRootless = raw"($segmentNz(?:/$segment)*)"
-  private val pathEmpty = ""
-  // private val path = raw"(?:$pathAbempty|$pathAbsolute|$pathNoscheme|$pathRootless|$pathEmpty)"
-
-  // Define QUERY according RFC3986 section 3.4
-  private val query = raw"(?<query>(?:$pchar|/|\?)*)"
-
-  // Define FRAGMENT according RFC3986 section 3.5
-  private val fragment = raw"(?<fragment>(?:$pchar|/|\?)*)"
-
-  // Define URI and HIERARCHICAL PATH according RFC3986 section 3
-  private val hierPart =
-    raw"(?<hierPart>(?://$authority$pathAbempty)|$pathAbsolute|$pathRootless|$pathEmpty)"
-
-  private val uri = raw"(?<uri>$scheme:$hierPart(?:\?$query)?(?:\#$fragment)?)"
-
-  // Define RELATIVE REFERENCE according RFC3986 section 4.2
-  private val relativeRef =
-    raw"(?<relativeRef>(?:(?://$authority(?<pathAbempty>$pathAbempty))|(?<pathAbsolute>$pathAbsolute)|(?<pathNoscheme>$pathNoscheme)|(?<pathEmpty>$pathEmpty))(?:\?$query)?(?:\#$fragment)?)"
-
-  // Define ABSOLUTE URI according RFC3986 section 4.3
-  // private val absoluteUri = raw"(?<absoluteUri>$scheme:$hierPart(?:\?$query)?)"
-
-  // Define CURIE according W3C CURIE Syntax 1.0
-  private val ncNameChar = raw"(?:$alpha|$digit|\.|\-|_)"
-  private val prefix = raw"(?:$alpha|_)(?:$ncNameChar)*"
-  private val curie = raw"(?<curie>(?:(?<prefix>$prefix)?:)?$relativeRef)"
-  // private val safeCurie = raw"(?<safeCurie>\[$curie\])"
-
-  // Compile the regular expressions for better performance
-  // Note: $$ escapes the string interpolator, resulting in an exact end-of-string '$' token
-  private val uriValidator: Regex = raw"^$uri$$".r
-  // private val uriRelativeRefValidator: Regex  = raw"^$relativeRef$$".r
-  // private val absUriValidator: Regex          = raw"^$absoluteUri$$".r
-  private val curieValidator: Regex = raw"^$curie$$".r
-  // private val safeCurieValidator: Regex       = raw"^$safeCurie$$".r
-
-  def validateUri(input: String): Option[Regex.Match] = uriValidator.findFirstMatchIn(input)
-
-  // URI-reference = URI / relative-ref
-  // def validateUriReference(input: String): Option[Regex.Match] =
-  //  uriValidator.findFirstMatchIn(input).orElse(uriRelativeRefValidator.findFirstMatchIn(input))
-
-  def validateCurie(input: String): Option[Regex.Match] = curieValidator.findFirstMatchIn(input)
-
-  // def validateSafeCurie(input: String): Option[Regex.Match] = safeCurieValidator.findFirstMatchIn(input)
+  /** Check that [[s]] has `HEXDIG HEXDIG` after the "%" at [[i]] */
+  private inline def isPctEncoded(s: String, len: Int, i: Int): Boolean =
+    i + 2 < len && is(s.charAt(i + 1), HexDig) && is(s.charAt(i + 2), HexDig)
 }
