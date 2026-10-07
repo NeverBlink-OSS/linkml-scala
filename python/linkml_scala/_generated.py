@@ -248,11 +248,10 @@ class Generators:
             union are always generated with them.
         :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
             valid with `pruning_mode="treeRoot"`.
-        :param include_null: Whether dumps keep the nulls that were loaded or set, as the JSON
-            Schema generator's option allows them. Otherwise dumps leave out every field without
-            a value. Loading accepts null for optional slots either way. Default: false
-        :param open: Whether classes should accept and keep additional properties, as
-            `additionalProperties` in the JSON Schema generator. Default: false
+        :param include_null: Whether dumps include the null values that were loaded or set. If
+            false, dumps skip every field without a value or set to null. Default: false
+        :param open: Whether classes should accept and keep additional properties. Default:
+            false
         :param metadata_language: Which language to use for titles and descriptions in
             docstrings.
         """
