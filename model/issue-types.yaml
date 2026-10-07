@@ -109,6 +109,31 @@ classes:
       message:
         equals_expression: "Non-unique schema IDs detected"
 
+  CyclicReference:
+    is_a: SchemaFatal
+    description: >-
+      Elements refer to each other in a loop through a relation that must not loop, such as a class
+      that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof`
+      ancestor, or a type that is a member of its own `union_of`.
+    attributes:
+      relation:
+        range: string
+        required: true
+        title: relation
+        description: The metaslots that form the loop, e.g. `is_a/mixins`, `typeof` or `union_of`.
+      cycle:
+        range: string
+        required: true
+        title: cycle
+        description: The names of the elements in the loop, starting and ending with the same one.
+    slot_usage:
+      message:
+        equals_expression: "Cyclic {relation} reference: {cycle}"
+      details:
+        equals_expression: >-
+          Cyclic {relation} reference at {location.json_pointer}: {cycle}. An element cannot refer
+          back to itself through {relation}.
+
   SchemaParseError:
     is_a: SchemaFatal
     description: >-

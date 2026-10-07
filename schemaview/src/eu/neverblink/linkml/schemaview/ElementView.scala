@@ -641,50 +641,52 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   override def aliasedName: String = _type.alias.getOrElseFast(name)
 
-  /** The parent declared through `typeof`, if present. */
+  /** The parent declared through `typeof`, if present and a type. */
   lazy val parents: Seq[TypeView] =
-    _type.typeof.toSeq.map(ref => sv.types(ref.value))
+    _type.typeof.flatMapFast(ref => sv.types.get(ref.value)).toList
 
-  /** The types declared in `union_of`, in declaration order. Members do not supply inherited scalar
-    * properties. See [[unionAlternatives]] for the flattened members used by the generators.
+  /** The types declared in `union_of`, in declaration order, skipping references to other kinds of
+    * elements. Members do not supply inherited scalar properties. See [[unionAlternatives]] for the
+    * flattened members used by the generators.
     */
   lazy val unionMembers: Seq[TypeView] =
-    _type.unionOf.map(ref => sv.types(ref.value))
+    _type.unionOf.flatMap(ref => sv.types.get(ref.value))
+
+  /** The members of the union this type is: its own `union_of`, or else the `union_of` of its
+    * nearest `typeof` ancestor that declares one. Nested unions are not flattened. Empty for types
+    * that are not unions.
+    */
+  lazy val inheritedUnionMembers: Seq[TypeView] =
+    ancestorsWithSelf.find(_._type.unionOf.nonEmpty).foldFast(Nil)(_.unionMembers)
 
   /** The non-union types a value of this type can take, if this type is a union, in declaration
     * order and without duplicates. Nested unions are flattened. A type that does not declare
     * `union_of` itself takes the union of its nearest `typeof` ancestor that does. Empty for types
     * that are not unions.
     *
-    * @throws IllegalArgumentException
-    *   if a union contains itself, directly or through other unions
+    * A union that contains itself is rejected by [[SchemaValidator]]. Here such a member is
+    * skipped, so that this always terminates.
     */
   lazy val unionAlternatives: Seq[TypeView] = {
-    def unionOf(tv: TypeView): Option[TypeView] =
-      tv.ancestorsWithSelf.find(_._type.unionOf.nonEmpty)
-
-    def flatten(union: TypeView, path: List[String]): Seq[TypeView] =
-      union.unionMembers.flatMap { member =>
-        unionOf(member) match {
-          case Some(nested) =>
-            if (path.contains(nested.name)) {
-              val cycle = (path.reverse :+ nested.name).mkString(" -> ")
-              throw new IllegalArgumentException(s"Cyclic union_of: $cycle")
-            }
-            flatten(nested, nested.name :: path)
-          case _ => member :: Nil
-        }
+    def flatten(members: Seq[TypeView], path: List[String]): Seq[TypeView] =
+      members.flatMap { member =>
+        val nested = member.inheritedUnionMembers
+        if (nested.isEmpty) member :: Nil
+        else if (path.contains(member.name)) Nil
+        else flatten(nested, member.name :: path)
       }
 
-    unionOf(this).foldFast(Nil)(union => flatten(union, union.name :: Nil).distinctBy(_.name))
+    flatten(inheritedUnionMembers, name :: Nil).distinctBy(_.name)
   }
 
   /** Whether values of this type can take more than one type, through `union_of`. */
   def isUnion: Boolean = unionAlternatives.nonEmpty
 
-  /** This type followed by its `typeof` ancestors, nearest first. Rejects inheritance cycles. */
-  lazy val ancestorsWithSelf: Iterable[TypeView] = {
-    val ancestors = Closure.get(
+  /** This type followed by its `typeof` ancestors, nearest first. A `typeof` cycle is rejected by
+    * [[SchemaValidator]]. Here each type is visited once, so that this always terminates.
+    */
+  lazy val ancestorsWithSelf: Iterable[TypeView] =
+    Closure.get(
       Seq(this),
       _.parents,
       reflexive = true,
@@ -692,13 +694,6 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
       useHashCode = true,
       toUniqueValue = _.name,
     )
-    // In a single-parent chain, the last visited node has a parent only if it closes a cycle.
-    ancestors.last.parents.headOption.foreach { repeated =>
-      val path = (ancestors.map(_.name) :+ repeated.name).mkString(" -> ")
-      throw new IllegalArgumentException(s"Cyclic typeof inheritance: $path")
-    }
-    ancestors
-  }
 
   /** The pattern of this type or the nearest ancestor that has one. */
   def pattern: Option[LinkmlPattern] = LinkmlPattern.option(derivedType.pattern)

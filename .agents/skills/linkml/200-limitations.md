@@ -64,6 +64,8 @@ What each generator does with that list:
 All LinkML references (like `slot_name` in `slots: [ slot_name ]`) are eagerly checked when creating the SchemaView.
 SchemaView is not able to proceed with derivation if this requirement is not satisfied.
 
+For the same reason, loops are rejected when creating the SchemaView: a class or slot that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof` ancestor, and a type that is a member of its own `union_of` (directly, through nested unions, or through the `typeof` parent of a member).
+
 ## Emitted prefixes
 
 Metamodel `emit_prefixes` is honored, meaning the following prefixes are defined automatically in all schemas:
