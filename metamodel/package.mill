@@ -59,7 +59,7 @@ object `package` extends Module, NativeOptional {
 
     object test extends ScalaTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.16",
+        mvn"io.circe::circe-core::0.14.17",
       )
     }
   }
@@ -75,7 +75,7 @@ object `package` extends Module, NativeOptional {
 
     object test extends ScalaJSTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.16",
+        mvn"io.circe::circe-core::0.14.17",
       )
     }
   }
@@ -91,7 +91,7 @@ object `package` extends Module, NativeOptional {
 
     object test extends ScalaNativeTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(
-        mvn"io.circe::circe-core::0.14.16",
+        mvn"io.circe::circe-core::0.14.17",
       )
     }
   }
