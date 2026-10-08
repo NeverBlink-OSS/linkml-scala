@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.Axiom.*
-import eu.neverblink.linkml.generator.rdf.{RdfFormat, RdfGenerator, RdfOptions}
+import eu.neverblink.linkml.generator.RdfGeneratorBase
+import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.{Iri, Literal, Owl, RdfSink, Rdf, Rdfs, Shacl, XmlSchema}
 import eu.neverblink.linkml.runtime.*
@@ -16,7 +17,7 @@ import scala.collection.mutable
   * RDF generators here, or lose information when [[OwlImporter]] reads the result back. See
   * docs/owl.md for details.
   */
-class OwlGenerator(using sv: SchemaView) extends RdfGenerator[OwlGenerator.Options] {
+class OwlGenerator(using sv: SchemaView) extends RdfGeneratorBase[OwlGenerator.Options] {
   import OwlGenerator.*
 
   override protected def defaultOptions: Options = Options()

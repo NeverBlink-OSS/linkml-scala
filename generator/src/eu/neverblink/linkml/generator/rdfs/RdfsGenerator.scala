@@ -1,12 +1,13 @@
 package eu.neverblink.linkml.generator.rdfs
 
-import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.generator.RdfGeneratorBase
+import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
-class RdfsGenerator(using sv: SchemaView) extends RdfGenerator[RdfsGenerator.Options] {
+class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator.Options] {
 
   override protected def defaultOptions: RdfsGenerator.Options = RdfsGenerator.Options()
 
