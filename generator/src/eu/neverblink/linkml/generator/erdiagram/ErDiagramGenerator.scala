@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.erdiagram
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.schemaview.*
 
@@ -53,8 +53,10 @@ final class ErDiagramGenerator(using sv: SchemaView)
   override protected def writeChars(
       sink: CharSink,
       options: ErDiagramGenerator.Options,
-  ): Unit =
+  ): Unit = {
+    sink.append(GeneratedHeader("%%"))
     generate(options).writeTo(sink)
+  }
 
   /** The attribute rows of an entity - every slot whose range is *not* a class. */
   private def attributesOf(cv: ClassView, optionalMarker: Boolean): Seq[ErAttribute] =
@@ -119,7 +121,7 @@ final case class ErDiagram(entities: Seq[ErEntity], relationships: Seq[ErRelatio
 
   /** Write the diagram as Mermaid. */
   def writeTo(sink: CharSink): Unit = {
-    sink.append("%% GENERATED FROM LINKML\nerDiagram\n")
+    sink.append("erDiagram\n")
     val body = new ErBody(sink)
     entities.foreach(_.writeTo(body))
     // A blank line separates the two groups, but only when there are two groups to separate.

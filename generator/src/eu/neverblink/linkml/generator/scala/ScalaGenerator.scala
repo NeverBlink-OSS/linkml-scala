@@ -22,8 +22,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   def generate(
       options: ScalaGenerator.Options = ScalaGenerator.Options(),
   ): Iterable[(String, String)] = {
-    generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
-      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`) else None)
+    val header = GeneratedHeader("//") + "\n"
+    (generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
+      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`) else None))
+      .map((file, code) => file -> header.concat(code))
   }
 
   /** Generate Scala counterparts of LinkML classes: case classe implementations for instantiable
@@ -118,8 +120,6 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       "Prefixes.scala" ->
         indent"""package $pkg
            |
-           |// GENERATED FROM LINKML
-           |
            |/** Prefixes emitted from the `emit_prefixes` schema slot.
            |  */
            |object Prefixes {
@@ -160,8 +160,6 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def typeDef(pkg: String, typeName: String, typeRange: String, doc: ScalaDoc): String = {
     s"""package $pkg
-       |
-       |// GENERATED FROM LINKML
        |
        |import eu.neverblink.linkml.runtime.*
        |${doc.print}
@@ -595,8 +593,6 @@ object ScalaGenerator {
       val header =
         s"""package $pkg
            |
-           |// GENERATED FROM LINKML
-           |
            |import eu.neverblink.linkml.runtime.*
            |""".stripMargin
       sb.append(header)
@@ -742,8 +738,6 @@ object ScalaGenerator {
         else s"$kind $name"
 
       indent"""package $pkg
-         |
-         |// GENERATED FROM LINKML
          |
          |import eu.neverblink.linkml.runtime.*
          |

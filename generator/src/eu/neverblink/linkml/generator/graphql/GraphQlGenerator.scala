@@ -157,7 +157,8 @@ class GraphQlGenerator(using sv: SchemaView)
   /** Write the GraphQL definitions.
     */
   override protected def writeChars(sink: CharSink, options: GraphQlGenerator.Options): Unit = {
-    sink.append("# GENERATED FROM LINKML\n\n")
+    sink.append(GeneratedHeader("#"))
+    sink.append('\n')
     var first = true
     generate(options).foreach { definition =>
       if !first then sink.append("\n\n")
