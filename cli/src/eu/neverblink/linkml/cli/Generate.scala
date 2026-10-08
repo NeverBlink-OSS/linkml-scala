@@ -43,16 +43,21 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     val to = options.common.to
     this match {
       case g: ManyFilesGenerate[T @unchecked] =>
-        writeManyFiles(to, g.generate(options)(using sv))
+        writeManyFiles(to, g.generate(options)(using sv), g.staleFile(options))
       case g: StreamGenerate[T @unchecked] =>
         writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
       case g: SplitGenerate[T @unchecked] =>
-        if g.writesDirectory(to) then writeManyFiles(to, g.generateFiles(options)(using sv))
+        if g.writesDirectory(to) then writeManyFiles(to, g.generateFiles(options)(using sv), None)
         else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
     }
 
-  private def writeManyFiles(to: Option[String], files: Iterable[(String, String)]): Unit =
+  private def writeManyFiles(
+      to: Option[String],
+      files: Iterable[(String, String)],
+      staleFile: Option[os.Path => Boolean],
+  ): Unit =
     if files.isEmpty then err("No files generated.")
+    if to.isEmpty && staleFile.isDefined then err("--clean needs a --to directory to clean.")
     to.foldFast {
       files.foreach((k, v) => {
         printLine(s"//\n// FILE $k\n//")
@@ -61,6 +66,9 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     } { dir =>
       val path = os.Path(dir, os.pwd)
       os.makeDir.all(path)
+      staleFile.foreach(stale =>
+        os.list(path).filter(p => os.isFile(p) && stale(p)).foreach(os.remove),
+      )
       files.foreach((k, v) => os.write.over(path / os.SubPath(k), v, createFolders = true))
     }
 }
@@ -74,6 +82,11 @@ abstract class ManyFilesGenerate[T <: HasGenerateOptions: {Parser, Help}] extend
 
   /** Returns pairs of (filename, content). */
   protected[cli] def generate(options: T)(using sv: SchemaView): Iterable[(String, String)]
+
+  /** Which files in the destination directory were left by an earlier run, to delete before
+    * writing.
+    */
+  protected[cli] def staleFile(options: T): Option[os.Path => Boolean] = None
 }
 
 /** A generate command that streams its single output straight to an [[OutputStream]], avoiding
