@@ -69,6 +69,13 @@ class FileSystemImporterSpec extends AnyWordSpec, Matchers, Inside {
       loadedNames(root) shouldBe Seq("b", "c", "c")
     }
 
+    "find a .yml file through an import that asks for .yaml or no extension" in withDir { dir =>
+      write(dir.resolve("c.yml"), schema("c"))
+      val root = write(dir.resolve("b.yml"), schema("b", "c", "c.yaml", "c.yml"))
+      loadedNames(dir.resolve("b")) shouldBe Seq("b", "c")
+      loadedNames(root) shouldBe Seq("b", "c")
+    }
+
     "still report an import of a missing file" in withDir { dir =>
       val root = write(dir.resolve("b.yaml"), schema("b", "missing"))
       inside(SchemaView.loadSchemas(root.toString)) { case Left(issue) =>

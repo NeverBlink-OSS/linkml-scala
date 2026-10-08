@@ -107,6 +107,14 @@ object Importer {
     else trimmed.concat(".yaml")
   }
 
+  /** Swap the `.yaml` extension of a normalized schema URI for `.yml`, or the other way round. The
+    * loader treats both as names of one schema: it reads `.yaml` first and `.yml` when that is not
+    * found, and loads a schema reached through both spellings only once.
+    */
+  def otherYamlExtension(uri: String): String =
+    if (uri.endsWith(".yaml")) uri.substring(0, uri.length - 5).concat(".yml")
+    else uri.substring(0, uri.length - 4).concat(".yaml")
+
   /** Collapse `.` and `..` segments and repeated separators in a file path or URL path, so that one
     * schema reached by differently spelled paths (`dir/a.yaml`, `dir/./a.yaml`, `dir//a.yaml`,
     * `dir/sub/../a.yaml`) gets one key. The scheme and authority of a URL, leading separators of an

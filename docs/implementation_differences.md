@@ -30,6 +30,20 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
 Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
 
+## Imports
+
+Imports are easier to write and faster to load in LinkML-Scala: file extensions are optional and interchangeable, and each imported schema is loaded only once.
+
+| Case | Python LinkML 1.11.1 | LinkML-Scala |
+|------|----------------------|--------------|
+| `imports: [core]` with only `core.yml` on disk | Fails | Reads `core.yml` |
+| `imports: [core.yaml]` or `[core.yml]` | Fails: reads `core.yaml.yaml` or `core.yml.yaml` | Works |
+| One file imported as `dir/a`, `dir/./a`, `dir//a` or `dir/x/../a` | Loaded once per spelling | Loaded once |
+| One file reached through a symbolic or hard link | Loaded twice | Loaded once (JVM and Native) |
+| An import back to the root schema | Loads the root again, unless its `name` matches the file name | Loaded once, when the root is loaded from a path |
+
+LinkML-Scala first looks for a `.yaml` file before `.yml`, regardless of which one the import asks for.
+
 ## Eager validation of references
 
 All LinkML references (like `slot_name` in `slots: [ slot_name ]`) are eagerly checked when creating the SchemaView.
