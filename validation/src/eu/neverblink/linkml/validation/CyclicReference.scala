@@ -1,0 +1,89 @@
+package eu.neverblink.linkml.validation
+
+// GENERATED FROM LINKML
+
+import eu.neverblink.linkml.runtime.*
+
+/** Base implementation of the [[CyclicReference]] LinkML class
+  *
+  * @inheritdoc
+  */
+final case class CyclicReferenceImpl(
+    cycle: String,
+    details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "CyclicReference",
+    location: IssueLocationImpl,
+    message: Option[String] = None,
+    relation: String,
+    @serializeDefault
+    severity: IssueSeverity = IssueSeverity.Fatal,
+) extends CyclicReference {
+
+  override def infer(): CyclicReferenceImpl =
+    copy(
+      details = inferOptional(
+        "details",
+        details,
+        "Cyclic " + relation + " reference at " + inferenceInput(
+          "location.json_pointer",
+          location.jsonPointer,
+        ) + ": " + cycle + ". An element cannot refer back to itself through " + relation + ".",
+      ),
+      message = inferOptional("message", message, "Cyclic " + relation + " reference: " + cycle),
+    )
+}
+
+/** Elements refer to each other in a loop through a relation that must not loop, such as a class
+  * that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof` ancestor,
+  * or a type that is a member of its own `union_of`.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
+  */
+abstract class CyclicReference extends SchemaFatal {
+
+  /** The names of the elements in the loop, starting and ending with the same one.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def cycle: String
+
+  /** Longer, human-readable message describing the issue in more detail.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/validation-report
+    * @note
+    *   This field is inferred using equals_expression and is present only if the consumer of the
+    *   report wishes to include it.
+    */
+  def details: Option[String]
+
+  /** Short, human-readable message describing the issue.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/validation-report
+    * @note
+    *   This field is inferred using equals_expression and is present only if the consumer of the
+    *   report wishes to include it.
+    */
+  def message: Option[String]
+
+  /** The metaslots that form the loop, e.g. `is_a/mixins`, `typeof` or `union_of`.
+    *
+    * @see
+    *   From schema: https://linkml.neverblink.eu/model/issue-types
+    */
+  def relation: String
+
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  def infer(): CyclicReference
+}

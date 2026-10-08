@@ -21,7 +21,8 @@ The following features are not yet supported or are partially supported in LinkM
 - Partial support for type designators (`designates_type`)
   - Supported in the Scala, TypeScript, Pydantic and JSON Schema generators and in YAML/JSON serialization. Not yet in SHACL.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
-- Runtime union generation and codecs for `union_of` (references are resolved and preserved)
+- Partial support for type unions (`union_of` on types)
+  - Supported in the Scala, TypeScript and JSON Schema generators and in YAML/JSON serialization. Other generators treat a union type as an unknown type.
 - Rules (`rules`)
 - Partial support for extra data (`extra_slots`)
   - A `range_expression` allows any extra data, which is not checked against it (see below)
@@ -33,10 +34,37 @@ The following features are not yet supported or are partially supported in LinkM
 LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
 Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
 
+## Type unions
+
+A value of a `union_of` type is matched against the members in declaration order, and takes the first member it fits.
+A `string` member only accepts string values, so for `union_of: [string, integer]` the JSON value `42` is an integer, `"42"` is a string, and `true` is rejected.
+Each member keeps its own constraints (such as `pattern` or `minimum_value`), which only apply to values of that member.
+A type that has a union type as its `typeof` parent is a union of the same members.
+
+### Member order and nested unions in each generator
+
+All generators start from the same list of members:
+
+- Members keep the order they are declared in `union_of`.
+- A member that is itself a union is replaced by its own members, at the place where it appears. For example, with `StringOrInteger: {union_of: [string, integer]}`, the type `Choice: {union_of: [StringOrInteger, boolean]}` has the members `string`, `integer`, `boolean`. The nested union is not referenced by name.
+- A member listed more than once, directly or through nested unions, is kept only at its first place.
+
+What each generator does with that list:
+
+| Generator | Output for `union_of: [StringOrInteger, Count, boolean]` | Does the order matter? | Duplicates |
+|-----------|-----------------------------------------------------------|------------------------|------------|
+| Scala | `type Choice = String \| Int \| Count \| Boolean` | No, the order of a Scala union type has no meaning | Members that are the same LinkML type are listed once. Different types with the same Scala type (here `Count` is an alias of `Int`) are both listed, which the compiler accepts |
+| YAML/JSON codec | Reads the Scala type above | Yes. A value is decoded as the first member that accepts it, so the order matters when two members accept the same value, e.g. `string` and `uriorcurie` | Aliases are resolved first, so `Int` and `Count` are tried once |
+| JSON Schema | `anyOf` with one entry per member, each written in place (no `$ref`) | No, `anyOf` accepts a value if any entry fits | Members with the same JSON type stay separate entries, as each keeps its own constraints (here `integer` and `Count`) |
+| TypeScript | `string \| number \| boolean` | No, the order of a TypeScript union has no meaning | Members with the same TypeScript type are merged, so `integer`, `float` and `Count` all become one `number`. Constraints are lost, as TypeScript types cannot express them |
+| Others (SHACL, OWL, GraphQL, ...) | Treat the union as an unknown type | - | - |
+
 ## Eager validation of references
 
 All LinkML references (like `slot_name` in `slots: [ slot_name ]`) are eagerly checked when creating the SchemaView.
 SchemaView is not able to proceed with derivation if this requirement is not satisfied.
+
+For the same reason, loops are rejected when creating the SchemaView: a class or slot that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof` ancestor, and a type that is a member of its own `union_of` (directly, through nested unions, or through the `typeof` parent of a member).
 
 ## Emitted prefixes
 

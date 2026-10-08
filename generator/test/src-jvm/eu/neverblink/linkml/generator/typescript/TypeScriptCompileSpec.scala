@@ -46,6 +46,8 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "typeDerivation" -> "negativeCount" -> bounds,
     "typeDerivation" -> "lowercaseCode" -> pattern,
     "typed" -> "notDate" -> "TypeScript types cannot express string formats such as dates",
+    "unionOf" -> "badPattern" -> pattern,
+    "unionOf" -> "negative" -> bounds,
   )
 
   /** Generated files of one model, by file name relative to the output directory. */

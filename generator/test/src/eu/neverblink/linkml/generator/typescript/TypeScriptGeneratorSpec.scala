@@ -64,6 +64,48 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should not include "KeyOptional"
     }
 
+    "map union_of types to unions of their members' types" in {
+      val ts = generate(
+        """types:
+          |  StringOrInteger:
+          |    union_of: [string, integer]
+          |  Count:
+          |    typeof: integer
+          |  Numbers:
+          |    union_of: [integer, Count, float]
+          |classes:
+          |  C:
+          |    attributes:
+          |      value: {range: StringOrInteger, required: true}
+          |      many: {range: StringOrInteger, multivalued: true}
+          |      number: {range: Numbers}
+          |""".stripMargin,
+      )
+      ts should include("  value: string | number;\n")
+      ts should include("  many?: (string | number)[];\n")
+      ts should include("  number?: number;\n")
+    }
+
+    "keep the declared order of union members, with nested unions in place" in {
+      val ts = generate(
+        """types:
+          |  StringOrInteger:
+          |    union_of: [string, integer]
+          |  Choice:
+          |    union_of: [boolean, StringOrInteger, string]
+          |  Reversed:
+          |    union_of: [integer, string]
+          |classes:
+          |  C:
+          |    attributes:
+          |      choice: {range: Choice}
+          |      reversed: {range: Reversed}
+          |""".stripMargin,
+      )
+      ts should include("  choice?: boolean | string | number;\n")
+      ts should include("  reversed?: number | string;\n")
+    }
+
     "use the same JSON keys as the JSON Schema, quoting them where needed" in {
       val ts = generate(
         """classes:

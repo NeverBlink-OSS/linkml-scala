@@ -170,6 +170,7 @@ object ModelCatalogue {
   val typeDesignator: Entry = Entry("/models/typeDesignator/")
   val typeDesignator2: Entry = Entry("/models/typeDesignator2/")
   val typed: Entry = Entry("/models/typed/")
+  val unionOf: Entry = Entry("/models/unionOf/")
   val unionRange: Entry = Entry("/models/unionRange/")
   val unionRangeReference: Entry = Entry("/models/unionRangeReference/")
   val uri: Entry = Entry("/models/uri/")

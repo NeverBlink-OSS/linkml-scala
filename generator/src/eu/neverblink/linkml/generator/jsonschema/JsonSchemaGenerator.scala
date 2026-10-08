@@ -39,12 +39,6 @@ class JsonSchemaGenerator(using sv: SchemaView)
   override protected def writerConfig(options: Options): WriterConfig =
     WriterConfig.withIndentionStep(options.indentationStep)
 
-  private def toBigDecimalOpt(x: Option[LinkmlAny]): Option[BigDecimal] =
-    try x.mapFast(v => BigDecimal(v.value.trim))
-    catch {
-      case ex if NonFatal(ex) => None
-    }
-
   /** Generate the JSON Schema, but keep it in the [[Schema]] model
     *
     * @param options
@@ -308,9 +302,22 @@ object JsonSchemaGenerator {
   )
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
-    * Provides formats for date-times and URI/CURIE.
+    * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members.
     */
-  def typeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
+  def typeToRuntime(tv: TypeView): Schema =
+    if (tv.isUnion) {
+      // Each member keeps its own constraints, as they only apply to values of that member.
+      new Schema(anyOf = tv.unionAlternatives.map { member =>
+        val derived = member.derivedType
+        nonUnionTypeToRuntime(member).copy(
+          minimum = toBigDecimalOpt(derived.minimumValue),
+          maximum = toBigDecimalOpt(derived.maximumValue),
+          pattern = member.pattern.mapFast(p => new Pattern(p.linkml)),
+        )
+      }.toList)
+    } else nonUnionTypeToRuntime(tv)
+
+  private def nonUnionTypeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
     case _: StringType.type => stringSchema
     case _: IntegerType.type => integerSchema
     case _: FloatType.type => numberSchema
@@ -328,6 +335,12 @@ object JsonSchemaGenerator {
     case _: LocalizedTextType.type => stringSchema // TODO LNK-195
     case _: UnknownType.type => Schema.Empty
   }
+
+  private def toBigDecimalOpt(x: Option[LinkmlAny]): Option[BigDecimal] =
+    try x.mapFast(v => BigDecimal(v.value.trim))
+    catch {
+      case ex if NonFatal(ex) => None
+    }
 
   /** Apply the explicit cardinality metaslots to a slot's schema.
     */
