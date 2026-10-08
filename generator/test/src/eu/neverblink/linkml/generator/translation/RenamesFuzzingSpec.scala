@@ -15,19 +15,8 @@ class RenamesFuzzingSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks
     Gen.stringOf(Gen.asciiPrintableChar.filter(_ != '"')).filter(_.nonEmpty)
   val camelNameGen: Gen[String] = Gen.alphaNumStr
 
-  val renamerNames: Seq[String] = Seq(
-    "base",
-    // TODO LNK-220: uri is aliasing
-//    "uri",
-    "scala",
-    "graphql",
-    "frictionless",
-    "ossie",
-    "erdiagram",
-    "json",
-    "typescript",
-    "pydantic",
-  )
+  // TODO LNK-220: uri is aliasing
+  val renamerNames: Seq[String] = TranslationGenerator.targets.filterNot(_ == "uri")
 
   def schemaWithNames(
       className: String = "Class",

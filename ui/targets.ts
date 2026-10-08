@@ -183,8 +183,14 @@ export const TARGETS: Target[] = [
     lang: "json",
     options: [
       { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic"], default: "base" },
+      {
+        key: "derivedAttributes",
+        type: "checkbox",
+        label: "Derived attributes",
+        title: "Also list inherited slots, mixin slots and slots from the class's slots list",
+      },
     ],
-    call: (api, v, o) => api.translation(v, String(o.target))
+    call: (api, v, o) => api.translation(v, String(o.target), !!o.derivedAttributes)
   },
   {
     id: "lint",

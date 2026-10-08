@@ -582,16 +582,22 @@ object LinkMlJsApi {
     * @param target
     *   Target framework to generate translations for. One of "base", "uri", "scala", "graphql",
     *   "frictionless", "ossie", "erdiagram", "json", "typescript", or "pydantic".
+    * @param derivedAttributes
+    *   Also list inherited slots, mixin slots and slots from the class's `slots` list in
+    *   classAttributes. Without it, classAttributes lists only the class's own attributes. Default:
+    *   false
     * @return
     *   Translation dictionary for translating the linkml names to framework names.
     */
   def translation(
       schema: SchemaViewJs,
       target: String,
+      derivedAttributes: Boolean = false,
   ): String =
     TranslationGenerator(using schema.underlying).serialize(
       TranslationGenerator.Options(
         target,
+        derivedAttributes = derivedAttributes,
       ),
     )
 

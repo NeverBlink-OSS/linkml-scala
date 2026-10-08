@@ -21,6 +21,8 @@ import eu.neverblink.linkml.generator.util.Renamer
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
 
+import scala.collection.immutable.ListMap
+
 class TranslationGenerator(using sv: SchemaView)
     extends JsonDocumentGenerator[TranslationGenerator.Options, Translation] {
   override final def generate(options: TranslationGenerator.Options): Translation = {
@@ -28,8 +30,11 @@ class TranslationGenerator(using sv: SchemaView)
     Translation(
       sv.classes.values.map(el => el.name -> renamer.className(el)).toMap,
       sv.classes.values.map { el =>
-        el.name -> el.cls.attributes.values.map { attr =>
-          attr.name -> renamer.classAttributeName(el, attr)
+        val attributes: Iterable[(String, SlotDefinition)] =
+          if options.derivedAttributes then el.derivedAttributes.view.mapValues(_.slot)
+          else el.cls.attributes
+        el.name -> attributes.map { (name, attr) =>
+          name -> renamer.classAttributeName(el, attr)
         }.toMap
       }.toMap,
       sv.types.values.map(el => el.name -> renamer.typeName(el)).toMap,
@@ -56,22 +61,26 @@ class TranslationGenerator(using sv: SchemaView)
 }
 
 object TranslationGenerator {
-  val availableValues =
-    """"base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic""""
 
-  def resolveRenames(id: String): Renamer = id match {
-    case "base" => TranslationGenerator.BaseRenamer
-    case "uri" => TranslationGenerator.UriRenamer
-    case "scala" => ScalaRenamer
-    case "graphql" => GraphQlRenamer
-    case "frictionless" => FrictionlessRenamer
-    case "ossie" => OssieRenamer
-    case "erdiagram" => ErDiagramRenamer
-    case "json" => JsonRenamer
-    case "typescript" => TypeScriptRenamer
-    case "pydantic" => PydanticRenamer
-    case other => throw IllegalArgumentException(s"Unknown translation target: '$other'")
-  }
+  /** Maps each value of [[Options.to]] to the renamer it selects. */
+  val renamers: ListMap[String, Renamer] = ListMap(
+    "base" -> BaseRenamer,
+    "uri" -> UriRenamer,
+    "scala" -> ScalaRenamer,
+    "graphql" -> GraphQlRenamer,
+    "frictionless" -> FrictionlessRenamer,
+    "ossie" -> OssieRenamer,
+    "erdiagram" -> ErDiagramRenamer,
+    "json" -> JsonRenamer,
+    "typescript" -> TypeScriptRenamer,
+    "pydantic" -> PydanticRenamer,
+  )
+
+  /** The names of the translation targets. */
+  val targets: Seq[String] = renamers.keys.toSeq
+
+  def resolveRenames(id: String): Renamer =
+    renamers.getOrElse(id, throw IllegalArgumentException(s"Unknown translation target: '$id'"))
 
   final case class Translation(
       classes: Map[String, String],
@@ -82,7 +91,25 @@ object TranslationGenerator {
       permissibleValues: Map[String, Map[String, String]],
   )
 
-  final case class Options(to: String = "base", indentationStep: Int = 2)
+  /** Options for [[TranslationGenerator]].
+    *
+    * @param to
+    *   The framework whose names the dictionaries translate to. One of "base", "uri", "scala",
+    *   "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript" or "pydantic".
+    *
+    * @param indentationStep
+    *   Indentation of the JSON output.
+    *
+    * @param derivedAttributes
+    *   Also list inherited slots, mixin slots and slots from the class's `slots` list in
+    *   `classAttributes`. If false (the default), `classAttributes` lists only the class's own
+    *   `attributes`.
+    */
+  final case class Options(
+      to: String = "base",
+      indentationStep: Int = 2,
+      derivedAttributes: Boolean = false,
+  )
 
   object UriRenamer extends Renamer {
     def className(el: ClassView): String = el.uriStr

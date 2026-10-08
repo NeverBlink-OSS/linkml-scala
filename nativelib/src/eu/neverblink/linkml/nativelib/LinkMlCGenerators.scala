@@ -90,7 +90,7 @@ object LinkMlCGenerators {
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.scalaFiles)
 
   /** Generate Translation dictionaries (in JSON), from the original names used in the schema to the
-    * names used in generated outputs. Options: `to`, `indentationStep`.
+    * names used in generated outputs. Options: `to`, `indentationStep`, `derivedAttributes`.
     */
   @exported("linkml_translation")
   def translation(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
