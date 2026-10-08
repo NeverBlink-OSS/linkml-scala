@@ -488,13 +488,14 @@ object SchemaView {
       importer: Importer,
       visited: mutable.Set[String],
   ): Either[ImportFailure, Seq[SchemaDefinition]] = {
-    // TODO LNK-154 Robust file system importing
-    val normalizedUri = Importer.normalizeUri(uri)
-    // After URI normalization, check if we've already visited this URI to avoid infinite loops
-    // and repeatedly loading the same schema.
-    if visited.contains(normalizedUri) then new Right(Nil)
+    val normalizedUri = Importer.normalizePath(Importer.normalizeUri(uri))
+    val isBuiltIn =
+      normalizedUri.startsWith("https://w3id.org/linkml/") || normalizedUri.startsWith("linkml:")
+    // Check if we've already visited this schema to avoid infinite loops and repeatedly loading the
+    // same schema. The importer's key also catches one file reached through different links.
+    if !visited.add(if (isBuiltIn) normalizedUri else importer.schemaKey(normalizedUri)) then
+      new Right(Nil)
     else
-      visited.add(normalizedUri)
       // Built-in schemas come from bundled resources, everything else from the importer. Both
       // routes yield the same structured issues on failure.
       val loaded: Either[ImportFailure, SchemaDefinition] =
