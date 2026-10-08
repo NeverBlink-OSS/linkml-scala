@@ -14,21 +14,21 @@ class TypeScriptModelTypesSpec extends AnyWordSpec, Matchers {
   private val repoRoot: Option[os.Path] =
     sys.env.get("MILL_WORKSPACE_ROOT").map(os.Path(_)).filter(os.exists)
 
-  /** (model, committed TypeScript, the command that regenerates it) */
+  /** (model, committed TypeScript) */
   private val generated = Seq(
-    ("model/issue-types.yaml", "generator/npm/validation-report.d.ts", "validation.regenerate"),
-    ("model/build-info.yaml", "generator/npm/build-info.d.ts", "schemaview.regenerate"),
+    ("model/issue-types.yaml", "generator/npm/validation-report.d.ts"),
+    ("model/build-info.yaml", "generator/npm/build-info.d.ts"),
   )
 
   "The npm package's model types" should {
-    for (model, file, command) <- generated do
+    for (model, file) <- generated do
       s"match $model in $file" in {
         val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
         given SchemaView =
           SchemaIssues.orThrow(
             SchemaView.loadSchemaViewFromUri((root / os.RelPath(model)).toString),
           )
-        withClue(s"$file is out of date, run ./mill $command: ") {
+        withClue(s"$file is out of date, run ./mill regenerate: ") {
           os.read(root / os.RelPath(file)) shouldBe TypeScriptGenerator().serialize()
         }
       }
