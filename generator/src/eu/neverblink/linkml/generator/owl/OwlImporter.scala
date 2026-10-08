@@ -15,7 +15,7 @@ import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{
 }
 import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfigImpl, SomeValuesFrom}
 import eu.neverblink.linkml.generator.owl.OwlImportNames.*
-import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.*

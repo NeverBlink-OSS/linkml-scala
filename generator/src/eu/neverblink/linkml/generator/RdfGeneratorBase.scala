@@ -1,6 +1,5 @@
-package eu.neverblink.linkml.generator.rdf
+package eu.neverblink.linkml.generator
 
-import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink, Utf8ByteSink}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
@@ -9,18 +8,20 @@ import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
 
-/** Serialization format for RDF documents. */
-enum RdfFormat:
-  case nt
-  case ttl
+object RdfGeneratorBase:
+  /** Serialization format for RDF documents. */
+  enum RdfFormat:
+    case nt
+    case ttl
 
-trait RdfOptions {
-  def format: RdfFormat
-}
+  trait RdfOptions {
+    def format: RdfFormat
+  }
 
 /** Base class for the generators that output RDF.
   */
-abstract class RdfGenerator[O <: RdfOptions] extends DocumentGenerator[O] {
+abstract class RdfGeneratorBase[O <: RdfGeneratorBase.RdfOptions] extends DocumentGenerator[O] {
+  import RdfGeneratorBase.*
 
   /** Push the generated triples into `sink`. */
   def generate(sink: RdfSink, options: O = defaultOptions): Unit

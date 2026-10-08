@@ -79,24 +79,18 @@ jobs:
         if: matrix.java == 17
         run: ./mill --no-server generator.js.verifyPackage
 
-      - name: Re-generate the metamodel and check if it's unchanged
-        run: |
-          cp -r metamodel/src metamodel_prev_src
-          ./mill --no-server cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta
-          ./mill --no-server metamodel.jvm.fix
-          ./mill --no-server metamodel.jvm.reformat
-          diff -r metamodel/src metamodel_prev_src
-
       - name: Re-generate the model-derived sources and check they are committed
         run: |
-          ./mill --no-server validation.regenerate
-          ./mill --no-server schemaview.regenerate
-          ./mill --no-server generator.regenerate
-          git diff --exit-code -- validation/src/eu/neverblink/linkml/validation/ \
-            generator/npm/validation-report.d.ts generator/npm/build-info.d.ts \
-            schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ \
-            generator/src/eu/neverblink/linkml/generator/owl/config/ \
-            || (echo "generated sources are stale – run ./mill validation.regenerate, ./mill schemaview.regenerate and ./mill generator.regenerate, then commit the result"; exit 1)
+          ./mill --no-server regenerate
+          paths="metamodel/src validation/src schemaview/src/eu/neverblink/linkml/schemaview/buildinfo
+            generator/src/eu/neverblink/linkml/generator/owl/config tests/src/eu/neverblink/linkml/tests/conformance
+            generator/npm/validation-report.d.ts generator/npm/build-info.d.ts"
+          if [ -n "$(git status --porcelain -- $paths)" ]; then
+            git status --short -- $paths
+            git diff -- $paths
+            echo "generated sources are stale – run ./mill regenerate and commit the result"
+            exit 1
+          fi
 
       - name: Publish Snapshot to Sonatype Central
         if: matrix.java == 17 && github.ref == 'refs/heads/main' && github.event_name == 'push'

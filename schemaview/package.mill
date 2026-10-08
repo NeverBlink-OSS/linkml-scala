@@ -4,16 +4,9 @@ import mill.*
 import mill.javalib.Dep
 import mill.scalalib.*
 import millbuild.*
-import com.carlosedp.aliases.*
-import mill.api.Evaluator
 import mill.contrib.buildinfo.BuildInfo
 
 object `package` extends Module, NativeOptional {
-  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
-    Task.Command(exclusive = true) {
-      AliasesModule.run(ev, "regenerateBuildInfo")
-    }
-
   object jvm extends SchemaViewModule {
     def moduleDeps = Seq(
       build.metamodel.jvm,

@@ -4,19 +4,8 @@ import mill.*
 import mill.javalib.Dep
 import mill.scalalib.*
 import millbuild.*
-import com.carlosedp.aliases.*
-import mill.api.Evaluator
 
 object `package` extends Module, NativeOptional {
-  private def regenerateArgs: mill.api.Task[mill.api.Args] = Task.Anon {
-    Args("generate", "scala", "--to=metamodel/src/eu/neverblink/linkml/metamodel/", "linkml:meta")
-  }
-
-  def regenerate(ev: Evaluator, args: String*): Task.Command[String] =
-    Task.Command(exclusive = true) {
-      AliasesModule.run(ev, "regenerateMetamodel")
-    }
-
   def definitionsBranch: Task.Simple[String] = Task { "main" }
 
   def definitionsRepo: T[PathRef] = Task(persistent = true) {

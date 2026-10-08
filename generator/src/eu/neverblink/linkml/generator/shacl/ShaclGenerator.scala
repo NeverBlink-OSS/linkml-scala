@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
-import eu.neverblink.linkml.generator.rdf.*
+import eu.neverblink.linkml.generator.RdfGeneratorBase
+import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.SlotExpression
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -9,7 +10,7 @@ import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
 
-class ShaclGenerator(using sv: SchemaView) extends RdfGenerator[ShaclGenerator.Options] {
+class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerator.Options] {
 
   override protected def defaultOptions: ShaclGenerator.Options = ShaclGenerator.Options()
 

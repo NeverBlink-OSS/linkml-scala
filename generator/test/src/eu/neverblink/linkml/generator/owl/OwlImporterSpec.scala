@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.metamodel.Codec
 import eu.neverblink.linkml.schemaview.SchemaView

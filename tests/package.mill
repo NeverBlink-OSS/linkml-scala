@@ -4,18 +4,12 @@ import mill.*
 import mill.javalib.Dep
 import mill.scalalib.*
 import millbuild.*
-import com.carlosedp.aliases.*
-import mill.api.Evaluator
 import mill.scalajslib.TestScalaJSModule
 import mill.scalanativelib.TestScalaNativeModule
 
 object `package` extends Module, NativeOptional {
   def conformanceDefinitions: T[PathRef] = Task {
     PathRef(build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml")
-  }
-
-  def regenerate(evaluator: Evaluator, args: String*) = Task.Command(exclusive = true) {
-    AliasesModule.run(evaluator, "regenerateTests")
   }
 
   object jvm extends ResourcesAsStrings("tests"), CommonModule, CommonTestModule {

@@ -1,5 +1,7 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.RdfGeneratorBase
+import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
 import org.scalatest.matchers.should.Matchers
@@ -10,7 +12,7 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
 
   val s: Iri = Iri("urn:subject")
   val p: Iri = Iri("urn:property")
-  val testGenerator: RdfGenerator[TextOptions] = new RdfGenerator[TextOptions] {
+  val testGenerator: RdfGeneratorBase[TextOptions] = new RdfGeneratorBase[TextOptions] {
     override def generate(sink: RdfSink, options: TextOptions): Unit = {
       langStringProperty(sink, s, p, options.text)
     }
@@ -53,7 +55,7 @@ class LocalizedTextConversionSpec extends AnyWordSpec, Matchers {
 
 object LocalizedTextConversionSpec {
 
-  /** The text to convert, wrapped as the options an [[RdfGenerator]] takes. */
+  /** The text to convert, wrapped as the options an [[RdfGeneratorBase]] takes. */
   private[rdf] final case class TextOptions(
       text: LocalizedText,
       format: RdfFormat = RdfFormat.nt,
