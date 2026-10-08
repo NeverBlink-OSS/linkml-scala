@@ -523,8 +523,9 @@ final case class TranslationOptions(
     )
     target: String = "base",
     @HelpMessage(
-      "Whether classAttributes lists every slot a class has (its own attributes, its slots, " +
-        "and those it inherits or gets from mixins), not only its own attributes. Default: false",
+      "Also list inherited slots, mixin slots and slots from the class's slots list in " +
+        "classAttributes. Without it, classAttributes lists only the class's own attributes. " +
+        "Default: false",
     )
     derivedAttributes: Boolean = false,
 ) extends HasGenerateOptions

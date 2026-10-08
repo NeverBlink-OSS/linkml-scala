@@ -373,9 +373,9 @@ class Generators:
             "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json",
             "typescript" or "pydantic".
         :param indentation_step: Indentation of the JSON output.
-        :param derived_attributes: Whether `classAttributes` lists every slot a class has: its
-            own attributes, the slots it names in `slots`, and those it inherits or gets from
-            mixins. By default it lists only the class's own `attributes`.
+        :param derived_attributes: Also list inherited slots, mixin slots and slots from the
+            class's `slots` list in `classAttributes`. If false (the default), `classAttributes`
+            lists only the class's own `attributes`.
         """
         return self._document(
             "linkml_translation",

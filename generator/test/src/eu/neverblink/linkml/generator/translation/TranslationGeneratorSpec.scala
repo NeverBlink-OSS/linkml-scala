@@ -137,13 +137,18 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
 
     "name class attributes the way the GraphQL generator names the fields" in {
       val sdl = GraphQlGenerator(using slotSources).serialize()
+      // A field name is the text before `:` or `(` on a line of the schema. Compare whole names,
+      // because `2_nd_value` is a substring of `_2_nd_value`.
+      val sdlFields = sdl.linesIterator
+        .map(line => line.takeWhile(c => c != ':' && c != '(').trim)
+        .toSet
       val translation =
-        TranslationGenerator(using slotSources).generate(Options("graphql", derivedAttributes = true))
+        TranslationGenerator(using slotSources).generate(
+          Options("graphql", derivedAttributes = true),
+        )
       for (cls, fields) <- translation.classAttributes; (slot, field) <- fields do
         withClue(s"$cls.$slot -> $field:\n$sdl") {
-          // Matched as a whole field name: `2_nd_value` is a substring of `_2_nd_value`.
-          s"(?m)^\\s*${java.util.regex.Pattern.quote(field)}\\s*[(:]".r.findFirstIn(sdl) shouldBe
-            defined
+          sdlFields should contain(field)
         }
       translation.classAttributes("Base")("2nd value") shouldBe "_2_nd_value"
     }
@@ -196,8 +201,8 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
       }
   }
 
-  /** A class whose slots come from everywhere: its own attributes, its `slots`, a parent and a
-    * mixin, with names that each renamer changes.
+  /** A class that gets slots from its own attributes, its `slots` list, a parent class and a mixin.
+    * The slot names are ones the renamers change.
     */
   private lazy val slotSources: SchemaView = SchemaIssues.orThrow(
     SchemaView.loadSchemaViewFromString(

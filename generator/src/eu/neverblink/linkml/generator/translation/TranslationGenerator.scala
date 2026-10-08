@@ -62,7 +62,7 @@ class TranslationGenerator(using sv: SchemaView)
 
 object TranslationGenerator {
 
-  /** Every translation target: the name [[Options.to]] takes, and the renamer that names it. */
+  /** Maps each value of [[Options.to]] to the renamer it selects. */
   val renamers: ListMap[String, Renamer] = ListMap(
     "base" -> BaseRenamer,
     "uri" -> UriRenamer,
@@ -101,9 +101,9 @@ object TranslationGenerator {
     *   Indentation of the JSON output.
     *
     * @param derivedAttributes
-    *   Whether `classAttributes` lists every slot a class has: its own attributes, the slots it
-    *   names in `slots`, and those it inherits or gets from mixins. By default it lists only the
-    *   class's own `attributes`.
+    *   Also list inherited slots, mixin slots and slots from the class's `slots` list in
+    *   `classAttributes`. If false (the default), `classAttributes` lists only the class's own
+    *   `attributes`.
     */
   final case class Options(
       to: String = "base",

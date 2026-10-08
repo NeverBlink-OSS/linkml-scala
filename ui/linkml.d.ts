@@ -179,9 +179,10 @@ export interface LinkMLApi {
    * Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", or "pydantic".
+   * @param derivedAttributes Also list inherited slots, mixin slots and slots from the class's `slots` list in classAttributes. Without it, classAttributes lists only the class's own attributes. Default: false
    * @returns Translation dictionary for translating the linkml names to framework names.
    */
-  translation(schema: SchemaView, target: string): string;
+  translation(schema: SchemaView, target: string, derivedAttributes?: boolean): string;
 
   /**
    * Generate an Apache Ossie ontology from a loaded LinkML schema. Classes become entity types, enums and named types become value types, and slots become the relationships grouped under the concept that plays their first role.
