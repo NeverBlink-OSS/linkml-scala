@@ -217,6 +217,71 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       result.notes shouldBe Seq(PlainText("note 1"), PlainText("note 2"))
     }
 
+    "replace boolean slots with the more specific ones instead of merging them" in {
+      def ranges(names: String*) =
+        names.map(n => AnonymousSlotExpressionImpl(range = Some(Reference(n))))
+
+      val slot = SlotDefinitionImpl(
+        name = "slot1",
+        anyOf = ranges("base", "child", "grandchild"),
+        allOf = ranges("base"),
+        exactlyOneOf = ranges("base", "child"),
+        noneOf = ranges("grandchild"),
+      )
+
+      val base = ClassDefinitionImpl(
+        name = "base",
+        slots = Seq(slot.reference),
+      )
+
+      val child = ClassDefinitionImpl(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(
+          SlotDefinitionImpl(
+            name = "slot1",
+            anyOf = ranges("base", "child"),
+            allOf = ranges("child"),
+          ).compact,
+        ),
+      )
+
+      val grandchild = ClassDefinitionImpl(
+        name = "grandchild",
+        isA = Some(child.reference),
+        slotUsage = Map(
+          SlotDefinitionImpl(
+            name = "slot1",
+            anyOf = ranges("base"),
+          ).compact,
+        ),
+      )
+
+      val sv = SchemaView.single(
+        SchemaDefinitionImpl(
+          name = "",
+          id = Uri("https://neverblink.eu/test/"),
+          defaultRange = Some(Reference("base")),
+          slotDefinitions = Map(slot.compact),
+          classes = Map(base.compact, child.compact, grandchild.compact),
+        ),
+      )
+
+      val inBase = sv.classes("base").derivedAttributes("slot1").slot
+      inBase.anyOf shouldBe ranges("base", "child", "grandchild")
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      inChild.anyOf shouldBe ranges("base", "child")
+      inChild.allOf shouldBe ranges("child")
+      // not set in slot_usage, so inherited
+      inChild.exactlyOneOf shouldBe ranges("base", "child")
+      inChild.noneOf shouldBe ranges("grandchild")
+
+      val inGrandchild = sv.classes("grandchild").derivedAttributes("slot1").slot
+      inGrandchild.anyOf shouldBe ranges("base")
+      inGrandchild.allOf shouldBe ranges("child")
+    }
+
     "not duplicate Seqs if the contents are identical" in {
       val slot = SlotDefinitionImpl(
         name = "slot1",

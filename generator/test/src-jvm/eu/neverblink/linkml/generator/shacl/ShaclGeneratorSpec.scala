@@ -8,6 +8,7 @@ import org.eclipse.rdf4j.model.ValueFactory
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
 import org.eclipse.rdf4j.model.util.Models
 import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
+import org.eclipse.rdf4j.sail.shacl.ShaclValidator
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -1038,13 +1039,324 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should include("sh:or ")
     }
 
-    "not generate the main range for any_of" in {
-      // TODO LNK-129: Get rid of this hack
+    "not generate the main range when the any_of members set ranges" in {
+      // Members set ranges, so BaseClass is skipped (members without ranges: see sh:xone test)
       val turtle = RdfUtils.toTurtle(
         ShaclGenerator(using ModelCatalogue.unionRangeReference.model).generate(_),
       )
       turtle should include("sh:or ")
       turtle should not include "sh:class <https://neverblink.eu/linkml/tests/unionRangeReference/BaseClass>"
+    }
+
+    "narrow down any_of ranges with slot_usage" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Service:
+           |    slots:
+           |    - represents
+           |    slot_usage:
+           |      represents:
+           |        any_of:
+           |        - range: Function
+           |        - range: FunctionOfInterest
+           |  Operation:
+           |    slots:
+           |    - represents
+           |    slot_usage:
+           |      represents:
+           |        any_of:
+           |        - range: Command
+           |  Function:
+           |  FunctionOfInterest:
+           |  Command:
+           |slots:
+           |  represents:
+           |    multivalued: true
+           |    any_of:
+           |    - range: Function
+           |    - range: FunctionOfInterest
+           |    - range: Command
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+          |
+          |t:Service a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:or (
+          |        [ sh:class t:Function; sh:nodeKind sh:BlankNodeOrIRI ]
+          |        [ sh:class t:FunctionOfInterest; sh:nodeKind sh:BlankNodeOrIRI ]
+          |      );
+          |      sh:order 0;
+          |      sh:path t:represents
+          |    ];
+          |  sh:targetClass t:Service .
+          |
+          |t:Operation a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:or ( [ sh:class t:Command; sh:nodeKind sh:BlankNodeOrIRI ] );
+          |      sh:order 0;
+          |      sh:path t:represents
+          |    ];
+          |  sh:targetClass t:Operation .
+          |
+          |t:Function a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:targetClass t:Function .
+          |
+          |t:FunctionOfInterest a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:targetClass t:FunctionOfInterest .
+          |
+          |t:Command a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:targetClass t:Command .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "map the boolean slots to SHACL logical constraints" when {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  t: https://neverblink.eu/linkml/shacl/test/
+           |default_prefix: t
+           |classes:
+           |  Container:
+           |    slots:
+           |    - id
+           |    - code
+           |    - num
+           |    - label
+           |    - nested
+           |    - pair_or_single
+           |    - few
+           |slots:
+           |  id:
+           |    identifier: true
+           |    range: uriorcurie
+           |  code:
+           |    all_of:
+           |    - pattern: "^A"
+           |    - pattern: "Z$$"
+           |  num:
+           |    range: integer
+           |    exactly_one_of:
+           |    - minimum_value: 0
+           |      maximum_value: 10
+           |    - minimum_value: 5
+           |      maximum_value: 20
+           |  label:
+           |    none_of:
+           |    - pattern: "^forbidden"
+           |    - pattern: "^banned"
+           |  nested:
+           |    range: integer
+           |    any_of:
+           |    - range: integer
+           |      none_of:
+           |      - minimum_value: 10
+           |    - range: string
+           |      all_of:
+           |      - pattern: "^x"
+           |  pair_or_single:
+           |    multivalued: true
+           |    any_of:
+           |    - range: integer
+           |      exact_cardinality: 2
+           |    - range: string
+           |      maximum_cardinality: 1
+           |  few:
+           |    multivalued: true
+           |    range: integer
+           |    none_of:
+           |    - minimum_cardinality: 3
+           |""".stripMargin
+      lazy val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      lazy val validator = ShaclValidator.builder().withShapes(turtle, RDFFormat.TURTLE).build()
+
+      def conforms(properties: String): Boolean = {
+        val data =
+          s"""@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+             |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+             |t:c a t:Container; $properties .
+             |""".stripMargin
+        validator.validate(data, RDFFormat.TURTLE).conforms()
+      }
+
+      "emitting the right constraints" in {
+        Seq("sh:and", "sh:xone", "sh:not", "sh:or").foreach { snippet =>
+          turtle should include(snippet)
+        }
+        Rio.parse(StringReader(turtle), RDFFormat.TURTLE) should not be empty
+      }
+
+      "all_of" in {
+        conforms("""t:code "AbcZ"""") shouldBe true
+        conforms("""t:code "Abc"""") shouldBe false
+        conforms("""t:code "bcZ"""") shouldBe false
+      }
+
+      "exactly_one_of" in {
+        // RDF4J ignores sh:xone, so only check valid values here. The shape is checked below.
+        conforms("t:num 3") shouldBe true
+        conforms("t:num 15") shouldBe true
+      }
+
+      "none_of" in {
+        conforms("""t:label "fine"""") shouldBe true
+        conforms("""t:label "forbidden fruit"""") shouldBe false
+        conforms("""t:label "banned book"""") shouldBe false
+      }
+
+      "nested boolean slots" in {
+        conforms("t:nested 3") shouldBe true
+        conforms("t:nested 12") shouldBe false
+        conforms("""t:nested "xyz"""") shouldBe true
+        conforms("""t:nested "abc"""") shouldBe false
+      }
+
+      "any_of with cardinalities" in {
+        conforms("t:pair_or_single 1, 2") shouldBe true
+        conforms("""t:pair_or_single "a"""") shouldBe true
+        conforms("t:pair_or_single 1") shouldBe false
+        conforms("t:pair_or_single 1, 2, 3") shouldBe false
+        conforms("""t:pair_or_single "a", "b"""") shouldBe false
+        conforms("""t:pair_or_single 1, "a"""") shouldBe false
+      }
+
+      "none_of with cardinalities" in {
+        conforms("t:few 1, 2") shouldBe true
+        conforms("t:few 1, 2, 3") shouldBe false
+      }
+    }
+
+    "map exactly_one_of to sh:xone" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Container:
+           |    slots:
+           |    - num
+           |slots:
+           |  num:
+           |    range: integer
+           |    exactly_one_of:
+           |    - minimum_value: 0
+           |      maximum_value: 10
+           |    - minimum_value: 5
+           |      maximum_value: 20
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+          |
+          |t:Container a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:integer;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path t:num;
+          |      sh:xone (
+          |        [ sh:minInclusive 0; sh:maxInclusive 10 ]
+          |        [ sh:minInclusive 5; sh:maxInclusive 20 ]
+          |      )
+          |    ];
+          |  sh:targetClass t:Container .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "type nested value bounds with the nearest enclosing range" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Container:
+           |    slots:
+           |    - num
+           |slots:
+           |  num:
+           |    any_of:
+           |    - range: integer
+           |      none_of:
+           |      - minimum_value: 10
+           |    - range: string
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      // Typed by the member's `integer`, not by the default range `string`
+      turtle should include("sh:minInclusive 10")
+      turtle should not include "sh:minInclusive \"10\""
+    }
+
+    "put boolean slots with cardinalities on the class shape" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Container:
+           |    slots:
+           |    - items
+           |slots:
+           |  items:
+           |    multivalued: true
+           |    any_of:
+           |    - range: integer
+           |      exact_cardinality: 2
+           |    - range: string
+           |      required: true
+           |      any_of:
+           |      - pattern: "^a"
+           |      - pattern: "^b"
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+          |
+          |t:Container a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:order 0;
+          |      sh:path t:items
+          |    ];
+          |  sh:or (
+          |    [ sh:property [
+          |        sh:path t:items;
+          |        sh:minCount 2;
+          |        sh:maxCount 2;
+          |        sh:datatype xsd:integer;
+          |        sh:nodeKind sh:Literal
+          |      ] ]
+          |    [ sh:property [
+          |        sh:path t:items;
+          |        sh:minCount 1;
+          |        sh:datatype xsd:string;
+          |        sh:nodeKind sh:Literal;
+          |        sh:or ( [ sh:pattern "^a" ] [ sh:pattern "^b" ] )
+          |      ] ]
+          |  );
+          |  sh:targetClass t:Container .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
     }
 
     "emit valid, mangled URIs" in {
