@@ -32,6 +32,20 @@ trait Importer {
     */
   def readSchema(path: String): Either[ImportFailure, SchemaDefinition]
 
+  /** Return a key that tells whether two paths point to the same schema, so a schema reached by
+    * several paths is loaded only once. The loader calls it with paths that have already been
+    * through [[Importer.normalizeUri]] and [[Importer.normalizePath]], so differently spelled paths
+    * to one file are already equal. An importer that can tell more – such as a file system one
+    * following symbolic and hard links – overrides this. Keys are only compared with each other,
+    * never read from.
+    *
+    * @param path
+    *   The normalized path of the schema.
+    * @return
+    *   The key for the schema at that path. The default is the path itself.
+    */
+  def schemaKey(path: String): String = path
+
   /** Decode a SchemaDefinition directly from a string.
     *
     * @param yaml
@@ -93,13 +107,55 @@ object Importer {
     else trimmed.concat(".yaml")
   }
 
+  /** Collapse `.` and `..` segments and repeated separators in a file path or URL path, so that one
+    * schema reached by differently spelled paths (`dir/a.yaml`, `dir/./a.yaml`, `dir//a.yaml`,
+    * `dir/sub/../a.yaml`) gets one key. The scheme and authority of a URL, leading separators of an
+    * absolute or UNC path, and `..` segments that climb above a relative path's start are kept.
+    * URIs without a path, such as `urn:` and `linkml:` ones, are returned unchanged.
+    */
+  def normalizePath(uri: String): String =
+    if (uri.startsWith("urn:") || uri.startsWith("linkml:")) uri
+    else {
+      val schemeEnd = uri.indexOf("://")
+      var start =
+        if (schemeEnd < 0) 0
+        else {
+          val pathStart = uri.indexOf('/', schemeEnd + 3)
+          if (pathStart < 0) uri.length else pathStart
+        }
+      while (start < uri.length && isSeparator(uri.charAt(start))) start += 1
+      val prefix = uri.substring(0, start)
+      val isRooted = start > 0
+      val sep = separatorFor(uri).charAt(0)
+      val segments = new scala.collection.mutable.ArrayBuffer[String]
+      var i = start
+      while (i <= uri.length) {
+        var j = i
+        while (j < uri.length && !isSeparator(uri.charAt(j))) j += 1
+        val segment = uri.substring(i, j)
+        if (segment == "..") {
+          if (segments.nonEmpty && segments.last != "..") segments.remove(segments.length - 1)
+          else if (!isRooted) segments += segment
+        } else if (segment.nonEmpty && segment != ".") segments += segment
+        i = j + 1
+      }
+      val sb = new java.lang.StringBuilder(uri.length).append(prefix)
+      var k = 0
+      while (k < segments.length) {
+        if (k > 0) sb.append(sep)
+        sb.append(segments(k))
+        k += 1
+      }
+      sb.toString
+    }
+
   /** Build the lookup table of a map-backed importer, adding every key under its normalized form as
-    * well, so a schema keyed `"core"` is found by the lookup of `"core.yaml"`.
+    * well, so a schema keyed `"core"` or `"./core"` is found by the lookup of `"core.yaml"`.
     */
   def normalizedMap(entries: IterableOnce[(String, String)]): Map[String, String] = {
     val exact = entries.iterator.toMap
     exact.foldLeft(exact) { case (acc, (key, body)) =>
-      val normalized = normalizeUri(key)
+      val normalized = normalizePath(normalizeUri(key))
       if (acc.contains(normalized)) acc else acc.updated(normalized, body)
     }
   }
@@ -170,13 +226,6 @@ trait StringImporter extends Importer {
     *   The path to the schema to read.
     */
   def read(path: String): String
-}
-
-/** An Importer implementation that reads the schema text from a file path. This is the default
-  * importer used by SchemaView.
-  */
-object FileSystemImporter extends StringImporter {
-  def read(path: String): String = PlatformSpecificUtils.readFile(path)
 }
 
 /** A basic importer implementation which delegates the read operation to a mapping

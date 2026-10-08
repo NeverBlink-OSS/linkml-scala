@@ -185,6 +185,73 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
     }
   }
 
+  "Importer.normalizePath" should {
+    "collapse dot segments and repeated separators" in {
+      Importer.normalizePath("dir/./sub/../a.yaml") shouldBe "dir/a.yaml"
+      Importer.normalizePath("./dir//a.yaml") shouldBe "dir/a.yaml"
+      Importer.normalizePath("C:\\schemas\\sub\\..\\a.yaml") shouldBe "C:\\schemas\\a.yaml"
+    }
+
+    "keep leading parent segments of a relative path" in {
+      Importer.normalizePath("../../dir/../a.yaml") shouldBe "../../a.yaml"
+    }
+
+    "not climb above the root of an absolute path or a URL" in {
+      Importer.normalizePath("/../a.yaml") shouldBe "/a.yaml"
+      Importer.normalizePath("https://example.org/x/../../a.yaml") shouldBe
+        "https://example.org/a.yaml"
+    }
+
+    "leave URIs without a path alone" in {
+      Importer.normalizePath("linkml:types") shouldBe "linkml:types"
+      Importer.normalizePath("urn:x:./y") shouldBe "urn:x:./y"
+    }
+  }
+
+  "importing one schema through differently spelled paths" should {
+    def reads(root: String, files: (String, String)*): Seq[String] = {
+      val log = Seq.newBuilder[String]
+      val map = MapImporter(files*)
+      val importer = new StringImporter {
+        def read(path: String): String = {
+          log += path
+          map.read(path)
+        }
+      }
+      SchemaView.loadSchemas(root, importer).isRight shouldBe true
+      log.result()
+    }
+
+    def schema(name: String, imports: String*): String =
+      s"id: https://neverblink.eu/linkml/importer/$name/\nname: $name\n" +
+        imports.map(i => s"  - $i\n").mkString(if (imports.isEmpty) "" else "imports:\n", "", "")
+
+    "load it once when reached through a parent directory" in {
+      reads(
+        "b.yaml",
+        "b.yaml" -> schema("b", "./dir/a2", "./common/c"),
+        "dir/a2.yaml" -> schema("a2", "../common/c"),
+        "common/c.yaml" -> schema("c"),
+      ) shouldBe Seq("b.yaml", "dir/a2.yaml", "common/c.yaml")
+    }
+
+    "load it once when reached through dot segments or doubled separators" in {
+      reads(
+        "b.yaml",
+        "b.yaml" -> schema("b", "dir/a1", "dir//a1", "dir/./a1", "dir/sub/../a1"),
+        "dir/a1.yaml" -> schema("a1"),
+      ) shouldBe Seq("b.yaml", "dir/a1.yaml")
+    }
+
+    "not load the root again when an import points back at it" in {
+      reads(
+        "./b.yaml",
+        "./b.yaml" -> schema("b", "dir/a1"),
+        "dir/a1.yaml" -> schema("a1", "../b"),
+      ) shouldBe Seq("b.yaml", "dir/a1.yaml")
+    }
+  }
+
   "SchemaView loading" should {
     "return the parse issue rather than throwing" in {
       inside(SchemaView.loadSchemaViewFromString("classes: [a, b")) { case Left(problems) =>
