@@ -581,6 +581,113 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         """Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
     }
 
+    "find is_a/mixins loops in classes" in {
+      loadFailure(s"""$schemaShared
+           |classes:
+           |  A:
+           |    is_a: B
+           |  B:
+           |    is_a: A
+           |""".stripMargin) shouldBe
+        "Cyclic is_a/mixins reference at /classes/A: A -> B -> A. An element cannot refer back to itself through is_a/mixins."
+      loadFailure(s"""$schemaShared
+           |classes:
+           |  A:
+           |    is_a: A
+           |""".stripMargin) shouldBe
+        "Cyclic is_a/mixins reference at /classes/A: A -> A. An element cannot refer back to itself through is_a/mixins."
+      // A loop that goes through both is_a and mixins
+      loadFailure(s"""$schemaShared
+           |classes:
+           |  A:
+           |    is_a: B
+           |  B:
+           |    mixins: [M]
+           |  M:
+           |    mixin: true
+           |    mixins: [A]
+           |""".stripMargin) shouldBe
+        "Cyclic is_a/mixins reference at /classes/A: A -> B -> M -> A. An element cannot refer back to itself through is_a/mixins."
+    }
+
+    "find is_a/mixins loops in slots" in {
+      loadFailure(s"""$schemaShared
+           |default_range: S
+           |types:
+           |  S:
+           |    base: str
+           |slots:
+           |  a:
+           |    is_a: b
+           |  b:
+           |    mixins: [a]
+           |""".stripMargin) shouldBe
+        "Cyclic is_a/mixins reference at /slots/a: a -> b -> a. An element cannot refer back to itself through is_a/mixins."
+    }
+
+    "find union_of loops, also through a typeof parent of a member" in {
+      loadFailure(s"""$schemaShared
+           |imports: [linkml:types]
+           |types:
+           |  A:
+           |    union_of: [string, M]
+           |  M:
+           |    typeof: U
+           |  U:
+           |    union_of: [integer, A]
+           |""".stripMargin) shouldBe
+        "Cyclic union_of reference at /types/A: A -> M -> A. An element cannot refer back to itself through union_of."
+    }
+
+    "report each loop once, for every relation" in {
+      val failure = loadFailure(s"""$schemaShared
+           |imports: [linkml:types]
+           |types:
+           |  T1:
+           |    typeof: T2
+           |  T2:
+           |    typeof: T1
+           |  U1:
+           |    union_of: [string, U2]
+           |  U2:
+           |    union_of: [U1]
+           |classes:
+           |  C:
+           |    is_a: C
+           |""".stripMargin)
+      failure should include("Cyclic is_a/mixins reference at /classes/C: C -> C.")
+      failure should include("Cyclic typeof reference at /types/T1: T1 -> T2 -> T1.")
+      failure should include("Cyclic union_of reference at /types/U1: U1 -> U2 -> U1.")
+      failure.linesIterator.count(_.contains("Cyclic")) shouldBe 3
+    }
+
+    "accept shared ancestors and union members that do not loop" in {
+      load(s"""$schemaShared
+           |imports: [linkml:types]
+           |types:
+           |  U1:
+           |    union_of: [string, integer]
+           |  U2:
+           |    union_of: [U1, string]
+           |  U3:
+           |    union_of: [U1, U2]
+           |  Child:
+           |    typeof: U3
+           |classes:
+           |  Base: {}
+           |  M:
+           |    mixin: true
+           |    is_a: Base
+           |  A:
+           |    is_a: Base
+           |    mixins: [M]
+           |  B:
+           |    is_a: A
+           |    mixins: [M]
+           |""".stripMargin).types("Child").unionAlternatives.map(_.name) shouldBe
+        Seq("string", "integer")
+    }
+
     "leave issue messages unpopulated until the consumer infers them" in {
       val schemaYaml =
         s"""$schemaShared

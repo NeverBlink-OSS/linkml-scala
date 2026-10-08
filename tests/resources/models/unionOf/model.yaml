@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/unionOf
+name: unionOf
+imports:
+  - linkml:types
+
+types:
+  StringOrInteger:
+    union_of: [string, integer]
+  Code:
+    typeof: string
+    pattern: '^[A-Z]+$'
+  Count:
+    typeof: integer
+    minimum_value: 0
+  CodeOrCount:
+    union_of: [Code, Count]
+
+classes:
+  Container:
+    tree_root: true
+    attributes:
+      value:
+        rank: 1
+        range: StringOrInteger
+        required: true
+      choice:
+        rank: 2
+        range: CodeOrCount

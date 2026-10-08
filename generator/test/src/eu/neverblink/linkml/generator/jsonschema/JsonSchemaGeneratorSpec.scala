@@ -53,6 +53,51 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       c.required should contain("some_other_slot")
     }
 
+    "generate anyOf alternatives for a type with union_of" in {
+      given SchemaView = ModelCatalogue.unionOf.model
+
+      val container = JsonSchemaGenerator().generate().$defs.get("Container").asInstanceOf[Schema]
+      val value = container.properties("value").asInstanceOf[Schema]
+      value.`type` shouldBe None
+      value.anyOf.map(_.asInstanceOf[Schema].`type`) shouldBe List(
+        Some(List(SchemaType.String)),
+        Some(List(SchemaType.Integer)),
+      )
+      // Each member keeps the constraints of its own type.
+      val choice = container.properties("choice").asInstanceOf[Schema].anyOf
+        .map(_.asInstanceOf[Schema])
+      choice.map(_.`type`) shouldBe List(
+        Some(List(SchemaType.String)),
+        Some(List(SchemaType.Integer)),
+      )
+      choice.map(_.pattern) shouldBe List(Some(Pattern("^[A-Z]+$")), None)
+      choice.map(_.minimum) shouldBe List(None, Some(BigDecimal(0)))
+    }
+
+    "keep the declared order of union members, with nested unions in place" in {
+      // Adds to the `types` of the shared part.
+      given SchemaView = load(s"""$schemaShared
+           |  StringOrInteger:
+           |    union_of: [string, integer]
+           |  Choice:
+           |    union_of: [boolean, StringOrInteger, string]
+           |classes:
+           |  C:
+           |    attributes:
+           |      choice:
+           |        range: Choice
+           |""".stripMargin)
+
+      val c = JsonSchemaGenerator().generate().$defs.get("C").asInstanceOf[Schema]
+      // The repeated `string` is kept only at its first place, inside the nested union.
+      c.properties("choice").asInstanceOf[Schema].anyOf
+        .map(_.asInstanceOf[Schema].`type`) shouldBe List(
+        Some(List(SchemaType.Boolean)),
+        Some(List(SchemaType.String)),
+        Some(List(SchemaType.Integer)),
+      )
+    }
+
     "work without tree_root set" in {
       val input =
         s"""$schemaShared

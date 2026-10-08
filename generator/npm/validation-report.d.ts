@@ -18,6 +18,24 @@ export interface CodeRegion {
   start_line: number;
 }
 
+/** Elements refer to each other in a loop through a relation that must not loop, such as a class that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof` ancestor, or a type that is a member of its own `union_of`. */
+export interface CyclicReference {
+  /** cycle: The names of the elements in the loop, starting and ending with the same one. */
+  cycle: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "CyclicReference";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** relation: The metaslots that form the loop, e.g. `is_a/mixins`, `typeof` or `union_of`. */
+  relation: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+}
+
 /** An element has an empty name after renaming */
 export interface EmptyName {
   /** details: Longer, human-readable message describing the issue in more detail. */
@@ -275,6 +293,7 @@ export type SchemaError =
   | UndefinedPrefix;
 
 export type SchemaFatal =
+  | CyclicReference
   | InvalidDefaultRange
   | InvalidRange
   | SchemaIdClash
@@ -318,6 +337,7 @@ export interface SchemaImportError {
 
 /** Schema issue: A single issue found during the validation of a LinkML schema. */
 export type SchemaIssue =
+  | CyclicReference
   | EmptyName
   | FlankingSeparator
   | InvalidDefaultRange

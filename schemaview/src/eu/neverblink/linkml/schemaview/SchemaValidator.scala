@@ -90,6 +90,43 @@ final class SchemaValidator(using sv: SchemaView) {
     clashes.result()
   }
 
+  /** Loops in the relations that derivation follows: class and slot inheritance (`is_a` and
+    * `mixins`), type inheritance (`typeof`) and type unions (`union_of`). Each loop is reported
+    * once, at the element where it was found first, visiting elements by name. Empty if there are
+    * no loops.
+    */
+  lazy val cyclicReferences: Seq[SchemaFatal] = {
+    val issues = Vector.newBuilder[SchemaFatal]
+
+    def report[E <: ElementView[?, ?]](
+        relation: String,
+        elements: Iterable[E],
+        next: E => Iterable[E],
+        location: E => IssueLocationImpl,
+    ): Unit =
+      SchemaValidator.findCycles[E](elements, _.name, next).foreach { cycle =>
+        issues.addOne(
+          new CyclicReferenceImpl(
+            cycle = cycle.iterator.map(_.name).mkString(" -> "),
+            location = location(cycle.head),
+            relation = relation,
+          ),
+        )
+      }
+
+    report[ClassView]("is_a/mixins", sv.classes.values, _.parents, locationOf)
+    report[SlotView](
+      "is_a/mixins",
+      sv.slotDefinitions.values,
+      _.parents,
+      slot => at("/slots/" + slot.name, slot.definingSchema.id),
+    )
+    report[TypeView]("typeof", sv.types.values, _.parents, locationOf)
+    // A member that is a union through `typeof` brings in the members of that union too.
+    report[TypeView]("union_of", sv.types.values, _.inheritedUnionMembers, locationOf)
+    issues.result()
+  }
+
   /** Warning if defining a slot without a `range` will cause a fatal error, None otherwise
     */
   private lazy val undefinedDefaultRange: Option[SchemaWarning] =
@@ -499,11 +536,14 @@ final class SchemaValidator(using sv: SchemaView) {
   }
 
   /** Any fatal problems that block further processing / validation, if any. */
-  lazy val fatalProblems: Seq[SchemaFatal] =
-    unknownReferences ++
+  lazy val fatalProblems: Seq[SchemaFatal] = {
+    val problems = unknownReferences ++
       invalidRangeTypes ++
       usedUndefinedDefaultRange ++
       schemaIdClash
+    // Looking for loops follows references, so it needs all of them to resolve.
+    if problems.nonEmpty then problems else cyclicReferences
+  }
 
   /** Any errors found in the schema, if any. */
   private lazy val errors: Seq[SchemaError] =
@@ -560,6 +600,70 @@ final class SchemaValidator(using sv: SchemaView) {
 }
 
 object SchemaValidator {
+
+  /** Find the loops in a relation between elements with a depth-first search, in O(V log V + E)
+    * time for V elements and E references between them.
+    *
+    * @param elements
+    *   Elements to start from. They are visited in the order of their keys, so that the result does
+    *   not depend on the order of the collection.
+    * @param key
+    *   Unique key of an element
+    * @param next
+    *   Elements that an element refers to through the relation
+    * @return
+    *   Each loop once, as the elements on it, starting and ending with the same element
+    */
+  private[schemaview] def findCycles[E <: AnyRef](
+      elements: Iterable[E],
+      key: E => String,
+      next: E => Iterable[E],
+  ): List[List[E]] = {
+    val sorted = elements.toArray[AnyRef]
+    util.Arrays.sort(
+      sorted,
+      (x: AnyRef, y: AnyRef) => key(x.asInstanceOf[E]).compareTo(key(y.asInstanceOf[E])),
+    )
+    val finder = new CycleFinder[E](key, next, sorted.length)
+    var i = 0
+    while (i < sorted.length) {
+      finder(sorted(i).asInstanceOf[E])
+      i += 1
+    }
+    finder.cycles.toList
+  }
+
+  /** State of [[findCycles]]. It is the function that visits an element, so that it can be passed
+    * to `foreach` for each element without allocating a closure.
+    */
+  private final class CycleFinder[E](key: E => String, next: E => Iterable[E], size: Int)
+      extends (E => Unit) {
+    val cycles = new mutable.ListBuffer[List[E]]
+    private val path = new mutable.ArrayBuffer[E]
+    // Key of each visited element -> its index in `path` while it is there, `done` after that
+    private val states = new util.HashMap[String, Integer](size << 1, 0.5f)
+    private val done = Integer.valueOf(-1)
+
+    def apply(e: E): Unit = {
+      val k = key(e)
+      val state = states.get(k)
+      if (state eq null) {
+        states.put(k, path.length)
+        path.addOne(e)
+        next(e).foreach(this)
+        path.dropRightInPlace(1)
+        states.put(k, done)
+      } else if (state ne done) {
+        val cycle = new mutable.ListBuffer[E]
+        var i: Int = state
+        while (i < path.length) {
+          cycle.addOne(path(i))
+          i += 1
+        }
+        cycles.addOne(cycle.addOne(e).toList)
+      }
+    }
+  }
 
   /** Macro validator instance which will be used in the [[SchemaValidator]] */
   private val macroValidator: MacroValidator[SchemaDefinitionImpl] =

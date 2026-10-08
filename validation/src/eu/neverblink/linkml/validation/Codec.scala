@@ -9,6 +9,7 @@ import eu.neverblink.linkml.yaml.LinkmlYamlCodec.TypeDesignatorEntry
   */
 object Codec {
 
+  private val cyclicReference: LinkmlYamlCodec[CyclicReferenceImpl] = LinkmlYamlCodec.derived
   private val invalidDefaultRange: LinkmlYamlCodec[InvalidDefaultRangeImpl] =
     LinkmlYamlCodec.derived
   private val invalidKeyOrIdSlotType: LinkmlYamlCodec[InvalidKeyOrIdSlotTypeImpl] =
@@ -43,6 +44,7 @@ object Codec {
     LinkmlYamlCodec.typeDesignatorCodec(
       "issue_type",
       Seq(
+        TypeDesignatorEntry("CyclicReference", classOf[CyclicReferenceImpl], cyclicReference),
         TypeDesignatorEntry(
           "InvalidDefaultRange",
           classOf[InvalidDefaultRangeImpl],

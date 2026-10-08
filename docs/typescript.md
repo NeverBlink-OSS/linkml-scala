@@ -163,6 +163,7 @@ quoted, e.g. `"odd-name"?: string`.
 | `integer`, `float`, `double`, `decimal`                        | `number`            |
 | `boolean`                                                      | `boolean`           |
 | `linkml:Any`                                                   | `unknown`           |
+| a type with `union_of`                                         | a union of its members' types, e.g. `string \| number` |
 | an enum                                                        | the enum's type     |
 | a class, not inlined                                           | the type of the class's identifier, with a "Reference to X" comment |
 | a class, inlined                                               | the class's type    |
@@ -170,7 +171,12 @@ quoted, e.g. `"odd-name"?: string`.
 | a class, inlined as a dict (compact form)                      | `Record<string, KeyOptional<X, "id">>` |
 | a class, inlined as a dict (simple form)                       | `Record<string, V \| KeyOptional<X, "id">>`, where `V` is the type of the value slot |
 
-A multivalued slot of any other range becomes an array, e.g. `string[]`.
+A multivalued slot of any other range becomes an array, e.g. `string[]`, or `(string | number)[]`
+for a union.
+
+A `union_of` type lists its members in their declared order, with nested unions replaced by their
+own members. Members that map to the same TypeScript type appear once, so `union_of: [integer,
+float]` is just `number`.
 
 In the dict forms the key of each entry is the object's identifier, so the identifier is
 optional inside the object. `KeyOptional<X, "id">` is `X` with `id` made optional. It is only
