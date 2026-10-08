@@ -443,6 +443,13 @@ object PydanticRoundTripSpec {
       |      my-slot:
       |      since:
       |        range: date
+      |  Note:
+      |    extra_slots:
+      |      allowed: true
+      |    attributes:
+      |      text:
+      |  Memo:
+      |    is_a: Note
       |""".stripMargin
 
   private val behaviourChecks: String =
@@ -450,7 +457,7 @@ object PydanticRoundTripSpec {
       |
       |from pydantic import ValidationError
       |
-      |from zoo import Animal, Keeper, Lion, Parrot, Zoo
+      |from zoo import Animal, Keeper, Lion, Memo, Note, Parrot, Zoo
       |
       |
       |def rejects(f):
@@ -482,6 +489,12 @@ object PydanticRoundTripSpec {
       |
       |# A null loads, but is not dumped
       |assert Keeper.model_validate_json('{"id":"k1","since":null}').model_dump_json() == '{"id":"k1"}'
+      |
+      |# A class whose extra_slots allows extra data keeps it, but its subclasses don't allow it
+      |note = Note.model_validate_json('{"text":"t","colour":"red"}')
+      |assert note.model_dump_json() == '{"text":"t","colour":"red"}'
+      |rejects(lambda: Memo.model_validate_json('{"text":"t","colour":"red"}'))
+      |rejects(lambda: Keeper.model_validate_json('{"id":"k1","colour":"red"}'))
       |
       |# Assignments are checked too
       |def assign_number():

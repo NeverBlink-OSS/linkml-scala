@@ -398,6 +398,47 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py should include("    a: str | None = None\n    b: str\n")
     }
 
+    "allow extra properties for classes whose extra_slots allows them" in {
+      val schema =
+        """classes:
+          |  Open:
+          |    extra_slots:
+          |      allowed: true
+          |    attributes:
+          |      a: {}
+          |  Typed:
+          |    extra_slots:
+          |      range_expression:
+          |        range: string
+          |    attributes:
+          |      a: {}
+          |  ClosedTyped:
+          |    extra_slots:
+          |      allowed: false
+          |      range_expression:
+          |        range: string
+          |    attributes:
+          |      a: {}
+          |  OpenChild:
+          |    is_a: Open
+          |  Plain:
+          |    attributes:
+          |      a: {}
+          |""".stripMargin
+      val py = generate(schema)
+      def cls(name: String): String = raw"(?s)\nclass $name\(.*?\n\n".r.findFirstIn(py).get
+
+      val allow = "    model_config = ConfigDict(extra=\"allow\")\n"
+      cls("Open") should include(allow)
+      cls("Typed") should include(allow)
+      cls("ClosedTyped") should not include "model_config"
+      // extra_slots is not inherited, but pydantic's config is
+      cls("OpenChild") should include("    model_config = ConfigDict(extra=\"forbid\")\n")
+      cls("Plain") should not include "model_config"
+      // With --open, every class allows extra properties already
+      generate(schema, PydanticGenerator.Options(open = true)) should not include allow
+    }
+
     "generate a document class for a tree root that is not a single object" in {
       def schema(form: String) =
         s"""classes:
@@ -519,6 +560,52 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
         }.getMessage
         ex should include("'a-b'")
       }
+    }
+
+    "map union_of types to unions of their members' types" in {
+      val py = generate(
+        """types:
+          |  StringOrInteger:
+          |    union_of: [string, integer]
+          |  Count:
+          |    typeof: integer
+          |    minimum_value: 0
+          |  Code:
+          |    typeof: string
+          |    pattern: "^[A-Z]+$"
+          |  CodeOrCount:
+          |    union_of: [Code, Count]
+          |  Numbers:
+          |    union_of: [integer, Count, float]
+          |  Choice:
+          |    union_of: [boolean, StringOrInteger, string]
+          |  Text:
+          |    union_of: [string, uri]
+          |classes:
+          |  C:
+          |    attributes:
+          |      value: {range: StringOrInteger, required: true}
+          |      many: {range: StringOrInteger, multivalued: true}
+          |      constrained: {range: CodeOrCount}
+          |      number: {range: Numbers}
+          |      choice: {range: Choice}
+          |      text: {range: Text}
+          |""".stripMargin,
+      )
+      py should include("    value: str | StrictInt\n")
+      py should include("    many: list[str | StrictInt] | None = None\n")
+      // Each member keeps its own constraints
+      py should include(
+        """    constrained: Annotated[str, Field(pattern=r"^[A-Z]+$")] | """ +
+          "Annotated[StrictInt, Field(ge=0)] | None = None\n",
+      )
+      py should include(
+        "    number: StrictInt | Annotated[StrictInt, Field(ge=0)] | StrictFloat | None",
+      )
+      // Members that map to the same Python type appear once
+      py should include("    text: str | None = None\n")
+      // Nested unions in their declared place
+      py should include("    choice: StrictBool | str | StrictInt | None = None\n")
     }
 
     "generate all catalogue models without errors" when {

@@ -8,7 +8,7 @@
 
 # Implementation differences
 
-## Limitations
+## Feature comparison with LinkML-Python
 
 The following features are not yet supported or are partially supported in LinkML-Scala:
 
@@ -21,43 +21,22 @@ The following features are not yet supported or are partially supported in LinkM
 - Partial support for type designators (`designates_type`)
   - Supported in the Scala, TypeScript, Pydantic and JSON Schema generators and in YAML/JSON serialization. Not yet in SHACL.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
-- Partial support for type unions (`union_of` on types)
-  - Supported in the Scala, TypeScript and JSON Schema generators and in YAML/JSON serialization. Other generators treat a union type as an unknown type.
 - Rules (`rules`)
-- Partial support for extra data (`extra_slots`)
+
+These features are supported in LinkML-Scala but not in LinkML-Python (or are supported in LinkML-Python to a lesser degree):
+
+- Support for [extra data (`extra_slots`)](#extra-data)
   - A `range_expression` allows any extra data, which is not checked against it (see below)
   - Extra data is only validated, not kept: decoding drops it, so it is lost on a round trip (see below)
-- Null semantics (see below)
+- Support for `union_of`
+  - JSON Schema, Scala, TypeScript, and Pydantic generators support type unions.
+  - Some constraints on unioned types may be lost, depending on the expressiveness of the target language.
+- Support for [language strings](#language-strings)
 
 ## Inherited type constraints
 
 LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
 Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
-
-## Type unions
-
-A value of a `union_of` type is matched against the members in declaration order, and takes the first member it fits.
-A `string` member only accepts string values, so for `union_of: [string, integer]` the JSON value `42` is an integer, `"42"` is a string, and `true` is rejected.
-Each member keeps its own constraints (such as `pattern` or `minimum_value`), which only apply to values of that member.
-A type that has a union type as its `typeof` parent is a union of the same members.
-
-### Member order and nested unions in each generator
-
-All generators start from the same list of members:
-
-- Members keep the order they are declared in `union_of`.
-- A member that is itself a union is replaced by its own members, at the place where it appears. For example, with `StringOrInteger: {union_of: [string, integer]}`, the type `Choice: {union_of: [StringOrInteger, boolean]}` has the members `string`, `integer`, `boolean`. The nested union is not referenced by name.
-- A member listed more than once, directly or through nested unions, is kept only at its first place.
-
-What each generator does with that list:
-
-| Generator | Output for `union_of: [StringOrInteger, Count, boolean]` | Does the order matter? | Duplicates |
-|-----------|-----------------------------------------------------------|------------------------|------------|
-| Scala | `type Choice = String \| Int \| Count \| Boolean` | No, the order of a Scala union type has no meaning | Members that are the same LinkML type are listed once. Different types with the same Scala type (here `Count` is an alias of `Int`) are both listed, which the compiler accepts |
-| YAML/JSON codec | Reads the Scala type above | Yes. A value is decoded as the first member that accepts it, so the order matters when two members accept the same value, e.g. `string` and `uriorcurie` | Aliases are resolved first, so `Int` and `Count` are tried once |
-| JSON Schema | `anyOf` with one entry per member, each written in place (no `$ref`) | No, `anyOf` accepts a value if any entry fits | Members with the same JSON type stay separate entries, as each keeps its own constraints (here `integer` and `Count`) |
-| TypeScript | `string \| number \| boolean` | No, the order of a TypeScript union has no meaning | Members with the same TypeScript type are merged, so `integer`, `float` and `Count` all become one `number`. Constraints are lost, as TypeScript types cannot express them |
-| Others (SHACL, OWL, GraphQL, ...) | Treat the union as an unknown type | - | - |
 
 ## Eager validation of references
 
@@ -114,7 +93,7 @@ classes:
       name: {}
 ```
 
-LinkML-Scala honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`) and TypeScript (`[key: string]: unknown`) generators.
+LinkML-Scala honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`), TypeScript (`[key: string]: unknown`) and Pydantic (`extra="allow"`) generators.
 Python LinkML 1.11.1 does not read `extra_slots`, and closes all classes in its JSON Schema.
 
 - `allowed: true` allows any extra data.
@@ -122,7 +101,7 @@ Python LinkML 1.11.1 does not read `extra_slots`, and closes all classes in its 
 - A `range_expression` alone allows extra data matching it. LinkML-Scala allows any extra data then, without checking it against the expression.
 - `extra_slots` is not inherited: a subclass of a class allowing extra data forbids it, unless its own `extra_slots` allows it too.
 
-The `--open` option of the JSON Schema, SHACL and TypeScript generators allows extra data in all classes.
+The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generators allows extra data in all classes.
 
 In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. Python LinkML can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 

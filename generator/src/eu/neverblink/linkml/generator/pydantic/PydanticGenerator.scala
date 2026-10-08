@@ -104,7 +104,15 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   /** Python type of a type range, with the constraints of the slot and the type. */
-  private def scalarType(tav: TypeAttributeView, ctx: Context): String = {
+  private def scalarType(tav: TypeAttributeView, ctx: Context): String =
+    if tav.typeView.isUnion then
+      // Each member keeps its own constraints, as they only apply to values of that member
+      tav.typeView.unionAlternatives.map { member =>
+        constrainedType(TypeAttributeView(tav.slotView, tav.definingClassView, member), ctx)
+      }.distinct.mkString(" | ")
+    else constrainedType(tav, ctx)
+
+  private def constrainedType(tav: TypeAttributeView, ctx: Context): String = {
     val base = runtimeType(tav.typeView, ctx)
     val constraints = mutable.ListBuffer.empty[String]
     if base == "str" then
@@ -189,7 +197,7 @@ final class PydanticGenerator(using sv: SchemaView)
   private def isAny(attribute: AttributeView): Boolean = attribute match {
     case _: AnyView => !attribute.slotView.slot.multivalued
     case tav: TypeAttributeView =>
-      !tav.slotView.slot.multivalued &&
+      !tav.slotView.slot.multivalued && !tav.typeView.isUnion &&
       (tav.typeView.runtimeType == AnyType || tav.typeView.runtimeType == UnknownType)
     case _ => false
   }
@@ -294,10 +302,22 @@ final class PydanticGenerator(using sv: SchemaView)
     sink.append("):\n")
     val doc = DocLines(cls.cls, ctx.options.metadataLanguage)
     writeDoc(sink, doc, "    ")
+    // `extra_slots` is not inherited, but pydantic's config is, so a subclass of a class that allows
+    // extra data closes itself again
+    val extra =
+      if ctx.options.open then None
+      else if cls.allowsExtraSlots then Some("allow")
+      else if cls.ancestorsWithSelf.exists(a => a.name != cls.name && a.allowsExtraSlots) then
+        Some("forbid")
+      else None
+    extra.foreachFast { value =>
+      if doc.nonEmpty then sink.append('\n')
+      sink.append(s"    model_config = ConfigDict(extra=${pyString(value)})\n")
+    }
     val attributes = cls.sortedAttributeViews
-    if doc.nonEmpty && attributes.nonEmpty then sink.append('\n')
+    if (doc.nonEmpty || extra.isDefined) && attributes.nonEmpty then sink.append('\n')
     attributes.foreach(a => writeField(sink, a, cls, ctx))
-    if doc.isEmpty && attributes.isEmpty then sink.append("    pass\n")
+    if doc.isEmpty && extra.isEmpty && attributes.isEmpty then sink.append("    pass\n")
   }
 
   private def writeUnion(sink: CharSink, cls: ClassView, name: String, ctx: Context): Unit = {

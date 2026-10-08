@@ -192,6 +192,7 @@ Each field keeps its JSON key as its pydantic `alias`, and dumping to JSON alway
 | `boolean`                                                  | `StrictBool`                   |
 | `date`, `datetime`, `time`                                 | `JsonDate`, `JsonDateTime`, `JsonTime`: `date`, `datetime` and `time`, read from ISO 8601 text only |
 | `linkml:Any`                                               | `Any`                          |
+| a type with `union_of`                                     | a union of its members' types, e.g. `str \| StrictInt`, each with its own constraints |
 | an enum                                                    | the enum's class               |
 | a class, not inlined                                       | the type of the class's identifier, with a "Reference to X" docstring |
 | a class, inlined                                           | the class                      |
@@ -207,13 +208,13 @@ Loading accepts `null` for an optional slot, the same as the key not being prese
 
 ### Extra properties
 
-With the `--open` option, objects accept keys that the schema doesn't have, and keep them: they are dumped again as they were.
+With the `--open` option, objects accept keys that the schema doesn't have, and keep them: they are dumped again as they were. The [`extra_slots`](implementation_differences.md#extra-data) setting on a class is also honored.
 
 ## Limitations
 
 - These are not supported, the same as in the JSON Schema generator: boolean expressions
   (`any_of`, `exactly_one_of`, `all_of`, `none_of`), `equals_string`, `equals_number`,
-  `structured_pattern`, `rules`, `unique_keys`, `union_of`, arrays, `ifabsent` and
+  `structured_pattern`, `rules`, `unique_keys`, arrays, `ifabsent` and
   `equals_expression`.
 - Dumping returns the same JSON, except that:
   - dates and times can be written differently: `2020-01-01T00:00:00.000+00:00` is saved as
