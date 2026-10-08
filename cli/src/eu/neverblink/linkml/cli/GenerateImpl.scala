@@ -8,7 +8,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.owl.OwlGenerator
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
+import eu.neverblink.linkml.generator.util.{GeneratedHeader, JsonOutputFormat}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -34,10 +34,22 @@ final case class ScalaOptions(
       "Whether to generate a 'Prefixes' object with the model's emit_prefixes inside. Default value: true",
     )
     generateEmitPrefixes: Boolean = true,
+    @HelpMessage(
+      "Before writing, delete the .scala files in the --to directory that start with the " +
+        "generated code header, so that classes no longer in the model do not linger. " +
+        "Other files are kept. Default value: false",
+    )
+    clean: Boolean = false,
 ) extends HasGenerateOptions
 
 object Scala extends ManyFilesGenerate[ScalaOptions] {
   override protected def generatorName: String = "scala"
+
+  override protected[cli] def staleFile(options: ScalaOptions): Option[os.Path => Boolean] =
+    Option.when(options.clean) { file =>
+      file.ext == "scala" &&
+      os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "//"))
+    }
 
   override protected[cli] def generate(
       options: ScalaOptions,
