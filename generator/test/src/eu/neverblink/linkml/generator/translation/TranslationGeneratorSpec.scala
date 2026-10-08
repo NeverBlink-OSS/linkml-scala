@@ -131,6 +131,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             "erdiagram",
             "json",
             "TypeScript",
+            "pydantic",
           )
         do
           s"target is $target" in {

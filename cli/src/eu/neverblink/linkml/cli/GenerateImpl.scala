@@ -11,6 +11,7 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, JsonOutputFormat}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
+import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
@@ -394,6 +395,46 @@ object TypeScript extends StreamGenerate[TypeScriptOptions] {
     TypeScriptGenerator().writeTo(
       out,
       TypeScriptGenerator.Options(
+        pruningMode = options.pruning.resolvedPruningMode,
+        includeNull = options.includeNull,
+        open = options.open,
+      ),
+    )
+}
+
+// Pydantic
+
+@HelpMessage(
+  "Generate Python classes based on pydantic from a LinkML model. " +
+    "The classes load and dump the same JSON as the generated JSON Schema describes: " +
+    "load data with X.model_validate_json, dump it with x.model_dump_json.",
+)
+@ArgsName("<input-file>")
+final case class PydanticOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
+    @HelpMessage(
+      "Whether the generated classes should accept and keep additional properties. Default: false",
+    )
+    open: Boolean = false,
+    @HelpMessage(
+      "Keep the nulls that were loaded or set when dumping. Otherwise dumps leave out " +
+        "every field without a value. Default: false",
+    )
+    includeNull: Boolean = false,
+) extends HasGenerateOptions
+
+object Pydantic extends StreamGenerate[PydanticOptions] {
+  override protected def generatorName: String = "pydantic"
+
+  override protected[cli] def generate(options: PydanticOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    PydanticGenerator().writeTo(
+      out,
+      PydanticGenerator.Options(
         pruningMode = options.pruning.resolvedPruningMode,
         includeNull = options.includeNull,
         open = options.open,

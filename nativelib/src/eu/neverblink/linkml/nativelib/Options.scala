@@ -5,6 +5,7 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodec
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
@@ -135,6 +136,9 @@ private object Options {
   private given typeScriptOptions: JsonValueCodec[TypeScriptGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
+  private given pydanticOptions: JsonValueCodec[PydanticGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
   private given erDiagramOptions: JsonValueCodec[ErDiagramGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
@@ -183,6 +187,8 @@ private object Options {
 
   def typeScript(json: String): TypeScriptGenerator.Options =
     apply(json, TypeScriptGenerator.Options())
+
+  def pydantic(json: String): PydanticGenerator.Options = apply(json, PydanticGenerator.Options())
 
   def erDiagram(json: String): ErDiagramGenerator.Options =
     apply(json, ErDiagramGenerator.Options())

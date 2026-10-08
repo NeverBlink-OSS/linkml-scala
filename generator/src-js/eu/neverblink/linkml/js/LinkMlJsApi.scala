@@ -3,6 +3,7 @@ package eu.neverblink.linkml.js
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
+import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
@@ -504,6 +505,42 @@ object LinkMlJsApi {
       ),
     )
 
+  /** Generate Python classes based on pydantic from a loaded LinkML schema. The classes load and
+    * dump the same JSON as [[jsonSchema]] describes: load data with `X.model_validate_json(text)`
+    * and dump it with `x.model_dump_json()`.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip.
+    *   treeRoot - remove all elements unreachable from the tree_root class. schema - remove all
+    *   elements unreachable from any of the classes defined in the root schema. skip - do not
+    *   remove unused elements. Default: skip
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root.
+    * @param includeNull
+    *   Whether dumps keep the nulls that were loaded or set. Otherwise they leave out every field
+    *   without a value.
+    * @param open
+    *   Whether the classes should accept and keep additional properties.
+    * @return
+    *   Python source code
+    */
+  def pydantic(
+      schema: SchemaViewJs,
+      pruningMode: String = "skip",
+      treeRoot: js.UndefOr[String] = js.undefined,
+      includeNull: Boolean = false,
+      open: Boolean = false,
+  ): String =
+    PydanticGenerator(using schema.underlying).serialize(
+      PydanticGenerator.Options(
+        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+        includeNull = includeNull,
+        open = open,
+      ),
+    )
+
   /** Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become
     * entities, type- and enum-ranged slots become their attributes, and class-ranged slots become
     * relationship lines.
@@ -544,7 +581,7 @@ object LinkMlJsApi {
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param target
     *   Target framework to generate translations for. One of "base", "uri", "scala", "graphql",
-    *   "frictionless", "ossie", "erdiagram", "json", or "typescript".
+    *   "frictionless", "ossie", "erdiagram", "json", "typescript", or "pydantic".
     * @return
     *   Translation dictionary for translating the linkml names to framework names.
     */

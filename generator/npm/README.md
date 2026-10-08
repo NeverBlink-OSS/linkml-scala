@@ -81,6 +81,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
 | `graphQl(view, pruningMode?, treeRoot?)`                                     | `string`                 | GraphQL                                                                        |
 | `typeScript(view, pruningMode?, treeRoot?, includeNull?, open?)`             | `string`                 | TypeScript types for the JSON data (no runtime code)                           |
+| `pydantic(view, pruningMode?, treeRoot?, includeNull?, open?)`               | `string`                 | Python classes (pydantic) that load and dump the JSON data                     |
 | `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`                  | `string`                 | Mermaid entity relationship diagram                                            |
 | `ossie(view, pruningMode?, treeRoot?, outFormat?)`                           | `string`                 | Apache Ossie ontology, `yaml` (default) or `json`                              |
 | `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
@@ -92,7 +93,8 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind
 (e.g. `"UnknownReference"`), and checking it narrows the issue to that kind's fields. For how to use the generated TypeScript,
-see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/typescript.md). For `owl` and `fromOwl`, see
+see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/typescript.md), and for `pydantic`
+[the Pydantic guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/pydantic.md). For `owl` and `fromOwl`, see
 [the OWL guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/owl.md).
 
 ## Browser use

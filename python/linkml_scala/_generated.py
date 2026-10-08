@@ -33,6 +33,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_frictionless",
     "linkml_graphql",
     "linkml_typescript",
+    "linkml_pydantic",
     "linkml_er_diagram",
     "linkml_ossie",
     "linkml_owl",
@@ -227,6 +228,37 @@ class Generators:
         """
         return self._document(
             "linkml_typescript",
+            pruningMode=_pruning(pruning_mode, tree_root),
+            includeNull=include_null,
+            open=open,
+            metadataLanguage=metadata_language,
+        )
+
+    def pydantic(
+        self,
+        *,
+        pruning_mode: str = "skip",
+        tree_root: str | None = None,
+        include_null: bool = False,
+        open: bool = False,
+        metadata_language: str = "en",
+    ) -> str:
+        """Generate pydantic classes that load and dump the schema's JSON data.
+
+        :param pruning_mode: Which classes and enums to generate. `skip` (the default) generates
+            all of them. The ancestors of the classes it keeps and the members of any designated
+            union are always generated with them.
+        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
+            valid with `pruning_mode="treeRoot"`.
+        :param include_null: Whether dumps include the null values that were loaded or set. If
+            false, dumps skip every field without a value or set to null. Default: false
+        :param open: Whether classes should accept and keep additional properties. Default:
+            false
+        :param metadata_language: Which language to use for titles and descriptions in
+            docstrings.
+        """
+        return self._document(
+            "linkml_pydantic",
             pruningMode=_pruning(pruning_mode, tree_root),
             includeNull=include_null,
             open=open,

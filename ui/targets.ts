@@ -182,7 +182,7 @@ export const TARGETS: Target[] = [
     label: "Key translations",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic"], default: "base" },
     ],
     call: (api, v, o) => api.translation(v, String(o.target))
   },
@@ -213,6 +213,25 @@ export const TARGETS: Target[] = [
         String(o.metadataProfile || "rdfs"),
         String(o.permissibleValues || "individual"),
         String(o.format || "ttl"),
+      ),
+  },
+  {
+    id: "pydantic",
+    label: "Pydantic",
+    lang: "python",
+    options: [
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      TREE_ROOT,
+      { key: "includeNull", type: "checkbox", label: "Nulls", title: "Keep nulls when dumping" },
+      { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
+    ],
+    call: (api, v, o) =>
+      api.pydantic(
+        v,
+        String(o.pruningMode || "skip"),
+        blankToUndef(o.treeRoot),
+        !!o.includeNull,
+        !!o.open,
       ),
   },
   {
