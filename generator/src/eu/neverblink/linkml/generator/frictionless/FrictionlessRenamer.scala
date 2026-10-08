@@ -12,7 +12,7 @@ trait FrictionlessRenamer extends Renamer {
   }
 
   override def classAttributeName(el: ClassView, attr: SlotDefinition): String =
-    attr.alias.getOrElseFast(Case.base(attr.name))
+    slotName(el.derivedAttributes(attr.name))
 
   override def slotName(el: SlotView): String = el.aliasedName
 

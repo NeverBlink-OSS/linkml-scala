@@ -1,6 +1,9 @@
 package eu.neverblink.linkml.generator.translation
 
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator.Options
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -116,24 +119,71 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
         "some_other_slot" -> "some_other_slot",
       )
     }
+
+    "list a class's own attributes by default, and every slot it has with derivedAttributes" in {
+      val gen = TranslationGenerator(using slotSources)
+      gen.generate(Options("graphql")).classAttributes("Child") shouldBe Map(
+        "own value" -> "own_value",
+      )
+      gen.generate(Options("graphql", derivedAttributes = true)).classAttributes("Child") shouldBe
+        Map(
+          "own value" -> "own_value",
+          "shared-slot" -> "shared_slot",
+          "2nd value" -> "_2_nd_value",
+          "baseValue" -> "base_value",
+          "mixedIn" -> "mixed_in",
+        )
+    }
+
+    "name class attributes the way the GraphQL generator names the fields" in {
+      val sdl = GraphQlGenerator(using slotSources).serialize()
+      val translation =
+        TranslationGenerator(using slotSources).generate(Options("graphql", derivedAttributes = true))
+      for (cls, fields) <- translation.classAttributes; (slot, field) <- fields do
+        withClue(s"$cls.$slot -> $field:\n$sdl") {
+          // Matched as a whole field name: `2_nd_value` is a substring of `_2_nd_value`.
+          s"(?m)^\\s*${java.util.regex.Pattern.quote(field)}\\s*[(:]".r.findFirstIn(sdl) shouldBe
+            defined
+        }
+      translation.classAttributes("Base")("2nd value") shouldBe "_2_nd_value"
+    }
+
+    "name class attributes the way the Frictionless generator names the fields" in {
+      val sv = slotSources
+      val translation =
+        TranslationGenerator(using sv).generate(Options("frictionless", derivedAttributes = true))
+      for cls <- Seq("Base", "Child") do
+        val table = FrictionlessGenerator(using sv)
+          .tableSchema(sv.classes(cls))(using FrictionlessGenerator.Options())
+        translation.classAttributes(cls).values.toSet shouldBe table.fields.map(_.name).toSet
+      translation.classAttributes("Child")("shared-slot") shouldBe "shared-slot"
+      translation.classAttributes("Child")("baseValue") shouldBe "base"
+    }
+  }
+
+  "name every slot of a class as its renamer names the class's own view of the slot" when {
+    val models: Seq[(String, () => SchemaView)] =
+      ModelCatalogue.all.map(entry => entry.model.root.name -> (() => entry.model)) :+
+        ("slotSources" -> (() => slotSources))
+    for (modelName, model) <- models do
+      s"model is '$modelName'" in {
+        given sv: SchemaView = model()
+        for
+          target <- TranslationGenerator.targets
+          renamer = TranslationGenerator.resolveRenames(target)
+          cls <- sv.classes.values
+          (name, slot) <- cls.derivedAttributes
+        do
+          withClue(s"$target, ${cls.name}.$name: ") {
+            renamer.classAttributeName(cls, slot.slot) shouldBe renamer.slotName(slot)
+          }
+      }
   }
 
   "generate all catalogue models without errors" when {
     for entry <- ModelCatalogue.all do
       s"model is '${entry.model.root.name}'" when {
-        for target <- Seq(
-            "base",
-            "URI",
-            "Scala",
-            "GraphQL",
-            "Frictionless",
-            "Ossie",
-            "erdiagram",
-            "json",
-            "TypeScript",
-            "pydantic",
-          )
-        do
+        for target <- TranslationGenerator.targets do
           s"target is $target" in {
             val result = TranslationGenerator(using entry.model).generate(
               TranslationGenerator.Options(target),
@@ -145,4 +195,40 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
           }
       }
   }
+
+  /** A class whose slots come from everywhere: its own attributes, its `slots`, a parent and a
+    * mixin, with names that each renamer changes.
+    */
+  private lazy val slotSources: SchemaView = SchemaIssues.orThrow(
+    SchemaView.loadSchemaViewFromString(
+      """id: https://example.org/slotSources
+        |name: slotSources
+        |prefixes:
+        |  linkml: https://w3id.org/linkml/
+        |imports:
+        |  - linkml:types
+        |default_range: string
+        |
+        |slots:
+        |  shared-slot:
+        |
+        |classes:
+        |  Base:
+        |    attributes:
+        |      baseValue:
+        |        alias: base
+        |      2nd value:
+        |  Mixin:
+        |    mixin: true
+        |    attributes:
+        |      mixedIn:
+        |  Child:
+        |    is_a: Base
+        |    mixins: [Mixin]
+        |    slots: [shared-slot]
+        |    attributes:
+        |      own value:
+        |""".stripMargin,
+    ),
+  )
 }

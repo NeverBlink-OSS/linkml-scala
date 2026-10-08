@@ -365,10 +365,21 @@ class Generators:
         *,
         to: str = "base",
         indentation_step: int = 2,
+        derived_attributes: bool = False,
     ) -> str:
-        """Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs."""
+        """Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs.
+
+        :param to: The framework whose names the dictionaries translate to. One of "base",
+            "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json",
+            "typescript" or "pydantic".
+        :param indentation_step: Indentation of the JSON output.
+        :param derived_attributes: Whether `classAttributes` lists every slot a class has: its
+            own attributes, the slots it names in `slots`, and those it inherits or gets from
+            mixins. By default it lists only the class's own `attributes`.
+        """
         return self._document(
             "linkml_translation",
             to=to,
             indentationStep=indentation_step,
+            derivedAttributes=derived_attributes,
         )

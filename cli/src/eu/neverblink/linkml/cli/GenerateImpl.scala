@@ -519,9 +519,14 @@ final case class TranslationOptions(
     @Recurse
     common: GenerateOptions,
     @HelpMessage(
-      s"Framework name to generate a translation dict for. One of: ${TranslationGenerator.availableValues}",
+      s"Framework name to generate a translation dict for. One of: ${TranslationGenerator.targets.mkString(", ")}",
     )
     target: String = "base",
+    @HelpMessage(
+      "Whether classAttributes lists every slot a class has (its own attributes, its slots, " +
+        "and those it inherits or gets from mixins), not only its own attributes. Default: false",
+    )
+    derivedAttributes: Boolean = false,
 ) extends HasGenerateOptions
 
 object Translation extends StreamGenerate[TranslationOptions] {
@@ -530,6 +535,9 @@ object Translation extends StreamGenerate[TranslationOptions] {
   override protected[cli] def generate(options: TranslationOptions, out: OutputStream)(using
       sv: SchemaView,
   ): Unit = {
-    TranslationGenerator(using sv).writeTo(out, TranslationGenerator.Options(options.target))
+    TranslationGenerator(using sv).writeTo(
+      out,
+      TranslationGenerator.Options(options.target, derivedAttributes = options.derivedAttributes),
+    )
   }
 }
