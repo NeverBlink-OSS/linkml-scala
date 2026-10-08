@@ -1173,6 +1173,22 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("InheritedExternal.scala") should include("type InheritedExternal = SomeExternalType")
     }
 
+    "generate a Scala union type for a type with union_of" in {
+      given SchemaView = decode(s"""$schemaShared
+          |types:
+          |  StringOrInteger:
+          |    union_of: [string, integer]
+          |  Count:
+          |    typeof: integer
+          |  Choice:
+          |    union_of: [StringOrInteger, Count, boolean]
+          |""".stripMargin)
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files("StringOrInteger.scala") should include("type StringOrInteger = String | Int")
+      files("Choice.scala") should include("type Choice = String | Int | Count | Boolean")
+    }
+
     "not generate aliases for primitive types" in {
       given SchemaView = ModelCatalogue.basic.model
 

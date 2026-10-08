@@ -167,7 +167,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
        |""".stripMargin
   }
 
-  def typeToRuntime(tv: TypeView): String = tv.runtimeType match {
+  def typeToRuntime(tv: TypeView): String =
+    if tv.isUnion then
+      // Duplicates collapse, as the same Scala type can stand for more than one member.
+      tv.unionAlternatives.map(m => if m.isPrimitive then typeToRuntime(m) else typeName(m))
+        .distinct.mkString(" | ")
+    else nonUnionTypeToRuntime(tv)
+
+  private def nonUnionTypeToRuntime(tv: TypeView): String = tv.runtimeType match {
     case StringType => "String"
     case IntegerType => "Int"
     case FloatType => "Float"

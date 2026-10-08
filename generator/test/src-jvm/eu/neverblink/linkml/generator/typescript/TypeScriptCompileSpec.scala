@@ -51,6 +51,8 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "typeDerivation" -> "negativeCount" -> bounds,
     "typeDerivation" -> "lowercaseCode" -> pattern,
     "typed" -> "notDate" -> "TypeScript types cannot express string formats such as dates",
+    "unionOf" -> "badPattern" -> pattern,
+    "unionOf" -> "negative" -> bounds,
   )
 
   /** A model to check, with its valid and invalid documents by name. */
