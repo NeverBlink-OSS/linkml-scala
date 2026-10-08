@@ -7,7 +7,7 @@ import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.owl.OwlGenerator
-import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator

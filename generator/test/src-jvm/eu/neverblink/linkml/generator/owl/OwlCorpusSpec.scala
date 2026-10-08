@@ -6,7 +6,7 @@ import eu.neverblink.linkml.generator.owl.config.{
   OwlImportConfigImpl,
   OwlImportConfigs,
 }
-import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.metamodel.Codec
 import eu.neverblink.linkml.metamodel.SchemaDefinitionImpl

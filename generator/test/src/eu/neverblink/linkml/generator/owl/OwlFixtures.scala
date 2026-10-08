@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, NTriplesParser, Triple}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 

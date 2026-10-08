@@ -48,26 +48,26 @@ object `package` extends Module {
       alias(platforms.flatMap(p => Seq(s"$p.fix", s"$p.reformat"))*)
     }
 
-    def regenerateMetamodel: Seq[String] = alias(
+    /** Regenerate every checked-in source generated from a LinkML model. */
+    def regenerate: Seq[String] = alias(
       "cli.jvm.run generate scala --to metamodel/src/eu/neverblink/linkml/metamodel/ linkml:meta",
-      "metamodel.jvm.fix",
-      "metamodel.jvm.reformat",
-    )
-
-    def regenerateValidation: Seq[String] = alias(
       "cli.jvm.run generate scala --to validation/src/eu/neverblink/linkml/validation/ " +
         "--package eu.neverblink.linkml.validation model/issue-types.yaml",
-      "validation.jvm.fix",
-      "validation.jvm.reformat",
       "cli.jvm.run generate typescript --to generator/npm/validation-report.d.ts " +
         "model/issue-types.yaml",
-    )
-
-    def regenerateOwlImportConfig: Seq[String] = alias(
       "cli.jvm.run generate scala --to generator/src/eu/neverblink/linkml/generator/owl/config/ " +
         "--package eu.neverblink.linkml.generator.owl.config model/owl-import-config.yaml",
-      "generator.jvm.fix",
-      "generator.jvm.reformat",
+      "cli.jvm.run generate scala --to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
+        "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
+      // The npm package's index.d.ts uses this as the return type of `buildInfo`
+      "cli.jvm.run generate typescript --to generator/npm/build-info.d.ts model/build-info.yaml",
+      "tests.conformanceDefinitions",
+      "cli.jvm.run generate scala --to tests/src/eu/neverblink/linkml/tests/conformance " +
+        "--package eu.neverblink.linkml.tests.conformance " +
+        // TODO LNK-218: We should pass this as the output from tests.conformanceDefinitions, somehow
+        "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
+      "{metamodel,validation,generator,schemaview,tests}.jvm.fix",
+      "{metamodel,validation,generator,schemaview,tests}.jvm.reformat",
     )
 
     def regenerateBindings: Seq[String] = alias(
@@ -75,30 +75,14 @@ object `package` extends Module {
       "nativelib.native.fix",
       "nativelib.native.reformat",
     )
-
-    // Also regenerates the TypeScript types of the build info, which the npm package's index.d.ts
-    // includes as the return type of `buildInfo`.
-    def regenerateBuildInfo: Seq[String] = alias(
-      "cli.jvm.run generate scala --to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
-        "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
-      "schemaview.jvm.fix",
-      "schemaview.jvm.reformat",
-      "cli.jvm.run generate typescript --to generator/npm/build-info.d.ts model/build-info.yaml",
-    )
-
-    def regenerateTests: Seq[String] = alias(
-      "tests.conformanceDefinitions",
-      "cli.jvm.run generate scala --to tests/src/eu/neverblink/linkml/tests/conformance " +
-        "--package eu.neverblink.linkml.tests.conformance " +
-        // TODO LNK-218: We should pass this as the output from tests.conformanceDefinitions, somehow
-        "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
-      "tests.jvm.fix",
-      "tests.jvm.reformat",
-    )
   }
 
   def lint(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
     AliasesModule.run(ev, "lint")
+  }
+
+  def regenerate(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
+    AliasesModule.run(ev, "regenerate")
   }
 
   /** A JDK 25, for the test modules that pull in RDF4J 6.x.

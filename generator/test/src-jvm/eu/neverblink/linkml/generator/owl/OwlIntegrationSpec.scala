@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.rdf.RdfFormat
+import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.tests.ModelCatalogue.InstanceInFormats
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers

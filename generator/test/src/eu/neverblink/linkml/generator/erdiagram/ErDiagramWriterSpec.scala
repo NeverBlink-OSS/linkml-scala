@@ -7,7 +7,7 @@ import org.scalatest.wordspec.AnyWordSpec
   */
 class ErDiagramWriterSpec extends AnyWordSpec, Matchers {
 
-  private val header = "%% GENERATED FROM LINKML\nerDiagram\n"
+  private val header = "erDiagram\n"
 
   private def entity(name: String, attributes: ErAttribute*) =
     ErEntity(name, attributes.toSeq)
@@ -53,7 +53,6 @@ class ErDiagramWriterSpec extends AnyWordSpec, Matchers {
       // The key list is optional and comes last, so this is where a stray separator would show up.
       val lines = ErDiagram(Seq(entity("Foo", attribute("string", "bar"))), Nil).print.linesIterator
       lines.toSeq shouldBe Seq(
-        "%% GENERATED FROM LINKML",
         "erDiagram",
         "  Foo {",
         "    string bar",
