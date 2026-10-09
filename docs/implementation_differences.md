@@ -32,7 +32,7 @@ Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema reje
 
 ## Imports
 
-Imports are easier to write and faster to load in LinkML-Scala: file extensions are optional and interchangeable, and each imported schema is loaded only once.
+Imports are easier to write in LinkML-Scala: file extensions are optional and interchangeable, and each imported schema is loaded only once.
 
 | Case | Python LinkML 1.11.1 | LinkML-Scala |
 |------|----------------------|--------------|
@@ -41,8 +41,6 @@ Imports are easier to write and faster to load in LinkML-Scala: file extensions 
 | One file imported as `dir/a`, `dir/./a`, `dir//a` or `dir/x/../a` | Loaded once per spelling | Loaded once |
 | One file reached through a symbolic or hard link | Loaded twice | Loaded once (JVM and Native) |
 | An import back to the root schema | Loads the root again, unless its `name` matches the file name | Loaded once, when the root is loaded from a path |
-
-LinkML-Scala first looks for a `.yaml` file before `.yml`, regardless of which one the import asks for.
 
 ## Eager validation of references
 
