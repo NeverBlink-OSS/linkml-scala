@@ -5,20 +5,109 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[EnumBinding]] LinkML class
+/** A binding of a slot or a class to a permissible value from an enumeration.
   *
-  * @inheritdoc
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param bindsValueOf
+  *   A path to a slot that is being bound to a permissible value from an enumeration.
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param obligationLevel
+  *   The level of obligation or recommendation strength for a metadata element
+  * @param pvFormula
+  *   Defines the specific formula to be used to generate the permissible values.
+  * @param range
+  *   Defines the type of the object of the slot. Given the following slot definition S1: domain: C1
+  *   range: C2 the declaration X: S1: Y
+  *
+  * implicitly asserts Y is an instance of C2
+  *
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class EnumBindingImpl(
+final case class EnumBinding(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("binds_value_of")
     bindsValueOf: Option[String] = None,
     @named("broad_mappings")
@@ -39,7 +128,7 @@ final case class EnumBindingImpl(
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
@@ -71,61 +160,11 @@ final case class EnumBindingImpl(
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
-) extends EnumBinding {
-
-  override def infer(): EnumBindingImpl =
-    this
-}
-
-/** A binding of a slot or a class to a permissible value from an enumeration.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
-
-  /** A path to a slot that is being bound to a permissible value from an enumeration.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def bindsValueOf: Option[String]
-
-  /** The level of obligation or recommendation strength for a metadata element
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def obligationLevel: Option[ObligationLevelEnum]
-
-  /** Defines the specific formula to be used to generate the permissible values.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   You cannot have BOTH the permissible_values and permissible_value_formula tag
-    * @note
-    *   Code_set must be supplied for this to be valid
-    */
-  def pvFormula: Option[PvFormulaOptions]
-
-  /** Defines the type of the object of the slot. Given the following slot definition S1: domain: C1
-    * range: C2 the declaration X: S1: Y
-    *
-    * implicitly asserts Y is an instance of C2
-    *
-    * @see
-    *   Aliases: value domain
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Range is underspecified, as not all elements can appear as the range of a slot.
-    * @note
-    *   To use a URI or CURIE as the range, create a class with the URI or curie as the class_uri
-    */
-  def range: Option[Reference[EnumDefinition]]
+) extends Extensible,
+      Annotatable,
+      CommonMetadata {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -134,5 +173,6 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): EnumBinding
+  override def infer(): EnumBinding =
+    this
 }

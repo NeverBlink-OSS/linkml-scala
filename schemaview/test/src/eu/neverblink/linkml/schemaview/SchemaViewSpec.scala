@@ -3,7 +3,7 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
-import eu.neverblink.linkml.validation.NonStandardSeparatorImpl
+import eu.neverblink.linkml.validation.NonStandardSeparator
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
@@ -716,7 +716,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         |        range: string
         |""".stripMargin
       val ifSv = SchemaView.loadSchemaViewFromString(schema).getOrElse(fail("bad"))
-      val separator = ifSv.lintProblems.collect { case s: NonStandardSeparatorImpl => s }.head
+      val separator = ifSv.lintProblems.collect { case s: NonStandardSeparator => s }.head
       separator.separators should contain theSameElementsAs Seq("ą", "ż")
     }
 
@@ -734,7 +734,7 @@ object SchemaViewSpec:
     def compact: (String, T) = el.name -> el
     def reference: Reference[T] = Reference(el.name)
 
-  val class1: ClassDefinitionImpl = ClassDefinitionImpl(
+  val class1: ClassDefinition = ClassDefinition(
     name = "class1",
     description = Some(PlainText("This is a first class")),
     slots = Seq(
@@ -746,7 +746,7 @@ object SchemaViewSpec:
     ),
   )
 
-  val class2: ClassDefinitionImpl = ClassDefinitionImpl(
+  val class2: ClassDefinition = ClassDefinition(
     name = "class2",
     classUri = Some(UriOrCurie("https://neverblink.eu/example#classNumberTwo")),
     description = Some(PlainText("This is a second class")),
@@ -757,7 +757,7 @@ object SchemaViewSpec:
     ),
   )
 
-  val class3: ClassDefinitionImpl = ClassDefinitionImpl(
+  val class3: ClassDefinition = ClassDefinition(
     name = "class3",
     classUri = Some(UriOrCurie("https://neverblink.eu/example#classNumber3")),
     description = Some(PlainText("This is a third class")),
@@ -766,56 +766,56 @@ object SchemaViewSpec:
     ),
   )
 
-  val classGrandparent: ClassDefinitionImpl = ClassDefinitionImpl(
+  val classGrandparent: ClassDefinition = ClassDefinition(
     name = "class_grandparent",
     `abstract` = true,
   )
 
-  val parentMixin1: ClassDefinitionImpl = ClassDefinitionImpl(
+  val parentMixin1: ClassDefinition = ClassDefinition(
     name = "mixin_parent_1",
     mixin = true,
   )
 
-  val parentMixin2: ClassDefinitionImpl = ClassDefinitionImpl(
+  val parentMixin2: ClassDefinition = ClassDefinition(
     name = "mixin_parent_2",
     mixin = true,
   )
 
-  val classParent: ClassDefinitionImpl = ClassDefinitionImpl(
+  val classParent: ClassDefinition = ClassDefinition(
     name = "class_parent",
     isA = Some(classGrandparent.reference),
     mixins = Seq(parentMixin1.reference, parentMixin2.reference),
   )
 
-  val mixin: ClassDefinitionImpl = ClassDefinitionImpl(
+  val mixin: ClassDefinition = ClassDefinition(
     name = "mixin",
     mixin = true,
   )
 
-  val classChild: ClassDefinitionImpl = ClassDefinitionImpl(
+  val classChild: ClassDefinition = ClassDefinition(
     name = "class_child",
     isA = Some(classParent.reference),
     mixins = Seq(mixin.reference),
   )
 
-  val mixinParent: ClassDefinitionImpl = ClassDefinitionImpl(
+  val mixinParent: ClassDefinition = ClassDefinition(
     name = "mixin_parent",
     mixin = true,
   )
 
-  val mixinChild: ClassDefinitionImpl = ClassDefinitionImpl(
+  val mixinChild: ClassDefinition = ClassDefinition(
     name = "mixin_child",
     isA = Some(mixinParent.reference),
     mixin = true,
   )
 
-  val classWithMixinInheritance: ClassDefinitionImpl = ClassDefinitionImpl(
+  val classWithMixinInheritance: ClassDefinition = ClassDefinition(
     name = "class_mixin_inheritance",
     isA = Some(classParent.reference),
     mixins = Seq(mixinChild.reference),
   )
 
-  val classes: Map[String, ClassDefinitionImpl] = Map(
+  val classes: Map[String, ClassDefinition] = Map(
     class1.compact,
     class2.compact,
     class3.compact,
@@ -830,62 +830,62 @@ object SchemaViewSpec:
     mixinChild.compact,
   )
 
-  val slotId: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slotId: SlotDefinition = SlotDefinition(
     name = "id",
     identifier = true,
   )
 
-  val slot1: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slot1: SlotDefinition = SlotDefinition(
     name = "slot1",
     description = Some(PlainText("This is a slot pointing to class 1")),
     range = Some(Reference("class1")),
   )
 
-  val slot2: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slot2: SlotDefinition = SlotDefinition(
     name = "slot2",
     slotUri = Some(UriOrCurie("https://neverblink.eu/example#slotNumberTwo")),
     description = Some(PlainText("This is a slot pointing to class 2")),
     range = Some(Reference("class2")),
   )
 
-  val slotGrandparent: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slotGrandparent: SlotDefinition = SlotDefinition(
     name = "slot_grandparent",
     description = Some(PlainText("This is a slot pointing to class grandparent")),
     range = Some(classGrandparent.reference),
   )
 
-  val slotParent: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slotParent: SlotDefinition = SlotDefinition(
     name = "slot_parent",
     isA = Some(slotGrandparent.reference),
     description = Some(PlainText("This is a slot pointing to class parent")),
     range = Some(classParent.reference),
   )
 
-  val slot3: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slot3: SlotDefinition = SlotDefinition(
     name = "slot3",
     isA = Some(slotParent.reference),
     description = Some(PlainText("This is a slot pointing to class 3")),
     range = Some(Reference("class3")),
   )
 
-  val slot_t1: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slot_t1: SlotDefinition = SlotDefinition(
     name = "slot_t1",
     description = Some(PlainText("This is a slot pointing to type 1")),
     range = Some(Reference("type1")),
   )
 
-  val slot_e1: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slot_e1: SlotDefinition = SlotDefinition(
     name = "slot_e1",
     description = Some(PlainText("This is a slot pointing to enum 1")),
     range = Some(Reference("enum1")),
   )
 
-  val slotRangeless: SlotDefinitionImpl = SlotDefinitionImpl(
+  val slotRangeless: SlotDefinition = SlotDefinition(
     name = "slot_rangeless",
     description = Some(PlainText("This slot should use the default range of the schema.")),
   )
 
-  val slots: Map[String, SlotDefinitionImpl] = Map(
+  val slots: Map[String, SlotDefinition] = Map(
     slotId.compact,
     slot1.compact,
     slot2.compact,
@@ -897,45 +897,45 @@ object SchemaViewSpec:
     slotRangeless.compact,
   )
 
-  val type1: TypeDefinitionImpl = TypeDefinitionImpl(
+  val type1: TypeDefinition = TypeDefinition(
     name = "type1",
     description = Some(PlainText("Type 1")),
   )
 
-  val types: Map[String, TypeDefinitionImpl] = Map(
+  val types: Map[String, TypeDefinition] = Map(
     type1.compact,
   )
 
-  val enum1: EnumDefinitionImpl = EnumDefinitionImpl(
+  val enum1: EnumDefinition = EnumDefinition(
     name = "enum1",
     description = Some(PlainText("Enum 1")),
   )
 
-  val enum2: EnumDefinitionImpl = EnumDefinitionImpl(
+  val enum2: EnumDefinition = EnumDefinition(
     name = "enum2",
     enumUri = Some(UriOrCurie("https://neverblink.eu/example#enumNumberTwo")),
     description = Some(PlainText("Enum 2")),
   )
 
-  val enums: Map[String, EnumDefinitionImpl] = Map(
+  val enums: Map[String, EnumDefinition] = Map(
     enum1.compact,
     enum2.compact,
   )
 
-  val subset1: SubsetDefinitionImpl = SubsetDefinitionImpl(
+  val subset1: SubsetDefinition = SubsetDefinition(
     name = "subset1",
     description = Some(PlainText("Subset 1")),
   )
 
-  val subsets: Map[String, SubsetDefinitionImpl] = Map(
+  val subsets: Map[String, SubsetDefinition] = Map(
     subset1.compact,
   )
 
-  val schema: SchemaDefinitionImpl = SchemaDefinitionImpl(
+  val schema: SchemaDefinition = SchemaDefinition(
     id = Uri("urn:schema1"),
     name = "Schema of id schema1",
     prefixes = Map(
-      "default" -> PrefixImpl("default", Uri("https://neverblink.eu/example#")),
+      "default" -> Prefix("default", Uri("https://neverblink.eu/example#")),
     ),
     defaultPrefix = Some("default"),
     defaultRange = Some(Reference("type1")),
@@ -946,17 +946,17 @@ object SchemaViewSpec:
     subsets = subsets,
   )
 
-  val schemaFallbackful: SchemaDefinitionImpl = SchemaDefinitionImpl(
+  val schemaFallbackful: SchemaDefinition = SchemaDefinition(
     id = Uri("http://schema2"),
     name = "Schema of id schema2",
     classes = classes,
     slotDefinitions = slots,
-    types = types + ("string" -> TypeDefinitionImpl(name = "string")),
+    types = types + ("string" -> TypeDefinition(name = "string")),
     enums = enums,
     subsets = subsets,
   )
 
-  val schemaInvalid: SchemaDefinitionImpl = SchemaDefinitionImpl(
+  val schemaInvalid: SchemaDefinition = SchemaDefinition(
     id = Uri("urn:schema3"),
     name = "Schema of id schema3",
     classes = classes,

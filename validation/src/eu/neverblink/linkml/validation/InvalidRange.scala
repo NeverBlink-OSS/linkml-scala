@@ -5,26 +5,50 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[InvalidRange]] LinkML class
+/** A `range` points at an element that cannot be used as a range.
   *
-  * @inheritdoc
+  * @param actualType
+  *   The metamodel type the range actually resolved to.
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class InvalidRangeImpl(
+final case class InvalidRange(
     @named("actual_type")
     actualType: String,
     details: Option[String] = None,
     @named("issue_type")
     @serializeDefault
     issueType: String = "InvalidRange",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @named("range_value")
     rangeValue: String,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
-) extends InvalidRange {
+) extends SchemaFatal {
 
-  override def infer(): InvalidRangeImpl =
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  override def infer(): InvalidRange =
     copy(
       details = inferOptional(
         "details",
@@ -43,53 +67,4 @@ final case class InvalidRangeImpl(
         ),
       ),
     )
-}
-
-/** A `range` points at an element that cannot be used as a range.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class InvalidRange extends SchemaFatal {
-
-  /** The metamodel type the range actually resolved to.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def actualType: String
-
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def rangeValue: String
-
-  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
-    * the values already present agree with what their expressions infer.
-    *
-    * @throws eu.neverblink.linkml.runtime.InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression references a
-    *   slot that has no value
-    */
-  def infer(): InvalidRange
 }

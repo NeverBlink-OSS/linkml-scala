@@ -172,17 +172,17 @@ object Importer {
   def parseError(
       parserMessage: String,
       uri: String,
-      codeRegion: Option[CodeRegionImpl],
+      codeRegion: Option[CodeRegion],
   ): SchemaParseError =
-    new SchemaParseErrorImpl(
-      location = new IssueLocationImpl(codeRegion = codeRegion),
+    new SchemaParseError(
+      location = new IssueLocation(codeRegion = codeRegion),
       parserMessage = parserMessage,
       sourceUri = uri,
     )
 
   /** Extract the position a [[YamlError]] reported, if it carries one.
     */
-  def codeRegionOf(error: YamlError): Option[CodeRegionImpl] = error match {
+  def codeRegionOf(error: YamlError): Option[CodeRegion] = error match {
     case e: ParseError.ExpectedTokenKind => new Some(codeRegion(e.got.range))
     case e: ScannerError.Obtained => new Some(codeRegion(e.got.range))
     case e: ScannerError.AtRange => new Some(codeRegion(e.range))
@@ -192,8 +192,8 @@ object Importer {
   }
 
   /** Convert a YAML [[Range]], whose lines and columns are 0-based, into a 1-based code region. */
-  def codeRegion(range: Range): CodeRegionImpl =
-    new CodeRegionImpl(
+  def codeRegion(range: Range): CodeRegion =
+    new CodeRegion(
       startLine = range.start.line + 1,
       startColumn = range.start.column + 1,
       endLine = range.end.mapFast(_.line + 1),
@@ -202,8 +202,8 @@ object Importer {
 
   /** Build a [[SchemaImportError]] for a schema text that could not be obtained at all. */
   def importError(uri: String, reason: String): SchemaImportError =
-    new SchemaImportErrorImpl(
-      location = IssueLocationImpl(),
+    new SchemaImportError(
+      location = IssueLocation(),
       importUri = uri,
       reason = reason,
     )

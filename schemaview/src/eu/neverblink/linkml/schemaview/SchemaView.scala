@@ -6,12 +6,12 @@ import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
 import eu.neverblink.linkml.validation.{
-  IssueLocationImpl,
+  IssueLocation,
   SchemaError,
   SchemaFatal,
   SchemaImportError,
   SchemaIssue,
-  UnexpectedErrorImpl,
+  UnexpectedError,
 }
 
 import scala.annotation.unused
@@ -293,10 +293,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
     */
   private[schemaview] def applySlotUsage(
-      slot: SlotDefinitionImpl,
+      slot: SlotDefinition,
       slotName: String,
       cls: ClassDefinition,
-  ): SlotDefinitionImpl = {
+  ): SlotDefinition = {
     var currentSlot = slot
     cls.slotUsage.get(slotName).foreachFast { s =>
       currentSlot = currentSlot.combineWith(s, combineRange)
@@ -430,10 +430,10 @@ object SchemaView {
       case ex if NonFatal(ex) => new Left(Seq(unexpectedError(ex)))
     }
 
-  private def unexpectedError(ex: Throwable): UnexpectedErrorImpl = {
+  private def unexpectedError(ex: Throwable): UnexpectedError = {
     val msg = ex.getMessage
-    new UnexpectedErrorImpl(
-      location = IssueLocationImpl(),
+    new UnexpectedError(
+      location = IssueLocation(),
       reason = if (msg ne null) msg else ex.toString,
     )
   }

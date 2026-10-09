@@ -4,9 +4,9 @@ import caseapp.*
 import eu.neverblink.linkml.cli.ValidationReport.Format
 import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView}
 import eu.neverblink.linkml.validation.{
-  IssueLocationImpl,
+  IssueLocation,
   IssueSeverity,
-  SchemaImportErrorImpl,
+  SchemaImportError,
   SchemaIssue,
 }
 
@@ -69,8 +69,8 @@ object Validate extends BaseCommand[ValidateOptions] {
       case ex if NonFatal(ex) =>
         val msg = ex.getMessage
         Seq(
-          new SchemaImportErrorImpl(
-            location = IssueLocationImpl(),
+          new SchemaImportError(
+            location = IssueLocation(),
             importUri = inputName,
             reason = if (msg ne null) msg else ex.toString,
           ),

@@ -5,46 +5,200 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[SchemaDefinition]] LinkML class
+/** A collection of definitions that make up a schema or a data model.
   *
-  * @inheritdoc
+  * @param id
+  *   The official schema URI
+  * @param name
+  *   A unique name for the schema that is both human-readable and consists of only characters from
+  *   the NCName set
+  * @param classes
+  *   An index to the collection of all class definitions in the schema
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param slotDefinitions
+  *   An index to the collection of all slot definitions in the schema
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param enums
+  *   An index to the collection of all enum definitions in the schema
+  * @param types
+  *   An index to the collection of all type definitions in the schema
+  * @param subsets
+  *   An index to the collection of all subset definitions in the schema
+  * @param prefixes
+  *   A collection of prefix expansions that specify how CURIEs can be expanded to URIs
+  * @param defaultPrefix
+  *   The prefix that is used for all elements within a schema
+  * @param defaultRange
+  *   Default slot range to be used if range element is omitted from a slot definition
+  * @param settings
+  *   A collection of global variable settings
+  * @param imports
+  *   A list of schemas that are to be included in this schema
+  * @param license
+  *   License for the schema
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param bindings
+  *   A collection of enum bindings that specify how a slot can be bound to a permissible value from
+  *   an enumeration. LinkML provides enums to allow string values to be restricted to one of a set
+  *   of permissible values (specified statically or dynamically). Enum bindings allow enums to be
+  *   bound to any object, including complex nested objects. For example, given a (generic) class
+  *   Concept with slots id and label, it may be desirable to restrict the values the id takes on in
+  *   a given context. For example, a HumanSample class may have a slot for representing sample
+  *   site, with a range of concept, but the values of that slot may be restricted to concepts from
+  *   a particular branch of an anatomy ontology.
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param conformsTo
+  *   An established standard to which the element conforms.
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param defaultCuriMaps
+  *   Ordered list of prefixcommon biocontexts to be fetched to resolve id prefixes and inline
+  *   prefix variables
+  * @param definitionUri
+  *   The native URI of the element. This is always within the namespace of the containing schema.
+  *   Contrast with the assigned URI, via class_uri or slot_uri
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param emitPrefixes
+  *   A list of Curie prefixes that are used in the representation of instances of the model. All
+  *   prefixes in this list are added to the prefix sections of the target models.
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param generationDate
+  *   Date and time that the schema was loaded/generated
+  * @param idPrefixes
+  *   An allowed list of prefixes for which identifiers must conform. The identifier of this class
+  *   or slot must begin with the URIs referenced by this prefix
+  * @param idPrefixesAreClosed
+  *   If true, then the id_prefixes slot is treated as being closed, and any use of an id that does
+  *   not have this prefix is considered a violation.
+  * @param implements
+  *   An element in another schema which this element conforms to. The referenced element is not
+  *   imported into the schema for the implementing element. However, the referenced schema may be
+  *   used to check conformance of the implementing element.
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param instantiates
+  *   An element in another schema which this element instantiates.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param metamodelVersion
+  *   Version of the metamodel used to load the schema
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param slotNamesUnique
+  *   If true then induced/mangled slot names are not created for class_usage and attributes
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param sourceFile
+  *   Name, uri or description of the source of the schema
+  * @param sourceFileDate
+  *   Modification date of the source of the schema
+  * @param sourceFileSize
+  *   Size in bytes of the source of the schema
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param version
+  *   Particular version of schema
+  * @see
+  *   https://en.wikipedia.org/wiki/Data_dictionary
+  * @see
+  *   Aliases: data dictionary, data model, information model, logical model, schema, model
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class SchemaDefinitionImpl(
+final case class SchemaDefinition(
     @value
     id: Uri,
     @id
     name: NcName,
     @compactDict
-    classes: Map[String, ClassDefinitionImpl] = Map(),
+    classes: Map[String, ClassDefinition] = Map(),
     title: Option[LocalizedText] = None,
     @named("slots")
     @compactDict
-    slotDefinitions: Map[String, SlotDefinitionImpl] = Map(),
+    slotDefinitions: Map[String, SlotDefinition] = Map(),
     description: Option[LocalizedText] = None,
     @compactDict
-    enums: Map[String, EnumDefinitionImpl] = Map(),
+    enums: Map[String, EnumDefinition] = Map(),
     @compactDict
-    types: Map[String, TypeDefinitionImpl] = Map(),
+    types: Map[String, TypeDefinition] = Map(),
     @compactDict
-    subsets: Map[String, SubsetDefinitionImpl] = Map(),
+    subsets: Map[String, SubsetDefinition] = Map(),
     @simpleDict
-    prefixes: Map[String, PrefixImpl] = Map(),
+    prefixes: Map[String, Prefix] = Map(),
     @named("default_prefix")
     defaultPrefix: Option[String] = None,
     @named("default_range")
     defaultRange: Option[Reference[TypeDefinition]] = None,
     @simpleDict
-    settings: Map[String, SettingImpl] = Map(),
+    settings: Map[String, Setting] = Map(),
     imports: Seq[UriOrCurie] = Seq(),
     license: Option[String] = None,
     rank: Option[Int] = None,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
-    bindings: Seq[EnumBindingImpl] = Seq(),
+    annotations: Map[String, Annotation] = Map(),
+    bindings: Seq[EnumBinding] = Seq(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -71,7 +225,7 @@ final case class SchemaDefinitionImpl(
     emitPrefixes: Seq[NcName] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
@@ -95,7 +249,7 @@ final case class SchemaDefinitionImpl(
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
-    localNames: Map[String, LocalNameImpl] = Map(),
+    localNames: Map[String, LocalName] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
     @named("metamodel_version")
     metamodelVersion: Option[String] = None,
@@ -119,209 +273,10 @@ final case class SchemaDefinitionImpl(
     sourceFileSize: Option[Int] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
     version: Option[String] = None,
-) extends SchemaDefinition {
-
-  override def infer(): SchemaDefinitionImpl =
-    this
-}
-
-/** A collection of definitions that make up a schema or a data model.
-  *
-  * @see
-  *   https://en.wikipedia.org/wiki/Data_dictionary
-  * @see
-  *   Aliases: data dictionary, data model, information model, logical model, schema, model
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class SchemaDefinition extends Element {
-
-  /** The official schema URI
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def id: Uri
-
-  /** A unique name for the schema that is both human-readable and consists of only characters from
-    * the NCName set
-    *
-    * @see
-    *   https://en.wikipedia.org/wiki/Data_element_name
-    * @see
-    *   https://linkml.io/linkml/faq/modeling.html#why-are-my-class-names-translated-to-camelcase
-    * @see
-    *   Aliases: short name, unique name
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def name: NcName
-
-  /** An index to the collection of all class definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def classes: Map[String, ClassDefinitionImpl]
-
-  /** An index to the collection of all slot definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Note the formal name of this element is slot_definitions, but it has alias slots, which is
-    *   the canonical form used in yaml/json serializes of schemas.
-    */
-  def slotDefinitions: Map[String, SlotDefinitionImpl]
-
-  /** An index to the collection of all enum definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def enums: Map[String, EnumDefinitionImpl]
-
-  /** An index to the collection of all type definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def types: Map[String, TypeDefinitionImpl]
-
-  /** An index to the collection of all subset definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def subsets: Map[String, SubsetDefinitionImpl]
-
-  /** A collection of prefix expansions that specify how CURIEs can be expanded to URIs
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def prefixes: Map[String, PrefixImpl]
-
-  /** The prefix that is used for all elements within a schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def defaultPrefix: Option[String]
-
-  /** Default slot range to be used if range element is omitted from a slot definition
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def defaultRange: Option[Reference[TypeDefinition]]
-
-  /** A collection of global variable settings
-    *
-    * @see
-    *   Aliases: constants
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Global variables are used in string interpolation in structured patterns
-    */
-  def settings: Map[String, SettingImpl]
-
-  /** A list of schemas that are to be included in this schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def imports: Seq[UriOrCurie]
-
-  /** License for the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def license: Option[String]
-
-  /** A collection of enum bindings that specify how a slot can be bound to a permissible value from
-    * an enumeration. LinkML provides enums to allow string values to be restricted to one of a set
-    * of permissible values (specified statically or dynamically). Enum bindings allow enums to be
-    * bound to any object, including complex nested objects. For example, given a (generic) class
-    * Concept with slots id and label, it may be desirable to restrict the values the id takes on in
-    * a given context. For example, a HumanSample class may have a slot for representing sample
-    * site, with a range of concept, but the values of that slot may be restricted to concepts from
-    * a particular branch of an anatomy ontology.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def bindings: Seq[EnumBindingImpl]
-
-  /** Ordered list of prefixcommon biocontexts to be fetched to resolve id prefixes and inline
-    * prefix variables
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def defaultCuriMaps: Seq[String]
-
-  /** A list of Curie prefixes that are used in the representation of instances of the model. All
-    * prefixes in this list are added to the prefix sections of the target models.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def emitPrefixes: Seq[NcName]
-
-  /** Date and time that the schema was loaded/generated
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def generationDate: Option[LinkmlDateTime]
-
-  /** Version of the metamodel used to load the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def metamodelVersion: Option[String]
-
-  /** If true then induced/mangled slot names are not created for class_usage and attributes
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def slotNamesUnique: Boolean
-
-  /** Name, uri or description of the source of the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def sourceFile: Option[String]
-
-  /** Modification date of the source of the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def sourceFileDate: Option[LinkmlDateTime]
-
-  /** Size in bytes of the source of the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def sourceFileSize: Option[Int]
-
-  /** Particular version of schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def version: Option[String]
+) extends Element {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -330,5 +285,6 @@ abstract class SchemaDefinition extends Element {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): SchemaDefinition
+  override def infer(): SchemaDefinition =
+    this
 }

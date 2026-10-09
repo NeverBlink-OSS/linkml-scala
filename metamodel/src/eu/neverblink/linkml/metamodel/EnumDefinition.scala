@@ -5,11 +5,182 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[EnumDefinition]] LinkML class
+/** An element whose instances must be drawn from a specified set of permissible values
   *
-  * @inheritdoc
+  * @param name
+  *   The unique name of the element within the context of the schema. Name is combined with the
+  *   default prefix to form the globally unique subject of the target class.
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param alias
+  *   The alternative name to be used in serializations of an instance instead of the canonical
+  *   name.
+  * @param isA
+  *   A primary parent class or slot from which inheritable metaslots are propagated from. While
+  *   multiple inheritance is not allowed, mixins can be provided effectively providing the same
+  *   thing. The semantics are the same when translated to formalisms that allow MI (e.g. RDFS/OWL).
+  *   When translating to a SI framework (e.g. java classes, python classes) then is a is used. When
+  *   translating a framework without polymorphism (e.g. json-schema, solr document schema) then is
+  *   a and mixins are recursively unfolded
+  * @param mixins
+  *   A collection of secondary parent classes or slots from which inheritable metaslots are
+  *   propagated from.
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param `abstract`
+  *   Indicates the class or slot cannot be directly instantiated and is intended for grouping
+  *   purposes.
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param applyTo
+  *   Used to extend class or slot definitions. For example, if we have a core schema where a gene
+  *   has two slots for identifier and symbol, and we have a specialized schema for my_organism
+  *   where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
+  *   gene_my_organism, adding the slot to this class, and then adding an apply_to pointing to the
+  *   gene class. The new slot will be 'injected into' the gene class.
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param codeSet
+  *   The identifier of an enumeration code set.
+  * @param codeSetTag
+  *   The version tag of the enumeration code set
+  * @param codeSetVersion
+  *   The version identifier of the enumeration code set
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param concepts
+  *   A list of identifiers that are used to construct a set of permissible values
+  * @param conformsTo
+  *   An established standard to which the element conforms.
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param definitionUri
+  *   The native URI of the element. This is always within the namespace of the containing schema.
+  *   Contrast with the assigned URI, via class_uri or slot_uri
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param enumUri
+  *   URI of the enum that provides a semantic interpretation of the element in a linked data
+  *   context. The URI may come from any namespace and may be shared between schemas
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param idPrefixes
+  *   An allowed list of prefixes for which identifiers must conform. The identifier of this class
+  *   or slot must begin with the URIs referenced by this prefix
+  * @param idPrefixesAreClosed
+  *   If true, then the id_prefixes slot is treated as being closed, and any use of an id that does
+  *   not have this prefix is considered a violation.
+  * @param implements
+  *   An element in another schema which this element conforms to. The referenced element is not
+  *   imported into the schema for the implementing element. However, the referenced schema may be
+  *   used to check conformance of the implementing element.
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param include
+  *   An enum expression that yields a list of permissible values that are to be included, after
+  *   subtracting the minus set
+  * @param inherits
+  *   An enum definition that is used as the basis to create a new enum
+  * @param instantiates
+  *   An element in another schema which this element instantiates.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param matches
+  *   Specifies a match query that is used to calculate the list of permissible values
+  * @param minus
+  *   An enum expression that yields a list of permissible values that are to be subtracted from the
+  *   enum
+  * @param mixin
+  *   Indicates the class or slot is intended to be inherited from without being an is_a parent.
+  *   mixins should not be inherited from using is_a, except by other mixins.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param permissibleValues
+  *   A list of possible values for a slot range
+  * @param pvFormula
+  *   Defines the specific formula to be used to generate the permissible values.
+  * @param reachableFrom
+  *   Specifies a query for obtaining a list of permissible values based on graph reachability
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param stringSerialization
+  *   Used on a slot that stores the string serialization of the containing object. The syntax
+  *   follows python formatted strings, with slot names enclosed in {}s. These are expanded using
+  *   the values of those slots. We call the slot with the serialization the s-slot, the slots used
+  *   in the {}s are v-slots. If both s-slots and v-slots are populated on an object then the value
+  *   of the s-slot should correspond to the expansion. Implementations of frameworks may choose to
+  *   use this property to either (a) PARSE: implement automated normalizations by parsing
+  *   denormalized strings into complex objects (b) GENERATE: implement automated to_string labeling
+  *   of complex objects For example, a Measurement class may have 3 fields: unit, value, and
+  *   string_value. The string_value slot may have a string_serialization of {value}{unit} such that
+  *   if unit=cm and value=2, the value of string_value shouldd be 2cm
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param valuesFrom
+  *   The identifier of a "value set" -- a set of identifiers that form the possible values for the
+  *   range of a slot. Note: this is different than 'subproperty_of' in that 'subproperty_of' is
+  *   intended to be a single ontology term while 'values_from' is the identifier of an entire value
+  *   set. Additionally, this is different than an enumeration in that in an enumeration, the values
+  *   of the enumeration are listed directly in the model itself. Setting this property on a slot
+  *   does not guarantee an expansion of the ontological hierarchy into an enumerated list of
+  *   possible values in every serialization of the model.
+  * @see
+  *   Aliases: enum, enumeration, semantic enumeration, value set, term set, concept set, code set,
+  *   Terminology Value Set, answer list, value domain
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class EnumDefinitionImpl(
+final case class EnumDefinition(
     @id
     name: String,
     title: Option[LocalizedText] = None,
@@ -24,9 +195,9 @@ final case class EnumDefinitionImpl(
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("apply_to")
     applyTo: Seq[Reference[Definition]] = Seq(),
     @named("broad_mappings")
@@ -60,7 +231,7 @@ final case class EnumDefinitionImpl(
     enumUri: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
@@ -76,7 +247,7 @@ final case class EnumDefinitionImpl(
     inLanguage: Option[String] = None,
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    include: Seq[AnonymousEnumExpression] = Seq(),
     inherits: Seq[Reference[EnumDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
@@ -84,10 +255,10 @@ final case class EnumDefinitionImpl(
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
-    localNames: Map[String, LocalNameImpl] = Map(),
+    localNames: Map[String, LocalName] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    matches: Option[MatchQuery] = None,
+    minus: Seq[AnonymousEnumExpression] = Seq(),
     mixin: Boolean = false,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
@@ -96,11 +267,11 @@ final case class EnumDefinitionImpl(
     notes: Seq[LocalizedText] = Seq(),
     @named("permissible_values")
     @compactDict
-    permissibleValues: Map[String, PermissibleValueImpl] = Map(),
+    permissibleValues: Map[String, PermissibleValue] = Map(),
     @named("pv_formula")
     pvFormula: Option[PvFormulaOptions] = None,
     @named("reachable_from")
-    reachableFrom: Option[ReachabilityQueryImpl] = None,
+    reachableFrom: Option[ReachabilityQuery] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
@@ -110,52 +281,12 @@ final case class EnumDefinitionImpl(
     @named("string_serialization")
     stringSerialization: Option[String] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
-) extends EnumDefinition {
-
-  override def infer(): EnumDefinitionImpl =
-    this
-}
-
-/** An element whose instances must be drawn from a specified set of permissible values
-  *
-  * @see
-  *   Aliases: enum, enumeration, semantic enumeration, value set, term set, concept set, code set,
-  *   Terminology Value Set, answer list, value domain
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class EnumDefinition extends Definition, EnumExpression {
-
-  /** The alternative name to be used in serializations of an instance instead of the canonical
-    * name.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
-    * @note
-    *   Not to be confused with aliases, which indicates a set of terms to be used for search
-    *   purposes.
-    * @note
-    *   This should be used for describing the structure of already existing instances.
-    * @note
-    *   For human-readable labels, prefer 'title' instead.
-    */
-  def alias: Option[String]
-
-  /** URI of the enum that provides a semantic interpretation of the element in a linked data
-    * context. The URI may come from any namespace and may be shared between schemas
-    *
-    * @see
-    *   Aliases: public ID
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def enumUri: Option[UriOrCurie]
+) extends Definition,
+      EnumExpression {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -164,5 +295,6 @@ abstract class EnumDefinition extends Definition, EnumExpression {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): EnumDefinition
+  override def infer(): EnumDefinition =
+    this
 }

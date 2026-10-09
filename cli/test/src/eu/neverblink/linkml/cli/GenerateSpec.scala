@@ -27,7 +27,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (JsonSchema, "json-schema", Seq("\"Root\"", "\"name\"")),
     // The RDF generators default to Turtle, so their vocabularies come out prefixed.
     (Shacl, "shacl", Seq("a sh:NodeShape", "<https://neverblink.eu/test/name>")),
-    (Scala, "scala", Seq("abstract class Root", "def name: Option[String]")),
+    (Scala, "scala", Seq("final case class Root(", "name: Option[String] = None")),
     (Rdfs, "rdfs", Seq("a rdfs:Class", "rdfs:range")),
     (LinkMl, "linkml", Seq("Root:", "attributes:")),
     (Frictionless, "frictionless", Seq("\"fields\"", "\"name\": \"name\"")),

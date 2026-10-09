@@ -103,7 +103,7 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
 
 private object ClassView:
   // Used to avoid as many allocations as possible when deriving slots.
-  val emptySlotDef: SlotDefinitionImpl = SlotDefinitionImpl(name = "!!! invalid, internal !!!")
+  val emptySlotDef: SlotDefinition = SlotDefinition(name = "!!! invalid, internal !!!")
 
 final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
@@ -348,7 +348,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
           var i = 0
           ancestorSlotView =>
             currentSlot =
-              val slotDef = ancestorSlotView.slot.asInstanceOf[SlotDefinitionImpl]
+              val slotDef = ancestorSlotView.slot
               if (i > 0) currentSlot.combineInherited(slotDef, sv.combineRange)
               else currentSlot.combineWith(slotDef, sv.combineRange)
             i += 1
@@ -426,15 +426,15 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * attributes, and clears any inheritance slots. Additionally, sets the class uri using
     * [[SchemaView]] logic.
     */
-  def materialize: ClassDefinitionImpl =
-    inner.asInstanceOf[ClassDefinitionImpl].copy(
+  def materialize: ClassDefinition =
+    inner.copy(
       classUri = new Some(uriOrCurie),
       isA = None,
       mixins = Nil,
       attributes = derivedAttributes.map((slotKey, slot) =>
         (
           slotKey,
-          slot.inner.asInstanceOf[SlotDefinitionImpl].copy(
+          slot.inner.copy(
             isA = None,
             mixins = Nil,
             fromSchema = new Some(slot.definingSchema.id),
@@ -701,9 +701,9 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. The
     * original declaration remains available through [[inner]].
     */
-  lazy val derivedType: TypeDefinitionImpl =
+  lazy val derivedType: TypeDefinition =
     ancestorsWithSelf.iterator.drop(1)
-      .foldLeft(_type.asInstanceOf[TypeDefinitionImpl]) { (derived, ancestor) =>
+      .foldLeft(_type) { (derived, ancestor) =>
         val parent = ancestor._type
         derived.copy(
           base = combineOption(derived.base, parent.base, combineFallback),

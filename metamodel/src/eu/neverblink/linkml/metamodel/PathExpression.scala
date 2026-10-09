@@ -5,28 +5,122 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[PathExpression]] LinkML class
+/** An expression that describes an abstract path from an object to another through a sequence of
+  * slot lookups
   *
-  * @inheritdoc
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param anyOf
+  *   Holds if at least one of the expressions hold
+  * @param exactlyOneOf
+  *   Holds if only one of the expressions hold
+  * @param noneOf
+  *   Holds if none of the expressions hold
+  * @param allOf
+  *   Holds if all of the expressions hold
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param followedBy
+  *   In a sequential list, this indicates the next member
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param rangeExpression
+  *   A range that is described as a boolean expression combining existing ranges
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param reversed
+  *   True if the slot is to be inversed
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param traverse
+  *   The slot to traverse
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class PathExpressionImpl(
+final case class PathExpression(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     @named("any_of")
-    anyOf: Seq[PathExpressionImpl] = Seq(),
+    anyOf: Seq[PathExpression] = Seq(),
     @named("exactly_one_of")
-    exactlyOneOf: Seq[PathExpressionImpl] = Seq(),
+    exactlyOneOf: Seq[PathExpression] = Seq(),
     @named("none_of")
-    noneOf: Seq[PathExpressionImpl] = Seq(),
+    noneOf: Seq[PathExpression] = Seq(),
     @named("all_of")
-    allOf: Seq[PathExpressionImpl] = Seq(),
+    allOf: Seq[PathExpression] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -45,11 +139,11 @@ final case class PathExpressionImpl(
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("followed_by")
-    followedBy: Option[PathExpressionImpl] = None,
+    followedBy: Option[PathExpression] = None,
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
@@ -68,7 +162,7 @@ final case class PathExpressionImpl(
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[LocalizedText] = Seq(),
     @named("range_expression")
-    rangeExpression: Option[AnonymousClassExpressionImpl] = None,
+    rangeExpression: Option[AnonymousClassExpression] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     reversed: Boolean = false,
@@ -77,89 +171,13 @@ final case class PathExpressionImpl(
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
     traverse: Option[Reference[SlotDefinition]] = None,
-) extends PathExpression {
-
-  override def infer(): PathExpressionImpl =
-    this
-}
-
-/** An expression that describes an abstract path from an object to another through a sequence of
-  * slot lookups
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class PathExpression extends Expression, Extensible, Annotatable, CommonMetadata {
-
-  /** Holds if at least one of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def anyOf: Seq[PathExpressionImpl]
-
-  /** Holds if only one of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def exactlyOneOf: Seq[PathExpressionImpl]
-
-  /** Holds if none of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def noneOf: Seq[PathExpressionImpl]
-
-  /** Holds if all of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def allOf: Seq[PathExpressionImpl]
-
-  /** In a sequential list, this indicates the next member
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def followedBy: Option[PathExpressionImpl]
-
-  /** A range that is described as a boolean expression combining existing ranges
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   One use for this is being able to describe a range using any_of expressions, for example to
-    *   combine two enums
-    */
-  def rangeExpression: Option[AnonymousClassExpressionImpl]
-
-  /** True if the slot is to be inversed
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def reversed: Boolean
-
-  /** The slot to traverse
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def traverse: Option[Reference[SlotDefinition]]
+) extends Expression,
+      Extensible,
+      Annotatable,
+      CommonMetadata {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -168,5 +186,6 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): PathExpression
+  override def infer(): PathExpression =
+    this
 }

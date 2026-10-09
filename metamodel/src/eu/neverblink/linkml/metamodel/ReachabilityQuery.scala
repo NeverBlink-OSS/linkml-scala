@@ -5,11 +5,28 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[ReachabilityQuery]] LinkML class
+/** A query that is used on an enum expression to dynamically obtain a set of permissible values via
+  * walking from a set of source nodes to a set of descendants or ancestors over a set of
+  * relationship types.
   *
-  * @inheritdoc
+  * @param includeSelf
+  *   True if the query is reflexive
+  * @param isDirect
+  *   True if the reachability query should only include directly related nodes, if False then
+  *   include also transitively connected
+  * @param relationshipTypes
+  *   A list of relationship types (properties) that are used in a reachability query
+  * @param sourceNodes
+  *   A list of nodes that are used in the reachability query
+  * @param sourceOntology
+  *   An ontology or vocabulary or terminology that is used in a query to obtain a set of
+  *   permissible values
+  * @param traverseUp
+  *   True if the direction of the reachability query is reversed and ancestors are retrieved
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class ReachabilityQueryImpl(
+final case class ReachabilityQuery(
     @named("include_self")
     includeSelf: Boolean = false,
     @named("is_direct")
@@ -22,78 +39,7 @@ final case class ReachabilityQueryImpl(
     sourceOntology: Option[UriOrCurie] = None,
     @named("traverse_up")
     traverseUp: Boolean = false,
-) extends ReachabilityQuery {
-
-  override def infer(): ReachabilityQueryImpl =
-    this
-}
-
-/** A query that is used on an enum expression to dynamically obtain a set of permissible values via
-  * walking from a set of source nodes to a set of descendants or ancestors over a set of
-  * relationship types.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class ReachabilityQuery {
-
-  /** True if the query is reflexive
-    *
-    * @see
-    *   Aliases: reflexive
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def includeSelf: Boolean
-
-  /** True if the reachability query should only include directly related nodes, if False then
-    * include also transitively connected
-    *
-    * @see
-    *   Aliases: non-transitive
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def isDirect: Boolean
-
-  /** A list of relationship types (properties) that are used in a reachability query
-    *
-    * @see
-    *   Aliases: predicates, properties
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def relationshipTypes: Seq[UriOrCurie]
-
-  /** A list of nodes that are used in the reachability query
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def sourceNodes: Seq[UriOrCurie]
-
-  /** An ontology or vocabulary or terminology that is used in a query to obtain a set of
-    * permissible values
-    *
-    * @see
-    *   Aliases: terminology, vocabulary
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Examples include schema.org, wikidata, or an OBO ontology
-    * @note
-    *   For obo ontologies we recommend CURIEs of the form obo:cl, obo:envo, etc
-    */
-  def sourceOntology: Option[UriOrCurie]
-
-  /** True if the direction of the reachability query is reversed and ancestors are retrieved
-    *
-    * @see
-    *   Aliases: ancestors
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def traverseUp: Boolean
+) {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -102,5 +48,6 @@ abstract class ReachabilityQuery {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): ReachabilityQuery
+  def infer(): ReachabilityQuery =
+    this
 }

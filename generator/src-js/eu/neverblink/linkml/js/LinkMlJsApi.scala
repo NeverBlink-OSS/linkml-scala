@@ -6,7 +6,7 @@ import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
-import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
+import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
@@ -18,7 +18,7 @@ import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningM
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
-import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReportImpl}
+import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReport}
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
@@ -160,7 +160,7 @@ object LinkMlJsApi {
       runId: Option[String],
       inferMessages: Boolean,
   ): SchemaValidationReport = {
-    val report = SchemaValidationReportImpl(
+    val report = SchemaValidationReport(
       issues = if inferMessages then issues.map(_.infer()) else issues,
       validationRunId = runId,
     )
@@ -338,7 +338,7 @@ object LinkMlJsApi {
     val result = importer.importWithWarnings(
       java.io.ByteArrayInputStream(ontology.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
       OwlImporter.Options(
-        config = config.toOption.fold(OwlImportConfigImpl())(OwlImportConfigs.parse),
+        config = config.toOption.fold(OwlImportConfig())(OwlImportConfigs.parse),
         schemas = JsImporter(importMap.getOrElse(js.Dictionary())),
         inputFormat = rdfFormat(inputFormat),
       ),

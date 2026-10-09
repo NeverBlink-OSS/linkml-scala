@@ -1,15 +1,11 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.Axiom.*
-import eu.neverblink.linkml.generator.owl.config.{
-  ImportMappingImpl,
-  OwlImportConfigImpl,
-  OwlImportConfigs,
-}
+import eu.neverblink.linkml.generator.owl.config.{ImportMapping, OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.metamodel.Codec
-import eu.neverblink.linkml.metamodel.SchemaDefinitionImpl
+import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, NTriplesParser, Triple}
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaView}
 import org.scalatest.Assertions
@@ -52,7 +48,7 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
   ): OwlImporter.Options =
     OwlImporter.Options(
       configOf(name).copy(imports =
-        imports.flatMap(d => headers(d)._1.map(i => i -> ImportMappingImpl(i, s"$d.yaml"))).toMap,
+        imports.flatMap(d => headers(d)._1.map(i => i -> ImportMapping(i, s"$d.yaml"))).toMap,
       ),
       schemas = MapImporter(files.toSeq*),
     )
@@ -163,7 +159,7 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
     }
 
   /** Reports only the fields that differ: a diff of whole schemas takes too long to print. */
-  private def sameSchema(first: SchemaDefinitionImpl, again: SchemaDefinitionImpl): Unit =
+  private def sameSchema(first: SchemaDefinition, again: SchemaDefinition): Unit =
     if again != first then fail(differences("schema", first, again).take(8).mkString("\n"))
 
   private def differences(path: String, a: Any, b: Any): Seq[String] = (a, b) match {
@@ -214,7 +210,7 @@ object OwlCorpusSpec {
     sink.triples
   }
 
-  def yamlOf(schema: SchemaDefinitionImpl): String =
+  def yamlOf(schema: SchemaDefinition): String =
     JsonUtil.write(Codec.codec.encode(schema), JsonOutputFormat.yaml)
 
   /** Each ontology with the minimum percent of logical axioms that must survive the round trip, set
@@ -262,7 +258,7 @@ object OwlCorpusSpec {
   /** PROV-O and DC terms reuse names from SKOS and from each other. DCAT imports all of them, and
     * LinkML names must be unique across schemas, so some terms are renamed.
     */
-  def configOf(name: String): OwlImportConfigImpl = name match {
+  def configOf(name: String): OwlImportConfig = name match {
     case "prov-o" =>
       OwlImportConfigs.parse(
         """renames:
@@ -279,7 +275,7 @@ object OwlCorpusSpec {
           |  http://purl.org/dc/dcmitype/Collection: DcmiCollection
           |""".stripMargin,
       )
-    case _ => OwlImportConfigImpl()
+    case _ => OwlImportConfig()
   }
 
   private val ontologyPattern =

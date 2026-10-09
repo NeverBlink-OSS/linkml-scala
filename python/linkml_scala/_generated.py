@@ -344,6 +344,7 @@ class Generators:
         package: str = "eu.neverblink.linkml.metamodel",
         generate_emit_prefixes: bool = True,
         metadata_language: str = "en",
+        skip_leaf_interfaces: bool = True,
     ) -> dict[str, str]:
         """Generate Scala classes, as a filename to source mapping.
 
@@ -352,12 +353,17 @@ class Generators:
             model's `emit_prefixes`.
         :param metadata_language: Which language to use for metadata fields (description etc.)
             in ScalaDocs.
+        :param skip_leaf_interfaces: Whether to skip the separate interface for a concrete class
+            that no other class extends (with `is_a` or `mixins`), and generate it as a single
+            case class named after it instead of an interface plus a `...Impl` case class. Turn
+            it off if code outside of the generated sources has to extend the generated classes.
         """
         return self._json(
             "linkml_scala",
             package=package,
             generateEmitPrefixes=generate_emit_prefixes,
             metadataLanguage=metadata_language,
+            skipLeafInterfaces=skip_leaf_interfaces,
         )
 
     def translation(

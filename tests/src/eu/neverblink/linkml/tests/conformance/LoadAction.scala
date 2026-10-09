@@ -5,28 +5,22 @@ package eu.neverblink.linkml.tests.conformance
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[LoadAction]] LinkML class
+/** The implementation should load the schema into a string and pass it as the Action result.
   *
-  * @inheritdoc
+  * @param description
+  *   Description of an element, including the implementation guide
+  * @param title
+  *   Human readable name of an element
+  * @see
+  *   From schema: https://w3id.org/linkml/conformance/
   */
-final case class LoadActionImpl(
+final case class LoadAction(
     description: Option[String] = None,
     title: Option[String] = None,
     @named("type")
     @serializeDefault
     `type`: Option[String] = Some("LoadAction"),
-) extends LoadAction {
-
-  override def infer(): LoadActionImpl =
-    this
-}
-
-/** The implementation should load the schema into a string and pass it as the Action result.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/conformance/
-  */
-abstract class LoadAction extends Action {
+) extends Action {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -35,5 +29,6 @@ abstract class LoadAction extends Action {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): LoadAction
+  override def infer(): LoadAction =
+    this
 }

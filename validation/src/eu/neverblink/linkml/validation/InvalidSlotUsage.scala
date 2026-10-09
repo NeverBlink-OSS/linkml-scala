@@ -5,26 +5,50 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[InvalidSlotUsage]] LinkML class
+/** A class declares `slot_usage` for slots that none of its ancestors provide.
   *
-  * @inheritdoc
+  * @param className
+  *   Name of the class the issue was found in.
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class InvalidSlotUsageImpl(
+final case class InvalidSlotUsage(
     @named("class_name")
     className: String,
     details: Option[String] = None,
     @named("issue_type")
     @serializeDefault
     issueType: String = "InvalidSlotUsage",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Warning,
     @named("slot_names")
     slotNames: Seq[String],
-) extends InvalidSlotUsage {
+) extends SchemaWarning {
 
-  override def infer(): InvalidSlotUsageImpl =
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  override def infer(): InvalidSlotUsage =
     copy(
       details = inferOptional(
         "details",
@@ -39,53 +63,4 @@ final case class InvalidSlotUsageImpl(
         "Invalid 'slot_usage' slots: " + stringify(slotNames) + " in class " + className,
       ),
     )
-}
-
-/** A class declares `slot_usage` for slots that none of its ancestors provide.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class InvalidSlotUsage extends SchemaWarning {
-
-  /** Name of the class the issue was found in.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def className: String
-
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def slotNames: Seq[String]
-
-  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
-    * the values already present agree with what their expressions infer.
-    *
-    * @throws eu.neverblink.linkml.runtime.InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression references a
-    *   slot that has no value
-    */
-  def infer(): InvalidSlotUsage
 }

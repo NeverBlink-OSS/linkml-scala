@@ -3,7 +3,7 @@ package eu.neverblink.linkml.generator.ossie
 import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.ossie.expression.{Expression, Literal}
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
-import eu.neverblink.linkml.metamodel.{SchemaDefinitionImpl, SlotDefinitionImpl}
+import eu.neverblink.linkml.metamodel.{SchemaDefinition, SlotDefinition}
 import eu.neverblink.linkml.runtime.{Curie, PlainText, Reference, Uri}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
@@ -701,7 +701,7 @@ object OssieImporterSpec {
   private def stream(ontology: String): InputStream =
     ByteArrayInputStream(ontology.getBytes(StandardCharsets.UTF_8))
 
-  private def importOf(ontology: String): SchemaDefinitionImpl =
+  private def importOf(ontology: String): SchemaDefinition =
     OssieImporter().importSchemaFromString(ontology)
 
   /** A one-off Ossie document, with [[body]] spliced in after the pinned version and a name. */
@@ -712,7 +712,7 @@ object OssieImporterSpec {
        |""".stripMargin
 
   /** The attribute a single relationship on a lone concept turns into. */
-  private def attributeOf(relationship: String, name: String): SlotDefinitionImpl =
+  private def attributeOf(relationship: String, name: String): SlotDefinition =
     importOf(ossie(s"""
       |ontology:
       |  - concept: Thing

@@ -5,11 +5,11 @@ import eu.neverblink.linkml.generator.owl.ClassExpr.*
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.classStyle
 import eu.neverblink.linkml.generator.owl.config.{
   NameStyle,
-  OwlImportConfigImpl,
+  OwlImportConfig,
   OwlImportConfigs,
   SomeValuesFrom as SomeValuesFromStyle,
 }
-import eu.neverblink.linkml.metamodel.{AnonymousSlotExpressionImpl, SchemaDefinitionImpl}
+import eu.neverblink.linkml.metamodel.{AnonymousSlotExpression, SchemaDefinition}
 import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Owl, Rdfs, XmlSchema}
 import eu.neverblink.linkml.runtime.{Curie, MultilingualText, PlainText, Reference}
 import eu.neverblink.linkml.schemaview.{MapImporter, yamlAs}
@@ -109,8 +109,8 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
     "turn a union range into any_of" in {
       val s = schema(cls("A"), cls("B"), obj("p"), Range(ns + "p", UnionOf(Seq(c("A"), c("B")))))
       s.slotDefinitions("p").anyOf shouldBe Seq(
-        AnonymousSlotExpressionImpl(range = Some(Reference("A"))),
-        AnonymousSlotExpressionImpl(range = Some(Reference("B"))),
+        AnonymousSlotExpression(range = Some(Reference("A"))),
+        AnonymousSlotExpression(range = Some(Reference("B"))),
       )
     }
 
@@ -180,7 +180,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       Range(ns + "p", c("B")),
     )
 
-    def usage(restriction: ClassExpr, config: OwlImportConfigImpl = OwlImportConfigImpl()) =
+    def usage(restriction: ClassExpr, config: OwlImportConfig = OwlImportConfig()) =
       schema(config, base :+ SubClassOf(c("A"), restriction)*).classes("A")
 
     "attach the slot, and narrow its range with allValuesFrom" in {
@@ -199,13 +199,13 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
     "say which kind of value there has to be when someValuesFrom narrows the range" in {
       val p = usage(SomeValuesFrom(PropertyRef(ns + "p"), c("C"))).slotUsage("p")
       p.required shouldBe true
-      p.hasMember shouldBe Some(AnonymousSlotExpressionImpl(range = Some(Reference("C"))))
+      p.hasMember shouldBe Some(AnonymousSlotExpression(range = Some(Reference("C"))))
     }
 
     "narrow the range instead, when asked to" in {
       val p = usage(
         SomeValuesFrom(PropertyRef(ns + "p"), c("C")),
-        OwlImportConfigImpl(someValuesFrom = Some(SomeValuesFromStyle.Range)),
+        OwlImportConfig(someValuesFrom = Some(SomeValuesFromStyle.Range)),
       ).slotUsage("p")
       p.required shouldBe true
       p.range shouldBe Some(Reference("C"))
@@ -256,7 +256,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
         Range(ns + "state", c("State")),
       )
       schema(axioms*).enums("State").permissibleValues.keySet shouldBe Set("Open", "Closed")
-      schema(OwlImportConfigImpl(enumsFromIndividuals = false), axioms*).classes.contains(
+      schema(OwlImportConfig(enumsFromIndividuals = false), axioms*).classes.contains(
         "State",
       ) shouldBe
         true
@@ -590,8 +590,8 @@ object OwlImportMappingSpec {
   def importOf(axioms: Axiom*): OwlImporter.Result =
     OwlImporter().importOntology(Ontology(prefixes = prefixes, axioms = axioms))
 
-  def schema(axioms: Axiom*): SchemaDefinitionImpl = importOf(axioms*).schema
+  def schema(axioms: Axiom*): SchemaDefinition = importOf(axioms*).schema
 
-  def schema(config: OwlImportConfigImpl, axioms: Axiom*): SchemaDefinitionImpl =
+  def schema(config: OwlImportConfig, axioms: Axiom*): SchemaDefinition =
     OwlImporter().importOntology(Ontology(prefixes = prefixes, axioms = axioms), config).schema
 }

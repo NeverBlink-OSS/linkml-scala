@@ -5,11 +5,36 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[AnonymousEnumExpression]] LinkML class
+/** An enum_expression that is not named
   *
-  * @inheritdoc
+  * @param codeSet
+  *   The identifier of an enumeration code set.
+  * @param codeSetTag
+  *   The version tag of the enumeration code set
+  * @param codeSetVersion
+  *   The version identifier of the enumeration code set
+  * @param concepts
+  *   A list of identifiers that are used to construct a set of permissible values
+  * @param include
+  *   An enum expression that yields a list of permissible values that are to be included, after
+  *   subtracting the minus set
+  * @param inherits
+  *   An enum definition that is used as the basis to create a new enum
+  * @param matches
+  *   Specifies a match query that is used to calculate the list of permissible values
+  * @param minus
+  *   An enum expression that yields a list of permissible values that are to be subtracted from the
+  *   enum
+  * @param permissibleValues
+  *   A list of possible values for a slot range
+  * @param pvFormula
+  *   Defines the specific formula to be used to generate the permissible values.
+  * @param reachableFrom
+  *   Specifies a query for obtaining a list of permissible values based on graph reachability
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class AnonymousEnumExpressionImpl(
+final case class AnonymousEnumExpression(
     @named("code_set")
     codeSet: Option[UriOrCurie] = None,
     @named("code_set_tag")
@@ -17,29 +42,18 @@ final case class AnonymousEnumExpressionImpl(
     @named("code_set_version")
     codeSetVersion: Option[String] = None,
     concepts: Seq[UriOrCurie] = Seq(),
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    include: Seq[AnonymousEnumExpression] = Seq(),
     inherits: Seq[Reference[EnumDefinition]] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    matches: Option[MatchQuery] = None,
+    minus: Seq[AnonymousEnumExpression] = Seq(),
     @named("permissible_values")
     @compactDict
-    permissibleValues: Map[String, PermissibleValueImpl] = Map(),
+    permissibleValues: Map[String, PermissibleValue] = Map(),
     @named("pv_formula")
     pvFormula: Option[PvFormulaOptions] = None,
     @named("reachable_from")
-    reachableFrom: Option[ReachabilityQueryImpl] = None,
-) extends AnonymousEnumExpression {
-
-  override def infer(): AnonymousEnumExpressionImpl =
-    this
-}
-
-/** An enum_expression that is not named
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class AnonymousEnumExpression extends EnumExpression {
+    reachableFrom: Option[ReachabilityQuery] = None,
+) extends EnumExpression {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -48,5 +62,6 @@ abstract class AnonymousEnumExpression extends EnumExpression {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): AnonymousEnumExpression
+  override def infer(): AnonymousEnumExpression =
+    this
 }

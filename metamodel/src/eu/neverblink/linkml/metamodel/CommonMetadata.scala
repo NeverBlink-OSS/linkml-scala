@@ -61,7 +61,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def altDescriptions: Map[String, AltDescriptionImpl]
+  def altDescriptions: Map[String, AltDescription]
 
   /** A list of terms from different schemas or terminology systems that have broader meaning.
     *
@@ -151,7 +151,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def examples: Seq[ExampleImpl]
+  def examples: Seq[Example]
 
   /** Id of the schema that defined the element
     *
@@ -281,7 +281,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def structuredAliases: Seq[StructuredAliasImpl]
+  def structuredAliases: Seq[StructuredAlias]
 
   /** Outstanding issues that needs resolution
     *
