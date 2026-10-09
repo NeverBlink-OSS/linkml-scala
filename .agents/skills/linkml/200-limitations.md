@@ -13,8 +13,8 @@
 The following features are not yet supported or are partially supported in LinkML-Scala:
 
 - Arrays
-- Boolean expressions (`any_of`, `all_of`, `exactly_one_of`, `none_of`)
-  - Supported in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl)), and `any_of` ranges in the OWL generator. Other generators ignore them.
+- Boolean expressions (`any_of`, `all_of`, `exactly_one_of`, `none_of`) in the JSON Schema, OWL and Pydantic generators
+  - JSON Schema and Pydantic ignore them, OWL supports only `any_of` ranges
 - Partial support for default values (`ifabsent`)
   - Only enum and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
