@@ -112,17 +112,9 @@ object LinkMlJsApi {
     * involving the root schema: an import that (transitively) references the root back by path
     * resolves to the already-loaded root instead of loading it again.
     *
-    * Keys in the ``imports`` parameter must match the expanded form of the ``imports`` entries in
-    * the schema. In particular:
-    *
-    *   - A CURIE is expanded through the schema's prefix map, so ``imports: [ex:core]`` has to be
-    *     keyed here by the full URI, such as ``"https://example.org/core.yaml"``.
-    *   - A relative import is joined to the directory of the schema that imported it, so a ``core``
-    *     imported by ``nested/model.yaml`` has to be keyed ``"nested/core.yaml"``. Keys are
-    *     therefore paths as seen from the root.
-    *   - ``.yaml`` is appended unless the path already ends in ``.yaml`` or ``.yml``. Therefore,
-    *     ``"core"`` and ``"core.yaml"`` are interchangeable, and a key that ends in ``.yml`` is
-    *     only found by an import that explicitly asks for ``.yml``.
+    * Keys in the [[importMap]] are import paths as seen from the root schema. The `.yaml` and
+    * `.yml` extensions are optional and interchangeable, and each imported schema is loaded only
+    * once, even when it is reached through different relative paths.
     *
     * @param path
     *   Path of the main LinkML model within the [[importMap]] (e.g. `"model.yaml"`).

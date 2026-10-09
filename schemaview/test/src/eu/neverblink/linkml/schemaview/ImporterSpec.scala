@@ -132,7 +132,6 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
     "leave a key that already ends in .yml alone" in {
       val importer = MapImporter("ok.yml" -> validSchema)
       importer.readSchema("ok.yml").map(_.name) shouldBe Right("test")
-      importer.readSchema("ok.yaml") should matchPattern { case Left(_: SchemaImportError) => }
     }
 
     "prefer the key spelled exactly as it is looked up" in {
@@ -152,6 +151,46 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
       )
       inside(SchemaView.loadSchemaViewFromUri("main", importer = importer)) { case Right(view) =>
         view.schemas.map(_.name) should contain allOf ("main", "test")
+      }
+    }
+  }
+
+  "an import with a .yaml or .yml extension" should {
+    def main(imports: String*): String =
+      "id: https://neverblink.eu/linkml/importer/main/\nname: main\nimports:\n" +
+        imports.map(i => s"  - $i\n").mkString
+
+    def loadedNames(importer: Importer): Seq[String] =
+      inside(SchemaView.loadSchemas("main", importer)) { case Right(schemas) =>
+        schemas.map(_.name)
+      }
+
+    "find a key ending in .yml when it asks for .yaml or no extension" in {
+      loadedNames(MapImporter("main.yml" -> main("ok"), "ok.yml" -> validSchema)) shouldBe
+        Seq("main", "test")
+      loadedNames(MapImporter("main" -> main("ok.yaml"), "ok.yml" -> validSchema)) shouldBe
+        Seq("main", "test")
+    }
+
+    "find a key ending in .yaml when it asks for .yml" in {
+      loadedNames(MapImporter("main" -> main("ok.yml"), "ok.yaml" -> validSchema)) shouldBe
+        Seq("main", "test")
+    }
+
+    "prefer the .yaml key when both keys exist, whichever extension it asks for" in {
+      val keys = Seq("ok.yaml" -> validSchema, "ok.yml" -> exactSchema)
+      for (imported <- Seq("ok", "ok.yaml", "ok.yml"))
+        loadedNames(MapImporter(("main" -> main(imported)) +: keys*)) shouldBe Seq("main", "test")
+    }
+
+    "load the schema once when it is reached through both extensions" in {
+      val importer = MapImporter("main" -> main("ok", "ok.yml", "ok.yaml"), "ok.yml" -> validSchema)
+      loadedNames(importer) shouldBe Seq("main", "test")
+    }
+
+    "report the spelling it asked for when neither extension is found" in {
+      inside(SchemaView.loadSchemas("main", MapImporter("main" -> main("missing.yml")))) {
+        case Left(issue: SchemaImportError) => issue.importUri shouldBe "missing.yml"
       }
     }
   }

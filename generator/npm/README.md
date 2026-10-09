@@ -52,9 +52,12 @@ There are two ways to load a schema into a `SchemaView` handle:
 - `loadFromString(schema, importMap)` – start from the schema's YAML text. Imported models
   must be provided in the import map (filename → YAML).
 - `loadFromPath(path, importMap)` – start from a path into the import map. The root schema is
-  read from `importMap[path]` (paths behave like file paths, `.yaml` is appended when missing).
-  Because the root is tracked from the start of import resolution, this variant is immune to
-  cyclic imports that reference the root schema back.
+  read from `importMap[path]`. Because the root is tracked from the start of import resolution,
+  this variant is immune to cyclic imports that reference the root schema back.
+
+Import map keys are import paths as seen from the root schema. The `.yaml` and `.yml` extensions
+are optional and interchangeable, and each imported schema is loaded only once, even when it is
+reached through different relative paths.
 
 ```js no-test
 // loadFromPath: the root lives in the import map under its own path.

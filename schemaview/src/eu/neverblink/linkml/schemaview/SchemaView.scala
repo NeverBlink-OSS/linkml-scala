@@ -9,6 +9,7 @@ import eu.neverblink.linkml.validation.{
   IssueLocationImpl,
   SchemaError,
   SchemaFatal,
+  SchemaImportError,
   SchemaIssue,
   UnexpectedErrorImpl,
 }
@@ -384,6 +385,8 @@ object SchemaView {
     *
     * @return
     *   The schema view loaded from the specified URI.
+    *
+    * See [[loadSchemas]] for how imports are resolved.
     */
   def loadSchemaViewFromUri(
       uri: String,
@@ -438,6 +441,10 @@ object SchemaView {
   /** Loads individual schema definitions from the specified URI, optionally loading their imports.
     * Import loading is recursive.
     *
+    * The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema
+    * is loaded only once, even when it is reached through different relative paths or, with
+    * [[FileSystemImporter]] on the JVM and Native, through symbolic or hard links.
+    *
     * @param uri
     *   The URI of the schema to load. This can be a URL starting with "https://", "http://", or a
     *   file path.
@@ -491,11 +498,18 @@ object SchemaView {
     val normalizedUri = Importer.normalizePath(Importer.normalizeUri(uri))
     val isBuiltIn =
       normalizedUri.startsWith("https://w3id.org/linkml/") || normalizedUri.startsWith("linkml:")
+    val otherUri = if (isBuiltIn) normalizedUri else Importer.otherYamlExtension(normalizedUri)
+    val asksForYml = normalizedUri.endsWith(".yml")
+    val yamlUri = if (asksForYml) otherUri else normalizedUri
+    val ymlUri = if (asksForYml) normalizedUri else otherUri
     // Check if we've already visited this schema to avoid infinite loops and repeatedly loading the
     // same schema. The importer's key also catches one file reached through different links.
-    if !visited.add(if (isBuiltIn) normalizedUri else importer.schemaKey(normalizedUri)) then
-      new Right(Nil)
+    val key = if (isBuiltIn) normalizedUri else importer.schemaKey(normalizedUri)
+    val otherKey = if (isBuiltIn) key else importer.schemaKey(otherUri)
+    if visited.contains(key) || visited.contains(otherKey) then new Right(Nil)
     else
+      visited.add(key)
+      visited.add(otherKey)
       // Built-in schemas come from bundled resources, everything else from the importer. Both
       // routes yield the same structured issues on failure.
       val loaded: Either[ImportFailure, SchemaDefinition] =
@@ -504,7 +518,16 @@ object SchemaView {
         } else if (normalizedUri.startsWith("linkml:")) {
           builtIn(normalizedUri, "/".concat(normalizedUri.stripPrefix("linkml:")), importer)
         } else {
-          importer.readSchema(normalizedUri)
+          importer.readSchema(yamlUri) match {
+            case yamlMissing @ Left(_: SchemaImportError) =>
+              importer.readSchema(ymlUri) match {
+                // When neither is found, report the spelling the import asked for.
+                case ymlMissing @ Left(_: SchemaImportError) =>
+                  if (asksForYml) ymlMissing else yamlMissing
+                case other => other
+              }
+            case other => other
+          }
         }
       loaded.flatMap { schema =>
         if (doImportLoading) {

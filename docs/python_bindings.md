@@ -48,6 +48,11 @@ A schema is parsed once and reused across generators, the same way the [JavaScri
 | `load_string(schema, imports=None)` | You have the schema as text. `imports` maps filename to YAML text. |
 | `load_path(path, imports)` | Same, but the root is read *through* the map by its own path, so imports that reference the root back resolve to it instead of loading a second copy. |
 
+Keys of the `imports` map are import paths as seen from the root schema. The `.yaml` and `.yml`
+extensions are optional and interchangeable, and each imported schema is loaded only once, even
+when it is reached through different relative paths or, with `load_file`, through symbolic or hard
+links.
+
 All three take `infer_messages=True`, which fills in each issue's human-readable `message` and
 `details`. Turn it off for only the structured fields.
 

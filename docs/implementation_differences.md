@@ -24,11 +24,25 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - JSON Schema, Scala, TypeScript, and Pydantic generators support type unions.
   - Some constraints on unioned types may be lost, depending on the expressiveness of the target language.
 - Support for [language strings](#language-strings)
+- Better support for [imports](#imports)
+  - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 
 ## Inherited type constraints
 
 LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
 Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
+
+## Imports
+
+Imports are easier to write in LinkML-Scala: file extensions are optional and interchangeable, and each imported schema is loaded only once.
+
+| Case | Python LinkML 1.11.1 | LinkML-Scala |
+|------|----------------------|--------------|
+| `imports: [core]` with only `core.yml` on disk | Fails | Reads `core.yml` |
+| `imports: [core.yaml]` or `[core.yml]` | Fails: reads `core.yaml.yaml` or `core.yml.yaml` | Works |
+| One file imported as `dir/a`, `dir/./a`, `dir//a` or `dir/x/../a` | Loaded once per spelling | Loaded once |
+| One file reached through a symbolic or hard link | Loaded twice | Loaded once (JVM and Native) |
+| An import back to the root schema | Loads the root again, unless its `name` matches the file name | Loaded once, when the root is loaded from a path |
 
 ## Eager validation of references
 
