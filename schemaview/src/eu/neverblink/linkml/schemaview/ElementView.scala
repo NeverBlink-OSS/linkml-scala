@@ -205,6 +205,11 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def isConcrete: Boolean = !cls.`abstract` && !cls.mixin
 
+  /** @return
+    *   true if another class in the loaded schemas names this class in its `is_a` or `mixins`
+    */
+  def hasDescendants: Boolean = sv.classesWithDescendants.contains(name)
+
   /** Whether instances of this class may have data beyond its slots, as set by its `extra_slots`.
     *
     * An explicit `allowed` wins, even over a `range_expression`. Without it, a `range_expression`

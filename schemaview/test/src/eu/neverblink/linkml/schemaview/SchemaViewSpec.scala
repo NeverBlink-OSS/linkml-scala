@@ -241,6 +241,28 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       // Each path should be attempted only once.
       imported.size shouldBe 4
     }
+    "tell which classes have descendants" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/descendants
+            |name: descendants
+            |classes:
+            |  Base: {}
+            |  Child:
+            |    is_a: Base
+            |  GrandChild:
+            |    is_a: Child
+            |  Tagged:
+            |    mixin: true
+            |  Plain:
+            |    mixins:
+            |      - Tagged
+            |""".stripMargin,
+        ),
+      )
+      val withDescendants = sv.classes.values.filter(_.hasDescendants).map(_.name).toSet
+      withDescendants shouldBe Set("Base", "Child", "Tagged")
+    }
     "not get caught up in circular imports" in {
       val sv = SchemaIssues.orThrow(
         SchemaView.loadSchemaViewFromUri(

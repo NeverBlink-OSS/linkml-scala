@@ -13,17 +13,13 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   import ScalaGenerator.*
   import CombineFunction.*
 
-  /** Names of the classes that some other class names in its `is_a` or `mixins`. */
-  private lazy val classesWithChildren: Set[String] =
-    sv.classes.values.flatMap(_.parents.map(_.name)).toSet
-
   /** Whether a class is generated as a single case class named after it, with no separate interface
     * and `...Impl` case class. Only concrete classes without children qualify, and only when
     * [[Options.skipLeafInterfaces]] is on.
     */
   private def isCaseClassOnly(classView: ClassView, options: Options): Boolean =
     options.skipLeafInterfaces && classView.isConcrete &&
-      !classesWithChildren.contains(classView.name)
+      !classView.hasDescendants
 
   /** Name of the Scala class that holds the instances of a concrete LinkML class. */
   private def implName(classView: ClassView, options: Options): String = {
