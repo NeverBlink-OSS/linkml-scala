@@ -10,19 +10,20 @@ import scala.collection.mutable
 /** Embeds the module's resources into generated Scala sources, so they can be read on every
   * platform, including Scala.js and Scala Native where there are no class path resources.
   *
-  * For a module named `tests` it generates:
+  * The `module` parameter only picks the package of the generated code,
+  * `eu.neverblink.linkml.<module>`. In that package it generates:
   *
-  *   - `eu.neverblink.linkml.tests.Resources` with `map` (resource path to text) and `read(path)`
-  *     for look-ups by a string path like `/models/basic/model.yaml`, plus a val for each top level
-  *     file and directory of the resources;
-  *   - one object per resource directory in the `eu.neverblink.linkml.tests.resourcedirs` package,
-  *     in a file of its own, with a val for each file and sub-directory.
+  *   - `Resources` with `map` (resource path to text) and `read(path)` for look-ups by a string
+  *     path like `/dir/file.txt`, plus a val for each top level file and directory of the
+  *     resources;
+  *   - one object per resource directory in the `resourcedirs` sub-package, in a file of its own,
+  *     with a val for each file and sub-directory.
   *
-  * Every object also has a `path` val with the path of its directory, like `/models/basic/`.
+  * Every object also has a `path` val with the path of its directory, like `/dir/`.
   *
-  * So `Resources.models.inlines.explicitInline.`model.yaml`` is completed by an IDE, and going to
-  * its definition shows the text of the file. Texts are embedded as multi-line string literals when
-  * possible, and as escaped string literals otherwise. Only UTF-8 text files are supported.
+  * So `Resources.dir.`file.txt`` is completed by an IDE, and going to its definition shows the text
+  * of the file. Texts are embedded as multi-line string literals when possible, and as escaped
+  * string literals otherwise. Only UTF-8 text files are supported.
   */
 trait ResourcesAsStrings(module: String) extends JavaModule {
   override def generatedSources = Task {
