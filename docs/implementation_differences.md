@@ -32,20 +32,10 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
 LinkML-Python 1.11.1 omits these in our comparison tests, so the JSON Schema of LinkML-Scala rejects some data that the JSON Schema of LinkML-Python accepts.
 
-## Boolean expressions in SHACL
+## Boolean expressions
 
 In boolean expressions, the SHACL generator of LinkML-Python 1.11.1 checks only the `range` of `any_of` members.
 LinkML-Scala also checks `all_of`, `exactly_one_of`, `none_of`, and the patterns, value bounds, cardinality and nested boolean expressions of members.
-So in the cases below, the shapes of LinkML-Scala reject data that the shapes of LinkML-Python accept:
-
-| Slot definition                                                                          | Data rejected only by LinkML-Scala   | What LinkML-Python does                                       |
-|------------------------------------------------------------------------------------------|--------------------------------------|---------------------------------------------------------------|
-| `range: string`, `any_of: [{pattern: "^a"}, {pattern: "^b"}]`                           | `"cherry"`                           | Emits empty members and drops the `string` range              |
-| `all_of: [{pattern: "^A"}, {pattern: "Z$"}]`                                             | `"Abc"`                              | Ignores `all_of`                                              |
-| `range: integer`, `exactly_one_of: [{minimum_value: 0, maximum_value: 10}, {minimum_value: 5, maximum_value: 20}]` | `7` (matches both), `30` (matches none) | Ignores `exactly_one_of`                         |
-| `none_of: [{pattern: "^bad"}]`                                                           | `"bad apple"`                        | Ignores `none_of`                                             |
-| `any_of: [{range: integer, none_of: [{minimum_value: 10}]}, {range: string}]`            | `12`                                 | Ignores nested expressions and value bounds                   |
-| `multivalued: true`, `any_of: [{range: integer, exact_cardinality: 2}, {range: string, maximum_cardinality: 1}]` | `1`, `1, "a"`, `"a", "b"` (only exactly two integers or at most one string pass) | Ignores cardinality, accepts any mix of integers and strings |
 
 ## Eager validation of references
 
