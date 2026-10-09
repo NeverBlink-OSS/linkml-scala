@@ -86,6 +86,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   lazy val sortedClasses: Seq[ClassView] =
     classes.values.toVector.sortBy(el => elementOrder(el.cls))
 
+  /** Names of the classes that another class names in its `is_a` or `mixins`. */
+  private[schemaview] lazy val classesWithDescendants: Set[String] =
+    classes.values.iterator.flatMap(_.parents.iterator.map(_.name)).toSet
+
   /** All enums defined in the loaded schemas, as views.
     */
   lazy val enums: Map[String, EnumView] =

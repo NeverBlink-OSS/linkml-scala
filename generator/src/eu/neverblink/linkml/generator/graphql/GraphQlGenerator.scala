@@ -17,18 +17,10 @@ class GraphQlGenerator(using sv: SchemaView)
       GraphQlRenamer {
   import GraphQlGenerator.*
 
-  /** Set of classes that are instantiable and have child classes. They need to have a split
+  /** Whether the class is instantiable and has child classes. Such a class needs a split
     * interface/implementation, with the implementation only inheriting from the interface.
     */
-  lazy val concreteInheritance: Map[String, ClassView] = {
-    val builder = Map.newBuilder[String, ClassView]
-    sv.classes.foreach { (_, child) =>
-      child.parents.foreach { cls =>
-        if cls.isConcrete then builder.addOne((cls.name, cls))
-      }
-    }
-    builder.result()
-  }
+  private def isSplit(cls: ClassView): Boolean = cls.isConcrete && cls.hasDescendants
 
   override protected def defaultOptions: Options = Options()
 
@@ -114,7 +106,7 @@ class GraphQlGenerator(using sv: SchemaView)
           cls.parents.map(getInterfaceName),
         ),
       )
-    else if concreteInheritance.contains(cls.name) then
+    else if isSplit(cls) then
       Seq(
         GraphQlInterfaceDefinition(
           cls,
@@ -143,13 +135,13 @@ class GraphQlGenerator(using sv: SchemaView)
     */
   def getInterfaceName(cls: ClassView): String = {
     // Class is split, we need to refer to the interface instead
-    if concreteInheritance.contains(cls.name) then splitInterfaceName(cls)
+    if isSplit(cls) then splitInterfaceName(cls)
     // Class is interface-only, we can refer to it directly
     else className(cls)
   }
 
-  /** Get the interface name of a split class. Assumes [[cls]] is a split class:
-    * `concreteInheritance.contains(cls.name)` is true.
+  /** Get the interface name of a split class. Assumes [[cls]] is a split class: `isSplit(cls)` is
+    * true.
     */
   def splitInterfaceName(cls: ClassView): String =
     className(cls) + "Interface"
