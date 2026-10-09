@@ -13,7 +13,8 @@
 The following features are not yet supported or are partially supported in LinkML-Scala:
 
 - Arrays
-- Boolean expressions (`any_of`, `none_of`); initial support in SHACL
+- Boolean expressions (`any_of`, `all_of`, `exactly_one_of`, `none_of`) in the JSON Schema, OWL and Pydantic generators
+  - JSON Schema and Pydantic ignore them, OWL supports only `any_of` ranges
 - Partial support for default values (`ifabsent`)
   - Only enum and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
@@ -32,11 +33,17 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - JSON Schema, Scala, TypeScript, and Pydantic generators support type unions.
   - Some constraints on unioned types may be lost, depending on the expressiveness of the target language.
 - Support for [language strings](#language-strings)
+- Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
 
 ## Inherited type constraints
 
 LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
-Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
+LinkML-Python 1.11.1 omits these in our comparison tests, so the JSON Schema of LinkML-Scala rejects some data that the JSON Schema of LinkML-Python accepts.
+
+## Boolean expressions
+
+In boolean expressions, the SHACL generator of LinkML-Python 1.11.1 checks only the `range` of `any_of` members.
+LinkML-Scala also checks `all_of`, `exactly_one_of`, `none_of`, and the patterns, value bounds, cardinality and nested boolean expressions of members.
 
 ## Eager validation of references
 
@@ -94,7 +101,7 @@ classes:
 ```
 
 LinkML-Scala honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`), TypeScript (`[key: string]: unknown`) and Pydantic (`extra="allow"`) generators.
-Python LinkML 1.11.1 does not read `extra_slots`, and closes all classes in its JSON Schema.
+LinkML-Python 1.11.1 does not read `extra_slots`, and closes all classes in its JSON Schema.
 
 - `allowed: true` allows any extra data.
 - `allowed: false`, or no `extra_slots`, forbids it. An explicit `allowed: false` wins over a `range_expression`.
@@ -103,7 +110,7 @@ Python LinkML 1.11.1 does not read `extra_slots`, and closes all classes in its 
 
 The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generators allows extra data in all classes.
 
-In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. Python LinkML can attach unknown attributes to an object at runtime, which Scala classes cannot do.
+In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. LinkML-Python can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 
 
 LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.

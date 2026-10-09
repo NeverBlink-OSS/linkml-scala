@@ -358,6 +358,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case "https://w3id.org/linkml/minimum_value" => combineOption(combineMin)
       case "https://w3id.org/linkml/pattern" => combineOption(combinePattern)
       case "https://w3id.org/linkml/range" => combineOption(combineRange)
+      case "https://w3id.org/linkml/any_of" | "https://w3id.org/linkml/all_of" |
+          "https://w3id.org/linkml/exactly_one_of" | "https://w3id.org/linkml/none_of" =>
+        combineNonEmpty
       case _ => rangeCombineFunc
     }
 
@@ -933,8 +936,8 @@ object ScalaGenerator {
       }
 
     case combineOption(fallback: CombineFunction)
-    case combineBoolean, combineSeq, combineMap, combineFallback, combineMax, combineMin,
-      combinePattern, combineRange
+    case combineBoolean, combineSeq, combineNonEmpty, combineMap, combineFallback, combineMax,
+      combineMin, combinePattern, combineRange
 
   /** Scala type-level information for a field, which has to be inferred together to work correctly.
     *

@@ -39,6 +39,7 @@ object Shacl extends Vocabulary("http://www.w3.org/ns/shacl#") {
   val NodeShape: Iri = get("NodeShape")
   val PropertyGroup: Iri = get("PropertyGroup")
   val PropertyShape: Iri = get("PropertyShape")
+  val and: Iri = get("and")
   val `class`: Iri = get("class")
   val closed: Iri = get("closed")
   val datatype: Iri = get("datatype")
@@ -52,6 +53,7 @@ object Shacl extends Vocabulary("http://www.w3.org/ns/shacl#") {
   val minInclusive: Iri = get("minInclusive")
   val name: Iri = get("name")
   val nodeKind: Iri = get("nodeKind")
+  val not: Iri = get("not")
   val or: Iri = get("or")
   val order: Iri = get("order")
   val declare: Iri = get("declare")
@@ -60,6 +62,7 @@ object Shacl extends Vocabulary("http://www.w3.org/ns/shacl#") {
   val pattern: Iri = get("pattern")
   val property: Iri = get("property")
   val targetClass: Iri = get("targetClass")
+  val xone: Iri = get("xone")
 }
 
 object Rdfs extends Vocabulary("http://www.w3.org/2000/01/rdf-schema#") {

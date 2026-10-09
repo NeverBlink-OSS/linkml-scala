@@ -648,6 +648,10 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
            |      maximum_value:
            |        range: MyAny
            |        slot_uri: "https://w3id.org/linkml/maximum_value"
+           |      any_of:
+           |        range: MyAny
+           |        multivalued: true
+           |        slot_uri: "https://w3id.org/linkml/any_of"
            |""".stripMargin
 
       given SchemaView = decode(input)
@@ -667,6 +671,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         "optionSlot = combineOption(this.optionSlot, other.optionSlot, combineFallback)",
         "fallbackSlot = combineFallback(this.fallbackSlot, other.fallbackSlot)",
         "minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)",
+        "anyOf = combineNonEmpty(this.anyOf, other.anyOf)",
         "def combineInherited(other: MySlotDefImpl, combineRange: (Reference[Element], Reference[Element]) => Reference[Element]): MySlotDefImpl =\n    copy(\n      inheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)\n    )",
       ).foreach { snippet =>
         code should include(snippet)
