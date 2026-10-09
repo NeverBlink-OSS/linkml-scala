@@ -4,31 +4,31 @@ import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec.TypeDesignatorEntry
 
 object Codec {
-  given manifestCodec: LinkmlYamlCodec[ManifestImpl] = LinkmlYamlCodec.derived
-  given testCodec: LinkmlYamlCodec[TestImpl] = LinkmlYamlCodec.derived
+  given manifestCodec: LinkmlYamlCodec[Manifest] = LinkmlYamlCodec.derived
+  given testCodec: LinkmlYamlCodec[Test] = LinkmlYamlCodec.derived
 
   given LinkmlYamlCodec[Action] = LinkmlYamlCodec.typeDesignatorCodec(
     "type",
     Seq(
       TypeDesignatorEntry(
         "JsonSchemaGenerate",
-        classOf[JsonSchemaGenerateImpl],
-        LinkmlYamlCodec.derived[JsonSchemaGenerateImpl],
+        classOf[JsonSchemaGenerate],
+        LinkmlYamlCodec.derived[JsonSchemaGenerate],
       ),
       TypeDesignatorEntry(
         "LoadAction",
-        classOf[LoadActionImpl],
-        LinkmlYamlCodec.derived[LoadActionImpl],
+        classOf[LoadAction],
+        LinkmlYamlCodec.derived[LoadAction],
       ),
       TypeDesignatorEntry(
         "DeriveAction",
-        classOf[DeriveActionImpl],
-        LinkmlYamlCodec.derived[DeriveActionImpl],
+        classOf[DeriveAction],
+        LinkmlYamlCodec.derived[DeriveAction],
       ),
       TypeDesignatorEntry(
         "LintAction",
-        classOf[LintActionImpl],
-        LinkmlYamlCodec.derived[LintActionImpl],
+        classOf[LintAction],
+        LinkmlYamlCodec.derived[LintAction],
       ),
     ),
   )
@@ -38,28 +38,28 @@ object Codec {
     Seq(
       TypeDesignatorEntry(
         "LoadsAssertion",
-        classOf[LoadsAssertionImpl],
-        LinkmlYamlCodec.derived[LoadsAssertionImpl],
+        classOf[LoadsAssertion],
+        LinkmlYamlCodec.derived[LoadsAssertion],
       ),
       TypeDesignatorEntry(
         "StringAssertion",
-        classOf[StringAssertionImpl],
-        LinkmlYamlCodec.derived[StringAssertionImpl],
+        classOf[StringAssertion],
+        LinkmlYamlCodec.derived[StringAssertion],
       ),
       TypeDesignatorEntry(
         "JsonPointerAssertion",
-        classOf[JsonPointerAssertionImpl],
-        LinkmlYamlCodec.derived[JsonPointerAssertionImpl],
+        classOf[JsonPointerAssertion],
+        LinkmlYamlCodec.derived[JsonPointerAssertion],
       ),
       TypeDesignatorEntry(
         "JsonSchemaAccepts",
-        classOf[JsonSchemaAcceptsImpl],
-        LinkmlYamlCodec.derived[JsonSchemaAcceptsImpl],
+        classOf[JsonSchemaAccepts],
+        LinkmlYamlCodec.derived[JsonSchemaAccepts],
       ),
       TypeDesignatorEntry(
         "JsonSchemaRejects",
-        classOf[JsonSchemaRejectsImpl],
-        LinkmlYamlCodec.derived[JsonSchemaRejectsImpl],
+        classOf[JsonSchemaRejects],
+        LinkmlYamlCodec.derived[JsonSchemaRejects],
       ),
     ),
   )

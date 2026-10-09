@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.rdfs
 
 import eu.neverblink.linkml.generator.owl.OwlCorpusSpec.{configOf, text, triples, yamlOf}
 import eu.neverblink.linkml.generator.owl.OwlImporter
-import eu.neverblink.linkml.metamodel.SchemaDefinitionImpl
+import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.scalatest.matchers.should.Matchers
@@ -14,7 +14,7 @@ import org.scalatest.wordspec.AnyWordSpec
 class RdfsCorpusSpec extends AnyWordSpec, Matchers {
   import RdfsCorpusSpec.*
 
-  private def rdfsOf(schema: SchemaDefinitionImpl): Set[Triple] = {
+  private def rdfsOf(schema: SchemaDefinition): Set[Triple] = {
     val view = SchemaView.loadSchemaViewFromString(yamlOf(schema)) match {
       case Right(sv) => sv
       case Left(issues) => fail(s"The schema does not load: $issues")

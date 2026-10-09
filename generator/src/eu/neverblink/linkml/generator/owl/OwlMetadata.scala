@@ -17,7 +17,7 @@ final case class Metadata(
     aliases: Seq[LocalizedText] = Nil,
     comments: Seq[LocalizedText] = Nil,
     notes: Seq[LocalizedText] = Nil,
-    examples: Seq[ExampleImpl] = Nil,
+    examples: Seq[Example] = Nil,
     seeAlso: Seq[UriOrCurie] = Nil,
     source: Option[UriOrCurie] = None,
     contributors: Seq[UriOrCurie] = Nil,
@@ -44,7 +44,7 @@ final case class Metadata(
 
   def isEmpty: Boolean = this == Metadata.empty
 
-  def applyTo(c: ClassDefinitionImpl): ClassDefinitionImpl = c.copy(
+  def applyTo(c: ClassDefinition): ClassDefinition = c.copy(
     title = title,
     description = description,
     aliases = aliases,
@@ -71,7 +71,7 @@ final case class Metadata(
     deprecated = deprecated,
   )
 
-  def applyTo(s: SlotDefinitionImpl): SlotDefinitionImpl = s.copy(
+  def applyTo(s: SlotDefinition): SlotDefinition = s.copy(
     title = title,
     description = description,
     aliases = aliases,
@@ -98,7 +98,7 @@ final case class Metadata(
     deprecated = deprecated,
   )
 
-  def applyTo(e: EnumDefinitionImpl): EnumDefinitionImpl = e.copy(
+  def applyTo(e: EnumDefinition): EnumDefinition = e.copy(
     title = title,
     description = description,
     aliases = aliases,
@@ -125,7 +125,7 @@ final case class Metadata(
     deprecated = deprecated,
   )
 
-  def applyTo(t: TypeDefinitionImpl): TypeDefinitionImpl = t.copy(
+  def applyTo(t: TypeDefinition): TypeDefinition = t.copy(
     title = title,
     description = description,
     aliases = aliases,
@@ -152,7 +152,7 @@ final case class Metadata(
     deprecated = deprecated,
   )
 
-  def applyTo(pv: PermissibleValueImpl): PermissibleValueImpl = pv.copy(
+  def applyTo(pv: PermissibleValue): PermissibleValue = pv.copy(
     title = title,
     description = description,
     aliases = aliases,
@@ -179,7 +179,7 @@ final case class Metadata(
     deprecated = deprecated,
   )
 
-  def applyTo(s: SchemaDefinitionImpl): SchemaDefinitionImpl = s.copy(
+  def applyTo(s: SchemaDefinition): SchemaDefinition = s.copy(
     title = title,
     description = description,
     aliases = aliases,
@@ -361,7 +361,7 @@ object Metadata {
       skos + "example",
       Kind.Plain,
       _.examples.flatMap(_.value),
-      (m, v) => m.copy(examples = strings(v).map(e => ExampleImpl(value = Some(e)))),
+      (m, v) => m.copy(examples = strings(v).map(e => Example(value = Some(e)))),
     ),
     refsField("see_also", rdfs + "seeAlso", _.seeAlso, (m, v) => m.copy(seeAlso = v)),
     refField("source", dcterms + "source", _.source, (m, v) => m.copy(source = v)),

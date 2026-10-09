@@ -5,11 +5,97 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[DimensionExpression]] LinkML class
+/** Defines one of the dimensions of an array
   *
-  * @inheritdoc
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param alias
+  *   The alternative name to be used in serializations of an instance instead of the canonical
+  *   name.
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param exactCardinality
+  *   The exact number of entries for a multivalued slot
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param maximumCardinality
+  *   The maximum number of entries for a multivalued slot
+  * @param minimumCardinality
+  *   The minimum number of entries for a multivalued slot
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class DimensionExpressionImpl(
+final case class DimensionExpression(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     alias: Option[String] = None,
@@ -17,7 +103,7 @@ final case class DimensionExpressionImpl(
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -36,7 +122,7 @@ final case class DimensionExpressionImpl(
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
@@ -59,10 +145,10 @@ final case class DimensionExpressionImpl(
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("exact_cardinality")
     exactCardinality: Option[Int] = None,
     @simpleDict
@@ -73,63 +159,9 @@ final case class DimensionExpressionImpl(
     maximumCardinality: Option[Int] = None,
     @named("minimum_cardinality")
     minimumCardinality: Option[Int] = None,
-) extends DimensionExpression {
-
-  override def infer(): DimensionExpressionImpl =
-    this
-}
-
-/** Defines one of the dimensions of an array
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class DimensionExpression extends Extensible, Annotatable, CommonMetadata {
-
-  /** The alternative name to be used in serializations of an instance instead of the canonical
-    * name.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
-    * @note
-    *   Not to be confused with aliases, which indicates a set of terms to be used for search
-    *   purposes.
-    * @note
-    *   This should be used for describing the structure of already existing instances.
-    * @note
-    *   For human-readable labels, prefer 'title' instead.
-    */
-  def alias: Option[String]
-
-  /** The exact number of entries for a multivalued slot
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   If exact_cardinality is set, then minimum_cardinalty and maximum_cardinality must be unset
-    *   or have the same value
-    */
-  def exactCardinality: Option[Int]
-
-  /** The maximum number of entries for a multivalued slot
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Maximum_cardinality cannot be less than minimum_cardinality
-    */
-  def maximumCardinality: Option[Int]
-
-  /** The minimum number of entries for a multivalued slot
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Minimum_cardinality cannot be greater than maximum_cardinality
-    */
-  def minimumCardinality: Option[Int]
+) extends Extensible,
+      Annotatable,
+      CommonMetadata {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -138,5 +170,6 @@ abstract class DimensionExpression extends Extensible, Annotatable, CommonMetada
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): DimensionExpression
+  override def infer(): DimensionExpression =
+    this
 }

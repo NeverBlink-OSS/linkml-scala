@@ -36,6 +36,13 @@ final case class ScalaOptions(
     )
     generateEmitPrefixes: Boolean = true,
     @HelpMessage(
+      "Whether to skip the separate interface for a concrete class that no other class extends " +
+        "(with is_a or mixins), and generate it as a single case class named after it instead " +
+        "of an interface plus a '...Impl' case class. Turn it off if your own code has to extend " +
+        "the generated classes. Default value: true",
+    )
+    skipLeafInterfaces: Boolean = true,
+    @HelpMessage(
       "Before writing, delete the .scala files in the --to directory that start with the " +
         "generated code header, so that classes no longer in the model do not linger. " +
         "Other files are kept. Default value: false",
@@ -59,6 +66,7 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
       ScalaGenerator.Options(
         `package` = options.`package`,
         generateEmitPrefixes = options.generateEmitPrefixes,
+        skipLeafInterfaces = options.skipLeafInterfaces,
       ),
     )
 }

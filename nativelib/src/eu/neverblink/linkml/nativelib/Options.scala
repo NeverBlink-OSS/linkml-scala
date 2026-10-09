@@ -9,7 +9,7 @@ import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
-import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
+import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -205,7 +205,7 @@ private object Options {
   def fromOwl(json: String): (OwlImporter.Options, Boolean) = {
     val options = apply(json, FromOwlOptions())
     val config =
-      try options.config.fold(OwlImportConfigImpl())(OwlImportConfigs.parse)
+      try options.config.fold(OwlImportConfig())(OwlImportConfigs.parse)
       catch { case ex if NonFatal(ex) => throw BadRequest(s"malformed config: ${ex.getMessage}") }
     val importerOptions = OwlImporter.Options(
       config = options.schemaId.fold(config)(id => config.copy(schemaId = Some(id))),

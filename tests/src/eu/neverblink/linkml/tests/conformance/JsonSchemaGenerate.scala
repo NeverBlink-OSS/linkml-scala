@@ -5,29 +5,23 @@ package eu.neverblink.linkml.tests.conformance
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[JsonSchemaGenerate]] LinkML class
+/** The implementation should use a JSON Schema generator if it has one, skipping the test if it
+  * does not. The generated JSON Schema should be passed as the Action result.
   *
-  * @inheritdoc
+  * @param description
+  *   Description of an element, including the implementation guide
+  * @param title
+  *   Human readable name of an element
+  * @see
+  *   From schema: https://w3id.org/linkml/conformance/
   */
-final case class JsonSchemaGenerateImpl(
+final case class JsonSchemaGenerate(
     description: Option[String] = None,
     title: Option[String] = None,
     @named("type")
     @serializeDefault
     `type`: Option[String] = Some("JsonSchemaGenerate"),
-) extends JsonSchemaGenerate {
-
-  override def infer(): JsonSchemaGenerateImpl =
-    this
-}
-
-/** The implementation should use a JSON Schema generator if it has one, skipping the test if it
-  * does not. The generated JSON Schema should be passed as the Action result.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/conformance/
-  */
-abstract class JsonSchemaGenerate extends GenerateAction {
+) extends GenerateAction {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -36,5 +30,6 @@ abstract class JsonSchemaGenerate extends GenerateAction {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): JsonSchemaGenerate
+  override def infer(): JsonSchemaGenerate =
+    this
 }

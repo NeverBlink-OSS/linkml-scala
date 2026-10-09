@@ -5,16 +5,36 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[SchemaParseError]] LinkML class
+/** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel.
+  * Where the underlying parser reported a position, it is carried in `location.code_region`.
   *
-  * @inheritdoc
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param parserMessage
+  *   Verbatim message from the YAML parser or the metamodel decoder.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @param sourceUri
+  *   URI the schema text came from. Empty when parsing an in-memory string.
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class SchemaParseErrorImpl(
+final case class SchemaParseError(
     details: Option[String] = None,
     @named("issue_type")
     @serializeDefault
     issueType: String = "SchemaParseError",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @named("parser_message")
     parserMessage: String,
@@ -22,60 +42,7 @@ final case class SchemaParseErrorImpl(
     severity: IssueSeverity = IssueSeverity.Fatal,
     @named("source_uri")
     sourceUri: String,
-) extends SchemaParseError {
-
-  override def infer(): SchemaParseErrorImpl =
-    copy(
-      details = inferOptional(
-        "details",
-        details,
-        "Cannot parse schema '" + sourceUri + "': " + parserMessage,
-      ),
-      message = inferOptional("message", message, "Cannot parse schema: " + parserMessage),
-    )
-}
-
-/** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel.
-  * Where the underlying parser reported a position, it is carried in `location.code_region`.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class SchemaParseError extends SchemaFatal {
-
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
-
-  /** Verbatim message from the YAML parser or the metamodel decoder.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def parserMessage: String
-
-  /** URI the schema text came from. Empty when parsing an in-memory string.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def sourceUri: String
+) extends SchemaFatal {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -84,5 +51,13 @@ abstract class SchemaParseError extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): SchemaParseError
+  override def infer(): SchemaParseError =
+    copy(
+      details = inferOptional(
+        "details",
+        details,
+        "Cannot parse schema '" + sourceUri + "': " + parserMessage,
+      ),
+      message = inferOptional("message", message, "Cannot parse schema: " + parserMessage),
+    )
 }

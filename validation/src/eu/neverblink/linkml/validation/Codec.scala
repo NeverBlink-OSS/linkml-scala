@@ -9,102 +9,102 @@ import eu.neverblink.linkml.yaml.LinkmlYamlCodec.TypeDesignatorEntry
   */
 object Codec {
 
-  private val cyclicReference: LinkmlYamlCodec[CyclicReferenceImpl] = LinkmlYamlCodec.derived
-  private val invalidDefaultRange: LinkmlYamlCodec[InvalidDefaultRangeImpl] =
+  private val cyclicReference: LinkmlYamlCodec[CyclicReference] = LinkmlYamlCodec.derived
+  private val invalidDefaultRange: LinkmlYamlCodec[InvalidDefaultRange] =
     LinkmlYamlCodec.derived
-  private val invalidKeyOrIdSlotType: LinkmlYamlCodec[InvalidKeyOrIdSlotTypeImpl] =
+  private val invalidKeyOrIdSlotType: LinkmlYamlCodec[InvalidKeyOrIdSlotType] =
     LinkmlYamlCodec.derived
-  private val invalidRange: LinkmlYamlCodec[InvalidRangeImpl] = LinkmlYamlCodec.derived
-  private val invalidSlotUsage: LinkmlYamlCodec[InvalidSlotUsageImpl] = LinkmlYamlCodec.derived
-  private val invalidUriOrCurie: LinkmlYamlCodec[InvalidUriOrCurieImpl] =
+  private val invalidRange: LinkmlYamlCodec[InvalidRange] = LinkmlYamlCodec.derived
+  private val invalidSlotUsage: LinkmlYamlCodec[InvalidSlotUsage] = LinkmlYamlCodec.derived
+  private val invalidUriOrCurie: LinkmlYamlCodec[InvalidUriOrCurie] =
     LinkmlYamlCodec.derived
-  private val multipleKeyOrIdSlots: LinkmlYamlCodec[MultipleKeyOrIdSlotsImpl] =
+  private val multipleKeyOrIdSlots: LinkmlYamlCodec[MultipleKeyOrIdSlots] =
     LinkmlYamlCodec.derived
-  private val multipleTreeRoots: LinkmlYamlCodec[MultipleTreeRootsImpl] = LinkmlYamlCodec.derived
-  private val noTreeRootClass: LinkmlYamlCodec[NoTreeRootClassImpl] = LinkmlYamlCodec.derived
-  private val nonUniqueName: LinkmlYamlCodec[NonUniqueNameImpl] = LinkmlYamlCodec.derived
-  private val schemaIdClash: LinkmlYamlCodec[SchemaIdClashImpl] = LinkmlYamlCodec.derived
-  private val schemaImportError: LinkmlYamlCodec[SchemaImportErrorImpl] = LinkmlYamlCodec.derived
-  private val schemaParseError: LinkmlYamlCodec[SchemaParseErrorImpl] = LinkmlYamlCodec.derived
-  private val undefinedDefaultRange: LinkmlYamlCodec[UndefinedDefaultRangeImpl] =
+  private val multipleTreeRoots: LinkmlYamlCodec[MultipleTreeRoots] = LinkmlYamlCodec.derived
+  private val noTreeRootClass: LinkmlYamlCodec[NoTreeRootClass] = LinkmlYamlCodec.derived
+  private val nonUniqueName: LinkmlYamlCodec[NonUniqueName] = LinkmlYamlCodec.derived
+  private val schemaIdClash: LinkmlYamlCodec[SchemaIdClash] = LinkmlYamlCodec.derived
+  private val schemaImportError: LinkmlYamlCodec[SchemaImportError] = LinkmlYamlCodec.derived
+  private val schemaParseError: LinkmlYamlCodec[SchemaParseError] = LinkmlYamlCodec.derived
+  private val undefinedDefaultRange: LinkmlYamlCodec[UndefinedDefaultRange] =
     LinkmlYamlCodec.derived
-  private val undefinedPrefix: LinkmlYamlCodec[UndefinedPrefixImpl] = LinkmlYamlCodec.derived
-  private val unexpectedError: LinkmlYamlCodec[UnexpectedErrorImpl] = LinkmlYamlCodec.derived
-  private val unknownReference: LinkmlYamlCodec[UnknownReferenceImpl] = LinkmlYamlCodec.derived
-  private val unknownStringReference: LinkmlYamlCodec[UnknownStringReferenceImpl] =
+  private val undefinedPrefix: LinkmlYamlCodec[UndefinedPrefix] = LinkmlYamlCodec.derived
+  private val unexpectedError: LinkmlYamlCodec[UnexpectedError] = LinkmlYamlCodec.derived
+  private val unknownReference: LinkmlYamlCodec[UnknownReference] = LinkmlYamlCodec.derived
+  private val unknownStringReference: LinkmlYamlCodec[UnknownStringReference] =
     LinkmlYamlCodec.derived
-  private val emptyName: LinkmlYamlCodec[EmptyNameImpl] = LinkmlYamlCodec.derived
-  private val flankingSeparator: LinkmlYamlCodec[FlankingSeparatorImpl] = LinkmlYamlCodec.derived
-  private val nonAsciiName: LinkmlYamlCodec[NonAsciiNameImpl] = LinkmlYamlCodec.derived
-  private val nonStandardSeparator: LinkmlYamlCodec[NonStandardSeparatorImpl] =
+  private val emptyName: LinkmlYamlCodec[EmptyName] = LinkmlYamlCodec.derived
+  private val flankingSeparator: LinkmlYamlCodec[FlankingSeparator] = LinkmlYamlCodec.derived
+  private val nonAsciiName: LinkmlYamlCodec[NonAsciiName] = LinkmlYamlCodec.derived
+  private val nonStandardSeparator: LinkmlYamlCodec[NonStandardSeparator] =
     LinkmlYamlCodec.derived
-  private val repeatedSeparator: LinkmlYamlCodec[RepeatedSeparatorImpl] = LinkmlYamlCodec.derived
+  private val repeatedSeparator: LinkmlYamlCodec[RepeatedSeparator] = LinkmlYamlCodec.derived
 
   private given issueCodec: LinkmlYamlCodec[SchemaIssue] =
     LinkmlYamlCodec.typeDesignatorCodec(
       "issue_type",
       Seq(
-        TypeDesignatorEntry("CyclicReference", classOf[CyclicReferenceImpl], cyclicReference),
+        TypeDesignatorEntry("CyclicReference", classOf[CyclicReference], cyclicReference),
         TypeDesignatorEntry(
           "InvalidDefaultRange",
-          classOf[InvalidDefaultRangeImpl],
+          classOf[InvalidDefaultRange],
           invalidDefaultRange,
         ),
         TypeDesignatorEntry(
           "InvalidKeyOrIdSlotType",
-          classOf[InvalidKeyOrIdSlotTypeImpl],
+          classOf[InvalidKeyOrIdSlotType],
           invalidKeyOrIdSlotType,
         ),
-        TypeDesignatorEntry("InvalidRange", classOf[InvalidRangeImpl], invalidRange),
-        TypeDesignatorEntry("InvalidSlotUsage", classOf[InvalidSlotUsageImpl], invalidSlotUsage),
+        TypeDesignatorEntry("InvalidRange", classOf[InvalidRange], invalidRange),
+        TypeDesignatorEntry("InvalidSlotUsage", classOf[InvalidSlotUsage], invalidSlotUsage),
         TypeDesignatorEntry(
           "InvalidUriOrCurie",
-          classOf[InvalidUriOrCurieImpl],
+          classOf[InvalidUriOrCurie],
           invalidUriOrCurie,
         ),
         TypeDesignatorEntry(
           "MultipleKeyOrIdSlots",
-          classOf[MultipleKeyOrIdSlotsImpl],
+          classOf[MultipleKeyOrIdSlots],
           multipleKeyOrIdSlots,
         ),
-        TypeDesignatorEntry("MultipleTreeRoots", classOf[MultipleTreeRootsImpl], multipleTreeRoots),
-        TypeDesignatorEntry("NoTreeRootClass", classOf[NoTreeRootClassImpl], noTreeRootClass),
-        TypeDesignatorEntry("NonUniqueName", classOf[NonUniqueNameImpl], nonUniqueName),
-        TypeDesignatorEntry("SchemaIdClash", classOf[SchemaIdClashImpl], schemaIdClash),
-        TypeDesignatorEntry("SchemaImportError", classOf[SchemaImportErrorImpl], schemaImportError),
-        TypeDesignatorEntry("SchemaParseError", classOf[SchemaParseErrorImpl], schemaParseError),
+        TypeDesignatorEntry("MultipleTreeRoots", classOf[MultipleTreeRoots], multipleTreeRoots),
+        TypeDesignatorEntry("NoTreeRootClass", classOf[NoTreeRootClass], noTreeRootClass),
+        TypeDesignatorEntry("NonUniqueName", classOf[NonUniqueName], nonUniqueName),
+        TypeDesignatorEntry("SchemaIdClash", classOf[SchemaIdClash], schemaIdClash),
+        TypeDesignatorEntry("SchemaImportError", classOf[SchemaImportError], schemaImportError),
+        TypeDesignatorEntry("SchemaParseError", classOf[SchemaParseError], schemaParseError),
         TypeDesignatorEntry(
           "UndefinedDefaultRange",
-          classOf[UndefinedDefaultRangeImpl],
+          classOf[UndefinedDefaultRange],
           undefinedDefaultRange,
         ),
-        TypeDesignatorEntry("UndefinedPrefix", classOf[UndefinedPrefixImpl], undefinedPrefix),
-        TypeDesignatorEntry("UnexpectedError", classOf[UnexpectedErrorImpl], unexpectedError),
-        TypeDesignatorEntry("UnknownReference", classOf[UnknownReferenceImpl], unknownReference),
+        TypeDesignatorEntry("UndefinedPrefix", classOf[UndefinedPrefix], undefinedPrefix),
+        TypeDesignatorEntry("UnexpectedError", classOf[UnexpectedError], unexpectedError),
+        TypeDesignatorEntry("UnknownReference", classOf[UnknownReference], unknownReference),
         TypeDesignatorEntry(
           "UnknownStringReference",
-          classOf[UnknownStringReferenceImpl],
+          classOf[UnknownStringReference],
           unknownStringReference,
         ),
-        TypeDesignatorEntry("EmptyNameImpl", classOf[EmptyNameImpl], emptyName),
+        TypeDesignatorEntry("EmptyName", classOf[EmptyName], emptyName),
         TypeDesignatorEntry(
-          "FlankingSeparatorImpl",
-          classOf[FlankingSeparatorImpl],
+          "FlankingSeparator",
+          classOf[FlankingSeparator],
           flankingSeparator,
         ),
-        TypeDesignatorEntry("NonAsciiNameImpl", classOf[NonAsciiNameImpl], nonAsciiName),
+        TypeDesignatorEntry("NonAsciiName", classOf[NonAsciiName], nonAsciiName),
         TypeDesignatorEntry(
-          "NonStandardSeparatorImpl",
-          classOf[NonStandardSeparatorImpl],
+          "NonStandardSeparator",
+          classOf[NonStandardSeparator],
           nonStandardSeparator,
         ),
         TypeDesignatorEntry(
-          "RepeatedSeparatorImpl",
-          classOf[RepeatedSeparatorImpl],
+          "RepeatedSeparator",
+          classOf[RepeatedSeparator],
           repeatedSeparator,
         ),
       ),
     )
 
-  implicit val codec: LinkmlYamlCodec[SchemaValidationReportImpl] = LinkmlYamlCodec.derived
+  implicit val codec: LinkmlYamlCodec[SchemaValidationReport] = LinkmlYamlCodec.derived
 }

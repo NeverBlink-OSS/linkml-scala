@@ -5,39 +5,29 @@ package eu.neverblink.linkml.tests.conformance
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[JsonSchemaAccepts]] LinkML class
+/** An implementation of this assertion must load the result of an Action as a JSON Schema into a
+  * JSON Schema validator, fetch the instance from the specified file, and validate the instance
+  * using the validator. The validator should accept the instance and not report any issues with it.
   *
-  * @inheritdoc
+  * @param description
+  *   Description of an element, including the implementation guide
+  * @param instance
+  *   Should be a file path to a file containing the serialized form of the instance, present
+  *   somewhere in the directory structure.
+  *
+  * @param title
+  *   Human readable name of an element
+  * @see
+  *   From schema: https://w3id.org/linkml/conformance/
   */
-final case class JsonSchemaAcceptsImpl(
+final case class JsonSchemaAccepts(
     description: Option[String] = None,
     instance: String,
     title: Option[String] = None,
     @named("type")
     @serializeDefault
     `type`: Option[String] = Some("JsonSchemaAccepts"),
-) extends JsonSchemaAccepts {
-
-  override def infer(): JsonSchemaAcceptsImpl =
-    this
-}
-
-/** An implementation of this assertion must load the result of an Action as a JSON Schema into a
-  * JSON Schema validator, fetch the instance from the specified file, and validate the instance
-  * using the validator. The validator should accept the instance and not report any issues with it.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/conformance/
-  */
-abstract class JsonSchemaAccepts extends Assertion {
-
-  /** Should be a file path to a file containing the serialized form of the instance, present
-    * somewhere in the directory structure.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/conformance/
-    */
-  def instance: String
+) extends Assertion {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -46,5 +36,6 @@ abstract class JsonSchemaAccepts extends Assertion {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): JsonSchemaAccepts
+  override def infer(): JsonSchemaAccepts =
+    this
 }

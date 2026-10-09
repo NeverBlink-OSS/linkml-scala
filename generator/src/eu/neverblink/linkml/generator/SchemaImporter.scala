@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator
 
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
-import eu.neverblink.linkml.metamodel.{Codec, SchemaDefinitionImpl}
+import eu.neverblink.linkml.metamodel.{Codec, SchemaDefinition}
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -9,7 +9,7 @@ import java.nio.charset.StandardCharsets.UTF_8
 /** Reads a document in some other format and produces a LinkML schema - more-or-less the opposite
   * of a [[DocumentGenerator]].
   *
-  * The result is a [[SchemaDefinitionImpl]].
+  * The result is a [[SchemaDefinition]].
   *
   * @tparam O
   *   the importer's own `Options` type
@@ -23,13 +23,13 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
     *
     * Does not close the input stream, because the caller may have more to read from it.
     */
-  def importSchema(in: InputStream, options: O = defaultOptions): SchemaDefinitionImpl
+  def importSchema(in: InputStream, options: O = defaultOptions): SchemaDefinition
 
   /** Read a document that is already in memory. */
   final def importSchemaFromString(
       input: String,
       options: O = defaultOptions,
-  ): SchemaDefinitionImpl =
+  ): SchemaDefinition =
     importSchema(ByteArrayInputStream(input.getBytes(UTF_8)), options)
 
   /** The schema as a LinkML document. Prefer [[writeTo]] where an output stream exists. */
@@ -48,12 +48,12 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
     JsonUtil.write(Codec.codec.encode(importSchema(in, options)), options.outputFormat, out)
 
   /** A schema this importer made, as a document, for callers that look at more than the schema. */
-  final def serializeSchema(schema: SchemaDefinitionImpl, format: JsonOutputFormat): String =
+  final def serializeSchema(schema: SchemaDefinition, format: JsonOutputFormat): String =
     JsonUtil.write(Codec.codec.encode(schema), format)
 
   /** Write a schema this importer made, for callers that look at more than the schema first. */
   final def writeSchema(
-      schema: SchemaDefinitionImpl,
+      schema: SchemaDefinition,
       out: OutputStream,
       format: JsonOutputFormat,
   ): Unit =

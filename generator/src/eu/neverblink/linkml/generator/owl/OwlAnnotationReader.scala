@@ -1,8 +1,8 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.owl.config.OwlImportConfigImpl
+import eu.neverblink.linkml.generator.owl.config.OwlImportConfig
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.metadataSources
-import eu.neverblink.linkml.metamodel.AnnotationImpl
+import eu.neverblink.linkml.metamodel.Annotation as LinkmlAnnotation
 import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Node, XmlSchema}
 import eu.neverblink.linkml.runtime.*
 
@@ -18,7 +18,7 @@ import scala.collection.mutable
 private[owl] final class OwlAnnotationReader(
     annotationsOf: Map[String, Seq[Annotation]],
     ontologyAnnotations: Seq[Annotation],
-    config: OwlImportConfigImpl,
+    config: OwlImportConfig,
     names: OwlImportNames,
 ) {
   import OwlAnnotationReader.*
@@ -66,10 +66,10 @@ private[owl] final class OwlAnnotationReader(
     languages.forall(_.isDefined) && languages.distinct.size == languages.size
   }
 
-  def documentation(iri: String): (Metadata, Map[String, AnnotationImpl]) =
+  def documentation(iri: String): (Metadata, Map[String, LinkmlAnnotation]) =
     documentation(annotationsOf.getOrElse(iri, Nil))
 
-  def documentation(annotations: Seq[Annotation]): (Metadata, Map[String, AnnotationImpl]) = {
+  def documentation(annotations: Seq[Annotation]): (Metadata, Map[String, LinkmlAnnotation]) = {
     val (metadata, rest) = metadataOf(annotations)
     (metadata, linkmlAnnotations(rest))
   }
@@ -160,7 +160,7 @@ private[owl] final class OwlAnnotationReader(
     if values.sizeIs > 1 && oneLanguageEach(values) then Seq(textOf(values.map(_.value)))
     else values.map(a => textOf(Seq(a.value)))
 
-  private def linkmlAnnotations(rest: Seq[Annotation]): Map[String, AnnotationImpl] =
+  private def linkmlAnnotations(rest: Seq[Annotation]): Map[String, LinkmlAnnotation] =
     if !config.annotations then Map.empty
     else
       VectorMap.from(rest.groupBy(_.property).toSeq.sortBy(_._1).flatMap { (property, values) =>
@@ -175,7 +175,7 @@ private[owl] final class OwlAnnotationReader(
           val value =
             if texts.sizeIs == 1 then yamlString(texts.head)
             else LinkmlAny(texts.map(t => "- " + yamlString(t).value).mkString)
-          tag.original -> AnnotationImpl(extensionTag = tag, extensionValue = value)
+          tag.original -> LinkmlAnnotation(extensionTag = tag, extensionValue = value)
         }
       })
 }

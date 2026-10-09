@@ -5,11 +5,30 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[InvalidKeyOrIdSlotType]] LinkML class
+/** A `key` or `identifier` slot has a range that is not a scalar type.
   *
-  * @inheritdoc
+  * @param className
+  *   Name of the class the issue was found in.
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param elementName
+  *   Name of the element the issue was found in.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class InvalidKeyOrIdSlotTypeImpl(
+final case class InvalidKeyOrIdSlotType(
     @named("class_name")
     className: String,
     details: Option[String] = None,
@@ -18,52 +37,11 @@ final case class InvalidKeyOrIdSlotTypeImpl(
     @named("issue_type")
     @serializeDefault
     issueType: String = "InvalidKeyOrIdSlotType",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
-) extends InvalidKeyOrIdSlotType {
-
-  override def infer(): InvalidKeyOrIdSlotTypeImpl =
-    copy(
-      message = inferOptional(
-        "message",
-        message,
-        "Invalid type of key / identifier slot in class '" + className + "': '" + elementName + "'. Expected a basic, scalar data type (e.g., string, integer, float, uri).",
-      ),
-    )
-}
-
-/** A `key` or `identifier` slot has a range that is not a scalar type.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class InvalidKeyOrIdSlotType extends SchemaError {
-
-  /** Name of the class the issue was found in.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def className: String
-
-  /** Name of the element the issue was found in.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def elementName: String
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
+) extends SchemaError {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -72,5 +50,12 @@ abstract class InvalidKeyOrIdSlotType extends SchemaError {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): InvalidKeyOrIdSlotType
+  override def infer(): InvalidKeyOrIdSlotType =
+    copy(
+      message = inferOptional(
+        "message",
+        message,
+        "Invalid type of key / identifier slot in class '" + className + "': '" + elementName + "'. Expected a basic, scalar data type (e.g., string, integer, float, uri).",
+      ),
+    )
 }

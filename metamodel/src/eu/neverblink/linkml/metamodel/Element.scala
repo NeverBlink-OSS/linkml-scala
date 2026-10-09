@@ -72,7 +72,7 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
   /** @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def localNames: Map[String, LocalNameImpl]
+  def localNames: Map[String, LocalName]
 
   /** An allowed list of prefixes for which identifiers must conform. The identifier of this class
     * or slot must begin with the URIs referenced by this prefix

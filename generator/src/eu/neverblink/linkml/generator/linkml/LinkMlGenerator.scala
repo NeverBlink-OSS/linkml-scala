@@ -23,12 +23,12 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
     */
   def generate(
       options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
-  ): SchemaDefinitionImpl = {
+  ): SchemaDefinition = {
     import options.{pruningMode, skipClassDerivation}
     val query =
       if (skipClassDerivation) pruningMode.underivedQuery()
       else pruningMode.derivedQuery(false, false)
-    sv.root.asInstanceOf[SchemaDefinitionImpl].copy(
+    sv.root.copy(
       imports = Nil,
       classes =
         if (skipClassDerivation) {
@@ -36,7 +36,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
             case (k, v) if query.reachable(v.cls) =>
               (
                 k,
-                v.cls.impl.copy(
+                v.cls.copy(
                   classUri = new Some(v.uriOrCurie),
                   fromSchema = new Some(v.definingSchema.id),
                 ),
@@ -62,7 +62,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
         case (k, v) if query.reachable(v._enum) =>
           (
             k,
-            v._enum.impl.copy(
+            v._enum.copy(
               enumUri = new Some(v.uriOrCurie),
               fromSchema = new Some(v.definingSchema.id),
             ),
@@ -74,7 +74,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
             case (k, v) if query.reachable(v.slot) =>
               (
                 k,
-                v.slot.impl.copy(
+                v.slot.copy(
                   slotUri = new Some(v.uriOrCurie),
                   fromSchema = new Some(v.definingSchema.id),
                 ),
@@ -123,13 +123,4 @@ object LinkMlGenerator {
       skipClassDerivation: Boolean = false,
       outputFormat: JsonOutputFormat = yaml,
   )
-
-  // TODO LNK-48: Don't do these horrible casts
-  extension (inline classDef: ClassDefinition)
-    private inline def impl: ClassDefinitionImpl = classDef.asInstanceOf
-  extension (inline slotDef: SlotDefinition)
-    private inline def impl: SlotDefinitionImpl = slotDef.asInstanceOf
-  extension (inline enumDef: EnumDefinition)
-    private inline def impl: EnumDefinitionImpl = enumDef.asInstanceOf
-
 }

@@ -25,7 +25,7 @@ class ConformanceSpec extends AnyWordSpec, Matchers {
     repoRoot / "out/metamodel/definitionsRepo.dest/tests/conformance/demo-suite"
 
   lazy val mfStr: String = os.read(conformanceTestDir / "manifest.yaml")
-  lazy val manifest: ManifestImpl = manifestCodec.decode(
+  lazy val manifest: Manifest = manifestCodec.decode(
     parseYaml(mfStr).getOrElse(
       throw RuntimeException("invalid yaml in manifest"),
     ),

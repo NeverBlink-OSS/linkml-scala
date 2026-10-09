@@ -24,7 +24,7 @@ trait TypeExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/units
     */
-  def unit: Option[UnitOfMeasureImpl]
+  def unit: Option[UnitOfMeasure]
 
   /** The slot must have range of a number and the value of the slot must equal the specified value
     *
@@ -86,7 +86,7 @@ trait TypeExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def structuredPattern: Option[PatternExpressionImpl]
+  def structuredPattern: Option[PatternExpression]
 
   /** Holds if at least one of the expressions hold
     *
@@ -95,7 +95,7 @@ trait TypeExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def anyOf: Seq[AnonymousTypeExpressionImpl]
+  def anyOf: Seq[AnonymousTypeExpression]
 
   /** Holds if only one of the expressions hold
     *
@@ -104,7 +104,7 @@ trait TypeExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def exactlyOneOf: Seq[AnonymousTypeExpressionImpl]
+  def exactlyOneOf: Seq[AnonymousTypeExpression]
 
   /** Holds if none of the expressions hold
     *
@@ -113,7 +113,7 @@ trait TypeExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def noneOf: Seq[AnonymousTypeExpressionImpl]
+  def noneOf: Seq[AnonymousTypeExpression]
 
   /** Holds if all of the expressions hold
     *
@@ -122,7 +122,7 @@ trait TypeExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def allOf: Seq[AnonymousTypeExpressionImpl]
+  def allOf: Seq[AnonymousTypeExpression]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -22,7 +22,7 @@ object ConstructorExpression:
 
   private val enumExprPattern = """^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$""".r
 
-  def evaluateEnum(expr: String, range: EnumView): PermissibleValueImpl =
+  def evaluateEnum(expr: String, range: EnumView): PermissibleValue =
     val (enumName, valueName) = enumExprPattern.findFirstMatchIn(expr) match {
       case Some(v) => (v.group(1), v.group(2))
       case None => throw EvaluationException(s"Invalid enum constructor expression: '$expr'")
