@@ -3,6 +3,13 @@
 Translating an existing model into LinkML. The output must validate cleanly and round-trip back
 to something equivalent to the input — this skill is only done when both are demonstrated.
 
+**Use an importer when there is one:** `linkml-scala from owl` for OWL ontologies and RDFS
+vocabularies, `linkml-scala from ossie` for Apache Ossie ontologies. They handle a wide range of
+real ontologies, and a hand translation will not do better, so run the importer and then make the
+small manual fixes below. If `linkml-scala --help` has no `from` commands, offer an upgrade
+([990-install.md](990-install.md)). SHACL, JSON Schema, XSD and sample data have no importer, so
+translate those by hand.
+
 **Be honest about fidelity.** This is a translation between formalisms with genuinely different
 expressive power, not a mechanical transform. Some constructs have no LinkML equivalent, and
 some have no equivalent *in linkml-scala* even though LinkML defines them. Always report what
@@ -13,21 +20,23 @@ you dropped. A schema that silently loses constraints is worse than one that adm
 1. **Read the source and inventory it** — count entities up front: classes, properties,
    datatypes, enumerations, constraints. This is your checklist and how you later prove
    coverage.
-2. **Decide the shape** before writing YAML: which source entity becomes a class, which becomes
-   an enum, what the identifiers are, and which single class is the `tree_root`.
-3. **Write the schema**, preserving source URIs via `class_uri`, `slot_uri` and `meaning` so the
-   result maps back onto the original vocabulary.
-4. **Validate** — `linkml-scala validate --strict --format json schema.yaml` — and iterate until
+2. **Import, or decide the shape and write.** With an importer, run it (see below). Otherwise
+   decide before writing YAML which source entity becomes a class, which becomes an enum, what
+   the identifiers are, and which single class is the `tree_root` — then write the schema,
+   preserving source URIs via `class_uri`, `slot_uri` and `meaning` so the result maps back onto
+   the original vocabulary.
+3. **Validate** — `linkml-scala validate --strict --format json schema.yaml` — and iterate until
    clean.
+4. **Finish** — for an imported schema, work through the fixes listed for its importer below.
 5. **Round-trip** — generate the source formalism back out and diff it against the input, where
-   a generator exists for it (`rdfs`, `shacl`, `json-schema`, `frictionless`).
+   a generator exists for it (`owl`, `rdfs`, `ossie`, `shacl`, `json-schema`, `frictionless`).
 6. **Report** the inventory versus what you produced, and everything dropped and why.
 
 Never skip 4–6. An unvalidated bootstrap is a draft, and saying so is part of the job.
 
 ## Preserve the source vocabulary
 
-This is what makes the result useful rather than a lookalike. Keep the original IRIs:
+The importers do this for you. When translating by hand, it is what makes the result useful rather than a lookalike. Keep the original IRIs:
 
 ```yaml
 prefixes:
@@ -53,22 +62,31 @@ enums:
 Without these, generated RDF invents `https://example.org/Person` and no longer matches the data
 you were modelling.
 
-## By source format
+## Importing OWL, RDFS and Ossie
 
-### RDFS / OWL ontologies
+```shell
+linkml-scala from owl --list-not-imported --to schema.yaml ontology.ttl
+linkml-scala from ossie --schema-id https://example.org/my-schema --to schema.yaml ontology.json
+```
 
-`rdfs:Class`/`owl:Class` → class. `rdf:Property`/`owl:DatatypeProperty` → attribute with an XSD
-range. `owl:ObjectProperty` → attribute whose range is another class. `rdfs:subClassOf` →
-`is_a` for single inheritance; use `mixins` when the source has multiple parents, since LinkML
-allows only one `is_a`.
+`from owl` reads Turtle or N-Triples only. `--list-not-imported` prints what was dropped, which
+goes in your report. For the other flags, including the `--config` that controls naming and maps
+`owl:imports` to existing LinkML schemas, run `--help`. The mappings are in
+[docs/owl.md](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/owl.md) and
+[docs/ossie_mapping.md](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/ossie_mapping.md).
 
-Ontologies are usually **open-world and property-centric**, while LinkML is class-centric: a
-`domain`-less property applies to everything, whereas a LinkML attribute belongs to a class.
-Decide per property which class owns it, and say so in your report.
+Usual fixes afterwards — ask the user rather than guess:
 
-Expect to drop: `owl:Restriction` cardinality axioms (partially expressible via `required`
-and `multivalued`), `owl:equivalentClass`, `owl:disjointWith`, property characteristics
-(transitive, symmetric, inverse), and anything relying on OWL inference.
+* Pick a `tree_root`.
+* Narrow `range: Any` (OWL properties with no range or a mixed one).
+* Make slots single-valued where the data has one value. OWL/RDFS import everything that is not
+  functional as multivalued.
+* Add an `identifier` slot if the data needs one. RDF uses the node IRI, so none is imported.
+* Rename what reads badly, and set a real `--schema-id` for Ossie (the default is a placeholder).
+
+Round-trip with `generate owl` or `generate ossie`.
+
+## Translating by hand
 
 ### SHACL shapes
 
@@ -123,6 +141,8 @@ Inference from examples, so state your confidence and get it confirmed.
 
 ## Round-tripping
 
+The importers' round-trips are above. For hand translations:
+
 ```shell
 # SHACL in, SHACL out
 linkml-scala generate shacl --format ttl --to check.ttl schema.yaml
@@ -152,9 +172,12 @@ identifiers. Keep source names discoverable in `aliases:` when the rename is not
 Source: <file> (<format>)
 Inventory:  N classes, M properties, K enums, J constraints
 Produced:   N classes, M attributes, K enums
+Method:     linkml-scala from owl --list-not-imported (or: by hand)
 Dropped:
-  - owl:disjointWith on Foo/Bar — no LinkML equivalent
+  - property chain hasParent o hasParent → hasGrandparent — LinkML cannot express it
   - sh:or on Baz.qux — linkml-scala supports any_of in SHACL output only
+Fixed after import:
+  - Animal as tree_root; has_parent range Any → Animal
 Inferred (needs confirmation):
   - Status modelled as an enum from 4 observed values
   - Person.id as identifier — unique across all 1,203 sample records
