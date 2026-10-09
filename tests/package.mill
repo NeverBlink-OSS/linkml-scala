@@ -12,7 +12,11 @@ object `package` extends Module, NativeOptional {
     PathRef(build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml")
   }
 
-  object jvm extends ResourcesAsStrings("tests"), CommonModule, CommonTestModule {
+  object jvm
+      extends ResourcesAsStrings("tests"),
+        ModelCatalogueEntries,
+        CommonModule,
+        CommonTestModule {
     def moduleDeps = Seq(
       build.schemaview.jvm,
     )
@@ -21,6 +25,7 @@ object `package` extends Module, NativeOptional {
   object js
       extends NoBspModule,
         ResourcesAsStrings("tests"),
+        ModelCatalogueEntries,
         CommonScalaJsModule,
         TestScalaJSModule,
         CommonTestModule {
@@ -32,6 +37,7 @@ object `package` extends Module, NativeOptional {
   object native
       extends NoBspModule,
         ResourcesAsStrings("tests"),
+        ModelCatalogueEntries,
         CommonScalaNativeModule,
         TestScalaNativeModule,
         CommonTestModule {
