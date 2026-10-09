@@ -60,6 +60,33 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       .map(_.group(1))
       .toSeq
 
+  /** Every importer in the generator module: a `*Importer.scala` implementing `SchemaImporter`. */
+  private def importers(root: os.Path): Seq[String] = {
+    val dir = root / "generator" / "src" / "eu" / "neverblink" / "linkml" / "generator"
+    os.walk(dir)
+      .filter(p => p.last.endsWith("Importer.scala"))
+      .filter(p => os.read(p).contains("extends SchemaImporter["))
+      .map(_.last.stripSuffix(".scala"))
+      .sorted
+  }
+
+  /** The names the CLI gives its `generate <name>` or `from <name>` commands. */
+  private def cliNames(root: os.Path, file: String, method: String): Set[String] =
+    s"override protected def $method: String = \"([\\w-]+)\"".r
+      .findAllMatchIn(os.read(root / "cli" / "src" / "eu" / "neverblink" / "linkml" / "cli" / file))
+      .map(_.group(1))
+      .toSet
+
+  /** The names listed in the agent skill. The list may wrap across lines. */
+  private def skillList(root: os.Path, label: String): Set[String] = {
+    val skill = os.read(root / ".agents" / "skills" / "linkml" / "SKILL.md")
+    val list = s"(?ms)^$label:(.*?)\\.(?:\\s|$$)".r
+      .findFirstMatchIn(skill)
+      .map(_.group(1))
+      .getOrElse(fail(s"could not find the `$label:` list in .agents/skills/linkml/SKILL.md"))
+    "`([^`]+)`".r.findAllMatchIn(list).map(_.group(1)).toSet
+  }
+
   /** The generator ids offered by the playground's target list. */
   private def playgroundTargets(root: os.Path): Set[String] =
     "id: \"(\\w+)\"".r
@@ -160,6 +187,30 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val readme = os.read(root / "python" / "README.md")
       val missing = pythonMethods(root).filterNot(name => readme.contains(s"$name()"))
       withClue("add it to the generator list in python/README.md: ")(missing shouldBe empty)
+    }
+
+    "be listed in the agent skill" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      withClue("fix the `Generators:` list in .agents/skills/linkml/SKILL.md: ")(
+        skillList(root, "Generators") shouldBe cliNames(root, "GenerateImpl.scala", "generatorName"),
+      )
+    }
+  }
+
+  "every importer" should {
+    "be registered as a CLI command" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val registered = cliCommands(root)
+      val missing =
+        importers(root).map(n => "From" + n.stripSuffix("Importer")).filterNot(registered)
+      withClue("add a From command and register it in App.scala: ")(missing shouldBe empty)
+    }
+
+    "be listed in the agent skill" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      withClue("fix the `Importers:` list in .agents/skills/linkml/SKILL.md: ")(
+        skillList(root, "Importers") shouldBe cliNames(root, "From.scala", "formatName"),
+      )
     }
   }
 }

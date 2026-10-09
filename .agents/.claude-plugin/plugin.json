@@ -1,6 +1,6 @@
 {
   "name": "linkml",
-  "description": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, bootstrapping from RDFS/OWL/SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
+  "description": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, importing OWL, RDFS and Apache Ossie ontologies, bootstrapping from SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
   "author": {
     "name": "NeverBlink",
     "url": "https://neverblink.eu"
