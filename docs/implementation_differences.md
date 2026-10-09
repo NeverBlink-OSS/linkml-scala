@@ -24,6 +24,8 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - JSON Schema, Scala, TypeScript, and Pydantic generators support type unions.
   - Some constraints on unioned types may be lost, depending on the expressiveness of the target language.
 - Support for [language strings](#language-strings)
+- Better support for [imports](#imports)
+  - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 
 ## Inherited type constraints
 
