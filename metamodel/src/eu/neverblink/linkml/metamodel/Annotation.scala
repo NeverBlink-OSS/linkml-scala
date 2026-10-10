@@ -5,13 +5,22 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[Annotation]] LinkML class
+/** A tag/value pair with the semantics of OWL Annotation
   *
-  * @inheritdoc
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param extensionTag
+  *   A tag associated with an extension
+  * @param extensionValue
+  *   The actual annotation
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @see
+  *   From schema: https://w3id.org/linkml/annotations
   */
-final case class AnnotationImpl(
+final case class Annotation(
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @id
     @named("tag")
     extensionTag: UriOrCurie,
@@ -20,25 +29,8 @@ final case class AnnotationImpl(
     extensionValue: LinkmlAny,
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
-) extends Annotation {
-
-  override def infer(): AnnotationImpl =
-    this
-}
-
-/** A tag/value pair with the semantics of OWL Annotation
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/annotations
-  */
-abstract class Annotation extends Extension, Annotatable {
-
-  /** A collection of tag/text tuples with the semantics of OWL Annotation
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/annotations
-    */
-  def annotations: Map[String, AnnotationImpl]
+) extends Extension,
+      Annotatable {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -47,5 +39,6 @@ abstract class Annotation extends Extension, Annotatable {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): Annotation
+  override def infer(): Annotation =
+    this
 }

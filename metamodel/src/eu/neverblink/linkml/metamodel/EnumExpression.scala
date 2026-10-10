@@ -17,17 +17,17 @@ final case class EnumExpressionImpl(
     @named("code_set_version")
     codeSetVersion: Option[String] = None,
     concepts: Seq[UriOrCurie] = Seq(),
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    include: Seq[AnonymousEnumExpression] = Seq(),
     inherits: Seq[Reference[EnumDefinition]] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    matches: Option[MatchQuery] = None,
+    minus: Seq[AnonymousEnumExpression] = Seq(),
     @named("permissible_values")
     @compactDict
-    permissibleValues: Map[String, PermissibleValueImpl] = Map(),
+    permissibleValues: Map[String, PermissibleValue] = Map(),
     @named("pv_formula")
     pvFormula: Option[PvFormulaOptions] = None,
     @named("reachable_from")
-    reachableFrom: Option[ReachabilityQueryImpl] = None,
+    reachableFrom: Option[ReachabilityQuery] = None,
 ) extends EnumExpression {
 
   override def infer(): EnumExpressionImpl =
@@ -80,7 +80,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def include: Seq[AnonymousEnumExpressionImpl]
+  def include: Seq[AnonymousEnumExpression]
 
   /** An enum definition that is used as the basis to create a new enum
     *
@@ -96,7 +96,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def matches: Option[MatchQueryImpl]
+  def matches: Option[MatchQuery]
 
   /** An enum expression that yields a list of permissible values that are to be subtracted from the
     * enum
@@ -104,7 +104,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def minus: Seq[AnonymousEnumExpressionImpl]
+  def minus: Seq[AnonymousEnumExpression]
 
   /** A list of possible values for a slot range
     *
@@ -113,7 +113,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def permissibleValues: Map[String, PermissibleValueImpl]
+  def permissibleValues: Map[String, PermissibleValue]
 
   /** Defines the specific formula to be used to generate the permissible values.
     *
@@ -131,7 +131,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def reachableFrom: Option[ReachabilityQueryImpl]
+  def reachableFrom: Option[ReachabilityQuery]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

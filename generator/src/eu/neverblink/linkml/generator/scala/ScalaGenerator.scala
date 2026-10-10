@@ -13,6 +13,20 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   import ScalaGenerator.*
   import CombineFunction.*
 
+  /** Whether a class is generated as a single case class named after it, with no separate interface
+    * and `...Impl` case class. Only concrete classes without children qualify, and only when
+    * [[Options.skipLeafInterfaces]] is on.
+    */
+  private def isCaseClassOnly(classView: ClassView, options: Options): Boolean =
+    options.skipLeafInterfaces && classView.isConcrete &&
+      !classView.hasDescendants
+
+  /** Name of the Scala class that holds the instances of a concrete LinkML class. */
+  private def implName(classView: ClassView, options: Options): String = {
+    val name = className(classView)
+    if isCaseClassOnly(classView, options) then name else name.concat("Impl")
+  }
+
   /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums.
     * @param options
     *   What to generate. See [[ScalaGenerator.Options]].
@@ -28,9 +42,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       .map((file, code) => file -> header.concat(code))
   }
 
-  /** Generate Scala counterparts of LinkML classes: case classe implementations for instantiable
+  /** Generate Scala counterparts of LinkML classes: case class implementations for instantiable
     * classes, abstract class interfaces for non-mixin classes, traits for mixins, with LinkML
-    * inheritance modeled in abstract classes and traits.
+    * inheritance modeled in abstract classes and traits. Instantiable classes without children
+    * become a single case class when [[Options.skipLeafInterfaces]] is on.
     * @return
     *   Tuples of form (file name, file content) for all LinkML classes
     */
@@ -44,6 +59,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         val scalaFields = for attribute <- classView.sortedAttributeViews yield {
           makeScalaField(attribute, collectionForm, classView, options)
         }
+        val caseClassOnly = isCaseClassOnly(classView, options)
         val shouldBeTrait =
           cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
         val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
@@ -61,9 +77,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             (cls.isA ++ cls.mixins).map(ref => scalaPascal(ref.value)).toSeq,
             interfaceFields,
             !classView.isConcrete,
+            caseClassOnly,
             shouldBeTrait,
             isSlotDefinitionClass,
-            makeInferredFields(classView),
+            makeInferredFields(classView, options),
             // Data matching `range_expression` has to be allowed, but is not checked against it.
             classView.allowsExtraSlots,
             ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
@@ -204,6 +221,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def baseRange(
       attribute: AttributeView,
+      options: Options,
   ): (scalaType: String, baseDefault: Option[String]) = {
     attribute match {
       // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
@@ -212,10 +230,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case AnyView(_, _) =>
         ("LinkmlAny", None)
       case ClassInlineAttributeView(_, _, classView, _) =>
-        // Abstract classes and mixins get no `...Impl` case class, so an inlined range pointing at
-        // one has to be typed as the interface instead.
-        val name = className(classView)
-        (if classView.isConcrete then s"${name}Impl" else name, None)
+        // Abstract classes and mixins get no case class, so an inlined range pointing at one has
+        // to be typed as the interface instead.
+        (if classView.isConcrete then implName(classView, options) else className(classView), None)
       case ClassReferenceAttributeView(_, _, classView, _) =>
         val name = className(classView)
         (s"Reference[$name]", None)
@@ -252,9 +269,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * @return
     *   The inferred [[TypedDefault]]
     */
-  private def makeTypedDefault(attribute: AttributeView): TypedDefault = {
+  private def makeTypedDefault(attribute: AttributeView, options: Options): TypedDefault = {
     val slot = attribute.slotView
-    val (scalaType, defaultValue) = baseRange(attribute)
+    val (scalaType, defaultValue) = baseRange(attribute, options)
     // Defaults coming from 'ifabsent' are meaningful and must survive serialization, unlike the
     // implicit "empty" defaults (None / Seq() / Map()) that codecs are free to omit.
     val ifAbsentAnnotation =
@@ -388,9 +405,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * value can be read. Optional booleans are the exception: they are emitted as a plain `Boolean`
     * defaulting to `false`. Mirrors [[makeTypedDefault]].
     */
-  private def isOptionField(attribute: AttributeView): Boolean = {
+  private def isOptionField(attribute: AttributeView, options: Options): Boolean = {
     val slot = attribute.slotView
-    InlineType(slot) == InlineType.optional && !isPlainBoolean(slot, baseRange(attribute).scalaType)
+    InlineType(slot) == InlineType.optional &&
+    !isPlainBoolean(slot, baseRange(attribute, options).scalaType)
   }
 
   /** Whether an optional slot of the given Scala type is emitted as a plain `Boolean` defaulting to
@@ -409,7 +427,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * @throws RuntimeException
     *   if an in-scope slot's expression fails to parse, or references an out-of-scope slot
     */
-  private def makeInferredFields(classView: ClassView): Seq[InferredField] =
+  private def makeInferredFields(classView: ClassView, options: Options): Seq[InferredField] =
     classView.sortedAttributeViews
       .filter(isSingleValuedString)
       .flatMap(attribute => attribute.equalsExpression.map(attribute -> _))
@@ -426,8 +444,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         InferredField(
           slotName(slot),
           slot.name,
-          isOptionField(attribute),
-          renderExpression(classView, attribute, expression),
+          isOptionField(attribute, options),
+          renderExpression(classView, attribute, expression, options),
         )
       }
 
@@ -440,6 +458,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       classView: ClassView,
       target: AttributeView,
       expression: StringInterpolationExpression,
+      options: Options,
   ): String = {
     import StringInterpolationExpression.{Literal, Substitution}
     if expression.elements.isEmpty then "\"\""
@@ -453,7 +472,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
                 s"references slot '${substitution.pathString}', which $problem",
             )
           }
-          renderPath(substitution.path)
+          renderPath(substitution.path, options)
       }.mkString(" + ")
   }
 
@@ -461,14 +480,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * links along the way are unwrapped with `inferenceInput`, which fails at runtime if the value
     * is absent. Nested `equals_expression`s are not applied – the value is read as it is.
     */
-  private def renderPath(path: Seq[AttributeView]): String = {
+  private def renderPath(path: Seq[AttributeView], options: Options): String = {
     val access = path.foldLeft(("", "")) { case ((expression, prefix), attribute) =>
       val name = attribute.slotView.slot.name
       val qualified = if prefix.isEmpty then name else s"$prefix.$name"
       val field =
         if expression.isEmpty then scalaCamel(name) else s"$expression.${scalaCamel(name)}"
       val unwrapped =
-        if isOptionField(attribute) then s"""inferenceInput("$qualified", $field)"""
+        if isOptionField(attribute, options) then s"""inferenceInput("$qualified", $field)"""
         else field
       (unwrapped, qualified)
     }._1
@@ -515,7 +534,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       if view.aliasedName != name then Some(s"@named(${scalaStringLiteral(view.aliasedName)})")
       else None
     val typedDefault = {
-      val fromRange = makeTypedDefault(attribute)
+      val fromRange = makeTypedDefault(attribute, options)
       if slot.designatesType then designatorDefault(attribute, owner, fromRange) else fromRange
     }
     ScalaField(
@@ -540,11 +559,17 @@ object ScalaGenerator {
     *   Whether to generate a `Prefixes` object holding the model's `emit_prefixes`.
     * @param metadataLanguage
     *   Which language to use for metadata fields (description etc.) in ScalaDocs.
+    * @param skipLeafInterfaces
+    *   Whether to skip the separate interface for a concrete class that no other class extends
+    *   (with `is_a` or `mixins`), and generate it as a single case class named after it instead of
+    *   an interface plus a `...Impl` case class. Turn it off if code outside of the generated
+    *   sources has to extend the generated classes.
     */
   final case class Options(
       `package`: String = "eu.neverblink.linkml.metamodel",
       generateEmitPrefixes: Boolean = true,
       metadataLanguage: String = "en",
+      skipLeafInterfaces: Boolean = true,
   )
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a
@@ -563,6 +588,9 @@ object ScalaGenerator {
     *   defined/modified directly in this class.
     * @param skipImpl
     *   Whether to skip the case class implementation for instantiable classes.
+    * @param caseClassOnly
+    *   Whether to generate only a case class named [[name]], with no separate interface. Used for
+    *   instantiable classes without children.
     * @param traitInterface
     *   Whether the interface should be a trait. If false, then the interface will be an abstract
     *   class.
@@ -584,6 +612,7 @@ object ScalaGenerator {
       inheritsFrom: Seq[String],
       interfaceFields: Set[String],
       skipImpl: Boolean,
+      caseClassOnly: Boolean,
       traitInterface: Boolean,
       generateSlotCombining: Boolean,
       inferredFields: Seq[InferredField],
@@ -603,6 +632,20 @@ object ScalaGenerator {
            |import eu.neverblink.linkml.runtime.*
            |""".stripMargin
       sb.append(header)
+      if caseClassOnly then {
+        val classDocs = docs.withParams(fields.map(f => f.name -> f.doc.main))
+        val constructorEnd =
+          if inheritsFrom.nonEmpty then inheritsFrom.mkString(") extends ", ", ", "") else ")"
+        // Without parents there is no `infer()` declaration to override.
+        val body = caseClassBody(name, inferDoc, overridesInfer = inheritsFrom.nonEmpty)
+        sb.append(indent"""
+          |$classDocs
+          |${caseClassHeader(name)}
+          |    ${fields.map(_.generateCaseClassField).mkString("\n")}
+          |$constructorEnd $body
+          |""".stripMargin)
+        return sb.toString
+      }
       if !skipImpl then {
         val caseClassConstructor =
           indent"""
@@ -610,69 +653,13 @@ object ScalaGenerator {
             |  * 
             |  * @inheritdoc
             |  */
-            |${
-              if extraSlotsAllowed then "@extraSlotsAllowed\nfinal" else "final"
-            } case class ${name}Impl(
+            |${caseClassHeader(s"${name}Impl")}
             |    ${fields.map(_.generateCaseClassField).mkString("\n")}
             |) extends $name
             |""".stripMargin
-        // TODO LNK-170: consider making infer() a typeclass, so that the generated classes are not
-        // bound to inference logic.
-        val inferMethod =
-          indent"""
-            |override def infer(): ${name}Impl =
-            |  ${
-              if inferredFields.isEmpty then "this"
-              else indent"""copy(
-                  |  ${inferredFields.map(_.generateInferPart).mkString(",\n")}
-                  |)""".stripMargin
-            }
-            |""".stripMargin
-        val caseClassBody = {
-          val combining =
-            if !generateSlotCombining then ""
-            else {
-              val combineRange =
-                "combineRange: (Reference[Element], Reference[Element]) => Reference[Element]"
-              indent"""
-              |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
-              |  * merges ALL SlotDefinition slots.
-              |  * @see
-              |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
-              |  * @param combineRange
-              |  *   Injected range combination function to resolve a circular dependency between metamodel and
-              |  *   schema view
-              |  */
-              |def combineWith(other: ${name}Impl, $combineRange): ${name}Impl =
-              |  copy(
-              |    ${fields.map(_.generateCombiningFunctionPart).mkString(",\n")}
-              |  )
-              |
-              |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
-              |  * merges INHERITED SlotDefinition slots only.
-              |  * @see
-              |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
-              |  * @param combineRange
-              |  *   Injected range combination function to resolve a circular dependency between metamodel and
-              |  *   schema view
-              |  */
-              |def combineInherited(other: ${name}Impl, $combineRange): ${name}Impl =
-              |  copy(
-              |    ${fields
-                  .collect { case f if f.inherited => f.generateCombiningFunctionPart }
-                  .mkString(",\n")}
-              |  )
-              |""".stripMargin
-            }
-          indent"""
-          |{
-          |  $combining
-          |  $inferMethod
-          |}
-          |""".stripMargin
-        }
-
-        sb.append(indent"$caseClassConstructor $caseClassBody\n\n")
+        sb.append(
+          indent"$caseClassConstructor ${caseClassBody(s"${name}Impl", "", overridesInfer = true)}\n\n",
+        )
       }
       val interfaceDef =
         if traitInterface then "trait"
@@ -685,15 +672,7 @@ object ScalaGenerator {
         .mkString("\n")
       // Declared on the interface so callers can infer without knowing the implementation type.
       // The implementation narrows the return type to its own `${name}Impl`.
-      val inferDeclaration =
-        indent"""/** Fill in the slots that have an `equals_expression` with their computed values, and
-                |  * check that the values already present agree with what their expressions infer.
-                |  *
-                |  * @throws eu.neverblink.linkml.runtime.InferenceException
-                |  *   if a slot's value contradicts the value inferred for it, or if an expression
-                |  *   references a slot that has no value
-                |  */
-                |def infer(): $name
+      val inferDeclaration = indent"""${inferDoc}def infer(): $name
                 |""".stripMargin
       sb.append(indent"""$docs
                 |$interfaceDef $name $inheritanceList {
@@ -704,6 +683,93 @@ object ScalaGenerator {
                 |""".stripMargin)
       sb.toString
     }
+
+    /** The opening line of the case class declaration, up to the open parenthesis. */
+    private def caseClassHeader(caseClassName: String): String =
+      s"${
+          if extraSlotsAllowed then "@extraSlotsAllowed\nfinal" else "final"
+        } case class $caseClassName("
+
+    /** The body of the case class: slot combining (if enabled) and `infer()`.
+      *
+      * @param caseClassName
+      *   Name of the case class, used as the parameter and return types
+      * @param inferDoc
+      *   Scaladoc of `infer()`, or empty to inherit it
+      * @param overridesInfer
+      *   Whether `infer()` overrides a declaration in a parent
+      */
+    private def caseClassBody(
+        caseClassName: String,
+        inferDoc: String,
+        overridesInfer: Boolean,
+    ): String = {
+      // TODO LNK-170: consider making infer() a typeclass, so that the generated classes are not
+      // bound to inference logic.
+      val inferMethod =
+        indent"""
+          |$inferDoc
+          |${if overridesInfer then "override def" else "def"} infer(): $caseClassName =
+          |  ${
+            if inferredFields.isEmpty then "this"
+            else indent"""copy(
+                |  ${inferredFields.map(_.generateInferPart).mkString(",\n")}
+                |)""".stripMargin
+          }
+          |""".stripMargin
+      val combining =
+        if !generateSlotCombining then ""
+        else {
+          val combineRange =
+            "combineRange: (Reference[Element], Reference[Element]) => Reference[Element]"
+          indent"""
+          |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
+          |  * merges ALL SlotDefinition slots.
+          |  * @see
+          |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
+          |  * @param combineRange
+          |  *   Injected range combination function to resolve a circular dependency between metamodel and
+          |  *   schema view
+          |  */
+          |def combineWith(other: $caseClassName, $combineRange): $caseClassName =
+          |  copy(
+          |    ${fields.map(_.generateCombiningFunctionPart).mkString(",\n")}
+          |  )
+          |
+          |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
+          |  * merges INHERITED SlotDefinition slots only.
+          |  * @see
+          |  *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-combine-slots
+          |  * @param combineRange
+          |  *   Injected range combination function to resolve a circular dependency between metamodel and
+          |  *   schema view
+          |  */
+          |def combineInherited(other: $caseClassName, $combineRange): $caseClassName =
+          |  copy(
+          |    ${fields
+              .collect { case f if f.inherited => f.generateCombiningFunctionPart }
+              .mkString(",\n")}
+          |  )
+          |""".stripMargin
+        }
+      indent"""
+      |{
+      |  $combining
+      |  $inferMethod
+      |}
+      |""".stripMargin
+    }
+
+  /** Scaladoc of the `infer()` method. */
+  private val inferDoc: String =
+    """/** Fill in the slots that have an `equals_expression` with their computed values, and
+      |  * check that the values already present agree with what their expressions infer.
+      |  *
+      |  * @throws eu.neverblink.linkml.runtime.InferenceException
+      |  *   if a slot's value contradicts the value inferred for it, or if an expression
+      |  *   references a slot that has no value
+      |  */
+      |""".stripMargin
 
   /** Contains all information necessary for generating a Scala enum file analogous to a LinkML
     * [[EnumDefinition]]
@@ -775,7 +841,14 @@ object ScalaGenerator {
       notes: Iterable[String],
       todos: Iterable[String],
       examples: Iterable[String],
+      params: Seq[(String, String)] = Seq(),
   ) extends Printable:
+    /** This ScalaDoc with `@param` tags for the given (name, description) pairs. Pairs with an
+      * empty description are left out.
+      */
+    def withParams(params: Seq[(String, String)]): ScalaDoc =
+      copy(params = params.filter(_._2.nonEmpty))
+
     private def formatTag(sb: lang.StringBuilder, tag: String, content: String): Unit = {
       sb.append(s"  * @$tag\n")
       sb.append(s"  *   $content\n")
@@ -784,11 +857,15 @@ object ScalaGenerator {
     /** Generates code for the Scaladoc */
     def print: String = {
       val sb = lang.StringBuilder()
-      val hasAddition = see.nonEmpty || notes.nonEmpty || todos.nonEmpty || examples.nonEmpty
+      val hasAddition =
+        params.nonEmpty || see.nonEmpty || notes.nonEmpty || todos.nonEmpty || examples.nonEmpty
       if (main.nonEmpty || hasAddition) {
         sb.append(s"/** $main\n")
         if (hasAddition) {
           sb.append("  *\n")
+          params.foreach((name, description) =>
+            formatTag(sb, s"param $name", description.replace("\n", "\n  *   ")),
+          )
           see.foreach(formatTag(sb, "see", _))
           notes.foreach(formatTag(sb, "note", _))
           todos.foreach(formatTag(sb, "todo", _))

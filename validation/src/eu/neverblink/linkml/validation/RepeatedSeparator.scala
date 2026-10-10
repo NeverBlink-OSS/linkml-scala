@@ -5,56 +5,39 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[RepeatedSeparator]] LinkML class
+/** An element starts with a word separator. This may become an error in the future.
   *
-  * @inheritdoc
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param elementName
+  *   Name of the element the issue was found in.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class RepeatedSeparatorImpl(
+final case class RepeatedSeparator(
     details: Option[String] = None,
     @named("element_name")
     elementName: String,
     @named("issue_type")
     @serializeDefault
     issueType: String = "RepeatedSeparator",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Warning,
-) extends RepeatedSeparator {
-
-  override def infer(): RepeatedSeparatorImpl =
-    copy(
-      message = inferOptional(
-        "message",
-        message,
-        "Element '" + elementName + "' name contains repeated separators, they will be reduced to a single underscore.",
-      ),
-    )
-}
-
-/** An element starts with a word separator. This may become an error in the future.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class RepeatedSeparator extends SchemaWarning {
-
-  /** Name of the element the issue was found in.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def elementName: String
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
+) extends SchemaWarning {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -63,5 +46,12 @@ abstract class RepeatedSeparator extends SchemaWarning {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): RepeatedSeparator
+  override def infer(): RepeatedSeparator =
+    copy(
+      message = inferOptional(
+        "message",
+        message,
+        "Element '" + elementName + "' name contains repeated separators, they will be reduced to a single underscore.",
+      ),
+    )
 }

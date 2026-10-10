@@ -3,7 +3,7 @@ package eu.neverblink.linkml.cli
 import caseapp.*
 import eu.neverblink.linkml.generator.ossie.OssieImporter
 import eu.neverblink.linkml.generator.owl.OwlImporter
-import eu.neverblink.linkml.generator.owl.config.{OwlImportConfigImpl, OwlImportConfigs}
+import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 
 import java.io.{InputStream, OutputStream}
@@ -123,7 +123,7 @@ object FromOwl extends From[FromOwlOptions] {
       in: InputStream,
       out: OutputStream,
   ): Unit = {
-    val config = options.config.fold(OwlImportConfigImpl()) { file =>
+    val config = options.config.fold(OwlImportConfig()) { file =>
       val path = os.Path(file, os.pwd)
       if !os.exists(path) then err(s"No such file: $file")
       try OwlImportConfigs.parse(os.read(path))

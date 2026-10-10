@@ -5,11 +5,208 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[ClassDefinition]] LinkML class
+/** An element whose instances are complex objects that may have slot-value assignments
   *
-  * @inheritdoc
+  * @param name
+  *   The unique name of the element within the context of the schema. Name is combined with the
+  *   default prefix to form the globally unique subject of the target class.
+  * @param classUri
+  *   URI of the class that provides a semantic interpretation of the element in a linked data
+  *   context. The URI may come from any namespace and may be shared between schemas
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param alias
+  *   The alternative name to be used in serializations of an instance instead of the canonical
+  *   name.
+  * @param isA
+  *   A primary parent class from which inheritable metaslots are propagated
+  * @param mixins
+  *   A collection of secondary parent mixin classes from which inheritable metaslots are propagated
+  * @param slots
+  *   Collection of slot names that are applicable to a class
+  * @param slotUsage
+  *   The refinement of a slot in the context of the containing class definition.
+  * @param attributes
+  *   Inline definition of slots
+  * @param treeRoot
+  *   Indicates that this is the Container class which forms the root of the serialized document
+  *   structure in tree serializations
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param anyOf
+  *   Holds if at least one of the expressions hold
+  * @param exactlyOneOf
+  *   Holds if only one of the expressions hold
+  * @param noneOf
+  *   Holds if none of the expressions hold
+  * @param allOf
+  *   Holds if all of the expressions hold
+  * @param `abstract`
+  *   Indicates the class or slot cannot be directly instantiated and is intended for grouping
+  *   purposes.
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param applyTo
+  *   Used to extend class or slot definitions. For example, if we have a core schema where a gene
+  *   has two slots for identifier and symbol, and we have a specialized schema for my_organism
+  *   where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
+  *   gene_my_organism, adding the slot to this class, and then adding an apply_to pointing to the
+  *   gene class. The new slot will be 'injected into' the gene class.
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param childrenAreMutuallyDisjoint
+  *   If true then all direct is_a children are mutually disjoint and share no instances in common
+  * @param classificationRules
+  *   The collection of classification rules that apply to all members of this class. Classification
+  *   rules allow for automatically assigning the instantiated type of an instance.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param conformsTo
+  *   An established standard to which the element conforms.
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param definingSlots
+  *   The combination of is a plus defining slots form a genus-differentia definition, or the set of
+  *   necessary and sufficient conditions that can be transformed into an OWL equivalence axiom
+  * @param definitionUri
+  *   The native URI of the element. This is always within the namespace of the containing schema.
+  *   Contrast with the assigned URI, via class_uri or slot_uri
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param disjointWith
+  *   Two classes are disjoint if they have no instances in common, two slots are disjoint if they
+  *   can never hold between the same two instances
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param extraSlots
+  *   How a class instance handles extra data not specified in the class definition. Note that this
+  *   does *not* define the constraints that are placed on additional slots defined by inheriting
+  *   classes.
+  *
+  * Possible values:
+  *   - `allowed: true` - allow all additional data
+  *   - `allowed: false` (or `allowed:` or `allowed: null` while `range_expression` is `null`) -
+  *     forbid all additional data (default)
+  *   - `range_expression: ...` - allow additional data if it matches the slot expression (see
+  *     examples)
+  *
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param idPrefixes
+  *   An allowed list of prefixes for which identifiers must conform. The identifier of this class
+  *   or slot must begin with the URIs referenced by this prefix
+  * @param idPrefixesAreClosed
+  *   If true, then the id_prefixes slot is treated as being closed, and any use of an id that does
+  *   not have this prefix is considered a violation.
+  * @param implements
+  *   An element in another schema which this element conforms to. The referenced element is not
+  *   imported into the schema for the implementing element. However, the referenced schema may be
+  *   used to check conformance of the implementing element.
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param instantiates
+  *   An element in another schema which this element instantiates.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param mixin
+  *   Indicates the class or slot is intended to be inherited from without being an is_a parent.
+  *   mixins should not be inherited from using is_a, except by other mixins.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param representsRelationship
+  *   True if this class represents a relationship rather than an entity
+  * @param rules
+  *   The collection of rules that apply to all members of this class
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param slotConditions
+  *   Expresses constraints on a group of slots for a class expression
+  * @param slotNamesUnique
+  *   If true then induced/mangled slot names are not created for class_usage and attributes
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param stringSerialization
+  *   Used on a slot that stores the string serialization of the containing object. The syntax
+  *   follows python formatted strings, with slot names enclosed in {}s. These are expanded using
+  *   the values of those slots. We call the slot with the serialization the s-slot, the slots used
+  *   in the {}s are v-slots. If both s-slots and v-slots are populated on an object then the value
+  *   of the s-slot should correspond to the expansion. Implementations of frameworks may choose to
+  *   use this property to either (a) PARSE: implement automated normalizations by parsing
+  *   denormalized strings into complex objects (b) GENERATE: implement automated to_string labeling
+  *   of complex objects For example, a Measurement class may have 3 fields: unit, value, and
+  *   string_value. The string_value slot may have a string_serialization of {value}{unit} such that
+  *   if unit=cm and value=2, the value of string_value shouldd be 2cm
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param subclassOf
+  *   DEPRECATED -- rdfs:subClassOf to be emitted in OWL generation
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param unionOf
+  *   Indicates that the domain element consists exactly of the members of the element in the range.
+  * @param uniqueKeys
+  *   A collection of named unique keys for this class. Such unique keys may be spread over several
+  *   slots, which is why they are also called "compound keys". A unique key uniquely identifies
+  *   instances of the class within a given container, meaning there cannot be two (or more)
+  *   instances of the class with the same values for all the slots that make up the unique key.
+  * @param valuesFrom
+  *   The identifier of a "value set" -- a set of identifiers that form the possible values for the
+  *   range of a slot. Note: this is different than 'subproperty_of' in that 'subproperty_of' is
+  *   intended to be a single ontology term while 'values_from' is the identifier of an entire value
+  *   set. Additionally, this is different than an enumeration in that in an enumeration, the values
+  *   of the enumeration are listed directly in the model itself. Setting this property on a slot
+  *   does not guarantee an expansion of the ontological hierarchy into an enumerated list of
+  *   possible values in every serialization of the model.
+  * @see
+  *   Aliases: table, record, template, message, observation
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class ClassDefinitionImpl(
+final case class ClassDefinition(
     @id
     name: String,
     @named("class_uri")
@@ -23,28 +220,28 @@ final case class ClassDefinitionImpl(
     slots: Seq[Reference[SlotDefinition]] = Seq(),
     @named("slot_usage")
     @compactDict
-    slotUsage: Map[String, SlotDefinitionImpl] = Map(),
+    slotUsage: Map[String, SlotDefinition] = Map(),
     @compactDict
-    attributes: Map[String, SlotDefinitionImpl] = Map(),
+    attributes: Map[String, SlotDefinition] = Map(),
     @named("tree_root")
     treeRoot: Boolean = false,
     rank: Option[Int] = None,
     @named("any_of")
-    anyOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    anyOf: Seq[AnonymousClassExpression] = Seq(),
     @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    exactlyOneOf: Seq[AnonymousClassExpression] = Seq(),
     @named("none_of")
-    noneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    noneOf: Seq[AnonymousClassExpression] = Seq(),
     @named("all_of")
-    allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    allOf: Seq[AnonymousClassExpression] = Seq(),
     @named("abstract")
     `abstract`: Boolean = false,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("apply_to")
     applyTo: Seq[Reference[ClassDefinition]] = Seq(),
     @named("broad_mappings")
@@ -53,7 +250,7 @@ final case class ClassDefinitionImpl(
     @named("children_are_mutually_disjoint")
     childrenAreMutuallyDisjoint: Boolean = false,
     @named("classification_rules")
-    classificationRules: Seq[AnonymousClassExpressionImpl] = Seq(),
+    classificationRules: Seq[AnonymousClassExpression] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
     comments: Seq[LocalizedText] = Seq(),
@@ -77,11 +274,11 @@ final case class ClassDefinitionImpl(
     disjointWith: Seq[Reference[ClassDefinition]] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("extra_slots")
-    extraSlots: Option[ExtraSlotsExpressionImpl] = None,
+    extraSlots: Option[ExtraSlotsExpression] = None,
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("id_prefixes")
@@ -101,7 +298,7 @@ final case class ClassDefinitionImpl(
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
-    localNames: Map[String, LocalNameImpl] = Map(),
+    localNames: Map[String, LocalName] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
     mixin: Boolean = false,
     @named("modified_by")
@@ -113,12 +310,12 @@ final case class ClassDefinitionImpl(
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("represents_relationship")
     representsRelationship: Boolean = false,
-    rules: Seq[ClassRuleImpl] = Seq(),
+    rules: Seq[ClassRule] = Seq(),
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
     @named("slot_conditions")
     @compactDict
-    slotConditions: Map[String, SlotDefinitionImpl] = Map(),
+    slotConditions: Map[String, SlotDefinition] = Map(),
     @named("slot_names_unique")
     slotNamesUnique: Boolean = false,
     source: Option[UriOrCurie] = None,
@@ -126,7 +323,7 @@ final case class ClassDefinitionImpl(
     @named("string_serialization")
     stringSerialization: Option[String] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     @named("subclass_of")
     subclassOf: Option[UriOrCurie] = None,
     todos: Seq[String] = Seq(),
@@ -134,257 +331,11 @@ final case class ClassDefinitionImpl(
     unionOf: Seq[Reference[ClassDefinition]] = Seq(),
     @named("unique_keys")
     @simpleDict
-    uniqueKeys: Map[String, UniqueKeyImpl] = Map(),
+    uniqueKeys: Map[String, UniqueKey] = Map(),
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
-) extends ClassDefinition {
-
-  override def infer(): ClassDefinitionImpl =
-    this
-}
-
-/** An element whose instances are complex objects that may have slot-value assignments
-  *
-  * @see
-  *   Aliases: table, record, template, message, observation
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class ClassDefinition extends Definition, ClassExpression {
-
-  /** URI of the class that provides a semantic interpretation of the element in a linked data
-    * context. The URI may come from any namespace and may be shared between schemas
-    *
-    * @see
-    *   https://w3id.org/linkml/definition_uri
-    * @see
-    *   https://linkml.io/linkml/schemas/uris-and-mappings.html
-    * @see
-    *   Aliases: public ID
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Assigning class_uris can provide additional hooks for interoperation, indicating a common
-    *   conceptual model
-    */
-  def classUri: Option[UriOrCurie]
-
-  /** The alternative name to be used in serializations of an instance instead of the canonical
-    * name.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
-    * @note
-    *   Not to be confused with aliases, which indicates a set of terms to be used for search
-    *   purposes.
-    * @note
-    *   This should be used for describing the structure of already existing instances.
-    * @note
-    *   For human-readable labels, prefer 'title' instead.
-    */
-  def alias: Option[String]
-
-  /** A primary parent class from which inheritable metaslots are propagated
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def isA: Option[Reference[ClassDefinition]]
-
-  /** A collection of secondary parent mixin classes from which inheritable metaslots are propagated
-    *
-    * @see
-    *   https://en.wikipedia.org/wiki/Mixin
-    * @see
-    *   Aliases: traits
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Mixins act in the same way as parents (is_a). They allow a model to have a primary strict
-    *   hierarchy, while keeping the benefits of multiple inheritance
-    */
-  def mixins: Seq[Reference[ClassDefinition]]
-
-  /** Collection of slot names that are applicable to a class
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   The list of applicable slots is inherited from parent classes
-    * @note
-    *   This defines the set of slots that are allowed to be used for a given class. The final list
-    *   of slots for a class is the combination of the parent (is a) slots, mixins slots, apply to
-    *   slots minus the slot usage entries.
-    */
-  def slots: Seq[Reference[SlotDefinition]]
-
-  /** The refinement of a slot in the context of the containing class definition.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Many slots may be reused across different classes, but the meaning of the slot may be
-    *   refined by context. For example, a generic association model may use slots
-    *   subject/predicate/object with generic semantics and minimal constraints. When this is
-    *   subclasses, e.g. to disease-phenotype associations then slot usage may specify both local
-    *   naming (e.g. subject=disease) and local constraints
-    */
-  def slotUsage: Map[String, SlotDefinitionImpl]
-
-  /** Inline definition of slots
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Attributes are an alternative way of defining new slots. An attribute adds a slot to the
-    *   global space in the form <class_name>__<slot_name> (lower case, double underscores).
-    *   Attributes can be specialized via slot_usage.
-    */
-  def attributes: Map[String, SlotDefinitionImpl]
-
-  /** Indicates that this is the Container class which forms the root of the serialized document
-    * structure in tree serializations
-    *
-    * @see
-    *   https://linkml.io/linkml/intro/tutorial02.html
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Each schema should have at most one tree root
-    */
-  def treeRoot: Boolean
-
-  /** Used to extend class or slot definitions. For example, if we have a core schema where a gene
-    * has two slots for identifier and symbol, and we have a specialized schema for my_organism
-    * where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
-    * gene_my_organism, adding the slot to this class, and then adding an apply_to pointing to the
-    * gene class. The new slot will be 'injected into' the gene class.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def applyTo: Seq[Reference[ClassDefinition]]
-
-  /** If true then all direct is_a children are mutually disjoint and share no instances in common
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def childrenAreMutuallyDisjoint: Boolean
-
-  /** The collection of classification rules that apply to all members of this class. Classification
-    * rules allow for automatically assigning the instantiated type of an instance.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def classificationRules: Seq[AnonymousClassExpressionImpl]
-
-  /** The combination of is a plus defining slots form a genus-differentia definition, or the set of
-    * necessary and sufficient conditions that can be transformed into an OWL equivalence axiom
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def definingSlots: Seq[Reference[SlotDefinition]]
-
-  /** Two classes are disjoint if they have no instances in common, two slots are disjoint if they
-    * can never hold between the same two instances
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def disjointWith: Seq[Reference[ClassDefinition]]
-
-  /** How a class instance handles extra data not specified in the class definition. Note that this
-    * does *not* define the constraints that are placed on additional slots defined by inheriting
-    * classes.
-    *
-    * Possible values:
-    *   - `allowed: true` - allow all additional data
-    *   - `allowed: false` (or `allowed:` or `allowed: null` while `range_expression` is `null`) -
-    *     forbid all additional data (default)
-    *   - `range_expression: ...` - allow additional data if it matches the slot expression (see
-    *     examples)
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def extraSlots: Option[ExtraSlotsExpressionImpl]
-
-  /** True if this class represents a relationship rather than an entity
-    *
-    * @see
-    *   http://www.w3.org/1999/02/22-rdf-syntax-ns#Statement
-    * @see
-    *   https://patterns.dataincubator.org/book/qualified-relation.html
-    * @see
-    *   Aliases: is_reified
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   In the context of Entity-Relationship (ER) modeling, this is used to state that a class
-    *   models a relationship between entities, and should be drawn with a diamond
-    * @note
-    *   In the context of RDF, this should be used when instances of the class are `rdf:Statement`s
-    * @note
-    *   In the context of property graphs, this should be used when a class is used to represent an
-    *   edge that connects nodes
-    */
-  def representsRelationship: Boolean
-
-  /** The collection of rules that apply to all members of this class
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def rules: Seq[ClassRuleImpl]
-
-  /** If true then induced/mangled slot names are not created for class_usage and attributes
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def slotNamesUnique: Boolean
-
-  /** DEPRECATED -- rdfs:subClassOf to be emitted in OWL generation
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def subclassOf: Option[UriOrCurie]
-
-  /** Indicates that the domain element consists exactly of the members of the element in the range.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   This only applies in the OWL generation
-    */
-  def unionOf: Seq[Reference[ClassDefinition]]
-
-  /** A collection of named unique keys for this class. Such unique keys may be spread over several
-    * slots, which is why they are also called "compound keys". A unique key uniquely identifies
-    * instances of the class within a given container, meaning there cannot be two (or more)
-    * instances of the class with the same values for all the slots that make up the unique key.
-    *
-    * @see
-    *   https://linkml.io/linkml/schemas/constraints.html#unique-keys
-    * @see
-    *   https://w3id.org/linkml/key
-    * @see
-    *   https://w3id.org/linkml/identifier
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Not to be confused with a "singular unique key", which is defined by means of the `key`
-    *   slot, or with an "identifier", which is defined by means of the "identifier" slot. Compound
-    *   keys, singular unique keys, and identifiers all create a unicity constraint, but singular
-    *   unique keys and identifiers have additional effects that compound keys do not have.
-    */
-  def uniqueKeys: Map[String, UniqueKeyImpl]
+) extends Definition,
+      ClassExpression {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -393,5 +344,6 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): ClassDefinition
+  override def infer(): ClassDefinition =
+    this
 }

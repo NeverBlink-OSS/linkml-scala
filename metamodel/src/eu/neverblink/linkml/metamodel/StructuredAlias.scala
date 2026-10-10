@@ -5,11 +5,95 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[StructuredAlias]] LinkML class
+/** Object that contains meta data about a synonym or alias including where it came from (source)
+  * and its scope (narrow, broad, etc.)
   *
-  * @inheritdoc
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param aliasContexts
+  *   The context in which an alias should be applied
+  * @param aliasPredicate
+  *   The relationship between an element and its alias.
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   The category or categories of an alias. This can be drawn from any relevant vocabulary
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param literalForm
+  *   The literal lexical form of a structured alias; i.e the actual alias value.
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class StructuredAliasImpl(
+final case class StructuredAlias(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
@@ -20,9 +104,9 @@ final case class StructuredAliasImpl(
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -41,7 +125,7 @@ final case class StructuredAliasImpl(
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
@@ -70,56 +154,12 @@ final case class StructuredAliasImpl(
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
-) extends StructuredAlias {
-
-  override def infer(): StructuredAliasImpl =
-    this
-}
-
-/** Object that contains meta data about a synonym or alias including where it came from (source)
-  * and its scope (narrow, broad, etc.)
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class StructuredAlias extends Expression, Extensible, Annotatable, CommonMetadata {
-
-  /** The context in which an alias should be applied
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def aliasContexts: Seq[Uri]
-
-  /** The relationship between an element and its alias.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def aliasPredicate: Option[AliasPredicateEnum]
-
-  /** The category or categories of an alias. This can be drawn from any relevant vocabulary
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   If you wish to use uncontrolled terms or terms that lack identifiers then use the keywords
-    *   element
-    * @example
-    *   `https://w3id.org/mod#acronym`: An acronym
-    */
-  def categories: Seq[UriOrCurie]
-
-  /** The literal lexical form of a structured alias; i.e the actual alias value.
-    *
-    * @see
-    *   Aliases: alias_name, string_value
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def literalForm: String
+) extends Expression,
+      Extensible,
+      Annotatable,
+      CommonMetadata {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -128,5 +168,6 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): StructuredAlias
+  override def infer(): StructuredAlias =
+    this
 }

@@ -5,11 +5,165 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[AnonymousSlotExpression]] LinkML class
+/** @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param multivalued
+  *   True means that slot can have more than one value and should be represented using a list or
+  *   collection structure.
+  * @param required
+  *   True means that the slot must be present in instances of the class definition
+  * @param recommended
+  *   True means that the slot should be present in instances of the class definition, but this is
+  *   not required
+  * @param inlined
+  *   True means that keyed or identified slot appears in an outer structure by value. False means
+  *   that only the key or identifier for the slot appears within the domain, referencing a
+  *   structure that appears elsewhere.
+  * @param inlinedAsList
+  *   True means that an inlined slot is represented as a list of range instances. False means that
+  *   an inlined slot is represented as a dictionary, whose key is the slot key or identifier and
+  *   whose value is the range instance.
+  * @param pattern
+  *   The string value of the slot must conform to this regular expression expressed in the string
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param anyOf
+  *   Holds if at least one of the expressions hold
+  * @param exactlyOneOf
+  *   Holds if only one of the expressions hold
+  * @param noneOf
+  *   Holds if none of the expressions hold
+  * @param allOf
+  *   Holds if all of the expressions hold
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param allMembers
+  *   The value of the slot is multivalued with all members satisfying the condition
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param array
+  *   Coerces the value of the slot into an array and defines the dimensions of that array
+  * @param bindings
+  *   A collection of enum bindings that specify how a slot can be bound to a permissible value from
+  *   an enumeration. LinkML provides enums to allow string values to be restricted to one of a set
+  *   of permissible values (specified statically or dynamically). Enum bindings allow enums to be
+  *   bound to any object, including complex nested objects. For example, given a (generic) class
+  *   Concept with slots id and label, it may be desirable to restrict the values the id takes on in
+  *   a given context. For example, a HumanSample class may have a slot for representing sample
+  *   site, with a range of concept, but the values of that slot may be restricted to concepts from
+  *   a particular branch of an anatomy ontology.
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param enumRange
+  *   An inlined enumeration
+  * @param equalsExpression
+  *   The value of the slot must equal the value of the evaluated expression
+  * @param equalsNumber
+  *   The slot must have range of a number and the value of the slot must equal the specified value
+  * @param equalsString
+  *   The slot must have range string and the value of the slot must equal the specified value
+  * @param equalsStringIn
+  *   The slot must have range string and the value of the slot must equal one of the specified
+  *   values
+  * @param exactCardinality
+  *   The exact number of entries for a multivalued slot
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param hasMember
+  *   The value of the slot is multivalued with at least one member satisfying the condition
+  * @param implicitPrefix
+  *   Causes the slot value to be interpreted as a uriorcurie after prefixing with this string
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param maximumCardinality
+  *   The maximum number of entries for a multivalued slot
+  * @param maximumValue
+  *   For ordinal ranges, the value must be equal to or lower than this
+  * @param minimumCardinality
+  *   The minimum number of entries for a multivalued slot
+  * @param minimumValue
+  *   For ordinal ranges, the value must be equal to or higher than this
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param range
+  *   Defines the type of the object of the slot. Given the following slot definition S1: domain: C1
+  *   range: C2 the declaration X: S1: Y
   *
-  * @inheritdoc
+  * implicitly asserts Y is an instance of C2
+  *
+  * @param rangeExpression
+  *   A range that is described as a boolean expression combining existing ranges
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param structuredPattern
+  *   The string value of the slot must conform to the regular expression in the pattern expression
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param unit
+  *   An encoding of a unit
+  * @param valuePresence
+  *   If PRESENT then a value must be present (for lists there must be at least one value). If
+  *   ABSENT then a value must be absent (for lists, must be empty)
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class AnonymousSlotExpressionImpl(
+final case class AnonymousSlotExpression(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     multivalued: Boolean = false,
@@ -21,23 +175,23 @@ final case class AnonymousSlotExpressionImpl(
     pattern: Option[String] = None,
     rank: Option[Int] = None,
     @named("any_of")
-    anyOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    anyOf: Seq[AnonymousSlotExpression] = Seq(),
     @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    exactlyOneOf: Seq[AnonymousSlotExpression] = Seq(),
     @named("none_of")
-    noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    noneOf: Seq[AnonymousSlotExpression] = Seq(),
     @named("all_of")
-    allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    allOf: Seq[AnonymousSlotExpression] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
     @named("all_members")
-    allMembers: Option[AnonymousSlotExpressionImpl] = None,
+    allMembers: Option[AnonymousSlotExpression] = None,
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
-    array: Option[ArrayExpressionImpl] = None,
-    bindings: Seq[EnumBindingImpl] = Seq(),
+    annotations: Map[String, Annotation] = Map(),
+    array: Option[ArrayExpression] = None,
+    bindings: Seq[EnumBinding] = Seq(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -68,13 +222,13 @@ final case class AnonymousSlotExpressionImpl(
     exactCardinality: Option[Int] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("has_member")
-    hasMember: Option[AnonymousSlotExpressionImpl] = None,
+    hasMember: Option[AnonymousSlotExpression] = None,
     @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
     @named("imported_from")
@@ -102,7 +256,7 @@ final case class AnonymousSlotExpressionImpl(
     notes: Seq[LocalizedText] = Seq(),
     range: Option[Reference[Element]] = None,
     @named("range_expression")
-    rangeExpression: Option[AnonymousClassExpressionImpl] = None,
+    rangeExpression: Option[AnonymousClassExpression] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
@@ -110,23 +264,15 @@ final case class AnonymousSlotExpressionImpl(
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     @named("structured_pattern")
-    structuredPattern: Option[PatternExpressionImpl] = None,
+    structuredPattern: Option[PatternExpression] = None,
     todos: Seq[String] = Seq(),
-    unit: Option[UnitOfMeasureImpl] = None,
+    unit: Option[UnitOfMeasure] = None,
     @named("value_presence")
     valuePresence: Option[PresenceEnum] = None,
-) extends AnonymousSlotExpression {
-
-  override def infer(): AnonymousSlotExpressionImpl =
-    this
-}
-
-/** @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class AnonymousSlotExpression extends AnonymousExpression, SlotExpression {
+) extends AnonymousExpression,
+      SlotExpression {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -135,5 +281,6 @@ abstract class AnonymousSlotExpression extends AnonymousExpression, SlotExpressi
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): AnonymousSlotExpression
+  override def infer(): AnonymousSlotExpression =
+    this
 }

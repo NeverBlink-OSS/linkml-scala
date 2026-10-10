@@ -9,19 +9,19 @@ import org.scalatest.wordspec.AnyWordSpec
 class ClassDerivationSpec extends AnyWordSpec, Matchers {
   "ClassDerivation" should {
     "inline slots as attributes" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         slots = Seq(slot.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -38,24 +38,24 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "inherit slots as attributes" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -71,23 +71,23 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "inherit and override slot slots as attributes" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         identifier = true,
         description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             description = Some(PlainText("Child description")),
             range = Some(Reference("child")),
@@ -96,7 +96,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -113,17 +113,17 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "merge slots and attributes into attributes" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         description = Some(PlainText("Base description")),
         range = Some(Reference("base")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
         attributes = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot2",
             description = Some(PlainText("Other description")),
             range = Some(Reference("base")),
@@ -132,7 +132,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -151,12 +151,12 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "derive the class's URI" in {
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test"),
           classes = Map(base.compact),

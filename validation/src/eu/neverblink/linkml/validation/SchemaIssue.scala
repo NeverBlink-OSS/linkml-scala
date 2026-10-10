@@ -42,7 +42,7 @@ abstract class SchemaIssue {
     * @see
     *   From schema: https://linkml.neverblink.eu/model/validation-report
     */
-  def location: IssueLocationImpl
+  def location: IssueLocation
 
   /** Short, human-readable message describing the issue.
     *

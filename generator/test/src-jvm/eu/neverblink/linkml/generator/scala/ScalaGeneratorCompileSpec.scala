@@ -32,16 +32,21 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
   }
 
   "ScalaGenerator" should {
-    for entry <- ModelCatalogue.all do
-      s"generate compilable code for model '${entry.name}'" in {
+    for
+      entry <- ModelCatalogue.all
+      skipLeafInterfaces <- Seq(true, false)
+    do
+      val variant = if skipLeafInterfaces then "" else " with leaf interfaces"
+      s"generate compilable code for model '${entry.name}'$variant" in {
         processSkip(entry.name, "")
         val dir = os.temp.dir(prefix = "linkml-scala-src")
+        val options =
+          ScalaGenerator.Options("generated", skipLeafInterfaces = skipLeafInterfaces)
         val sources =
-          ScalaGenerator(using entry.model).generate(ScalaGenerator.Options("generated")).map {
-            (name, content) =>
-              val file = dir / name
-              os.write(file, content)
-              file
+          ScalaGenerator(using entry.model).generate(options).map { (name, content) =>
+            val file = dir / name
+            os.write(file, content)
+            file
           }.toSeq
         sources should not be empty
         val failure = compileScala(sources)

@@ -15,7 +15,7 @@ trait Annotatable {
     * @see
     *   From schema: https://w3id.org/linkml/annotations
     */
-  def annotations: Map[String, AnnotationImpl]
+  def annotations: Map[String, Annotation]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

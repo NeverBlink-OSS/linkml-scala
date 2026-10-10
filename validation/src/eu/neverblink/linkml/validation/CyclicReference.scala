@@ -5,24 +5,52 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[CyclicReference]] LinkML class
+/** Elements refer to each other in a loop through a relation that must not loop, such as a class
+  * that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof` ancestor,
+  * or a type that is a member of its own `union_of`.
   *
-  * @inheritdoc
+  * @param cycle
+  *   The names of the elements in the loop, starting and ending with the same one.
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param relation
+  *   The metaslots that form the loop, e.g. `is_a/mixins`, `typeof` or `union_of`.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class CyclicReferenceImpl(
+final case class CyclicReference(
     cycle: String,
     details: Option[String] = None,
     @named("issue_type")
     @serializeDefault
     issueType: String = "CyclicReference",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     relation: String,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Fatal,
-) extends CyclicReference {
+) extends SchemaFatal {
 
-  override def infer(): CyclicReferenceImpl =
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  override def infer(): CyclicReference =
     copy(
       details = inferOptional(
         "details",
@@ -34,57 +62,4 @@ final case class CyclicReferenceImpl(
       ),
       message = inferOptional("message", message, "Cyclic " + relation + " reference: " + cycle),
     )
-}
-
-/** Elements refer to each other in a loop through a relation that must not loop, such as a class
-  * that inherits from itself through `is_a` or `mixins`, a type that is its own `typeof` ancestor,
-  * or a type that is a member of its own `union_of`.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class CyclicReference extends SchemaFatal {
-
-  /** The names of the elements in the loop, starting and ending with the same one.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def cycle: String
-
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
-
-  /** The metaslots that form the loop, e.g. `is_a/mixins`, `typeof` or `union_of`.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def relation: String
-
-  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
-    * the values already present agree with what their expressions infer.
-    *
-    * @throws eu.neverblink.linkml.runtime.InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression references a
-    *   slot that has no value
-    */
-  def infer(): CyclicReference
 }

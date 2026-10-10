@@ -5,43 +5,35 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[SchemaIdClash]] LinkML class
-  *
-  * @inheritdoc
-  */
-final case class SchemaIdClashImpl(
-    details: Option[String] = None,
-    @named("issue_type")
-    @serializeDefault
-    issueType: String = "SchemaIdClash",
-    location: IssueLocationImpl,
-    message: Option[String] = None,
-    @serializeDefault
-    severity: IssueSeverity = IssueSeverity.Fatal,
-) extends SchemaIdClash {
-
-  override def infer(): SchemaIdClashImpl =
-    copy(
-      message = inferOptional("message", message, "Non-unique schema IDs detected"),
-    )
-}
-
 /** Two distinct schemas declare the same `id`.
+  *
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-abstract class SchemaIdClash extends SchemaFatal {
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
+final case class SchemaIdClash(
+    details: Option[String] = None,
+    @named("issue_type")
+    @serializeDefault
+    issueType: String = "SchemaIdClash",
+    location: IssueLocation,
+    message: Option[String] = None,
+    @serializeDefault
+    severity: IssueSeverity = IssueSeverity.Fatal,
+) extends SchemaFatal {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -50,5 +42,8 @@ abstract class SchemaIdClash extends SchemaFatal {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): SchemaIdClash
+  override def infer(): SchemaIdClash =
+    copy(
+      message = inferOptional("message", message, "Non-unique schema IDs detected"),
+    )
 }

@@ -5,20 +5,113 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[TypeMapping]] LinkML class
+/** Represents how a slot or type can be serialized to a format.
   *
-  * @inheritdoc
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param frameworkKey
+  *   The name of a format that can be used to serialize LinkML data. The string value should be a
+  *   code from the LinkML frameworks vocabulary, but this is not strictly enforced
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappedType
+  *   Type to coerce to
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param stringSerialization
+  *   Used on a slot that stores the string serialization of the containing object. The syntax
+  *   follows python formatted strings, with slot names enclosed in {}s. These are expanded using
+  *   the values of those slots. We call the slot with the serialization the s-slot, the slots used
+  *   in the {}s are v-slots. If both s-slots and v-slots are populated on an object then the value
+  *   of the s-slot should correspond to the expansion. Implementations of frameworks may choose to
+  *   use this property to either (a) PARSE: implement automated normalizations by parsing
+  *   denormalized strings into complex objects (b) GENERATE: implement automated to_string labeling
+  *   of complex objects For example, a Measurement class may have 3 fields: unit, value, and
+  *   string_value. The string_value slot may have a string_serialization of {value}{unit} such that
+  *   if unit=cm and value=2, the value of string_value shouldd be 2cm
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class TypeMappingImpl(
+final case class TypeMapping(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -37,7 +130,7 @@ final case class TypeMappingImpl(
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @id
@@ -71,53 +164,11 @@ final case class TypeMappingImpl(
     @named("string_serialization")
     stringSerialization: Option[String] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
-) extends TypeMapping {
-
-  override def infer(): TypeMappingImpl =
-    this
-}
-
-/** Represents how a slot or type can be serialized to a format.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
-
-  /** The name of a format that can be used to serialize LinkML data. The string value should be a
-    * code from the LinkML frameworks vocabulary, but this is not strictly enforced
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def frameworkKey: String
-
-  /** Type to coerce to
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def mappedType: Option[Reference[TypeDefinition]]
-
-  /** Used on a slot that stores the string serialization of the containing object. The syntax
-    * follows python formatted strings, with slot names enclosed in {}s. These are expanded using
-    * the values of those slots. We call the slot with the serialization the s-slot, the slots used
-    * in the {}s are v-slots. If both s-slots and v-slots are populated on an object then the value
-    * of the s-slot should correspond to the expansion. Implementations of frameworks may choose to
-    * use this property to either (a) PARSE: implement automated normalizations by parsing
-    * denormalized strings into complex objects (b) GENERATE: implement automated to_string labeling
-    * of complex objects For example, a Measurement class may have 3 fields: unit, value, and
-    * string_value. The string_value slot may have a string_serialization of {value}{unit} such that
-    * if unit=cm and value=2, the value of string_value shouldd be 2cm
-    *
-    * @see
-    *   https://github.com/linkml/issues/128
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def stringSerialization: Option[String]
+) extends Extensible,
+      Annotatable,
+      CommonMetadata {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -126,5 +177,6 @@ abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): TypeMapping
+  override def infer(): TypeMapping =
+    this
 }

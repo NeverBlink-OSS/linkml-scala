@@ -5,38 +5,18 @@ package eu.neverblink.linkml.generator.owl.config
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[DatatypeMapping]] LinkML class
-  *
-  * @inheritdoc
-  */
-final case class DatatypeMappingImpl(
-    @id
-    datatype: String,
-    @value
-    @named("type_name")
-    typeName: String,
-) extends DatatypeMapping {
-
-  override def infer(): DatatypeMappingImpl =
-    this
-}
-
 /** The LinkML type for a datatype IRI.
   *
   * @see
   *   From schema: https://linkml.neverblink.eu/model/owl-import-config
   */
-abstract class DatatypeMapping {
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
-    */
-  def datatype: String
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/owl-import-config
-    */
-  def typeName: String
+final case class DatatypeMapping(
+    @id
+    datatype: String,
+    @value
+    @named("type_name")
+    typeName: String,
+) {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -45,5 +25,6 @@ abstract class DatatypeMapping {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): DatatypeMapping
+  def infer(): DatatypeMapping =
+    this
 }

@@ -5,11 +5,148 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[TypeDefinition]] LinkML class
+/** An element that whose instances are atomic scalar values that can be mapped to primitive types
   *
-  * @inheritdoc
+  * @param name
+  *   The unique name of the element within the context of the schema. Name is combined with the
+  *   default prefix to form the globally unique subject of the target class.
+  * @param typeUri
+  *   The uri that defines the possible values for the type definition
+  * @param title
+  *   A concise human-readable display label for the element. The title should mirror the name, and
+  *   should use ordinary textual punctuation.
+  * @param description
+  *   A textual description of the element's purpose and use
+  * @param alias
+  *   The alternative name to be used in serializations of an instance instead of the canonical
+  *   name.
+  * @param typeof
+  *   A parent type from which type properties are inherited
+  * @param base
+  *   Python base type in the LinkML runtime that implements this type definition
+  * @param repr
+  *   The name of the python object that implements this type definition
+  * @param pattern
+  *   The string value of the slot must conform to this regular expression expressed in the string
+  * @param rank
+  *   The relative order in which the element occurs, lower values are given precedence
+  * @param anyOf
+  *   Holds if at least one of the expressions hold
+  * @param exactlyOneOf
+  *   Holds if only one of the expressions hold
+  * @param noneOf
+  *   Holds if none of the expressions hold
+  * @param allOf
+  *   Holds if all of the expressions hold
+  * @param aliases
+  *   Alternate names/labels for the element. These do not alter the semantics of the schema, but
+  *   may be useful to support search and alignment.
+  * @param altDescriptions
+  *   A sourced alternative description for an element
+  * @param annotations
+  *   A collection of tag/text tuples with the semantics of OWL Annotation
+  * @param broadMappings
+  *   A list of terms from different schemas or terminology systems that have broader meaning.
+  * @param categories
+  *   Controlled terms used to categorize an element.
+  * @param closeMappings
+  *   A list of terms from different schemas or terminology systems that have close meaning.
+  * @param comments
+  *   Notes and comments about an element intended primarily for external consumption
+  * @param conformsTo
+  *   An established standard to which the element conforms.
+  * @param contributors
+  *   Agent that contributed to the element
+  * @param createdBy
+  *   Agent that created the element
+  * @param createdOn
+  *   Time at which the element was created
+  * @param definitionUri
+  *   The native URI of the element. This is always within the namespace of the containing schema.
+  *   Contrast with the assigned URI, via class_uri or slot_uri
+  * @param deprecated
+  *   Description of why and when this element will no longer be used
+  * @param deprecatedElementHasExactReplacement
+  *   When an element is deprecated, it can be automatically replaced by this uri or curie
+  * @param deprecatedElementHasPossibleReplacement
+  *   When an element is deprecated, it can be potentially replaced by this uri or curie
+  * @param equalsNumber
+  *   The slot must have range of a number and the value of the slot must equal the specified value
+  * @param equalsString
+  *   The slot must have range string and the value of the slot must equal the specified value
+  * @param equalsStringIn
+  *   The slot must have range string and the value of the slot must equal one of the specified
+  *   values
+  * @param exactMappings
+  *   A list of terms from different schemas or terminology systems that have identical meaning.
+  * @param examples
+  *   Example usages of an element
+  * @param extensions
+  *   A tag/text tuple attached to an arbitrary element
+  * @param fromSchema
+  *   Id of the schema that defined the element
+  * @param idPrefixes
+  *   An allowed list of prefixes for which identifiers must conform. The identifier of this class
+  *   or slot must begin with the URIs referenced by this prefix
+  * @param idPrefixesAreClosed
+  *   If true, then the id_prefixes slot is treated as being closed, and any use of an id that does
+  *   not have this prefix is considered a violation.
+  * @param implements
+  *   An element in another schema which this element conforms to. The referenced element is not
+  *   imported into the schema for the implementing element. However, the referenced schema may be
+  *   used to check conformance of the implementing element.
+  * @param implicitPrefix
+  *   Causes the slot value to be interpreted as a uriorcurie after prefixing with this string
+  * @param importedFrom
+  *   The imports entry that this element was derived from. Empty means primary source
+  * @param inLanguage
+  *   The primary language used in the sources
+  * @param inSubset
+  *   Used to indicate membership of a term in a defined subset of terms used for a particular
+  *   domain or application.
+  * @param instantiates
+  *   An element in another schema which this element instantiates.
+  * @param keywords
+  *   Keywords or tags used to describe the element
+  * @param lastUpdatedOn
+  *   Time at which the element was last updated
+  * @param mappings
+  *   A list of terms from different schemas or terminology systems that have comparable meaning.
+  *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
+  *   otherwise semantically related but not equivalent from a strict ontological perspective.
+  * @param maximumValue
+  *   For ordinal ranges, the value must be equal to or lower than this
+  * @param minimumValue
+  *   For ordinal ranges, the value must be equal to or higher than this
+  * @param modifiedBy
+  *   Agent that modified the element
+  * @param narrowMappings
+  *   A list of terms from different schemas or terminology systems that have narrower meaning.
+  * @param notes
+  *   Editorial notes about an element intended primarily for internal consumption
+  * @param relatedMappings
+  *   A list of terms from different schemas or terminology systems that have related meaning.
+  * @param seeAlso
+  *   A list of related entities or URLs that may be of relevance
+  * @param source
+  *   A related resource from which the element is derived.
+  * @param status
+  *   Status of the element
+  * @param structuredAliases
+  *   A list of structured_alias objects, used to provide aliases in conjunction with additional
+  *   metadata.
+  * @param structuredPattern
+  *   The string value of the slot must conform to the regular expression in the pattern expression
+  * @param todos
+  *   Outstanding issues that needs resolution
+  * @param unionOf
+  *   Indicates that the domain element consists exactly of the members of the element in the range.
+  * @param unit
+  *   An encoding of a unit
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class TypeDefinitionImpl(
+final case class TypeDefinition(
     @id
     name: String,
     @named("uri")
@@ -23,19 +160,19 @@ final case class TypeDefinitionImpl(
     pattern: Option[String] = None,
     rank: Option[Int] = None,
     @named("any_of")
-    anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    anyOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    exactlyOneOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("none_of")
-    noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    noneOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("all_of")
-    allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    allOf: Seq[AnonymousTypeExpression] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
-    altDescriptions: Map[String, AltDescriptionImpl] = Map(),
+    altDescriptions: Map[String, AltDescription] = Map(),
     @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
+    annotations: Map[String, Annotation] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -64,7 +201,7 @@ final case class TypeDefinitionImpl(
     equalsStringIn: Seq[String] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
+    examples: Seq[Example] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
@@ -88,7 +225,7 @@ final case class TypeDefinitionImpl(
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("local_names")
     @simpleDict
-    localNames: Map[String, LocalNameImpl] = Map(),
+    localNames: Map[String, LocalName] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
     @named("maximum_value")
     maximumValue: Option[LinkmlAny] = None,
@@ -106,95 +243,15 @@ final case class TypeDefinitionImpl(
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    structuredAliases: Seq[StructuredAlias] = Seq(),
     @named("structured_pattern")
-    structuredPattern: Option[PatternExpressionImpl] = None,
+    structuredPattern: Option[PatternExpression] = None,
     todos: Seq[String] = Seq(),
     @named("union_of")
     unionOf: Seq[Reference[TypeDefinition]] = Seq(),
-    unit: Option[UnitOfMeasureImpl] = None,
-) extends TypeDefinition {
-
-  override def infer(): TypeDefinitionImpl =
-    this
-}
-
-/** An element that whose instances are atomic scalar values that can be mapped to primitive types
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class TypeDefinition extends Element, TypeExpression {
-
-  /** The uri that defines the possible values for the type definition
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Uri is typically drawn from the set of URI's defined in OWL
-    *   (https://www.w3.org/TR/2012/REC-owl2-syntax-20121211/#Datatype_Maps)
-    * @note
-    *   Every root type must have a type uri
-    */
-  def typeUri: Option[UriOrCurie]
-
-  /** The alternative name to be used in serializations of an instance instead of the canonical
-    * name.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   An example of alias is used within this metamodel, slot_definitions is aliases as slots
-    * @note
-    *   Not to be confused with aliases, which indicates a set of terms to be used for search
-    *   purposes.
-    * @note
-    *   This should be used for describing the structure of already existing instances.
-    * @note
-    *   For human-readable labels, prefer 'title' instead.
-    */
-  def alias: Option[String]
-
-  /** A parent type from which type properties are inherited
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   The target type definition of the typeof slot is referred to as the "parent type"
-    * @note
-    *   The type definition containing the typeof slot is referred to as the "child type"
-    * @note
-    *   Type definitions without a typeof slot are referred to as a "root type"
-    */
-  def typeof: Option[Reference[TypeDefinition]]
-
-  /** Python base type in the LinkML runtime that implements this type definition
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Every root type must have a base
-    * @note
-    *   The base is inherited by child types but may be overridden. Base compatibility is not
-    *   checked.
-    */
-  def base: Option[String]
-
-  /** The name of the python object that implements this type definition
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def repr: Option[String]
-
-  /** Indicates that the domain element consists exactly of the members of the element in the range.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   This only applies in the OWL generation
-    */
-  def unionOf: Seq[Reference[TypeDefinition]]
+    unit: Option[UnitOfMeasure] = None,
+) extends Element,
+      TypeExpression {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -203,5 +260,6 @@ abstract class TypeDefinition extends Element, TypeExpression {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): TypeDefinition
+  override def infer(): TypeDefinition =
+    this
 }

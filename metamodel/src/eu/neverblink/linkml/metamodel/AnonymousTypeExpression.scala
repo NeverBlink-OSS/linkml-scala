@@ -5,20 +5,48 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[AnonymousTypeExpression]] LinkML class
+/** A type expression that is not a top-level named type definition. Used for nesting.
   *
-  * @inheritdoc
+  * @param pattern
+  *   The string value of the slot must conform to this regular expression expressed in the string
+  * @param anyOf
+  *   Holds if at least one of the expressions hold
+  * @param exactlyOneOf
+  *   Holds if only one of the expressions hold
+  * @param noneOf
+  *   Holds if none of the expressions hold
+  * @param allOf
+  *   Holds if all of the expressions hold
+  * @param equalsNumber
+  *   The slot must have range of a number and the value of the slot must equal the specified value
+  * @param equalsString
+  *   The slot must have range string and the value of the slot must equal the specified value
+  * @param equalsStringIn
+  *   The slot must have range string and the value of the slot must equal one of the specified
+  *   values
+  * @param implicitPrefix
+  *   Causes the slot value to be interpreted as a uriorcurie after prefixing with this string
+  * @param maximumValue
+  *   For ordinal ranges, the value must be equal to or lower than this
+  * @param minimumValue
+  *   For ordinal ranges, the value must be equal to or higher than this
+  * @param structuredPattern
+  *   The string value of the slot must conform to the regular expression in the pattern expression
+  * @param unit
+  *   An encoding of a unit
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class AnonymousTypeExpressionImpl(
+final case class AnonymousTypeExpression(
     pattern: Option[String] = None,
     @named("any_of")
-    anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    anyOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    exactlyOneOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("none_of")
-    noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    noneOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("all_of")
-    allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    allOf: Seq[AnonymousTypeExpression] = Seq(),
     @named("equals_number")
     equalsNumber: Option[Int] = None,
     @named("equals_string")
@@ -32,20 +60,9 @@ final case class AnonymousTypeExpressionImpl(
     @named("minimum_value")
     minimumValue: Option[LinkmlAny] = None,
     @named("structured_pattern")
-    structuredPattern: Option[PatternExpressionImpl] = None,
-    unit: Option[UnitOfMeasureImpl] = None,
-) extends AnonymousTypeExpression {
-
-  override def infer(): AnonymousTypeExpressionImpl =
-    this
-}
-
-/** A type expression that is not a top-level named type definition. Used for nesting.
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class AnonymousTypeExpression extends TypeExpression {
+    structuredPattern: Option[PatternExpression] = None,
+    unit: Option[UnitOfMeasure] = None,
+) extends TypeExpression {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -54,5 +71,6 @@ abstract class AnonymousTypeExpression extends TypeExpression {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): AnonymousTypeExpression
+  override def infer(): AnonymousTypeExpression =
+    this
 }
