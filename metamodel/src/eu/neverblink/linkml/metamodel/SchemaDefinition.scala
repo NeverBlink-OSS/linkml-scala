@@ -14,19 +14,8 @@ final case class SchemaDefinitionImpl(
     id: Uri,
     @id
     name: NcName,
-    @compactDict
-    classes: Map[String, ClassDefinitionImpl] = Map(),
     title: Option[LocalizedText] = None,
-    @named("slots")
-    @compactDict
-    slotDefinitions: Map[String, SlotDefinitionImpl] = Map(),
     description: Option[LocalizedText] = None,
-    @compactDict
-    enums: Map[String, EnumDefinitionImpl] = Map(),
-    @compactDict
-    types: Map[String, TypeDefinitionImpl] = Map(),
-    @compactDict
-    subsets: Map[String, SubsetDefinitionImpl] = Map(),
     @simpleDict
     prefixes: Map[String, PrefixImpl] = Map(),
     @named("default_prefix")
@@ -42,9 +31,6 @@ final case class SchemaDefinitionImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
-    bindings: Seq[EnumBindingImpl] = Seq(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -58,8 +44,6 @@ final case class SchemaDefinitionImpl(
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
     createdOn: Option[LinkmlDateTime] = None,
-    @named("default_curi_maps")
-    defaultCuriMaps: Seq[String] = Seq(),
     @named("definition_uri")
     definitionUri: Option[UriOrCurie] = None,
     deprecated: Option[LocalizedText] = None,
@@ -67,28 +51,18 @@ final case class SchemaDefinitionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("emit_prefixes")
-    emitPrefixes: Seq[NcName] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("generation_date")
     generationDate: Option[LinkmlDateTime] = None,
-    @named("id_prefixes")
-    idPrefixes: Seq[NcName] = Seq(),
-    @named("id_prefixes_are_closed")
-    idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
@@ -97,8 +71,6 @@ final case class SchemaDefinitionImpl(
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
-    @named("metamodel_version")
-    metamodelVersion: Option[String] = None,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
@@ -108,8 +80,6 @@ final case class SchemaDefinitionImpl(
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
-    @named("slot_names_unique")
-    slotNamesUnique: Boolean = false,
     source: Option[UriOrCurie] = None,
     @named("source_file")
     sourceFile: Option[String] = None,
@@ -122,6 +92,36 @@ final case class SchemaDefinitionImpl(
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
     version: Option[String] = None,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    bindings: Seq[EnumBindingImpl] = Seq(),
+    @named("default_curi_maps")
+    defaultCuriMaps: Seq[String] = Seq(),
+    @named("emit_prefixes")
+    emitPrefixes: Seq[NcName] = Seq(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("id_prefixes")
+    idPrefixes: Seq[NcName] = Seq(),
+    @named("id_prefixes_are_closed")
+    idPrefixesAreClosed: Boolean = false,
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("metamodel_version")
+    metamodelVersion: Option[String] = None,
+    @named("slot_names_unique")
+    slotNamesUnique: Boolean = false,
+    @compactDict
+    classes: Map[String, ClassDefinitionImpl] = Map(),
+    @compactDict
+    enums: Map[String, EnumDefinitionImpl] = Map(),
+    @compactDict
+    types: Map[String, TypeDefinitionImpl] = Map(),
+    @named("slots")
+    @compactDict
+    slotDefinitions: Map[String, SlotDefinitionImpl] = Map(),
+    @compactDict
+    subsets: Map[String, SubsetDefinitionImpl] = Map(),
 ) extends SchemaDefinition {
 
   override def infer(): SchemaDefinitionImpl =
@@ -159,44 +159,6 @@ abstract class SchemaDefinition extends Element {
     *   From schema: https://w3id.org/linkml/meta
     */
   def name: NcName
-
-  /** An index to the collection of all class definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def classes: Map[String, ClassDefinitionImpl]
-
-  /** An index to the collection of all slot definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Note the formal name of this element is slot_definitions, but it has alias slots, which is
-    *   the canonical form used in yaml/json serializes of schemas.
-    */
-  def slotDefinitions: Map[String, SlotDefinitionImpl]
-
-  /** An index to the collection of all enum definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def enums: Map[String, EnumDefinitionImpl]
-
-  /** An index to the collection of all type definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def types: Map[String, TypeDefinitionImpl]
-
-  /** An index to the collection of all subset definitions in the schema
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def subsets: Map[String, SubsetDefinitionImpl]
 
   /** A collection of prefix expansions that specify how CURIEs can be expanded to URIs
     *
@@ -244,6 +206,41 @@ abstract class SchemaDefinition extends Element {
     */
   def license: Option[String]
 
+  /** Date and time that the schema was loaded/generated
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def generationDate: Option[LinkmlDateTime]
+
+  /** Name, uri or description of the source of the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def sourceFile: Option[String]
+
+  /** Modification date of the source of the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def sourceFileDate: Option[LinkmlDateTime]
+
+  /** Size in bytes of the source of the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def sourceFileSize: Option[Int]
+
+  /** Particular version of schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def version: Option[String]
+
   /** A collection of enum bindings that specify how a slot can be bound to a permissible value from
     * an enumeration. LinkML provides enums to allow string values to be restricted to one of a set
     * of permissible values (specified statically or dynamically). Enum bindings allow enums to be
@@ -274,13 +271,6 @@ abstract class SchemaDefinition extends Element {
     */
   def emitPrefixes: Seq[NcName]
 
-  /** Date and time that the schema was loaded/generated
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def generationDate: Option[LinkmlDateTime]
-
   /** Version of the metamodel used to load the schema
     *
     * @see
@@ -295,33 +285,43 @@ abstract class SchemaDefinition extends Element {
     */
   def slotNamesUnique: Boolean
 
-  /** Name, uri or description of the source of the schema
+  /** An index to the collection of all class definitions in the schema
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def sourceFile: Option[String]
+  def classes: Map[String, ClassDefinitionImpl]
 
-  /** Modification date of the source of the schema
+  /** An index to the collection of all enum definitions in the schema
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def sourceFileDate: Option[LinkmlDateTime]
+  def enums: Map[String, EnumDefinitionImpl]
 
-  /** Size in bytes of the source of the schema
+  /** An index to the collection of all type definitions in the schema
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def sourceFileSize: Option[Int]
+  def types: Map[String, TypeDefinitionImpl]
 
-  /** Particular version of schema
+  /** An index to the collection of all slot definitions in the schema
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   Note the formal name of this element is slot_definitions, but it has alias slots, which is
+    *   the canonical form used in yaml/json serializes of schemas.
+    */
+  def slotDefinitions: Map[String, SlotDefinitionImpl]
+
+  /** An index to the collection of all subset definitions in the schema
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def version: Option[String]
+  def subsets: Map[String, SubsetDefinitionImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

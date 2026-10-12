@@ -53,6 +53,27 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     */
   def definitionUri: Option[UriOrCurie]
 
+  /** An element in another schema which this element conforms to. The referenced element is not
+    * imported into the schema for the implementing element. However, the referenced schema may be
+    * used to check conformance of the implementing element.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def implements: Seq[UriOrCurie]
+
+  /** An element in another schema which this element instantiates.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def instantiates: Seq[UriOrCurie]
+
+  /** @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def localNames: Map[String, LocalNameImpl]
+
   /** An allowed list of prefixes for which identifiers must conform. The identifier of this class
     * or slot must begin with the URIs referenced by this prefix
     *
@@ -80,27 +101,6 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *   From schema: https://w3id.org/linkml/meta
     */
   def idPrefixesAreClosed: Boolean
-
-  /** An element in another schema which this element conforms to. The referenced element is not
-    * imported into the schema for the implementing element. However, the referenced schema may be
-    * used to check conformance of the implementing element.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def implements: Seq[UriOrCurie]
-
-  /** An element in another schema which this element instantiates.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def instantiates: Seq[UriOrCurie]
-
-  /** @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def localNames: Map[String, LocalNameImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

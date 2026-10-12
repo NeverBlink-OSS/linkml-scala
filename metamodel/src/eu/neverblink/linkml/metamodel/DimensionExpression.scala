@@ -18,8 +18,6 @@ final case class DimensionExpressionImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -36,29 +34,19 @@ final case class DimensionExpressionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("exact_cardinality")
-    exactCardinality: Option[Int] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
-    @named("maximum_cardinality")
-    maximumCardinality: Option[Int] = None,
-    @named("minimum_cardinality")
-    minimumCardinality: Option[Int] = None,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
@@ -73,6 +61,18 @@ final case class DimensionExpressionImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @named("exact_cardinality")
+    exactCardinality: Option[Int] = None,
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("maximum_cardinality")
+    maximumCardinality: Option[Int] = None,
+    @named("minimum_cardinality")
+    minimumCardinality: Option[Int] = None,
 ) extends DimensionExpression {
 
   override def infer(): DimensionExpressionImpl =

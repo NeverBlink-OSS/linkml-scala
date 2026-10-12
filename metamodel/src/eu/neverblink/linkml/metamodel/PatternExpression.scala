@@ -17,8 +17,6 @@ final case class PatternExpressionImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -38,17 +36,12 @@ final case class PatternExpressionImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    interpolated: Boolean = false,
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
@@ -58,8 +51,6 @@ final case class PatternExpressionImpl(
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[LocalizedText] = Seq(),
-    @named("partial_match")
-    partialMatch: Boolean = false,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
@@ -68,8 +59,17 @@ final case class PatternExpressionImpl(
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
-    syntax: Option[String] = None,
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    interpolated: Boolean = false,
+    @named("partial_match")
+    partialMatch: Boolean = false,
+    syntax: Option[String] = None,
 ) extends PatternExpression {
 
   override def infer(): PatternExpressionImpl =

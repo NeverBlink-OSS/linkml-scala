@@ -13,16 +13,10 @@ final case class ClassRuleImpl(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
-    preconditions: Option[AnonymousClassExpressionImpl] = None,
-    postconditions: Option[AnonymousClassExpressionImpl] = None,
-    elseconditions: Option[AnonymousClassExpressionImpl] = None,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
-    bidirectional: Boolean = false,
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -34,7 +28,6 @@ final case class ClassRuleImpl(
     createdBy: Option[UriOrCurie] = None,
     @named("created_on")
     createdOn: Option[LinkmlDateTime] = None,
-    deactivated: Boolean = false,
     deprecated: Option[LocalizedText] = None,
     @named("deprecated_element_has_exact_replacement")
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
@@ -43,16 +36,12 @@ final case class ClassRuleImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
@@ -62,8 +51,6 @@ final case class ClassRuleImpl(
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[LocalizedText] = Seq(),
-    @named("open_world")
-    openWorld: Boolean = false,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
@@ -73,6 +60,19 @@ final case class ClassRuleImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    preconditions: Option[AnonymousClassExpressionImpl] = None,
+    postconditions: Option[AnonymousClassExpressionImpl] = None,
+    elseconditions: Option[AnonymousClassExpressionImpl] = None,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    bidirectional: Boolean = false,
+    deactivated: Boolean = false,
+    @named("open_world")
+    openWorld: Boolean = false,
 ) extends ClassRule {
 
   override def infer(): ClassRuleImpl =

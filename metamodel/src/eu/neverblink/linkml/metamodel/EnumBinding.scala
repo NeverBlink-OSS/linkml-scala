@@ -17,10 +17,6 @@ final case class EnumBindingImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
-    @named("binds_value_of")
-    bindsValueOf: Option[String] = None,
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -40,16 +36,12 @@ final case class EnumBindingImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
@@ -59,11 +51,6 @@ final case class EnumBindingImpl(
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[LocalizedText] = Seq(),
-    @named("obligation_level")
-    obligationLevel: Option[ObligationLevelEnum] = None,
-    @named("pv_formula")
-    pvFormula: Option[PvFormulaOptions] = None,
-    range: Option[Reference[EnumDefinition]] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
@@ -73,6 +60,19 @@ final case class EnumBindingImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    range: Option[Reference[EnumDefinition]] = None,
+    @named("pv_formula")
+    pvFormula: Option[PvFormulaOptions] = None,
+    @named("binds_value_of")
+    bindsValueOf: Option[String] = None,
+    @named("obligation_level")
+    obligationLevel: Option[ObligationLevelEnum] = None,
 ) extends EnumBinding {
 
   override def infer(): EnumBindingImpl =
@@ -85,31 +85,6 @@ final case class EnumBindingImpl(
   *   From schema: https://w3id.org/linkml/meta
   */
 abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
-
-  /** A path to a slot that is being bound to a permissible value from an enumeration.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def bindsValueOf: Option[String]
-
-  /** The level of obligation or recommendation strength for a metadata element
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def obligationLevel: Option[ObligationLevelEnum]
-
-  /** Defines the specific formula to be used to generate the permissible values.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   You cannot have BOTH the permissible_values and permissible_value_formula tag
-    * @note
-    *   Code_set must be supplied for this to be valid
-    */
-  def pvFormula: Option[PvFormulaOptions]
 
   /** Defines the type of the object of the slot. Given the following slot definition S1: domain: C1
     * range: C2 the declaration X: S1: Y
@@ -126,6 +101,31 @@ abstract class EnumBinding extends Extensible, Annotatable, CommonMetadata {
     *   To use a URI or CURIE as the range, create a class with the URI or curie as the class_uri
     */
   def range: Option[Reference[EnumDefinition]]
+
+  /** Defines the specific formula to be used to generate the permissible values.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   You cannot have BOTH the permissible_values and permissible_value_formula tag
+    * @note
+    *   Code_set must be supplied for this to be valid
+    */
+  def pvFormula: Option[PvFormulaOptions]
+
+  /** A path to a slot that is being bound to a permissible value from an enumeration.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def bindsValueOf: Option[String]
+
+  /** The level of obligation or recommendation strength for a metadata element
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def obligationLevel: Option[ObligationLevelEnum]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

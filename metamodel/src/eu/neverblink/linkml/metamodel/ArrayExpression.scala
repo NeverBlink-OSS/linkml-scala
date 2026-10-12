@@ -17,8 +17,6 @@ final case class ArrayExpressionImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -35,30 +33,19 @@ final case class ArrayExpressionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    dimensions: Seq[DimensionExpressionImpl] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
-    @named("exact_number_dimensions")
-    exactNumberDimensions: Option[Int] = None,
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     mappings: Seq[UriOrCurie] = Seq(),
-    @named("maximum_number_dimensions")
-    maximumNumberDimensions: Option[LinkmlAny] = None,
-    @named("minimum_number_dimensions")
-    minimumNumberDimensions: Option[Int] = None,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
@@ -73,6 +60,19 @@ final case class ArrayExpressionImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    dimensions: Seq[DimensionExpressionImpl] = Seq(),
+    @named("exact_number_dimensions")
+    exactNumberDimensions: Option[Int] = None,
+    @named("maximum_number_dimensions")
+    maximumNumberDimensions: Option[LinkmlAny] = None,
+    @named("minimum_number_dimensions")
+    minimumNumberDimensions: Option[Int] = None,
 ) extends ArrayExpression {
 
   override def infer(): ArrayExpressionImpl =

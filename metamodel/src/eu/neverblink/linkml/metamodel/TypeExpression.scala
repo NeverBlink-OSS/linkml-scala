@@ -19,41 +19,12 @@ trait TypeExpression extends Expression {
     */
   def pattern: Option[String]
 
-  /** Holds if at least one of the expressions hold
+  /** An encoding of a unit
     *
     * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
+    *   From schema: https://w3id.org/linkml/units
     */
-  def anyOf: Seq[AnonymousTypeExpressionImpl]
-
-  /** Holds if only one of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def exactlyOneOf: Seq[AnonymousTypeExpressionImpl]
-
-  /** Holds if none of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def noneOf: Seq[AnonymousTypeExpressionImpl]
-
-  /** Holds if all of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def allOf: Seq[AnonymousTypeExpressionImpl]
+  def unit: Option[UnitOfMeasureImpl]
 
   /** The slot must have range of a number and the value of the slot must equal the specified value
     *
@@ -117,12 +88,41 @@ trait TypeExpression extends Expression {
     */
   def structuredPattern: Option[PatternExpressionImpl]
 
-  /** An encoding of a unit
+  /** Holds if at least one of the expressions hold
     *
     * @see
-    *   From schema: https://w3id.org/linkml/units
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
     */
-  def unit: Option[UnitOfMeasureImpl]
+  def anyOf: Seq[AnonymousTypeExpressionImpl]
+
+  /** Holds if only one of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def exactlyOneOf: Seq[AnonymousTypeExpressionImpl]
+
+  /** Holds if none of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def noneOf: Seq[AnonymousTypeExpressionImpl]
+
+  /** Holds if all of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def allOf: Seq[AnonymousTypeExpressionImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

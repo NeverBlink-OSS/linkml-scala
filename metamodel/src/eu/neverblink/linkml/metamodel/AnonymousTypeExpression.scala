@@ -11,14 +11,7 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class AnonymousTypeExpressionImpl(
     pattern: Option[String] = None,
-    @named("any_of")
-    anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    unit: Option[UnitOfMeasureImpl] = None,
     @named("equals_number")
     equalsNumber: Option[Int] = None,
     @named("equals_string")
@@ -33,7 +26,14 @@ final case class AnonymousTypeExpressionImpl(
     minimumValue: Option[LinkmlAny] = None,
     @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
-    unit: Option[UnitOfMeasureImpl] = None,
+    @named("any_of")
+    anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
 ) extends AnonymousTypeExpression {
 
   override def infer(): AnonymousTypeExpressionImpl =

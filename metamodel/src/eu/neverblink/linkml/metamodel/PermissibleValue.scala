@@ -24,8 +24,6 @@ final case class PermissibleValueImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -45,8 +43,6 @@ final case class PermissibleValueImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     implements: Seq[UriOrCurie] = Seq(),
@@ -54,8 +50,6 @@ final case class PermissibleValueImpl(
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
@@ -76,6 +70,12 @@ final case class PermissibleValueImpl(
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
     unit: Option[UnitOfMeasureImpl] = None,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
 ) extends PermissibleValue {
 
   override def infer(): PermissibleValueImpl =

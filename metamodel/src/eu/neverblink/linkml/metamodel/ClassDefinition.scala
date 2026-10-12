@@ -20,40 +20,18 @@ final case class ClassDefinitionImpl(
     @named("is_a")
     isA: Option[Reference[ClassDefinition]] = None,
     mixins: Seq[Reference[ClassDefinition]] = Seq(),
-    slots: Seq[Reference[SlotDefinition]] = Seq(),
-    @named("slot_usage")
-    @compactDict
-    slotUsage: Map[String, SlotDefinitionImpl] = Map(),
-    @compactDict
-    attributes: Map[String, SlotDefinitionImpl] = Map(),
     @named("tree_root")
     treeRoot: Boolean = false,
     rank: Option[Int] = None,
-    @named("any_of")
-    anyOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("abstract")
-    `abstract`: Boolean = false,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("apply_to")
     applyTo: Seq[Reference[ClassDefinition]] = Seq(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
-    @named("children_are_mutually_disjoint")
-    childrenAreMutuallyDisjoint: Boolean = false,
-    @named("classification_rules")
-    classificationRules: Seq[AnonymousClassExpressionImpl] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
     comments: Seq[LocalizedText] = Seq(),
@@ -73,28 +51,16 @@ final case class ClassDefinitionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("disjoint_with")
-    disjointWith: Seq[Reference[ClassDefinition]] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
-    @named("extra_slots")
-    extraSlots: Option[ExtraSlotsExpressionImpl] = None,
     @named("from_schema")
     fromSchema: Option[Uri] = None,
-    @named("id_prefixes")
-    idPrefixes: Seq[NcName] = Seq(),
-    @named("id_prefixes_are_closed")
-    idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
@@ -103,7 +69,6 @@ final case class ClassDefinitionImpl(
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
-    mixin: Boolean = false,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
@@ -111,25 +76,44 @@ final case class ClassDefinitionImpl(
     notes: Seq[LocalizedText] = Seq(),
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
+    @named("see_also")
+    seeAlso: Seq[UriOrCurie] = Seq(),
+    source: Option[UriOrCurie] = None,
+    status: Option[UriOrCurie] = None,
+    @named("structured_aliases")
+    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    todos: Seq[String] = Seq(),
+    @named("abstract")
+    `abstract`: Boolean = false,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @named("children_are_mutually_disjoint")
+    childrenAreMutuallyDisjoint: Boolean = false,
+    @named("classification_rules")
+    classificationRules: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("disjoint_with")
+    disjointWith: Seq[Reference[ClassDefinition]] = Seq(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("extra_slots")
+    extraSlots: Option[ExtraSlotsExpressionImpl] = None,
+    @named("id_prefixes")
+    idPrefixes: Seq[NcName] = Seq(),
+    @named("id_prefixes_are_closed")
+    idPrefixesAreClosed: Boolean = false,
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    mixin: Boolean = false,
     @named("represents_relationship")
     representsRelationship: Boolean = false,
     rules: Seq[ClassRuleImpl] = Seq(),
-    @named("see_also")
-    seeAlso: Seq[UriOrCurie] = Seq(),
     @named("slot_conditions")
     @compactDict
     slotConditions: Map[String, SlotDefinitionImpl] = Map(),
     @named("slot_names_unique")
     slotNamesUnique: Boolean = false,
-    source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
     @named("string_serialization")
     stringSerialization: Option[String] = None,
-    @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
-    @named("subclass_of")
-    subclassOf: Option[UriOrCurie] = None,
-    todos: Seq[String] = Seq(),
     @named("union_of")
     unionOf: Seq[Reference[ClassDefinition]] = Seq(),
     @named("unique_keys")
@@ -137,6 +121,22 @@ final case class ClassDefinitionImpl(
     uniqueKeys: Map[String, UniqueKeyImpl] = Map(),
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
+    slots: Seq[Reference[SlotDefinition]] = Seq(),
+    @named("slot_usage")
+    @compactDict
+    slotUsage: Map[String, SlotDefinitionImpl] = Map(),
+    @compactDict
+    attributes: Map[String, SlotDefinitionImpl] = Map(),
+    @named("any_of")
+    anyOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("subclass_of")
+    subclassOf: Option[UriOrCurie] = None,
 ) extends ClassDefinition {
 
   override def infer(): ClassDefinitionImpl =
@@ -207,43 +207,6 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     */
   def mixins: Seq[Reference[ClassDefinition]]
 
-  /** Collection of slot names that are applicable to a class
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   The list of applicable slots is inherited from parent classes
-    * @note
-    *   This defines the set of slots that are allowed to be used for a given class. The final list
-    *   of slots for a class is the combination of the parent (is a) slots, mixins slots, apply to
-    *   slots minus the slot usage entries.
-    */
-  def slots: Seq[Reference[SlotDefinition]]
-
-  /** The refinement of a slot in the context of the containing class definition.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Many slots may be reused across different classes, but the meaning of the slot may be
-    *   refined by context. For example, a generic association model may use slots
-    *   subject/predicate/object with generic semantics and minimal constraints. When this is
-    *   subclasses, e.g. to disease-phenotype associations then slot usage may specify both local
-    *   naming (e.g. subject=disease) and local constraints
-    */
-  def slotUsage: Map[String, SlotDefinitionImpl]
-
-  /** Inline definition of slots
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Attributes are an alternative way of defining new slots. An attribute adds a slot to the
-    *   global space in the form <class_name>__<slot_name> (lower case, double underscores).
-    *   Attributes can be specialized via slot_usage.
-    */
-  def attributes: Map[String, SlotDefinitionImpl]
-
   /** Indicates that this is the Container class which forms the root of the serialized document
     * structure in tree serializations
     *
@@ -267,6 +230,14 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     */
   def applyTo: Seq[Reference[ClassDefinition]]
 
+  /** The combination of is a plus defining slots form a genus-differentia definition, or the set of
+    * necessary and sufficient conditions that can be transformed into an OWL equivalence axiom
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def definingSlots: Seq[Reference[SlotDefinition]]
+
   /** If true then all direct is_a children are mutually disjoint and share no instances in common
     *
     * @see
@@ -281,14 +252,6 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   From schema: https://w3id.org/linkml/meta
     */
   def classificationRules: Seq[AnonymousClassExpressionImpl]
-
-  /** The combination of is a plus defining slots form a genus-differentia definition, or the set of
-    * necessary and sufficient conditions that can be transformed into an OWL equivalence axiom
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def definingSlots: Seq[Reference[SlotDefinition]]
 
   /** Two classes are disjoint if they have no instances in common, two slots are disjoint if they
     * can never hold between the same two instances
@@ -349,13 +312,6 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     */
   def slotNamesUnique: Boolean
 
-  /** DEPRECATED -- rdfs:subClassOf to be emitted in OWL generation
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def subclassOf: Option[UriOrCurie]
-
   /** Indicates that the domain element consists exactly of the members of the element in the range.
     *
     * @see
@@ -385,6 +341,50 @@ abstract class ClassDefinition extends Definition, ClassExpression {
     *   unique keys and identifiers have additional effects that compound keys do not have.
     */
   def uniqueKeys: Map[String, UniqueKeyImpl]
+
+  /** Collection of slot names that are applicable to a class
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   The list of applicable slots is inherited from parent classes
+    * @note
+    *   This defines the set of slots that are allowed to be used for a given class. The final list
+    *   of slots for a class is the combination of the parent (is a) slots, mixins slots, apply to
+    *   slots minus the slot usage entries.
+    */
+  def slots: Seq[Reference[SlotDefinition]]
+
+  /** The refinement of a slot in the context of the containing class definition.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   Many slots may be reused across different classes, but the meaning of the slot may be
+    *   refined by context. For example, a generic association model may use slots
+    *   subject/predicate/object with generic semantics and minimal constraints. When this is
+    *   subclasses, e.g. to disease-phenotype associations then slot usage may specify both local
+    *   naming (e.g. subject=disease) and local constraints
+    */
+  def slotUsage: Map[String, SlotDefinitionImpl]
+
+  /** Inline definition of slots
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   Attributes are an alternative way of defining new slots. An attribute adds a slot to the
+    *   global space in the form <class_name>__<slot_name> (lower case, double underscores).
+    *   Attributes can be specialized via slot_usage.
+    */
+  def attributes: Map[String, SlotDefinitionImpl]
+
+  /** DEPRECATED -- rdfs:subClassOf to be emitted in OWL generation
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def subclassOf: Option[UriOrCurie]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

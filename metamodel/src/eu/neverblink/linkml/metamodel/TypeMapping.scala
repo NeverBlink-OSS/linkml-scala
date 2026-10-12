@@ -17,8 +17,6 @@ final case class TypeMappingImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -38,24 +36,15 @@ final case class TypeMappingImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
-    @id
-    @named("framework")
-    frameworkKey: String,
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
-    @named("type")
-    mappedType: Option[Reference[TypeDefinition]] = None,
     mappings: Seq[UriOrCurie] = Seq(),
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
@@ -68,11 +57,22 @@ final case class TypeMappingImpl(
     seeAlso: Seq[UriOrCurie] = Seq(),
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
-    @named("string_serialization")
-    stringSerialization: Option[String] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("string_serialization")
+    stringSerialization: Option[String] = None,
+    @id
+    @named("framework")
+    frameworkKey: String,
+    @named("type")
+    mappedType: Option[Reference[TypeDefinition]] = None,
 ) extends TypeMapping {
 
   override def infer(): TypeMappingImpl =
@@ -85,21 +85,6 @@ final case class TypeMappingImpl(
   *   From schema: https://w3id.org/linkml/meta
   */
 abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
-
-  /** The name of a format that can be used to serialize LinkML data. The string value should be a
-    * code from the LinkML frameworks vocabulary, but this is not strictly enforced
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def frameworkKey: String
-
-  /** Type to coerce to
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def mappedType: Option[Reference[TypeDefinition]]
 
   /** Used on a slot that stores the string serialization of the containing object. The syntax
     * follows python formatted strings, with slot names enclosed in {}s. These are expanded using
@@ -118,6 +103,21 @@ abstract class TypeMapping extends Extensible, Annotatable, CommonMetadata {
     *   From schema: https://w3id.org/linkml/meta
     */
   def stringSerialization: Option[String]
+
+  /** The name of a format that can be used to serialize LinkML data. The string value should be a
+    * code from the LinkML frameworks vocabulary, but this is not strictly enforced
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def frameworkKey: String
+
+  /** Type to coerce to
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def mappedType: Option[Reference[TypeDefinition]]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

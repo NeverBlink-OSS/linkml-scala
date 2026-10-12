@@ -16,18 +16,18 @@ final case class EnumExpressionImpl(
     codeSetTag: Option[String] = None,
     @named("code_set_version")
     codeSetVersion: Option[String] = None,
-    concepts: Seq[UriOrCurie] = Seq(),
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
-    inherits: Seq[Reference[EnumDefinition]] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
     @named("permissible_values")
     @compactDict
     permissibleValues: Map[String, PermissibleValueImpl] = Map(),
-    @named("pv_formula")
-    pvFormula: Option[PvFormulaOptions] = None,
+    inherits: Seq[Reference[EnumDefinition]] = Seq(),
+    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    concepts: Seq[UriOrCurie] = Seq(),
     @named("reachable_from")
     reachableFrom: Option[ReachabilityQueryImpl] = None,
+    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    matches: Option[MatchQueryImpl] = None,
+    @named("pv_formula")
+    pvFormula: Option[PvFormulaOptions] = None,
 ) extends EnumExpression {
 
   override def infer(): EnumExpressionImpl =
@@ -67,20 +67,14 @@ trait EnumExpression extends Expression {
     */
   def codeSetVersion: Option[String]
 
-  /** A list of identifiers that are used to construct a set of permissible values
+  /** A list of possible values for a slot range
     *
+    * @see
+    *   Aliases: coded values
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def concepts: Seq[UriOrCurie]
-
-  /** An enum expression that yields a list of permissible values that are to be included, after
-    * subtracting the minus set
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def include: Seq[AnonymousEnumExpressionImpl]
+  def permissibleValues: Map[String, PermissibleValueImpl]
 
   /** An enum definition that is used as the basis to create a new enum
     *
@@ -91,13 +85,6 @@ trait EnumExpression extends Expression {
     */
   def inherits: Seq[Reference[EnumDefinition]]
 
-  /** Specifies a match query that is used to calculate the list of permissible values
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def matches: Option[MatchQueryImpl]
-
   /** An enum expression that yields a list of permissible values that are to be subtracted from the
     * enum
     *
@@ -106,14 +93,34 @@ trait EnumExpression extends Expression {
     */
   def minus: Seq[AnonymousEnumExpressionImpl]
 
-  /** A list of possible values for a slot range
+  /** A list of identifiers that are used to construct a set of permissible values
     *
-    * @see
-    *   Aliases: coded values
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def permissibleValues: Map[String, PermissibleValueImpl]
+  def concepts: Seq[UriOrCurie]
+
+  /** Specifies a query for obtaining a list of permissible values based on graph reachability
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def reachableFrom: Option[ReachabilityQueryImpl]
+
+  /** An enum expression that yields a list of permissible values that are to be included, after
+    * subtracting the minus set
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def include: Seq[AnonymousEnumExpressionImpl]
+
+  /** Specifies a match query that is used to calculate the list of permissible values
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def matches: Option[MatchQueryImpl]
 
   /** Defines the specific formula to be used to generate the permissible values.
     *
@@ -125,13 +132,6 @@ trait EnumExpression extends Expression {
     *   Code_set must be supplied for this to be valid
     */
   def pvFormula: Option[PvFormulaOptions]
-
-  /** Specifies a query for obtaining a list of permissible values based on graph reachability
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def reachableFrom: Option[ReachabilityQueryImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -20,24 +20,10 @@ final case class AnonymousSlotExpressionImpl(
     inlinedAsList: Boolean = false,
     pattern: Option[String] = None,
     rank: Option[Int] = None,
-    @named("any_of")
-    anyOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
-    @named("all_members")
-    allMembers: Option[AnonymousSlotExpressionImpl] = None,
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
-    array: Option[ArrayExpressionImpl] = None,
-    bindings: Seq[EnumBindingImpl] = Seq(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -54,6 +40,40 @@ final case class AnonymousSlotExpressionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
+    @named("exact_mappings")
+    exactMappings: Seq[UriOrCurie] = Seq(),
+    examples: Seq[ExampleImpl] = Seq(),
+    @named("from_schema")
+    fromSchema: Option[Uri] = None,
+    @named("imported_from")
+    importedFrom: Option[String] = None,
+    @named("in_language")
+    inLanguage: Option[String] = None,
+    keywords: Seq[LocalizedText] = Seq(),
+    @named("last_updated_on")
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
+    mappings: Seq[UriOrCurie] = Seq(),
+    @named("modified_by")
+    modifiedBy: Option[UriOrCurie] = None,
+    @named("narrow_mappings")
+    narrowMappings: Seq[UriOrCurie] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
+    @named("related_mappings")
+    relatedMappings: Seq[UriOrCurie] = Seq(),
+    @named("see_also")
+    seeAlso: Seq[UriOrCurie] = Seq(),
+    source: Option[UriOrCurie] = None,
+    status: Option[UriOrCurie] = None,
+    @named("structured_aliases")
+    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    todos: Seq[String] = Seq(),
+    unit: Option[UnitOfMeasureImpl] = None,
+    @named("all_members")
+    allMembers: Option[AnonymousSlotExpressionImpl] = None,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    array: Option[ArrayExpressionImpl] = None,
+    bindings: Seq[EnumBindingImpl] = Seq(),
     @named("enum_range")
     enumRange: Option[EnumExpressionImpl] = None,
     @named("equals_expression")
@@ -66,27 +86,14 @@ final case class AnonymousSlotExpressionImpl(
     equalsStringIn: Seq[String] = Seq(),
     @named("exact_cardinality")
     exactCardinality: Option[Int] = None,
-    @named("exact_mappings")
-    exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
-    @named("from_schema")
-    fromSchema: Option[Uri] = None,
     @named("has_member")
     hasMember: Option[AnonymousSlotExpressionImpl] = None,
     @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
-    @named("imported_from")
-    importedFrom: Option[String] = None,
-    @named("in_language")
-    inLanguage: Option[String] = None,
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    keywords: Seq[LocalizedText] = Seq(),
-    @named("last_updated_on")
-    lastUpdatedOn: Option[LinkmlDateTime] = None,
-    mappings: Seq[UriOrCurie] = Seq(),
     @named("maximum_cardinality")
     maximumCardinality: Option[Int] = None,
     @named("maximum_value")
@@ -95,28 +102,21 @@ final case class AnonymousSlotExpressionImpl(
     minimumCardinality: Option[Int] = None,
     @named("minimum_value")
     minimumValue: Option[LinkmlAny] = None,
-    @named("modified_by")
-    modifiedBy: Option[UriOrCurie] = None,
-    @named("narrow_mappings")
-    narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[LocalizedText] = Seq(),
     range: Option[Reference[Element]] = None,
     @named("range_expression")
     rangeExpression: Option[AnonymousClassExpressionImpl] = None,
-    @named("related_mappings")
-    relatedMappings: Seq[UriOrCurie] = Seq(),
-    @named("see_also")
-    seeAlso: Seq[UriOrCurie] = Seq(),
-    source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
-    @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
-    todos: Seq[String] = Seq(),
-    unit: Option[UnitOfMeasureImpl] = None,
     @named("value_presence")
     valuePresence: Option[PresenceEnum] = None,
+    @named("any_of")
+    anyOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
 ) extends AnonymousSlotExpression {
 
   override def infer(): AnonymousSlotExpressionImpl =

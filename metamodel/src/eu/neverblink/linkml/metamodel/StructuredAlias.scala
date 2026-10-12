@@ -13,16 +13,10 @@ final case class StructuredAliasImpl(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
-    @named("contexts")
-    aliasContexts: Seq[Uri] = Seq(),
-    @named("predicate")
-    aliasPredicate: Option[AliasPredicateEnum] = None,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -42,21 +36,15 @@ final case class StructuredAliasImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
-    @named("literal_form")
-    literalForm: String,
     mappings: Seq[UriOrCurie] = Seq(),
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
@@ -72,6 +60,18 @@ final case class StructuredAliasImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("contexts")
+    aliasContexts: Seq[Uri] = Seq(),
+    @named("predicate")
+    aliasPredicate: Option[AliasPredicateEnum] = None,
+    @named("literal_form")
+    literalForm: String,
 ) extends StructuredAlias {
 
   override def infer(): StructuredAliasImpl =
@@ -86,6 +86,18 @@ final case class StructuredAliasImpl(
   */
 abstract class StructuredAlias extends Expression, Extensible, Annotatable, CommonMetadata {
 
+  /** The category or categories of an alias. This can be drawn from any relevant vocabulary
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   If you wish to use uncontrolled terms or terms that lack identifiers then use the keywords
+    *   element
+    * @example
+    *   `https://w3id.org/mod#acronym`: An acronym
+    */
+  def categories: Seq[UriOrCurie]
+
   /** The context in which an alias should be applied
     *
     * @see
@@ -99,18 +111,6 @@ abstract class StructuredAlias extends Expression, Extensible, Annotatable, Comm
     *   From schema: https://w3id.org/linkml/meta
     */
   def aliasPredicate: Option[AliasPredicateEnum]
-
-  /** The category or categories of an alias. This can be drawn from any relevant vocabulary
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   If you wish to use uncontrolled terms or terms that lack identifiers then use the keywords
-    *   element
-    * @example
-    *   `https://w3id.org/mod#acronym`: An acronym
-    */
-  def categories: Seq[UriOrCurie]
 
   /** The literal lexical form of a structured alias; i.e the actual alias value.
     *

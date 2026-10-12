@@ -178,17 +178,6 @@ trait CommonMetadata {
     */
   def inLanguage: Option[String]
 
-  /** Used to indicate membership of a term in a defined subset of terms used for a particular
-    * domain or application.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   An example of use in the translator_minimal subset in the biolink model, holding the minimal
-    *   set of predicates used in a translator knowledge graph
-    */
-  def inSubset: Seq[Reference[SubsetDefinition]]
-
   /** Keywords or tags used to describe the element
     *
     * @see
@@ -289,6 +278,17 @@ trait CommonMetadata {
     *   From schema: https://w3id.org/linkml/meta
     */
   def todos: Seq[String]
+
+  /** Used to indicate membership of a term in a defined subset of terms used for a particular
+    * domain or application.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   An example of use in the translator_minimal subset in the biolink model, holding the minimal
+    *   set of predicates used in a translator knowledge graph
+    */
+  def inSubset: Seq[Reference[SubsetDefinition]]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

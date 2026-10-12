@@ -86,41 +86,12 @@ trait SlotExpression extends Expression {
     */
   def pattern: Option[String]
 
-  /** Holds if at least one of the expressions hold
+  /** An encoding of a unit
     *
     * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
+    *   From schema: https://w3id.org/linkml/units
     */
-  def anyOf: Seq[AnonymousSlotExpressionImpl]
-
-  /** Holds if only one of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def exactlyOneOf: Seq[AnonymousSlotExpressionImpl]
-
-  /** Holds if none of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def noneOf: Seq[AnonymousSlotExpressionImpl]
-
-  /** Holds if all of the expressions hold
-    *
-    * @see
-    *   https://w3id.org/linkml/docs/specification/05validation/#rules
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def allOf: Seq[AnonymousSlotExpressionImpl]
+  def unit: Option[UnitOfMeasureImpl]
 
   /** The value of the slot is multivalued with all members satisfying the condition
     *
@@ -293,13 +264,6 @@ trait SlotExpression extends Expression {
     */
   def structuredPattern: Option[PatternExpressionImpl]
 
-  /** An encoding of a unit
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/units
-    */
-  def unit: Option[UnitOfMeasureImpl]
-
   /** If PRESENT then a value must be present (for lists there must be at least one value). If
     * ABSENT then a value must be absent (for lists, must be empty)
     *
@@ -310,6 +274,42 @@ trait SlotExpression extends Expression {
     *   a value to be present
     */
   def valuePresence: Option[PresenceEnum]
+
+  /** Holds if at least one of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def anyOf: Seq[AnonymousSlotExpressionImpl]
+
+  /** Holds if only one of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def exactlyOneOf: Seq[AnonymousSlotExpressionImpl]
+
+  /** Holds if none of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def noneOf: Seq[AnonymousSlotExpressionImpl]
+
+  /** Holds if all of the expressions hold
+    *
+    * @see
+    *   https://w3id.org/linkml/docs/specification/05validation/#rules
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def allOf: Seq[AnonymousSlotExpressionImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

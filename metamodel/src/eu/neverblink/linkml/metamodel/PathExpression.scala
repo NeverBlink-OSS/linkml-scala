@@ -13,20 +13,10 @@ final case class PathExpressionImpl(
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
     rank: Option[Int] = None,
-    @named("any_of")
-    anyOf: Seq[PathExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[PathExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[PathExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[PathExpressionImpl] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -46,18 +36,12 @@ final case class PathExpressionImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
-    @named("followed_by")
-    followedBy: Option[PathExpressionImpl] = None,
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
@@ -67,11 +51,8 @@ final case class PathExpressionImpl(
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[LocalizedText] = Seq(),
-    @named("range_expression")
-    rangeExpression: Option[AnonymousClassExpressionImpl] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
-    reversed: Boolean = false,
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
     source: Option[UriOrCurie] = None,
@@ -79,6 +60,25 @@ final case class PathExpressionImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("range_expression")
+    rangeExpression: Option[AnonymousClassExpressionImpl] = None,
+    @named("any_of")
+    anyOf: Seq[PathExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[PathExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[PathExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[PathExpressionImpl] = Seq(),
+    @named("followed_by")
+    followedBy: Option[PathExpressionImpl] = None,
+    reversed: Boolean = false,
     traverse: Option[Reference[SlotDefinition]] = None,
 ) extends PathExpression {
 
@@ -93,6 +93,16 @@ final case class PathExpressionImpl(
   *   From schema: https://w3id.org/linkml/meta
   */
 abstract class PathExpression extends Expression, Extensible, Annotatable, CommonMetadata {
+
+  /** A range that is described as a boolean expression combining existing ranges
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   One use for this is being able to describe a range using any_of expressions, for example to
+    *   combine two enums
+    */
+  def rangeExpression: Option[AnonymousClassExpressionImpl]
 
   /** Holds if at least one of the expressions hold
     *
@@ -136,16 +146,6 @@ abstract class PathExpression extends Expression, Extensible, Annotatable, Commo
     *   From schema: https://w3id.org/linkml/meta
     */
   def followedBy: Option[PathExpressionImpl]
-
-  /** A range that is described as a boolean expression combining existing ranges
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   One use for this is being able to describe a range using any_of expressions, for example to
-    *   combine two enums
-    */
-  def rangeExpression: Option[AnonymousClassExpressionImpl]
 
   /** True if the slot is to be inversed
     *

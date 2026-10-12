@@ -19,14 +19,10 @@ final case class EnumDefinitionImpl(
     isA: Option[Reference[Definition]] = None,
     mixins: Seq[Reference[Definition]] = Seq(),
     rank: Option[Int] = None,
-    @named("abstract")
-    `abstract`: Boolean = false,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("apply_to")
     applyTo: Seq[Reference[Definition]] = Seq(),
     @named("broad_mappings")
@@ -41,7 +37,6 @@ final case class EnumDefinitionImpl(
     @named("code_set_version")
     codeSetVersion: Option[String] = None,
     comments: Seq[LocalizedText] = Seq(),
-    concepts: Seq[UriOrCurie] = Seq(),
     @named("conforms_to")
     conformsTo: Option[String] = None,
     contributors: Seq[UriOrCurie] = Seq(),
@@ -56,28 +51,16 @@ final case class EnumDefinitionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("enum_uri")
-    enumUri: Option[UriOrCurie] = None,
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
-    @named("id_prefixes")
-    idPrefixes: Seq[NcName] = Seq(),
-    @named("id_prefixes_are_closed")
-    idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
-    inherits: Seq[Reference[EnumDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
@@ -86,34 +69,51 @@ final case class EnumDefinitionImpl(
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
-    mixin: Boolean = false,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
     narrowMappings: Seq[UriOrCurie] = Seq(),
     notes: Seq[LocalizedText] = Seq(),
-    @named("permissible_values")
-    @compactDict
-    permissibleValues: Map[String, PermissibleValueImpl] = Map(),
-    @named("pv_formula")
-    pvFormula: Option[PvFormulaOptions] = None,
-    @named("reachable_from")
-    reachableFrom: Option[ReachabilityQueryImpl] = None,
     @named("related_mappings")
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
-    @named("string_serialization")
-    stringSerialization: Option[String] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @named("abstract")
+    `abstract`: Boolean = false,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @named("enum_uri")
+    enumUri: Option[UriOrCurie] = None,
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("id_prefixes")
+    idPrefixes: Seq[NcName] = Seq(),
+    @named("id_prefixes_are_closed")
+    idPrefixesAreClosed: Boolean = false,
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    mixin: Boolean = false,
+    @named("string_serialization")
+    stringSerialization: Option[String] = None,
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
+    @named("permissible_values")
+    @compactDict
+    permissibleValues: Map[String, PermissibleValueImpl] = Map(),
+    inherits: Seq[Reference[EnumDefinition]] = Seq(),
+    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    concepts: Seq[UriOrCurie] = Seq(),
+    @named("reachable_from")
+    reachableFrom: Option[ReachabilityQueryImpl] = None,
+    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    matches: Option[MatchQueryImpl] = None,
+    @named("pv_formula")
+    pvFormula: Option[PvFormulaOptions] = None,
 ) extends EnumDefinition {
 
   override def infer(): EnumDefinitionImpl =
