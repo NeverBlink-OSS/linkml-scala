@@ -274,6 +274,12 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * own ancestor. A common ancestor is the lowest one when no other common ancestor inherits from
     * it. Both `is_a` and mixins count, so there can be more than one lowest common ancestor.
     *
+    * This is not a classical LCA algorithm. Classical ones preprocess the whole hierarchy to make
+    * later queries fast. Most of them work on trees, or return only one LCA for a DAG. Here mixins
+    * make the hierarchy a DAG, and all LCAs are needed. Queries are also rare, so preprocessing
+    * would not pay off. Instead, this method finds the common ancestors and keeps the lowest ones.
+    * It runs in linear time in the size of the ancestor lists, which are cached for each class.
+    *
     * @param views
     *   Class views to find the lowest common ancestors for
     * @return
