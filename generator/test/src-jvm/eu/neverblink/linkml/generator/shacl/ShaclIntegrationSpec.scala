@@ -10,6 +10,11 @@ import org.eclipse.rdf4j.sail.shacl.ShaclValidator
 
 class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   override val skipModels: Map[String, String] = ShaclGeneratorSpec.skipModels
+  override val skipInstances: Map[(String, String), String] = Map(
+    // ShaclGeneratorSpec checks the generated `sh:xone` instead
+    ("exactlyOneOf", "matchesBoth") -> "RDF4J does not enforce `sh:xone`",
+    ("exactlyOneOf", "matchesNone") -> "RDF4J does not enforce `sh:xone`",
+  )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
   "ShaclGenerator" should {
     for entry <- ModelCatalogue.all do

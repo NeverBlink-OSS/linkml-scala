@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/memberCardinality/> .
+
+_:b a :Bag;
+    :values 1, 2 .

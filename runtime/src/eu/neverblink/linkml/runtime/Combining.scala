@@ -24,8 +24,7 @@ def combineOption[T](o1: Option[T], o2: Option[T], combineSome: (T, T) => T): Op
 def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
   if v2.isEmpty || v1 == v2 then v1 else v1.appendedAll(v2)
 
-/** Combine values for `any_of`, `all_of`, `exactly_one_of` and `none_of`: the first non-empty list
-  * wins. So a `slot_usage` replaces the inherited list, e.g. to narrow down an `any_of`.
+/** Returns the first non-empty list. Used in combining `any_of`, `all_of`, etc.
   */
 def combineNonEmpty[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
   if v1.isEmpty then v2 else v1

@@ -39,6 +39,22 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "unionRange" -> "Not yet implemented: LNK-100",
   )
 
+  private val defaultRangeWithAnyOf =
+    "BUG: The default range `string` is added next to the ranges of `any_of` members"
+
+  override val skipInstances: Map[(String, String), String] = Map(
+    "anyOfNarrowing" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfNarrowing" -> "boolean" -> defaultRangeWithAnyOf,
+    "anyOfNarrowing" -> "stringFromBase" -> defaultRangeWithAnyOf,
+    "nestedExpressions" -> "smallInteger" -> defaultRangeWithAnyOf,
+    "memberCardinality" -> "twoIntegers" -> defaultRangeWithAnyOf,
+    "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
+    "allOf" -> "matchesFirstOnly" -> "Not yet implemented: `all_of`",
+    "exactlyOneOf" -> "matchesBoth" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOf" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
+    "noneOf" -> "matchesMember" -> "Not yet implemented: `none_of`",
+  )
+
   // Known expressiveness limitations
   private val notExact: Map[(String, String), String] = Map(
     "compactDictDocument" -> "entries" -> "An entry that repeats its key is reserialized without it",

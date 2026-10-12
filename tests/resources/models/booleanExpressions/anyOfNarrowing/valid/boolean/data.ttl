@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/anyOfNarrowing/> .
+
+_:b a :Narrowed;
+    :value true .

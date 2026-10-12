@@ -27,6 +27,16 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
   )
   override val skipInstances: Map[(String, String), String] = Map(
     ("implicitPrefix", "slotDefined") -> "LinkML-py incorrectly does not lift these instances",
+    // See "Boolean expressions in SHACL" in docs/implementation_differences.md
+    ("allOf", "matchesFirstOnly") -> "LinkML-py ignores `all_of`",
+    ("exactlyOneOf", "matchesBoth") -> "LinkML-py ignores `exactly_one_of`",
+    ("exactlyOneOf", "matchesNone") -> "LinkML-py ignores `exactly_one_of`",
+    ("noneOf", "matchesMember") -> "LinkML-py ignores `none_of`",
+    ("nestedExpressions", "largeInteger") -> "LinkML-py ignores nested expressions",
+    ("memberCardinality", "oneInteger") -> "LinkML-py ignores cardinality in `any_of` members",
+    ("memberCardinality", "integerAndString") ->
+      "LinkML-py ignores cardinality in `any_of` members",
+    ("memberCardinality", "twoStrings") -> "LinkML-py ignores cardinality in `any_of` members",
   )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
   "LinkMl Python SHACL generator" should {

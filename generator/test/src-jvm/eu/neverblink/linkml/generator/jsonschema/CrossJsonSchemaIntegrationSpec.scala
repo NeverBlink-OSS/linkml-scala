@@ -22,6 +22,13 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     "unionOf" -> "LinkML-py ignores constraints of union_of members",
   )
 
+  override val skipInstances: Map[(String, String), String] = Map(
+    "memberCardinality" -> "oneInteger" -> "LinkML-py ignores cardinality in `any_of` members",
+    "memberCardinality" -> "integerAndString" ->
+      "LinkML-py ignores cardinality in `any_of` members",
+    "memberCardinality" -> "twoStrings" -> "LinkML-py ignores cardinality in `any_of` members",
+  )
+
   "LinkML Python Json Schema generator" should {
     for entry <- ModelCatalogue.all do
       s"generate Json Schema for model '${entry.model.root.name}'" when {

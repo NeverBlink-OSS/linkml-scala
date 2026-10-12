@@ -76,7 +76,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       case _ => throw RuntimeException(s"Couldn't map range $range")
     }
 
-  /** Emit `sh:minCount` and `sh:maxCount`. Cardinality metaslots win over `required`.
+  /** Emit `sh:minCount` and `sh:maxCount`. Cardinality metaslots have precedence over `required`.
     *
     * @param impliedMax
     *   Max count to use if no cardinality metaslot sets one

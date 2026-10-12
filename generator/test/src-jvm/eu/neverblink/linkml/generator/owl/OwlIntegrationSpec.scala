@@ -82,6 +82,15 @@ object OwlIntegrationSpec {
       "OWL infers that a value is of the range's class rather than rejecting one not said to be",
     "enum" -> "badType" -> noUniqueNames,
     "typed" -> "notDate" -> "HermiT does not support xsd:date, so it cannot reject a value that is not a date",
+    "allOf" -> "matchesFirstOnly" -> "Not yet implemented: `all_of`",
+    "exactlyOneOf" -> "matchesBoth" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOf" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
+    "noneOf" -> "matchesMember" -> "Not yet implemented: `none_of`",
+    "nestedExpressions" -> "largeInteger" -> "Not yet implemented: `none_of` in `any_of` members",
+    "memberCardinality" -> "oneInteger" -> openWorld,
+    "memberCardinality" -> "integerAndString" ->
+      "Not yet implemented: cardinality in `any_of` members",
+    "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
     // Valid instances
     "anything" -> "atomic" -> anyLiteral,
     "anything" -> "complex" -> anyLiteral,

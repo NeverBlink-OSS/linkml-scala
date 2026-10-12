@@ -1,0 +1,19 @@
+id: https://neverblink.eu/linkml/tests/noneOf/
+name: noneOf
+description: A value must not match any member of `none_of`
+
+imports:
+  - linkml:types
+
+classes:
+  Fruit:
+    tree_root: true
+    slots:
+      - label
+
+slots:
+  label:
+    required: true
+    range: string
+    none_of:
+      - pattern: "^bad"

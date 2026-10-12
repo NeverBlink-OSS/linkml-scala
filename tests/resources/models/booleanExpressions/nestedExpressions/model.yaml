@@ -1,0 +1,21 @@
+id: https://neverblink.eu/linkml/tests/nestedExpressions/
+name: nestedExpressions
+description: Members of boolean expressions can have value bounds and boolean expressions of their own
+
+imports:
+  - linkml:types
+
+classes:
+  Item:
+    tree_root: true
+    slots:
+      - size
+
+slots:
+  size:
+    required: true
+    any_of:
+      - range: integer
+        none_of:
+          - minimum_value: 10
+      - range: string

@@ -1,0 +1,21 @@
+id: https://neverblink.eu/linkml/tests/memberCardinality/
+name: memberCardinality
+description: Members of `any_of` can limit the number of values, so the values are checked together
+
+imports:
+  - linkml:types
+
+classes:
+  Bag:
+    tree_root: true
+    slots:
+      - values
+
+slots:
+  values:
+    multivalued: true
+    any_of:
+      - range: integer
+        exact_cardinality: 2
+      - range: string
+        maximum_cardinality: 1
