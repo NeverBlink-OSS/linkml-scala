@@ -268,26 +268,33 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       } else optCv
     })
 
-  /** Find the lowest common ancestors of some classes. Considers both direct `is_a` ancestors and
-    * mixins, so may find multiple common ancestors.
+  /** Find the lowest common ancestors of some classes.
+    *
+    * A common ancestor is a class that all the given classes inherit from. Each class counts as its
+    * own ancestor. A common ancestor is the lowest one when no other common ancestor inherits from
+    * it. Both `is_a` and mixins count, so there can be more than one lowest common ancestor.
+    *
     * @param views
-    *   Class views to find the lowest common ancestor for
+    *   Class views to find the lowest common ancestors for
     * @return
     *   Lowest common ancestors, in the ancestor order of the first class. Empty if there are no
     *   classes, or if the classes do not share any ancestors.
     */
   def lowestCommonAncestors(views: Seq[ClassView]): Seq[ClassView] = {
     if views.isEmpty then return Nil
-    // Every common ancestor is an ancestor of the first class, so its ancestors are the candidates.
+    // Every common ancestor is also an ancestor of the first class.
+    // So only the ancestors of the first class need to be checked.
     val candidates = views.head.ancestorsWithSelf.toArray
     val candidateCount = candidates.length
-    val indexByName = new java.util.HashMap[String, Integer](candidateCount << 1)
+    val indexByName = new java.util.HashMap[String, Integer](candidateCount << 1, 0.5f)
     var i = 0
     while i < candidateCount do {
       indexByName.put(candidates(i).name, i)
       i += 1
     }
-    // How many of the classes have each candidate as an ancestor. Ancestors are listed once each.
+    // Count how many classes have each candidate as an ancestor.
+    // Each class lists every ancestor only once, so a count never exceeds the number of classes.
+    // A candidate is common when its count equals the number of classes.
     val sharedBy = new Array[Int](candidateCount)
     var viewCount = 0
     views.foreach { view =>
@@ -297,21 +304,19 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       }
       viewCount += 1
     }
-    // A common ancestor is not the lowest one if it is an ancestor of another common ancestor.
+    // A common ancestor is not the lowest one if another common ancestor inherits from it.
+    // All ancestors of a common ancestor are common too.
+    // So marking the direct parents of each common ancestor is enough to mark all of them.
+    // These parents are candidates too, so the lookup by name always finds them.
+    // Hierarchies have no cycles, so a class is never marked as its own parent.
     val notLowest = new Array[Boolean](candidateCount)
     i = 0
     while i < candidateCount do {
-      if sharedBy(i) == viewCount then {
-        val name = candidates(i).name
-        candidates(i).ancestorsWithSelf.foreach { ancestor =>
-          if ancestor.name != name then {
-            val index = indexByName.get(ancestor.name)
-            if index ne null then notLowest(index) = true
-          }
-        }
-      }
+      if sharedBy(i) == viewCount then
+        candidates(i).parents.foreach(parent => notLowest(indexByName.get(parent.name)) = true)
       i += 1
     }
+    // Keep the common ancestors that are not marked, in the ancestor order of the first class.
     val lowest = immutable.ArraySeq.newBuilder[ClassView]
     i = 0
     while i < candidateCount do {
