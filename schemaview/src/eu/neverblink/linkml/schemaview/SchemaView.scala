@@ -6,12 +6,12 @@ import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.SchemaView.*
 import eu.neverblink.linkml.validation.{
-  IssueLocationImpl,
+  IssueLocation,
   SchemaError,
   SchemaFatal,
   SchemaImportError,
   SchemaIssue,
-  UnexpectedErrorImpl,
+  UnexpectedError,
 }
 
 import scala.annotation.unused
@@ -83,8 +83,25 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     }.result()
 
   /** All classes defined in the loaded schemas, sorted using the common order. */
-  lazy val sortedClasses: Seq[ClassView] =
-    classes.values.toVector.sortBy(el => elementOrder(el.cls))
+  lazy val sortedClasses: Seq[ClassView] = {
+    val sorted = new Array[ClassView](classes.size)
+    var i = 0
+    classes.foreachEntry { (_, classView) =>
+      sorted(i) = classView
+      i += 1
+    }
+    java.util.Arrays.sort(sorted, classViewOrder)
+    immutable.ArraySeq.unsafeWrapArray(sorted)
+  }
+
+  /** Names of the classes that another class names in its `is_a` or `mixins`. */
+  private[schemaview] lazy val classesWithDescendants: Set[String] = {
+    val names = Set.newBuilder[String]
+    classes.foreachEntry((_, classView) =>
+      classView.parents.foreach(parent => names.addOne(parent.name)),
+    )
+    names.result()
+  }
 
   /** All enums defined in the loaded schemas, as views.
     */
@@ -251,34 +268,68 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       } else optCv
     })
 
-  /** Find the lowest common ancestors of some classes. Considers both direct `is_a` ancestors and
-    * mixins, so may find multiple common ancestors.
+  /** Find the lowest common ancestors of some classes.
+    *
+    * A common ancestor is a class that all the given classes inherit from. Each class counts as its
+    * own ancestor. A common ancestor is the lowest one when no other common ancestor inherits from
+    * it. Both `is_a` and mixins count, so there can be more than one lowest common ancestor.
+    *
+    * This is not a classical LCA algorithm. Classical ones preprocess the whole hierarchy to make
+    * later queries fast. Most of them work on trees, or return only one LCA for a DAG. Here mixins
+    * make the hierarchy a DAG, and all LCAs are needed. Queries are also rare, so preprocessing
+    * would not pay off. Instead, this method finds the common ancestors and keeps the lowest ones.
+    * It runs in linear time in the size of the ancestor lists, which are cached for each class.
+    *
     * @param views
-    *   Class views to find the lowest common ancestor for
+    *   Class views to find the lowest common ancestors for
     * @return
-    *   Lowest common ancestors, empty collection if the classes do not share any ancestors.
+    *   Lowest common ancestors, in the ancestor order of the first class. Empty if there are no
+    *   classes, or if the classes do not share any ancestors.
     */
   def lowestCommonAncestors(views: Seq[ClassView]): Seq[ClassView] = {
-    // yes, it's inefficient, quadratic, whatever
-    // there is a proper algorithm for this, but I don't feel like implementing it right now, since only RDFS uses this
-    if views.isEmpty then return Seq.empty
-    var commonAncestors = views.head.ancestorsWithSelf.map(_.name).toSet
-    views.tail.foreach { cls =>
-      val current = cls.ancestorsWithSelf.map(_.name).toSet
-      commonAncestors = commonAncestors.intersect(current)
+    if views.isEmpty then return Nil
+    // Every common ancestor is also an ancestor of the first class.
+    // So only the ancestors of the first class need to be checked.
+    val candidates = views.head.ancestorsWithSelf.toArray
+    val candidateCount = candidates.length
+    val indexByName = new java.util.HashMap[String, Integer](candidateCount << 1, 0.5f)
+    var i = 0
+    while i < candidateCount do {
+      indexByName.put(candidates(i).name, i)
+      i += 1
     }
-    val lowestCommon = mutable.HashSet[String]()
-    commonAncestors.foreach(lowestCommon.add)
-    commonAncestors.foreach { commonAnc =>
-      val cls = Reference[ClassView](commonAnc).resolve.get
-      cls.ancestorsWithSelf.foreach {
-        var i = 0
-        anc =>
-          if (i > 0) lowestCommon.remove(anc.name)
-          i += 1
+    // Count how many classes have each candidate as an ancestor.
+    // Each class lists every ancestor only once, so a count never exceeds the number of classes.
+    // A candidate is common when its count equals the number of classes.
+    val sharedBy = new Array[Int](candidateCount)
+    var viewCount = 0
+    views.foreach { view =>
+      view.ancestorsWithSelf.foreach { ancestor =>
+        val index = indexByName.get(ancestor.name)
+        if index ne null then sharedBy(index) += 1
       }
+      viewCount += 1
     }
-    lowestCommon.toSeq.map(Reference[ClassView](_).resolve.get)
+    // A common ancestor is not the lowest one if another common ancestor inherits from it.
+    // All ancestors of a common ancestor are common too.
+    // So marking the direct parents of each common ancestor is enough to mark all of them.
+    // These parents are candidates too, so the lookup by name always finds them.
+    // Hierarchies have no cycles, so a class is never marked as its own parent.
+    val notLowest = new Array[Boolean](candidateCount)
+    i = 0
+    while i < candidateCount do {
+      if sharedBy(i) == viewCount then
+        candidates(i).parents.foreach(parent => notLowest(indexByName.get(parent.name)) = true)
+      i += 1
+    }
+    // Keep the common ancestors that are not marked, in the ancestor order of the first class.
+    val lowest = immutable.ArraySeq.newBuilder[ClassView]
+    i = 0
+    while i < candidateCount do {
+      if sharedBy(i) == viewCount && !notLowest(i) then lowest.addOne(candidates(i))
+      i += 1
+    }
+    lowest.result()
   }
 
   /** Common element order. Rank first if defined, then alphabetically.
@@ -293,10 +344,10 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
     */
   private[schemaview] def applySlotUsage(
-      slot: SlotDefinitionImpl,
+      slot: SlotDefinition,
       slotName: String,
       cls: ClassDefinition,
-  ): SlotDefinitionImpl = {
+  ): SlotDefinition = {
     var currentSlot = slot
     cls.slotUsage.get(slotName).foreachFast { s =>
       currentSlot = currentSlot.combineWith(s, combineRange)
@@ -361,6 +412,16 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
 }
 
 object SchemaView {
+
+  /** Orders classes like [[SchemaView.elementOrder]] does, without allocating a key per comparison.
+    */
+  private val classViewOrder: java.util.Comparator[ClassView] = (x, y) => {
+    val a = x.cls
+    val b = y.cls
+    val byRank =
+      Integer.compare(a.rank.getOrElseFast(Int.MaxValue), b.rank.getOrElseFast(Int.MaxValue))
+    if byRank != 0 then byRank else a.name.compareTo(b.name)
+  }
 
   /** Shorthand for creating a SchemaView with a single schema definition. Mainly for testing, this
     * does not resolve imports!
@@ -430,10 +491,10 @@ object SchemaView {
       case ex if NonFatal(ex) => new Left(Seq(unexpectedError(ex)))
     }
 
-  private def unexpectedError(ex: Throwable): UnexpectedErrorImpl = {
+  private def unexpectedError(ex: Throwable): UnexpectedError = {
     val msg = ex.getMessage
-    new UnexpectedErrorImpl(
-      location = IssueLocationImpl(),
+    new UnexpectedError(
+      location = IssueLocation(),
       reason = if (msg ne null) msg else ex.toString,
     )
   }

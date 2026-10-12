@@ -9,16 +9,16 @@ import org.virtuslab.yaml.*
   */
 class CodecRoundTripSpec extends AnyWordSpec, Matchers {
 
-  private val location = IssueLocationImpl(
+  private val location = IssueLocation(
     schemaId = Some(Uri("https://neverblink.eu/test/")),
     jsonPointer = Some("/classes/SomeClass"),
   )
 
-  private val report = SchemaValidationReportImpl(
+  private val report = SchemaValidationReport(
     issues = Seq(
-      UnknownReferenceImpl(location = location, referenceValue = "Foo"),
-      NoTreeRootClassImpl(location = location),
-      InvalidUriOrCurieImpl(
+      UnknownReference(location = location, referenceValue = "Foo"),
+      NoTreeRootClass(location = location),
+      InvalidUriOrCurie(
         location = location.copy(jsonPointer = Some("/classes/SomeClass/exact_mappings/0")),
         uriOrCurie = Curie("not a curie!"),
       ),
@@ -40,9 +40,9 @@ class CodecRoundTripSpec extends AnyWordSpec, Matchers {
       decoded.shouldBe(report)
       decoded.issues.map(_.getClass).shouldBe(
         Seq(
-          classOf[UnknownReferenceImpl],
-          classOf[NoTreeRootClassImpl],
-          classOf[InvalidUriOrCurieImpl],
+          classOf[UnknownReference],
+          classOf[NoTreeRootClass],
+          classOf[InvalidUriOrCurie],
         ),
       )
     }

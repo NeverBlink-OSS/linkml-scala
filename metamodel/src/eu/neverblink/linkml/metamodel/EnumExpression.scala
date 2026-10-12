@@ -18,14 +18,14 @@ final case class EnumExpressionImpl(
     codeSetVersion: Option[String] = None,
     @named("permissible_values")
     @compactDict
-    permissibleValues: Map[String, PermissibleValueImpl] = Map(),
+    permissibleValues: Map[String, PermissibleValue] = Map(),
     inherits: Seq[Reference[EnumDefinition]] = Seq(),
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    minus: Seq[AnonymousEnumExpression] = Seq(),
     concepts: Seq[UriOrCurie] = Seq(),
     @named("reachable_from")
-    reachableFrom: Option[ReachabilityQueryImpl] = None,
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
+    reachableFrom: Option[ReachabilityQuery] = None,
+    include: Seq[AnonymousEnumExpression] = Seq(),
+    matches: Option[MatchQuery] = None,
     @named("pv_formula")
     pvFormula: Option[PvFormulaOptions] = None,
 ) extends EnumExpression {
@@ -74,7 +74,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def permissibleValues: Map[String, PermissibleValueImpl]
+  def permissibleValues: Map[String, PermissibleValue]
 
   /** An enum definition that is used as the basis to create a new enum
     *
@@ -91,7 +91,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def minus: Seq[AnonymousEnumExpressionImpl]
+  def minus: Seq[AnonymousEnumExpression]
 
   /** A list of identifiers that are used to construct a set of permissible values
     *
@@ -105,7 +105,7 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def reachableFrom: Option[ReachabilityQueryImpl]
+  def reachableFrom: Option[ReachabilityQuery]
 
   /** An enum expression that yields a list of permissible values that are to be included, after
     * subtracting the minus set
@@ -113,14 +113,14 @@ trait EnumExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def include: Seq[AnonymousEnumExpressionImpl]
+  def include: Seq[AnonymousEnumExpression]
 
   /** Specifies a match query that is used to calculate the list of permissible values
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def matches: Option[MatchQueryImpl]
+  def matches: Option[MatchQuery]
 
   /** Defines the specific formula to be used to generate the permissible values.
     *

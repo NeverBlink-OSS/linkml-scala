@@ -1,9 +1,9 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{prefixMap, renameMap}
-import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfigImpl}
+import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig}
 import eu.neverblink.linkml.rdf.{Iri, Literal}
-import eu.neverblink.linkml.metamodel.SchemaDefinitionImpl
+import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.runtime.{Curie, Uri, UriOrCurie}
 import eu.neverblink.linkml.schemaview.{Case, FileSystemImporter, SchemaView}
 
@@ -29,7 +29,7 @@ import scala.collection.mutable
   */
 private[owl] final class OwlImportNames(
     ontology: Ontology,
-    config: OwlImportConfigImpl,
+    config: OwlImportConfig,
     ownTerms: Seq[String],
     allTerms: Seq[String],
     warn: (String, String) => Unit,
@@ -226,7 +226,7 @@ private[owl] object OwlImportNames {
     * schema imports, so its own elements may not use them.
     */
   private lazy val reservedNames: Set[String] = {
-    val root = SchemaDefinitionImpl(
+    val root = SchemaDefinition(
       id = Uri("urn:linkml-scala:owl-import-reserved"),
       name = "reserved",
       imports = Seq(UriOrCurie("linkml:types"), UriOrCurie("linkml:extended_types")),

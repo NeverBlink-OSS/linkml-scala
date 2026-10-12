@@ -13,7 +13,7 @@ import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{
   slotStyle,
   someValuesFromStyle,
 }
-import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfigImpl, SomeValuesFrom}
+import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig, SomeValuesFrom}
 import eu.neverblink.linkml.generator.owl.OwlImportNames.*
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
@@ -55,7 +55,7 @@ class OwlImporter extends SchemaImporter[OwlImporter.Options] {
 
   override protected def defaultOptions: Options = Options()
 
-  override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinitionImpl =
+  override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinition =
     importWithWarnings(in, options).schema
 
   def importWithWarnings(in: InputStream, options: Options = Options()): Result = {
@@ -73,7 +73,7 @@ class OwlImporter extends SchemaImporter[OwlImporter.Options] {
 
   def importTriples(
       triples: Seq[Triple],
-      config: OwlImportConfigImpl = OwlImportConfigImpl(),
+      config: OwlImportConfig = OwlImportConfig(),
   ): Result =
     importTriples(triples, Options(config))
 
@@ -84,7 +84,7 @@ class OwlImporter extends SchemaImporter[OwlImporter.Options] {
 
   def importOntology(
       ontology: Ontology,
-      config: OwlImportConfigImpl = OwlImportConfigImpl(),
+      config: OwlImportConfig = OwlImportConfig(),
       unparsed: Seq[Triple] = Nil,
   ): Result = importOntology(ontology, Options(config), unparsed)
 
@@ -110,7 +110,7 @@ object OwlImporter {
     *   only slightly faster.
     */
   final case class Options(
-      config: OwlImportConfigImpl = OwlImportConfigImpl(),
+      config: OwlImportConfig = OwlImportConfig(),
       outputFormat: JsonOutputFormat = JsonOutputFormat.yaml,
       schemas: Importer = FileSystemImporter,
       base: String = "",
@@ -118,7 +118,7 @@ object OwlImporter {
   ) extends SchemaImporter.Options
 
   /** `warnings` has one line per kind of thing that could not be imported. */
-  final case class Result(schema: SchemaDefinitionImpl, warnings: Seq[String])
+  final case class Result(schema: SchemaDefinition, warnings: Seq[String])
 
   /** Properties in these namespaces are documentation, even when the ontology declares them. */
   private val metadataVocabularies: Set[String] = Set(
@@ -479,10 +479,10 @@ object OwlImporter {
       }.toMap
 
     private def termsOf(ref: String): Either[String, Seq[(String, (NameGroup, String))]] = {
-      val root = SchemaDefinitionImpl(
+      val root = SchemaDefinition(
         id = Uri("urn:linkml-scala:owl-import"),
         name = "owl_import",
-        prefixes = VectorMap.from(config.prefixMap.map((p, ns) => p -> PrefixImpl(p, Uri(ns)))),
+        prefixes = VectorMap.from(config.prefixMap.map((p, ns) => p -> Prefix(p, Uri(ns)))),
         imports = Seq(UriOrCurie(ref)),
       )
       try
@@ -523,7 +523,7 @@ object OwlImporter {
 
     // Types
 
-    private lazy val types: Seq[TypeDefinitionImpl] = datatypes.filterNot(imported.contains).map {
+    private lazy val types: Seq[TypeDefinition] = datatypes.filterNot(imported.contains).map {
       iri =>
         val name = names(iri)
         val (metadata, annotations) = documentation(iri)
@@ -538,7 +538,7 @@ object OwlImporter {
           case None => (derivedTypes.getOrElse(iri, "string"), Nil)
         }
         metadata.applyTo(
-          TypeDefinitionImpl(
+          TypeDefinition(
             name = name,
             typeUri = Some(curie(iri)),
             typeof = Some(Reference(typeof)),
@@ -660,7 +660,7 @@ object OwlImporter {
     private lazy val inverseOf: Map[String, String] =
       index.inverses.map(take).flatMap(a => Seq(a.first -> a.second, a.second -> a.first)).toMap
 
-    private lazy val slots: Seq[SlotDefinitionImpl] =
+    private lazy val slots: Seq[SlotDefinition] =
       propertyKinds.toSeq.filterNot((p, _) => imported.contains(p)).map { (p, kind) =>
         val name = names(p)
         val (metadata, annotations) = documentation(p)
@@ -724,7 +724,7 @@ object OwlImporter {
         if implements.nonEmpty then curie(owlNs + "DatatypeProperty")
 
         metadata.applyTo(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = name,
             slotUri = explicitIri(p, NameGroup.Slot),
             range =
@@ -733,7 +733,7 @@ object OwlImporter {
                   _.range,
                 ).map(Reference(_))
               else range.range.map(Reference(_)),
-            anyOf = range.anyOf.map(r => AnonymousSlotExpressionImpl(range = Some(Reference(r)))),
+            anyOf = range.anyOf.map(r => AnonymousSlotExpression(range = Some(Reference(r)))),
             multivalued = kind != EntityKind.AnnotationProperty &&
               (inheritsMultivalued || config.multivalued && !characteristics.contains(
                 PropertyCharacteristic.Functional,
@@ -856,16 +856,16 @@ object OwlImporter {
         }
     }.groupMap(_._1)(_._2)
 
-    private lazy val classDefinitions: Seq[ClassDefinitionImpl] =
+    private lazy val classDefinitions: Seq[ClassDefinition] =
       classes.filterNot(imported.contains).map(buildClass)
 
-    private def buildClass(c: String): ClassDefinitionImpl = {
+    private def buildClass(c: String): ClassDefinition = {
       val name = names(c)
       val (metadata, annotations) = termDocumentation(c)
       val parents = classParents(c)
       val (isA, mixins) = chooseParents(c, parents)
       val notes = mutable.ArrayBuffer.empty[String]
-      val usage = mutable.LinkedHashMap.empty[String, SlotDefinitionImpl]
+      val usage = mutable.LinkedHashMap.empty[String, SlotDefinition]
       val attached = mutable.LinkedHashSet.from(slotsByDomain.getOrElse(c, Nil))
       var isAbstract = false
       var exact = Seq.empty[UriOrCurie]
@@ -877,12 +877,12 @@ object OwlImporter {
         notes += s"OWL: $text"
       }
 
-      def restrict(p: String, f: SlotDefinitionImpl => SlotDefinitionImpl): Unit = {
+      def restrict(p: String, f: SlotDefinition => SlotDefinition): Unit = {
         attached += p
         val n = names(p)
-        val before = usage.getOrElse(n, SlotDefinitionImpl(name = n))
+        val before = usage.getOrElse(n, SlotDefinition(name = n))
         val after = f(before)
-        if after != SlotDefinitionImpl(name = n) then usage(n) = after
+        if after != SlotDefinition(name = n) then usage(n) = after
       }
 
       /** True if the filler adds nothing to the property's own range. */
@@ -914,8 +914,7 @@ object OwlImporter {
                   s =>
                     s.copy(
                       range = r.range.map(Reference(_)),
-                      anyOf =
-                        r.anyOf.map(x => AnonymousSlotExpressionImpl(range = Some(Reference(x)))),
+                      anyOf = r.anyOf.map(x => AnonymousSlotExpression(range = Some(Reference(x)))),
                       minimumValue = r.minimumValue.map(LinkmlAny(_)),
                       maximumValue = r.maximumValue.map(LinkmlAny(_)),
                       pattern = r.pattern,
@@ -1026,7 +1025,7 @@ object OwlImporter {
         .sortBy(p => propertyOrder.getOrElse(p, Int.MaxValue)).map(names)
 
       metadata.applyTo(
-        ClassDefinitionImpl(
+        ClassDefinition(
           name = name,
           classUri = explicitIri(c, NameGroup.Class),
           isA = isA.map(Reference(_)),
@@ -1038,7 +1037,7 @@ object OwlImporter {
           disjointWith = disjoint.map(Reference(_)),
           uniqueKeys = VectorMap.from(keys.zipWithIndex.map { (slots, i) =>
             val keyName = if i == 0 then s"${name}_key" else s"${name}_key_${i + 1}"
-            keyName -> UniqueKeyImpl(
+            keyName -> UniqueKey(
               uniqueKeyName = keyName,
               uniqueKeySlots = slots.map(Reference(_)),
             )
@@ -1054,12 +1053,12 @@ object OwlImporter {
     /** Adds "at least one value is a `range`" to a slot. Uses `has_member`, or an `all_of` entry if
       * `has_member` is already taken.
       */
-    private def withMember(slot: SlotDefinitionImpl, range: Option[String]): SlotDefinitionImpl = {
-      val member = AnonymousSlotExpressionImpl(range = range.map(Reference(_)))
+    private def withMember(slot: SlotDefinition, range: Option[String]): SlotDefinition = {
+      val member = AnonymousSlotExpression(range = range.map(Reference(_)))
       if slot.hasMember.isEmpty then slot.copy(required = true, hasMember = Some(member))
       else if slot.hasMember.contains(member) || slot.allOf.exists(_.hasMember.contains(member))
       then slot
-      else slot.copy(allOf = slot.allOf :+ AnonymousSlotExpressionImpl(hasMember = Some(member)))
+      else slot.copy(allOf = slot.allOf :+ AnonymousSlotExpression(hasMember = Some(member)))
     }
 
     /** Turns a cardinality restriction into `slot_usage`, skipping what the slot already says. */
@@ -1068,7 +1067,7 @@ object OwlImporter {
         bound: Bound,
         n: Int,
         functional: Boolean,
-        restrict: (String, SlotDefinitionImpl => SlotDefinitionImpl) => Unit,
+        restrict: (String, SlotDefinition => SlotDefinition) => Unit,
     ): Unit = (bound, n) match {
       case (Bound.Min, 0) => restrict(p, identity)
       case (Bound.Min, 1) => restrict(p, _.copy(required = true))
@@ -1117,7 +1116,7 @@ object OwlImporter {
         Case.baseToPascal(Case.base(names(e))) + "." + Case.base(text).toUpperCase,
       ).original
 
-    private lazy val enums: Seq[EnumDefinitionImpl] =
+    private lazy val enums: Seq[EnumDefinition] =
       enumMembers.toSeq.filterNot((e, _) => imported.contains(e)).map { (e, members) =>
         val name = names(e)
         val (metadata, annotations) = termDocumentation(e)
@@ -1137,7 +1136,7 @@ object OwlImporter {
           declarationsByIri.getOrElse(m, Nil).foreach(take)
           ensurePrefix(m)
           text -> pvMetadata.applyTo(
-            PermissibleValueImpl(
+            PermissibleValue(
               text = text,
               meaning = Option.when(m != defaultMeaning(e, text))(curie(m)),
               annotations = pvAnnotations,
@@ -1152,7 +1151,7 @@ object OwlImporter {
           curie(o)
         }
         metadata.applyTo(
-          EnumDefinitionImpl(
+          EnumDefinition(
             name = name,
             enumUri = explicitIri(e, NameGroup.Class),
             permissibleValues = VectorMap.from(values),
@@ -1268,14 +1267,14 @@ object OwlImporter {
         version = metadata.version.orElse(ontology.versionIri),
         inLanguage = metadata.inLanguage.orElse(reader.language),
       ).applyTo(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           id = Uri(
             // Without an ontology IRI, use the namespace. That is how others import such
             // vocabularies (e.g. DC terms).
             config.schemaId.orElse(ontology.iri).getOrElse(defaultNamespace.stripSuffix("#")),
           ),
           name = name,
-          prefixes = VectorMap.from(naming.declared.map((p, ns) => p -> PrefixImpl(p, Uri(ns)))),
+          prefixes = VectorMap.from(naming.declared.map((p, ns) => p -> Prefix(p, Uri(ns)))),
           defaultPrefix = Some(naming.defaultPrefix),
           defaultRange = Some(Reference("string")),
           imports = (UriOrCurie("linkml:types") +: any.toSeq) ++ importRefs.map(UriOrCurie(_)),

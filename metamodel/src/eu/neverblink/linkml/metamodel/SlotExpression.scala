@@ -91,21 +91,21 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/units
     */
-  def unit: Option[UnitOfMeasureImpl]
+  def unit: Option[UnitOfMeasure]
 
   /** The value of the slot is multivalued with all members satisfying the condition
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def allMembers: Option[AnonymousSlotExpressionImpl]
+  def allMembers: Option[AnonymousSlotExpression]
 
   /** Coerces the value of the slot into an array and defines the dimensions of that array
     *
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def array: Option[ArrayExpressionImpl]
+  def array: Option[ArrayExpression]
 
   /** A collection of enum bindings that specify how a slot can be bound to a permissible value from
     * an enumeration. LinkML provides enums to allow string values to be restricted to one of a set
@@ -119,7 +119,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def bindings: Seq[EnumBindingImpl]
+  def bindings: Seq[EnumBinding]
 
   /** An inlined enumeration
     *
@@ -178,7 +178,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def hasMember: Option[AnonymousSlotExpressionImpl]
+  def hasMember: Option[AnonymousSlotExpression]
 
   /** Causes the slot value to be interpreted as a uriorcurie after prefixing with this string
     *
@@ -253,7 +253,7 @@ trait SlotExpression extends Expression {
     *   One use for this is being able to describe a range using any_of expressions, for example to
     *   combine two enums
     */
-  def rangeExpression: Option[AnonymousClassExpressionImpl]
+  def rangeExpression: Option[AnonymousClassExpression]
 
   /** The string value of the slot must conform to the regular expression in the pattern expression
     *
@@ -262,7 +262,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def structuredPattern: Option[PatternExpressionImpl]
+  def structuredPattern: Option[PatternExpression]
 
   /** If PRESENT then a value must be present (for lists there must be at least one value). If
     * ABSENT then a value must be absent (for lists, must be empty)
@@ -282,7 +282,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def anyOf: Seq[AnonymousSlotExpressionImpl]
+  def anyOf: Seq[AnonymousSlotExpression]
 
   /** Holds if only one of the expressions hold
     *
@@ -291,7 +291,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def exactlyOneOf: Seq[AnonymousSlotExpressionImpl]
+  def exactlyOneOf: Seq[AnonymousSlotExpression]
 
   /** Holds if none of the expressions hold
     *
@@ -300,7 +300,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def noneOf: Seq[AnonymousSlotExpressionImpl]
+  def noneOf: Seq[AnonymousSlotExpression]
 
   /** Holds if all of the expressions hold
     *
@@ -309,7 +309,7 @@ trait SlotExpression extends Expression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def allOf: Seq[AnonymousSlotExpressionImpl]
+  def allOf: Seq[AnonymousSlotExpression]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

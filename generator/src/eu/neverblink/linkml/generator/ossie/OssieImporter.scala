@@ -20,7 +20,7 @@ class OssieImporter extends SchemaImporter[OssieImporter.Options] {
 
   override protected def defaultOptions: Options = Options()
 
-  override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinitionImpl =
+  override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinition =
     Conversion(decode(readUtf8(in)), options).schema
 
   /** Parse and decode an ontology document. Accepts JSON too, since JSON is YAML. */
@@ -116,16 +116,16 @@ object OssieImporter {
       }
     }
 
-    def schema: SchemaDefinitionImpl = {
+    def schema: SchemaDefinition = {
       val classes = entityTypes.map(classOf)
       // Any class is only declared when something actually refers to it.
       // TODO: should this be a built-in type/class hybrid instead?
       val any = Option.when(
         classes.exists(_.attributes.values.exists(_.range.contains(Reference(anyClass)))) &&
           !classes.exists(_.name == anyClass),
-      )(ClassDefinitionImpl(name = anyClass, classUri = Some(UriOrCurie("linkml:Any"))))
+      )(ClassDefinition(name = anyClass, classUri = Some(UriOrCurie("linkml:Any"))))
 
-      SchemaDefinitionImpl(
+      SchemaDefinition(
         id = Uri(options.schemaId.getOrElse {
           val slug = Case.base(ontology.name)
           "https://example.org/" + (if slug.isEmpty then "ontology" else slug)
@@ -133,8 +133,8 @@ object OssieImporter {
         name = ontology.name,
         description = ontology.description.map(PlainText.apply),
         prefixes = VectorMap(
-          "linkml" -> PrefixImpl("linkml", Uri(linkmlNamespace)),
-        ) ++ keptPrefixes.map((p, ns) => p -> PrefixImpl(p, Uri(ns))),
+          "linkml" -> Prefix("linkml", Uri(linkmlNamespace)),
+        ) ++ keptPrefixes.map((p, ns) => p -> Prefix(p, Uri(ns))),
         defaultRange = Some(Reference("string")),
         imports = Seq(UriOrCurie("linkml:types")),
         extensions = aiContext,
@@ -151,7 +151,7 @@ object OssieImporter {
         tag.original -> ExtensionImpl(extensionTag = tag, extensionValue = LinkmlAny(node.asYaml))
       }.toMap
 
-    private def classOf(concept: Concept): ClassDefinitionImpl = {
+    private def classOf(concept: Concept): ClassDefinition = {
       // The generator lists mixins before `is_a`, so the last entry is the one that was `is_a`.
       val parents = concept.extendsConcepts.map(name => elementNames.getOrElse(name, name))
       val declared = concept.relationships.map(r => r.name -> r).toMap
@@ -168,14 +168,14 @@ object OssieImporter {
       val compoundKey = Option.when(
         identifier.isEmpty && concept.identifyBy.exists(declared.contains),
       )(
-        UniqueKeyImpl(
+        UniqueKey(
           uniqueKeyName = uniqueKeyName,
           uniqueKeySlots = concept.identifyBy.map(name => Reference(Case.base(name))),
         ),
       )
 
       val name = elementNames(concept.concept)
-      ClassDefinitionImpl(
+      ClassDefinition(
         name = name,
         alias = Option.when(name != concept.concept)(concept.concept),
         classUri = concept.iri.map(uriOf),
@@ -205,7 +205,7 @@ object OssieImporter {
         required: Boolean,
         identifier: Boolean,
         rank: Int,
-    ): (String, SlotDefinitionImpl) = {
+    ): (String, SlotDefinition) = {
       val name = Case.base(relationship.name)
       // We don't support multi-role relationships yet, so we only look at the first one.
       // TODO: consider synthesizing a LinkML class for the relationship and using it as the range.
@@ -220,7 +220,7 @@ object OssieImporter {
         .map(_.phrase)
         .filter(phrase => phrase.nonEmpty && phrase != name.replace('_', ' '))
 
-      name -> SlotDefinitionImpl(
+      name -> SlotDefinition(
         name = name,
         rank = Some(rank),
         alias = Option.when(name != relationship.name)(relationship.name),
@@ -237,20 +237,20 @@ object OssieImporter {
       )
     }
 
-    private def enumOf(concept: Concept): EnumDefinitionImpl =
-      EnumDefinitionImpl(
+    private def enumOf(concept: Concept): EnumDefinition =
+      EnumDefinition(
         name = elementNames(concept.concept),
         enumUri = concept.iri.map(uriOf),
         description = concept.description.map(PlainText.apply),
         permissibleValues = VectorMap.from(
-          permissibleValues(concept).getOrElse(Nil).map(v => v -> PermissibleValueImpl(text = v)),
+          permissibleValues(concept).getOrElse(Nil).map(v => v -> PermissibleValue(text = v)),
         ),
       )
 
-    private def typeOf(concept: Concept): TypeDefinitionImpl = {
+    private def typeOf(concept: Concept): TypeDefinition = {
       val constraints =
         Constraints.from(Ref(concept.concept), concept.requires.flatMap(Expression.parse))
-      TypeDefinitionImpl(
+      TypeDefinition(
         name = elementNames(concept.concept),
         description = concept.description.map(PlainText.apply),
         typeUri = concept.iri.map(uriOf),

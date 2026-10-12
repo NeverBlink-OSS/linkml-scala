@@ -5,12 +5,7 @@ import org.virtuslab.yaml.Node
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.linkml.validation.{
-  Codec,
-  IssueSeverity,
-  SchemaIssue,
-  SchemaValidationReportImpl,
-}
+import eu.neverblink.linkml.validation.{Codec, IssueSeverity, SchemaIssue, SchemaValidationReport}
 
 /** ANSI escape codes for the terminal report. Kept private to this file. */
 private object Ansi {
@@ -105,7 +100,7 @@ object ValidationReport {
             val blocks = display.map((name, issues) => renderBlock(name, issues, format))
             (blocks :+ totalSummary(display, format)).mkString("\n\n")
 
-  /** Serialize one [[SchemaValidationReportImpl]] per input file, in input order, as a JSON array.
+  /** Serialize one [[SchemaValidationReport]] per input file, in input order, as a JSON array.
     *
     * The run id is the input name exactly as the user gave it on the command line, so that a report
     * can be traced back to the file it came from. The messages are inferred, so that a consumer of
@@ -114,7 +109,7 @@ object ValidationReport {
   private def renderJson(reports: Seq[(String, Seq[SchemaIssue])]): String =
     val nodes = reports.map { (inputName, issues) =>
       Codec.codec.encode(
-        SchemaValidationReportImpl(
+        SchemaValidationReport(
           issues = issues.map(_.infer()),
           validationRunId = Some(inputName),
         ),

@@ -16,7 +16,7 @@ import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
-import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReportImpl}
+import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReport}
 import org.virtuslab.yaml.{Node, StringNode}
 
 import java.io.{ByteArrayInputStream, OutputStream}
@@ -292,7 +292,7 @@ object LinkMlNativeApi {
       inferMessages: Boolean,
   ): Node =
     Codec.codec.encode(
-      SchemaValidationReportImpl(
+      SchemaValidationReport(
         issues = if inferMessages then issues.map(_.infer()) else issues,
         validationRunId = runId,
       ),

@@ -15,7 +15,7 @@ trait ClassExpression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def slotConditions: Map[String, SlotDefinitionImpl]
+  def slotConditions: Map[String, SlotDefinition]
 
   /** Holds if at least one of the expressions hold
     *
@@ -24,7 +24,7 @@ trait ClassExpression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def anyOf: Seq[AnonymousClassExpressionImpl]
+  def anyOf: Seq[AnonymousClassExpression]
 
   /** Holds if only one of the expressions hold
     *
@@ -33,7 +33,7 @@ trait ClassExpression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def exactlyOneOf: Seq[AnonymousClassExpressionImpl]
+  def exactlyOneOf: Seq[AnonymousClassExpression]
 
   /** Holds if none of the expressions hold
     *
@@ -42,7 +42,7 @@ trait ClassExpression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def noneOf: Seq[AnonymousClassExpressionImpl]
+  def noneOf: Seq[AnonymousClassExpression]
 
   /** Holds if all of the expressions hold
     *
@@ -51,7 +51,7 @@ trait ClassExpression {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def allOf: Seq[AnonymousClassExpressionImpl]
+  def allOf: Seq[AnonymousClassExpression]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -5,54 +5,37 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[MultipleTreeRoots]] LinkML class
+/** More than one class in the root schema is marked as `tree_root`.
   *
-  * @inheritdoc
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class MultipleTreeRootsImpl(
+final case class MultipleTreeRoots(
     @named("class_names")
     classNames: Seq[String],
     details: Option[String] = None,
     @named("issue_type")
     @serializeDefault
     issueType: String = "MultipleTreeRoots",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
-) extends MultipleTreeRoots {
-
-  override def infer(): MultipleTreeRootsImpl =
-    copy(
-      message = inferOptional(
-        "message",
-        message,
-        "Multiple classes are defined as a 'tree_root': " + stringify(classNames),
-      ),
-    )
-}
-
-/** More than one class in the root schema is marked as `tree_root`.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class MultipleTreeRoots extends SchemaError {
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def classNames: Seq[String]
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
+) extends SchemaError {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -61,5 +44,12 @@ abstract class MultipleTreeRoots extends SchemaError {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): MultipleTreeRoots
+  override def infer(): MultipleTreeRoots =
+    copy(
+      message = inferOptional(
+        "message",
+        message,
+        "Multiple classes are defined as a 'tree_root': " + stringify(classNames),
+      ),
+    )
 }

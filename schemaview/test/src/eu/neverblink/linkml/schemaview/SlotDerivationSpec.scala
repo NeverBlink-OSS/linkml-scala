@@ -10,24 +10,24 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
   "SlotDerivation" should {
     "inherit slot slots from class ancestors" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -40,25 +40,25 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "override slot slots from class ancestors with child class slot usage" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         description = Some(PlainText("Base description")),
         range = Some(Reference("child")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(slot.copy(description = Some(PlainText("Child description"))).compact),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -71,16 +71,16 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "ignore schema-level slots if slot comes from an attribute" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         identifier = true,
         range = Some(Reference("child")),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         attributes = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             description = Some(PlainText("Attribute description")),
             range = Some(Reference("child")),
@@ -89,7 +89,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -103,10 +103,10 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "override is_a with mixins" in {
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         attributes = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             description = Some(PlainText("Base description")),
             range = Some(Reference("base")),
@@ -114,11 +114,11 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
 
-      val mixin = ClassDefinitionImpl(
+      val mixin = ClassDefinition(
         name = "mixin",
         mixin = true,
         attributes = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             description = Some(PlainText("Mixin description")),
             range = Some(Reference("base")),
@@ -126,14 +126,14 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         mixins = Seq(mixin.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           classes = Map(base.compact, mixin.compact, child.compact),
@@ -145,10 +145,10 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "override attributes with slot_usage" in {
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         attributes = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             description = Some(PlainText("Base description")),
             range = Some(Reference("base")),
@@ -156,11 +156,11 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             description = Some(PlainText("Slot usage description")),
             range = Some(Reference("base")),
@@ -169,7 +169,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           classes = Map(base.compact, child.compact),
@@ -181,22 +181,22 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "merge Seq slots" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         notes = Seq(PlainText("note 2")),
         range = Some(Reference("child")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             notes = Seq(PlainText("note 1")),
             range = Some(Reference("child")),
@@ -205,7 +205,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -218,22 +218,22 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "not duplicate Seqs if the contents are identical" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         notes = Seq(PlainText("note 1")),
         range = Some(Reference("base")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             notes = Seq(PlainText("note 1")),
             range = Some(Reference("child")),
@@ -242,7 +242,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -256,32 +256,32 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
     "merge Map slots" in {
       val ann1 =
-        AnnotationImpl(
+        Annotation(
           extensionTag = UriOrCurie("ann1"),
           extensionValue = LinkmlAny("annotation 1"),
         )
       val ann2 =
-        AnnotationImpl(
+        Annotation(
           extensionTag = UriOrCurie("ann2"),
           extensionValue = LinkmlAny("annotation 2"),
         )
 
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         annotations = Map("ann1" -> ann1),
         range = Some(Reference("child")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             annotations = Map("ann2" -> ann2),
             range = Some(Reference("child")),
@@ -290,7 +290,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -305,27 +305,27 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
     "not duplicate Map slots if the contents are identical" in {
       val ann1 =
-        AnnotationImpl(
+        Annotation(
           extensionTag = UriOrCurie("ann1"),
           extensionValue = LinkmlAny("annotation 1"),
         )
 
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         annotations = Map("ann1" -> ann1),
         range = Some(Reference("base")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slot.reference),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         isA = Some(base.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             annotations = Map("ann1" -> ann1.copy()),
             range = Some(Reference("child")),
@@ -334,7 +334,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -348,17 +348,17 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "combine boolean values" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         identifier = true,
         range = Some(Reference("child")),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         slots = Seq(slot.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             identifier = false,
             range = Some(Reference("child")),
@@ -367,7 +367,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact),
@@ -380,25 +380,25 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "not inherit non-inheritable values from parent slots " in {
-      val slotParent = SlotDefinitionImpl(
+      val slotParent = SlotDefinition(
         name = "slotParent",
         description = Some(PlainText("Base description")),
         range = Some(Reference("base")),
       )
 
-      val slotChild = SlotDefinitionImpl(
+      val slotChild = SlotDefinition(
         name = "slotChild",
         isA = Some(slotParent.reference),
         range = Some(Reference("base")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slotChild.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slotChild.compact, slotParent.compact),
@@ -411,25 +411,25 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "inherit inheritable values from parent slots" in {
-      val slotParent = SlotDefinitionImpl(
+      val slotParent = SlotDefinition(
         name = "slotParent",
         pattern = Some("Some pattern"),
         range = Some(Reference("base")),
       )
 
-      val slotChild = SlotDefinitionImpl(
+      val slotChild = SlotDefinition(
         name = "slotChild",
         isA = Some(slotParent.reference),
         range = Some(Reference("base")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slotChild.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slotChild.compact, slotParent.compact),
@@ -442,26 +442,26 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "inherit zero cardinalities from parent slots" in {
-      val slotParent = SlotDefinitionImpl(
+      val slotParent = SlotDefinition(
         name = "slotParent",
         minimumCardinality = Some(0),
         maximumCardinality = Some(0),
         range = Some(Reference("base")),
       )
 
-      val slotChild = SlotDefinitionImpl(
+      val slotChild = SlotDefinition(
         name = "slotChild",
         isA = Some(slotParent.reference),
         range = Some(Reference("base")),
       )
 
-      val base = ClassDefinitionImpl(
+      val base = ClassDefinition(
         name = "base",
         slots = Seq(slotChild.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slotChild.compact, slotParent.compact),
@@ -475,28 +475,28 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "not apply slot usages to slots with different ids" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         title = Some(PlainText("Slot 1")),
         range = Some(Reference("child")),
       )
 
-      val slot2 = SlotDefinitionImpl(
+      val slot2 = SlotDefinition(
         name = "slot2",
         title = Some(PlainText("Slot 2")),
         range = Some(Reference("child")),
       )
 
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         slots = Seq(slot.reference, slot2.reference),
         slotUsage = Map(
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot1",
             identifier = true,
             range = Some(Reference("child")),
           ).compact,
-          SlotDefinitionImpl(
+          SlotDefinition(
             name = "slot2",
             description = Some(PlainText("desc")),
             range = Some(Reference("child")),
@@ -505,7 +505,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test/"),
           slotDefinitions = Map(slot.compact, slot2.compact),
@@ -525,18 +525,18 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "infer the slot's URI" in {
-      val slot = SlotDefinitionImpl(
+      val slot = SlotDefinition(
         name = "slot1",
         title = Some(PlainText("Slot 1")),
         range = Some(Reference("child")),
       )
-      val child = ClassDefinitionImpl(
+      val child = ClassDefinition(
         name = "child",
         slots = Seq(slot.reference),
       )
 
       val sv = SchemaView.single(
-        SchemaDefinitionImpl(
+        SchemaDefinition(
           name = "",
           id = Uri("https://neverblink.eu/test"),
           slotDefinitions = Map(slot.compact),

@@ -24,7 +24,7 @@ class CodecCoverageSpec extends AnyWordSpec, Matchers {
   private def read(relativePath: String): String =
     Using.resource(Source.fromFile(s"$workspaceRoot/$relativePath"))(_.mkString)
 
-  /** Concrete issue classes declared in the schema. Abstract ones have no `...Impl` to encode. */
+  /** Concrete issue classes declared in the schema. Abstract ones have no case class to encode. */
   private def issueClassesInSchema: Set[String] = {
     val text = read("model/issue-types.yaml")
     val root = parseYaml(text).fold(err => fail(s"Cannot parse the schema: ${err.msg}"), identity)
@@ -48,7 +48,8 @@ class CodecCoverageSpec extends AnyWordSpec, Matchers {
 
   /** Issue classes the codec dispatches on, read back out of its source. */
   private def issueClassesInCodec: Set[String] =
-    """classOf\[(\w+)Impl\]""".r
+    // Issue classes without children are generated without the `...Impl` suffix.
+    """classOf\[(\w+?)(?:Impl)?\]""".r
       .findAllMatchIn(read("validation/src/eu/neverblink/linkml/validation/Codec.scala"))
       .map(_.group(1))
       .toSet
@@ -65,7 +66,7 @@ class CodecCoverageSpec extends AnyWordSpec, Matchers {
       val missing = (inSchema -- inCodec).toSeq.sorted
       withClue(
         s"Codec.issueCodec is missing a case for: ${missing.mkString(", ")}. " +
-          "Add `TypeDesignatorEntry(\"<Name>\", classOf[<Name>Impl], <name>)` and the matching " +
+          "Add `TypeDesignatorEntry(\"<Name>\", classOf[<Name>], <name>)` and the matching " +
           "derived codec. ",
       )(missing shouldBe empty)
 

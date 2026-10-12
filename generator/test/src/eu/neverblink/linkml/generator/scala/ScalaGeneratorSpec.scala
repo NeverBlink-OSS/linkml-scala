@@ -21,10 +21,14 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
     val testPkg = "eu.neverblink.linkml.generator.scala.test"
 
+    // Keeps the interface + `...Impl` split for classes without children, which the tests of the
+    // split itself rely on.
+    val splitOptions = ScalaGenerator.Options(testPkg, skipLeafInterfaces = false)
+
     "generate abstract interfaces and implementations for plain classes" in {
       given SchemaView = ModelCatalogue.basic.model
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         s"package $testPkg",
         "case class SomeClassImpl",
@@ -43,6 +47,130 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       ).foreach { snippet =>
         code should not include snippet
       }
+    }
+
+    "generate a single case class for a concrete class without children" in {
+      given SchemaView = ModelCatalogue.basic.model
+      val code =
+        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+      Seq(
+        "final case class SomeClass(",
+        "someOtherSlot: Int",
+        "someSlot: Option[String] = None",
+        // Nothing to override, as the class has no parents.
+        "  def infer(): SomeClass =",
+      ).foreach { snippet =>
+        code should include(snippet)
+      }
+      Seq(
+        "SomeClassImpl",
+        "abstract class",
+        "trait",
+        "extends",
+        "override",
+      ).foreach { snippet =>
+        code should not include snippet
+      }
+    }
+
+    "keep the interface and implementation for a concrete class with children" in {
+      given SchemaView = ModelCatalogue.inheritance.model
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      Seq(
+        "final case class BaseClassImpl(",
+        ") extends BaseClass",
+        "abstract class BaseClass",
+        "def infer(): BaseClass",
+      ).foreach { snippet =>
+        files("BaseClass.scala") should include(snippet)
+      }
+      Seq(
+        "final case class ChildClass(",
+        ") extends BaseClass",
+        "override def infer(): ChildClass =",
+        // Inlined and referenced ranges point at the class itself.
+        "yetAnotherSlot: Reference[BaseRefClass]",
+      ).foreach { snippet =>
+        files("ChildClass.scala") should include(snippet)
+      }
+      files("ChildClass.scala") should not include "ChildClassImpl"
+      files("ChildClass.scala") should not include "abstract class"
+    }
+
+    "count a class used as a mixin as having children" in {
+      given SchemaView = decode(
+        (schemaShared +
+          """classes:
+            |  Tagged:
+            |    attributes:
+            |      tag:
+            |        range: string
+            |  Thing:
+            |    mixins:
+            |      - Tagged
+            |    attributes:
+            |      label:
+            |        range: string
+            |""").stripMargin,
+      )
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files("Tagged.scala") should include("final case class TaggedImpl(")
+      files("Tagged.scala") should include("abstract class Tagged")
+      files("Thing.scala") should include("final case class Thing(")
+      files("Thing.scala") should include(") extends Tagged")
+    }
+
+    "type inlined ranges of classes without children as the class itself" in {
+      given SchemaView = decode(
+        (schemaShared +
+          """classes:
+            |  Container:
+            |    attributes:
+            |      items:
+            |        range: Item
+            |        multivalued: true
+            |        inlined_as_list: true
+            |  Item:
+            |    attributes:
+            |      value:
+            |        range: string
+            |""").stripMargin,
+      )
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply(
+        "Container.scala",
+      )
+      code should include("items: Seq[Item] = Seq()")
+      code should not include "ItemImpl"
+    }
+
+    "document the slots of a single case class as its parameters" in {
+      given SchemaView = decode(
+        (schemaShared +
+          """classes:
+            |  Person:
+            |    description: A human being
+            |    attributes:
+            |      full_name:
+            |        description: |-
+            |          The name in full
+            |          including middle names
+            |        range: string
+            |      age:
+            |        range: integer
+            |""").stripMargin,
+      )
+      val code =
+        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("Person.scala")
+      code should include(
+        """/** A human being
+          |  *
+          |  * @param fullName
+          |  *   The name in full
+          |  *   including middle names
+          |  * @see""".stripMargin,
+      )
+      // Slots without a description get no tag.
+      code should not include "@param age"
     }
 
     "not generate implementations for abstract classes" in {
@@ -144,7 +272,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inheritance.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("ChildClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("ChildClass.scala")
       Seq(
         "abstract class ChildClass extends BaseClass",
       ).foreach { snippet =>
@@ -180,7 +308,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.implicitInline.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "Option[SomeOtherClassImpl]",
       ).foreach { snippet =>
@@ -192,7 +320,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.implicitInlineAsCompactDict.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "@compactDict",
         "Map[String, SomeOtherClassImpl]",
@@ -205,7 +333,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.implicitInlineAsList.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "Seq[SomeOtherClassImpl]",
       ).foreach { snippet =>
@@ -217,7 +345,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.explicitInlineImplicitlyAsCompactDict.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "@compactDict",
         "Map[String, SomeOtherClassImpl]",
@@ -230,7 +358,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.explicitInlineImplicitlyAsSimpleDict.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "@simpleDict",
         "Map[String, SomeOtherClassImpl]",
@@ -243,7 +371,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.explicitInlineImplicitlyAsList.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "Seq[SomeOtherClassImpl]",
       ).foreach { snippet =>
@@ -255,7 +383,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.explicitInlineList.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("SomeClass.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("SomeClass.scala")
       Seq(
         "Seq[SomeOtherClassImpl]",
       ).foreach { snippet =>
@@ -269,7 +397,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.inlines.inlineAbstract.model
 
       val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("Container.scala")
+        ScalaGenerator().generate(splitOptions).toMap.apply("Container.scala")
       Seq(
         "toAbstract: Option[AbstractRange] = None",
         "toMixin: Option[MixinRange] = None",
@@ -344,7 +472,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
 
       files(
         "Open.scala",
@@ -471,7 +599,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
 
       files("SomeClass.scala") should include(
         "SomeClass extends SomeOtherClass",
@@ -505,7 +633,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
 
       files("SomeClass.scala") should include("def someSlot: Int")
       files("SomeClass.scala") should include("someSlot: Int,")
@@ -562,7 +690,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
       files("SomeClass.scala") should include("someSlot: Map[String, SomeOtherClassImpl] = Map(),")
     }
 
@@ -585,7 +713,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
       files("SomeClass.scala") should include("someSlot: Seq[SomeOtherClassImpl] = Seq(),")
     }
 
@@ -604,7 +732,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
 
       files("SomeClass.scala") should include("def someSlot: LinkmlAny")
       files("SomeClass.scala") should include("someSlot: LinkmlAny,")
@@ -652,7 +780,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       given SchemaView = decode(input)
 
-      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      val files = ScalaGenerator().generate(splitOptions).toMap
 
       val code = files("MySlotDef.scala")
       Seq(
@@ -878,7 +1006,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate an infer() method from equals_expression" in {
       val code = ScalaGenerator(using ModelCatalogue.equalsExpression.model).generate(
-        ScalaGenerator.Options(testPkg),
+        splitOptions,
       ).toMap.apply("SomeClass.scala")
       Seq(
         // Declared on the interface, narrowed to the implementation type in the impl
@@ -1034,7 +1162,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate an infer() method that does nothing when there are no expressions" in {
       val code = ScalaGenerator(using ModelCatalogue.basic.model).generate(
-        ScalaGenerator.Options(testPkg),
+        splitOptions,
       ).toMap.apply("SomeClass.scala")
       code should include("def infer(): SomeClassImpl")
       code should include("def infer(): SomeClass\n")

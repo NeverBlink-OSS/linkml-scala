@@ -9,10 +9,10 @@ import org.virtuslab.yaml.parseYaml
   */
 object OwlImportConfigs {
 
-  given codec: LinkmlYamlCodec[OwlImportConfigImpl] = LinkmlYamlCodec.derived
+  given codec: LinkmlYamlCodec[OwlImportConfig] = LinkmlYamlCodec.derived
 
   /** Read a config from YAML (or JSON). */
-  def parse(yaml: String): OwlImportConfigImpl =
+  def parse(yaml: String): OwlImportConfig =
     parseYaml(yaml) match {
       case Right(node) => codec.decode(node)
       case Left(error) => throw IllegalArgumentException(s"Not a readable config: ${error.msg}")
@@ -67,7 +67,7 @@ object OwlImportConfigs {
     "version" -> Seq("pav:version", "owl:versionInfo"),
   )
 
-  extension (c: OwlImportConfigImpl) {
+  extension (c: OwlImportConfig) {
 
     /** The default metadata sources, with this config's overrides applied. */
     def metadataSources: Seq[(String, Seq[String])] = {

@@ -110,11 +110,11 @@ final case class TypeAttributeView(
     LinkmlPattern.option(combineOption(slot.pattern, _type.pattern, combinePattern))
 
   /** @see [[slot.structuredPattern]] */
-  def structuredPattern: Option[PatternExpressionImpl] =
+  def structuredPattern: Option[PatternExpression] =
     combineOption(slot.structuredPattern, _type.structuredPattern, combineFallback)
 
   /** @see [[slot.unit]] */
-  def unit: Option[UnitOfMeasureImpl] =
+  def unit: Option[UnitOfMeasure] =
     combineOption(slot.unit, _type.unit, combineFallback)
 
   /** @see [[slot.equalsString]] */

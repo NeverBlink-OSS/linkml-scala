@@ -43,11 +43,11 @@ class MetamodelSpec extends AnyWordSpec, Matchers {
   "metamodel patches" should {
     // TODO LNK-124: remove when resolved in linkml-model
     "make rank slot inherited" in {
-      val parent = SlotDefinitionImpl(
+      val parent = SlotDefinition(
         name = "parent",
         rank = Some(123),
       )
-      val child = SlotDefinitionImpl(
+      val child = SlotDefinition(
         name = "child",
       )
       val combined = child.combineInherited(parent, null)

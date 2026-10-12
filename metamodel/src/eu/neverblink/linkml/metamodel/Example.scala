@@ -5,49 +5,24 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[Example]] LinkML class
+/** Usage example and description
   *
-  * @inheritdoc
+  * @param value
+  *   Example value
+  * @param valueDescription
+  *   Description of what the value is doing
+  * @param valueObject
+  *   Direct object representation of the example
+  * @see
+  *   From schema: https://w3id.org/linkml/meta
   */
-final case class ExampleImpl(
+final case class Example(
     value: Option[String] = None,
     @named("description")
     valueDescription: Option[LocalizedText] = None,
     @named("object")
     valueObject: Option[LinkmlAny] = None,
-) extends Example {
-
-  override def infer(): ExampleImpl =
-    this
-}
-
-/** Usage example and description
-  *
-  * @see
-  *   From schema: https://w3id.org/linkml/meta
-  */
-abstract class Example {
-
-  /** Example value
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def value: Option[String]
-
-  /** Description of what the value is doing
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def valueDescription: Option[LocalizedText]
-
-  /** Direct object representation of the example
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def valueObject: Option[LinkmlAny]
+) {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -56,5 +31,6 @@ abstract class Example {
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): Example
+  def infer(): Example =
+    this
 }

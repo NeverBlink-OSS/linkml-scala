@@ -83,7 +83,7 @@ object LinkMlCGenerators {
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.owl)
 
   /** Generate Scala sources, as a JSON object mapping filename to source. Options: `package`,
-    * `generateEmitPrefixes`, `metadataLanguage`.
+    * `generateEmitPrefixes`, `metadataLanguage`, `skipLeafInterfaces`.
     */
   @exported("linkml_scala")
   def scala(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

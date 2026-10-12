@@ -5,24 +5,46 @@ package eu.neverblink.linkml.validation
 
 import eu.neverblink.linkml.runtime.*
 
-/** Base implementation of the [[InvalidUriOrCurie]] LinkML class
+/** A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair.
   *
-  * @inheritdoc
+  * @param details
+  *   Longer, human-readable message describing the issue in more detail.
+  * @param issueType
+  *   The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled
+  *   automatically with the class name on serialization, and used to recover the concrete issue
+  *   type when reading a report back.
+  * @param location
+  *   The location in the schema where the issue was found.
+  *
+  * @param message
+  *   Short, human-readable message describing the issue.
+  * @param severity
+  *   The severity of the issue.
+  *
+  * @see
+  *   From schema: https://linkml.neverblink.eu/model/issue-types
   */
-final case class InvalidUriOrCurieImpl(
+final case class InvalidUriOrCurie(
     details: Option[String] = None,
     @named("issue_type")
     @serializeDefault
     issueType: String = "InvalidUriOrCurie",
-    location: IssueLocationImpl,
+    location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
     severity: IssueSeverity = IssueSeverity.Error,
     @named("uri_or_curie")
     uriOrCurie: UriOrCurie,
-) extends InvalidUriOrCurie {
+) extends SchemaError {
 
-  override def infer(): InvalidUriOrCurieImpl =
+  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
+    * the values already present agree with what their expressions infer.
+    *
+    * @throws eu.neverblink.linkml.runtime.InferenceException
+    *   if a slot's value contradicts the value inferred for it, or if an expression references a
+    *   slot that has no value
+    */
+  override def infer(): InvalidUriOrCurie =
     copy(
       details = inferOptional(
         "details",
@@ -41,46 +63,4 @@ final case class InvalidUriOrCurieImpl(
         ),
       ),
     )
-}
-
-/** A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair.
-  *
-  * @see
-  *   From schema: https://linkml.neverblink.eu/model/issue-types
-  */
-abstract class InvalidUriOrCurie extends SchemaError {
-
-  /** Longer, human-readable message describing the issue in more detail.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def details: Option[String]
-
-  /** Short, human-readable message describing the issue.
-    *
-    * @see
-    *   From schema: https://linkml.neverblink.eu/model/validation-report
-    * @note
-    *   This field is inferred using equals_expression and is present only if the consumer of the
-    *   report wishes to include it.
-    */
-  def message: Option[String]
-
-  /** @see
-    *   From schema: https://linkml.neverblink.eu/model/issue-types
-    */
-  def uriOrCurie: UriOrCurie
-
-  /** Fill in the slots that have an `equals_expression` with their computed values, and check that
-    * the values already present agree with what their expressions infer.
-    *
-    * @throws eu.neverblink.linkml.runtime.InferenceException
-    *   if a slot's value contradicts the value inferred for it, or if an expression references a
-    *   slot that has no value
-    */
-  def infer(): InvalidUriOrCurie
 }

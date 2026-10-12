@@ -11,10 +11,10 @@ import org.virtuslab.yaml.Node
   */
 object CurrentBuild {
 
-  private val codec: LinkmlYamlCodec[BuildInfoImpl] = LinkmlYamlCodec.derived
+  private val codec: LinkmlYamlCodec[BuildInfo] = LinkmlYamlCodec.derived
 
   /** Everything this module can tell about the current distribution. */
-  def info: BuildInfoImpl = BuildInfoImpl(
+  def info: BuildInfo = BuildInfo(
     linkmlScalaVersion = BuildConstants.version,
     metamodelVersion = BuildConstants.metamodelVersion,
     scalaVersion = BuildConstants.scalaVersion,
@@ -25,5 +25,5 @@ object CurrentBuild {
 
   /** Build metadata as a YAML node, ready to be written out as JSON or YAML.
     */
-  def node(build: BuildInfoImpl = info): Node = codec.encode(build)
+  def node(build: BuildInfo = info): Node = codec.encode(build)
 }
