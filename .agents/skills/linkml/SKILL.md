@@ -1,6 +1,6 @@
 ---
 name: linkml
-description: Author, validate, review and release LinkML schemas using the linkml-scala CLI. Auto-load for any task involving a LinkML schema - writing or editing classes, slots, attributes, enums, ranges, identifiers, inheritance, inlining, imports or prefixes; debugging a schema that fails to validate; generating JSON Schema, SHACL, RDFS, a Frictionless data package or Scala; converting an RDFS/OWL ontology, SHACL shapes, JSON Schema, XSD or sample data into LinkML; validating instance data against a schema; or setting up GitHub Actions for schema validation and releases.
+description: Author, validate, review and release LinkML schemas using the linkml-scala CLI. Auto-load for any task involving a LinkML schema - writing or editing classes, slots, attributes, enums, ranges, identifiers, inheritance, inlining, imports or prefixes; debugging a schema that fails to validate; generating JSON Schema, SHACL, RDFS, OWL, a Frictionless data package or Scala; importing an OWL ontology, RDFS vocabulary or Apache Ossie ontology into LinkML; converting SHACL shapes, JSON Schema, XSD or sample data into LinkML; validating instance data against a schema; or setting up GitHub Actions for schema validation and releases.
 license: Apache-2.0
 ---
 
@@ -18,7 +18,9 @@ JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skil
   not already used with linkml-scala. A significant set of the language is unimplemented and
   **fails silently** — `rules:`, boolean expressions, arrays, dynamic enums, type designators.
   This is the single most common way to produce a schema that looks right and does nothing.
-* NEVER claim a generator exists without checking.
+* NEVER claim a generator or importer exists without checking.
+* NEVER write a schema by hand from an OWL ontology, an RDFS vocabulary or an Apache Ossie
+  ontology. Run the importer (`linkml-scala from owl` / `from ossie`), then review and tweak.
 * When unsure what a construct *means*, generate from it and read the output. `generate linkml`
   and `generate json-schema` are cheaper and more reliable than reasoning.
 * NEVER install anything without asking first, and never pipe a remote script into a shell.
@@ -112,7 +114,7 @@ linkml-scala generate json-schema --to out/schema.json schema.yaml
 ```
 
 Generators: `json-schema`, `shacl`, `rdfs`, `owl`, `frictionless`, `scala`, `linkml`, `graphql`,
-`typescript`, `pydantic`, `er-diagram`, `ossie`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
+`typescript`, `pydantic`, `er-diagram`, `translation`, `ossie`. Omit `--to` for stdout; `--format ttl` gives prefixed Turtle from the RDF ones
 instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared properties. `scala` and
 `frictionless` write several files, so point their `--to` at a directory. For flags run
 `linkml-scala generate <generator> --help` — do not guess.
@@ -138,6 +140,21 @@ linkml-scala generate linkml schema.yaml
 Reach for it whenever inheritance, `slot_usage` or imports make the effective model unclear — and
 it is the best artifact to hand downstream consumers, who then need no import resolution.
 
+## Importing
+
+The reverse of `generate`: read a document in another format and write a LinkML schema.
+
+```shell
+linkml-scala from owl --list-not-imported --to schema.yaml ontology.ttl
+```
+
+Importers: `owl`, `ossie`.
+
+`from owl` reads OWL ontologies and plain RDFS vocabularies (DC terms, Schema.org and the like) in
+Turtle or N-Triples. `from ossie` reads an [Apache Ossie](https://github.com/apache/ossie)
+ontology. Both keep the source IRIs, and the result usually needs only small manual fixes. How to
+import, check and finish the result is in [300-bootstrap.md](300-bootstrap.md).
+
 ## Topics
 
 Read these when the task calls for them; do not load them up front.
@@ -153,9 +170,9 @@ Read these when the task calls for them; do not load them up front.
 
 ### Workflows
 
-* [Bootstrapping from existing artifacts](300-bootstrap.md) — converting an RDFS/OWL ontology,
-  SHACL shapes, JSON Schema, XSD, or sample JSON/YAML/CSV data into LinkML, and proving the result
-  round-trips.
+* [Bootstrapping from existing artifacts](300-bootstrap.md) — importing an OWL ontology, RDFS
+  vocabulary or Ossie ontology, converting SHACL shapes, JSON Schema, XSD, or sample
+  JSON/YAML/CSV data into LinkML, and proving the result round-trips.
 * [Reviewing a schema](400-review.md) — modelling-quality checklist beyond the linter: identifier
   and `tree_root` choices, inlining, reuse, external vocabulary mappings, naming, documentation.
 * [Validating instance data](500-validate-data.md) — generate JSON Schema or SHACL, then run
