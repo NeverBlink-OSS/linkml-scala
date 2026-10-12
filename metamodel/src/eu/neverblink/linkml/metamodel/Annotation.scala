@@ -12,14 +12,14 @@ import eu.neverblink.linkml.runtime.*
 final case class AnnotationImpl(
     @simpleDict
     annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
     @id
     @named("tag")
     extensionTag: UriOrCurie,
     @value
     @named("value")
     extensionValue: LinkmlAny,
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
 ) extends Annotation {
 
   override def infer(): AnnotationImpl =

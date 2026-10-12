@@ -29,34 +29,15 @@ final case class SlotDefinitionImpl(
     inlinedAsList: Boolean = false,
     pattern: Option[String] = None,
     rank: Option[Int] = None,
-    @named("any_of")
-    anyOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
-    @named("abstract")
-    `abstract`: Boolean = false,
     aliases: Seq[LocalizedText] = Seq(),
-    @named("all_members")
-    allMembers: Option[AnonymousSlotExpressionImpl] = None,
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("apply_to")
     applyTo: Seq[Reference[SlotDefinition]] = Seq(),
-    array: Option[ArrayExpressionImpl] = None,
-    asymmetric: Boolean = false,
-    bindings: Seq[EnumBindingImpl] = Seq(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
-    @named("children_are_mutually_disjoint")
-    childrenAreMutuallyDisjoint: Boolean = false,
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
     comments: Seq[LocalizedText] = Seq(),
@@ -74,6 +55,55 @@ final case class SlotDefinitionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
+    @named("exact_mappings")
+    exactMappings: Seq[UriOrCurie] = Seq(),
+    examples: Seq[ExampleImpl] = Seq(),
+    @named("from_schema")
+    fromSchema: Option[Uri] = None,
+    implements: Seq[UriOrCurie] = Seq(),
+    @named("imported_from")
+    importedFrom: Option[String] = None,
+    @named("in_language")
+    inLanguage: Option[String] = None,
+    instantiates: Seq[UriOrCurie] = Seq(),
+    keywords: Seq[LocalizedText] = Seq(),
+    @named("last_updated_on")
+    lastUpdatedOn: Option[LinkmlDateTime] = None,
+    @named("local_names")
+    @simpleDict
+    localNames: Map[String, LocalNameImpl] = Map(),
+    mappings: Seq[UriOrCurie] = Seq(),
+    @named("modified_by")
+    modifiedBy: Option[UriOrCurie] = None,
+    @named("narrow_mappings")
+    narrowMappings: Seq[UriOrCurie] = Seq(),
+    notes: Seq[LocalizedText] = Seq(),
+    @named("related_mappings")
+    relatedMappings: Seq[UriOrCurie] = Seq(),
+    role: Option[String] = None,
+    @named("see_also")
+    seeAlso: Seq[UriOrCurie] = Seq(),
+    @named("singular_name")
+    singularName: Option[String] = None,
+    @named("slot_group")
+    slotGroup: Option[Reference[SlotDefinition]] = None,
+    source: Option[UriOrCurie] = None,
+    status: Option[UriOrCurie] = None,
+    @named("structured_aliases")
+    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    todos: Seq[String] = Seq(),
+    unit: Option[UnitOfMeasureImpl] = None,
+    @named("abstract")
+    `abstract`: Boolean = false,
+    @named("all_members")
+    allMembers: Option[AnonymousSlotExpressionImpl] = None,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    array: Option[ArrayExpressionImpl] = None,
+    asymmetric: Boolean = false,
+    bindings: Seq[EnumBindingImpl] = Seq(),
+    @named("children_are_mutually_disjoint")
+    childrenAreMutuallyDisjoint: Boolean = false,
     @named("designates_type")
     designatesType: Boolean = false,
     @named("disjoint_with")
@@ -93,13 +123,8 @@ final case class SlotDefinitionImpl(
     equalsStringIn: Seq[String] = Seq(),
     @named("exact_cardinality")
     exactCardinality: Option[Int] = None,
-    @named("exact_mappings")
-    exactMappings: Seq[UriOrCurie] = Seq(),
-    examples: Seq[ExampleImpl] = Seq(),
     @simpleDict
     extensions: Map[String, ExtensionImpl] = Map(),
-    @named("from_schema")
-    fromSchema: Option[Uri] = None,
     @named("has_member")
     hasMember: Option[AnonymousSlotExpressionImpl] = None,
     @named("id_prefixes")
@@ -107,39 +132,24 @@ final case class SlotDefinitionImpl(
     @named("id_prefixes_are_closed")
     idPrefixesAreClosed: Boolean = false,
     ifabsent: Option[String] = None,
-    implements: Seq[UriOrCurie] = Seq(),
     @named("implicit_prefix")
     implicitPrefix: Option[String] = None,
-    @named("imported_from")
-    importedFrom: Option[String] = None,
-    @named("in_language")
-    inLanguage: Option[String] = None,
     @named("in_subset")
     inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     inherited: Boolean = false,
-    instantiates: Seq[UriOrCurie] = Seq(),
     inverse: Option[Reference[SlotDefinition]] = None,
     irreflexive: Boolean = false,
     @named("is_class_field")
     isClassField: Boolean = false,
     @named("is_grouping_slot")
     isGroupingSlot: Boolean = false,
-    @named("is_usage_slot")
-    isUsageSlot: Boolean = false,
     key: Boolean = false,
-    keywords: Seq[LocalizedText] = Seq(),
-    @named("last_updated_on")
-    lastUpdatedOn: Option[LinkmlDateTime] = None,
     @named("list_elements_ordered")
     listElementsOrdered: Boolean = false,
     @named("list_elements_unique")
     listElementsUnique: Boolean = false,
-    @named("local_names")
-    @simpleDict
-    localNames: Map[String, LocalNameImpl] = Map(),
     @named("locally_reflexive")
     locallyReflexive: Boolean = false,
-    mappings: Seq[UriOrCurie] = Seq(),
     @named("maximum_cardinality")
     maximumCardinality: Option[Int] = None,
     @named("maximum_value")
@@ -149,12 +159,6 @@ final case class SlotDefinitionImpl(
     @named("minimum_value")
     minimumValue: Option[LinkmlAny] = None,
     mixin: Boolean = false,
-    @named("modified_by")
-    modifiedBy: Option[UriOrCurie] = None,
-    @named("narrow_mappings")
-    narrowMappings: Seq[UriOrCurie] = Seq(),
-    notes: Seq[LocalizedText] = Seq(),
-    owner: Option[Reference[Definition]] = None,
     @named("path_rule")
     pathRule: Option[PathExpressionImpl] = None,
     range: Option[Reference[Element]] = None,
@@ -164,30 +168,16 @@ final case class SlotDefinitionImpl(
     reflexive: Boolean = false,
     @named("reflexive_transitive_form_of")
     reflexiveTransitiveFormOf: Option[Reference[SlotDefinition]] = None,
-    @named("related_mappings")
-    relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("relational_role")
     relationalRole: Option[RelationalRoleEnum] = None,
-    role: Option[String] = None,
-    @named("see_also")
-    seeAlso: Seq[UriOrCurie] = Seq(),
     shared: Boolean = false,
-    @named("singular_name")
-    singularName: Option[String] = None,
-    @named("slot_group")
-    slotGroup: Option[Reference[SlotDefinition]] = None,
-    source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
     @named("string_serialization")
     stringSerialization: Option[String] = None,
-    @named("structured_aliases")
-    structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
     @named("subproperty_of")
     subpropertyOf: Option[Reference[SlotDefinition]] = None,
     symmetric: Boolean = false,
-    todos: Seq[String] = Seq(),
     transitive: Boolean = false,
     @named("transitive_form_of")
     transitiveFormOf: Option[Reference[SlotDefinition]] = None,
@@ -196,13 +186,23 @@ final case class SlotDefinitionImpl(
     typeMappings: Map[String, TypeMappingImpl] = Map(),
     @named("union_of")
     unionOf: Seq[Reference[SlotDefinition]] = Seq(),
-    unit: Option[UnitOfMeasureImpl] = None,
     @named("usage_slot_name")
     usageSlotName: Option[String] = None,
     @named("value_presence")
     valuePresence: Option[PresenceEnum] = None,
     @named("values_from")
     valuesFrom: Seq[UriOrCurie] = Seq(),
+    @named("any_of")
+    anyOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[AnonymousSlotExpressionImpl] = Seq(),
+    @named("is_usage_slot")
+    isUsageSlot: Boolean = false,
+    owner: Option[Reference[Definition]] = None,
 ) extends SlotDefinition {
 
   /** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
@@ -233,23 +233,11 @@ final case class SlotDefinitionImpl(
       inlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList),
       pattern = combineOption(this.pattern, other.pattern, combinePattern),
       rank = combineOption(this.rank, other.rank, combineFallback),
-      anyOf = combineSeq(this.anyOf, other.anyOf),
-      exactlyOneOf = combineSeq(this.exactlyOneOf, other.exactlyOneOf),
-      noneOf = combineSeq(this.noneOf, other.noneOf),
-      allOf = combineSeq(this.allOf, other.allOf),
-      `abstract` = combineBoolean(this.`abstract`, other.`abstract`),
       aliases = combineSeq(this.aliases, other.aliases),
-      allMembers = combineOption(this.allMembers, other.allMembers, combineFallback),
       altDescriptions = combineMap(this.altDescriptions, other.altDescriptions),
-      annotations = combineMap(this.annotations, other.annotations),
       applyTo = combineSeq(this.applyTo, other.applyTo),
-      array = combineOption(this.array, other.array, combineFallback),
-      asymmetric = combineBoolean(this.asymmetric, other.asymmetric),
-      bindings = combineSeq(this.bindings, other.bindings),
       broadMappings = combineSeq(this.broadMappings, other.broadMappings),
       categories = combineSeq(this.categories, other.categories),
-      childrenAreMutuallyDisjoint =
-        combineBoolean(this.childrenAreMutuallyDisjoint, other.childrenAreMutuallyDisjoint),
       closeMappings = combineSeq(this.closeMappings, other.closeMappings),
       comments = combineSeq(this.comments, other.comments),
       conformsTo = combineOption(this.conformsTo, other.conformsTo, combineFallback),
@@ -268,6 +256,38 @@ final case class SlotDefinitionImpl(
         other.deprecatedElementHasPossibleReplacement,
         combineFallback,
       ),
+      exactMappings = combineSeq(this.exactMappings, other.exactMappings),
+      examples = combineSeq(this.examples, other.examples),
+      fromSchema = combineOption(this.fromSchema, other.fromSchema, combineFallback),
+      implements = combineSeq(this.implements, other.implements),
+      importedFrom = combineOption(this.importedFrom, other.importedFrom, combineFallback),
+      inLanguage = combineOption(this.inLanguage, other.inLanguage, combineFallback),
+      instantiates = combineSeq(this.instantiates, other.instantiates),
+      keywords = combineSeq(this.keywords, other.keywords),
+      lastUpdatedOn = combineOption(this.lastUpdatedOn, other.lastUpdatedOn, combineFallback),
+      localNames = combineMap(this.localNames, other.localNames),
+      mappings = combineSeq(this.mappings, other.mappings),
+      modifiedBy = combineOption(this.modifiedBy, other.modifiedBy, combineFallback),
+      narrowMappings = combineSeq(this.narrowMappings, other.narrowMappings),
+      notes = combineSeq(this.notes, other.notes),
+      relatedMappings = combineSeq(this.relatedMappings, other.relatedMappings),
+      role = combineOption(this.role, other.role, combineFallback),
+      seeAlso = combineSeq(this.seeAlso, other.seeAlso),
+      singularName = combineOption(this.singularName, other.singularName, combineFallback),
+      slotGroup = combineOption(this.slotGroup, other.slotGroup, combineFallback),
+      source = combineOption(this.source, other.source, combineFallback),
+      status = combineOption(this.status, other.status, combineFallback),
+      structuredAliases = combineSeq(this.structuredAliases, other.structuredAliases),
+      todos = combineSeq(this.todos, other.todos),
+      unit = combineOption(this.unit, other.unit, combineFallback),
+      `abstract` = combineBoolean(this.`abstract`, other.`abstract`),
+      allMembers = combineOption(this.allMembers, other.allMembers, combineFallback),
+      annotations = combineMap(this.annotations, other.annotations),
+      array = combineOption(this.array, other.array, combineFallback),
+      asymmetric = combineBoolean(this.asymmetric, other.asymmetric),
+      bindings = combineSeq(this.bindings, other.bindings),
+      childrenAreMutuallyDisjoint =
+        combineBoolean(this.childrenAreMutuallyDisjoint, other.childrenAreMutuallyDisjoint),
       designatesType = combineBoolean(this.designatesType, other.designatesType),
       disjointWith = combineSeq(this.disjointWith, other.disjointWith),
       domain = combineOption(this.domain, other.domain, combineFallback),
@@ -280,34 +300,22 @@ final case class SlotDefinitionImpl(
       equalsStringIn = combineSeq(this.equalsStringIn, other.equalsStringIn),
       exactCardinality =
         combineOption(this.exactCardinality, other.exactCardinality, combineFallback),
-      exactMappings = combineSeq(this.exactMappings, other.exactMappings),
-      examples = combineSeq(this.examples, other.examples),
       extensions = combineMap(this.extensions, other.extensions),
-      fromSchema = combineOption(this.fromSchema, other.fromSchema, combineFallback),
       hasMember = combineOption(this.hasMember, other.hasMember, combineFallback),
       idPrefixes = combineSeq(this.idPrefixes, other.idPrefixes),
       idPrefixesAreClosed = combineBoolean(this.idPrefixesAreClosed, other.idPrefixesAreClosed),
       ifabsent = combineOption(this.ifabsent, other.ifabsent, combineFallback),
-      implements = combineSeq(this.implements, other.implements),
       implicitPrefix = combineOption(this.implicitPrefix, other.implicitPrefix, combineFallback),
-      importedFrom = combineOption(this.importedFrom, other.importedFrom, combineFallback),
-      inLanguage = combineOption(this.inLanguage, other.inLanguage, combineFallback),
       inSubset = combineSeq(this.inSubset, other.inSubset),
       inherited = combineBoolean(this.inherited, other.inherited),
-      instantiates = combineSeq(this.instantiates, other.instantiates),
       inverse = combineOption(this.inverse, other.inverse, combineFallback),
       irreflexive = combineBoolean(this.irreflexive, other.irreflexive),
       isClassField = combineBoolean(this.isClassField, other.isClassField),
       isGroupingSlot = combineBoolean(this.isGroupingSlot, other.isGroupingSlot),
-      isUsageSlot = combineBoolean(this.isUsageSlot, other.isUsageSlot),
       key = combineBoolean(this.key, other.key),
-      keywords = combineSeq(this.keywords, other.keywords),
-      lastUpdatedOn = combineOption(this.lastUpdatedOn, other.lastUpdatedOn, combineFallback),
       listElementsOrdered = combineBoolean(this.listElementsOrdered, other.listElementsOrdered),
       listElementsUnique = combineBoolean(this.listElementsUnique, other.listElementsUnique),
-      localNames = combineMap(this.localNames, other.localNames),
       locallyReflexive = combineBoolean(this.locallyReflexive, other.locallyReflexive),
-      mappings = combineSeq(this.mappings, other.mappings),
       maximumCardinality =
         combineOption(this.maximumCardinality, other.maximumCardinality, combineFallback),
       maximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax),
@@ -315,10 +323,6 @@ final case class SlotDefinitionImpl(
         combineOption(this.minimumCardinality, other.minimumCardinality, combineFallback),
       minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin),
       mixin = combineBoolean(this.mixin, other.mixin),
-      modifiedBy = combineOption(this.modifiedBy, other.modifiedBy, combineFallback),
-      narrowMappings = combineSeq(this.narrowMappings, other.narrowMappings),
-      notes = combineSeq(this.notes, other.notes),
-      owner = combineOption(this.owner, other.owner, combineFallback),
       pathRule = combineOption(this.pathRule, other.pathRule, combineFallback),
       range = combineOption(this.range, other.range, combineRange),
       rangeExpression = combineOption(this.rangeExpression, other.rangeExpression, combineFallback),
@@ -329,32 +333,28 @@ final case class SlotDefinitionImpl(
         other.reflexiveTransitiveFormOf,
         combineFallback,
       ),
-      relatedMappings = combineSeq(this.relatedMappings, other.relatedMappings),
       relationalRole = combineOption(this.relationalRole, other.relationalRole, combineFallback),
-      role = combineOption(this.role, other.role, combineFallback),
-      seeAlso = combineSeq(this.seeAlso, other.seeAlso),
       shared = combineBoolean(this.shared, other.shared),
-      singularName = combineOption(this.singularName, other.singularName, combineFallback),
-      slotGroup = combineOption(this.slotGroup, other.slotGroup, combineFallback),
-      source = combineOption(this.source, other.source, combineFallback),
-      status = combineOption(this.status, other.status, combineFallback),
       stringSerialization =
         combineOption(this.stringSerialization, other.stringSerialization, combineFallback),
-      structuredAliases = combineSeq(this.structuredAliases, other.structuredAliases),
       structuredPattern =
         combineOption(this.structuredPattern, other.structuredPattern, combineFallback),
       subpropertyOf = combineOption(this.subpropertyOf, other.subpropertyOf, combineFallback),
       symmetric = combineBoolean(this.symmetric, other.symmetric),
-      todos = combineSeq(this.todos, other.todos),
       transitive = combineBoolean(this.transitive, other.transitive),
       transitiveFormOf =
         combineOption(this.transitiveFormOf, other.transitiveFormOf, combineFallback),
       typeMappings = combineMap(this.typeMappings, other.typeMappings),
       unionOf = combineSeq(this.unionOf, other.unionOf),
-      unit = combineOption(this.unit, other.unit, combineFallback),
       usageSlotName = combineOption(this.usageSlotName, other.usageSlotName, combineFallback),
       valuePresence = combineOption(this.valuePresence, other.valuePresence, combineFallback),
       valuesFrom = combineSeq(this.valuesFrom, other.valuesFrom),
+      anyOf = combineSeq(this.anyOf, other.anyOf),
+      exactlyOneOf = combineSeq(this.exactlyOneOf, other.exactlyOneOf),
+      noneOf = combineSeq(this.noneOf, other.noneOf),
+      allOf = combineSeq(this.allOf, other.allOf),
+      isUsageSlot = combineBoolean(this.isUsageSlot, other.isUsageSlot),
+      owner = combineOption(this.owner, other.owner, combineFallback),
     )
 
   /** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
@@ -378,6 +378,7 @@ final case class SlotDefinitionImpl(
       inlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList),
       pattern = combineOption(this.pattern, other.pattern, combinePattern),
       rank = combineOption(this.rank, other.rank, combineFallback),
+      role = combineOption(this.role, other.role, combineFallback),
       array = combineOption(this.array, other.array, combineFallback),
       designatesType = combineBoolean(this.designatesType, other.designatesType),
       domain = combineOption(this.domain, other.domain, combineFallback),
@@ -402,7 +403,6 @@ final case class SlotDefinitionImpl(
       range = combineOption(this.range, other.range, combineRange),
       readonly = combineOption(this.readonly, other.readonly, combineFallback),
       relationalRole = combineOption(this.relationalRole, other.relationalRole, combineFallback),
-      role = combineOption(this.role, other.role, combineFallback),
       shared = combineBoolean(this.shared, other.shared),
       structuredPattern =
         combineOption(this.structuredPattern, other.structuredPattern, combineFallback),
@@ -523,6 +523,36 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def applyTo: Seq[Reference[SlotDefinition]]
 
+  /** A textual descriptor that indicates the role played by the slot range
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   The primary use case for this slot is to provide a textual descriptor of a generic slot name
+    *   when used in the context of a more specific class
+    */
+  def role: Option[String]
+
+  /** A name that is used in the singular form
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   This may be used in some schema translations where use of a singular form is idiomatic, for
+    *   example RDF
+    */
+  def singularName: Option[String]
+
+  /** Allows for grouping of related slots into a grouping slot that serves the role of a group
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   Slot groups do not change the semantics of a model but are a useful way of visually grouping
+    *   related slots
+    */
+  def slotGroup: Option[Reference[SlotDefinition]]
+
   /** If s is antisymmetric, and i.s=v where i is different from v, v.s cannot have value i
     *
     * @see
@@ -629,13 +659,6 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def isGroupingSlot: Boolean
 
-  /** True means that this slot was defined in a slot_usage situation
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def isUsageSlot: Boolean
-
   /** True means that the slot is the "singular unique key" (also known more simply as the "key
     * slot") of its class. Such a slot uniquely identifies instances of the class within a single
     * container, meaning there cannot be two (or more) instances of the class (or instances of any
@@ -690,14 +713,6 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def locallyReflexive: Boolean
 
-  /** The "owner" of the slot. It is the class if it appears in the slots list, otherwise the
-    * declaring slot
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def owner: Option[Reference[Definition]]
-
   /** A rule for inferring a slot assignment based on evaluating a path through a sequence of slot
     * assignments
     *
@@ -750,16 +765,6 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     */
   def relationalRole: Option[RelationalRoleEnum]
 
-  /** A textual descriptor that indicates the role played by the slot range
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   The primary use case for this slot is to provide a textual descriptor of a generic slot name
-    *   when used in the context of a more specific class
-    */
-  def role: Option[String]
-
   /** If True, then the relationship between the slot domain and range is many to one or many to
     * many
     *
@@ -769,26 +774,6 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   From schema: https://w3id.org/linkml/meta
     */
   def shared: Boolean
-
-  /** A name that is used in the singular form
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   This may be used in some schema translations where use of a singular form is idiomatic, for
-    *   example RDF
-    */
-  def singularName: Option[String]
-
-  /** Allows for grouping of related slots into a grouping slot that serves the role of a group
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    * @note
-    *   Slot groups do not change the semantics of a model but are a useful way of visually grouping
-    *   related slots
-    */
-  def slotGroup: Option[Reference[SlotDefinition]]
 
   /** Ontology property which this slot is a subproperty of. Note: setting this property on a slot
     * does not guarantee an expansion of the ontological hierarchy into an enumerated list of
@@ -854,6 +839,21 @@ abstract class SlotDefinition extends Definition, SlotExpression {
     *   From schema: https://w3id.org/linkml/meta
     */
   def usageSlotName: Option[String]
+
+  /** True means that this slot was defined in a slot_usage situation
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def isUsageSlot: Boolean
+
+  /** The "owner" of the slot. It is the class if it appears in the slots list, otherwise the
+    * declaring slot
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def owner: Option[Reference[Definition]]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

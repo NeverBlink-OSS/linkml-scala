@@ -17,16 +17,12 @@ final case class UniqueKeyImpl(
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
     @named("close_mappings")
     closeMappings: Seq[UriOrCurie] = Seq(),
     comments: Seq[LocalizedText] = Seq(),
-    @named("consider_nulls_inequal")
-    considerNullsInequal: Boolean = false,
     contributors: Seq[UriOrCurie] = Seq(),
     @named("created_by")
     createdBy: Option[UriOrCurie] = None,
@@ -40,16 +36,12 @@ final case class UniqueKeyImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
@@ -68,6 +60,14 @@ final case class UniqueKeyImpl(
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("consider_nulls_inequal")
+    considerNullsInequal: Boolean = false,
     @id
     @named("unique_key_name")
     uniqueKeyName: String,

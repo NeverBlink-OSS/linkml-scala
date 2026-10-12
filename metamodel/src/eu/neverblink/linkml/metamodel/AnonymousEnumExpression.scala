@@ -16,18 +16,18 @@ final case class AnonymousEnumExpressionImpl(
     codeSetTag: Option[String] = None,
     @named("code_set_version")
     codeSetVersion: Option[String] = None,
-    concepts: Seq[UriOrCurie] = Seq(),
-    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
-    inherits: Seq[Reference[EnumDefinition]] = Seq(),
-    matches: Option[MatchQueryImpl] = None,
-    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
     @named("permissible_values")
     @compactDict
     permissibleValues: Map[String, PermissibleValueImpl] = Map(),
-    @named("pv_formula")
-    pvFormula: Option[PvFormulaOptions] = None,
+    inherits: Seq[Reference[EnumDefinition]] = Seq(),
+    minus: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    concepts: Seq[UriOrCurie] = Seq(),
     @named("reachable_from")
     reachableFrom: Option[ReachabilityQueryImpl] = None,
+    include: Seq[AnonymousEnumExpressionImpl] = Seq(),
+    matches: Option[MatchQueryImpl] = None,
+    @named("pv_formula")
+    pvFormula: Option[PvFormulaOptions] = None,
 ) extends AnonymousEnumExpression {
 
   override def infer(): AnonymousEnumExpressionImpl =

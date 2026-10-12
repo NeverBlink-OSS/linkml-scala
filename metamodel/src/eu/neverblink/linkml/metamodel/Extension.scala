@@ -10,14 +10,14 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class ExtensionImpl(
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
     @id
     @named("tag")
     extensionTag: UriOrCurie,
     @value
     @named("value")
     extensionValue: LinkmlAny,
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
 ) extends Extension {
 
   override def infer(): ExtensionImpl =
@@ -30,6 +30,13 @@ final case class ExtensionImpl(
   *   From schema: https://w3id.org/linkml/extensions
   */
 abstract class Extension {
+
+  /** A tag/text tuple attached to an arbitrary element
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/extensions
+    */
+  def extensions: Map[String, ExtensionImpl]
 
   /** A tag associated with an extension
     *
@@ -44,13 +51,6 @@ abstract class Extension {
     *   From schema: https://w3id.org/linkml/extensions
     */
   def extensionValue: LinkmlAny
-
-  /** A tag/text tuple attached to an arbitrary element
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/extensions
-    */
-  def extensions: Map[String, ExtensionImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

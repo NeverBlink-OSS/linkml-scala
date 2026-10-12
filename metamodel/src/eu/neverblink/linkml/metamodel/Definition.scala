@@ -41,14 +41,6 @@ abstract class Definition extends Element {
     */
   def mixins: Seq[Reference[Definition]]
 
-  /** Indicates the class or slot cannot be directly instantiated and is intended for grouping
-    * purposes.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def `abstract`: Boolean
-
   /** Used to extend class or slot definitions. For example, if we have a core schema where a gene
     * has two slots for identifier and symbol, and we have a specialized schema for my_organism
     * where we wish to add a slot systematic_name, we can avoid subclassing by defining a class
@@ -59,6 +51,14 @@ abstract class Definition extends Element {
     *   From schema: https://w3id.org/linkml/meta
     */
   def applyTo: Seq[Reference[Definition]]
+
+  /** Indicates the class or slot cannot be directly instantiated and is intended for grouping
+    * purposes.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def `abstract`: Boolean
 
   /** Indicates the class or slot is intended to be inherited from without being an is_a parent.
     * mixins should not be inherited from using is_a, except by other mixins.

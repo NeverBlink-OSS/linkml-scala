@@ -10,12 +10,12 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class UnitOfMeasureImpl(
+    @named("exact_mappings")
+    exactMappings: Seq[UriOrCurie] = Seq(),
     abbreviation: Option[String] = None,
     derivation: Option[String] = None,
     @named("descriptive_name")
     descriptiveName: Option[String] = None,
-    @named("exact_mappings")
-    exactMappings: Seq[UriOrCurie] = Seq(),
     @named("has_quantity_kind")
     hasQuantityKind: Option[UriOrCurie] = None,
     @named("iec61360code")
@@ -36,6 +36,15 @@ final case class UnitOfMeasureImpl(
   *   From schema: https://w3id.org/linkml/units
   */
 abstract class UnitOfMeasure {
+
+  /** Used to link a unit to equivalent concepts in ontologies such as UO, SNOMED, OEM, OBOE, NCIT
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/mappings
+    * @note
+    *   Do not use this to encode mappings to systems for which a dedicated field exists
+    */
+  def exactMappings: Seq[UriOrCurie]
 
   /** An abbreviation for a unit is a short ASCII string that is used in place of the full name for
     * the unit in contexts where non-ASCII characters would be problematic, or where using the
@@ -60,15 +69,6 @@ abstract class UnitOfMeasure {
     *   From schema: https://w3id.org/linkml/units
     */
   def descriptiveName: Option[String]
-
-  /** Used to link a unit to equivalent concepts in ontologies such as UO, SNOMED, OEM, OBOE, NCIT
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/mappings
-    * @note
-    *   Do not use this to encode mappings to systems for which a dedicated field exists
-    */
-  def exactMappings: Seq[UriOrCurie]
 
   /** Concept in a vocabulary or ontology that denotes the kind of quantity being measured, e.g.
     * length

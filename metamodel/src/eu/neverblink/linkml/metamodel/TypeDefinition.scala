@@ -22,20 +22,10 @@ final case class TypeDefinitionImpl(
     repr: Option[String] = None,
     pattern: Option[String] = None,
     rank: Option[Int] = None,
-    @named("any_of")
-    anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -56,32 +46,16 @@ final case class TypeDefinitionImpl(
     deprecatedElementHasExactReplacement: Option[UriOrCurie] = None,
     @named("deprecated_element_has_possible_replacement")
     deprecatedElementHasPossibleReplacement: Option[UriOrCurie] = None,
-    @named("equals_number")
-    equalsNumber: Option[Int] = None,
-    @named("equals_string")
-    equalsString: Option[String] = None,
-    @named("equals_string_in")
-    equalsStringIn: Seq[String] = Seq(),
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
-    @named("id_prefixes")
-    idPrefixes: Seq[NcName] = Seq(),
-    @named("id_prefixes_are_closed")
-    idPrefixesAreClosed: Boolean = false,
     implements: Seq[UriOrCurie] = Seq(),
-    @named("implicit_prefix")
-    implicitPrefix: Option[String] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     instantiates: Seq[UriOrCurie] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
@@ -90,10 +64,6 @@ final case class TypeDefinitionImpl(
     @simpleDict
     localNames: Map[String, LocalNameImpl] = Map(),
     mappings: Seq[UriOrCurie] = Seq(),
-    @named("maximum_value")
-    maximumValue: Option[LinkmlAny] = None,
-    @named("minimum_value")
-    minimumValue: Option[LinkmlAny] = None,
     @named("modified_by")
     modifiedBy: Option[UriOrCurie] = None,
     @named("narrow_mappings")
@@ -107,12 +77,42 @@ final case class TypeDefinitionImpl(
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
+    todos: Seq[String] = Seq(),
+    unit: Option[UnitOfMeasureImpl] = None,
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @named("equals_number")
+    equalsNumber: Option[Int] = None,
+    @named("equals_string")
+    equalsString: Option[String] = None,
+    @named("equals_string_in")
+    equalsStringIn: Seq[String] = Seq(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("id_prefixes")
+    idPrefixes: Seq[NcName] = Seq(),
+    @named("id_prefixes_are_closed")
+    idPrefixesAreClosed: Boolean = false,
+    @named("implicit_prefix")
+    implicitPrefix: Option[String] = None,
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("maximum_value")
+    maximumValue: Option[LinkmlAny] = None,
+    @named("minimum_value")
+    minimumValue: Option[LinkmlAny] = None,
     @named("structured_pattern")
     structuredPattern: Option[PatternExpressionImpl] = None,
-    todos: Seq[String] = Seq(),
     @named("union_of")
     unionOf: Seq[Reference[TypeDefinition]] = Seq(),
-    unit: Option[UnitOfMeasureImpl] = None,
+    @named("any_of")
+    anyOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[AnonymousTypeExpressionImpl] = Seq(),
 ) extends TypeDefinition {
 
   override def infer(): TypeDefinitionImpl =

@@ -10,9 +10,9 @@ import eu.neverblink.linkml.runtime.*
   * @inheritdoc
   */
 final case class ExtraSlotsExpressionImpl(
-    allowed: Option[Boolean] = None,
     @named("range_expression")
     rangeExpression: Option[AnonymousSlotExpressionImpl] = None,
+    allowed: Option[Boolean] = None,
 ) extends ExtraSlotsExpression {
 
   override def infer(): ExtraSlotsExpressionImpl =
@@ -27,13 +27,6 @@ final case class ExtraSlotsExpressionImpl(
   */
 abstract class ExtraSlotsExpression extends Expression {
 
-  /** Whether or not something is allowed. Usage defined by context.
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def allowed: Option[Boolean]
-
   /** A range that is described as a boolean expression combining existing ranges
     *
     * @see
@@ -43,6 +36,13 @@ abstract class ExtraSlotsExpression extends Expression {
     *   combine two enums
     */
   def rangeExpression: Option[AnonymousSlotExpressionImpl]
+
+  /** Whether or not something is allowed. Usage defined by context.
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def allowed: Option[Boolean]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

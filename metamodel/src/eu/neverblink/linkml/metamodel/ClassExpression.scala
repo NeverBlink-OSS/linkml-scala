@@ -10,6 +10,13 @@ package eu.neverblink.linkml.metamodel
   */
 trait ClassExpression {
 
+  /** Expresses constraints on a group of slots for a class expression
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    */
+  def slotConditions: Map[String, SlotDefinitionImpl]
+
   /** Holds if at least one of the expressions hold
     *
     * @see
@@ -45,13 +52,6 @@ trait ClassExpression {
     *   From schema: https://w3id.org/linkml/meta
     */
   def allOf: Seq[AnonymousClassExpressionImpl]
-
-  /** Expresses constraints on a group of slots for a class expression
-    *
-    * @see
-    *   From schema: https://w3id.org/linkml/meta
-    */
-  def slotConditions: Map[String, SlotDefinitionImpl]
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

@@ -15,20 +15,10 @@ final case class AnonymousClassExpressionImpl(
     @named("is_a")
     isA: Option[Reference[ClassDefinition]] = None,
     rank: Option[Int] = None,
-    @named("any_of")
-    anyOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("exactly_one_of")
-    exactlyOneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("none_of")
-    noneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
-    @named("all_of")
-    allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
     @simpleDict
     altDescriptions: Map[String, AltDescriptionImpl] = Map(),
-    @simpleDict
-    annotations: Map[String, AnnotationImpl] = Map(),
     @named("broad_mappings")
     broadMappings: Seq[UriOrCurie] = Seq(),
     categories: Seq[UriOrCurie] = Seq(),
@@ -48,16 +38,12 @@ final case class AnonymousClassExpressionImpl(
     @named("exact_mappings")
     exactMappings: Seq[UriOrCurie] = Seq(),
     examples: Seq[ExampleImpl] = Seq(),
-    @simpleDict
-    extensions: Map[String, ExtensionImpl] = Map(),
     @named("from_schema")
     fromSchema: Option[Uri] = None,
     @named("imported_from")
     importedFrom: Option[String] = None,
     @named("in_language")
     inLanguage: Option[String] = None,
-    @named("in_subset")
-    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
     keywords: Seq[LocalizedText] = Seq(),
     @named("last_updated_on")
     lastUpdatedOn: Option[LinkmlDateTime] = None,
@@ -71,14 +57,28 @@ final case class AnonymousClassExpressionImpl(
     relatedMappings: Seq[UriOrCurie] = Seq(),
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
-    @named("slot_conditions")
-    @compactDict
-    slotConditions: Map[String, SlotDefinitionImpl] = Map(),
     source: Option[UriOrCurie] = None,
     status: Option[UriOrCurie] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAliasImpl] = Seq(),
     todos: Seq[String] = Seq(),
+    @simpleDict
+    annotations: Map[String, AnnotationImpl] = Map(),
+    @simpleDict
+    extensions: Map[String, ExtensionImpl] = Map(),
+    @named("in_subset")
+    inSubset: Seq[Reference[SubsetDefinition]] = Seq(),
+    @named("slot_conditions")
+    @compactDict
+    slotConditions: Map[String, SlotDefinitionImpl] = Map(),
+    @named("any_of")
+    anyOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("exactly_one_of")
+    exactlyOneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("none_of")
+    noneOf: Seq[AnonymousClassExpressionImpl] = Seq(),
+    @named("all_of")
+    allOf: Seq[AnonymousClassExpressionImpl] = Seq(),
 ) extends AnonymousClassExpression {
 
   override def infer(): AnonymousClassExpressionImpl =

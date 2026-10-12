@@ -918,7 +918,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |      sh:class linkml:Annotation;
           |      sh:description "a collection of tag/text tuples with the semantics of OWL Annotation";
           |      sh:nodeKind sh:BlankNodeOrIRI;
-          |      sh:order 0;
+          |      sh:order 199;
           |      sh:path linkml:annotations
           |    ];
           |  sh:targetClass linkml:Annotatable .
@@ -931,26 +931,26 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |      sh:class linkml:Annotation;
           |      sh:description "a collection of tag/text tuples with the semantics of OWL Annotation";
           |      sh:nodeKind sh:BlankNodeOrIRI;
-          |      sh:order 0;
+          |      sh:order 199;
           |      sh:path linkml:annotations
           |    ], [
           |      sh:description "a tag associated with an extension";
           |      sh:maxCount 1;
           |      sh:minCount 1;
           |      sh:nodeKind sh:IRI;
-          |      sh:order 1;
+          |      sh:order 200;
           |      sh:path linkml:extension_tag
           |    ], [
           |      sh:description "the actual annotation";
           |      sh:maxCount 1;
           |      sh:minCount 1;
-          |      sh:order 2;
+          |      sh:order 201;
           |      sh:path linkml:extension_value
           |    ], [
           |      sh:class linkml:Extension;
           |      sh:description "a tag/text tuple attached to an arbitrary element";
           |      sh:nodeKind sh:BlankNodeOrIRI;
-          |      sh:order 3;
+          |      sh:order 199;
           |      sh:path linkml:extensions
           |    ];
           |  sh:targetClass linkml:Annotation .
@@ -969,19 +969,19 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |      sh:maxCount 1;
           |      sh:minCount 1;
           |      sh:nodeKind sh:IRI;
-          |      sh:order 0;
+          |      sh:order 200;
           |      sh:path linkml:extension_tag
           |    ], [
           |      sh:description "the actual annotation";
           |      sh:maxCount 1;
           |      sh:minCount 1;
-          |      sh:order 1;
+          |      sh:order 201;
           |      sh:path linkml:extension_value
           |    ], [
           |      sh:class linkml:Extension;
           |      sh:description "a tag/text tuple attached to an arbitrary element";
           |      sh:nodeKind sh:BlankNodeOrIRI;
-          |      sh:order 2;
+          |      sh:order 199;
           |      sh:path linkml:extensions
           |    ];
           |  sh:targetClass linkml:Extension .
@@ -994,7 +994,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |      sh:class linkml:Extension;
           |      sh:description "a tag/text tuple attached to an arbitrary element";
           |      sh:nodeKind sh:BlankNodeOrIRI;
-          |      sh:order 0;
+          |      sh:order 199;
           |      sh:path linkml:extensions
           |    ];
           |  sh:targetClass linkml:Extensible .

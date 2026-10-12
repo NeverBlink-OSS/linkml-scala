@@ -378,13 +378,14 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         """{
         |  "id": "https://d3fend.mitre.org/ontologies/d3fend.owl",
         |  "name": "d3fend",
+        |  "default_range": "string",
         |  "classes": {
         |    "ZeroClientComputer": {
         |      "class_uri": "d3f:ZeroClientComputer",
+        |      "from_schema": "https://d3fend.mitre.org/ontologies/d3fend.owl",
         |      "annotations": {
         |        "kb-article": "## How it works Change the default password as soon as a new device is received. The default credentials are normally documented in an instruction manual that is either packaged with the device, published online through official means, or published online through unofficial means. ## Considerations"
-        |      },
-        |      "from_schema": "https://d3fend.mitre.org/ontologies/d3fend.owl"
+        |      }
         |    }
         |  },
         |  "types": {
@@ -400,8 +401,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |        "In RDF serializations, a slot with range of string is treated as a literal or type xsd:string. If you are authoring schemas in LinkML YAML, the type is referenced with the lower case \"string\"."
         |      ]
         |    }
-        |  },
-        |  "default_range": "string"
+        |  }
         |}""".stripMargin
     }
 
@@ -425,16 +425,16 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         """{
         |  "id": "https://example.org/numeric-strings",
         |  "name": "numeric_strings",
+        |  "title": "123",
+        |  "description": "true",
+        |  "license": "null",
         |  "classes": {
         |    "SomeClass": {
         |      "class_uri": "https://example.org/numeric-strings/SomeClass",
         |      "description": "3.14",
         |      "from_schema": "https://example.org/numeric-strings"
         |    }
-        |  },
-        |  "title": "123",
-        |  "description": "true",
-        |  "license": "null"
+        |  }
         |}""".stripMargin
 
       // The same nodes feed the YAML output, which must quote them for the same reason.
