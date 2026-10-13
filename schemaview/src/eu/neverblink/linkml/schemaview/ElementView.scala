@@ -118,10 +118,18 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def aliasedName: String =
     cls.alias.getOrElseFast(name)
 
-  /** Derived attributes for this class and the identifier slot of a class, if it has one.
+  /** All slots of this class, its own and inherited ones, computed together in one pass:
+    *   - `derivedAttributes`: the slots, keyed by slot name
+    *   - `identifier`: the slot with `identifier: true`, if there is one
+    *   - `typeDesignator`: the slot with `designates_type: true`, if there is one
     */
-  lazy val (derivedAttributes: Map[String, SlotView], identifier: Option[SlotView]) = {
+  lazy val (
+    derivedAttributes: Map[String, SlotView],
+    identifier: Option[SlotView],
+    typeDesignator: Option[SlotView],
+  ) = {
     var idSv: SlotView = null
+    var tdSv: SlotView = null
     var das = Map.empty[String, SlotView]
     // Get all slots that are applicable to this class definition.
     // Returns a sequence of pairs of slot name and the derived slot definition,
@@ -137,6 +145,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
           val ref = new Reference[SlotDefinition](name)
           val sv = derivedSlot(ref, anc)
           if (sv.slot.identifier) idSv = sv
+          if (sv.slot.designatesType) tdSv = sv
           das = das.updated(ref.value, sv)
         }
       }
@@ -147,11 +156,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
         if (!das.contains(name)) {
           val sv = derivedSlot(ref, ref.asInstanceOf[Reference[SlotView]].resolve.get)
           if (sv.slot.identifier) idSv = sv
+          if (sv.slot.designatesType) tdSv = sv
           das = das.updated(name, sv)
         }
       }
     }
-    (das, Option(idSv))
+    (das, Option(idSv), Option(tdSv))
   }
 
   /** The slot/type bundle for the identifier of this class, if it exists */
@@ -226,39 +236,44 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   lazy val collectionForm: CollectionForm = CollectionForm.of(this)
 
-  /** The type designator slot (`designates_type: true`) of this class, if it has one.
+  /** The slot/type bundle for the [[typeDesignator type designator]] of this class, if it has one:
+    * the slot whose value in an instance tells which class the instance belongs to, with its range
+    * resolved.
     *
     * @see
     *   https://linkml.io/linkml/schemas/type-designators.html
     */
-  lazy val typeDesignator: Option[SlotView] =
-    derivedAttributes.values.find(_.slot.designatesType)
+  lazy val typeDesignatorView: Option[AttributeView] =
+    typeDesignator.flatMapFast(sv => attributeViews.get(sv.name))
 
-  /** The attribute view of [[typeDesignator]], with its range resolved. */
-  lazy val typeDesignatorAttribute: Option[AttributeView] =
-    typeDesignator.flatMapFast(d => attributeViews.get(d.slot.name))
-
-  /** Concrete classes that a slot ranging over this class can hold, told apart by the type
-    * designator: this class (if concrete) and all its concrete descendants, in the common order.
-    * Empty if the class has no type designator.
+  /** The classes whose instances a slot with this class as its range can hold, if this class has a
+    * type designator: this class, if it is concrete, and all its concrete descendants, in the
+    * common order. The type designator value of an instance tells which of them it is. Empty if
+    * this class has no type designator.
     */
   lazy val typeDesignatorMembers: Seq[ClassView] =
     if typeDesignator.isEmpty then Nil
     else sv.sortedClasses.filter(c => c.isConcrete && c.ancestorsWithSelf.exists(_.name == name))
 
-  /** Whether a slot ranging over this class should accept any of its [[typeDesignatorMembers]],
-    * instead of just this class. False for a concrete class without concrete descendants, and for
-    * an abstract class without any.
+  /** Whether a slot with this class as its range can hold instances of more than one class, chosen
+    * by the type designator value. This is true when [[typeDesignatorMembers]] has another class
+    * than this one, so it is false for a class without a type designator, and for a concrete class
+    * without concrete descendants.
     */
   def isTypeDesignatorUnion: Boolean =
     if isConcrete then typeDesignatorMembers.sizeIs > 1 else typeDesignatorMembers.nonEmpty
 
-  /** Values the type designator slot can take in an instance of this class: the class name for a
-    * `string` range, and the class URI and / or CURIE for the URI ranges. Empty if the class has no
-    * type designator, or its range is of some other type.
+  /** The values of the type designator that mark an instance as being of this class. They depend on
+    * the range of the type designator:
+    *   - `string`: the class name
+    *   - `uri`: the class URI
+    *   - `curie`: the class CURIE
+    *   - `uriorcurie`: the class URI and the class CURIE, or just one value when they are the same
+    *
+    * Empty if this class has no type designator, or its range is some other type.
     */
   lazy val typeDesignatorValues: Seq[String] =
-    typeDesignatorAttribute match {
+    typeDesignatorView match {
       case Some(tav: TypeAttributeView) =>
         tav.typeView.runtimeType match {
           case _: StringType.type => cls.name :: Nil

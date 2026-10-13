@@ -36,7 +36,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def typeDesignatorAnnotation(classView: ClassView, options: Options): Option[String] =
     if (classView.isTypeDesignatorUnion) {
-      classView.typeDesignatorAttribute.flatMapFast { designator =>
+      classView.typeDesignatorView.flatMapFast { designator =>
         val members = classView.typeDesignatorMembers
         if (members.forall(_.typeDesignatorValues.nonEmpty)) {
           Some(
