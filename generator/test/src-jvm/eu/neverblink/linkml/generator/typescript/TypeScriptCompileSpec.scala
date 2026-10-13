@@ -33,8 +33,11 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
 
   private val bounds = "TypeScript types cannot express minimum_value/maximum_value"
   private val pattern = "TypeScript types cannot express patterns"
+  private val anyOfRanges =
+    "Not yet implemented: the ranges of `any_of` members, the default range `string` is used instead"
+  private val memberCardinality = "TypeScript types cannot express cardinality in `any_of` members"
 
-  /** Invalid instances whose problem the types cannot catch. */
+  /** Invalid instances whose problem the types cannot catch, and valid ones they reject. */
   override val skipInstances: Map[(String, String), String] = Map(
     "constraints" -> "floatAboveMaximum" -> bounds,
     "constraints" -> "intBelowMinimum" -> bounds,
@@ -48,6 +51,28 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "typed" -> "notDate" -> "TypeScript types cannot express string formats such as dates",
     "unionOf" -> "badPattern" -> pattern,
     "unionOf" -> "negative" -> bounds,
+    "allOf" -> "matchesFirstOnly" -> pattern,
+    "allOfInheritance" -> "failsBase" -> pattern,
+    "allOfInheritance" -> "failsSlotUsage" -> pattern,
+    "noneOf" -> "matchesMember" -> pattern,
+    "noneOfInheritance" -> "matchesBase" -> bounds,
+    "noneOfInheritance" -> "matchesSlotUsage" -> bounds,
+    "exactlyOneOf" -> "matchesBoth" -> bounds,
+    "exactlyOneOf" -> "matchesNone" -> bounds,
+    "exactlyOneOfInheritance" -> "matchesBothInBase" -> bounds,
+    "exactlyOneOfInheritance" -> "matchesNone" -> bounds,
+    "memberCardinality" -> "twoStrings" -> memberCardinality,
+    // Valid instances
+    "anyOfNarrowing" -> "integer" -> anyOfRanges,
+    "anyOfNarrowing" -> "boolean" -> anyOfRanges,
+    "anyOfWidening" -> "integer" -> anyOfRanges,
+    "anyOfMixins" -> "integer" -> anyOfRanges,
+    "memberCardinality" -> "twoIntegers" -> anyOfRanges,
+    "nestedExpressions" -> "smallInteger" -> anyOfRanges,
+    // Invalid instances with a string, which the default range accepts
+    "anyOfNarrowing" -> "stringFromBase" -> anyOfRanges,
+    "anyOfWidening" -> "stringNotInSlotUsage" -> anyOfRanges,
+    "anyOfMixins" -> "stringNotInMixin" -> anyOfRanges,
   )
 
   /** Generated files of one model, by file name relative to the output directory. */

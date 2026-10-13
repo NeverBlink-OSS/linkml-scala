@@ -669,8 +669,18 @@ final case class SlotDefinition(
       valuesFrom = combineSeq(this.valuesFrom, other.valuesFrom),
       anyOf = combineNonEmpty(this.anyOf, other.anyOf),
       exactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf),
-      noneOf = combineNonEmpty(this.noneOf, other.noneOf),
-      allOf = combineNonEmpty(this.allOf, other.allOf),
+      noneOf = combineDistinct(this.noneOf, other.noneOf),
+      allOf = combineDistinct(
+        combineDistinct(
+          combineDistinct(this.allOf, other.allOf),
+          wrapIfNotSubset(this.anyOf, other.anyOf, v => AnonymousSlotExpression(anyOf = v)),
+        ),
+        wrapIfDifferent(
+          this.exactlyOneOf,
+          other.exactlyOneOf,
+          v => AnonymousSlotExpression(exactlyOneOf = v),
+        ),
+      ),
       isUsageSlot = combineBoolean(this.isUsageSlot, other.isUsageSlot),
       owner = combineOption(this.owner, other.owner, combineFallback),
     )

@@ -53,6 +53,16 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "exactlyOneOf" -> "matchesBoth" -> "Not yet implemented: `exactly_one_of`",
     "exactlyOneOf" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
     "noneOf" -> "matchesMember" -> "Not yet implemented: `none_of`",
+    "anyOfWidening" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfWidening" -> "stringNotInSlotUsage" -> defaultRangeWithAnyOf,
+    "anyOfMixins" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfMixins" -> "stringNotInMixin" -> defaultRangeWithAnyOf,
+    "allOfInheritance" -> "failsBase" -> "Not yet implemented: `all_of`",
+    "allOfInheritance" -> "failsSlotUsage" -> "Not yet implemented: `all_of`",
+    "exactlyOneOfInheritance" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfInheritance" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
+    "noneOfInheritance" -> "matchesBase" -> "Not yet implemented: `none_of`",
+    "noneOfInheritance" -> "matchesSlotUsage" -> "Not yet implemented: `none_of`",
   )
 
   // Known expressiveness limitations

@@ -24,10 +24,32 @@ def combineOption[T](o1: Option[T], o2: Option[T], combineSome: (T, T) => T): Op
 def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
   if v2.isEmpty || v1 == v2 then v1 else v1.appendedAll(v2)
 
-/** Returns the first non-empty list. Used in combining `any_of`, `all_of`, etc.
+/** Returns the first non-empty list.
   */
 def combineNonEmpty[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
-  if v1.isEmpty then v2 else v1
+  if (v1.isEmpty) v2 else v1
+
+/** Returns `v1` followed by the elements of `v2` that are not in `v1`.
+  */
+def combineDistinct[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
+  if (v1.isEmpty) v2
+  else if (v2.isEmpty) v1
+  else {
+    val added = v2.filterNot(v1.contains)
+    if (added.isEmpty) v1 else v1.appendedAll(added)
+  }
+
+/** Returns a list with `wrap(v2)` if both lists are non-empty and `v1` has an element that is not
+  * in `v2`, otherwise an empty list.
+  */
+def wrapIfNotSubset[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
+  if (v1.isEmpty || v2.isEmpty || v1.forall(v2.contains)) Nil else wrap(v2) :: Nil
+
+/** Returns a list with `wrap(v2)` if both lists are non-empty and not equal, otherwise an empty
+  * list.
+  */
+def wrapIfDifferent[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
+  if (v1.isEmpty || v2.isEmpty || v1 == v2) Nil else wrap(v2) :: Nil
 
 /** Combine two [[Map]]s if they're distinct
   */

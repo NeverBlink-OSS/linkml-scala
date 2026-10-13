@@ -14,6 +14,8 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     // ShaclGeneratorSpec checks the generated `sh:xone` instead
     ("exactlyOneOf", "matchesBoth") -> "RDF4J does not enforce `sh:xone`",
     ("exactlyOneOf", "matchesNone") -> "RDF4J does not enforce `sh:xone`",
+    ("exactlyOneOfInheritance", "matchesBothInBase") -> "RDF4J does not enforce `sh:xone`",
+    ("exactlyOneOfInheritance", "matchesNone") -> "RDF4J does not enforce `sh:xone`",
   )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
   "ShaclGenerator" should {

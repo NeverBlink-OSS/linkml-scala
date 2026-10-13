@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/anyOfWidening/
+name: anyOfWidening
+description: >-
+  A `slot_usage` with an `any_of` list that has a range not in the inherited list. A value must
+  match both lists, so the subclass does not allow values that the base class does not allow.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Widened:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      value:
+        any_of:
+          - range: integer
+          - range: boolean
+
+slots:
+  value:
+    required: true
+    any_of:
+      - range: integer
+      - range: string

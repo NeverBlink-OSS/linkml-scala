@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/noneOfInheritance/
+name: noneOfInheritance
+description: >-
+  A `slot_usage` with a `none_of` list. A value must match none of the inherited members and
+  none of the members from `slot_usage`.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Restricted:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      value:
+        none_of:
+          - maximum_value: -100
+
+slots:
+  value:
+    required: true
+    range: integer
+    none_of:
+      - minimum_value: 100

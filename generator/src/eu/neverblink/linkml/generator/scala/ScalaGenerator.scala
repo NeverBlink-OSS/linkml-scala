@@ -406,10 +406,17 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
   /** Remap the [[CombineFunction]] if necessary, handles special metamodel slots.
     *
+    * A combined slot must accept only values that both slots accept, so that a class can be used
+    * where its parent is expected (Liskov substitution). `all_of` and `none_of` lists are joined.
+    * `any_of` and `exactly_one_of` keep the list of the more specific slot, and the list of the
+    * other slot is moved into `all_of`, unless it accepts all values that the kept list accepts.
+    *
     * @param slot
     *   Slot to remap the combining function
     * @param rangeCombineFunc
     *   The type-level inferred [[CombineFunction]]
+    * @param scalaType
+    *   The Scala type of the slot's values, without the collection
     * @return
     *   The remapped combine functions, or [[rangeCombineFunc]] if no change was necessary
     * @see
@@ -418,15 +425,17 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   private def remapMetamodelCombineFunctions(
       slot: SlotView,
       rangeCombineFunc: CombineFunction,
+      scalaType: => String,
   ): CombineFunction =
     slot.uriStr match {
       case "https://w3id.org/linkml/maximum_value" => combineOption(combineMax)
       case "https://w3id.org/linkml/minimum_value" => combineOption(combineMin)
       case "https://w3id.org/linkml/pattern" => combineOption(combinePattern)
       case "https://w3id.org/linkml/range" => combineOption(combineRange)
-      case "https://w3id.org/linkml/any_of" | "https://w3id.org/linkml/all_of" |
-          "https://w3id.org/linkml/exactly_one_of" | "https://w3id.org/linkml/none_of" =>
+      case "https://w3id.org/linkml/any_of" | "https://w3id.org/linkml/exactly_one_of" =>
         combineNonEmpty
+      case "https://w3id.org/linkml/all_of" => combineAllOf(scalaType)
+      case "https://w3id.org/linkml/none_of" => combineDistinct
       case _ => rangeCombineFunc
     }
 
@@ -594,7 +603,11 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       typedDefault.typeName,
       typedDefault.default,
       Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
-      remapMetamodelCombineFunctions(view, typedDefault.combineFunc),
+      remapMetamodelCombineFunctions(
+        view,
+        typedDefault.combineFunc,
+        baseRange(attribute, options).scalaType,
+      ),
       slot.inherited,
       ScalaDoc(slot, view.definingSchema.id, options)(using view.definingPrefixResolver),
     )
@@ -1064,12 +1077,27 @@ object ScalaGenerator {
       this match {
         case combineOption(fallback) =>
           s"combineOption($param1.$fieldName, $param2.$fieldName, $fallback)"
+        case combineAllOf(expressionType) =>
+          val joined = s"combineDistinct($param1.$fieldName, $param2.$fieldName)"
+          val withAnyOf = s"combineDistinct($joined, wrapIfNotSubset($param1.anyOf, " +
+            s"$param2.anyOf, v => $expressionType(anyOf = v)))"
+          s"combineDistinct($withAnyOf, wrapIfDifferent($param1.exactlyOneOf, " +
+            s"$param2.exactlyOneOf, v => $expressionType(exactlyOneOf = v)))"
         case _ => s"$this($param1.$fieldName, $param2.$fieldName)"
       }
 
     case combineOption(fallback: CombineFunction)
-    case combineBoolean, combineSeq, combineNonEmpty, combineMap, combineFallback, combineMax,
-      combineMin, combinePattern, combineRange
+
+    /** Combines the metamodel's `all_of` lists, and adds the `any_of` and `exactly_one_of` lists of
+      * the second value as members, as described in `remapMetamodelCombineFunctions`. Expects the
+      * `anyOf` and `exactlyOneOf` fields in the same class.
+      *
+      * @param expressionType
+      *   The Scala type of the members, which has the `anyOf` and `exactlyOneOf` fields
+      */
+    case combineAllOf(expressionType: String)
+    case combineBoolean, combineSeq, combineNonEmpty, combineDistinct, combineMap, combineFallback,
+      combineMax, combineMin, combinePattern, combineRange
 
   /** Scala type-level information for a field, which has to be inferred together to work correctly.
     *

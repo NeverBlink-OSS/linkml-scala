@@ -1,6 +1,6 @@
 id: https://neverblink.eu/linkml/tests/anyOfNarrowing/
 name: anyOfNarrowing
-description: A `slot_usage` replaces the inherited `any_of` list, which narrows down the allowed ranges
+description: A `slot_usage` with an `any_of` list that has only some of the inherited ranges, which narrows down the allowed ranges
 
 imports:
   - linkml:types

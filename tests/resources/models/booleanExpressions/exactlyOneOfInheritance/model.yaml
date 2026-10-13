@@ -1,0 +1,29 @@
+id: https://neverblink.eu/linkml/tests/exactlyOneOfInheritance/
+name: exactlyOneOfInheritance
+description: >-
+  A `slot_usage` with an `exactly_one_of` list that has fewer members than the inherited list. A
+  value must match exactly one member of each list, so a value that matches two inherited members
+  is not allowed.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Restricted:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      value:
+        exactly_one_of:
+          - maximum_value: 10
+
+slots:
+  value:
+    required: true
+    range: integer
+    exactly_one_of:
+      - maximum_value: 10
+      - minimum_value: 0

@@ -86,6 +86,12 @@ object OwlIntegrationSpec {
     "exactlyOneOf" -> "matchesBoth" -> "Not yet implemented: `exactly_one_of`",
     "exactlyOneOf" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
     "noneOf" -> "matchesMember" -> "Not yet implemented: `none_of`",
+    "allOfInheritance" -> "failsBase" -> "Not yet implemented: `all_of`",
+    "allOfInheritance" -> "failsSlotUsage" -> "Not yet implemented: `all_of`",
+    "exactlyOneOfInheritance" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfInheritance" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
+    "noneOfInheritance" -> "matchesBase" -> "Not yet implemented: `none_of`",
+    "noneOfInheritance" -> "matchesSlotUsage" -> "Not yet implemented: `none_of`",
     "nestedExpressions" -> "largeInteger" -> "Not yet implemented: `none_of` in `any_of` members",
     "memberCardinality" -> "oneInteger" -> openWorld,
     "memberCardinality" -> "integerAndString" ->
