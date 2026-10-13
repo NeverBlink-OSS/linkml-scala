@@ -35,44 +35,42 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def typeDesignatorAnnotation(classView: ClassView, options: Options): Option[String] =
     if (classView.isTypeDesignatorUnion) {
-      classView.typeDesignator
-        .flatMapFast(d => classView.attributeViews.get(d.slot.name))
-        .flatMapFast { designator =>
-          val members = classView.typeDesignatorMembers
-          val range = designator match {
-            case tav: TypeAttributeView => tav.typeView.runtimeType
-            case _ => null
-          }
-          if (members.forall(_.typeDesignatorValues.nonEmpty)) {
-            Some(
-              members.map { member =>
-                val impl = implName(member, options)
-                def withValues(args: String) = s"typeDesignator.Member(classOf[$impl], $args),"
-                def uri(v: String) = s"Uri(${scalaStringLiteral(v)})"
-                def curie(v: String) = s"Curie(${scalaStringLiteral(v)})"
-                val values = member.typeDesignatorValues
-                val value = values.head
-                range match {
-                  case UriType => withValues(uri(value))
-                  case CurieType => withValues(curie(value))
-                  case UriOrCurieType =>
-                    // The URI and the CURIE are the same when no prefix shortens the URI.
-                    if (values.sizeIs == 1) withValues(uri(value))
-                    else withValues(s"${uri(value)}, ${curie(values(1))}")
-                  case _ =>
-                    // The value is the LinkML class name. `classOf[C]` is selected by the simple
-                    // name of `C`.
-                    if (value == impl) s"classOf[$impl],"
-                    else withValues(scalaStringLiteral(value))
-                }
-              }.mkString(
-                s"@typeDesignator(\n  ${scalaStringLiteral(designator.slotView.aliasedName)},\n  ",
-                "\n  ",
-                "\n)",
-              ),
-            )
-          } else None
-        }
+      classView.typeDesignatorAttribute.flatMapFast { designator =>
+        val members = classView.typeDesignatorMembers
+        if (members.forall(_.typeDesignatorValues.nonEmpty)) {
+          Some(
+            members.map { member =>
+              val impl = implName(member, options)
+              def withValues(args: String) = s"typeDesignator.Member(classOf[$impl], $args),"
+              def uri(v: String) = s"Uri(${scalaStringLiteral(v)})"
+              def curie(v: String) = s"Curie(${scalaStringLiteral(v)})"
+              val range = designator match {
+                case tav: TypeAttributeView => tav.typeView.runtimeType
+                case _ => null
+              }
+              val values = member.typeDesignatorValues
+              val value = values.head
+              range match {
+                case UriType => withValues(uri(value))
+                case CurieType => withValues(curie(value))
+                case UriOrCurieType =>
+                  // The URI and the CURIE are the same when no prefix shortens the URI.
+                  if (values.sizeIs == 1) withValues(uri(value))
+                  else withValues(s"${uri(value)}, ${curie(values(1))}")
+                case _ =>
+                  // The value is the LinkML class name. `classOf[C]` is selected by the simple
+                  // name of `C`.
+                  if (value == impl) s"classOf[$impl],"
+                  else withValues(scalaStringLiteral(value))
+              }
+            }.mkString(
+              s"@typeDesignator(\n  ${scalaStringLiteral(designator.slotView.aliasedName)},\n  ",
+              "\n  ",
+              "\n)",
+            ),
+          )
+        } else None
+      }
     } else None
 
   /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums.

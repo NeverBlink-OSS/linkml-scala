@@ -234,6 +234,10 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   lazy val typeDesignator: Option[SlotView] =
     derivedAttributes.values.find(_.slot.designatesType)
 
+  /** The attribute view of [[typeDesignator]], with its range resolved. */
+  lazy val typeDesignatorAttribute: Option[AttributeView] =
+    typeDesignator.flatMapFast(d => attributeViews.get(d.slot.name))
+
   /** Concrete classes that a slot ranging over this class can hold, told apart by the type
     * designator: this class (if concrete) and all its concrete descendants, in the common order.
     * Empty if the class has no type designator.
@@ -254,7 +258,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * type designator, or its range is of some other type.
     */
   lazy val typeDesignatorValues: Seq[String] =
-    typeDesignator.flatMapFast(d => attributeViews.get(d.slot.name)) match {
+    typeDesignatorAttribute match {
       case Some(tav: TypeAttributeView) =>
         tav.typeView.runtimeType match {
           case _: StringType.type => cls.name :: Nil
