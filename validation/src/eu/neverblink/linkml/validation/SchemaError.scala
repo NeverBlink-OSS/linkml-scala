@@ -10,14 +10,14 @@ import eu.neverblink.linkml.runtime.*
   */
 @typeDesignator(
   "issue_type",
-  classOf[EmptyName],
-  classOf[InvalidKeyOrIdSlotType],
-  classOf[InvalidUriOrCurie],
-  classOf[MultipleKeyOrIdSlots],
-  classOf[MultipleTreeRoots],
-  classOf[NonAsciiName],
-  classOf[NonUniqueName],
-  classOf[UndefinedPrefix],
+  typeDesignator.Member(classOf[EmptyName], "EmptyName"),
+  typeDesignator.Member(classOf[InvalidKeyOrIdSlotType], "InvalidKeyOrIdSlotType"),
+  typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
+  typeDesignator.Member(classOf[MultipleKeyOrIdSlots], "MultipleKeyOrIdSlots"),
+  typeDesignator.Member(classOf[MultipleTreeRoots], "MultipleTreeRoots"),
+  typeDesignator.Member(classOf[NonAsciiName], "NonAsciiName"),
+  typeDesignator.Member(classOf[NonUniqueName], "NonUniqueName"),
+  typeDesignator.Member(classOf[UndefinedPrefix], "UndefinedPrefix"),
 )
 abstract class SchemaError extends SchemaIssue {
 

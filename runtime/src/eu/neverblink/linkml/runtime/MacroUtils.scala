@@ -564,8 +564,7 @@ trait MacroUtils(using val quotes: Quotes) {
     * @param slot
     *   Name of the type designator slot, as serialized.
     * @param members
-    *   The implementations and the designator values that select them, in annotation order. An
-    *   implementation given as `classOf[C]` gets the simple name of `C` as the only value.
+    *   The implementations and the designator values that select them, in annotation order.
     */
   class TypeDesignatorInfo(val slot: String, val members: List[(TypeRepr, List[String])])
 
@@ -605,14 +604,10 @@ trait MacroUtils(using val quotes: Quotes) {
               )
           }
 
-          def classLiteralOpt(term: Term): Option[TypeRepr] = unwrapArg(term) match {
-            case Literal(ClassOfConstant(t)) => Some(t.dealias)
-            case TypeApply(fun, List(t)) if fun.symbol == defn.Predef_classOf => Some(t.tpe.dealias)
-            case _ => None
-          }
-
-          def classLiteral(term: Term): TypeRepr = classLiteralOpt(term).getOrElseFast {
-            malformed(s"expected a 'classOf[...]' literal, but got '${unwrapArg(term).show}'.")
+          def classLiteral(term: Term): TypeRepr = unwrapArg(term) match {
+            case Literal(ClassOfConstant(t)) => t.dealias
+            case TypeApply(fun, List(t)) if fun.symbol == defn.Predef_classOf => t.tpe.dealias
+            case other => malformed(s"expected a 'classOf[...]' literal, but got '${other.show}'.")
           }
 
           val (slot, memberArgs) = constructorArgs(annotation) match {
@@ -621,26 +616,15 @@ trait MacroUtils(using val quotes: Quotes) {
           }
           if (memberArgs.isEmpty) malformed("expected at least one implementation.")
           val members = memberArgs.map { memberArg =>
-            val (mTpe, valueArgs) = classLiteralOpt(memberArg) match {
-              case Some(t) => (t, Nil) // A bare `classOf[...]`
+            val (mTpe, valueArgs) = constructorArgs(memberArg) match {
+              case clsArg :: rest => (classLiteral(clsArg), rest)
               case _ =>
-                constructorArgs(unwrapArg(memberArg)) match {
-                  case clsArg :: rest => (classLiteral(clsArg), rest)
-                  case _ =>
-                    malformed(
-                      "expected 'classOf[...]' or 'typeDesignator.Member(...)', but got " +
-                        s"'${memberArg.show}'.",
-                    )
-                }
+                malformed(s"expected 'typeDesignator.Member(...)', but got '${memberArg.show}'.")
             }
             if (!(mTpe <:< tpe) || !isNonAbstractClass(mTpe)) {
               malformed(s"'${mTpe.show}' is not a concrete subclass of '${tpe.show}'.")
             }
-            val values = valueArgs.map(designatorValue) match {
-              case Nil => mTpe.typeSymbol.name :: Nil // The simple name of the class
-              case vs => vs
-            }
-            (mTpe, values)
+            (mTpe, valueArgs.map(designatorValue))
           }
           val collisions = duplicated(members.flatMap(_._2)).distinct
           if (collisions.nonEmpty) {

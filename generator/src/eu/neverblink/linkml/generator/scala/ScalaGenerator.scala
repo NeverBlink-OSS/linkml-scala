@@ -58,11 +58,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
                   // The URI and the CURIE are the same when no prefix shortens the URI.
                   if (values.sizeIs == 1) withValues(uri(value))
                   else withValues(s"${uri(value)}, ${curie(values(1))}")
-                case _ =>
-                  // The value is the LinkML class name. `classOf[C]` is selected by the simple
-                  // name of `C`.
-                  if (value == impl) s"classOf[$impl],"
-                  else withValues(scalaStringLiteral(value))
+                case _ => withValues(scalaStringLiteral(value)) // The LinkML class name
               }
             }.mkString(
               s"@typeDesignator(\n  ${scalaStringLiteral(designator.slotView.aliasedName)},\n  ",

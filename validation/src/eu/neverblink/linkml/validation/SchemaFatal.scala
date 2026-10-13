@@ -10,15 +10,15 @@ import eu.neverblink.linkml.runtime.*
   */
 @typeDesignator(
   "issue_type",
-  classOf[CyclicReference],
-  classOf[InvalidDefaultRange],
-  classOf[InvalidRange],
-  classOf[SchemaIdClash],
-  classOf[SchemaImportError],
-  classOf[SchemaParseError],
-  classOf[UnexpectedError],
-  classOf[UnknownReference],
-  classOf[UnknownStringReference],
+  typeDesignator.Member(classOf[CyclicReference], "CyclicReference"),
+  typeDesignator.Member(classOf[InvalidDefaultRange], "InvalidDefaultRange"),
+  typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
+  typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
+  typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
+  typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),
+  typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
+  typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
+  typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),
 )
 abstract class SchemaFatal extends SchemaIssue {
 

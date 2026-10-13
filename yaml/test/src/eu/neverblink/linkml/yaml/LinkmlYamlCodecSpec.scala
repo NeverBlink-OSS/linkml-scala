@@ -853,7 +853,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       assert(intercept[TestFailedException](assertCompiles {
         """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.NotALiteral]"""
       }).getMessage.contains {
-        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NotALiteral': expected 'classOf[...]' or 'typeDesignator.Member(...)', but got"""
+        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NotALiteral': expected 'typeDesignator.Member(...)', but got"""
       })
       assert(intercept[TestFailedException](assertCompiles {
         """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.NotALiteralUri]"""
@@ -1339,7 +1339,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
 object LinkmlYamlCodecSpec {
   @typeDesignator(
     "kind",
-    classOf[Disc],
+    typeDesignator.Member(classOf[Disc], "Disc"),
     typeDesignator.Member(classOf[Box], Uri("https://example.org/Box"), Curie("ex:Box")),
     typeDesignator.Member(classOf[Group], "Group"),
   )
@@ -1356,8 +1356,8 @@ object LinkmlYamlCodecSpec {
 
   @typeDesignator(
     "type",
-    classOf[Note],
-    classOf[Tagged],
+    typeDesignator.Member(classOf[Note], "Note"),
+    typeDesignator.Member(classOf[Tagged], "Tagged"),
   )
   trait Item
 
@@ -1375,8 +1375,6 @@ object LinkmlYamlCodecSpec {
     "kind",
     typeDesignator.Member(classOf[DuplicateValueA], "X"),
     typeDesignator.Member(classOf[DuplicateValueB], "X"),
-    // Its simple name "X" is also the value listed for the classes above
-    classOf[X],
   )
   abstract class DuplicateValue
 
@@ -1384,14 +1382,12 @@ object LinkmlYamlCodecSpec {
 
   case class DuplicateValueB(kind: String) extends DuplicateValue
 
-  case class X(kind: String) extends DuplicateValue
-
   @typeDesignator("kind")
   abstract class NoMembers
 
-  val discClass: Class[?] = classOf[Disc]
+  val discMember: typeDesignator.Member = typeDesignator.Member(classOf[Disc], "Disc")
 
-  @typeDesignator("kind", discClass)
+  @typeDesignator("kind", discMember)
   abstract class NotALiteral
 
   val ringUri: String = "https://example.org/Ring"

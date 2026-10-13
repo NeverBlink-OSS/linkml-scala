@@ -10,10 +10,10 @@ import eu.neverblink.linkml.runtime.*
   */
 @typeDesignator(
   "type",
-  classOf[DeriveAction],
-  classOf[JsonSchemaGenerate],
-  classOf[LintAction],
-  classOf[LoadAction],
+  typeDesignator.Member(classOf[DeriveAction], "DeriveAction"),
+  typeDesignator.Member(classOf[JsonSchemaGenerate], "JsonSchemaGenerate"),
+  typeDesignator.Member(classOf[LintAction], "LintAction"),
+  typeDesignator.Member(classOf[LoadAction], "LoadAction"),
 )
 abstract class Action {
 

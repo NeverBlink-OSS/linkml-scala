@@ -53,7 +53,7 @@ final class extraSlotsAllowed extends StaticAnnotation
   * {{{
   * @typeDesignator(
   *   "shape_type",
-  *   classOf[Circle],
+  *   typeDesignator.Member(classOf[Circle], "Circle"),
   *   typeDesignator.Member(classOf[RectangleImpl], "Rectangle"),
   * )
   * abstract class Shape
@@ -62,13 +62,12 @@ final class extraSlotsAllowed extends StaticAnnotation
   * @param slot
   *   Name of the type designator slot, as serialized.
   * @param members
-  *   The implementations. Encoding checks them in this order. Use `classOf[C]` when the simple name
-  *   of `C` is the only designator value. Otherwise use [[typeDesignator.Member]].
+  *   The implementations and the designator values that select them. Encoding checks them in this
+  *   order.
   * @see
   *   https://linkml.io/linkml/schemas/type-designators.html
   */
-final class typeDesignator(slot: String, members: (Class[?] | typeDesignator.Member)*)
-    extends StaticAnnotation
+final class typeDesignator(slot: String, members: typeDesignator.Member*) extends StaticAnnotation
 
 object typeDesignator {
 

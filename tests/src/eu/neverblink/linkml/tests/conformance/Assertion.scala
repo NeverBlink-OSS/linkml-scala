@@ -10,11 +10,11 @@ import eu.neverblink.linkml.runtime.*
   */
 @typeDesignator(
   "type",
-  classOf[JsonPointerAssertion],
-  classOf[JsonSchemaAccepts],
-  classOf[JsonSchemaRejects],
-  classOf[LoadsAssertion],
-  classOf[StringAssertion],
+  typeDesignator.Member(classOf[JsonPointerAssertion], "JsonPointerAssertion"),
+  typeDesignator.Member(classOf[JsonSchemaAccepts], "JsonSchemaAccepts"),
+  typeDesignator.Member(classOf[JsonSchemaRejects], "JsonSchemaRejects"),
+  typeDesignator.Member(classOf[LoadsAssertion], "LoadsAssertion"),
+  typeDesignator.Member(classOf[StringAssertion], "StringAssertion"),
 )
 abstract class Assertion {
 

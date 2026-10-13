@@ -10,12 +10,12 @@ import eu.neverblink.linkml.runtime.*
   */
 @typeDesignator(
   "issue_type",
-  classOf[FlankingSeparator],
-  classOf[InvalidSlotUsage],
-  classOf[NoTreeRootClass],
-  classOf[NonStandardSeparator],
-  classOf[RepeatedSeparator],
-  classOf[UndefinedDefaultRange],
+  typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
+  typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
+  typeDesignator.Member(classOf[NoTreeRootClass], "NoTreeRootClass"),
+  typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
+  typeDesignator.Member(classOf[RepeatedSeparator], "RepeatedSeparator"),
+  typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
 )
 abstract class SchemaWarning extends SchemaIssue {
 

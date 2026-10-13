@@ -252,8 +252,8 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("Shape.scala") should include(
         """@typeDesignator(
           |  "shape_type",
-          |  classOf[Circle],
-          |  classOf[Rectangle],
+          |  typeDesignator.Member(classOf[Circle], "Circle"),
+          |  typeDesignator.Member(classOf[Rectangle], "Rectangle"),
           |)
           |abstract class Shape """.stripMargin,
       )
@@ -268,13 +268,12 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         include(
           """@typeDesignator(
             |  "type",
-            |  classOf[IntThing],
-            |  classOf[StringThing],
+            |  typeDesignator.Member(classOf[IntThing], "IntThing"),
+            |  typeDesignator.Member(classOf[StringThing], "StringThing"),
             |  typeDesignator.Member(classOf[ThingImpl], "Thing"),
             |)
             |abstract class Thing """.stripMargin,
         )
-      // A `...Impl` class is not named after the LinkML class, so its value is listed.
       ScalaGenerator().generate(splitOptions).toMap.apply("Thing.scala") should include(
         """@typeDesignator(
           |  "type",
