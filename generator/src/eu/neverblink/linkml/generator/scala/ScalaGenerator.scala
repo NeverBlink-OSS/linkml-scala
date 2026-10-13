@@ -30,8 +30,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   /** The `@typeDesignator` annotation for a class. It lists the implementations of the class, so
     * that codecs can pick one by the designator value.
     *
-    * None if the class is not a [[ClassView.isTypeDesignatorUnion type designator union]]. Also
-    * None if the designator's range has no values that name classes, such as `integer`.
+    * None if the class is not a
+    * [[eu.neverblink.linkml.schemaview.ClassView.isTypeDesignatorUnion type designator union]].
+    * Also None if the designator's range has no values that name classes, such as `integer`.
     */
   private def typeDesignatorAnnotation(classView: ClassView, options: Options): Option[String] =
     if (classView.isTypeDesignatorUnion) {
