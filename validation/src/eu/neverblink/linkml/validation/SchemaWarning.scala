@@ -3,9 +3,20 @@
 
 package eu.neverblink.linkml.validation
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://linkml.neverblink.eu/model/validation-report
   */
+@typeDesignator(
+  "issue_type",
+  classOf[FlankingSeparator],
+  classOf[InvalidSlotUsage],
+  classOf[NoTreeRootClass],
+  classOf[NonStandardSeparator],
+  classOf[RepeatedSeparator],
+  classOf[UndefinedDefaultRange],
+)
 abstract class SchemaWarning extends SchemaIssue {
 
   /** The severity of the issue.

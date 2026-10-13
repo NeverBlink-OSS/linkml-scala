@@ -17,8 +17,6 @@ import java.net.URLClassLoader
 class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   override val skipModels: Map[String, String] =
     ScalaGeneratorCompileSpec.skipModels ++ Map(
-      "typeDesignator" -> noDispatchingCodec,
-      "typeDesignator2" -> noDispatchingCodec,
       "typed" -> noCodecForType("decimal", "date"),
       "constraints" -> noCodecForType("float"),
       "constraintsOnTypes" -> noCodecForType("float"),
@@ -32,9 +30,6 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
     (model, "empty") ->
       "an instance with no slots set encodes to an empty document, which cannot be parsed back",
   ).toMap
-
-  private def noDispatchingCodec: String =
-    "LNK-187: the typeDesignator codec is not auto-derived"
 
   private def noCodecForType(types: String*): String =
     s"LinkmlYamlCodec cannot be derived for the ${types.mkString(" and ")} " +
@@ -54,19 +49,25 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       case Some(tr) => tr
       case _ => return Left("the model has no tree root")
     }
-    if treeRoot.cls.`abstract` || treeRoot.cls.mixin then
+    // With a type designator, the tree root can be any of its implementations. The codec of its
+    // interface picks the right one.
+    val viaInterface = treeRoot.isTypeDesignatorUnion
+    if ((treeRoot.cls.`abstract` || treeRoot.cls.mixin) && !viaInterface) {
       return Left("the tree root is abstract, so no implementation is generated for it")
-    if treeRoot.attributeViews.sizeIs == 1 then
+    }
+    if (!viaInterface && treeRoot.attributeViews.sizeIs == 1) {
       return Left(
         "the codec writes a class that has a single slot as a bare value rather than as an " +
           "object, so it cannot read the object form that the catalogue's data.json uses",
       )
+    }
     val dir = os.temp.dir(prefix = "linkml-roundtrip-src")
     val generated = ScalaGenerator(using entry.model).generate(ScalaGenerator.Options("generated"))
     // A tree root without children is generated as a single case class, with no `...Impl`.
     val rootName = ScalaRenamer.className(treeRoot)
     val rootImpl =
-      if generated.exists(_._2.contains(s"case class ${rootName}Impl(")) then s"${rootName}Impl"
+      if (viaInterface) rootName
+      else if (generated.exists(_._2.contains(s"case class ${rootName}Impl("))) s"${rootName}Impl"
       else rootName
     val sources = generated
       .map { (name, content) =>

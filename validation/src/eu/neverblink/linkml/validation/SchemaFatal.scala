@@ -3,9 +3,23 @@
 
 package eu.neverblink.linkml.validation
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://linkml.neverblink.eu/model/validation-report
   */
+@typeDesignator(
+  "issue_type",
+  classOf[CyclicReference],
+  classOf[InvalidDefaultRange],
+  classOf[InvalidRange],
+  classOf[SchemaIdClash],
+  classOf[SchemaImportError],
+  classOf[SchemaParseError],
+  classOf[UnexpectedError],
+  classOf[UnknownReference],
+  classOf[UnknownStringReference],
+)
 abstract class SchemaFatal extends SchemaIssue {
 
   /** The severity of the issue.

@@ -3,9 +3,19 @@
 
 package eu.neverblink.linkml.tests.conformance
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://w3id.org/linkml/conformance/
   */
+@typeDesignator(
+  "type",
+  classOf[JsonPointerAssertion],
+  classOf[JsonSchemaAccepts],
+  classOf[JsonSchemaRejects],
+  classOf[LoadsAssertion],
+  classOf[StringAssertion],
+)
 abstract class Assertion {
 
   /** Description of an element, including the implementation guide

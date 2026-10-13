@@ -116,19 +116,11 @@ object LinkmlYamlCodec {
       m
     }
 
-    override def decode(node: Node, id: Option[Any]): T = node match {
-      case n: Node.MappingNode =>
-        n.mappings.collectFirst {
-          case (k: Node.ScalarNode, v) if (Tag.str eq k.tag) && k.value == designatorField => v
-        } match {
-          case Some(v: Node.ScalarNode) if Tag.str eq v.tag =>
-            val codec = byValue.get(v.value)
-            if (codec ne null) codec.decode(node, id)
-            else decodeError(s"a known value of type designator '$designatorField'", v)
-          case Some(v) => decodeError(s"string value for type designator '$designatorField'", v)
-          case None => decodeError(s"map value with type designator field '$designatorField'", n)
-        }
-      case n => decodeError(s"map value with type designator field '$designatorField'", n)
+    override def decode(node: Node, id: Option[Any]): T = {
+      val v = typeDesignatorValue(node, designatorField)
+      val codec = byValue.get(v.value)
+      if (codec ne null) codec.decode(node, id)
+      else unknownTypeDesignatorError(v, designatorField)
     }
 
     override def encode(x: T, skipId: Boolean): Node = {
@@ -143,7 +135,42 @@ object LinkmlYamlCodec {
     }
   }
 
+  /** Finds the value of the type designator field in a mapping.
+    *
+    * @throws DecodeError
+    *   if the node is not a mapping, has no such field, or the value is not a string
+    */
+  def typeDesignatorValue(node: Node, designatorField: String): Node.ScalarNode = {
+    var designator: Node = null
+    node match {
+      case n: Node.MappingNode =>
+        val mappings = n.mappings
+        // Scans keys only. This allocates no key-value tuples.
+        val keys = mappings.keysIterator
+        while ((designator eq null) && keys.hasNext) {
+          keys.next() match {
+            case k: Node.ScalarNode if (Tag.str eq k.tag) && k.value == designatorField =>
+              designator = mappings(k)
+            case _ =>
+          }
+        }
+      case _ =>
+    }
+    designator match {
+      case v: Node.ScalarNode if Tag.str eq v.tag => v
+      case null => decodeError(s"map value with type designator field '$designatorField'", node)
+      case v => decodeError(s"string value for type designator '$designatorField'", v)
+    }
+  }
+
+  def unknownTypeDesignatorError(v: Node.ScalarNode, designatorField: String): Nothing =
+    decodeError(s"a known value of type designator '$designatorField'", v)
+
   /** Derives a codec for `T` and the classes nested in it.
+    *
+    * For an abstract class or trait with [[eu.neverblink.linkml.runtime.typeDesignator]]:
+    *   - decoding reads the type designator field and uses the implementation it selects,
+    *   - encoding uses the first listed implementation that the value is an instance of.
     *
     * As in LinkML, a mapping may not have keys that match no field of the decoded class, unless the
     * class is annotated with [[eu.neverblink.linkml.runtime.extraSlotsAllowed]], which the Scala
@@ -309,16 +336,10 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           }
       }
     }
-    else if (isAbstractClassOrTraitOrEnum(tpe)) withDecoderFor(tpe, node, id) { (node, _) =>
-      val m = withEnumMapFor[T](tpe)
-      '{
-        $node match {
-          case n: Node.ScalarNode if Tag.str eq n.tag =>
-            val v = $m.get(n.value)
-            if (v != null) v
-            else LinkmlYamlCodec.decodeError("enumeration string value", n)
-          case n => LinkmlYamlCodec.decodeError("enumeration string value", n)
-        }
+    else if (isAbstractClassOrTraitOrEnum(tpe)) withDecoderFor(tpe, node, id) { (node, id) =>
+      getTypeDesignator(tpe) match {
+        case Some(td) => genDecodeTypeDesignator[T](td, node, id)
+        case _ => genDecodeEnum[T](tpe, node)
       }
     }
     else
@@ -326,6 +347,19 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         genDecodeNonAbstractClass(tpe, node, id)
       }
   }.asInstanceOf[Expr[T]]
+
+  private def genDecodeEnum[T: Type](tpe: TypeRepr, node: Expr[Node])(using Quotes): Expr[T] = {
+    val m = withEnumMapFor[T](tpe)
+    '{
+      $node match {
+        case n: Node.ScalarNode if Tag.str eq n.tag =>
+          val v = $m.get(n.value)
+          if (v != null) v
+          else LinkmlYamlCodec.decodeError("enumeration string value", n)
+        case n => LinkmlYamlCodec.decodeError("enumeration string value", n)
+      }
+    }
+  }
 
   private def genEncode[T: Type](tpe: TypeRepr, x: Expr[T], skipId: Expr[Boolean])(using
       Quotes,
@@ -374,9 +408,13 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           }
       }
     }
-    else if (isAbstractClassOrTraitOrEnum(tpe)) withEncoderFor(tpe, x, skipId) { (x, _) =>
-      val m = withReverseEnumMapFor[T](tpe)
-      '{ StringNode($m.get($x)) }
+    else if (isAbstractClassOrTraitOrEnum(tpe)) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
+      getTypeDesignator(tpe) match {
+        case Some(td) => genEncodeFirstMatching[T](tpe, td.members.map(_._1), x, skipId)
+        case _ =>
+          val m = withReverseEnumMapFor[T](tpe)
+          '{ StringNode($m.get($x)) }
+      }
     }
     else
       withEncoderFor(tpe, x, skipId) { (x, skipId) =>
@@ -446,9 +484,52 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
   /** Encode a union value with the codec of the first member its runtime class matches. */
   private def genEncodeUnion[T: Type](tpe: TypeRepr, x: Expr[T], skipId: Expr[Boolean])(using
       Quotes,
-  ): Expr[Node] = {
+  ): Expr[Node] = genEncodeFirstMatching[T](tpe, unionMembers(tpe), x, skipId)
+
+  /** Decode a class with [[eu.neverblink.linkml.runtime.typeDesignator]]. The value of the
+    * designator field selects the implementation.
+    *
+    * The values are matched as string literals. This compiles to a switch on their hash codes, not
+    * to a chain of comparisons.
+    */
+  private def genDecodeTypeDesignator[T: Type](
+      td: TypeDesignatorInfo,
+      node: Expr[Node],
+      id: Expr[Option[Any]],
+  )(using Quotes): Expr[T] = {
+    val slot = Expr(td.slot)
+    '{
+      val v = LinkmlYamlCodec.typeDesignatorValue($node, $slot)
+      ${
+        val cases = td.members.map { (mTpe, values) =>
+          val pattern = values.map(v => Literal(StringConstant(v))) match {
+            case p :: Nil => p
+            case ps => Alternatives(ps)
+          }
+          mTpe.asType match {
+            case '[m] => CaseDef(pattern, None, genDecode[m](mTpe, node, id).asTerm)
+          }
+        }
+        val unknown =
+          CaseDef(
+            Wildcard(),
+            None,
+            '{ LinkmlYamlCodec.unknownTypeDesignatorError(v, $slot) }.asTerm,
+          )
+        Match('{ v.value }.asTerm, cases :+ unknown).asExpr.asInstanceOf[Expr[T]]
+      }
+    }
+  }
+
+  /** Encode a value with the codec of the first given type that the value is an instance of. */
+  private def genEncodeFirstMatching[T: Type](
+      tpe: TypeRepr,
+      members: List[TypeRepr],
+      x: Expr[T],
+      skipId: Expr[Boolean],
+  )(using Quotes): Expr[Node] = {
     val tpeName = Expr(tpe.show)
-    unionMembers(tpe).foldRight('{
+    members.foldRight('{
       throw new IllegalArgumentException(
         s"Value '${$x}' of class '${$x.getClass.getName}' is not a member of '${$tpeName}'",
       )
@@ -482,7 +563,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           case '[ft] =>
             val mappedName = Expr(fieldInfo.mappedName)
             val sym = symbol(s"_${fieldInfo.mappedName}", fTpe, Flags.Mutable)
-            val defaultVal = fieldInfo.defaultValue.getOrElse('{ null.asInstanceOf[ft] }.asTerm)
+            val defaultVal = fieldInfo.defaultValue.getOrElseFast('{ null.asInstanceOf[ft] }.asTerm)
             val valVal =
               if (fieldInfo.kind == FieldKind.Id) {
                 val ftName = Expr(fTpe.show)

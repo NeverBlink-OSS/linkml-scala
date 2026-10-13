@@ -3,6 +3,8 @@
 
 package eu.neverblink.linkml.validation
 
+import eu.neverblink.linkml.runtime.*
+
 /** A single issue found during the validation of a LinkML schema.
   *
   * @see
@@ -16,6 +18,32 @@ package eu.neverblink.linkml.validation
   *   Do not subclass this class directly. Instead, subclass one of the following classes:
   *   SchemaWarning, SchemaError, SchemaFatal.
   */
+@typeDesignator(
+  "issue_type",
+  classOf[CyclicReference],
+  classOf[EmptyName],
+  classOf[FlankingSeparator],
+  classOf[InvalidDefaultRange],
+  classOf[InvalidKeyOrIdSlotType],
+  classOf[InvalidRange],
+  classOf[InvalidSlotUsage],
+  classOf[InvalidUriOrCurie],
+  classOf[MultipleKeyOrIdSlots],
+  classOf[MultipleTreeRoots],
+  classOf[NoTreeRootClass],
+  classOf[NonAsciiName],
+  classOf[NonStandardSeparator],
+  classOf[NonUniqueName],
+  classOf[RepeatedSeparator],
+  classOf[SchemaIdClash],
+  classOf[SchemaImportError],
+  classOf[SchemaParseError],
+  classOf[UndefinedDefaultRange],
+  classOf[UndefinedPrefix],
+  classOf[UnexpectedError],
+  classOf[UnknownReference],
+  classOf[UnknownStringReference],
+)
 abstract class SchemaIssue {
 
   /** Longer, human-readable message describing the issue in more detail.

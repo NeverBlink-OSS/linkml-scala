@@ -245,6 +245,106 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("Circle.scala") should not include "shapeType: String,"
     }
 
+    "annotate type designator bases with their implementations" in {
+      given SchemaView = ModelCatalogue.typeDesignator2.model
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files("Shape.scala") should include(
+        """@typeDesignator(
+          |  "shape_type",
+          |  classOf[Circle],
+          |  classOf[Rectangle],
+          |)
+          |abstract class Shape """.stripMargin,
+      )
+      // A class without children can hold only itself, so there is nothing to dispatch on.
+      files("Circle.scala") should not include "@typeDesignator"
+    }
+
+    "annotate concrete type designator bases with themselves as one of the implementations" in {
+      given SchemaView = ModelCatalogue.typeDesignator.model
+
+      ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("Thing.scala") should
+        include(
+          """@typeDesignator(
+            |  "type",
+            |  classOf[IntThing],
+            |  classOf[StringThing],
+            |  typeDesignator.Member(classOf[ThingImpl], "Thing"),
+            |)
+            |abstract class Thing """.stripMargin,
+        )
+      // A `...Impl` class is not named after the LinkML class, so its value is listed.
+      ScalaGenerator().generate(splitOptions).toMap.apply("Thing.scala") should include(
+        """@typeDesignator(
+          |  "type",
+          |  typeDesignator.Member(classOf[IntThingImpl], "IntThing"),
+          |  typeDesignator.Member(classOf[StringThingImpl], "StringThing"),
+          |  typeDesignator.Member(classOf[ThingImpl], "Thing"),
+          |)
+          |abstract class Thing """.stripMargin,
+      )
+    }
+
+    "list the URI and / or CURIE of the class as values of a URI ranged type designator" in {
+      given SchemaView = decode(
+        (schemaShared +
+          """prefixes:
+            |  ex: https://example.org/
+            |default_prefix: ex
+            |classes:
+            |  Container:
+            |    attributes:
+            |      thing:
+            |        range: Thing
+            |        inlined: true
+            |  Thing:
+            |    attributes:
+            |      kind:
+            |        designates_type: true
+            |        range: uriorcurie
+            |  SubThing:
+            |    is_a: Thing
+            |  Linked:
+            |    attributes:
+            |      kind:
+            |        designates_type: true
+            |        range: uri
+            |  SubLinked:
+            |    is_a: Linked
+            |  Prefixed:
+            |    attributes:
+            |      kind:
+            |        designates_type: true
+            |        range: curie
+            |  SubPrefixed:
+            |    is_a: Prefixed
+            |  Numbered:
+            |    attributes:
+            |      kind:
+            |        designates_type: true
+            |        range: integer
+            |  SubNumbered:
+            |    is_a: Numbered
+            |""").stripMargin,
+      )
+
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files("Thing.scala") should include(
+        """typeDesignator.Member(classOf[SubThing], Uri("https://example.org/SubThing"), Curie("ex:SubThing")),""",
+      )
+      files("Linked.scala") should include(
+        """typeDesignator.Member(classOf[SubLinked], Uri("https://example.org/SubLinked")),""",
+      )
+      files("Prefixed.scala") should include(
+        """typeDesignator.Member(classOf[SubPrefixed], Curie("ex:SubPrefixed")),""",
+      )
+      // The slot can hold any implementation, so it is typed as the base, not as its `...Impl`.
+      files("Container.scala") should include("thing: Option[Thing] = None")
+      // An integer designator has no value that names a class.
+      files("Numbered.scala") should not include "@typeDesignator"
+    }
+
     "generate trait interfaces for mixin classes" in {
       given SchemaView = ModelCatalogue.mixin.model
 

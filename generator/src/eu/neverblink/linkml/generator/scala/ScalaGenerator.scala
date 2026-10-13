@@ -27,6 +27,54 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     if isCaseClassOnly(classView, options) then name else name.concat("Impl")
   }
 
+  /** The `@typeDesignator` annotation for a class. It lists the implementations of the class, so
+    * that codecs can pick one by the designator value.
+    *
+    * None if the class is not a [[ClassView.isTypeDesignatorUnion type designator union]]. Also
+    * None if the designator's range has no values that name classes, such as `integer`.
+    */
+  private def typeDesignatorAnnotation(classView: ClassView, options: Options): Option[String] =
+    if (classView.isTypeDesignatorUnion) {
+      classView.typeDesignator
+        .flatMapFast(d => classView.attributeViews.get(d.slot.name))
+        .flatMapFast { designator =>
+          val members = classView.typeDesignatorMembers
+          val range = designator match {
+            case tav: TypeAttributeView => tav.typeView.runtimeType
+            case _ => null
+          }
+          if (members.forall(_.typeDesignatorValues.nonEmpty)) {
+            Some(
+              members.map { member =>
+                val impl = implName(member, options)
+                def withValues(args: String) = s"typeDesignator.Member(classOf[$impl], $args),"
+                def uri(v: String) = s"Uri(${scalaStringLiteral(v)})"
+                def curie(v: String) = s"Curie(${scalaStringLiteral(v)})"
+                val values = member.typeDesignatorValues
+                val value = values.head
+                range match {
+                  case UriType => withValues(uri(value))
+                  case CurieType => withValues(curie(value))
+                  case UriOrCurieType =>
+                    // The URI and the CURIE are the same when no prefix shortens the URI.
+                    if (values.sizeIs == 1) withValues(uri(value))
+                    else withValues(s"${uri(value)}, ${curie(values(1))}")
+                  case _ =>
+                    // The value is the LinkML class name. `classOf[C]` is selected by the simple
+                    // name of `C`.
+                    if (value == impl) s"classOf[$impl],"
+                    else withValues(scalaStringLiteral(value))
+                }
+              }.mkString(
+                s"@typeDesignator(\n  ${scalaStringLiteral(designator.slotView.aliasedName)},\n  ",
+                "\n  ",
+                "\n)",
+              ),
+            )
+          } else None
+        }
+    } else None
+
   /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums.
     * @param options
     *   What to generate. See [[ScalaGenerator.Options]].
@@ -83,6 +131,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             makeInferredFields(classView, options),
             // Data matching `range_expression` has to be allowed, but is not checked against it.
             classView.allowsExtraSlots,
+            typeDesignatorAnnotation(classView, options),
             ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
               prefixResolver,
             ),
@@ -130,8 +179,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
     val prefixes = sv.root.emitPrefixes.map(prefix =>
       sv.rootPrefixResolver.resolvePrefix(prefix)
-        .map(uri => s""""$prefix" -> "$uri",\n""")
-        .getOrElse(sys.error(s"Unknown prefix to emit: $prefix")),
+        .mapFast(uri => s""""$prefix" -> "$uri",\n""")
+        .getOrElseFast(sys.error(s"Unknown prefix to emit: $prefix")),
     ).mkString
     Some(
       "Prefixes.scala" ->
@@ -209,7 +258,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     case CurieType => "Curie"
     case NcNameType => "NcName"
     case LocalizedTextType => "LocalizedText"
-    case UnknownType => tv.derivedType.base.getOrElse("Unknown")
+    case UnknownType => tv.derivedType.base.getOrElseFast("Unknown")
   }
 
   /** Translates an attribute's resolved range to the appropriate Scala type.
@@ -230,15 +279,20 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case AnyView(_, _) =>
         ("LinkmlAny", None)
       case ClassInlineAttributeView(_, _, classView, _) =>
-        // Abstract classes and mixins get no case class, so an inlined range pointing at one has
-        // to be typed as the interface instead.
-        (if classView.isConcrete then implName(classView, options) else className(classView), None)
+        // Abstract classes and mixins have no case class, so the slot uses the interface type.
+        // A type designator union also uses the interface type, so that the slot can hold any
+        // implementation.
+        (
+          if (classView.isConcrete && !classView.isTypeDesignatorUnion) implName(classView, options)
+          else className(classView),
+          None,
+        )
       case ClassReferenceAttributeView(_, _, classView, _) =>
         val name = className(classView)
         (s"Reference[$name]", None)
       case TypeAttributeView(slotView, _, typeView) =>
         val scalaType = if typeView.isPrimitive then typeToRuntime(typeView) else typeName(typeView)
-        val default = slotView.slot.ifabsent.filter(_ => scalaType == "Boolean").map {
+        val default = slotView.slot.ifabsent.filter(_ => scalaType == "Boolean").mapFast {
           _.trim.toLowerCase match {
             case "true" => "true"
             case "false" => "false"
@@ -256,7 +310,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         else {
           val name = enumName(enumView)
           val default: Option[PermissibleValue] = slotView.ifAbsent(enumView)
-          (name, default.map(p => s"$name.${permissibleValueName(enumView, p)}"))
+          (name, default.mapFast(p => s"$name.${permissibleValueName(enumView, p)}"))
         }
     }
   }
@@ -282,14 +336,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case InlineType.optional if isPlainBoolean(slot, scalaType) =>
         TypedDefault(
           scalaType,
-          default = Some(defaultValue.getOrElse("false")),
+          default = Some(defaultValue.getOrElseFast("false")),
           annotations = ifAbsentAnnotation,
           combineFunc = combineBoolean,
         )
       case InlineType.optional =>
         TypedDefault(
           s"Option[$scalaType]",
-          default = Some(defaultValue.map(v => s"Some($v)").getOrElse("None")),
+          default = Some(defaultValue.foldFast("None")(v => s"Some($v)")),
           annotations = ifAbsentAnnotation,
           combineFunc = combineOption(combineFallback),
         )
@@ -344,7 +398,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         }
       case _ => None
     }
-    literal.fold(fromRange) { value =>
+    literal.foldFast(fromRange) { value =>
       InlineType(attribute.slotView) match {
         case InlineType.plain =>
           fromRange.copy(default = Some(value), annotations = Seq("@serializeDefault"))
@@ -430,7 +484,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   private def makeInferredFields(classView: ClassView, options: Options): Seq[InferredField] =
     classView.sortedAttributeViews
       .filter(isSingleValuedString)
-      .flatMap(attribute => attribute.equalsExpression.map(attribute -> _))
+      .flatMap(attribute => attribute.equalsExpression.mapFast(attribute -> _))
       .map { (attribute, parsed) =>
         val slot = attribute.slotView
         val expression = parsed match {
@@ -602,6 +656,8 @@ object ScalaGenerator {
     * @param extraSlotsAllowed
     *   Whether the class' `extra_slots` allows data beyond its slots, so that decoding ignores it
     *   instead of failing. Only the class' own `extra_slots` counts, as it is not inherited.
+    * @param typeDesignator
+    *   The `@typeDesignator` annotation of the interface. None if the class doesn't need one.
     * @param docs
     *   ScalaDoc for generating Scaladoc for this class.
     */
@@ -617,6 +673,7 @@ object ScalaGenerator {
       generateSlotCombining: Boolean,
       inferredFields: Seq[InferredField],
       extraSlotsAllowed: Boolean,
+      typeDesignator: Option[String],
       docs: ScalaDoc,
   ) extends Printable:
     /** Builds the Scala representation of a LinkML [[ClassDefinition]]
@@ -674,8 +731,11 @@ object ScalaGenerator {
       // The implementation narrows the return type to its own `${name}Impl`.
       val inferDeclaration = indent"""${inferDoc}def infer(): $name
                 |""".stripMargin
+      // `indent` drops a trailing newline of an interpolated value. So the annotation and the
+      // declaration go into one value.
+      val declaration = typeDesignator.foldFast(interfaceDef)(_ + "\n" + interfaceDef)
       sb.append(indent"""$docs
-                |$interfaceDef $name $inheritanceList {
+                |$declaration $name $inheritanceList {
                 |  $interfaceBody
                 |
                 |  $inferDeclaration

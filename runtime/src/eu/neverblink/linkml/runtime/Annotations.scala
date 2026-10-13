@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.runtime
 
-import scala.annotation.StaticAnnotation
+import scala.annotation.{StaticAnnotation, unused}
 import scala.annotation.meta.field
 
 @field final class named(name: String) extends StaticAnnotation
@@ -39,3 +39,80 @@ final class flatten extends StaticAnnotation
   * that allows extra data forbids it, unless its own `extra_slots` allows it too.
   */
 final class extraSlotsAllowed extends StaticAnnotation
+
+/** Lists the implementations of a class that has a type designator slot.
+  *
+  * In LinkML, a slot with `designates_type: true` holds the name of an object's class. Generated
+  * class hierarchies are not sealed, so macros cannot find the implementations of a class on their
+  * own. This annotation lists them. Macros that derive codecs use the list to pick the
+  * implementation.
+  *
+  * The Scala generator adds it to a class when a slot can hold more than one implementation of the
+  * class.
+  *
+  * {{{
+  * @typeDesignator(
+  *   "shape_type",
+  *   classOf[Circle],
+  *   typeDesignator.Member(classOf[RectangleImpl], "Rectangle"),
+  * )
+  * abstract class Shape
+  * }}}
+  *
+  * @param slot
+  *   Name of the type designator slot, as serialized.
+  * @param members
+  *   The implementations. Encoding checks them in this order. Use `classOf[C]` when the simple name
+  *   of `C` is the only designator value. Otherwise use [[typeDesignator.Member]].
+  * @see
+  *   https://linkml.io/linkml/schemas/type-designators.html
+  */
+final class typeDesignator(slot: String, members: (Class[?] | typeDesignator.Member)*)
+    extends StaticAnnotation
+
+object typeDesignator {
+
+  /** One implementation of a class marked with [[typeDesignator]], with the designator values that
+    * select it:
+    *
+    * {{{
+    * typeDesignator.Member(classOf[RectangleImpl], "Rectangle")                // string
+    * typeDesignator.Member(classOf[Circle], Uri("https://example.org/Circle")) // uri
+    * typeDesignator.Member(classOf[Circle], Curie("ex:Circle"))                // curie
+    * typeDesignator.Member(                                                     // uriorcurie
+    *   classOf[Circle],
+    *   Uri("https://example.org/Circle"),
+    *   Curie("ex:Circle"),
+    * )
+    * }}}
+    *
+    * Macros read the arguments as literals, so they must be written out as above.
+    *
+    * @param cls
+    *   The implementation. It must be a concrete subclass of the annotated class.
+    * @param values
+    *   The designator values that select the implementation.
+    */
+  final class Member private (@unused cls: Class[?], @unused values: List[String]) {
+
+    /** @param name
+      *   The LinkML class name, for a `string` designator.
+      */
+    def this(cls: Class[?], name: String) = this(cls, name :: Nil)
+
+    /** @param value
+      *   The class URI for a `uri` designator, or the class CURIE for a `curie` designator.
+      */
+    def this(cls: Class[?], value: UriOrCurie) = this(cls, value.original :: Nil)
+
+    /** For a `uriorcurie` designator. Data can hold either value.
+      *
+      * @param uri
+      *   The class URI.
+      * @param curie
+      *   The class CURIE.
+      */
+    def this(cls: Class[?], uri: Uri, curie: Curie) =
+      this(cls, uri.original :: curie.original :: Nil)
+  }
+}
