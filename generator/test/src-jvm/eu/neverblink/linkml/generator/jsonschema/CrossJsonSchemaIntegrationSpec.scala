@@ -18,19 +18,8 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
   override val skipModels: Map[String, String] = Map(
     "anything" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
     "typeDesignator" -> "Type designators seem to be very broken in LinkML-py",
-    "typeDesignator2" -> "Type designators seem to be very broken in LinkML-py",
     "unionRange" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
-    "unionOf" -> "LinkML-py fails to generate JSON Schema for union_of types without a base",
-  )
-
-  override val skipInstances: Map[(String, String), String] = Map(
-    // This seems to contradict the description of the `alias` slot
-    // https://linkml.io/linkml-model/latest/docs/alias/
-    "aliases" -> "unaliasedSlotName" ->
-      "LinkML-py allows unaliased names to be used in addition to aliased ones",
-    "typeDerivation" -> "lowercaseCode" -> "LinkML-py does not emit inherited type patterns",
-    "typeDerivation" -> "negativeCount" -> "LinkML-py does not emit inherited type bounds",
-    "typeDerivation" -> "excessiveCount" -> "LinkML-py does not emit inherited type bounds",
+    "unionOf" -> "LinkML-py ignores constraints of union_of members",
   )
 
   "LinkML Python Json Schema generator" should {

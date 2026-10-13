@@ -1,5 +1,5 @@
-linkml==1.11.1
+linkml==1.12.1
 frictionless==5.19.0
 # For PydanticRoundTripSpec, which loads data with the generated Python classes
-pydantic==2.13.4
+pydantic==2.13.5
 jsonschema==4.26.0

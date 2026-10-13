@@ -12,7 +12,7 @@ skips = [
     "syntheticUris",
     # Metamodel difference
     "equalsExpression",
-    # Python can't generate JSON Schema for union_of types without a base
+    # Python ignores constraints of union_of members in JSON Schema
     "unionOf",
 ]
 

@@ -25,7 +25,7 @@ The following features are not yet supported or are partially supported in LinkM
 
 These features are supported in LinkML-Scala but not in LinkML-Python (or are supported in LinkML-Python to a lesser degree):
 
-- Support for [extra data (`extra_slots`)](#extra-data)
+- Support for [extra data (`extra_slots`)](#extra-data) in more generators
   - A `range_expression` allows any extra data, which is not checked against it (see below)
   - Extra data is only validated, not kept: decoding drops it, so it is lost on a round trip (see below)
 - Support for `union_of`
@@ -35,16 +35,11 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 
-## Inherited type constraints
-
-LinkML-Scala emits JSON Schema patterns and numeric bounds inherited through `typeof`.
-Python LinkML 1.11.1 omits these in our comparison tests, so Scala's schema rejects some data Python's accepts.
-
 ## Imports
 
 Imports are easier to write in LinkML-Scala: file extensions are optional and interchangeable, and each imported schema is loaded only once.
 
-| Case | Python LinkML 1.11.1 | LinkML-Scala |
+| Case | Python LinkML 1.12.1 | LinkML-Scala |
 |------|----------------------|--------------|
 | `imports: [core]` with only `core.yml` on disk | Fails | Reads `core.yml` |
 | `imports: [core.yaml]` or `[core.yml]` | Fails: reads `core.yaml.yaml` or `core.yml.yaml` | Works |
@@ -108,11 +103,11 @@ classes:
 ```
 
 LinkML-Scala honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`), TypeScript (`[key: string]: unknown`) and Pydantic (`extra="allow"`) generators.
-Python LinkML 1.11.1 does not read `extra_slots`, and closes all classes in its JSON Schema.
+Python LinkML 1.12.1 honors `extra_slots` in its JSON Schema, Java and Go generators.
 
 - `allowed: true` allows any extra data.
-- `allowed: false`, or no `extra_slots`, forbids it. An explicit `allowed: false` wins over a `range_expression`.
-- A `range_expression` alone allows extra data matching it. LinkML-Scala allows any extra data then, without checking it against the expression.
+- `allowed: false`, or no `extra_slots`, forbids it. An explicit `allowed: false` has precedence over a `range_expression`.
+- A `range_expression` alone allows extra data matching it. LinkML-Scala allows any extra data then, without checking it against the expression, while the JSON Schema of Python LinkML checks extra data against it.
 - `extra_slots` is not inherited: a subclass of a class allowing extra data forbids it, unless its own `extra_slots` allows it too.
 
 The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generators allows extra data in all classes.
