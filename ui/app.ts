@@ -847,11 +847,21 @@ function showReport(report: SchemaValidationReport): void {
     const message = document.createElement("span");
     message.className = "report-message";
     // With messages turned off there is nothing human-readable, so fall back to the raw slots.
-    message.textContent = issue.message ?? rawSummary(issue);
+    const messageText = issue.message ?? rawSummary(issue);
+    // Issues with a `code_region` quote the offending source line with a `^` under the column after
+    // the first line, so that part goes into a monospaced block that keeps its whitespace.
+    const newline = issue.location?.code_region ? messageText.indexOf("\n") : -1;
+    message.textContent = newline < 0 ? messageText : messageText.slice(0, newline);
     head.appendChild(message);
     item.appendChild(head);
+    if (newline >= 0) {
+      const snippet = document.createElement("pre");
+      snippet.className = "report-snippet";
+      snippet.textContent = messageText.slice(newline + 1);
+      item.appendChild(snippet);
+    }
 
-    const issueLines = [`${badge.textContent} ${message.textContent}`];
+    const issueLines = [`${badge.textContent} ${messageText}`];
 
     const where = locationLabel(issue.location);
     if (where) {
@@ -862,7 +872,7 @@ function showReport(report: SchemaValidationReport): void {
       issueLines.push(`  at ${where}`);
     }
 
-    if (issue.details && issue.details !== issue.message) {
+    if (issue.details && !restatesMessage(issue.details, issue.message)) {
       const details = document.createElement("p");
       details.className = "report-details";
       details.textContent = issue.details;
@@ -880,6 +890,18 @@ function showReport(report: SchemaValidationReport): void {
 function severityClass(issue: SchemaIssue): string {
   const sev = String(issue.severity ?? "").toUpperCase();
   return SEVERITY_ORDER.includes(sev) ? sev.toLowerCase() : "other";
+}
+
+/** Whether `details` says nothing beyond `message`: either the same text, or the same text after a
+ * lead-in that differs only by naming the source (e.g. "Cannot parse schema 'x.yaml': ..." against
+ * "Cannot parse schema: ...").
+ */
+function restatesMessage(details: string, message: string | undefined): boolean {
+  if (message === undefined) return false;
+  if (details === message) return true;
+  const d = details.indexOf(": ");
+  const m = message.indexOf(": ");
+  return d >= 0 && m >= 0 && details.slice(d + 2) === message.slice(m + 2);
 }
 
 /** Describe an issue that carries no `message`, from whatever structured slots it does have.
