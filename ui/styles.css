@@ -825,6 +825,16 @@ body { background: var(--bg); }
   overflow-wrap: anywhere;
 }
 
+.report-snippet {
+  margin: 0;
+  font-family: var(--code-font);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: pre;
+  overflow-x: auto;
+}
+
 .report-location {
   font-family: var(--code-font);
   font-size: 11px;
