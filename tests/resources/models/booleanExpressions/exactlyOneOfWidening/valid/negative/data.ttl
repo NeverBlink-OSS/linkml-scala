@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/exactlyOneOfWidening/> .
+
+_:b a :Widened;
+    :value -5 .

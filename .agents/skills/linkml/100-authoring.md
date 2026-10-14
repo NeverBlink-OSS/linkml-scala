@@ -147,8 +147,9 @@ classes:
           interpolated: true
 ```
 
-**Not supported**: `any_of`, `none_of`, `all_of`, `exactly_one_of` (SHACL output only), `rules:`,
-and arrays. If a constraint needs one of these, express it another way or document the gap.
+**Not supported**: `any_of`, `none_of`, `all_of`, `exactly_one_of` (SHACL output only, plus the
+ranges of `any_of` in OWL output), `rules:`, and arrays. If a constraint needs one of these,
+express it another way or document the gap.
 A `slot_usage` can only narrow down inherited boolean expressions: the inherited ones are still
 checked (see *Inherited boolean expressions* in `200-limitations.md`).
 

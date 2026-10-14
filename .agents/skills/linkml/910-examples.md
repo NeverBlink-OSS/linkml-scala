@@ -22,15 +22,22 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `basic2` | 0 | 0 |  |
 | `booleanExpressions/allOf` | 3 | 3 | A value must match all members of `all_of` |
 | `booleanExpressions/allOfInheritance` | 3 | 6 | A `slot_usage` with an `all_of` list. A value must match th… |
+| `booleanExpressions/allOfMixins` | 3 | 6 | A class gets `all_of` lists for one slot from a mixin and f… |
+| `booleanExpressions/allOfNoneOfChain` | 3 | 12 | `all_of` and `none_of` lists from three levels of inheritan… |
+| `booleanExpressions/anyOfChain` | 3 | 6 | `any_of` lists from three levels of inheritance. A value mu… |
+| `booleanExpressions/anyOfClassRanges` | 3 | 3 | A `slot_usage` with an `any_of` list of classes that has on… |
 | `booleanExpressions/anyOfMixins` | 3 | 6 | A class gets `any_of` lists for one slot from a mixin and f… |
 | `booleanExpressions/anyOfNarrowing` | 6 | 3 | A `slot_usage` with an `any_of` list that has only some of… |
 | `booleanExpressions/anyOfWidening` | 3 | 6 | A `slot_usage` with an `any_of` list that has a range not i… |
 | `booleanExpressions/exactlyOneOf` | 6 | 6 | A value must match exactly one member of `exactly_one_of` |
 | `booleanExpressions/exactlyOneOfInheritance` | 3 | 6 | A `slot_usage` with an `exactly_one_of` list that has fewer… |
+| `booleanExpressions/exactlyOneOfMixins` | 3 | 6 | A class gets `exactly_one_of` lists for one slot from a mix… |
+| `booleanExpressions/exactlyOneOfWidening` | 6 | 6 | A `slot_usage` with an `exactly_one_of` list that has a mem… |
 | `booleanExpressions/memberCardinality` | 6 | 9 | Members of `any_of` can limit the number of values, so the… |
 | `booleanExpressions/nestedExpressions` | 6 | 3 | Members of boolean expressions can have value bounds and bo… |
 | `booleanExpressions/noneOf` | 3 | 3 | A value must not match any member of `none_of` |
 | `booleanExpressions/noneOfInheritance` | 3 | 6 | A `slot_usage` with a `none_of` list. A value must match no… |
+| `booleanExpressions/noneOfMixins` | 3 | 6 | A class gets `none_of` lists for one slot from a mixin and… |
 | `cardinality` | 8 | 14 |  |
 | `cardinalityExplicit` | 4 | 8 |  |
 | `constraints` | 12 | 12 |  |

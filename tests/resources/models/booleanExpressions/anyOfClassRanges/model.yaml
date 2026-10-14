@@ -1,0 +1,36 @@
+id: https://neverblink.eu/linkml/tests/anyOfClassRanges/
+name: anyOfClassRanges
+description: >-
+  A `slot_usage` with an `any_of` list of classes that has only some of the inherited classes,
+  which narrows down the allowed classes
+
+imports:
+  - linkml:types
+
+classes:
+  Command:
+    attributes:
+      command:
+        required: true
+  Report:
+    attributes:
+      report:
+        required: true
+  Base:
+    slots:
+      - target
+  Robot:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      target:
+        any_of:
+          - range: Command
+
+slots:
+  target:
+    required: true
+    inlined: true
+    any_of:
+      - range: Command
+      - range: Report

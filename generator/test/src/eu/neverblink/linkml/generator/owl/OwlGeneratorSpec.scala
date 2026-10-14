@@ -116,6 +116,41 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms should not contain Characteristic(ns + "friends", PropertyCharacteristic.Functional)
     }
 
+    "use the only member of an any_of without a union, which needs two operands in OWL 2 DL" in {
+      val axioms = ontologyOf("""
+        |classes:
+        |  Command: {}
+        |  Query: {}
+        |  Robot:
+        |    slots:
+        |      - target
+        |      - level
+        |    slot_usage:
+        |      target:
+        |        any_of:
+        |          - range: Command
+        |      level:
+        |        any_of:
+        |          - range: integer
+        |slots:
+        |  target:
+        |    any_of:
+        |      - range: Command
+        |      - range: Query
+        |  level:
+        |    any_of:
+        |      - range: integer
+        |      - range: string
+        |""").axioms
+      axioms should contain allOf (
+        SubClassOf(c("Robot"), AllValuesFrom(PropertyRef(ns + "target"), c("Command"))),
+        SubClassOf(
+          c("Robot"),
+          AllValuesFrom(PropertyRef(ns + "level"), DataRange.Datatype(xsd + "integer")),
+        ),
+      )
+    }
+
     "use the uri of a constrained type, as SHACL does, narrowed by its constraints" in {
       val axioms = ontologyOf(personinfo).axioms
       axioms.collect { case d: DatatypeDefinition => d } shouldBe empty

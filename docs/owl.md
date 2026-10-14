@@ -40,7 +40,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | `exact_mappings` to a class or slot of the same schema     | `owl:equivalentClass`, `owl:equivalentProperty`                                                        |
 | slot                                                       | `owl:ObjectProperty`, or `owl:DatatypeProperty` when every use of it has a type as its range           |
 | `implements: [owl:DatatypeProperty]` and friends           | the property kind asked for, as in `gen-owl`                                                           |
-| `range`, `any_of`                                          | `rdfs:range`, a union for `any_of`                                                                     |
+| `range`, `any_of`                                          | `rdfs:range`, a union for an `any_of` with two or more members                                         |
 | `domain`, `domain_of`                                      | `rdfs:domain`, a union for `domain_of`                                                                 |
 | `is_a`, `mixins` on a slot                                 | `rdfs:subPropertyOf`                                                                                   |
 | `inverse`                                                  | `owl:inverseOf`                                                                                        |

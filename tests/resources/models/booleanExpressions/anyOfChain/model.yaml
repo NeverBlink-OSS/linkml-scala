@@ -1,0 +1,36 @@
+id: https://neverblink.eu/linkml/tests/anyOfChain/
+name: anyOfChain
+description: >-
+  `any_of` lists from three levels of inheritance. A value must match the lists of all levels, so
+  a class can't allow a range that its parent class does not allow, even if the slot allows it.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Child:
+    is_a: Base
+    slot_usage:
+      value:
+        any_of:
+          - range: integer
+          - range: boolean
+  Grandchild:
+    tree_root: true
+    is_a: Child
+    slot_usage:
+      value:
+        any_of:
+          - range: integer
+          - range: string
+
+slots:
+  value:
+    required: true
+    any_of:
+      - range: integer
+      - range: string
+      - range: boolean

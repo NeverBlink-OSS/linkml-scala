@@ -311,6 +311,22 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       inChild.allOf shouldBe Seq(AnonymousSlotExpression(anyOf = ranges("a", "b")))
     }
 
+    "keep the inherited exactly_one_of in all_of if a slot_usage adds new members to it" in {
+      val slot = SlotDefinition(name = "slot1", exactlyOneOf = ranges("a", "b"))
+      val base = ClassDefinition(name = "base", slots = Seq(slot.reference))
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(SlotDefinition(name = "slot1", exactlyOneOf = ranges("a", "c")).compact),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, child))
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      inChild.exactlyOneOf shouldBe ranges("a", "c")
+      inChild.allOf shouldBe Seq(AnonymousSlotExpression(exactlyOneOf = ranges("a", "b")))
+    }
+
     "require the any_of of both a mixin and the parent class" in {
       val slot = SlotDefinition(name = "slot1")
       val base = ClassDefinition(

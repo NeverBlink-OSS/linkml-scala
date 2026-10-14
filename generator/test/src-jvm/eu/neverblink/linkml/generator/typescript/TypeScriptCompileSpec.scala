@@ -61,18 +61,33 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "exactlyOneOf" -> "matchesNone" -> bounds,
     "exactlyOneOfInheritance" -> "matchesBothInBase" -> bounds,
     "exactlyOneOfInheritance" -> "matchesNone" -> bounds,
+    "allOfMixins" -> "failsBase" -> pattern,
+    "allOfMixins" -> "failsMixin" -> pattern,
+    "noneOfMixins" -> "matchesBase" -> bounds,
+    "noneOfMixins" -> "matchesMixin" -> bounds,
+    "exactlyOneOfMixins" -> "matchesBothInBase" -> bounds,
+    "exactlyOneOfMixins" -> "matchesNoneInMixin" -> bounds,
+    "exactlyOneOfWidening" -> "matchesBothInBase" -> bounds,
+    "exactlyOneOfWidening" -> "matchesNoneInSlotUsage" -> bounds,
+    "allOfNoneOfChain" -> "failsBaseAllOf" -> bounds,
+    "allOfNoneOfChain" -> "failsBaseNoneOf" -> bounds,
+    "allOfNoneOfChain" -> "failsChildNoneOf" -> bounds,
+    "allOfNoneOfChain" -> "failsGrandchildNoneOf" -> bounds,
     "memberCardinality" -> "twoStrings" -> memberCardinality,
     // Valid instances
     "anyOfNarrowing" -> "integer" -> anyOfRanges,
     "anyOfNarrowing" -> "boolean" -> anyOfRanges,
     "anyOfWidening" -> "integer" -> anyOfRanges,
     "anyOfMixins" -> "integer" -> anyOfRanges,
+    "anyOfChain" -> "integer" -> anyOfRanges,
+    "anyOfClassRanges" -> "command" -> anyOfRanges,
     "memberCardinality" -> "twoIntegers" -> anyOfRanges,
     "nestedExpressions" -> "smallInteger" -> anyOfRanges,
     // Invalid instances with a string, which the default range accepts
     "anyOfNarrowing" -> "stringFromBase" -> anyOfRanges,
     "anyOfWidening" -> "stringNotInSlotUsage" -> anyOfRanges,
     "anyOfMixins" -> "stringNotInMixin" -> anyOfRanges,
+    "anyOfChain" -> "stringNotInChild" -> anyOfRanges,
   )
 
   /** Generated files of one model, by file name relative to the output directory. */

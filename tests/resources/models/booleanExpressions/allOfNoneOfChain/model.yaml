@@ -1,0 +1,40 @@
+id: https://neverblink.eu/linkml/tests/allOfNoneOfChain/
+name: allOfNoneOfChain
+description: >-
+  `all_of` and `none_of` lists from three levels of inheritance. A value must match all members of
+  `all_of` and none of the members of `none_of` from the slot and from the `slot_usage` of each
+  class.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Child:
+    is_a: Base
+    slot_usage:
+      value:
+        all_of:
+          - maximum_value: 200
+        none_of:
+          - minimum_value: 50
+            maximum_value: 59
+  Grandchild:
+    tree_root: true
+    is_a: Child
+    slot_usage:
+      value:
+        none_of:
+          - minimum_value: 20
+            maximum_value: 29
+
+slots:
+  value:
+    required: true
+    range: integer
+    all_of:
+      - minimum_value: -100
+    none_of:
+      - minimum_value: 100

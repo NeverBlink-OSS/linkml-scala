@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/exactlyOneOfMixins/> .
+
+_:b a :Combined;
+    :value 5 .

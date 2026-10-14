@@ -34,6 +34,14 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     "exactlyOneOfInheritance" -> "matchesBothInBase" ->
       "LinkML-py keeps only the most specific `exactly_one_of`",
     "noneOfInheritance" -> "matchesBase" -> "LinkML-py keeps only the most specific `none_of`",
+    "anyOfChain" -> "stringNotInChild" -> "LinkML-py keeps only the most specific `any_of`",
+    "allOfMixins" -> "failsBase" -> "LinkML-py keeps only the most specific `all_of`",
+    "noneOfMixins" -> "matchesBase" -> "LinkML-py keeps only the most specific `none_of`",
+    "exactlyOneOfMixins" -> "matchesBothInBase" -> "LinkML-py keeps only the most specific `exactly_one_of`",
+    "exactlyOneOfWidening" -> "matchesBothInBase" -> "LinkML-py keeps only the most specific `exactly_one_of`",
+    "allOfNoneOfChain" -> "failsBaseAllOf" -> "LinkML-py keeps only the most specific `all_of`",
+    "allOfNoneOfChain" -> "failsBaseNoneOf" -> "LinkML-py keeps only the most specific `none_of`",
+    "allOfNoneOfChain" -> "failsChildNoneOf" -> "LinkML-py keeps only the most specific `none_of`",
   )
 
   "LinkML Python Json Schema generator" should {

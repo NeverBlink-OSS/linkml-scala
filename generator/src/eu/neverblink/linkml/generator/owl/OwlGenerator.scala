@@ -473,8 +473,12 @@ object OwlGenerator {
       e.range.flatMap(r => sv.getElement(r.value)).orElse(s.derivedRange.resolve)
         .flatMap(rangeOfElement(_, e))
 
+    /** A union of the alternatives, or the only alternative, since OWL 2 DL requires at least two
+      * operands in a union.
+      */
     private def union(alternatives: Seq[Filler]): Option[Filler] =
-      if alternatives.forall(_.isInstanceOf[DataRange]) then
+      if alternatives.sizeIs == 1 then alternatives.headOption
+      else if alternatives.forall(_.isInstanceOf[DataRange]) then
         Some(DataRange.UnionOf(alternatives.map(_.asInstanceOf[DataRange])))
       else if alternatives.forall(_.isInstanceOf[ClassExpr]) then
         Some(ClassExpr.UnionOf(alternatives.map(_.asInstanceOf[ClassExpr])))

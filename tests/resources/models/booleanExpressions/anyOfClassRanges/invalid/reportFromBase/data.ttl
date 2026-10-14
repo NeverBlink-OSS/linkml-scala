@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/anyOfClassRanges/> .
+
+_:b a :Robot;
+    :target [ a :Report; :report "battery" ] .

@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/allOfMixins/> .
+
+_:b a :Combined;
+    :value "ABZ" .

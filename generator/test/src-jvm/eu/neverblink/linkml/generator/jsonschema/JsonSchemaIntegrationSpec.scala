@@ -35,6 +35,21 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "exactlyOneOfInheritance" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
     "noneOfInheritance" -> "matchesBase" -> "Not yet implemented: `none_of`",
     "noneOfInheritance" -> "matchesSlotUsage" -> "Not yet implemented: `none_of`",
+    "anyOfChain" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfChain" -> "stringNotInChild" -> defaultRangeWithAnyOf,
+    "anyOfClassRanges" -> "command" -> defaultRangeWithAnyOf,
+    "allOfMixins" -> "failsBase" -> "Not yet implemented: `all_of`",
+    "allOfMixins" -> "failsMixin" -> "Not yet implemented: `all_of`",
+    "noneOfMixins" -> "matchesBase" -> "Not yet implemented: `none_of`",
+    "noneOfMixins" -> "matchesMixin" -> "Not yet implemented: `none_of`",
+    "exactlyOneOfMixins" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfMixins" -> "matchesNoneInMixin" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfWidening" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfWidening" -> "matchesNoneInSlotUsage" -> "Not yet implemented: `exactly_one_of`",
+    "allOfNoneOfChain" -> "failsBaseAllOf" -> "Not yet implemented: `all_of`",
+    "allOfNoneOfChain" -> "failsBaseNoneOf" -> "Not yet implemented: `none_of`",
+    "allOfNoneOfChain" -> "failsChildNoneOf" -> "Not yet implemented: `none_of`",
+    "allOfNoneOfChain" -> "failsGrandchildNoneOf" -> "Not yet implemented: `none_of`",
   )
 
   "Json Schema generator" should {

@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/anyOfChain/> .
+
+_:b a :Grandchild;
+    :value true .
