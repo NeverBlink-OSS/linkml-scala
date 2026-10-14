@@ -96,7 +96,7 @@ EOF
 cat >"${prefix}/README.md" <<EOF
 # LinkML-Scala shared library ${version} (${platform})
 
-LinkML schema validation and code generation as a native shared library, with a C ABI. Experimental.
+LinkML schema validation and code generation as a native shared library, with a C ABI.
 
 See include/linkml_scala.h for the full API: one function per generator, plus loading, linting
 and the lifecycle. Two conventions cover all of it.

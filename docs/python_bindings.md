@@ -1,11 +1,7 @@
-# Python bindings (experimental)
+# Python bindings
 
 LinkML-Scala compiled to a native shared library, called from Python through `ctypes`. No JVM, no
 subprocess per schema, and no dependency on the `linkml` Python package.
-
-> [!WARNING]
-> This is an experiment.
-> Feedback is welcome in [Discussions](https://github.com/NeverBlink-OSS/linkml-scala/discussions).
 
 ## Installation
 
