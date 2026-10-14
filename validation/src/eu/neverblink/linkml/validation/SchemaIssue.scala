@@ -3,6 +3,8 @@
 
 package eu.neverblink.linkml.validation
 
+import eu.neverblink.linkml.runtime.*
+
 /** A single issue found during the validation of a LinkML schema.
   *
   * @see
@@ -16,6 +18,32 @@ package eu.neverblink.linkml.validation
   *   Do not subclass this class directly. Instead, subclass one of the following classes:
   *   SchemaWarning, SchemaError, SchemaFatal.
   */
+@typeDesignator(
+  "issue_type",
+  typeDesignator.Member(classOf[CyclicReference], "CyclicReference"),
+  typeDesignator.Member(classOf[EmptyName], "EmptyName"),
+  typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
+  typeDesignator.Member(classOf[InvalidDefaultRange], "InvalidDefaultRange"),
+  typeDesignator.Member(classOf[InvalidKeyOrIdSlotType], "InvalidKeyOrIdSlotType"),
+  typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
+  typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
+  typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
+  typeDesignator.Member(classOf[MultipleKeyOrIdSlots], "MultipleKeyOrIdSlots"),
+  typeDesignator.Member(classOf[MultipleTreeRoots], "MultipleTreeRoots"),
+  typeDesignator.Member(classOf[NoTreeRootClass], "NoTreeRootClass"),
+  typeDesignator.Member(classOf[NonAsciiName], "NonAsciiName"),
+  typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
+  typeDesignator.Member(classOf[NonUniqueName], "NonUniqueName"),
+  typeDesignator.Member(classOf[RepeatedSeparator], "RepeatedSeparator"),
+  typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
+  typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
+  typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),
+  typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
+  typeDesignator.Member(classOf[UndefinedPrefix], "UndefinedPrefix"),
+  typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
+  typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
+  typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),
+)
 abstract class SchemaIssue {
 
   /** Longer, human-readable message describing the issue in more detail.

@@ -3,9 +3,18 @@
 
 package eu.neverblink.linkml.tests.conformance
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://w3id.org/linkml/conformance/
   */
+@typeDesignator(
+  "type",
+  typeDesignator.Member(classOf[DeriveAction], "DeriveAction"),
+  typeDesignator.Member(classOf[JsonSchemaGenerate], "JsonSchemaGenerate"),
+  typeDesignator.Member(classOf[LintAction], "LintAction"),
+  typeDesignator.Member(classOf[LoadAction], "LoadAction"),
+)
 abstract class Action {
 
   /** Description of an element, including the implementation guide

@@ -3,9 +3,15 @@
 
 package eu.neverblink.linkml.tests.conformance
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://w3id.org/linkml/conformance/
   */
+@typeDesignator(
+  "type",
+  typeDesignator.Member(classOf[JsonSchemaGenerate], "JsonSchemaGenerate"),
+)
 abstract class GenerateAction extends Action {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that

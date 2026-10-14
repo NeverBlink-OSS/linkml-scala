@@ -763,6 +763,105 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "derive codecs for classes annotated with @typeDesignator" in {
+      import LinkmlYamlCodecSpec.*
+
+      // A given, because `Group` holds figures. The codec uses itself for them.
+      given codec: LinkmlYamlCodec[Figure] = LinkmlYamlCodec.derived
+
+      roundTrip(Disc(radius = 3): Figure, "kind: Disc\nradius: 3\n")
+      roundTrip(Box(side = 5): Figure, "kind: https://example.org/Box\nside: 5\n")
+      // Implementations can be nested in each other.
+      roundTrip(
+        Group(figures = Seq(Disc(radius = 1), Group(figures = Seq(Box(side = 2))))): Figure,
+        """kind: Group
+          |figures:
+          |  - kind: Disc
+          |    radius: 1
+          |  - kind: Group
+          |    figures:
+          |      - kind: https://example.org/Box
+          |        side: 2
+          |""".stripMargin,
+      )
+      // The designator does not have to come first in the mapping.
+      decode[Figure]("radius: 3\nkind: Disc\n", Disc(radius = 3))
+      // The CURIE selects the implementation too. The value is kept when encoding.
+      roundTrip(Box(kind = "ex:Box", side = 5): Figure, "kind: ex:Box\nside: 5\n")
+      decodeError[Figure](
+        "kind: Wedge\nradius: 3\n",
+        "Expected a known value of type designator 'kind' at 0:6 but got:",
+      )
+      decodeError[Figure](
+        "radius: 3\n",
+        "Expected map value with type designator field 'kind' at 0:0 but got:",
+      )
+      decodeError[Figure](
+        "kind:\n  nested: true\nradius: 3\n",
+        "Expected string value for type designator 'kind' at 1:2 but got:",
+      )
+      decodeError[Figure](
+        "Disc\n",
+        "Expected map value with type designator field 'kind' at 0:0 but got:",
+      )
+      // The selected implementation still rejects data that does not fit it.
+      decodeError[Figure](
+        "kind: Disc\nradius: 3\nside: 3\n",
+        "Expected a known field of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.Disc' at 2:0",
+      )
+      // Encoding an implementation that is not listed is a bug in the annotation.
+      intercept[IllegalArgumentException](codec.encode(Blot())).getMessage should include(
+        "is not a member of",
+      )
+    }
+
+    "derive codecs for traits annotated with @typeDesignator, also when nested" in {
+      import LinkmlYamlCodecSpec.*
+
+      implicit val codec: LinkmlYamlCodec[Holder] = LinkmlYamlCodec.derived
+
+      roundTrip(
+        Holder(Seq(Note(text = "a"), Tagged(text = "b", tags = Seq("x", "y")))),
+        """items:
+          |  - type: Note
+          |    text: a
+          |  - type: Tagged
+          |    text: b
+          |    tags:
+          |      - x
+          |      - y
+          |""".stripMargin,
+      )
+    }
+
+    "don't derive codecs for classes with a malformed @typeDesignator annotation" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.NotASubclass]"""
+      }).getMessage.contains {
+        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NotASubclass': 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.Disc' is not a concrete subclass of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NotASubclass'."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.DuplicateValue]"""
+      }).getMessage.contains {
+        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.DuplicateValue': designator value(s) 'X' select more than one implementation."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.NoMembers]"""
+      }).getMessage.contains {
+        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NoMembers': expected at least one implementation."""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.NotALiteral]"""
+      }).getMessage.contains {
+        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NotALiteral': expected 'typeDesignator.Member(...)', but got"""
+      })
+      assert(intercept[TestFailedException](assertCompiles {
+        """LinkmlYamlCodec.derived[LinkmlYamlCodecSpec.NotALiteralUri]"""
+      }).getMessage.contains {
+        """Malformed '@typeDesignator' annotation of 'eu.neverblink.linkml.yaml.LinkmlYamlCodecSpec.NotALiteralUri': expected a string literal, but got"""
+      })
+    }
+
     "decode and encode Scala 3 enums" in {
       enum Enum {
         case Case1, Case2, Case3
@@ -1235,4 +1334,66 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
     assert(
       intercept[Throwable](parseYaml(yaml).map(x => codec.decode(x))).getMessage.contains(error),
     )
+}
+
+object LinkmlYamlCodecSpec {
+  @typeDesignator(
+    "kind",
+    typeDesignator.Member(classOf[Disc], "Disc"),
+    typeDesignator.Member(classOf[Box], Uri("https://example.org/Box"), Curie("ex:Box")),
+    typeDesignator.Member(classOf[Group], "Group"),
+  )
+  abstract class Figure { def kind: String }
+
+  case class Disc(@serializeDefault kind: String = "Disc", radius: Int) extends Figure
+
+  case class Box(@serializeDefault kind: String = "https://example.org/Box", side: Int)
+      extends Figure
+
+  case class Group(@serializeDefault kind: String = "Group", figures: Seq[Figure]) extends Figure
+
+  case class Blot(@serializeDefault kind: String = "Blot") extends Figure
+
+  @typeDesignator(
+    "type",
+    typeDesignator.Member(classOf[Note], "Note"),
+    typeDesignator.Member(classOf[Tagged], "Tagged"),
+  )
+  trait Item
+
+  case class Note(@serializeDefault `type`: String = "Note", text: String) extends Item
+
+  case class Tagged(@serializeDefault `type`: String = "Tagged", text: String, tags: Seq[String])
+      extends Item
+
+  case class Holder(items: Seq[Item])
+
+  @typeDesignator("kind", typeDesignator.Member(classOf[Disc], "Disc"))
+  abstract class NotASubclass
+
+  @typeDesignator(
+    "kind",
+    typeDesignator.Member(classOf[DuplicateValueA], "X"),
+    typeDesignator.Member(classOf[DuplicateValueB], "X"),
+  )
+  abstract class DuplicateValue
+
+  case class DuplicateValueA(kind: String) extends DuplicateValue
+
+  case class DuplicateValueB(kind: String) extends DuplicateValue
+
+  @typeDesignator("kind")
+  abstract class NoMembers
+
+  val discMember: typeDesignator.Member = typeDesignator.Member(classOf[Disc], "Disc")
+
+  @typeDesignator("kind", discMember)
+  abstract class NotALiteral
+
+  val ringUri: String = "https://example.org/Ring"
+
+  @typeDesignator("kind", typeDesignator.Member(classOf[Ring], Uri(ringUri)))
+  abstract class NotALiteralUri
+
+  case class Ring(kind: String) extends NotALiteralUri
 }

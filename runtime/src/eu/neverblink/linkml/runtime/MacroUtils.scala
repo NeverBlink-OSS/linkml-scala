@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.runtime
 
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 
 import scala.collection.mutable
 import scala.quoted.*
@@ -213,7 +214,7 @@ trait MacroUtils(using val quotes: Quotes) {
     *   An `Option` containing the extracted string, if present and valid.
     */
   def namedValueOpt(namedAnnotation: Option[Term], tpe: TypeRepr): Option[String] =
-    namedAnnotation.map { case Apply(_, List(param)) =>
+    namedAnnotation.mapFast { case Apply(_, List(param)) =>
       param match
         case Literal(StringConstant(s)) => s
         case _ =>
@@ -224,16 +225,17 @@ trait MacroUtils(using val quotes: Quotes) {
 
   /** Checks if a given type representation points to a concrete (non-abstract) class.
     */
-  def isNonAbstractClass(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
+  def isNonAbstractClass(tpe: TypeRepr): Boolean = tpe.classSymbol.foldFast(false) { symbol =>
     val flags = symbol.flags
     !(flags.is(Flags.Abstract) || flags.is(Flags.JavaDefined) || flags.is(Flags.Trait))
   }
 
   /** Checks if a given type representation points to an abstract class, a trait, or an enum.
     */
-  def isAbstractClassOrTraitOrEnum(tpe: TypeRepr): Boolean = tpe.classSymbol.fold(false) { symbol =>
-    val flags = symbol.flags
-    flags.is(Flags.Abstract) || flags.is(Flags.Trait) || flags.is(Flags.Enum)
+  def isAbstractClassOrTraitOrEnum(tpe: TypeRepr): Boolean = tpe.classSymbol.foldFast(false) {
+    symbol =>
+      val flags = symbol.flags
+      flags.is(Flags.Abstract) || flags.is(Flags.Trait) || flags.is(Flags.Enum)
   }
 
   /** Checks if a given type representation points specifically to an enum value.
@@ -557,7 +559,112 @@ trait MacroUtils(using val quotes: Quotes) {
       else name
     }
 
+  /** The content of a [[eu.neverblink.linkml.runtime.typeDesignator]] annotation.
+    *
+    * @param slot
+    *   Name of the type designator slot, as serialized.
+    * @param members
+    *   The implementations and the designator values that select them, in annotation order.
+    */
+  class TypeDesignatorInfo(val slot: String, val members: List[(TypeRepr, List[String])])
+
+  /** Reads the `@typeDesignator` annotation of a class, if it has one. Results are cached.
+    *
+    * Compilation fails if the annotation is malformed. This is the case when:
+    *   - an argument is not a literal,
+    *   - no implementations are listed,
+    *   - an implementation is not a concrete subclass of `tpe`,
+    *   - a designator value selects more than one implementation.
+    */
+  def getTypeDesignator(tpe: TypeRepr): Option[TypeDesignatorInfo] = typeDesignatorInfos
+    .getOrElseUpdate(
+      tpe,
+      tpe.classSymbol.flatMapFast(_.annotations.find(_.tpe =:= typeDesignatorTpe)).mapFast {
+        annotation =>
+          def malformed(detail: String): Nothing =
+            fail(s"Malformed '@typeDesignator' annotation of '${tpe.show}': $detail")
+
+          def stringLiteral(term: Term): String = unwrapArg(term) match {
+            case Literal(StringConstant(s)) => s
+            case other => malformed(s"expected a string literal, but got '${other.show}'.")
+          }
+
+          // A `Uri("...")` or `Curie("...")` argument gives the string in it.
+          def designatorValue(term: Term): String = unwrapArg(term) match {
+            case Literal(StringConstant(s)) => s
+            case t if t.tpe.widen <:< uriOrCurieTpe =>
+              constructorArgs(t) match {
+                case arg :: Nil => stringLiteral(arg)
+                case _ =>
+                  malformed(s"expected 'Uri(\"...\")' or 'Curie(\"...\")', but got '${t.show}'.")
+              }
+            case other =>
+              malformed(
+                s"expected a string literal, 'Uri(...)' or 'Curie(...)', but got '${other.show}'.",
+              )
+          }
+
+          def classLiteral(term: Term): TypeRepr = unwrapArg(term) match {
+            case Literal(ClassOfConstant(t)) => t.dealias
+            case TypeApply(fun, List(t)) if fun.symbol == defn.Predef_classOf => t.tpe.dealias
+            case other => malformed(s"expected a 'classOf[...]' literal, but got '${other.show}'.")
+          }
+
+          val (slot, memberArgs) = constructorArgs(annotation) match {
+            case slotArg :: rest => (stringLiteral(slotArg), rest.flatMap(varArgs))
+            case _ => malformed("expected the designator slot name and the implementations.")
+          }
+          if (memberArgs.isEmpty) malformed("expected at least one implementation.")
+          val members = memberArgs.map { memberArg =>
+            val (mTpe, valueArgs) = constructorArgs(memberArg) match {
+              case clsArg :: rest => (classLiteral(clsArg), rest)
+              case _ =>
+                malformed(s"expected 'typeDesignator.Member(...)', but got '${memberArg.show}'.")
+            }
+            if (!(mTpe <:< tpe) || !isNonAbstractClass(mTpe)) {
+              malformed(s"'${mTpe.show}' is not a concrete subclass of '${tpe.show}'.")
+            }
+            (mTpe, valueArgs.map(designatorValue))
+          }
+          val collisions = duplicated(members.flatMap(_._2)).distinct
+          if (collisions.nonEmpty) {
+            malformed(
+              s"designator value(s) ${collisions.mkString("'", "', '", "'")} select more than one " +
+                "implementation.",
+            )
+          }
+          new TypeDesignatorInfo(slot, members)
+      },
+    )
+
+  /** Arguments of a constructor call, such as an annotation: `new C(a, b)` gives `a :: b :: Nil`.
+    */
+  private def constructorArgs(term: Term): List[Term] = unwrapArg(term) match {
+    case Apply(fun, args) =>
+      fun match {
+        case _: Apply => constructorArgs(fun) ++ args
+        case _ => args
+      }
+    case _ => Nil
+  }
+
+  /** The elements of a vararg argument, or the argument itself if it is not one. */
+  private def varArgs(term: Term): List[Term] = unwrapArg(term) match {
+    case Repeated(elems, _) => elems
+    case other => other :: Nil
+  }
+
+  private def unwrapArg(term: Term): Term = term match {
+    case Typed(t, _) => unwrapArg(t)
+    case Inlined(_, Nil, t) => unwrapArg(t)
+    case NamedArg(_, t) => unwrapArg(t)
+    case Block(Nil, t) => unwrapArg(t)
+    case _ => term
+  }
+
   private val classInfos = new mutable.HashMap[TypeRepr, ClassInfo]
+  private val typeDesignatorInfos =
+    new mutable.HashMap[TypeRepr, Option[TypeDesignatorInfo]]
   private val namedTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.named").typeRef
   private val idTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.id").typeRef
   private val valueTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.value").typeRef
@@ -572,4 +679,8 @@ trait MacroUtils(using val quotes: Quotes) {
   private val flattenTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.flatten").typeRef
   private val extraSlotsAllowedTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.extraSlotsAllowed").typeRef
+  private val uriOrCurieTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.UriOrCurie").typeRef
+  private val typeDesignatorTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.typeDesignator").typeRef
 }

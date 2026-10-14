@@ -3,9 +3,20 @@
 
 package eu.neverblink.linkml.validation
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://linkml.neverblink.eu/model/validation-report
   */
+@typeDesignator(
+  "issue_type",
+  typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
+  typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
+  typeDesignator.Member(classOf[NoTreeRootClass], "NoTreeRootClass"),
+  typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
+  typeDesignator.Member(classOf[RepeatedSeparator], "RepeatedSeparator"),
+  typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
+)
 abstract class SchemaWarning extends SchemaIssue {
 
   /** The severity of the issue.

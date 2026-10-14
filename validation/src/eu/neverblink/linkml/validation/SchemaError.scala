@@ -3,9 +3,22 @@
 
 package eu.neverblink.linkml.validation
 
+import eu.neverblink.linkml.runtime.*
+
 /** @see
   *   From schema: https://linkml.neverblink.eu/model/validation-report
   */
+@typeDesignator(
+  "issue_type",
+  typeDesignator.Member(classOf[EmptyName], "EmptyName"),
+  typeDesignator.Member(classOf[InvalidKeyOrIdSlotType], "InvalidKeyOrIdSlotType"),
+  typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
+  typeDesignator.Member(classOf[MultipleKeyOrIdSlots], "MultipleKeyOrIdSlots"),
+  typeDesignator.Member(classOf[MultipleTreeRoots], "MultipleTreeRoots"),
+  typeDesignator.Member(classOf[NonAsciiName], "NonAsciiName"),
+  typeDesignator.Member(classOf[NonUniqueName], "NonUniqueName"),
+  typeDesignator.Member(classOf[UndefinedPrefix], "UndefinedPrefix"),
+)
 abstract class SchemaError extends SchemaIssue {
 
   /** The severity of the issue.
