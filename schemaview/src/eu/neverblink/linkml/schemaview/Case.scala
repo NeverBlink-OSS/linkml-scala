@@ -8,7 +8,7 @@ object Case {
   def isNumeric(c: Char): Boolean = c >= '0' && c <= '9'
   def isAlphanumeric(c: Char): Boolean = isAlphaUpper(c) || isAlphaLower(c) || isNumeric(c)
   def isStandard(c: Char): Boolean = isAlphanumeric(c) || c == '_'
-  def isAllowedAscii(c: Char): Boolean = c >= ' ' || c <= '~'
+  def isAllowedAscii(c: Char): Boolean = c >= ' ' && c <= '~'
 
   /** Transform the user provided element name into a base name, which is a strict variant of
     * snake_case, and can be converted 1-to-1 to specific framework naming conventions. Base names

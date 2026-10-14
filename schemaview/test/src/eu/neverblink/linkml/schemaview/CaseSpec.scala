@@ -59,6 +59,16 @@ class CaseSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyChecks {
       Case.base("żółć") shouldBe ""
     }
 
+    "allow only printable ASCII" in {
+      Case.isAllowedAscii(' ') shouldBe true
+      Case.isAllowedAscii('a') shouldBe true
+      Case.isAllowedAscii('~') shouldBe true
+      Case.isAllowedAscii('\t') shouldBe false
+      Case.isAllowedAscii('\u007f') shouldBe false
+      Case.isAllowedAscii('ą') shouldBe false
+      Case.isAllowedAscii("🐍".head) shouldBe false
+    }
+
     "convert base to pascal" in {
       val f = Case.baseToPascal
       f("abc_def") shouldBe "AbcDef"
