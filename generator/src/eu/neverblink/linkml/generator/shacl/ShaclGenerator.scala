@@ -169,14 +169,16 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
   /** Emit the boolean slots: `any_of` as `sh:or`, `all_of` as `sh:and`, `exactly_one_of` as
     * `sh:xone`, `none_of` as one `sh:not` per member.
     *
-    * Per value: by default, the members are value shapes, checked against each value.
+    * Per value: by default, the operator goes on the slot's PropertyShape, and each member is a
+    * NodeShape that is checked against each value of the slot.
     *
-    * Per instance: value shapes can't count values. So if a member sets a cardinality, the operator
-    * goes on the class shape instead, and each member becomes `[ sh:property [ sh:path <slot>; ...
-    * ] ]`, checked against all values together.
+    * Per instance: a NodeShape can't count values, only a PropertyShape can. So if a member sets a
+    * cardinality, the operator goes on the class's NodeShape instead, and each member is a
+    * NodeShape with a PropertyShape for the slot: `[ sh:property [ sh:path <slot>; ... ] ]`. This
+    * PropertyShape checks all values of the slot together.
     *
-    * Member shapes are described later (see [[drain]]), so that the current shape stays in one
-    * piece in Turtle.
+    * The member shapes are described later (see [[drain]]), so that the triples of the current
+    * shape are written together in Turtle.
     *
     * @param outerRange
     *   The range of `expression`, or the nearest enclosing one if it has none
@@ -185,7 +187,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     * @param slots
     *   Which boolean slots to emit, as a bit set of [[ShaclGenerator.AnyOf]] etc.
     * @param subject
-    *   The property shape (if `perValue`) or the class shape
+    *   The shape to put the operators on: the slot's PropertyShape (if `perValue`) or the class's
+    *   NodeShape, or a member's NodeShape for nested boolean slots
     * @param perValue
     *   Whether `slots` are per-value (true) or per-instance (false) ones
     * @param deferred
@@ -298,8 +301,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     )
   }
 
-  /** Describe a per-instance member: a property shape for the slot with the member's cardinality
-    * and value rules, plus its nested per-instance operators.
+  /** Describe a per-instance member: a PropertyShape for the slot with the member's cardinality and
+    * value rules, plus its nested per-instance operators.
     */
   private def processInstanceShape(
       sink: RdfSink,
@@ -432,7 +435,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
   ): Unit = {
     val s = attributeView.slotView
     val slot = s.slot
-    // Everything between here and the sh:order below describes the property shape and nothing else,
+    // Everything between here and the sh:order below describes the PropertyShape and nothing else,
     // so Turtle can write the whole thing inline as `[ ... ]`.
     val property = inlineBlankNode()
     sink.triple(propertyDomain, Shacl.property, property)
@@ -473,7 +476,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     // Use rank if possible. Other slots are put at the end.
     val rank = slot.rank.getOrElseFast(order)
     sink.triple(property, Shacl.order, Literal(rank.toString, XmlSchema.integer))
-    // Per-instance operators go on the class shape
+    // Per-instance operators go on the class's NodeShape
     processBooleanSlots(
       sink,
       range,
