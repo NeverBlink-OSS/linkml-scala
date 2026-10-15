@@ -1087,8 +1087,9 @@ object ScalaGenerator {
 
     case combineOption(fallback: CombineFunction)
 
-    /** Joins the `all_of` lists of two slots. Also adds the parent slot's `any_of` and
-      * `exactly_one_of` lists to `all_of`, so they are still checked.
+    /** Joins the `all_of` lists of two slots. The `any_of` and `exactly_one_of` slots keep only the
+      * list of the more specific slot, so the lists of the other slot are also added to `all_of`.
+      * As a result, a value must match the `any_of` and `exactly_one_of` lists of both slots.
       *
       * The class with the `allOf` field must also have the `anyOf` and `exactlyOneOf` fields.
       *

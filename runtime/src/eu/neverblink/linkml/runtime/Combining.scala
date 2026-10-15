@@ -26,16 +26,16 @@ def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
 
 /** Returns the first non-empty list.
   *
-  * Used for the `any_of` and `exactly_one_of` slots to keep the list of the more specific slot. The
-  * list of the other slot is added to `all_of` by [[wrapIfNotSubset]] or [[wrapIfDifferent]], so it
-  * is still checked.
+  * Used for `any_of` and `exactly_one_of` to keep the list of the more specific slot. The other
+  * list goes to `all_of`, see [[wrapIfNotSubset]] and [[wrapIfDifferent]].
   */
 def combineNonEmpty[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
   if (v1.isEmpty) v2 else v1
 
 /** Returns `v1` followed by the elements of `v2` that are not in `v1`.
   *
-  * Used to join the `all_of` and `none_of` lists of two slots: each member is one more check.
+  * Used to join the `all_of` and `none_of` lists of two slots, because all members of both lists
+  * must be checked.
   */
 def combineDistinct[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
   if (v1.isEmpty) v2
@@ -48,9 +48,8 @@ def combineDistinct[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
 /** Returns a list with `wrap(v2)` if both lists are non-empty and `v1` has an element that is not
   * in `v2`, otherwise an empty list.
   *
-  * Used to add the `any_of` list of the less specific slot (`v2`) to `all_of`. It is not added when
-  * it has all members of the kept list (`v1`), because then it accepts every value that the kept
-  * list accepts.
+  * Used to add the other `any_of` list (`v2`) to `all_of`. It is not needed when `v2` has all
+  * members of `v1`, because then any value that matches `v1` also matches `v2`.
   */
 def wrapIfNotSubset[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
   if (v1.isEmpty || v2.isEmpty || v1.forall(v2.contains)) Nil else wrap(v2) :: Nil
@@ -58,10 +57,9 @@ def wrapIfNotSubset[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
 /** Returns a list with `wrap(v2)` if both lists are non-empty and not equal, otherwise an empty
   * list.
   *
-  * Used to add the `exactly_one_of` list of the less specific slot (`v2`) to `all_of`. Unlike for
-  * `any_of`, having all members of the kept list (`v1`) is not enough to skip it: a value that
-  * matches two members of `v2` is not valid for `v2`, but can be valid for `v1` if `v1` has only
-  * one of these members.
+  * Used to add the other `exactly_one_of` list of the less specific slot (`v2`) to `all_of`. It can
+  * be skipped only when both lists are equal. If `v2` has more members, a value can match two of
+  * them: `v2` rejects it, but `v1` may accept it.
   */
 def wrapIfDifferent[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
   if (v1.isEmpty || v2.isEmpty || v1 == v2) Nil else wrap(v2) :: Nil

@@ -916,6 +916,8 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         "anyOf = combineNonEmpty(this.anyOf, other.anyOf)",
         "exactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf)",
         "noneOf = combineDistinct(this.noneOf, other.noneOf)",
+        // `anyOf` and `exactlyOneOf` keep only the subclass's list. The parent's lists are added
+        // to `allOf`, so values must match them too.
         "allOf = combineDistinct(combineDistinct(combineDistinct(this.allOf, other.allOf), " +
           "wrapIfNotSubset(this.anyOf, other.anyOf, v => MyExpressionImpl(anyOf = v))), " +
           "wrapIfDifferent(this.exactlyOneOf, other.exactlyOneOf, " +
