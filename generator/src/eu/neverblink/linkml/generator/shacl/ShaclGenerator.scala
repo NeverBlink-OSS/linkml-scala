@@ -282,7 +282,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     else sink.list(subject, operator, shapes)
   }
 
-  /** Describe a per-value member: its value rules and nested operators. */
+  /** Describe a per-value member: a NodeShape that is checked against each value of the slot, with
+    * the member's value rules and nested per-value operators.
+    */
   private def processValueShape(
       sink: RdfSink,
       outerRange: Reference[?],
