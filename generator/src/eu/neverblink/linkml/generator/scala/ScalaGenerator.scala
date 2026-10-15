@@ -406,10 +406,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
   /** Remap the [[CombineFunction]] if necessary, handles special metamodel slots.
     *
-    * A combined slot must accept only values that both slots accept, so that a class can be used
-    * where its parent is expected (Liskov substitution). `all_of` and `none_of` lists are joined.
-    * `any_of` and `exactly_one_of` keep the list of the more specific slot, and the list of the
-    * other slot is moved into `all_of`, unless it accepts all values that the kept list accepts.
+    * The boolean slots (`any_of`, `all_of`, `exactly_one_of`, `none_of`) are combined in a stricter
+    * way than in the LinkML specification and LinkML-Python, so that a subclass accepts only values
+    * that its parent classes accept. See the combining functions in the runtime `Combining.scala`.
     *
     * @param slot
     *   Slot to remap the combining function
@@ -1088,9 +1087,10 @@ object ScalaGenerator {
 
     case combineOption(fallback: CombineFunction)
 
-    /** Combines the metamodel's `all_of` lists, and adds the `any_of` and `exactly_one_of` lists of
-      * the second value as members, as described in `remapMetamodelCombineFunctions`. Expects the
-      * `anyOf` and `exactlyOneOf` fields in the same class.
+    /** Joins the `all_of` lists of two slots. Also adds the parent slot's `any_of` and
+      * `exactly_one_of` lists to `all_of`, so they are still checked.
+      *
+      * The class with the `allOf` field must also have the `anyOf` and `exactlyOneOf` fields.
       *
       * @param expressionType
       *   The Scala type of the members, which has the `anyOf` and `exactlyOneOf` fields
