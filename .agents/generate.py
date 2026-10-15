@@ -6,6 +6,7 @@ cannot drift from the implementation it describes. Sources:
 
   out/metamodel/definitions.dest/*.yaml  the real LinkML metamodel (fetched by the build)
   docs/implementation_differences.md     what linkml-scala does not support
+  docs/inherited_boolean_expressions.md  how inherited boolean expressions are combined
   tests/resources/models/                the known-good example schemas
 
 The metamodel YAML is not committed. Fetch it first:
@@ -134,7 +135,9 @@ def gen_metaslots(meta: dict) -> str:
 
 
 def gen_limitations() -> str:
-    body = (REPO / "docs" / "implementation_differences.md").read_text()
+    body = (REPO / "docs" / "implementation_differences.md").read_text().replace(
+        "(inherited_boolean_expressions.md)", "(210-inherited-boolean-expressions.md)"
+    )
     return (
         BANNER
         + "<!-- Source: docs/implementation_differences.md -->\n\n"
@@ -143,6 +146,11 @@ def gen_limitations() -> str:
         "> sections diverge from linkml-python, so a schema can behave differently here.\n\n"
         + body
     )
+
+
+def gen_inherited_boolean_expressions() -> str:
+    body = (REPO / "docs" / "inherited_boolean_expressions.md").read_text()
+    return BANNER + "<!-- Source: docs/inherited_boolean_expressions.md -->\n\n" + body
 
 
 def gen_examples() -> str:
@@ -189,6 +197,7 @@ def main() -> int:
     outputs = {
         "900-metaslots.tsv": gen_metaslots(meta),
         "200-limitations.md": gen_limitations(),
+        "210-inherited-boolean-expressions.md": gen_inherited_boolean_expressions(),
         "910-examples.md": gen_examples(),
     }
 

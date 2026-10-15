@@ -151,7 +151,7 @@ classes:
 ranges of `any_of` in OWL output), `rules:`, and arrays. If a constraint needs one of these,
 express it another way or document the gap.
 A `slot_usage` can only narrow down inherited boolean expressions: the inherited ones are still
-checked (see *Inherited boolean expressions* in `200-limitations.md`).
+checked (see [210-inherited-boolean-expressions.md](210-inherited-boolean-expressions.md)).
 
 ## Enums
 
