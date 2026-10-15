@@ -10,7 +10,7 @@ import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
 
-import ShaclGenerator.{Check, Member}
+import ShaclGenerator.Check
 
 class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerator.Options] {
 
@@ -162,50 +162,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
   private def isPerValue(members: Seq[SlotExpression]): Boolean =
     members.nonEmpty && checkOf(members) == Check.PerValue
 
-  /** Emit the range, `pattern`, `minimum_value` and `maximum_value` of a nested expression. No
-    * default range is applied.
-    *
-    * @param outerRange
-    *   The nearest enclosing range, used to type the value bounds if the expression has no range
-    */
-  private def processNestedValueConstraints(
-      sink: RdfSink,
-      outerRange: Reference[?],
-      expression: SlotExpression,
-      subject: Resource,
-  ): Unit = {
-    expression.range.foreachFast { r =>
-      processRange(sink, r, expression.implicitPrefix.isDefined, subject)
-    }
-    expression.pattern.foreachFast { p =>
-      sink.triple(subject, Shacl.pattern, Literal(p))
-    }
-    if (
-      (expression.minimumValue.isDefined || expression.maximumValue.isDefined) &&
-      expression.implicitPrefix.isEmpty
-    ) {
-      expression.range
-        .getOrElseFast(outerRange)
-        .asInstanceOf[Reference[ElementView[?, ?]]]
-        .resolve
-        .flatMapFast {
-          case typeView: TypeView => datatypeForValueBound(typeView)
-          case _ => None
-        }
-        .foreachFast { datatype =>
-          expression.minimumValue.foreachFast { v =>
-            sink.triple(subject, Shacl.minInclusive, Literal(v.value.strip, datatype))
-          }
-          expression.maximumValue.foreachFast { v =>
-            sink.triple(subject, Shacl.maxInclusive, Literal(v.value.strip, datatype))
-          }
-        }
-    }
-  }
-
-  /** Emit the boolean slots of the expression that are checked in the given way, as logical
-    * constraint components: `any_of` as `sh:or`, `exactly_one_of` as `sh:xone`, `all_of` as
-    * `sh:and`, and `none_of` as one `sh:not` per member. Each member becomes a NodeShape.
+  /** Emit the boolean slots of a slot that are checked in the given way, as logical constraint
+    * components: `any_of` as `sh:or`, `exactly_one_of` as `sh:xone`, `all_of` as `sh:and`, and
+    * `none_of` as one `sh:not` per member. Each member becomes a NodeShape, written inline right
+    * where it is referenced. Members may have boolean slots of their own, nested to any depth.
     *
     * A boolean slot is checked in one of two ways, see [[checkOf]]:
     *
@@ -218,202 +178,170 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     *     sh:maxCount 1 ] ] ... )`. This PropertyShape is checked against the instance, so it can
     *     count the values of the slot.
     *
-    * So each caller calls this twice, once for each check and with a different `subject`.
+    * So [[processSlot]] calls this twice, once for each check and with a different `subject`.
     *
-    * The members are not written here, but added to `pending`, see [[processMembers]].
+    * The work is done by nested methods, which use the parameters of the methods they are in
+    * instead of taking them again:
+    *
+    *   - `emitBooleanSlots` emits the boolean slots of the slot or of a member. Members call it
+    *     again for their own boolean slots, with their own range, shape and check.
+    *   - `emitBooleanSlot` emits one boolean slot.
+    *   - `emitMember` emits one member, as a per-value or a per-instance member.
     *
     * @param sink
     *   Receives the triples
-    * @param outerRange
-    *   The range of `expression`, or the nearest enclosing one if it has none
     * @param path
     *   The slot's property
-    * @param expression
-    *   The slot or member whose boolean slots to emit
+    * @param range
+    *   The slot's range
+    * @param slot
+    *   The slot whose boolean slots to emit
     * @param subject
-    *   The shape to put the logical constraint components on: a PropertyShape or a member's
-    *   NodeShape for per-value checks, the class's NodeShape or a member's NodeShape for
-    *   per-instance checks
+    *   The slot's PropertyShape for per-value checks, or the class's NodeShape for per-instance
+    *   checks
     * @param check
     *   Which boolean slots to emit: those checked per value or those checked per instance
-    * @param pending
-    *   Collects the members to write later
     */
   private def processBooleanSlots(
       sink: RdfSink,
-      outerRange: Reference[?],
       path: Iri,
-      expression: SlotExpression,
+      range: Reference[?],
+      slot: SlotExpression,
       subject: Resource,
       check: Check,
-      pending: mutable.Buffer[Member],
   ): Unit = {
-    processBooleanSlot(sink, outerRange, path, Shacl.or, expression.anyOf, subject, check, pending)
-    processBooleanSlot(
-      sink,
-      outerRange,
-      path,
-      Shacl.xone,
-      expression.exactlyOneOf,
-      subject,
-      check,
-      pending,
-    )
-    processBooleanSlot(sink, outerRange, path, Shacl.and, expression.allOf, subject, check, pending)
-    processBooleanSlot(
-      sink,
-      outerRange,
-      path,
-      Shacl.not,
-      expression.noneOf,
-      subject,
-      check,
-      pending,
-    )
-  }
 
-  /** Emit one boolean slot, if it has members and is checked in the given way. See
-    * [[processBooleanSlots]].
-    *
-    * @param sink
-    *   Receives the triples
-    * @param outerRange
-    *   The range of the expression that has this boolean slot, or the nearest enclosing one
-    * @param path
-    *   The slot's property
-    * @param component
-    *   The logical constraint component: `sh:or`, `sh:xone`, `sh:and` or `sh:not`
-    * @param members
-    *   The members of the boolean slot
-    * @param subject
-    *   The shape to put the logical constraint component on
-    * @param check
-    *   Emit the boolean slot only if it is checked this way
-    * @param pending
-    *   Collects the members to write later
-    */
-  private def processBooleanSlot(
-      sink: RdfSink,
-      outerRange: Reference[?],
-      path: Iri,
-      component: Iri,
-      members: Seq[SlotExpression],
-      subject: Resource,
-      check: Check,
-      pending: mutable.Buffer[Member],
-  ): Unit =
-    if (members.nonEmpty && checkOf(members) == check) {
-      val shapes = members.map { expression =>
-        val shape = blankNode()
-        pending.addOne(Member(shape, expression, outerRange, path, check))
-        shape
+    /** Emit the boolean slots of the slot or a member that are checked in the given way.
+      *
+      * @param expression
+      *   The slot or a member
+      * @param range
+      *   The range of `expression`, or the nearest enclosing one if it has none
+      * @param subject
+      *   The shape to put the logical constraint components on
+      * @param check
+      *   Which boolean slots to emit
+      */
+    def emitBooleanSlots(
+        expression: SlotExpression,
+        range: Reference[?],
+        subject: Resource,
+        check: Check,
+    ): Unit = {
+
+      /** Emit one boolean slot of `expression`, if it has members and is checked as `check` says:
+        * one `sh:not` per member, or an RDF list of members for the other logical constraint
+        * components.
+        *
+        * @param component
+        *   The logical constraint component: `sh:or`, `sh:xone`, `sh:and` or `sh:not`
+        * @param members
+        *   The members of the boolean slot
+        */
+      def emitBooleanSlot(component: Iri, members: Seq[SlotExpression]): Unit = {
+
+        /** Emit a member as an inline NodeShape, and link it from `subject` with `component`: as a
+          * list member, or directly for `sh:not`. The NodeShape is per value or per instance, as
+          * `check` says.
+          *
+          * @param member
+          *   The member to emit
+          */
+        def emitMember(member: SlotExpression): Unit = {
+          val shape = inlineBlankNode()
+          val memberRange = member.range.getOrElseFast(range)
+
+          /** Emit the range, `pattern`, `minimum_value` and `maximum_value` of the member. A member
+            * without a range gets no `default_range`. The value bounds are typed by the member's
+            * range, or the nearest enclosing one if it has none.
+            *
+            * @param target
+            *   The shape to put the value constraints on
+            */
+          def emitValueConstraints(target: Resource): Unit = {
+            member.range.foreachFast { r =>
+              processRange(sink, r, member.implicitPrefix.isDefined, target)
+            }
+            member.pattern.foreachFast { p =>
+              sink.triple(target, Shacl.pattern, Literal(p))
+            }
+            if (
+              (member.minimumValue.isDefined || member.maximumValue.isDefined) &&
+              member.implicitPrefix.isEmpty
+            ) {
+              memberRange
+                .asInstanceOf[Reference[ElementView[?, ?]]]
+                .resolve
+                .flatMapFast {
+                  case typeView: TypeView => datatypeForValueBound(typeView)
+                  case _ => None
+                }
+                .foreachFast { datatype =>
+                  member.minimumValue.foreachFast { v =>
+                    sink.triple(target, Shacl.minInclusive, Literal(v.value.strip, datatype))
+                  }
+                  member.maximumValue.foreachFast { v =>
+                    sink.triple(target, Shacl.maxInclusive, Literal(v.value.strip, datatype))
+                  }
+                }
+            }
+          }
+
+          /** Emit a per-value member: a NodeShape that values of the slot are checked against, with
+            * the member's value constraints and its nested boolean slots.
+            */
+          def emitValueMember(): Unit = {
+            emitValueConstraints(shape)
+            // Nothing nested in a per-value member limits the number of values, so its boolean
+            // slots are checked per value too
+            emitBooleanSlots(member, memberRange, shape, Check.PerValue)
+          }
+
+          /** Emit a per-instance member: a NodeShape with a PropertyShape for the slot. The
+            * PropertyShape has the member's cardinality, value constraints and per-value boolean
+            * slots. The member's per-instance boolean slots go on the NodeShape.
+            */
+          def emitInstanceMember(): Unit = {
+            // No PropertyShape if the member only has per-instance boolean slots
+            if (
+              hasOwnCardinality(member) || hasValueConstraints(member) || hasPerValueSlot(member)
+            ) {
+              val property = inlineBlankNode()
+              sink.triple(shape, Shacl.property, property)
+              sink.triple(property, Shacl.path, path)
+              processCardinality(sink, member, None, property)
+              emitValueConstraints(property)
+              emitBooleanSlots(member, memberRange, property, Check.PerValue)
+            }
+            emitBooleanSlots(member, memberRange, shape, Check.PerInstance)
+          }
+
+          // sh:not takes one NodeShape, not a list
+          if (component eq Shacl.not) sink.triple(subject, Shacl.not, shape)
+          else sink.listMember(shape)
+          check match {
+            case Check.PerValue => emitValueMember()
+            case _ => emitInstanceMember()
+          }
+        }
+
+        if (members.nonEmpty && checkOf(members) == check) {
+          if (component eq Shacl.not) members.foreach(emitMember)
+          else {
+            sink.beginList(subject, component)
+            members.foreach(emitMember)
+            sink.endList()
+          }
+        }
       }
-      // sh:not takes one NodeShape, not a list
-      if (component eq Shacl.not) shapes.foreach(sink.triple(subject, Shacl.not, _))
-      else sink.list(subject, component, shapes)
+
+      emitBooleanSlot(Shacl.or, expression.anyOf)
+      emitBooleanSlot(Shacl.xone, expression.exactlyOneOf)
+      emitBooleanSlot(Shacl.and, expression.allOf)
+      emitBooleanSlot(Shacl.not, expression.noneOf)
     }
 
-  /** Write the NodeShapes of the pending members, and clear `pending`.
-    *
-    * They are written after the class's NodeShape, so that the triples of each NodeShape are
-    * written together in Turtle. Members of members are added to the end of `pending` and written
-    * by the same loop.
-    *
-    * @param sink
-    *   Receives the triples
-    * @param pending
-    *   The members to write
-    */
-  private def processMembers(sink: RdfSink, pending: mutable.Buffer[Member]): Unit = {
-    var i = 0
-    while (i < pending.length) {
-      val member = pending(i)
-      member.check match {
-        case Check.PerValue => processValueMember(sink, member, pending)
-        case _ => processInstanceMember(sink, member, pending)
-      }
-      i += 1
-    }
-    pending.clear()
-  }
-
-  /** Write a per-value member: a NodeShape that values of the slot are checked against, with the
-    * member's value constraints and its nested boolean slots.
-    *
-    * @param sink
-    *   Receives the triples
-    * @param member
-    *   The member to write
-    * @param pending
-    *   Collects the members of nested boolean slots, to write later
-    */
-  private def processValueMember(
-      sink: RdfSink,
-      member: Member,
-      pending: mutable.Buffer[Member],
-  ): Unit = {
-    val expression = member.expression
-    processNestedValueConstraints(sink, member.outerRange, expression, member.shape)
-    // Nothing nested in a per-value member limits the number of values, so its boolean slots are
-    // checked per value too
-    processBooleanSlots(
-      sink,
-      expression.range.getOrElseFast(member.outerRange),
-      member.path,
-      expression,
-      member.shape,
-      Check.PerValue,
-      pending,
-    )
-  }
-
-  /** Write a per-instance member: a NodeShape with a PropertyShape for the slot. The PropertyShape
-    * has the member's cardinality, value constraints and per-value boolean slots. The member's
-    * per-instance boolean slots go on the NodeShape.
-    *
-    * @param sink
-    *   Receives the triples
-    * @param member
-    *   The member to write
-    * @param pending
-    *   Collects the members of nested boolean slots, to write later
-    */
-  private def processInstanceMember(
-      sink: RdfSink,
-      member: Member,
-      pending: mutable.Buffer[Member],
-  ): Unit = {
-    val expression = member.expression
-    val range = expression.range.getOrElseFast(member.outerRange)
-    // No PropertyShape if the member only has per-instance boolean slots
-    if (
-      hasOwnCardinality(expression) || hasValueConstraints(expression) ||
-      hasPerValueSlot(expression)
-    ) {
-      val property = inlineBlankNode()
-      sink.triple(member.shape, Shacl.property, property)
-      sink.triple(property, Shacl.path, member.path)
-      processCardinality(sink, expression, None, property)
-      processNestedValueConstraints(sink, member.outerRange, expression, property)
-      processBooleanSlots(
-        sink,
-        range,
-        member.path,
-        expression,
-        property,
-        Check.PerValue,
-        pending,
-      )
-    }
-    processBooleanSlots(
-      sink,
-      range,
-      member.path,
-      expression,
-      member.shape,
-      Check.PerInstance,
-      pending,
-    )
+    emitBooleanSlots(slot, range, subject, check)
   }
 
   /** Emit the value constraints of an attribute: `pattern`, `minimum_value` and `maximum_value`.
@@ -480,8 +408,6 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     * @param groups
     *   Collects the slots referenced via `slot_group`, so that their sh:PropertyGroup declarations
     *   can be emitted once at the end.
-    * @param pending
-    *   Passed on to [[processBooleanSlots]].
     */
   private def processSlot(
       sink: RdfSink,
@@ -489,7 +415,6 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       order: Int,
       propertyDomain: Resource,
       groups: mutable.Map[String, SlotView],
-      pending: mutable.Buffer[Member],
   ): Unit = {
     val s = attributeView.slotView
     val slot = s.slot
@@ -519,13 +444,13 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     sink.triple(property, Shacl.path, path)
     processMainRange(sink, s, slot, property)
     val range = slot.range.getOrElseFast(sv.getDefaultRange(s.definingSchema))
-    processBooleanSlots(sink, range, path, slot, property, Check.PerValue, pending)
+    processBooleanSlots(sink, path, range, slot, property, Check.PerValue)
     processConstraints(sink, attributeView, property)
     // Use rank if possible. Other slots are put at the end.
     val rank = slot.rank.getOrElseFast(order)
     sink.triple(property, Shacl.order, Literal(rank.toString, XmlSchema.integer))
     // Per-instance logical constraint components go on the class's NodeShape
-    processBooleanSlots(sink, range, path, slot, propertyDomain, Check.PerInstance, pending)
+    processBooleanSlots(sink, path, range, slot, propertyDomain, Check.PerInstance)
   }
 
   /** Declare the slots used as `slot_group` targets as sh:PropertyGroup instances, so that the
@@ -569,8 +494,6 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       }
       else sv.classes
     val groups = mutable.LinkedHashMap.empty[String, SlotView]
-    // Members of boolean slots. Shared by all classes.
-    val pending = mutable.ArrayBuffer.empty[Member]
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
@@ -594,12 +517,11 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
         if (!slot.identifier) {
-          processSlot(sink, av, order, classNameIri, groups, pending)
+          processSlot(sink, av, order, classNameIri, groups)
           if (slot.rank.isEmpty) order += 1
         }
       }
       sink.triple(classNameIri, Shacl.targetClass, classNameIri)
-      processMembers(sink, pending)
     }
     processGroups(sink, groups)
   }
@@ -621,27 +543,6 @@ object ShaclGenerator {
   private enum Check {
     case PerValue, PerInstance
   }
-
-  /** A member of a boolean slot, whose NodeShape is not written yet.
-    *
-    * @param shape
-    *   The member's NodeShape
-    * @param expression
-    *   The member
-    * @param outerRange
-    *   The nearest enclosing range
-    * @param path
-    *   The slot's property
-    * @param check
-    *   How the boolean slot is checked
-    */
-  private final case class Member(
-      shape: BlankNode,
-      expression: SlotExpression,
-      outerRange: Reference[?],
-      path: Iri,
-      check: Check,
-  )
 
   /** Options for [[ShaclGenerator]].
     *

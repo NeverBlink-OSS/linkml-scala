@@ -25,7 +25,7 @@ trait RdfSink {
     * The referencing triple comes first so that Turtle can write the whole thing as one `( ... )`
     * collection.
     *
-    * A list member may not be an [[InlineBlankNode]].
+    * A list member may not be an [[InlineBlankNode]]. Use [[beginList]] for that.
     */
   def list(subj: Resource, pred: Iri, values: Seq[Node]): Unit =
     if (values.isEmpty) triple(subj, pred, Rdf.nil)
@@ -43,6 +43,47 @@ trait RdfSink {
       }
     }
 
+  /** Start `subj pred <list>`. Push the members one by one with [[listMember]], then finish the
+    * list with [[endList]].
+    *
+    * Unlike [[list]], a member may be an [[InlineBlankNode]]. Push its own triples right after its
+    * [[listMember]] call, before the next member. These triples may start lists of their own, which
+    * must be ended before the next member of this list.
+    *
+    * The default implementation writes the `rdf:first` / `rdf:rest` cells as triples.
+    *
+    * @param subj
+    *   The subject that the list belongs to
+    * @param pred
+    *   The predicate that links `subj` to the list
+    */
+  def beginList(subj: Resource, pred: Iri): Unit =
+    openLists.addOne(new RdfSink.OpenList(subj, pred))
+
+  /** Add a member to the innermost list that is not ended yet. See [[beginList]].
+    *
+    * @param value
+    *   The member
+    */
+  def listMember(value: Node): Unit = {
+    val list = openLists.last
+    val next = nextListCell()
+    if (list.cell == null) triple(list.subj, list.pred, next)
+    else triple(list.cell, Rdf.rest, next)
+    list.cell = next
+    triple(next, Rdf.first, value)
+  }
+
+  /** End the innermost list that is not ended yet. See [[beginList]]. */
+  def endList(): Unit = {
+    val list = openLists.remove(openLists.length - 1)
+    if (list.cell == null) triple(list.subj, list.pred, Rdf.nil)
+    else triple(list.cell, Rdf.rest, Rdf.nil)
+  }
+
+  /** The lists started by [[beginList]] and not ended yet, innermost last. */
+  private val openLists = scala.collection.mutable.ArrayBuffer.empty[RdfSink.OpenList]
+
   /** Finish the document. Sinks with nothing to close ignore it. */
   def finish(): Unit = ()
 
@@ -54,6 +95,22 @@ trait RdfSink {
   private def nextListCell(): BlankNode = {
     listCells += 1
     new BlankNode("l".concat(listCells.toString))
+  }
+}
+
+object RdfSink {
+
+  /** A list started by [[RdfSink.beginList]].
+    *
+    * @param subj
+    *   The subject that the list belongs to
+    * @param pred
+    *   The predicate that links `subj` to the list
+    */
+  private final class OpenList(val subj: Resource, val pred: Iri) {
+
+    /** The cell of the last member, or null before the first member. */
+    var cell: BlankNode = null
   }
 }
 
