@@ -1141,6 +1141,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    - nested
            |    - pair_or_single
            |    - few
+           |    - nested_counts
            |slots:
            |  id:
            |    identifier: true
@@ -1181,6 +1182,18 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |    range: integer
            |    none_of:
            |    - minimum_cardinality: 3
+           |  nested_counts:
+           |    multivalued: true
+           |    any_of:
+           |    - range: integer
+           |      exact_cardinality: 2
+           |      none_of:
+           |      - minimum_value: 10
+           |    - range: string
+           |      any_of:
+           |      - maximum_cardinality: 1
+           |        pattern: "^a"
+           |      - minimum_cardinality: 3
            |""".stripMargin
       lazy val turtle =
         RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
@@ -1239,6 +1252,19 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       "none_of with cardinalities" in {
         conforms("t:few 1, 2") shouldBe true
         conforms("t:few 1, 2, 3") shouldBe false
+      }
+
+      "nested boolean slots with cardinalities" in {
+        // Two integers below 10
+        conforms("t:nested_counts 1, 2") shouldBe true
+        conforms("t:nested_counts 1, 12") shouldBe false
+        conforms("t:nested_counts 1") shouldBe false
+        // One string starting with "a", or at least three strings
+        conforms("""t:nested_counts "abc"""") shouldBe true
+        conforms("""t:nested_counts "xyz"""") shouldBe false
+        conforms("""t:nested_counts "abc", "aaa"""") shouldBe false
+        conforms("""t:nested_counts "x", "y", "z"""") shouldBe true
+        conforms("""t:nested_counts 1, "a"""") shouldBe false
       }
     }
 
