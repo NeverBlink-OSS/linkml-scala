@@ -192,7 +192,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     *   The shape to put the operators on: the slot's PropertyShape (if `perValue`) or the class's
     *   NodeShape, or a member's NodeShape for nested boolean slots
     * @param perValue
-    *   Whether `slots` are per-value (true) or per-instance (false) ones
+    *   If true, each member is a NodeShape that is checked against each value of the slot. If
+    *   false, each member is a NodeShape with a PropertyShape for the slot, which checks all values
+    *   of the slot together
     * @param deferred
     *   Collects the member descriptions
     */
