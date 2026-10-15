@@ -14,17 +14,19 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
 
   override protected def defaultOptions: ShaclGenerator.Options = ShaclGenerator.Options()
 
-  /** Emit the slot's own range.
+  /** Emit the slot's range on its PropertyShape. A slot without `range` gets the schema's
+    * `default_range`.
     *
-    * Skipped if an `any_of` or `exactly_one_of` member sets a range: the members then list the
-    * allowed ranges (LinkML-Python does the same for `any_of`). Otherwise a slot without `range`
-    * would get e.g. `sh:datatype xsd:string` next to `sh:or ( [ sh:class A ] ... )`, which no value
-    * can pass.
+    * Nothing is emitted if an `any_of` or `exactly_one_of` member sets a range, because the member
+    * NodeShapes already list the allowed ranges. LinkML-Python does the same for `any_of`.
     *
-    * The default range is also skipped if an `all_of` member sets a range.
+    * For example, a slot without `range` would otherwise get both `sh:datatype xsd:string` (from
+    * `default_range`) and `sh:or ( [ sh:class A ] ... )`. No value can match both.
+    *
+    * The `default_range` is also not emitted if an `all_of` member sets a range.
     *
     * @param slotView
-    *   The defining slot's view, used to find the default range
+    *   The defining slot's view, used to find the `default_range`
     */
   private def processMainRange(
       sink: RdfSink,
