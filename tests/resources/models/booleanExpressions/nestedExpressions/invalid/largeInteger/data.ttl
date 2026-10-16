@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/nestedExpressions/> .
+
+_:b a :Item;
+    :size 12 .

@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/exactlyOneOf/> .
+
+_:b a :Measurement;
+    :level 30 .

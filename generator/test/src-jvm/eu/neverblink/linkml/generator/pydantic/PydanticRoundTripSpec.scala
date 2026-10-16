@@ -39,6 +39,47 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "unionRange" -> "Not yet implemented: LNK-100",
   )
 
+  private val defaultRangeWithAnyOf =
+    "BUG: The default range `string` is added next to the ranges of `any_of` members"
+
+  override val skipInstances: Map[(String, String), String] = Map(
+    "anyOfNarrowing" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfNarrowing" -> "boolean" -> defaultRangeWithAnyOf,
+    "anyOfNarrowing" -> "stringFromBase" -> defaultRangeWithAnyOf,
+    "nestedExpressions" -> "smallInteger" -> defaultRangeWithAnyOf,
+    "memberCardinality" -> "twoIntegers" -> defaultRangeWithAnyOf,
+    "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
+    "allOf" -> "matchesFirstOnly" -> "Not yet implemented: `all_of`",
+    "exactlyOneOf" -> "matchesBoth" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOf" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
+    "noneOf" -> "matchesMember" -> "Not yet implemented: `none_of`",
+    "anyOfWidening" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfWidening" -> "stringNotInSlotUsage" -> defaultRangeWithAnyOf,
+    "anyOfMixins" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfMixins" -> "stringNotInMixin" -> defaultRangeWithAnyOf,
+    "allOfInheritance" -> "failsBase" -> "Not yet implemented: `all_of`",
+    "allOfInheritance" -> "failsSlotUsage" -> "Not yet implemented: `all_of`",
+    "exactlyOneOfInheritance" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfInheritance" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
+    "noneOfInheritance" -> "matchesBase" -> "Not yet implemented: `none_of`",
+    "noneOfInheritance" -> "matchesSlotUsage" -> "Not yet implemented: `none_of`",
+    "anyOfChain" -> "integer" -> defaultRangeWithAnyOf,
+    "anyOfChain" -> "stringNotInChild" -> defaultRangeWithAnyOf,
+    "anyOfClassRanges" -> "command" -> defaultRangeWithAnyOf,
+    "allOfMixins" -> "failsBase" -> "Not yet implemented: `all_of`",
+    "allOfMixins" -> "failsMixin" -> "Not yet implemented: `all_of`",
+    "noneOfMixins" -> "matchesBase" -> "Not yet implemented: `none_of`",
+    "noneOfMixins" -> "matchesMixin" -> "Not yet implemented: `none_of`",
+    "exactlyOneOfMixins" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfMixins" -> "matchesNoneInMixin" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfWidening" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
+    "exactlyOneOfWidening" -> "matchesNoneInSlotUsage" -> "Not yet implemented: `exactly_one_of`",
+    "allOfNoneOfChain" -> "failsBaseAllOf" -> "Not yet implemented: `all_of`",
+    "allOfNoneOfChain" -> "failsBaseNoneOf" -> "Not yet implemented: `none_of`",
+    "allOfNoneOfChain" -> "failsChildNoneOf" -> "Not yet implemented: `none_of`",
+    "allOfNoneOfChain" -> "failsGrandchildNoneOf" -> "Not yet implemented: `none_of`",
+  )
+
   // Known expressiveness limitations
   private val notExact: Map[(String, String), String] = Map(
     "compactDictDocument" -> "entries" -> "An entry that repeats its key is reserialized without it",

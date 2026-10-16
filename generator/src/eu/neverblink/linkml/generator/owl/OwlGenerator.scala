@@ -448,8 +448,8 @@ object OwlGenerator {
     private def rangeOf(s: SlotView, context: Option[ClassView] = None): Option[Filler] = {
       // The nearest definition with a range wins: the class's slot_usage or attribute, an
       // ancestor's attribute, then the slot and its parents. An ancestor's slot_usage is skipped,
-      // because OWL passes it down anyway. The derived slot is not used, since it joins the
-      // `any_of` of all of these together.
+      // because OWL passes it down anyway. The derived slot is not used, since it keeps the
+      // inherited `any_of` lists in `all_of`, and OWL already requires them through subclassing.
       val inClasses = context.toSeq.flatMap(c =>
         c.cls.slotUsage.get(s.slot.name).toSeq ++
           c.ancestorsWithSelf.flatMap(_.cls.attributes.get(s.slot.name)),
@@ -473,8 +473,12 @@ object OwlGenerator {
       e.range.flatMap(r => sv.getElement(r.value)).orElse(s.derivedRange.resolve)
         .flatMap(rangeOfElement(_, e))
 
+    /** A union of the alternatives, or the only alternative, since OWL 2 DL requires at least two
+      * operands in a union.
+      */
     private def union(alternatives: Seq[Filler]): Option[Filler] =
-      if alternatives.forall(_.isInstanceOf[DataRange]) then
+      if alternatives.sizeIs == 1 then alternatives.headOption
+      else if alternatives.forall(_.isInstanceOf[DataRange]) then
         Some(DataRange.UnionOf(alternatives.map(_.asInstanceOf[DataRange])))
       else if alternatives.forall(_.isInstanceOf[ClassExpr]) then
         Some(ClassExpr.UnionOf(alternatives.map(_.asInstanceOf[ClassExpr])))

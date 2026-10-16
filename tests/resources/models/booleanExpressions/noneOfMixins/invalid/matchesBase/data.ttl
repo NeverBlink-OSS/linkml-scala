@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/noneOfMixins/> .
+
+_:b a :Combined;
+    :value 200 .

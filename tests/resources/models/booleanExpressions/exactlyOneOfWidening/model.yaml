@@ -1,0 +1,30 @@
+id: https://neverblink.eu/linkml/tests/exactlyOneOfWidening/
+name: exactlyOneOfWidening
+description: >-
+  A `slot_usage` with an `exactly_one_of` list that has a member not in the inherited list. A
+  value must match exactly one member of each list, so the subclass does not allow values that
+  the base class does not allow.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Widened:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      value:
+        exactly_one_of:
+          - maximum_value: 10
+          - minimum_value: 50
+
+slots:
+  value:
+    required: true
+    range: integer
+    exactly_one_of:
+      - maximum_value: 10
+      - minimum_value: 0

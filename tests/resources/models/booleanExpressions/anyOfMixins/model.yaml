@@ -1,0 +1,40 @@
+id: https://neverblink.eu/linkml/tests/anyOfMixins/
+name: anyOfMixins
+description: >-
+  A class gets `any_of` lists for one slot from a mixin and from its parent class. A value must
+  match both lists.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+    slot_usage:
+      value:
+        any_of:
+          - range: integer
+          - range: string
+  Mixin:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        any_of:
+          - range: integer
+          - range: boolean
+  Combined:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Mixin
+
+slots:
+  value:
+    required: true
+    any_of:
+      - range: integer
+      - range: string
+      - range: boolean

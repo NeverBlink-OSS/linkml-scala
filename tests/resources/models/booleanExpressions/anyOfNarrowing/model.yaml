@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/anyOfNarrowing/
+name: anyOfNarrowing
+description: A `slot_usage` with an `any_of` list that has only some of the inherited ranges, which narrows down the allowed ranges
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Narrowed:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      value:
+        any_of:
+          - range: integer
+          - range: boolean
+
+slots:
+  value:
+    required: true
+    any_of:
+      - range: integer
+      - range: boolean
+      - range: string

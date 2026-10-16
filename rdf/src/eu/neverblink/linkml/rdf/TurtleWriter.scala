@@ -85,6 +85,46 @@ final class TurtleWriter(out: CharSink) extends RdfSink {
     out.append(" )")
   }
 
+  /** Written as `(`, then each member on its own line, then `)`. The list is kept open as a frame
+    * without a subject, so that the triples of an inline member are written inside it.
+    */
+  override def beginList(subj: Resource, pred: Iri): Unit = {
+    position(subj, pred)
+    out.appendAscii('(')
+    push(null)
+    frames(depth - 1).isList = true
+  }
+
+  override def listMember(value: Node): Unit = {
+    val list = innermostList("listMember")
+    closeAbove(list)
+    newlineIndent(list + 1)
+    writeObject(value)
+    frames(list).members += 1
+  }
+
+  override def endList(): Unit = {
+    val list = innermostList("endList")
+    closeAbove(list)
+    if (frames(list).members > 0) newlineIndent(list)
+    out.appendAscii(')')
+    depth = list
+  }
+
+  /** The index of the innermost open list frame.
+    *
+    * @param what
+    *   The calling method, for the error message if no list is open
+    */
+  private def innermostList(what: String): Int = {
+    var i = depth - 1
+    while (i >= 0) {
+      if (frames(i).isList) return i
+      i -= 1
+    }
+    throw new IllegalStateException(s"Cannot call $what without beginList")
+  }
+
   override def finish(): Unit = {
     begin()
     closeStatement()
@@ -207,14 +247,20 @@ final class TurtleWriter(out: CharSink) extends RdfSink {
     }
     f.subj = subj
     f.pred = null
+    f.isList = false
+    f.members = 0
     depth += 1
   }
 
-  /** Close every inline blank node opened inside the frame at `index`. */
+  /** Close every inline blank node opened inside the frame at `index`. Lists are only closed by
+    * [[endList]], so an open list here is an error.
+    */
   private def closeAbove(index: Int): Unit =
     while (depth > index + 1) {
       depth -= 1
       val f = frames(depth)
+      if (f.isList)
+        throw new IllegalStateException("A list is still open: call endList before moving on")
       // A frame that never took a predicate holds nothing, so `[` and `]` collapse to `[]`.
       if (f.pred != null) newlineIndent(depth)
       out.appendAscii(']')
@@ -348,6 +394,14 @@ object TurtleWriter {
 
     /** The last predicate written for [[subj]], or null before the first. */
     var pred: Iri = uninitialized
+
+    /** Whether this frame is a list started by [[TurtleWriter.beginList]], rather than a subject. A
+      * list frame has no subject.
+      */
+    var isList: Boolean = false
+
+    /** The number of members written to a list frame. */
+    var members: Int = 0
   }
 
   private val XsdNamespace = "http://www.w3.org/2001/XMLSchema#"

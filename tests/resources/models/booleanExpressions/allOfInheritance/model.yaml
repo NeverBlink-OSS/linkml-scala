@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/allOfInheritance/
+name: allOfInheritance
+description: >-
+  A `slot_usage` with an `all_of` list. A value must match the inherited members and the
+  members from `slot_usage`.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+  Restricted:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      value:
+        all_of:
+          - pattern: "Z$"
+
+slots:
+  value:
+    required: true
+    range: string
+    all_of:
+      - pattern: "^A"

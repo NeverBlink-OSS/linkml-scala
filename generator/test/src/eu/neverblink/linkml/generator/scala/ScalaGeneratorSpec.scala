@@ -875,6 +875,25 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
            |      maximum_value:
            |        range: MyAny
            |        slot_uri: "https://w3id.org/linkml/maximum_value"
+           |      any_of:
+           |        range: MyExpression
+           |        multivalued: true
+           |        slot_uri: "https://w3id.org/linkml/any_of"
+           |      exactly_one_of:
+           |        range: MyExpression
+           |        multivalued: true
+           |        slot_uri: "https://w3id.org/linkml/exactly_one_of"
+           |      all_of:
+           |        range: MyExpression
+           |        multivalued: true
+           |        slot_uri: "https://w3id.org/linkml/all_of"
+           |      none_of:
+           |        range: MyExpression
+           |        multivalued: true
+           |        slot_uri: "https://w3id.org/linkml/none_of"
+           |  MyExpression:
+           |    attributes:
+           |      pattern:
            |""".stripMargin
 
       given SchemaView = decode(input)
@@ -894,6 +913,15 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         "optionSlot = combineOption(this.optionSlot, other.optionSlot, combineFallback)",
         "fallbackSlot = combineFallback(this.fallbackSlot, other.fallbackSlot)",
         "minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)",
+        "anyOf = combineNonEmpty(this.anyOf, other.anyOf)",
+        "exactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf)",
+        "noneOf = combineDistinct(this.noneOf, other.noneOf)",
+        // `anyOf` and `exactlyOneOf` keep only the subclass's list. The parent's lists are added
+        // to `allOf`, so values must match them too.
+        "allOf = combineDistinct(combineDistinct(combineDistinct(this.allOf, other.allOf), " +
+          "wrapIfNotSubset(this.anyOf, other.anyOf, v => MyExpressionImpl(anyOf = v))), " +
+          "wrapIfDifferent(this.exactlyOneOf, other.exactlyOneOf, " +
+          "v => MyExpressionImpl(exactlyOneOf = v)))",
         "def combineInherited(other: MySlotDefImpl, combineRange: (Reference[Element], Reference[Element]) => Reference[Element]): MySlotDefImpl =\n    copy(\n      inheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)\n    )",
       ).foreach { snippet =>
         code should include(snippet)

@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/allOfNoneOfChain/> .
+
+_:b a :Grandchild;
+    :value -150 .

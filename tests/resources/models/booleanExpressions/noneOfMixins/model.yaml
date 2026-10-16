@@ -1,0 +1,35 @@
+id: https://neverblink.eu/linkml/tests/noneOfMixins/
+name: noneOfMixins
+description: >-
+  A class gets `none_of` lists for one slot from a mixin and from its parent class. A value must
+  match none of the members of both lists.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+    slot_usage:
+      value:
+        none_of:
+          - minimum_value: 100
+  Mixin:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        none_of:
+          - maximum_value: -100
+  Combined:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Mixin
+
+slots:
+  value:
+    required: true
+    range: integer

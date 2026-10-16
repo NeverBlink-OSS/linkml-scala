@@ -96,8 +96,9 @@ The closest fit, since SHACL is also closed-world and shape-centric. `sh:NodeSha
 `sh:pattern` → `pattern`, `sh:in` → an enum, `sh:minInclusive`/`sh:maxInclusive` →
 `minimum_value`/`maximum_value`.
 
-`sh:or`/`sh:not`/`sh:xone` map to `any_of`/`none_of`/`exactly_one_of`, which **linkml-scala only
-partially supports, in SHACL output only**. Flag these rather than emitting them silently.
+`sh:or`/`sh:and`/`sh:not`/`sh:xone` map to `any_of`/`all_of`/`none_of`/`exactly_one_of`, which
+**linkml-scala supports in SHACL output only** (OWL output: only the ranges of `any_of`). Flag
+these rather than emitting them silently.
 Also unsupported: `sh:sparql` constraints, and `sh:node` indirection beyond a plain range.
 
 ### JSON Schema
@@ -175,7 +176,7 @@ Produced:   N classes, M attributes, K enums
 Method:     linkml-scala from owl --list-not-imported (or: by hand)
 Dropped:
   - property chain hasParent o hasParent → hasGrandparent — LinkML cannot express it
-  - sh:or on Baz.qux — linkml-scala supports any_of in SHACL output only
+  - sh:or on Baz.qux — linkml-scala supports any_of in SHACL output only, and its ranges in OWL
 Fixed after import:
   - Animal as tree_root; has_parent range Any → Animal
 Inferred (needs confirmation):

@@ -1,0 +1,35 @@
+id: https://neverblink.eu/linkml/tests/allOfMixins/
+name: allOfMixins
+description: >-
+  A class gets `all_of` lists for one slot from a mixin and from its parent class. A value must
+  match the members of both lists.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+    slot_usage:
+      value:
+        all_of:
+          - pattern: "^A"
+  Mixin:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        all_of:
+          - pattern: "Z$"
+  Combined:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Mixin
+
+slots:
+  value:
+    required: true
+    range: string

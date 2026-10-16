@@ -1,0 +1,20 @@
+id: https://neverblink.eu/linkml/tests/allOf/
+name: allOf
+description: A value must match all members of `all_of`
+
+imports:
+  - linkml:types
+
+classes:
+  Code:
+    tree_root: true
+    slots:
+      - code
+
+slots:
+  code:
+    required: true
+    range: string
+    all_of:
+      - pattern: "^A"
+      - pattern: "Z$"

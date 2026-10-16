@@ -27,6 +27,37 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
   )
   override val skipInstances: Map[(String, String), String] = Map(
     ("implicitPrefix", "slotDefined") -> "LinkML-py incorrectly does not lift these instances",
+    // See "Boolean expressions in SHACL" in docs/implementation_differences.md
+    ("allOf", "matchesFirstOnly") -> "LinkML-py ignores `all_of`",
+    ("exactlyOneOf", "matchesBoth") -> "LinkML-py ignores `exactly_one_of`",
+    ("exactlyOneOf", "matchesNone") -> "LinkML-py ignores `exactly_one_of`",
+    ("noneOf", "matchesMember") -> "LinkML-py ignores `none_of`",
+    ("nestedExpressions", "largeInteger") -> "LinkML-py ignores nested expressions",
+    ("memberCardinality", "oneInteger") -> "LinkML-py ignores cardinality in `any_of` members",
+    ("memberCardinality", "integerAndString") ->
+      "LinkML-py ignores cardinality in `any_of` members",
+    ("memberCardinality", "twoStrings") -> "LinkML-py ignores cardinality in `any_of` members",
+    ("anyOfWidening", "booleanNotInBase") -> "LinkML-py keeps only the most specific `any_of`",
+    ("anyOfMixins", "booleanNotInBase") -> "LinkML-py keeps only the most specific `any_of`",
+    ("allOfInheritance", "failsBase") -> "LinkML-py ignores `all_of`",
+    ("allOfInheritance", "failsSlotUsage") -> "LinkML-py ignores `all_of`",
+    ("exactlyOneOfInheritance", "matchesBothInBase") -> "LinkML-py ignores `exactly_one_of`",
+    ("exactlyOneOfInheritance", "matchesNone") -> "LinkML-py ignores `exactly_one_of`",
+    ("noneOfInheritance", "matchesBase") -> "LinkML-py ignores `none_of`",
+    ("noneOfInheritance", "matchesSlotUsage") -> "LinkML-py ignores `none_of`",
+    ("anyOfChain", "stringNotInChild") -> "LinkML-py keeps only the most specific `any_of`",
+    ("allOfMixins", "failsBase") -> "LinkML-py ignores `all_of`",
+    ("allOfMixins", "failsMixin") -> "LinkML-py ignores `all_of`",
+    ("noneOfMixins", "matchesBase") -> "LinkML-py ignores `none_of`",
+    ("noneOfMixins", "matchesMixin") -> "LinkML-py ignores `none_of`",
+    ("exactlyOneOfMixins", "matchesBothInBase") -> "LinkML-py ignores `exactly_one_of`",
+    ("exactlyOneOfMixins", "matchesNoneInMixin") -> "LinkML-py ignores `exactly_one_of`",
+    ("exactlyOneOfWidening", "matchesBothInBase") -> "LinkML-py ignores `exactly_one_of`",
+    ("exactlyOneOfWidening", "matchesNoneInSlotUsage") -> "LinkML-py ignores `exactly_one_of`",
+    ("allOfNoneOfChain", "failsBaseAllOf") -> "LinkML-py ignores `all_of`",
+    ("allOfNoneOfChain", "failsBaseNoneOf") -> "LinkML-py ignores `none_of`",
+    ("allOfNoneOfChain", "failsChildNoneOf") -> "LinkML-py ignores `none_of`",
+    ("allOfNoneOfChain", "failsGrandchildNoneOf") -> "LinkML-py ignores `none_of`",
   )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
   "LinkMl Python SHACL generator" should {

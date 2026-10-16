@@ -1,0 +1,22 @@
+id: https://neverblink.eu/linkml/tests/exactlyOneOf/
+name: exactlyOneOf
+description: A value must match exactly one member of `exactly_one_of`
+
+imports:
+  - linkml:types
+
+classes:
+  Measurement:
+    tree_root: true
+    slots:
+      - level
+
+slots:
+  level:
+    required: true
+    range: integer
+    exactly_one_of:
+      - minimum_value: 0
+        maximum_value: 10
+      - minimum_value: 5
+        maximum_value: 20

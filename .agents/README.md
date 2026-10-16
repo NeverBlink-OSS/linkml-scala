@@ -51,13 +51,14 @@ frontmatter sticks to the fields in the Agent Skills spec, so it should load any
 
 ## Maintaining
 
-Three files are derived from sources in this repository, so they cannot drift from the
+Four files are derived from sources in this repository, so they cannot drift from the
 implementation they describe:
 
 | File | Source |
 |---|---|
 | `900-metaslots.tsv` | the real LinkML metamodel YAML, fetched by the build |
 | `200-limitations.md` | `docs/implementation_differences.md` |
+| `210-inherited-boolean-expressions.md` | `docs/inherited_boolean_expressions.md` |
 | `910-examples.md` | `tests/resources/models/` |
 
 ```shell

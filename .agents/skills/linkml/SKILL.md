@@ -167,6 +167,8 @@ Read these when the task calls for them; do not load them up front.
 * [Limitations and divergent semantics](200-limitations.md) — unsupported features, the inlining
   decision table, `tree_root_as`, where behaviour differs from linkml-python. **Check before
   using anything unfamiliar.**
+* [Inherited boolean expressions](210-inherited-boolean-expressions.md) — how `any_of`, `all_of`,
+  `exactly_one_of` and `none_of` from parent classes, mixins and the slot definition are combined.
 
 ### Workflows
 

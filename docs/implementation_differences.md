@@ -5,7 +5,8 @@
 The following features are not yet supported or are partially supported in LinkML-Scala:
 
 - Arrays
-- Boolean expressions (`any_of`, `none_of`); initial support in SHACL
+- Boolean expressions (`any_of`, `all_of`, `exactly_one_of`, `none_of`) in the JSON Schema, OWL and Pydantic generators
+  - JSON Schema and Pydantic ignore them, OWL supports only `any_of` ranges
 - Partial support for default values (`ifabsent`)
   - Only enum and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
@@ -26,12 +27,31 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 - Support for [language strings](#language-strings)
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
+- Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
+
+These features work differently in LinkML-Scala than in the LinkML specification and LinkML-Python:
+
+- [Inherited boolean expressions](#inherited-boolean-expressions): a subclass accepts only values that its parent classes and mixins accept
+
+## Boolean expressions in SHACL
+
+In boolean expressions, the SHACL generator of LinkML-Python 1.12.1 checks only the `range` of `any_of` members.
+LinkML-Scala also checks `all_of`, `exactly_one_of`, `none_of`, and the patterns, value bounds, cardinality and nested boolean expressions of members.
+
+## Inherited boolean expressions
+
+The LinkML specification joins the `any_of`, `all_of`, `exactly_one_of` and `none_of` lists that a class inherits from its parent classes, mixins and the slot definition.
+LinkML-Python 1.12.1 keeps only the most specific list.
+LinkML-Scala joins the `all_of` and `none_of` lists, and for `any_of` and `exactly_one_of` keeps the most specific list and requires the inherited lists too.
+So a value of a class is also a valid value of each of its parent classes and mixins.
+
+See [Inherited boolean expressions](inherited_boolean_expressions.md) for details and examples.
 
 ## Imports
 
 Imports are easier to write in LinkML-Scala: file extensions are optional and interchangeable, and each imported schema is loaded only once.
 
-| Case | Python LinkML 1.12.1 | LinkML-Scala |
+| Case | LinkML-Python 1.12.1 | LinkML-Scala |
 |------|----------------------|--------------|
 | `imports: [core]` with only `core.yml` on disk | Fails | Reads `core.yml` |
 | `imports: [core.yaml]` or `[core.yml]` | Fails: reads `core.yaml.yaml` or `core.yml.yaml` | Works |
@@ -95,16 +115,16 @@ classes:
 ```
 
 LinkML-Scala honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`), TypeScript (`[key: string]: unknown`) and Pydantic (`extra="allow"`) generators.
-Python LinkML 1.12.1 honors `extra_slots` in its JSON Schema, Java and Go generators.
+LinkML-Python 1.12.1 honors `extra_slots` in its JSON Schema, Java and Go generators.
 
 - `allowed: true` allows any extra data.
 - `allowed: false`, or no `extra_slots`, forbids it. An explicit `allowed: false` has precedence over a `range_expression`.
-- A `range_expression` alone allows extra data matching it. LinkML-Scala allows any extra data then, without checking it against the expression, while the JSON Schema of Python LinkML checks extra data against it.
+- A `range_expression` alone allows extra data matching it. LinkML-Scala allows any extra data then, without checking it against the expression, while the JSON Schema of LinkML-Python checks extra data against it.
 - `extra_slots` is not inherited: a subclass of a class allowing extra data forbids it, unless its own `extra_slots` allows it too.
 
 The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generators allows extra data in all classes.
 
-In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. Python LinkML can attach unknown attributes to an object at runtime, which Scala classes cannot do.
+In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. LinkML-Python can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 
 
 LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.

@@ -1,0 +1,36 @@
+id: https://neverblink.eu/linkml/tests/exactlyOneOfMixins/
+name: exactlyOneOfMixins
+description: >-
+  A class gets `exactly_one_of` lists for one slot from a mixin and from its parent class. A value
+  must match exactly one member of each list.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - value
+    slot_usage:
+      value:
+        exactly_one_of:
+          - maximum_value: 10
+          - minimum_value: 0
+  Mixin:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        exactly_one_of:
+          - maximum_value: 10
+  Combined:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Mixin
+
+slots:
+  value:
+    required: true
+    range: integer

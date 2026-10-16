@@ -7,6 +7,22 @@ import org.scalatest.wordspec.AnyWordSpec
 import SchemaViewSpec.{compact, reference}
 
 class SlotDerivationSpec extends AnyWordSpec, Matchers {
+  private def ranges(names: String*): Seq[AnonymousSlotExpression] =
+    names.map(n => AnonymousSlotExpression(range = Some(Reference(n))))
+
+  /** Classes to use as ranges in [[ranges]] */
+  private val rangeClasses: Seq[ClassDefinition] = Seq("a", "b", "c").map(ClassDefinition(_))
+
+  private def schemaView(slots: Seq[SlotDefinition], classes: Seq[ClassDefinition]): SchemaView =
+    SchemaView.single(
+      SchemaDefinition(
+        name = "",
+        id = Uri("https://neverblink.eu/test/"),
+        defaultRange = Some(Reference("base")),
+        slotDefinitions = slots.map(_.compact).toMap,
+        classes = (classes ++ rangeClasses).map(_.compact).toMap,
+      ),
+    )
 
   "SlotDerivation" should {
     "inherit slot slots from class ancestors" in {
@@ -215,6 +231,151 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
 
       val result = sv.classes("child").derivedAttributes("slot1").slot
       result.notes shouldBe Seq(PlainText("note 1"), PlainText("note 2"))
+    }
+
+    "combine boolean slots so that a subclass accepts only values that its parents accept" in {
+      val slot = SlotDefinition(
+        name = "slot1",
+        anyOf = ranges("base", "child", "grandchild"),
+        allOf = ranges("base"),
+        exactlyOneOf = ranges("base", "child"),
+        noneOf = ranges("grandchild"),
+      )
+
+      val base = ClassDefinition(
+        name = "base",
+        slots = Seq(slot.reference),
+      )
+
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(
+          SlotDefinition(
+            name = "slot1",
+            anyOf = ranges("base", "child"),
+            allOf = ranges("child"),
+            exactlyOneOf = ranges("base"),
+          ).compact,
+        ),
+      )
+
+      val grandchild = ClassDefinition(
+        name = "grandchild",
+        isA = Some(child.reference),
+        slotUsage = Map(
+          SlotDefinition(
+            name = "slot1",
+            anyOf = ranges("base"),
+            noneOf = ranges("child"),
+          ).compact,
+        ),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, child, grandchild))
+
+      val inBase = sv.classes("base").derivedAttributes("slot1").slot
+      inBase.anyOf shouldBe ranges("base", "child", "grandchild")
+      inBase.allOf shouldBe ranges("base")
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      // The members are a subset of the inherited ones, so the inherited list is not needed
+      inChild.anyOf shouldBe ranges("base", "child")
+      // An `exactly_one_of` subset can accept more values, so the inherited list is kept
+      inChild.exactlyOneOf shouldBe ranges("base")
+      inChild.allOf shouldBe ranges("child", "base") :+
+        AnonymousSlotExpression(exactlyOneOf = ranges("base", "child"))
+      // Not set in `slot_usage`, so inherited
+      inChild.noneOf shouldBe ranges("grandchild")
+
+      val inGrandchild = sv.classes("grandchild").derivedAttributes("slot1").slot
+      inGrandchild.anyOf shouldBe ranges("base")
+      inGrandchild.exactlyOneOf shouldBe ranges("base")
+      inGrandchild.allOf shouldBe inChild.allOf
+      inGrandchild.noneOf shouldBe ranges("child", "grandchild")
+    }
+
+    "keep the inherited any_of in all_of if a slot_usage adds new members to any_of" in {
+      val slot = SlotDefinition(name = "slot1", anyOf = ranges("a", "b"))
+      val base = ClassDefinition(name = "base", slots = Seq(slot.reference))
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(SlotDefinition(name = "slot1", anyOf = ranges("a", "c")).compact),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, child))
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      inChild.anyOf shouldBe ranges("a", "c")
+      inChild.allOf shouldBe Seq(AnonymousSlotExpression(anyOf = ranges("a", "b")))
+    }
+
+    "keep the inherited exactly_one_of in all_of if a slot_usage adds new members to it" in {
+      val slot = SlotDefinition(name = "slot1", exactlyOneOf = ranges("a", "b"))
+      val base = ClassDefinition(name = "base", slots = Seq(slot.reference))
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(SlotDefinition(name = "slot1", exactlyOneOf = ranges("a", "c")).compact),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, child))
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      inChild.exactlyOneOf shouldBe ranges("a", "c")
+      inChild.allOf shouldBe Seq(AnonymousSlotExpression(exactlyOneOf = ranges("a", "b")))
+    }
+
+    "require the any_of of both a mixin and the parent class" in {
+      val slot = SlotDefinition(name = "slot1")
+      val base = ClassDefinition(
+        name = "base",
+        slots = Seq(slot.reference),
+        slotUsage = Map(SlotDefinition(name = "slot1", anyOf = ranges("a", "b")).compact),
+      )
+      val mixin = ClassDefinition(
+        name = "mixin",
+        mixin = true,
+        slotUsage = Map(SlotDefinition(name = "slot1", anyOf = ranges("a", "c")).compact),
+      )
+      val combined = ClassDefinition(
+        name = "combined",
+        isA = Some(base.reference),
+        mixins = Seq(mixin.reference),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, mixin, combined))
+
+      val inCombined = sv.classes("combined").derivedAttributes("slot1").slot
+      inCombined.anyOf shouldBe ranges("a", "c")
+      inCombined.allOf shouldBe Seq(AnonymousSlotExpression(anyOf = ranges("a", "b")))
+    }
+
+    "not repeat members of all_of and none_of that are inherited more than once" in {
+      val slot = SlotDefinition(
+        name = "slot1",
+        allOf = ranges("base"),
+        noneOf = ranges("a"),
+      )
+      val base = ClassDefinition(name = "base", slots = Seq(slot.reference))
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(
+          SlotDefinition(
+            name = "slot1",
+            allOf = ranges("base", "child"),
+            noneOf = ranges("a"),
+          ).compact,
+        ),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, child))
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      inChild.allOf shouldBe ranges("base", "child")
+      inChild.noneOf shouldBe ranges("a")
     }
 
     "not duplicate Seqs if the contents are identical" in {

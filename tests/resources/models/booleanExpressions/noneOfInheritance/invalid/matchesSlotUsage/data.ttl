@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/noneOfInheritance/> .
+
+_:b a :Restricted;
+    :value -200 .

@@ -22,6 +22,28 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     "unionOf" -> "LinkML-py ignores constraints of union_of members",
   )
 
+  override val skipInstances: Map[(String, String), String] = Map(
+    "memberCardinality" -> "oneInteger" -> "LinkML-py ignores cardinality in `any_of` members",
+    "memberCardinality" -> "integerAndString" ->
+      "LinkML-py ignores cardinality in `any_of` members",
+    "memberCardinality" -> "twoStrings" -> "LinkML-py ignores cardinality in `any_of` members",
+    // See docs/inherited_boolean_expressions.md
+    "anyOfWidening" -> "booleanNotInBase" -> "LinkML-py keeps only the most specific `any_of`",
+    "anyOfMixins" -> "booleanNotInBase" -> "LinkML-py keeps only the most specific `any_of`",
+    "allOfInheritance" -> "failsBase" -> "LinkML-py keeps only the most specific `all_of`",
+    "exactlyOneOfInheritance" -> "matchesBothInBase" ->
+      "LinkML-py keeps only the most specific `exactly_one_of`",
+    "noneOfInheritance" -> "matchesBase" -> "LinkML-py keeps only the most specific `none_of`",
+    "anyOfChain" -> "stringNotInChild" -> "LinkML-py keeps only the most specific `any_of`",
+    "allOfMixins" -> "failsBase" -> "LinkML-py keeps only the most specific `all_of`",
+    "noneOfMixins" -> "matchesBase" -> "LinkML-py keeps only the most specific `none_of`",
+    "exactlyOneOfMixins" -> "matchesBothInBase" -> "LinkML-py keeps only the most specific `exactly_one_of`",
+    "exactlyOneOfWidening" -> "matchesBothInBase" -> "LinkML-py keeps only the most specific `exactly_one_of`",
+    "allOfNoneOfChain" -> "failsBaseAllOf" -> "LinkML-py keeps only the most specific `all_of`",
+    "allOfNoneOfChain" -> "failsBaseNoneOf" -> "LinkML-py keeps only the most specific `none_of`",
+    "allOfNoneOfChain" -> "failsChildNoneOf" -> "LinkML-py keeps only the most specific `none_of`",
+  )
+
   "LinkML Python Json Schema generator" should {
     for entry <- ModelCatalogue.all do
       s"generate Json Schema for model '${entry.model.root.name}'" when {
