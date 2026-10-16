@@ -64,10 +64,11 @@ def wrapIfNotSubset[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
 def wrapIfDifferent[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
   if (v1.isEmpty || v2.isEmpty || v1 == v2) Nil else wrap(v2) :: Nil
 
-/** Combine two [[Map]]s if they're distinct
+/** Combine two [[Map]]s if they're distinct. For a key in both maps, the value from [[v1]] has
+  * precedence, the same as with [[combineFallback]].
   */
 def combineMap[T](v1: Map[String, T], v2: Map[String, T]): Map[String, T] =
-  if v2.isEmpty || v1 == v2 then v1 else v1.concat(v2)
+  if (v2.isEmpty || v1 == v2) v1 else v2.concat(v1)
 
 /** Combine values for the `maximum_value` metaslot
   */

@@ -115,8 +115,9 @@ object FastUtils {
       *   This option if it has a value, otherwise the `fallback` option.
       */
     inline def orElseFast(inline fallback: Option[A]): Option[A] =
-      if (opt eq None) fallback
-      else opt
+      val o = opt
+      if (o eq None) fallback
+      else o
 
     /** Extracts the value from the option, or returns `null` if the option is empty.
       *

@@ -464,6 +464,53 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       result.annotations.keys should contain theSameElementsAs Seq("ann1", "ann2")
     }
 
+    "give slot_usage precedence over the slot for the same Map key" in {
+      val slot = SlotDefinition(
+        name = "slot1",
+        annotations = Map(
+          "ann1" -> Annotation(
+            extensionTag = UriOrCurie("ann1"),
+            extensionValue = LinkmlAny("from slot"),
+          ),
+        ),
+        range = Some(Reference("base")),
+      )
+      val fromUsage = Annotation(
+        extensionTag = UriOrCurie("ann1"),
+        extensionValue = LinkmlAny("from slot_usage"),
+      )
+
+      val base = ClassDefinition(
+        name = "base",
+        slots = Seq(slot.reference),
+      )
+
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        slotUsage = Map(
+          SlotDefinition(
+            name = "slot1",
+            annotations = Map("ann1" -> fromUsage),
+            range = Some(Reference("base")),
+          ).compact,
+        ),
+      )
+
+      val sv = SchemaView.single(
+        SchemaDefinition(
+          name = "",
+          id = Uri("https://neverblink.eu/test/"),
+          slotDefinitions = Map(slot.compact),
+          classes = Map(base.compact, child.compact),
+        ),
+      )
+
+      sv.classes("child").derivedAttributes("slot1").slot.annotations shouldBe Map(
+        "ann1" -> fromUsage,
+      )
+    }
+
     "not duplicate Map slots if the contents are identical" in {
       val ann1 =
         Annotation(
