@@ -335,6 +335,44 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       address.description shouldBe None
     }
 
+    "take the metadata in the requested language, or fall back to another one" in {
+      val multilingual = load(
+        """id: https://neverblink.eu/test/
+          |name: dp
+          |default_range: string
+          |title: {en: A title, pl: Tytuł}
+          |description: {de: Eine Beschreibung}
+          |keywords: [{en: book, pl: książka}, {de: Buch}]
+          |types:
+          |  string:
+          |classes:
+          |  Book:
+          |    title: {pl: Książka, de: Buch}
+          |    attributes:
+          |      id:
+          |        identifier: true
+          |        description: {en: The id, pl: Identyfikator}
+          |""".stripMargin,
+      )
+      def pkgIn(language: String): DataPackageDescriptor =
+        FrictionlessGenerator(using multilingual)
+          .generate(FrictionlessGenerator.Options(metadataLanguage = language))
+
+      val pl = pkgIn("pl")
+      pl.title shouldBe Some("Tytuł")
+      pl.description shouldBe Some("Eine Beschreibung")
+      // Each keyword falls back on its own.
+      pl.keywords shouldBe Some(Seq("książka", "Buch"))
+      pl.resources.head.title shouldBe Some("Książka")
+      pl.resources.head.schema match {
+        case SchemaRef.Inline(table) => table.fields.head.description shouldBe Some("Identyfikator")
+        case other => fail(s"Expected an inline table schema, got $other")
+      }
+      val fr = pkgIn("fr")
+      fr.title shouldBe Some("A title")
+      fr.resources.head.title shouldBe Some("Buch")
+    }
+
     "keep the class metadata in the split output too" in {
       val files = FrictionlessGenerator(using load(schema)).generateFiles().toMap
       files("datapackage.json") should include("\"title\": \"A person\"")

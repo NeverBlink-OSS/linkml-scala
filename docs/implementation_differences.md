@@ -173,7 +173,9 @@ But rejects:
 
 LinkML-Scala uses a [fork of the metamodel](https://github.com/linkml/linkml-model/compare/main...NeverBlink-OSS:linkml-model:main) that adds support for language strings in LinkML schemas.
 
-The `title` and `description` of schema elements can be a plain string or a mapping from language tag to text:
+These metadata slots of schema elements can be a plain string or a mapping from language tag to text:
+`title`, `description`, `keywords`, `aliases`, `comments`, `notes`, `deprecated`, `alt_description_text`, `value_description` and `local_name_value`.
+For example:
 
 ```yaml
 classes:
@@ -189,6 +191,12 @@ classes:
     title: Person
     description: You can also still use the plain string syntax!
 ```
+
+Generators that write documentation in one language, such as the JSON Schema, GraphQL, TypeScript, Pydantic, Scala, Ossie and Frictionless generators, take the language from their `metadataLanguage` option (`en` by default).
+When a text has no entry for that language, they use the `en` entry, or if there is none, the entry of the alphabetically first language tag.
+A plain string is used as is, whatever language is requested.
+In multivalued slots, such as `keywords`, this is done for each value separately, so one list can mix languages.
+With `metadataLanguage` set to `de`, the `Book` class above gets the title `Buch` and the description `It's a book, obviously.`.
 
 The RDFS and SHACL generators emit plain strings as `xsd:string` literals and language mappings as `rdf:langString` literals:
 

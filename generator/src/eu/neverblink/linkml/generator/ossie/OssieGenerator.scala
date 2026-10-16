@@ -12,6 +12,7 @@ import eu.neverblink.linkml.generator.ossie.expression.{
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
 import eu.neverblink.linkml.metamodel.Extensible
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.HasMetadataLanguage
 import eu.neverblink.linkml.schemaview.*
 import org.virtuslab.yaml.{Node, parseYaml}
 
@@ -84,7 +85,7 @@ class OssieGenerator(using sv: SchemaView)
 
     OssieOntology(
       name = sv.root.name,
-      description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+      description = sv.root.description.localized,
       aiContext = aiContext(sv.root),
       prefixes = namespaces.used,
       ontology = ontology,
@@ -115,7 +116,7 @@ class OssieGenerator(using sv: SchemaView)
       concept = name,
       conceptType = ConceptType.EntityType,
       iri = Some(cv.uriStr),
-      description = cv.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+      description = cv.cls.description.localized,
       // Ancestors that were pruned away are simply not extended.
       extendsConcepts = cv.parents.flatMap(p => conceptOf.get(p.name)).distinct,
       identifyBy = identifyingSlots(cv)
@@ -196,13 +197,13 @@ class OssieGenerator(using sv: SchemaView)
             Verbalization(
               Ref(conceptName),
               // Title or space-cased slot name
-              slot.title.flatMapFast(_.inLanguage(options.metadataLanguage))
+              slot.title.localized
                 .getOrElse(Case.base(name).replace('_', ' ')),
               Ref(range),
               Option.when(selfReference)(name),
             ).render,
           ),
-          description = slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+          description = slot.description.localized,
           roles = Seq(role),
           multiplicity = multiplicity,
           requires = slotConstraints(av, role.ref),
@@ -220,7 +221,7 @@ class OssieGenerator(using sv: SchemaView)
       concept = name,
       conceptType = ConceptType.ValueType,
       iri = Some(ev.uriStr),
-      description = ev._enum.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+      description = ev._enum.description.localized,
       extendsConcepts = Seq(BuiltInConcept.string),
       requires =
         if values.isEmpty then Nil
@@ -234,7 +235,7 @@ class OssieGenerator(using sv: SchemaView)
       concept = name,
       conceptType = ConceptType.ValueType,
       iri = Some(tv.uriStr),
-      description = tv._type.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+      description = tv._type.description.localized,
       extendsConcepts = Seq(builtInForType(tv)),
       requires = Constraints(
         tv.derivedType.minimumValue,
@@ -319,7 +320,7 @@ object OssieGenerator {
       pruningMode: PruningMode = PruningMode.skip,
       outputFormat: JsonOutputFormat = yaml,
       metadataLanguage: String = "en",
-  )
+  ) extends HasMetadataLanguage
 
   /** The Ossie built-in concept standing in for a LinkML type's base. */
   private def builtInFor(rt: RuntimeType): String = rt match {

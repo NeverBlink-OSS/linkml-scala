@@ -8,7 +8,7 @@ import eu.neverblink.linkml.metamodel.SlotDefinition
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.LinkmlAny
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny, MetadataLanguage}
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -50,6 +50,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
   ): Schema = {
     import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
+    given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
     val maybeTreeRoot = sv.treeRootWithOverride(options.treeRoot) match {
       case Success(value) => value
       case Failure(exception) => throw exception
@@ -169,10 +170,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
         else constrainedSchema
 
       valueSchema.copy(
-        title = sv.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-          Some(sv.slot.name),
-        ),
-        description = sv.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+        title = sv.slot.title.localized.orElseFast(Some(sv.slot.name)),
+        description = sv.slot.description.localized,
       )
 
     }
@@ -205,10 +204,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
           additionalProperties = new Some(
             if (open || cls.allowsExtraSlots) AnySchema.Anything else AnySchema.Nothing,
           ),
-          title = cls.cls.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-            Some(cls.cls.name),
-          ),
-          description = cls.cls.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+          title = cls.cls.title.localized.orElseFast(Some(cls.cls.name)),
+          description = cls.cls.description.localized,
         ),
       )
     }
@@ -249,20 +246,16 @@ class JsonSchemaGenerator(using sv: SchemaView)
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
           `enum` = new Some(enumValues),
-          title = enum_.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-            Some(enum_.name),
-          ),
-          description = enum_.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+          title = enum_.title.localized.orElseFast(Some(enum_.name)),
+          description = enum_.description.localized,
         ),
       )
     }
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
       $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
-      title = sv.root.title.flatMapFast(_.inLanguage(options.metadataLanguage)).orElseFast(
-        Some(sv.root.name),
-      ),
-      description = sv.root.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+      title = sv.root.title.localized.orElseFast(Some(sv.root.name)),
+      description = sv.root.description.localized,
       $defs = new Some(
         immutable.ListMap.newBuilder[String, SchemaLike].addAll(
           defs,
@@ -299,7 +292,7 @@ object JsonSchemaGenerator {
       indentationStep: Int = 2,
       metadataLanguage: String = "en",
       includeNull: Boolean = false,
-  )
+  ) extends HasMetadataLanguage
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
     * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members.

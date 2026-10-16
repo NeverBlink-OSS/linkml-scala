@@ -384,6 +384,18 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("  /** Only a description. */\n  b?: string;\n")
     }
 
+    "fall back to another language in doc comments" in {
+      val ts = generate(
+        """classes:
+          |  C:
+          |    title: {pl: Klasa, de: Klasse}
+          |    description: {pl: Opis., en: A description.}
+          |""".stripMargin,
+        TypeScriptGenerator.Options(metadataLanguage = "fr"),
+      )
+      ts should include("/** Klasse: A description. */\nexport interface C")
+    }
+
     "split doc comments at every kind of line break" in {
       val ts = generate(
         """classes:
