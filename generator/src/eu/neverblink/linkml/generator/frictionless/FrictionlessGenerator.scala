@@ -6,6 +6,7 @@ import eu.neverblink.linkml.generator.frictionless.FieldDescriptor.types
 import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.HasMetadataLanguage
 
 import scala.collection.mutable
 
@@ -108,9 +109,8 @@ class FrictionlessGenerator(using sv: SchemaView)
         val name = slotName(slotView)
         val base = FieldDescriptor(
           name = name,
-          title = slotView.slot.title.flatMapFast(_.inLanguage(options.metadataLanguage)),
-          description =
-            slotView.slot.description.flatMapFast(_.inLanguage(options.metadataLanguage)),
+          title = slotView.slot.title.localized,
+          description = slotView.slot.description.localized,
           constraints = new Some(new Constraints(required = new Some(slotView.slot.required))),
         )
         av match {
@@ -231,7 +231,9 @@ class FrictionlessGenerator(using sv: SchemaView)
   /** The package descriptor itself. [[schema]] decides whether the table schemas are inlined or
     * split into separate files.
     */
-  private def descriptor(ts: Seq[Table], schema: Table => SchemaRef): DataPackageDescriptor = {
+  private def descriptor(ts: Seq[Table], schema: Table => SchemaRef)(using
+      Options,
+  ): DataPackageDescriptor = {
     if ts.isEmpty then
       throw RuntimeException(
         "No classes to put in the data package - a data package needs at least one resource. " +
@@ -241,22 +243,19 @@ class FrictionlessGenerator(using sv: SchemaView)
     DataPackageDescriptor(
       name = new Some(Case.base(root.name)),
       id = new Some(root.id.original),
-      title = root.title.mapFast(_.plain),
-      description = root.description.mapFast(_.plain),
+      title = root.title.localized,
+      description = root.description.localized,
       version = root.version,
-      keywords = if root.keywords.isEmpty then None
-      else
-        new Some(
-          root.keywords.map(_.plain), // TODO LNK-227: localize
-        )
-      ,
+      keywords =
+        if (root.keywords.isEmpty) None
+        else new Some(root.keywords.localized),
       licenses = root.license.flatMap(license).mapFast(Seq(_)),
       resources = ts.map(t =>
         ResourceDescriptor(
           name = t.resource,
           path = dataPath(t.resource),
-          title = t.cv.cls.title.mapFast(_.plain),
-          description = t.cv.cls.description.mapFast(_.plain),
+          title = t.cv.cls.title.localized,
+          description = t.cv.cls.description.localized,
           schema = schema(t),
         ),
       ),
@@ -283,7 +282,7 @@ object FrictionlessGenerator {
       pruningMode: PruningMode = PruningMode.skip,
       skipClassesWithoutIdentifier: Boolean = false,
       metadataLanguage: String = "en",
-  )
+  ) extends HasMetadataLanguage
 
   private def schemaPath(resource: String): String = s"schemas/$resource.json"
   private def dataPath(resource: String): String = s"data/$resource.csv"

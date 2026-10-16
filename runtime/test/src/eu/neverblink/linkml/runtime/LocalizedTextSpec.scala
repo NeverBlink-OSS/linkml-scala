@@ -41,4 +41,56 @@ class LocalizedTextSpec extends AnyWordSpec, Matchers {
       MultilingualText(Map("pl" -> "cześć", "de" -> "hallo")).inLanguage("en") shouldBe None
     }
   }
+
+  "inLanguageOrFallback" should {
+    "return the value of a plain text for any language" in {
+      PlainText("hello").inLanguageOrFallback("pl") shouldBe "hello"
+    }
+
+    "return the selected language text" in {
+      MultilingualText(
+        Map("pl" -> "cześć", "en" -> "hello", "de" -> "hallo"),
+      ).inLanguageOrFallback("pl") shouldBe "cześć"
+    }
+
+    "fall back to the English text" in {
+      MultilingualText(
+        Map("pl" -> "cześć", "en" -> "hello", "de" -> "hallo"),
+      ).inLanguageOrFallback("fr") shouldBe "hello"
+    }
+
+    "fall back to the alphabetically first language tag" in {
+      MultilingualText(Map("pl" -> "cześć", "de" -> "hallo")).inLanguageOrFallback(
+        "en",
+      ) shouldBe "hallo"
+    }
+  }
+
+  "localized" should {
+    val text = MultilingualText(Map("pl" -> "cześć", "de" -> "hallo"))
+
+    "use the language from the context" in {
+      given MetadataLanguage = MetadataLanguage("pl")
+      Some(text).localized shouldBe Some("cześć")
+      Seq(text, PlainText("hello")).localized shouldBe Seq("cześć", "hello")
+    }
+
+    "fall back for each value separately" in {
+      given MetadataLanguage = MetadataLanguage("pl")
+      Seq(text, MultilingualText(Map("en" -> "hello"))).localized shouldBe Seq("cześć", "hello")
+    }
+
+    "keep an empty Option or Seq empty" in {
+      given MetadataLanguage = MetadataLanguage("pl")
+      (None: Option[LocalizedText]).localized shouldBe None
+      Seq.empty[LocalizedText].localized shouldBe Seq.empty
+    }
+
+    "use the metadataLanguage of the options in context" in {
+      case class Options(metadataLanguage: String) extends HasMetadataLanguage
+      given Options = Options("pl")
+      Some(text).localized shouldBe Some("cześć")
+      Seq(text).localized shouldBe Seq("cześć")
+    }
+  }
 }

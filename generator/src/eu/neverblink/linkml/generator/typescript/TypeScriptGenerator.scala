@@ -5,6 +5,7 @@ import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, PruningMo
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.StringUtils.hexDigit
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, MetadataLanguage}
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -121,14 +122,16 @@ final class TypeScriptGenerator(using sv: SchemaView)
       }
     }
 
-  private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context): Unit = {
-    writeDoc(sink, DocLines(cls.cls, ctx.options.metadataLanguage), "")
+  private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context)(using
+      MetadataLanguage,
+  ): Unit = {
+    writeDoc(sink, DocLines(cls.cls), "")
     sink.append("export interface ")
     sink.append(className(cls))
     sink.append(" {\n")
     cls.sortedAttributeViews.foreach { attribute =>
       val slot = attribute.slotView
-      val doc = DocLines(slot.slot, ctx.options.metadataLanguage) ++ (attribute match {
+      val doc = DocLines(slot.slot) ++ (attribute match {
         case ref: ClassReferenceAttributeView => Seq(s"Reference to ${className(ref.classView)}")
         case _ => Nil
       })
@@ -144,8 +147,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append("}\n")
   }
 
-  private def writeUnion(sink: CharSink, cls: ClassView, name: String, options: Options): Unit = {
-    if !cls.isConcrete then writeDoc(sink, DocLines(cls.cls, options.metadataLanguage), "")
+  private def writeUnion(sink: CharSink, cls: ClassView, name: String)(using
+      MetadataLanguage,
+  ): Unit = {
+    if !cls.isConcrete then writeDoc(sink, DocLines(cls.cls), "")
     sink.append("export type ")
     sink.append(name)
     sink.append(" =")
@@ -156,8 +161,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append(";\n")
   }
 
-  private def writeEnum(sink: CharSink, ev: EnumView, options: Options): Unit = {
-    writeDoc(sink, DocLines(ev._enum, options.metadataLanguage), "")
+  private def writeEnum(sink: CharSink, ev: EnumView)(using MetadataLanguage): Unit = {
+    writeDoc(sink, DocLines(ev._enum), "")
     sink.append("export type ")
     sink.append(enumName(ev))
     sink.append(" =")
@@ -194,6 +199,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
+    given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
     val ctx = Context(options)
     val query = reachability(options.pruningMode)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
@@ -207,12 +213,12 @@ final class TypeScriptGenerator(using sv: SchemaView)
       if hasInterface(cls) then writeInterface(sink, cls, ctx)
       unionName(cls).foreachFast { name =>
         if hasInterface(cls) then sink.append('\n')
-        writeUnion(sink, cls, name, options)
+        writeUnion(sink, cls, name)
       }
     }
     enums.foreach { ev =>
       sink.append('\n')
-      writeEnum(sink, ev, options)
+      writeEnum(sink, ev)
     }
     if ctx.usesKeyOptional then {
       sink.append('\n')
@@ -243,7 +249,7 @@ object TypeScriptGenerator {
       includeNull: Boolean = false,
       open: Boolean = false,
       metadataLanguage: String = "en",
-  )
+  ) extends HasMetadataLanguage
 
   /** Mutable state of one generator run. */
   private final case class Context(options: Options) {

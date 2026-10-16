@@ -560,6 +560,37 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       slot.description shouldBe Some("This is a slot for testing purposes.")
     }
 
+    "fall back to another language in titles and descriptions" in {
+      val input =
+        s"""$schemaShared
+           |title: {pl: Schemat, de: Schema}
+           |enums:
+           |  Color:
+           |    description: {pl: Kolor}
+           |    permissible_values:
+           |      red:
+           |classes:
+           |  Book:
+           |    description: {pl: Opublikowane dzieło.}
+           |    attributes:
+           |      name:
+           |        range: string
+           |        title: {en: Name, pl: Nazwa}
+           |      color:
+           |        range: Color
+           |""".stripMargin
+
+      given SchemaView = load(input)
+      val schema = JsonSchemaGenerator().generate()
+      schema.title shouldBe Some("Schema")
+      val cls = schema.$defs.get("Book").asInstanceOf[Schema]
+      // The class name is used only when the class has no title at all.
+      cls.title shouldBe Some("Book")
+      cls.description shouldBe Some("Opublikowane dzieło.")
+      cls.properties("name").asInstanceOf[Schema].title shouldBe Some("Name")
+      schema.$defs.get("Color").asInstanceOf[Schema].description shouldBe Some("Kolor")
+    }
+
     "include inlined classes in $defs" in {
       given SchemaView = ModelCatalogue.inlines.implicitInline.model
       val schema = JsonSchemaGenerator().generate()
