@@ -493,6 +493,18 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py should include(this.py("    a: str | None = None\n    '''Ends with a \"quote\\\"'''\n"))
     }
 
+    "fall back to another language in docstrings" in {
+      val py = generate(
+        """classes:
+          |  C:
+          |    title: {pl: Klasa, de: Klasse}
+          |    description: {pl: Opis., en: A description.}
+          |""".stripMargin,
+        PydanticGenerator.Options(metadataLanguage = "fr"),
+      )
+      py should include("class C(LinkMLModel):\n    \"\"\"Klasse: A description.\"\"\"\n")
+    }
+
     "prefix class names that are not valid or are reserved" in {
       val py = generate(
         """classes:

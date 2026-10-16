@@ -173,6 +173,26 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       code should not include "@param age"
     }
 
+    "fall back to another language in Scaladoc" in {
+      given SchemaView = decode(
+        (schemaShared +
+          """classes:
+            |  Person:
+            |    description: {pl: Człowiek, de: Mensch}
+            |    comments:
+            |      - {en: A comment}
+            |      - {pl: Komentarz}
+            |""").stripMargin,
+      )
+      val code = ScalaGenerator()
+        .generate(ScalaGenerator.Options(testPkg, metadataLanguage = "fr"))
+        .toMap
+        .apply("Person.scala")
+      code should include("/** Mensch\n")
+      code should include("  * @note\n  *   A comment\n")
+      code should include("  * @note\n  *   Komentarz\n")
+    }
+
     "not generate implementations for abstract classes" in {
       given SchemaView = ModelCatalogue.`abstract`.model
 

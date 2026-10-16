@@ -7,10 +7,9 @@ import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
-import eu.neverblink.linkml.runtime.{PrefixResolver, UriOrCurie}
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, PrefixResolver, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
-import eu.neverblink.linkml.runtime.FastUtils.flatMapFast
 
 class GraphQlGenerator(using sv: SchemaView)
     extends CharDocumentGenerator[GraphQlGenerator.Options],
@@ -174,7 +173,7 @@ object GraphQlGenerator extends GraphQlRenamer {
   final case class Options(
       pruningMode: PruningMode = schemaRoot,
       metadataLanguage: String = "en",
-  )
+  ) extends HasMetadataLanguage
 
   /** Remap a runtime type to a GraphQL built-in scalar, if possible.
     */
@@ -197,7 +196,7 @@ object GraphQlGenerator extends GraphQlRenamer {
 }
 
 /** ADT for different kinds of GraphQL definitions (type/interface/enum/scalar) */
-trait GraphQlElement(using opt: GraphQlGenerator.Options) extends Printable:
+trait GraphQlElement(using GraphQlGenerator.Options) extends Printable:
   /** Process an optional description into a proper graphql description
     */
   final def wrapDescription(in: Option[String]): String = {
@@ -205,7 +204,7 @@ trait GraphQlElement(using opt: GraphQlGenerator.Options) extends Printable:
   }
 
   final def descriptionFor(commonMetadata: CommonMetadata): String =
-    wrapDescription(commonMetadata.description.flatMapFast(_.inLanguage(opt.metadataLanguage)))
+    wrapDescription(commonMetadata.description.localized)
 
 trait GraphQlDefinition extends GraphQlElement
 
