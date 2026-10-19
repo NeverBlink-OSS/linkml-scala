@@ -165,6 +165,14 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       resolver.compact("http://schema.org/CreativeWork") shouldBe "schema:CreativeWork"
       resolver.compact("http://www.w3.org/2004/02/skos/core#exactMatch") shouldBe "skos:exactMatch"
     }
+    "expand curie or return null" in {
+      val resolver = new BasicPrefixResolver("")
+      resolver.add("schema", "http://schema.org/")
+      resolver.expandOrNull("schema:CreativeWork") shouldBe "http://schema.org/CreativeWork"
+      resolver.expandOrNull("ex:blep") shouldBe null
+      resolver.expandOrNull("relative") shouldBe null
+      resolver.expand("relative") shouldBe "relative"
+    }
     "provide name in error message" in {
       val resolver = new BasicPrefixResolver("some schema")
       val ex = intercept[RuntimeException] {

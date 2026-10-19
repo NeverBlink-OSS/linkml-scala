@@ -339,6 +339,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.
     *
+    * @param sourceSchema
+    *   The schema of the original slot definition, which the derived slot uses for prefixes
     * @see
     *   `ApplySlotUsage` from
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
@@ -347,26 +349,47 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       slot: SlotDefinition,
       slotName: String,
       cls: ClassDefinition,
+      sourceSchema: SchemaDefinition,
   ): SlotDefinition = {
     var currentSlot = slot
     cls.slotUsage.get(slotName).foreachFast { s =>
-      currentSlot = currentSlot.combineWith(s, combineRange)
+      currentSlot = currentSlot.combineWith(expandSlotUri(s, cls, sourceSchema), combineRange)
     }
     cls.attributes.get(slotName).foreachFast { s =>
-      currentSlot = currentSlot.combineWith(s, combineRange)
+      currentSlot = currentSlot.combineWith(expandSlotUri(s, cls, sourceSchema), combineRange)
     }
     cls.mixins.foreach { r =>
       resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c)
+        currentSlot = applySlotUsage(currentSlot, slotName, c, sourceSchema)
       }
     }
     cls.isA.foreachFast { r =>
       resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c)
+        currentSlot = applySlotUsage(currentSlot, slotName, c, sourceSchema)
       }
     }
     currentSlot
   }
+
+  /** Expand the `slot_uri` CURIE of a `slot_usage` or an attribute to a URI, when the class is
+    * defined in another schema than `sourceSchema`. The CURIE is expanded with the prefixes of the
+    * class's schema, because `sourceSchema` may not have them.
+    */
+  private def expandSlotUri(
+      slot: SlotDefinition,
+      cls: ClassDefinition,
+      sourceSchema: SchemaDefinition,
+  ): SlotDefinition =
+    slot.slotUri match {
+      case Some(curie: Curie) =>
+        val classSchema = classes(cls.name).definingSchema
+        if (classSchema ne sourceSchema) {
+          val uri = getPrefixResolver(classSchema).expandOrNull(curie.original)
+          if (uri ne null) slot.copy(slotUri = Some(Uri(uri)))
+          else slot
+        } else slot
+      case _ => slot
+    }
 
   /** Combine values for the `range` metaslot
     */

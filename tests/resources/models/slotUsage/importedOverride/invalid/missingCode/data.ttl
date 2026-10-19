@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/importedOverride/> .
+@prefix alt: <https://example.org/alt/> .
+@prefix imported: <https://neverblink.eu/linkml/tests/importedOverride/imported/> .
+
+_:b a :Item;
+    alt:newLabel "some label" .

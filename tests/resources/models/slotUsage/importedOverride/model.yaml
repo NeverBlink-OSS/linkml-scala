@@ -1,0 +1,22 @@
+id: https://neverblink.eu/linkml/tests/importedOverride/
+name: importedOverride
+description: >-
+  A class changes the slots of an imported parent class with `slot_usage`. `label` gets an alias
+  and a new `slot_uri`, `code` becomes required and keeps the URI from the imported schema.
+prefixes:
+  alt: https://example.org/alt/
+
+imports:
+  - linkml:types
+  - imported
+
+classes:
+  Item:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      label:
+        alias: display_label
+        slot_uri: alt:newLabel
+      code:
+        required: true
