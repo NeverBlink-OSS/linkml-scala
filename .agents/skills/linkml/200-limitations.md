@@ -41,6 +41,10 @@ These features work differently in LinkML-Scala than in the LinkML specification
 
 - [Inherited boolean expressions](#inherited-boolean-expressions): a subclass accepts only values that its parent classes and mixins accept
 
+These features follow the LinkML specification, while LinkML-Python works differently:
+
+- [Boolean metaslots in `slot_usage`](#boolean-metaslots-in-slot_usage): a `slot_usage` can turn `required` or `multivalued` on, but not off
+
 ## Boolean expressions in SHACL
 
 In boolean expressions, the SHACL generator of LinkML-Python 1.12.1 checks only the `range` of `any_of` members.
@@ -54,6 +58,14 @@ LinkML-Scala joins the `all_of` and `none_of` lists, and for `any_of` and `exact
 So a value of a class is also a valid value of each of its parent classes and mixins.
 
 See [Inherited boolean expressions](210-inherited-boolean-expressions.md) for details and examples.
+
+## Boolean metaslots in `slot_usage`
+
+The LinkML specification combines boolean metaslots, like `required` and `multivalued`, with OR when it derives a slot.
+LinkML-Scala does the same. LinkML-Python 1.12.1 uses the value from the closest `slot_usage` instead.
+So a `slot_usage` can make a slot required or multivalued, but not optional or single-valued when the slot or a parent class already sets it.
+
+See [Boolean metaslots in `slot_usage`](230-boolean-metaslots-in-slot-usage.md) for details and examples.
 
 ## Imports
 

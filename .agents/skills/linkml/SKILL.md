@@ -169,6 +169,8 @@ Read these when the task calls for them; do not load them up front.
   using anything unfamiliar.**
 * [Inherited boolean expressions](210-inherited-boolean-expressions.md) — how `any_of`, `all_of`,
   `exactly_one_of` and `none_of` from parent classes, mixins and the slot definition are combined.
+* [Boolean metaslots in `slot_usage`](230-boolean-metaslots-in-slot-usage.md) — why a `slot_usage`
+  can make a slot required or multivalued, but not optional or single-valued.
 
 ### Workflows
 

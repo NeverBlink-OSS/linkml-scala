@@ -7,6 +7,7 @@ cannot drift from the implementation it describes. Sources:
   out/metamodel/definitions.dest/*.yaml  the real LinkML metamodel (fetched by the build)
   docs/implementation_differences.md     what linkml-scala does not support
   docs/inherited_boolean_expressions.md  how inherited boolean expressions are combined
+  docs/boolean_metaslots_in_slot_usage.md  how `required` and `multivalued` are combined
   tests/resources/models/                the known-good example schemas
 
 The metamodel YAML is not committed. Fetch it first:
@@ -135,8 +136,11 @@ def gen_metaslots(meta: dict) -> str:
 
 
 def gen_limitations() -> str:
-    body = (REPO / "docs" / "implementation_differences.md").read_text().replace(
-        "(inherited_boolean_expressions.md)", "(210-inherited-boolean-expressions.md)"
+    body = (
+        (REPO / "docs" / "implementation_differences.md")
+        .read_text()
+        .replace("(inherited_boolean_expressions.md)", "(210-inherited-boolean-expressions.md)")
+        .replace("(boolean_metaslots_in_slot_usage.md)", "(230-boolean-metaslots-in-slot-usage.md)")
     )
     return (
         BANNER
@@ -151,6 +155,11 @@ def gen_limitations() -> str:
 def gen_inherited_boolean_expressions() -> str:
     body = (REPO / "docs" / "inherited_boolean_expressions.md").read_text()
     return BANNER + "<!-- Source: docs/inherited_boolean_expressions.md -->\n\n" + body
+
+
+def gen_boolean_metaslots_in_slot_usage() -> str:
+    body = (REPO / "docs" / "boolean_metaslots_in_slot_usage.md").read_text()
+    return BANNER + "<!-- Source: docs/boolean_metaslots_in_slot_usage.md -->\n\n" + body
 
 
 def gen_examples() -> str:
@@ -198,6 +207,7 @@ def main() -> int:
         "900-metaslots.tsv": gen_metaslots(meta),
         "200-limitations.md": gen_limitations(),
         "210-inherited-boolean-expressions.md": gen_inherited_boolean_expressions(),
+        "230-boolean-metaslots-in-slot-usage.md": gen_boolean_metaslots_in_slot_usage(),
         "910-examples.md": gen_examples(),
     }
 
