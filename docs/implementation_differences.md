@@ -33,6 +33,10 @@ These features work differently in LinkML-Scala than in the LinkML specification
 
 - [Inherited boolean expressions](#inherited-boolean-expressions): a subclass accepts only values that its parent classes and mixins accept
 
+These features follow the LinkML specification, while LinkML-Python works differently:
+
+- [Boolean metaslots in `slot_usage`](#boolean-metaslots-in-slot_usage): a `slot_usage` can turn `required` or `multivalued` on, but not off
+
 ## Boolean expressions in SHACL
 
 In boolean expressions, the SHACL generator of LinkML-Python 1.12.1 checks only the `range` of `any_of` members.
@@ -46,6 +50,40 @@ LinkML-Scala joins the `all_of` and `none_of` lists, and for `any_of` and `exact
 So a value of a class is also a valid value of each of its parent classes and mixins.
 
 See [Inherited boolean expressions](inherited_boolean_expressions.md) for details and examples.
+
+## Boolean metaslots in `slot_usage`
+
+The LinkML specification combines boolean metaslots, like `required` and `multivalued`, with OR when it derives a slot.
+So a `slot_usage` can make a slot required or multivalued, but setting either to `false` has no effect when the slot or a parent class already sets it to `true`.
+LinkML-Scala does the same. LinkML-Python 1.12.1 uses the value from the closest `slot_usage` instead.
+
+```yaml
+classes:
+  Base:
+    slots:
+      - name
+      - tags
+  Child:
+    is_a: Base
+    slot_usage:
+      name:
+        required: false
+      tags:
+        multivalued: false
+slots:
+  name:
+    required: true
+  tags:
+    multivalued: true
+```
+
+| Slot of `Child` | LinkML-Python 1.12.1 | LinkML-Scala |
+|-----------------|----------------------|--------------|
+| `name` | Optional | Required |
+| `tags` | Single-valued | Multivalued |
+
+So `{}` is a valid `Child` for `linkml-validate`, but not for the JSON Schema, SHACL, Pydantic or TypeScript that LinkML-Scala generates.
+To make a slot optional or single-valued in some classes, leave it optional or single-valued in the slot definition, and turn it on in the classes that need it.
 
 ## Imports
 

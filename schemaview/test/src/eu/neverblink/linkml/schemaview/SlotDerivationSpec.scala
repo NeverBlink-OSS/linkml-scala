@@ -587,6 +587,43 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       result.identifier shouldBe true
     }
 
+    "keep `required` and `multivalued` when a slot_usage sets them to false" in {
+      // The spec combines boolean metaslots with OR, so a slot_usage can't relax them.
+      // LinkML-Python 1.12.1 makes both slots optional and single-valued here.
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://neverblink.eu/test/
+            |name: test
+            |default_range: string
+            |types:
+            |  string:
+            |    base: str
+            |classes:
+            |  Base:
+            |    slots:
+            |      - name
+            |      - tags
+            |  Child:
+            |    is_a: Base
+            |    slot_usage:
+            |      name:
+            |        required: false
+            |      tags:
+            |        multivalued: false
+            |slots:
+            |  name:
+            |    required: true
+            |  tags:
+            |    multivalued: true
+            |""".stripMargin,
+        ),
+      )
+
+      val attributes = sv.classes("Child").derivedAttributes
+      attributes("name").slot.required shouldBe true
+      attributes("tags").slot.multivalued shouldBe true
+    }
+
     "not inherit non-inheritable values from parent slots " in {
       val slotParent = SlotDefinition(
         name = "slotParent",
