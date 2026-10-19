@@ -8,7 +8,7 @@ import eu.neverblink.linkml.metamodel.SlotDefinition
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny, MetadataLanguage}
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny}
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -50,7 +50,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
       options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
   ): Schema = {
     import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
-    given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
+    given JsonSchemaGenerator.Options = options
     val maybeTreeRoot = sv.treeRootWithOverride(options.treeRoot) match {
       case Success(value) => value
       case Failure(exception) => throw exception

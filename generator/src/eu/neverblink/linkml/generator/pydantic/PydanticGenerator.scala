@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, PruningMode}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny, MetadataLanguage}
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny}
 import eu.neverblink.linkml.runtime.StringUtils.hexDigit
 import eu.neverblink.linkml.schemaview.*
 
@@ -207,7 +207,7 @@ final class PydanticGenerator(using sv: SchemaView)
       attribute: AttributeView,
       owner: ClassView,
       ctx: Context,
-  )(using MetadataLanguage): Unit = {
+  )(using Options): Unit = {
     val slot = attribute.slotView.slot
     val key = slotName(attribute.slotView)
     val name = fieldNames(owner, ctx)(key)
@@ -294,7 +294,7 @@ final class PydanticGenerator(using sv: SchemaView)
       cls: ClassView,
       parents: Seq[ClassView],
       ctx: Context,
-  )(using MetadataLanguage): Unit = {
+  )(using Options): Unit = {
     sink.append("class ")
     sink.append(className(cls))
     sink.append('(')
@@ -352,7 +352,7 @@ final class PydanticGenerator(using sv: SchemaView)
       sink: CharSink,
       ev: EnumView,
       ctx: Context,
-  )(using MetadataLanguage): Unit = {
+  )(using Options): Unit = {
     ctx.imports.add("enum", "Enum")
     sink.append("class ")
     sink.append(enumName(ev))
@@ -419,7 +419,7 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
+    given Options = options
     val query =
       sv.withTypeDesignatorMembers(options.pruningMode.derivedQuery(true, true), true, true)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))

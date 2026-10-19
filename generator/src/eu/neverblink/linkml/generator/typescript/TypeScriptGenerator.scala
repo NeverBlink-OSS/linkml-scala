@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, PruningMo
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.StringUtils.hexDigit
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, MetadataLanguage}
+import eu.neverblink.linkml.runtime.HasMetadataLanguage
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -122,9 +122,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       }
     }
 
-  private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context)(using
-      MetadataLanguage,
-  ): Unit = {
+  private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context)(using Options): Unit = {
     writeDoc(sink, DocLines(cls.cls), "")
     sink.append("export interface ")
     sink.append(className(cls))
@@ -147,9 +145,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append("}\n")
   }
 
-  private def writeUnion(sink: CharSink, cls: ClassView, name: String)(using
-      MetadataLanguage,
-  ): Unit = {
+  private def writeUnion(sink: CharSink, cls: ClassView, name: String)(using Options): Unit = {
     if !cls.isConcrete then writeDoc(sink, DocLines(cls.cls), "")
     sink.append("export type ")
     sink.append(name)
@@ -161,7 +157,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append(";\n")
   }
 
-  private def writeEnum(sink: CharSink, ev: EnumView)(using MetadataLanguage): Unit = {
+  private def writeEnum(sink: CharSink, ev: EnumView)(using Options): Unit = {
     writeDoc(sink, DocLines(ev._enum), "")
     sink.append("export type ")
     sink.append(enumName(ev))
@@ -199,7 +195,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
+    given Options = options
     val ctx = Context(options)
     val query = reachability(options.pruningMode)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))

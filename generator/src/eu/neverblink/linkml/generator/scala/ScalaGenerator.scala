@@ -950,7 +950,7 @@ object ScalaGenerator {
     def apply(metadata: CommonMetadata, fromSchema: Uri, options: ScalaGenerator.Options)(using
         pr: PrefixResolver,
     ): ScalaDoc = {
-      given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
+      given ScalaGenerator.Options = options
       new ScalaDoc(
         metadata.description.localized
           .mapFast(_.capitalize)
