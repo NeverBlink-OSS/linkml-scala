@@ -42,7 +42,9 @@ classes:
 
 `slot_usage` may only **narrow**. Widening a range or making a required slot optional is a
 modelling error, and `InvalidSlotUsage` is reported if you name a slot the class does not
-actually have. To see the result of all this resolution, run
+actually have. `required: false` or `multivalued: false` on a slot that is already `true` is
+ignored without a warning (see
+[210-slot-usage-inheritance.md](210-slot-usage-inheritance.md#boolean-metaslots)). To see the result of all this resolution, run
 `linkml-scala generate linkml`.
 
 ## Inheritance
@@ -151,7 +153,7 @@ classes:
 ranges of `any_of` in OWL output), `rules:`, and arrays. If a constraint needs one of these,
 express it another way or document the gap.
 A `slot_usage` can only narrow down inherited boolean expressions: the inherited ones are still
-checked (see [210-inherited-boolean-expressions.md](210-inherited-boolean-expressions.md)).
+checked (see [210-slot-usage-inheritance.md](210-slot-usage-inheritance.md#boolean-expressions)).
 
 ## Enums
 

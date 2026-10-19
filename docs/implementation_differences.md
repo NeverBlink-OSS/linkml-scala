@@ -49,7 +49,7 @@ LinkML-Python 1.12.1 keeps only the most specific list.
 LinkML-Scala joins the `all_of` and `none_of` lists, and for `any_of` and `exactly_one_of` keeps the most specific list and requires the inherited lists too.
 So a value of a class is also a valid value of each of its parent classes and mixins.
 
-See [Inherited boolean expressions](inherited_boolean_expressions.md) for details and examples.
+See [Boolean expressions](slot_usage_inheritance.md#boolean-expressions) for details and examples.
 
 ## Boolean metaslots in `slot_usage`
 
@@ -57,7 +57,7 @@ The LinkML specification combines boolean metaslots, like `required` and `multiv
 LinkML-Scala does the same. LinkML-Python 1.12.1 uses the value from the closest `slot_usage` instead.
 So a `slot_usage` can make a slot required or multivalued, but not optional or single-valued when the slot or a parent class already sets it.
 
-See [Boolean metaslots in `slot_usage`](boolean_metaslots_in_slot_usage.md) for details and examples.
+See [Boolean metaslots](slot_usage_inheritance.md#boolean-metaslots) for details and examples.
 
 ## Imports
 

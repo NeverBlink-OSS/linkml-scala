@@ -27,7 +27,7 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     "memberCardinality" -> "integerAndString" ->
       "LinkML-py ignores cardinality in `any_of` members",
     "memberCardinality" -> "twoStrings" -> "LinkML-py ignores cardinality in `any_of` members",
-    // See docs/inherited_boolean_expressions.md
+    // See docs/slot_usage_inheritance.md
     "anyOfWidening" -> "booleanNotInBase" -> "LinkML-py keeps only the most specific `any_of`",
     "anyOfMixins" -> "booleanNotInBase" -> "LinkML-py keeps only the most specific `any_of`",
     "allOfInheritance" -> "failsBase" -> "LinkML-py keeps only the most specific `all_of`",
