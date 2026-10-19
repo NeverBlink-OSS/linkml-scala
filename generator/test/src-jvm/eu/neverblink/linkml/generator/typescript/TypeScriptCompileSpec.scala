@@ -46,6 +46,8 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "constraintsOnTypes" -> "intBelowMinimum" -> bounds,
     "constraintsOnTypes" -> "stringNotMatchingPattern" -> pattern,
     "typeDerivation" -> "excessiveCount" -> bounds,
+    "mixinFacets" -> "tooLarge" -> bounds,
+    "rangeOverride" -> "badPattern" -> pattern,
     "typeDerivation" -> "negativeCount" -> bounds,
     "typeDerivation" -> "lowercaseCode" -> pattern,
     "typed" -> "notDate" -> "TypeScript types cannot express string formats such as dates",

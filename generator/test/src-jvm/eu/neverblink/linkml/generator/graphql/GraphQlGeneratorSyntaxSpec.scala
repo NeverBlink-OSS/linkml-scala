@@ -9,6 +9,14 @@ import sangria.schema.Schema
 import sangria.parser.{ParserConfig, QueryParser}
 
 class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
+  private val slotUsageType =
+    "BUG: A `slot_usage` that changes the type of an inherited field gives a type that the " +
+      "parent's interface does not allow"
+
+  override val skipModels: Map[String, String] = Map(
+    "multivaluedOverride" -> slotUsageType,
+  )
+
   // dummy query object to make the generated types a valid graphql schema
   val dummyQuery: String =
     """type Query {

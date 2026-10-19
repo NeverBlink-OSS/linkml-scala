@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/mixinFacets/> .
+@prefix alt: <https://example.org/alt/> .
+
+_:b a :Thing;
+    :note "some note" .

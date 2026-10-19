@@ -1,0 +1,49 @@
+id: https://neverblink.eu/linkml/tests/rangeOverride/
+name: rangeOverride
+description: >-
+  A child class narrows the ranges of inherited slots with `slot_usage`: from `string` to a type
+  derived from it, and from a class to one of its subclasses.
+
+imports:
+  - linkml:types
+
+classes:
+  Part:
+    slots:
+      - label
+  CarPart:
+    is_a: Part
+    slots:
+      - model
+  Vehicle:
+    slots:
+      - status
+      - part
+  Car:
+    tree_root: true
+    is_a: Vehicle
+    slot_usage:
+      status:
+        range: status_code
+      part:
+        range: CarPart
+
+types:
+  status_code:
+    typeof: string
+    pattern: "^[A-Z]+$"
+
+slots:
+  status:
+    rank: 1
+    range: string
+  part:
+    rank: 2
+    range: Part
+    inlined: true
+  label:
+    range: string
+    required: true
+  model:
+    range: string
+    required: true

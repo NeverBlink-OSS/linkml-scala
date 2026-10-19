@@ -61,6 +61,10 @@ object ScalaGeneratorCompileSpec {
       "does not match the parent's"
 
   val skipModels: Map[String, String] = Map(
+    "requiredOverride" -> slotUsageType,
     "importedOverride" -> slotUsageType,
+    "mixinFacets" -> slotUsageType,
+    "multivaluedOverride" -> slotUsageType,
+    "rangeOverride" -> slotUsageType,
   )
 }

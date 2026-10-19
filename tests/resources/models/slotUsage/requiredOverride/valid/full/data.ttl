@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/requiredOverride/> .
+
+_:b a :Leaf;
+    :title "some title";
+    :name "some name" .

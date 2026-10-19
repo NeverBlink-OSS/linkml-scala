@@ -1,0 +1,31 @@
+id: https://neverblink.eu/linkml/tests/requiredOverride/
+name: requiredOverride
+description: >-
+  A `slot_usage` in the middle of an `is_a` chain makes `title` required, and the class below it
+  inherits this. `name` is required in the slot definition.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - title
+      - name
+  Middle:
+    is_a: Base
+    slot_usage:
+      title:
+        required: true
+  Leaf:
+    tree_root: true
+    is_a: Middle
+
+slots:
+  title:
+    rank: 1
+    range: string
+  name:
+    rank: 2
+    range: string
+    required: true

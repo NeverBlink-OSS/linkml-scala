@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/multivaluedOverride/> .
+
+_:b a :Child;
+    :labels "first", "second";
+    :note "some note" .

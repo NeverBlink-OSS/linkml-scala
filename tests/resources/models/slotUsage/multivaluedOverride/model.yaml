@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/multivaluedOverride/
+name: multivaluedOverride
+description: >-
+  A child class makes an inherited single-valued slot multivalued with `slot_usage`.
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - labels
+      - note
+  Child:
+    tree_root: true
+    is_a: Base
+    slot_usage:
+      labels:
+        multivalued: true
+
+slots:
+  labels:
+    rank: 1
+    range: string
+  note:
+    rank: 2
+    range: string

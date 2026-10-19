@@ -239,7 +239,7 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       for entry <- ModelCatalogue.all do
         s"model '${entry.name}'" in {
           assume(
-            entry.name != "importedOverride",
+            entry.name != "importedOverride" && entry.name != "mixinFacets",
             "BUG: A `slot_uri` set by a `slot_usage` is not declared as an OWL property",
           )
           given SchemaView = entry.model

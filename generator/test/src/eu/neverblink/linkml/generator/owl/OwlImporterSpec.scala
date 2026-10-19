@@ -71,7 +71,9 @@ object OwlImporterSpec {
     "noneOfInheritance" -> slotUsageWithoutRange,
     "exactlyOneOfWidening" -> slotUsageWithoutRange,
     "allOfNoneOfChain" -> slotUsageWithoutRange,
+    "requiredOverride" -> slotUsageWithoutRange,
     "importedOverride" -> slotUsageUri,
+    "mixinFacets" -> slotUsageUri,
   )
 
   private def stream(text: String) = ByteArrayInputStream(text.getBytes(UTF_8))

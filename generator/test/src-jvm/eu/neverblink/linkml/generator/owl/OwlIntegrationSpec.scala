@@ -76,6 +76,7 @@ object OwlIntegrationSpec {
         "gets the range of the slot definition for it"
     Map(
       "importedOverride" -> slotUsageUri,
+      "mixinFacets" -> slotUsageUri,
     )
   }
 
@@ -123,7 +124,15 @@ object OwlIntegrationSpec {
     "memberCardinality" -> "integerAndString" ->
       "Not yet implemented: cardinality in `any_of` members",
     "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
+    "requiredOverride" -> "missingTitle" -> openWorld,
+    "requiredOverride" -> "missingName" -> openWorld,
+    "rangeOverride" -> "basePart" ->
+      s"OWL infers that the part is also a `CarPart` rather than rejecting it, and $openWorld",
     // Valid instances
+    "multivaluedOverride" -> "many" -> (
+      "The parent class allows one value, and in OWL a subclass can't allow more, so a " +
+        "`slot_usage` that makes a slot multivalued has no effect"
+    ),
     "anything" -> "atomic" -> anyLiteral,
     "anything" -> "complex" -> anyLiteral,
   )

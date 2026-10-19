@@ -1,0 +1,9 @@
+@prefix : <https://neverblink.eu/linkml/tests/rangeOverride/> .
+
+_:b a :Car;
+    :status "active";
+    :part [
+      a :CarPart;
+      :label "wheel";
+      :model "W1"
+    ] .

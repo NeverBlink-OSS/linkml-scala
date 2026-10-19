@@ -31,6 +31,10 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     ("importedOverride", "withoutLabel") ->
       "LinkML-py puts `code` in the namespace of the class with the `slot_usage`, not of the slot",
     ("implicitPrefix", "slotDefined") -> "LinkML-py incorrectly does not lift these instances",
+    (
+      "mixinFacets",
+      "tooLarge",
+    ) -> "LinkML-py ignores `minimum_value` and `maximum_value` of a type",
     // See "Boolean expressions in SHACL" in docs/implementation_differences.md
     ("allOf", "matchesFirstOnly") -> "LinkML-py ignores `all_of`",
     ("exactlyOneOf", "matchesBoth") -> "LinkML-py ignores `exactly_one_of`",
