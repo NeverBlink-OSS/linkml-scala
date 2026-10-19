@@ -332,8 +332,8 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       }
       descriptions("en") shouldBe (Some("A book."), Some("Its title."))
       descriptions("pl") shouldBe (Some("Książka."), Some("Jej tytuł."))
-      // A language the schema does not carry leaves the description out rather than guessing.
-      descriptions("de") shouldBe (None, None)
+      // A language the schema does not carry falls back to English.
+      descriptions("de") shouldBe (Some("A book."), Some("Its title."))
     }
 
     "pass an object-valued ai_context extension through" in {

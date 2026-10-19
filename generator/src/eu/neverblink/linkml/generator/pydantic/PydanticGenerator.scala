@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, PruningMode}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.LinkmlAny
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny}
 import eu.neverblink.linkml.runtime.StringUtils.hexDigit
 import eu.neverblink.linkml.schemaview.*
 
@@ -207,7 +207,7 @@ final class PydanticGenerator(using sv: SchemaView)
       attribute: AttributeView,
       owner: ClassView,
       ctx: Context,
-  ): Unit = {
+  )(using Options): Unit = {
     val slot = attribute.slotView.slot
     val key = slotName(attribute.slotView)
     val name = fieldNames(owner, ctx)(key)
@@ -244,7 +244,7 @@ final class PydanticGenerator(using sv: SchemaView)
       }
     }
     sink.append('\n')
-    val doc = DocLines(slot, ctx.options.metadataLanguage) ++ (attribute match {
+    val doc = DocLines(slot) ++ (attribute match {
       case ref: ClassReferenceAttributeView => Seq(s"Reference to ${className(ref.classView)}")
       case _ => Nil
     })
@@ -294,13 +294,13 @@ final class PydanticGenerator(using sv: SchemaView)
       cls: ClassView,
       parents: Seq[ClassView],
       ctx: Context,
-  ): Unit = {
+  )(using Options): Unit = {
     sink.append("class ")
     sink.append(className(cls))
     sink.append('(')
     sink.append(if parents.isEmpty then "LinkMLModel" else parents.map(className).mkString(", "))
     sink.append("):\n")
-    val doc = DocLines(cls.cls, ctx.options.metadataLanguage)
+    val doc = DocLines(cls.cls)
     writeDoc(sink, doc, "    ")
     // `extra_slots` is not inherited, but pydantic's config is, so a subclass of a class that allows
     // extra data closes itself again
@@ -348,12 +348,16 @@ final class PydanticGenerator(using sv: SchemaView)
     writeDoc(sink, Seq(s"$what, told apart by `$field`."), "")
   }
 
-  private def writeEnum(sink: CharSink, ev: EnumView, ctx: Context): Unit = {
+  private def writeEnum(
+      sink: CharSink,
+      ev: EnumView,
+      ctx: Context,
+  )(using Options): Unit = {
     ctx.imports.add("enum", "Enum")
     sink.append("class ")
     sink.append(enumName(ev))
     sink.append("(str, Enum):\n")
-    val doc = DocLines(ev._enum, ctx.options.metadataLanguage)
+    val doc = DocLines(ev._enum)
     writeDoc(sink, doc, "    ")
     if doc.nonEmpty then sink.append('\n')
     val seen = mutable.HashMap.empty[String, String]
@@ -371,7 +375,7 @@ final class PydanticGenerator(using sv: SchemaView)
       sink.append(" = ")
       sink.append(pyString(value))
       sink.append('\n')
-      writeDoc(sink, DocLines(pv, ctx.options.metadataLanguage), "    ")
+      writeDoc(sink, DocLines(pv), "    ")
     }
   }
 
@@ -415,6 +419,7 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
+    given Options = options
     val query =
       sv.withTypeDesignatorMembers(options.pruningMode.derivedQuery(true, true), true, true)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
@@ -587,7 +592,7 @@ object PydanticGenerator {
       includeNull: Boolean = false,
       open: Boolean = false,
       metadataLanguage: String = "en",
-  )
+  ) extends HasMetadataLanguage
 
   /** Mutable state of one generator run. */
   private final case class Context(options: Options, moduleNames: Set[String]) {

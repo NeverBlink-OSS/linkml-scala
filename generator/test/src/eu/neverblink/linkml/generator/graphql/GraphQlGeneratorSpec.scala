@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.graphql
 
 import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.generator.util.PruningMode.skip
-import eu.neverblink.linkml.schemaview.SchemaView
+import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -156,6 +156,26 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       ).foreach { snippet =>
         result should include(snippet)
       }
+    }
+
+    "fall back to another language in descriptions" in {
+      given SchemaView = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""
+        |id: https://example.org/test
+        |name: test
+        |imports:
+        |  - linkml:types
+        |classes:
+        |  Book:
+        |    description:
+        |      pl: Opublikowane dzieło.
+        |    attributes:
+        |      name:
+        |        range: string
+        |""".stripMargin))
+
+      GraphQlGenerator().serialize() should include(
+        "\"\"\"\nOpublikowane dzieło.\n\"\"\"\ntype Book",
+      )
     }
 
     "generate empty classes" in {

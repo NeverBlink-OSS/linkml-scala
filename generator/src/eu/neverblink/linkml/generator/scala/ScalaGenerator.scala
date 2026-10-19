@@ -634,7 +634,7 @@ object ScalaGenerator {
       generateEmitPrefixes: Boolean = true,
       metadataLanguage: String = "en",
       skipLeafInterfaces: Boolean = true,
-  )
+  ) extends HasMetadataLanguage
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a
     * LinkML [[ClassDefinition]]
@@ -950,27 +950,24 @@ object ScalaGenerator {
     def apply(metadata: CommonMetadata, fromSchema: Uri, options: ScalaGenerator.Options)(using
         pr: PrefixResolver,
     ): ScalaDoc = {
+      given ScalaGenerator.Options = options
       new ScalaDoc(
-        metadata.description
-          .flatMapFast(_.inLanguage(options.metadataLanguage))
+        metadata.description.localized
           .mapFast(_.capitalize)
           .getOrElseFast(""),
         metadata.seeAlso.map(_.uri) ++
-          metadata.aliases
-            .flatMap(_.inLanguage(options.metadataLanguage))
+          metadata.aliases.localized
             .reduceOption(_ + ", " + _)
             .mapFast("Aliases: ".concat) ++
           Seq("From schema: ".concat(fromSchema.uri)),
-        (metadata.notes ++ metadata.comments)
-          .flatMap(_.inLanguage(options.metadataLanguage))
+        (metadata.notes ++ metadata.comments).localized
           .map(_.capitalize),
         metadata.todos.map(_.capitalize),
         metadata.examples.flatMap(ex =>
           for
             value <- ex.value
-            desc <- ex.valueDescription
-            descLang <- desc.inLanguage(options.metadataLanguage)
-          yield s"`$value`: $descLang",
+            desc <- ex.valueDescription.localized
+          yield s"`$value`: $desc",
         ),
       )
     }
