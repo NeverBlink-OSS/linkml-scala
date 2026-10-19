@@ -57,11 +57,14 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `inlines/explicitInlineImplicitlyAsList` | 9 | 8 |  |
 | `inlines/explicitInlineImplicitlyAsSimpleDict` | 9 | 6 |  |
 | `inlines/explicitInlineList` | 0 | 0 |  |
+| `inlines/identifierAlias` | 5 | 5 | The identifier of a class inlined as a dictionary has an al… |
 | `inlines/implicitInline` | 0 | 0 |  |
 | `inlines/implicitInlineAsCompactDict` | 0 | 0 |  |
 | `inlines/implicitInlineAsList` | 0 | 0 |  |
 | `inlines/implicitInlineAsSimpleDict` | 0 | 0 |  |
 | `inlines/inlineAbstract` | 0 | 0 |  |
+| `inlines/mutualRecursion` | 3 | 3 | Two classes without identifiers inline each other: a person… |
+| `inlines/recursiveTree` | 6 | 3 | A class inlines itself as a dictionary keyed by its identif… |
 | `inlines/selfCompact1` | 0 | 0 |  |
 | `inlines/selfCompact3` | 0 | 0 |  |
 | `inlines/selfCompact3Required` | 0 | 0 |  |
@@ -76,6 +79,11 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `pruningDefaultRange` | 0 | 0 |  |
 | `reference` | 9 | 6 |  |
 | `referenceInteger` | 6 | 3 |  |
+| `slotUsage/importedOverride` | 8 | 9 | A class changes the slots of an imported parent class with… |
+| `slotUsage/mixinFacets` | 8 | 14 | Each mixin changes a different part of the same slot with `… |
+| `slotUsage/multivaluedOverride` | 6 | 3 | A child class makes an inherited single-valued slot multiva… |
+| `slotUsage/rangeOverride` | 3 | 6 | A child class narrows the ranges of inherited slots with `s… |
+| `slotUsage/requiredOverride` | 4 | 8 | A `slot_usage` in the middle of an `is_a` chain makes `titl… |
 | `syntheticUris` | 0 | 0 |  |
 | `treeRootless` | 0 | 0 |  |
 | `typeDerivation` | 2 | 8 |  |
