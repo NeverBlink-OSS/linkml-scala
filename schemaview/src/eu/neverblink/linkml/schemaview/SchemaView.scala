@@ -391,7 +391,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _ => slot
     }
 
-  /** Combine values for the `range` metaslot
+  /** Combine values for the `range` metaslot. The nearest range is used, with no check that it is
+    * derived from the inherited one, as the spec requires (LNK-237).
     */
   // TODO COMPAT
   private[schemaview] def combineRange(

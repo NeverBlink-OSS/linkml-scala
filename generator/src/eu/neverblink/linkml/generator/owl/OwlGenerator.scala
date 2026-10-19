@@ -139,6 +139,8 @@ object OwlGenerator {
       val classes = sv.schemas.flatMap(_.classes.keys).distinct.map(sv.classes)
         .filter(c => included(c) && !c.isAny)
       classes.foreach(addClass)
+      // Only slots and attributes declare properties, so a `slot_uri` that only a `slot_usage`
+      // sets is never declared (LNK-236).
       sortedSlots.foreach(addSlot)
       classes.foreach(addAttributes)
       sv.schemas.flatMap(_.enums.keys).distinct.map(sv.enums).filter(included).foreach(addEnum)
@@ -398,6 +400,8 @@ object OwlGenerator {
         val exact = first(_.exactCardinality)
         val min = exact.orElse(first(_.minimumCardinality))
           .orElse(Option.when(any(d => d.required || d.key))(1))
+        // A subclass inherits this limit, so a `slot_usage` there that makes the slot multivalued
+        // has no effect (LNK-238).
         val max = exact.orElse(first(_.maximumCardinality))
           .orElse(Option.when(!annotation && !any(_.multivalued))(1))
         val cardinalities = (min, max) match {
@@ -448,7 +452,8 @@ object OwlGenerator {
     private def rangeOf(s: SlotView, context: Option[ClassView] = None): Option[Filler] = {
       // The nearest definition with a range wins: the class's slot_usage or attribute, an
       // ancestor's attribute, then the slot and its parents. An ancestor's slot_usage is skipped,
-      // because OWL passes it down anyway. The derived slot is not used, since it keeps the
+      // because OWL passes it down anyway. That loses the range when the class lists the slot
+      // itself, or when the slot URI changes on the way (LNK-236). The derived slot is not used, since it keeps the
       // inherited `any_of` lists in `all_of`, and OWL already requires them through subclassing.
       val inClasses = context.toSeq.flatMap(c =>
         c.cls.slotUsage.get(s.slot.name).toSeq ++
