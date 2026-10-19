@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/recursiveTree/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+<root> a :Node;
+  :id "root"; # TODO LNK-59
+  :label "Root" .

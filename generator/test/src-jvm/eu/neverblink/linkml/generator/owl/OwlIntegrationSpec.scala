@@ -126,6 +126,9 @@ object OwlIntegrationSpec {
     "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
     "requiredOverride" -> "missingTitle" -> openWorld,
     "requiredOverride" -> "missingName" -> openWorld,
+    "identifierAlias" -> "missingLabel" -> openWorld,
+    "recursiveTree" -> "deepMissingLabel" -> openWorld,
+    "mutualRecursion" -> "deepMissingName" -> openWorld,
     "rangeOverride" -> "basePart" ->
       s"OWL infers that the part is also a `CarPart` rather than rejecting it, and $openWorld",
     // Valid instances

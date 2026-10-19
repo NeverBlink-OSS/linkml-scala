@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/identifierAlias/
+name: identifierAlias
+description: >-
+  The identifier of a class inlined as a dictionary has an alias. The dictionary keys are the
+  identifiers, and an object may also repeat its identifier under the alias.
+
+imports:
+  - linkml:types
+
+classes:
+  Registry:
+    tree_root: true
+    attributes:
+      nodes:
+        range: Node
+        multivalued: true
+        inlined: true
+  Node:
+    attributes:
+      node_id:
+        identifier: true
+        alias: key
+        range: string
+      label:
+        range: string
+        required: true
+      size:
+        range: integer

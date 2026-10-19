@@ -1,0 +1,8 @@
+{
+  "nodes": {
+    "n1": {
+      "node_id": "n1",
+      "label": "first"
+    }
+  }
+}

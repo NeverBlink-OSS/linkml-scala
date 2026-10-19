@@ -87,6 +87,7 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "compactDictDocument" -> "entries" -> "An entry that repeats its key is reserialized without it",
     "simpleDictDocument" -> "entries" ->
       "A simple dict entry written as an object is reserialized in the short form",
+    "identifierAlias" -> "withKey" -> "An entry that repeats its key is reserialized without it",
   )
 
   /** Invalid documents that an option makes valid, by variant, model and document. */
@@ -96,6 +97,7 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       ("open", "aliases", "unaliasedSlotName") -> unknownKey,
       ("open", "compactDictDocument", "unknownKey") -> unknownKey,
       ("open", "simpleDictDocument", "unknownKey") -> unknownKey,
+      ("open", "identifierAlias", "unaliasedKey") -> unknownKey,
     )
   }
 

@@ -1,0 +1,15 @@
+@prefix : <https://neverblink.eu/linkml/tests/mutualRecursion/> .
+
+_:ann a :Person;
+  :name "Ann";
+  :employer [
+    a :Company;
+    :name "Acme";
+    :founders [
+      a :Person;
+      :employer [
+        a :Company;
+        :name "Beta"
+      ]
+    ]
+  ] .

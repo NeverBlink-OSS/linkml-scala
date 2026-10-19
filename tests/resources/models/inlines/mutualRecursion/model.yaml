@@ -1,0 +1,31 @@
+id: https://neverblink.eu/linkml/tests/mutualRecursion/
+name: mutualRecursion
+description: >-
+  Two classes without identifiers inline each other: a person has an inlined employer, and a
+  company has an inlined list of founders.
+
+imports:
+  - linkml:types
+
+classes:
+  Person:
+    tree_root: true
+    attributes:
+      name:
+        rank: 1
+        range: string
+        required: true
+      employer:
+        rank: 2
+        range: Company
+        inlined: true
+  Company:
+    attributes:
+      name:
+        range: string
+        required: true
+      founders:
+        range: Person
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
