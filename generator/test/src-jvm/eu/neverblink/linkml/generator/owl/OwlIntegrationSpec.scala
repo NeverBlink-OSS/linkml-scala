@@ -131,10 +131,8 @@ object OwlIntegrationSpec {
     "rangeOverride" -> "basePart" ->
       s"OWL infers that the part is also a `CarPart` rather than rejecting it, and $openWorld",
     // Valid instances
-    "multivaluedOverride" -> "many" -> (
-      "The parent class allows one value, and in OWL a subclass can't allow more, so a " +
-        "`slot_usage` that makes a slot multivalued has no effect"
-    ),
+    "multivaluedOverride" -> "many" ->
+      "LNK-238: OWL: a `slot_usage` that makes a slot multivalued has no effect",
     "anything" -> "atomic" -> anyLiteral,
     "anything" -> "complex" -> anyLiteral,
   )
