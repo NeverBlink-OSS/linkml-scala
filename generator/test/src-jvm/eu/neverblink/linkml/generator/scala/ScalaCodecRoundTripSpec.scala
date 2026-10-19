@@ -81,7 +81,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       s"""package generated
          |
          |import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-         |import org.virtuslab.yaml.*
+         |import org.virtuslab.yaml.{NodeOps, parseYaml}
          |
          |object RoundTripDriver {
          |  private val codec: LinkmlYamlCodec[$rootImpl] = LinkmlYamlCodec.derived
