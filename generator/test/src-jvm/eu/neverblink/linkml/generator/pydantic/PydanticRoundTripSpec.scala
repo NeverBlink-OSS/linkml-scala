@@ -79,7 +79,7 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "allOfNoneOfChain" -> "failsChildNoneOf" -> "Not yet implemented: `none_of`",
     "allOfNoneOfChain" -> "failsGrandchildNoneOf" -> "Not yet implemented: `none_of`",
     "importedOverride" -> "unaliasedLabel" ->
-      "BUG: An alias set by a `slot_usage` adds a new field next to the inherited one",
+      "LNK-235: Pydantic: an alias set by a `slot_usage` adds a second field",
   )
 
   // Known expressiveness limitations

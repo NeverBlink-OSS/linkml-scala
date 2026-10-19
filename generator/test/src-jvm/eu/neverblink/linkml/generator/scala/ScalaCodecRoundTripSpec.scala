@@ -31,8 +31,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       "an instance with no slots set encodes to an empty document, which cannot be parsed back",
   ).toMap + (
     ("recursiveTree", "nested") ->
-      ("BUG: a dict entry whose class has one required slot is written as just that value, " +
-        "so its other slots are lost")
+      "LNK-233: Scala YAML codec drops slots when it writes a dict entry in the short form"
   )
 
   private def noCodecForType(types: String*): String =

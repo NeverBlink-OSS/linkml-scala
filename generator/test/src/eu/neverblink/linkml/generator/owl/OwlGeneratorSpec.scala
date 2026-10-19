@@ -240,7 +240,7 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
         s"model '${entry.name}'" in {
           assume(
             entry.name != "importedOverride" && entry.name != "mixinFacets",
-            "BUG: A `slot_uri` set by a `slot_usage` is not declared as an OWL property",
+            "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost",
           )
           given SchemaView = entry.model
           val owl = OwlGenerator().ontology()

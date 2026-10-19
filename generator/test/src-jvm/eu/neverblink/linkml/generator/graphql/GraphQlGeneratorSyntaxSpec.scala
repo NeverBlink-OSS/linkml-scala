@@ -10,8 +10,7 @@ import sangria.parser.{ParserConfig, QueryParser}
 
 class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   private val slotUsageType =
-    "BUG: A `slot_usage` that changes the type of an inherited field gives a type that the " +
-      "parent's interface does not allow"
+    "LNK-234: GraphQL: a `slot_usage` that makes a field multivalued gives an invalid schema"
 
   override val skipModels: Map[String, String] = Map(
     "multivaluedOverride" -> slotUsageType,

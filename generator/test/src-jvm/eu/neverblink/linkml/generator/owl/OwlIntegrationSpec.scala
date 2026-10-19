@@ -72,8 +72,7 @@ object OwlIntegrationSpec {
   /** Models whose OWL is wrong, with the reason. */
   val skipModels: Map[String, String] = {
     val slotUsageUri =
-      "BUG: A `slot_uri` set by a `slot_usage` is not declared as an OWL property, and the class " +
-        "gets the range of the slot definition for it"
+      "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost"
     Map(
       "importedOverride" -> slotUsageUri,
       "mixinFacets" -> slotUsageUri,

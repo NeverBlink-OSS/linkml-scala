@@ -57,8 +57,8 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
 
 object ScalaGeneratorCompileSpec {
   private val slotUsageType =
-    "BUG: A `slot_usage` that changes the type of an inherited field gives a field type that " +
-      "does not match the parent's"
+    "LNK-232: Scala: a `slot_usage` that changes the type of a field gives code that does not " +
+      "compile"
 
   val skipModels: Map[String, String] = Map(
     "requiredOverride" -> slotUsageType,

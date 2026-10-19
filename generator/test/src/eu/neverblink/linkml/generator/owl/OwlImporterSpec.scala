@@ -62,7 +62,7 @@ object OwlImporterSpec {
       "extra `owl:allValuesFrom` restriction after it is imported"
 
   private val slotUsageUri =
-    "BUG: A `slot_uri` set by a `slot_usage` is not declared as an OWL property"
+    "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost"
 
   /** Models that do not give the same ontology again, with the reason. */
   private val skipModels: Map[String, String] = Map(
