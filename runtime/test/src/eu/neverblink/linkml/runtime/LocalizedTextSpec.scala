@@ -71,12 +71,15 @@ class LocalizedTextSpec extends AnyWordSpec, Matchers {
 
     "use the language from the context" in {
       given MetadataLanguage = MetadataLanguage("pl")
+      text.localized shouldBe "cześć"
+      PlainText("hello").localized shouldBe "hello"
       Some(text).localized shouldBe Some("cześć")
       Seq(text, PlainText("hello")).localized shouldBe Seq("cześć", "hello")
     }
 
     "fall back for each value separately" in {
       given MetadataLanguage = MetadataLanguage("pl")
+      MultilingualText(Map("en" -> "hello")).localized shouldBe "hello"
       Seq(text, MultilingualText(Map("en" -> "hello"))).localized shouldBe Seq("cześć", "hello")
     }
 
@@ -89,6 +92,7 @@ class LocalizedTextSpec extends AnyWordSpec, Matchers {
     "use the metadataLanguage of the options in context" in {
       case class Options(metadataLanguage: String) extends HasMetadataLanguage
       given Options = Options("pl")
+      text.localized shouldBe "cześć"
       Some(text).localized shouldBe Some("cześć")
       Seq(text).localized shouldBe Seq("cześć")
     }

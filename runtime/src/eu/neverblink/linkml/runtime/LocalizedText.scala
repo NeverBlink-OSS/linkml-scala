@@ -23,6 +23,10 @@ sealed trait LocalizedText:
   /** The text in `tag`, or the fallback text if there is none: see [[plain]]. */
   def inLanguageOrFallback(tag: LanguageTag): String
 
+  /** The text in the requested language, or the fallback text. */
+  final def localized(using language: MetadataLanguage): String =
+    inLanguageOrFallback(language.tag)
+
 /** A plain string, which does not carry any language information. For schema
   * backwards-compatibility, and "I don't care" usages.
   */
@@ -70,10 +74,10 @@ object MetadataLanguage:
 object LocalizedText:
   extension (t: Option[LocalizedText])
     /** The text in the requested language, or the fallback text. */
-    def localized(using language: MetadataLanguage): Option[String] =
-      t.mapFast(_.inLanguageOrFallback(language.tag))
+    def localized(using MetadataLanguage): Option[String] =
+      t.mapFast(_.localized)
 
   extension (ts: Seq[LocalizedText])
     /** Each text in the requested language, or its fallback text. */
-    def localized(using language: MetadataLanguage): Seq[String] =
-      ts.map(_.inLanguageOrFallback(language.tag))
+    def localized(using MetadataLanguage): Seq[String] =
+      ts.map(_.localized)
