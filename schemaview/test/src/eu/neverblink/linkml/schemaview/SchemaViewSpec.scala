@@ -745,7 +745,7 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))
 
     def parse(content: String): SchemaDefinition = parseYaml(content) match {
-      case Right(node) => Codec.codec.decode(node)
+      case Right(node) => SchemaCodec.decode(node)
       case Left(err) => throw err
     }
   }

@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.generator
 
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
-import eu.neverblink.linkml.metamodel.{Codec, SchemaDefinition}
+import eu.neverblink.linkml.metamodel.SchemaDefinition
+import eu.neverblink.linkml.schemaview.SchemaCodec
 
 import java.io.{ByteArrayInputStream, ByteArrayOutputStream, InputStream, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -34,22 +35,22 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
 
   /** The schema as a LinkML document. Prefer [[writeTo]] where an output stream exists. */
   final def serialize(in: InputStream, options: O = defaultOptions): String =
-    JsonUtil.write(Codec.codec.encode(importSchema(in, options)), options.outputFormat)
+    JsonUtil.write(SchemaCodec.encode(importSchema(in, options)), options.outputFormat)
 
   /** The same, for a document that is already in memory. */
   final def serializeFromString(input: String, options: O = defaultOptions): String =
     JsonUtil.write(
-      Codec.codec.encode(importSchemaFromString(input, options)),
+      SchemaCodec.encode(importSchemaFromString(input, options)),
       options.outputFormat,
     )
 
   /** Write the schema to `out`. Flushes, but closes neither stream. */
   final def writeTo(in: InputStream, out: OutputStream, options: O = defaultOptions): Unit =
-    JsonUtil.write(Codec.codec.encode(importSchema(in, options)), options.outputFormat, out)
+    JsonUtil.write(SchemaCodec.encode(importSchema(in, options)), options.outputFormat, out)
 
   /** A schema this importer made, as a document, for callers that look at more than the schema. */
   final def serializeSchema(schema: SchemaDefinition, format: JsonOutputFormat): String =
-    JsonUtil.write(Codec.codec.encode(schema), format)
+    JsonUtil.write(SchemaCodec.encode(schema), format)
 
   /** Write a schema this importer made, for callers that look at more than the schema first. */
   final def writeSchema(
@@ -57,7 +58,7 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
       out: OutputStream,
       format: JsonOutputFormat,
   ): Unit =
-    JsonUtil.write(Codec.codec.encode(schema), format, out)
+    JsonUtil.write(SchemaCodec.encode(schema), format, out)
 
   protected final def readUtf8(in: InputStream): String = {
     val buffer = ByteArrayOutputStream()

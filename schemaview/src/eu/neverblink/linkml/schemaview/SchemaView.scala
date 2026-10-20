@@ -726,15 +726,7 @@ object SchemaView {
   }
   private lazy val linkmlWithSemWebContextPrefixResolver = {
     val prefixResolver = new BasicPrefixResolver("emit_prefixes+semweb_context")
-    prefixResolver.addAll(linkmlPrefixResolver)
-    prefixResolver.add("dc", "http://purl.org/dc/terms/")
-    prefixResolver.add("faldo", "http://biohackathon.org/resource/faldo#")
-    prefixResolver.add("foaf", "http://xmlns.com/foaf/0.1/")
-    prefixResolver.add("oa", "http://www.w3.org/ns/oa#")
-    prefixResolver.add("idot", "http://identifiers.org/")
-    prefixResolver.add("void", "http://rdfs.org/ns/void#")
-    prefixResolver.add("prov", "http://www.w3.org/ns/prov#")
-    prefixResolver.add("dcat", "http://www.w3.org/ns/dcat#")
+    SchemaCodec.semwebContextPrefixes.foreach((prefix, uri) => prefixResolver.add(prefix, uri))
     prefixResolver
   }
 }

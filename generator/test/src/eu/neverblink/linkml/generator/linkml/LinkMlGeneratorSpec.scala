@@ -3,7 +3,7 @@ package eu.neverblink.linkml.generator.linkml
 import eu.neverblink.linkml.generator.util.PruningMode.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
-import eu.neverblink.linkml.schemaview.SchemaIssues
+import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.wordspec.AnyWordSpec
@@ -394,7 +394,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |      "description": "A character string",
         |      "base": "str",
         |      "exact_mappings": [
-        |        "schema:Text"
+        |        "http://schema.org/Text"
         |      ],
         |      "from_schema": "https://w3id.org/linkml/types",
         |      "notes": [
@@ -403,6 +403,38 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         |    }
         |  }
         |}""".stripMargin
+    }
+
+    "keep the meaning of a CURIE from an import that declares the same prefix differently" in {
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |prefixes:
+          |  ex: https://other.org/
+          |classes:
+          |  Imported:
+          |    class_uri: ex:Imported
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  ex: https://root.org/
+          |imports:
+          |  - other
+          |classes:
+          |  Local:
+          |    class_uri: ex:Local
+          |""".stripMargin,
+          MapImporter("other" -> other),
+        ),
+      )
+      sv.classes("Imported").uriStr shouldBe "https://other.org/Imported"
+      val yaml = LinkMlGenerator(using sv).serialize(LinkMlGenerator.Options(pruningMode = skip))
+      // `ex` of the output schema is the root's, so the imported URI can't be compacted with it
+      yaml should include("class_uri: ex:Local\n")
+      yaml should include("class_uri: https://other.org/Imported\n")
     }
 
     "serialize string values that look like numbers, booleans or nulls as strings" in {

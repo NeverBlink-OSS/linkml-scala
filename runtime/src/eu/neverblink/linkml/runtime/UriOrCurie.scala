@@ -99,11 +99,7 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   private val uriToPrefix = new java.util.HashMap[String, String](64, 0.5f)
 
   def add(prefix: String, uri: String): Unit = {
-    val u = new java.net.URI(uri)
-    var normalizedUri = u.normalize().toString
-    if (
-      !normalizedUri.endsWith("/") && !normalizedUri.endsWith("?") && !normalizedUri.endsWith("#")
-    ) normalizedUri = normalizedUri.concat("/")
+    val normalizedUri = BasicPrefixResolver.normalizeNamespace(uri)
     prefixToUri.put(prefix, normalizedUri)
     uriToPrefix.put(normalizedUri, prefix)
   }
@@ -179,6 +175,19 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
       if (index >= 0) path.substring(index + 1)
       else ""
     } else ""
+  }
+}
+
+object BasicPrefixResolver {
+
+  /** Normalize a namespace as [[BasicPrefixResolver.add]] does: remove `.` and `..` segments, and
+    * add a `/` unless the namespace ends with `/`, `?` or `#`.
+    */
+  def normalizeNamespace(uri: String): String = {
+    val normalizedUri = new java.net.URI(uri).normalize().toString
+    if (normalizedUri.endsWith("/") || normalizedUri.endsWith("?") || normalizedUri.endsWith("#"))
+      normalizedUri
+    else normalizedUri.concat("/")
   }
 }
 
