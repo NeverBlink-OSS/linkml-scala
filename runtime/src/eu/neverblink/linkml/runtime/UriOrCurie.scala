@@ -96,18 +96,18 @@ trait PrefixResolver {
 
 final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   private val prefixToUri = new java.util.HashMap[String, String](64, 0.5f)
-  private val uriToPrefix = new java.util.HashMap[String, String](64, 0.5f)
 
+  /** Add a prefix. The namespace is used as it is written.
+    *
+    * @throws java.net.URISyntaxException
+    *   If the namespace is not a valid URI
+    */
   def add(prefix: String, uri: String): Unit = {
-    val normalizedUri = BasicPrefixResolver.normalizeNamespace(uri)
-    prefixToUri.put(prefix, normalizedUri)
-    uriToPrefix.put(normalizedUri, prefix)
+    new java.net.URI(uri)
+    prefixToUri.put(prefix, uri)
   }
 
-  def addAll(other: BasicPrefixResolver): Unit = {
-    prefixToUri.putAll(other.prefixToUri)
-    uriToPrefix.putAll(other.uriToPrefix)
-  }
+  def addAll(other: BasicPrefixResolver): Unit = prefixToUri.putAll(other.prefixToUri)
 
   override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))
 
@@ -136,58 +136,21 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
     } else null
   }
 
+  /** Compact a URI into a CURIE with the longest namespace that the URI starts with. */
   override def compact(uri: String): String = {
-    val normalizedUri = new java.net.URI(uri).normalize()
-    var curie = normalizedUri.getFragment
-    val baseUri =
-      if (curie ne null) {
-        normalizedUri.toString.stripSuffix(curie)
-      } else if ({
-        curie = normalizedUri.getQuery
-        curie ne null
-      }) {
-        normalizedUri.toString.stripSuffix(curie)
-      } else if ({
-        curie = getLastPathSegment(normalizedUri)
-        curie.nonEmpty
-      }) {
-        new java.net.URI(
-          normalizedUri.getScheme,
-          normalizedUri.getAuthority,
-          normalizedUri.getPath.stripSuffix(curie),
-          null,
-          null,
-        ).toString
-      } else normalizedUri.toString
-    val prefix = uriToPrefix.get(baseUri)
-    if (prefix eq null) sys.error(s"Unknown uri: $baseUri")
-    if ((curie eq null) || curie.isEmpty) {
-      sys.error(s"Cannot compact uri without fragment, query, or last path segment: $uri")
+    var prefix: String = null
+    var namespace = ""
+    val it = prefixToUri.entrySet.iterator
+    while (it.hasNext) {
+      val e = it.next()
+      val ns = e.getValue
+      if (ns.length > namespace.length && uri.length > ns.length && uri.startsWith(ns)) {
+        prefix = e.getKey
+        namespace = ns
+      }
     }
-    s"$prefix:$curie"
-  }
-
-  private def getLastPathSegment(uri: java.net.URI): String = {
-    var path = uri.getPath
-    if (path ne null) {
-      path = path.stripSuffix("/")
-      val index = path.lastIndexOf('/')
-      if (index >= 0) path.substring(index + 1)
-      else ""
-    } else ""
-  }
-}
-
-object BasicPrefixResolver {
-
-  /** Normalize a namespace as [[BasicPrefixResolver.add]] does: remove `.` and `..` segments, and
-    * add a `/` unless the namespace ends with `/`, `?` or `#`.
-    */
-  def normalizeNamespace(uri: String): String = {
-    val normalizedUri = new java.net.URI(uri).normalize().toString
-    if (normalizedUri.endsWith("/") || normalizedUri.endsWith("?") || normalizedUri.endsWith("#"))
-      normalizedUri
-    else normalizedUri.concat("/")
+    if (prefix eq null) sys.error(s"Unknown uri: $uri")
+    s"$prefix:${uri.substring(namespace.length)}"
   }
 }
 

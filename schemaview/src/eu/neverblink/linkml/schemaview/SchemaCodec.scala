@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.{Codec, Prefix, Prefixes, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{BasicPrefixResolver, PrefixMap, named, simpleDict}
+import eu.neverblink.linkml.runtime.{PrefixMap, named, simpleDict}
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
 
@@ -14,7 +14,7 @@ import org.virtuslab.yaml.Node
   *
   * The prefixes of a schema are, in order of precedence:
   *
-  *   1. The schema's own `prefixes`, with namespaces normalized as [[BasicPrefixResolver]] does.
+  *   1. The schema's own `prefixes`.
   *   2. The `semweb_context` prefixes, if the schema lists it in `default_curi_maps`.
   *   3. The prefixes of the LinkML metamodel.
   *
@@ -47,18 +47,11 @@ object SchemaCodec {
     *   The schema's `default_curi_maps`
     */
   def prefixMap(prefixes: Iterable[Prefix], defaultCuriMaps: Seq[String]): PrefixMap = PrefixMap(
-    overrides = prefixes.map(p => (p.prefixPrefix, normalizeNamespace(p.prefixReference.original))),
+    overrides = prefixes.map(p => (p.prefixPrefix, p.prefixReference.original)),
     defaults =
       if (defaultCuriMaps.contains("semweb_context")) semwebContextPrefixes
       else metamodelPrefixes,
   )
-
-  /** Normalize a namespace with [[BasicPrefixResolver.normalizeNamespace]], or keep it as it is
-    * written if it is not a valid URI. Such a namespace is reported when the schema is loaded.
-    */
-  private def normalizeNamespace(uri: String): String =
-    try BasicPrefixResolver.normalizeNamespace(uri)
-    catch { case _: java.net.URISyntaxException => uri }
 
   private val metamodelPrefixes: Seq[(String, String)] = Prefixes.map.toSeq
 

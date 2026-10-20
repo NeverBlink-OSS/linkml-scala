@@ -155,7 +155,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       resolver.add("OIO", "http://www.geneontology.org/formats/oboInOwl#")
       resolver.add("schema", "http://schema.org/")
       resolver.add("skos", "http://www.w3.org/2004/02/skos/core#")
-      resolver.expand("IAO:0100001") shouldBe "http://purl.obolibrary.org/obo/IAO_/0100001"
+      resolver.expand("IAO:0100001") shouldBe "http://purl.obolibrary.org/obo/IAO_0100001"
       resolver.expand(
         "OIO:consider",
       ) shouldBe "http://www.geneontology.org/formats/oboInOwl#consider"
@@ -168,7 +168,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       resolver.add("OIO", "http://www.geneontology.org/formats/oboInOwl#")
       resolver.add("schema", "http://schema.org/")
       resolver.add("skos", "http://www.w3.org/2004/02/skos/core#")
-      resolver.compact("http://purl.obolibrary.org/obo/IAO_/0100001") shouldBe "IAO:0100001"
+      resolver.compact("http://purl.obolibrary.org/obo/IAO_0100001") shouldBe "IAO:0100001"
       resolver.compact(
         "http://www.geneontology.org/formats/oboInOwl#consider",
       ) shouldBe "OIO:consider"

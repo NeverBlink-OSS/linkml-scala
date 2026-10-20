@@ -299,6 +299,25 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
         ),
       ).schemas should contain(linkmlTypes)
     }
+    "use prefix namespaces as they are written" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/s
+          |name: s
+          |prefixes:
+          |  ex: http://example.org
+          |  GO: http://purl.obolibrary.org/obo/GO_
+          |classes:
+          |  Person:
+          |    class_uri: ex:Person
+          |  Process:
+          |    class_uri: GO:0008150
+          |""".stripMargin,
+        ),
+      )
+      sv.classes("Person").uriStr shouldBe "http://example.orgPerson"
+      sv.classes("Process").uriStr shouldBe "http://purl.obolibrary.org/obo/GO_0008150"
+    }
     "resolve default uris and ranges of classes, slots, types, enums in imported schemas" in {
       val sv =
         SchemaIssues.orThrow(
