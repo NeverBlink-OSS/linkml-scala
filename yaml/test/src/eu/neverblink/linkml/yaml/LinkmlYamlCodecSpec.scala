@@ -162,7 +162,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       type StringFirst = String | UriOrCurie
       locally {
         implicit val codec: LinkmlYamlCodec[UriFirst] = LinkmlYamlCodec.derived
-        roundTrip[UriFirst](UriOrCurie("ex:abc"), "ex:abc\n")
+        roundTrip[UriFirst](Uri("ex:abc"), "ex:abc\n")
         // A String value still encodes, as encoding picks the member by the value's class.
         codec.encode("abc").asYaml shouldBe "abc\n"
       }
@@ -173,7 +173,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       }
       case class MyClass(a: UriFirst, b: StringFirst) derives LinkmlYamlCodec
 
-      roundTrip(MyClass(UriOrCurie("ex:abc"), "ex:abc"), "a: ex:abc\nb: ex:abc\n")
+      roundTrip(MyClass(Uri("ex:abc"), "ex:abc"), "a: ex:abc\nb: ex:abc\n")
     }
     "decode and encode case classes with fields of union types" in {
       type Count = Int
@@ -885,12 +885,13 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         private val trueNode = Node.ScalarNode("1")
         private val falseNode = Node.ScalarNode("0")
 
-        override def decode(node: Node, id: Option[Any]): Boolean = node match {
-          case Node.ScalarNode(value, _) => value == "true" || value == "1"
-          case _ => false
-        }
+        override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): Boolean =
+          node match {
+            case Node.ScalarNode(value, _) => value == "true" || value == "1"
+            case _ => false
+          }
 
-        override def encode(x: Boolean, skipId: Boolean): Node =
+        override def encode(x: Boolean, skipId: Boolean, prefixes: PrefixMap): Node =
           if (x) trueNode
           else falseNode
       }
@@ -1344,6 +1345,147 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       }).getMessage.contains {
         """'eu.neverblink.linkml.runtime.flatten' is defined for 'MyClass', which has 2 fields. The annotation is only valid on classes with exactly one field."""
       })
+    }
+  }
+
+  "LinkmlYamlCodec with a PrefixMap" should {
+    val ex = "ex" -> "http://example.org/"
+
+    "expand CURIEs with prefixes given by the caller, and compact URIs back" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val prefixes = PrefixMap(overrides = Seq(ex))
+      val node = parseYaml("blep: ex:blip").toOption.get
+      codec.decode(node, prefixes = prefixes) shouldBe Thing(Uri("http://example.org/blip"))
+      codec.encode(Thing(Uri("http://example.org/blip")), prefixes = prefixes).asYaml shouldBe
+        "blep: ex:blip\n"
+      // Without prefixes, nothing is expanded. `ex:blip` is a valid URI with the scheme `ex`
+      codec.decode(node) shouldBe Thing(Uri("ex:blip"))
+      codec.encode(Thing(Uri("http://example.org/blip"))).asYaml shouldBe
+        "blep: http://example.org/blip\n"
+    }
+    "read a value with an unknown prefix as a URI if it is a valid one" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val prefixes = PrefixMap(defaults = Seq(ex))
+      codec.decode(parseYaml("blep: other:blip").toOption.get, prefixes = prefixes) shouldBe
+        Thing(Uri("other:blip"))
+      // Not a URI, as it has no scheme
+      codec.decode(parseYaml("blep: blip").toOption.get, prefixes = prefixes) shouldBe
+        Thing(Curie("blip"))
+      codec.encode(Thing(Curie("other:blip")), prefixes = prefixes).asYaml shouldBe
+        "blep: other:blip\n"
+    }
+    "not expand or compact fields of type Uri or Curie" in {
+      case class Thing(uri: Uri, curie: Curie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val prefixes = PrefixMap(defaults = Seq(ex))
+      val thing = Thing(Uri("http://example.org/a"), Curie("ex:b"))
+      val yaml = "uri: http://example.org/a\ncurie: ex:b\n"
+      codec.decode(parseYaml(yaml).toOption.get, prefixes = prefixes) shouldBe thing
+      codec.encode(thing, prefixes = prefixes).asYaml shouldBe yaml
+    }
+    "use the prefixes of a document for everything in it" in {
+      case class Prefix(@id prefix: String, @value namespace: Uri) derives LinkmlYamlCodec
+      case class Item(@id id: String, types: Seq[UriOrCurie] = Nil) derives LinkmlYamlCodec
+      case class Dataset(
+          @documentPrefixes("prefix", "namespace") @simpleDict prefixes: Map[String, Prefix] =
+            Map(),
+          about: Option[UriOrCurie] = None,
+          @simpleDict items: Map[String, Item] = Map(),
+      ) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Dataset]]
+      val yaml =
+        """prefixes:
+          |  ex: http://example.org/
+          |  doc: http://document.org/
+          |about: doc:self
+          |items:
+          |  a:
+          |    types:
+          |      - ex:Type
+          |      - schema:Thing
+          |      - http://example.org/Other
+          |""".stripMargin
+      val prefixes = PrefixMap(
+        overrides = Seq("doc" -> "http://overrides.org/"),
+        defaults = Seq("schema" -> "http://schema.org/", "ex" -> "http://defaults.org/"),
+      )
+      val dataset = codec.decode(parseYaml(yaml).toOption.get, prefixes = prefixes)
+      dataset.about shouldBe Some(Uri("http://overrides.org/self"))
+      dataset.items("a").types shouldBe Seq(
+        Uri("http://example.org/Type"),
+        Uri("http://schema.org/Thing"),
+        Uri("http://example.org/Other"),
+      )
+      // The prefixes themselves are kept, and the URIs are compacted again
+      codec.encode(dataset, prefixes = prefixes).asYaml shouldBe
+        yaml.replace("http://example.org/Other", "ex:Other")
+    }
+    "use only the prefixes of a nested document inside it" in {
+      case class Prefix(@id prefix: String, @value namespace: Uri) derives LinkmlYamlCodec
+      case class Inner(
+          @documentPrefixes("prefix", "namespace") @simpleDict prefixes: Map[String, Prefix] =
+            Map(),
+          values: Seq[UriOrCurie] = Nil,
+      ) derives LinkmlYamlCodec
+      case class Outer(
+          @documentPrefixes("prefix", "namespace") @simpleDict prefixes: Map[String, Prefix] =
+            Map(),
+          values: Seq[UriOrCurie] = Nil,
+          nested: Option[Inner] = None,
+      ) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Outer]]
+      val yaml =
+        """prefixes:
+          |  ex: http://example.org/
+          |  a: http://a.org/
+          |values:
+          |  - ex:x
+          |  - a:x
+          |nested:
+          |  prefixes:
+          |    ex: http://x.com/
+          |  values:
+          |    - ex:x
+          |    - a:x
+          |    - d:x
+          |""".stripMargin
+      val prefixes = PrefixMap(defaults = Seq("d" -> "http://defaults.org/"))
+      val outer = codec.decode(parseYaml(yaml).toOption.get, prefixes = prefixes)
+      outer.values shouldBe Seq(Uri("http://example.org/x"), Uri("http://a.org/x"))
+      // The nested prefixes replace the outer ones, so `a` is unknown inside, and `a:x` is read as
+      // a URI with the scheme `a`. The caller's defaults are still used.
+      outer.nested.get.values shouldBe
+        Seq(Uri("http://x.com/x"), Uri("a:x"), Uri("http://defaults.org/x"))
+      codec.encode(outer, prefixes = prefixes).asYaml shouldBe yaml
+    }
+    "expand keys of type UriOrCurie" in {
+      case class Item(@id id: UriOrCurie, @value label: String) derives LinkmlYamlCodec
+      case class Items(@simpleDict items: Map[UriOrCurie, Item]) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Items]]
+      val prefixes = PrefixMap(defaults = Seq(ex))
+      val yaml = "items:\n  ex:a: A\n"
+      val items = codec.decode(parseYaml(yaml).toOption.get, prefixes = prefixes)
+      items shouldBe Items(
+        Map(Uri("http://example.org/a") -> Item(Uri("http://example.org/a"), "A")),
+      )
+      codec.encode(items, prefixes = prefixes).asYaml shouldBe yaml
+    }
+    "fail to compile with a malformed @documentPrefixes annotation" in {
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class P(p: String, n: Uri) derives LinkmlYamlCodec
+          |case class D(@documentPrefixes("p", "x") ps: Seq[P]) derives LinkmlYamlCodec""".stripMargin
+      }).getMessage.contains("'@documentPrefixes' is defined for 'ps', but 'P' has no field 'x'."))
+      assert(intercept[TestFailedException](assertCompiles {
+        """case class D(@documentPrefixes("p", "n") ps: String) derives LinkmlYamlCodec"""
+      }).getMessage.contains("its type 'java.lang.String' is not a 'Map' or a 'Seq'."))
     }
   }
 

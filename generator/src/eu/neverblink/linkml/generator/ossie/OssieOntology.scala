@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.ossie
 
-import eu.neverblink.linkml.runtime.{named, serializeDefault}
+import eu.neverblink.linkml.runtime.{PrefixMap, named, serializeDefault}
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
 
@@ -108,9 +108,9 @@ object OssieOntology {
   val specVersion = "0.2.0.dev0"
 
   private given nodeCodec: LinkmlYamlCodec[Node] = new LinkmlYamlCodec[Node] {
-    override def decode(node: Node, id: Option[Any]): Node = node
+    override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): Node = node
 
-    override def encode(x: Node, skipId: Boolean): Node = x
+    override def encode(x: Node, skipId: Boolean, prefixes: PrefixMap): Node = x
   }
 
   // Ossie documents may carry fields that this model does not cover yet, which are then ignored.

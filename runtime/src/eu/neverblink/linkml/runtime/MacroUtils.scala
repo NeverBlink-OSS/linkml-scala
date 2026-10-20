@@ -56,6 +56,11 @@ trait MacroUtils(using val quotes: Quotes) {
       if (fields.count(_.kind == FieldKind.Id) > 1) {
         fail(s"More than one field is defined with '@id' annotation in '${tpe.show}'.")
       }
+      if (fields.count(_.documentPrefixes.isDefined) > 1) {
+        fail(
+          s"More than one field is defined with '@documentPrefixes' annotation in '${tpe.show}'.",
+        )
+      }
       if (fields.count(_.kind == FieldKind.Value) > 1) {
         fail(s"More than one field is defined with '@value' annotation in '${tpe.show}'.")
       }
@@ -99,6 +104,9 @@ trait MacroUtils(using val quotes: Quotes) {
     *   The structural role of this field in LinkML mappings (e.g., ID, Value, Dictionary).
     * @param serializeDefault
     *   Whether the default value must be serialized instead of omitted (`@serializeDefault`).
+    * @param documentPrefixes
+    *   The arguments of the `@documentPrefixes` annotation, if the field holds the prefixes of a
+    *   document.
     */
   class FieldInfo(
       val symbol: Symbol,
@@ -108,7 +116,17 @@ trait MacroUtils(using val quotes: Quotes) {
       val resolvedTpe: TypeRepr,
       val kind: FieldKind,
       val serializeDefault: Boolean,
+      val documentPrefixes: Option[DocumentPrefixesInfo],
   )
+
+  /** The arguments of a `@documentPrefixes` annotation.
+    *
+    * @param prefixField
+    *   Name of the field that holds a prefix, in the class of the annotated field's elements
+    * @param namespaceField
+    *   Name of the field that holds a namespace, in the same class
+    */
+  class DocumentPrefixesInfo(val prefixField: String, val namespaceField: String)
 
   /** Defines the specific mapping behavior or structural role a field has within a LinkML schema.
     */
@@ -341,6 +359,7 @@ trait MacroUtils(using val quotes: Quotes) {
             var named: Option[Term] = None
             var kind: FieldKind = FieldKind.Regular
             var serializeDefault = false
+            var documentPrefixes: Option[DocumentPrefixesInfo] = None
             getterOrField.annotations.foreach { annotation =>
               val aTpe = annotation.tpe
               if (aTpe =:= namedTpe) {
@@ -354,6 +373,16 @@ trait MacroUtils(using val quotes: Quotes) {
                   )
                 }
                 serializeDefault = true
+              } else if (aTpe =:= documentPrefixesTpe) {
+                documentPrefixes = new Some(constructorArgs(annotation).map(unwrapArg) match {
+                  case Literal(StringConstant(p)) :: Literal(StringConstant(ns)) :: Nil =>
+                    new DocumentPrefixesInfo(p, ns)
+                  case _ =>
+                    fail(
+                      s"Malformed '@documentPrefixes' annotation of '$name' of '${tpe.show}': " +
+                        "expected two string literals.",
+                    )
+                })
               } else {
                 if (kind != FieldKind.Regular) {
                   fail(
@@ -378,6 +407,7 @@ trait MacroUtils(using val quotes: Quotes) {
               fieldTpe,
               kind,
               serializeDefault,
+              documentPrefixes,
             )
         }
 
@@ -683,4 +713,6 @@ trait MacroUtils(using val quotes: Quotes) {
     Symbol.requiredClass("eu.neverblink.linkml.runtime.UriOrCurie").typeRef
   private val typeDesignatorTpe =
     Symbol.requiredClass("eu.neverblink.linkml.runtime.typeDesignator").typeRef
+  private val documentPrefixesTpe =
+    Symbol.requiredClass("eu.neverblink.linkml.runtime.documentPrefixes").typeRef
 }

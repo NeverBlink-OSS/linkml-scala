@@ -19,6 +19,29 @@ object UriOrCurie {
   def apply(s: String): UriOrCurie =
     if (s.startsWith("urn:") || s.contains("://")) new Uri(s)
     else new Curie(s)
+
+  /** Create a [[Uri]] with the expansion of [[s]], if [[prefixes]] can expand it.
+    *
+    * Otherwise, [[s]] is a [[Uri]] if it is a valid absolute URI, such as `xsd:string` when `xsd`
+    * isn't a known prefix, or else the same value as [[apply]].
+    */
+  def expanded(s: String, prefixes: PrefixMap): UriOrCurie = {
+    val uri = prefixes.expandOrNull(s)
+    if (uri ne null) new Uri(uri)
+    else if (UriCurieValidator.isValidUri(s)) new Uri(s)
+    else apply(s)
+  }
+
+  /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,
+    * or else the original text.
+    */
+  def compacted(x: UriOrCurie, prefixes: PrefixMap): String = x match {
+    case u: Uri =>
+      val curie = prefixes.compactOrNull(u.original)
+      if (curie ne null) curie
+      else u.original
+    case _ => x.original
+  }
 }
 
 @flatten final case class Uri(original: String) extends UriOrCurie {
