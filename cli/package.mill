@@ -17,7 +17,7 @@ object `package` extends Module {
 
     def nativeImageClassPath = runClasspath()
 
-    def nativeImageGraalVmJvmId = "graalvm-oracle:25"
+    def nativeImageGraalVmJvmId = "graalvm-community:25.0.1"
 
     def nativeImageOptions = Seq(
       "-O3", // Optimized for throughput
@@ -28,7 +28,6 @@ object `package` extends Module {
       "--initialize-at-run-time=os.package$",
       "-H:+UnlockExperimentalVMOptions",
       "-H:+RemoveSaturatedTypeFlows",
-      "-H:+MLCallCountProfileInference",
       "-H:IncludeLocales=en",
       "-H:-GenLoopSafepoints",
       "-H:-ParseRuntimeOptions",
