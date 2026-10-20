@@ -204,7 +204,7 @@ object LinkMlNativeApi {
       importer.importWithWarnings(ByteArrayInputStream(ontology.getBytes(UTF_8)), options)
     if listNotImported && options.outputFormat == JsonOutputFormat.yaml then
       result.warnings.foreach(w => out.write(s"# Not imported: $w\n".getBytes(UTF_8)))
-    importer.writeSchema(result.schema, out, options.outputFormat)
+    importer.writeSchema(result.schema, out, options.outputFormat, options.fullUris)
   }
 
   // Results that are structured, and so come back as JSON

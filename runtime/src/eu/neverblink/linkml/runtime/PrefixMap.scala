@@ -21,6 +21,8 @@ final class PrefixMap private (
     val overrides: Seq[(String, String)],
     val documentPrefixes: Seq[(String, String)],
     val defaults: Seq[(String, String)],
+    // False for a map made with `withoutCompaction`
+    val compacts: Boolean,
 ) {
   // Namespace of each prefix, after precedence is applied. Filled together with `compactEntries`
   private val namespaces: java.util.HashMap[String, String] = new java.util.HashMap[String, String](
@@ -93,9 +95,10 @@ final class PrefixMap private (
     * URL. Otherwise, the next longest namespace is tried.
     *
     * @return
-    *   The CURIE, or null if no namespace gives one
+    *   The CURIE, or null if no namespace gives one, or if [[compacts]] is false
     */
   def compactOrNull(uri: String): String = {
+    if (!compacts) return null
     val uriLen = uri.length
     val len = compactNamespaces.length
     var i = 0
@@ -116,24 +119,30 @@ final class PrefixMap private (
 
   /** A copy of this map with the given overrides. They replace the current overrides. */
   def withOverrides(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(prefixes.toSeq, documentPrefixes, defaults)
+    new PrefixMap(prefixes.toSeq, documentPrefixes, defaults, compacts)
 
   /** A copy of this map with the given document prefixes. They replace the current ones. */
   def withDocumentPrefixes(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(overrides, prefixes.toSeq, defaults)
+    new PrefixMap(overrides, prefixes.toSeq, defaults, compacts)
 
   /** A copy of this map with the given defaults. They replace the current defaults. */
   def withDefaults(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(overrides, documentPrefixes, prefixes.toSeq)
+    new PrefixMap(overrides, documentPrefixes, prefixes.toSeq, compacts)
+
+  /** A copy of this map that expands CURIEs as this one does, but compacts no URIs, so they are
+    * written in full.
+    */
+  def withoutCompaction: PrefixMap = new PrefixMap(overrides, documentPrefixes, defaults, false)
 
   override def toString: String =
-    s"PrefixMap(overrides = $overrides, documentPrefixes = $documentPrefixes, defaults = $defaults)"
+    s"PrefixMap(overrides = $overrides, documentPrefixes = $documentPrefixes, defaults = $defaults, " +
+      s"compacts = $compacts)"
 }
 
 object PrefixMap {
 
   /** A map with no prefixes. Decoding and encoding with it keep values as they are written. */
-  val empty: PrefixMap = new PrefixMap(Nil, Nil, Nil)
+  val empty: PrefixMap = new PrefixMap(Nil, Nil, Nil, true)
 
   /** Create a map with overrides and defaults.
     *
@@ -145,5 +154,5 @@ object PrefixMap {
   def apply(
       overrides: Iterable[(String, String)] = Nil,
       defaults: Iterable[(String, String)] = Nil,
-  ): PrefixMap = new PrefixMap(overrides.toSeq, Nil, defaults.toSeq)
+  ): PrefixMap = new PrefixMap(overrides.toSeq, Nil, defaults.toSeq, true)
 }

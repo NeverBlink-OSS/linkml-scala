@@ -35,30 +35,46 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
 
   /** The schema as a LinkML document. Prefer [[writeTo]] where an output stream exists. */
   final def serialize(in: InputStream, options: O = defaultOptions): String =
-    JsonUtil.write(SchemaCodec.encode(importSchema(in, options)), options.outputFormat)
+    JsonUtil.write(
+      SchemaCodec.encode(importSchema(in, options), options.fullUris),
+      options.outputFormat,
+    )
 
   /** The same, for a document that is already in memory. */
   final def serializeFromString(input: String, options: O = defaultOptions): String =
     JsonUtil.write(
-      SchemaCodec.encode(importSchemaFromString(input, options)),
+      SchemaCodec.encode(importSchemaFromString(input, options), options.fullUris),
       options.outputFormat,
     )
 
   /** Write the schema to `out`. Flushes, but closes neither stream. */
   final def writeTo(in: InputStream, out: OutputStream, options: O = defaultOptions): Unit =
-    JsonUtil.write(SchemaCodec.encode(importSchema(in, options)), options.outputFormat, out)
+    JsonUtil.write(
+      SchemaCodec.encode(importSchema(in, options), options.fullUris),
+      options.outputFormat,
+      out,
+    )
 
-  /** A schema this importer made, as a document, for callers that look at more than the schema. */
-  final def serializeSchema(schema: SchemaDefinition, format: JsonOutputFormat): String =
-    JsonUtil.write(SchemaCodec.encode(schema), format)
+  /** A schema this importer made, as a document, for callers that look at more than the schema.
+    * With `fullUris`, URIs are written in full instead of as CURIEs.
+    */
+  final def serializeSchema(
+      schema: SchemaDefinition,
+      format: JsonOutputFormat,
+      fullUris: Boolean = false,
+  ): String =
+    JsonUtil.write(SchemaCodec.encode(schema, fullUris), format)
 
-  /** Write a schema this importer made, for callers that look at more than the schema first. */
+  /** Write a schema this importer made, for callers that look at more than the schema first. With
+    * `fullUris`, URIs are written in full instead of as CURIEs.
+    */
   final def writeSchema(
       schema: SchemaDefinition,
       out: OutputStream,
       format: JsonOutputFormat,
+      fullUris: Boolean = false,
   ): Unit =
-    JsonUtil.write(SchemaCodec.encode(schema), format, out)
+    JsonUtil.write(SchemaCodec.encode(schema, fullUris), format, out)
 
   protected final def readUtf8(in: InputStream): String = {
     val buffer = ByteArrayOutputStream()
@@ -75,5 +91,8 @@ trait SchemaImporter[O <: SchemaImporter.Options] {
 object SchemaImporter {
   trait Options {
     def outputFormat: JsonOutputFormat
+
+    /** Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. */
+    def fullUris: Boolean
   }
 }

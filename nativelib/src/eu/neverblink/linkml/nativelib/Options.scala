@@ -211,6 +211,7 @@ private object Options {
       config = options.schemaId.fold(config)(id => config.copy(schemaId = Some(id))),
       outputFormat = options.outputFormat,
       inputFormat = options.inputFormat,
+      fullUris = options.fullUris,
     )
     val withImports = options.imports.fold(importerOptions)(m =>
       importerOptions.copy(schemas = MapImporter(m.toSeq*)),
@@ -242,6 +243,8 @@ private final case class LoadOptions(
   *   `docs/owl.md`).
   * @param schemaId
   *   The `id` of the schema, instead of the ontology IRI.
+  * @param fullUris
+  *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
   */
 private final case class FromOwlOptions(
     config: Option[String] = None,
@@ -250,4 +253,5 @@ private final case class FromOwlOptions(
     listNotImported: Boolean = false,
     imports: Option[Map[String, String]] = None,
     inputFormat: RdfFormat = RdfFormat.ttl,
+    fullUris: Boolean = false,
 )

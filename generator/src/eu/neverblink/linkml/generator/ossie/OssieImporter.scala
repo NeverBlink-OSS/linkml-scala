@@ -40,10 +40,13 @@ object OssieImporter {
     *   name.
     * @param outputFormat
     *   Output serialization format to use.
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
     */
   final case class Options(
       schemaId: Option[String] = None,
       outputFormat: JsonOutputFormat = yaml,
+      fullUris: Boolean = false,
   ) extends SchemaImporter.Options
 
   /** The LinkML type behind each of Ossie's built-in value types. */

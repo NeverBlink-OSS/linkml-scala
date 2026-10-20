@@ -71,6 +71,9 @@ If `other.yaml` above didn't declare `ex`, the class URI of `Imported` would be 
 `generate linkml` writes it as it is, as `ex:Imported`, but the output has the root's `ex` prefix, so reading the output gives `https://root.org/Imported`.
 To avoid this, declare every prefix that a schema uses.
 
+To write every URI in full, without compacting it, use the `--full-uris` flag of `generate linkml`, `from owl` and `from ossie`.
+In the APIs, it is the `fullUris` option in Scala and JavaScript, and `full_uris` in Python.
+
 Namespaces are used as they are written, as in LinkML-Python. Nothing is added to them, so `GO: http://purl.obolibrary.org/obo/GO_` expands `GO:0008150` to `http://purl.obolibrary.org/obo/GO_0008150`.
 A namespace without a separator at the end is a mistake: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
 

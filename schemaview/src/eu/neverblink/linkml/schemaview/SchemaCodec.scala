@@ -35,9 +35,15 @@ object SchemaCodec {
     )
   }
 
-  /** Encode a schema, compacting URIs with its prefixes. */
-  def encode(schema: SchemaDefinition): Node =
-    Codec.codec.encode(schema, prefixes = prefixMap(schema.prefixes.values, schema.defaultCuriMaps))
+  /** Encode a schema, compacting URIs with its prefixes.
+    *
+    * @param fullUris
+    *   Write URIs in full instead
+    */
+  def encode(schema: SchemaDefinition, fullUris: Boolean = false): Node = {
+    val prefixes = prefixMap(schema.prefixes.values, schema.defaultCuriMaps)
+    Codec.codec.encode(schema, prefixes = if (fullUris) prefixes.withoutCompaction else prefixes)
+  }
 
   /** Get the prefixes of a schema.
     *

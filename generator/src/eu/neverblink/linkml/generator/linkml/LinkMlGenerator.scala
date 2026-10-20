@@ -97,14 +97,18 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
   override def serialize(
       options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
   ): String =
-    JsonUtil.write(SchemaCodec.encode(generate(options)), options.outputFormat)
+    JsonUtil.write(SchemaCodec.encode(generate(options), options.fullUris), options.outputFormat)
 
   /** Generate a derived [[SchemaDefinition]] and write it to [[out]]. */
   override def writeTo(
       out: OutputStream,
       options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
   ): Unit =
-    JsonUtil.write(SchemaCodec.encode(generate(options)), options.outputFormat, out)
+    JsonUtil.write(
+      SchemaCodec.encode(generate(options), options.fullUris),
+      options.outputFormat,
+      out,
+    )
 }
 
 object LinkMlGenerator {
@@ -117,10 +121,13 @@ object LinkMlGenerator {
     *   If true, will not derive classes and instead copy them as-is.
     * @param outputFormat
     *   Output serialization format to use.
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
     */
   final case class Options(
       pruningMode: PruningMode = PruningMode.skip,
       skipClassDerivation: Boolean = false,
       outputFormat: JsonOutputFormat = yaml,
+      fullUris: Boolean = false,
   )
 }

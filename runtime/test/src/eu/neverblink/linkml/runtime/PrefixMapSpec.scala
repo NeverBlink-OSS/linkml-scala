@@ -80,6 +80,17 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "PrefixMap.withoutCompaction" should {
+    "expand CURIEs, but compact no URIs" in {
+      val pm = PrefixMap(defaults = Seq(ex)).withDocumentPrefixes(Seq("d" -> "http://d.org/"))
+        .withoutCompaction
+      pm.expandOrNull("ex:x") shouldBe "http://example.org/x"
+      pm.compactOrNull("http://example.org/x") shouldBe null
+      // Copies keep it
+      pm.withDocumentPrefixes(Nil).compactOrNull("http://example.org/x") shouldBe null
+    }
+  }
+
   "PrefixMap.empty" should {
     "expand and compact nothing" in {
       PrefixMap.empty.isEmpty shouldBe true

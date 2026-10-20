@@ -437,6 +437,27 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       yaml should include("class_uri: https://other.org/Imported\n")
     }
 
+    "write URIs in full with the fullUris option" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  ex: https://example.org/
+          |classes:
+          |  Local:
+          |    class_uri: ex:Local
+          |""".stripMargin,
+        ),
+      )
+      val generator = LinkMlGenerator(using sv)
+      generator.serialize(LinkMlGenerator.Options()) should include("class_uri: ex:Local\n")
+      val full = generator.serialize(LinkMlGenerator.Options(fullUris = true))
+      full should include("class_uri: https://example.org/Local\n")
+      // The prefixes themselves are kept
+      full should include("ex: https://example.org/\n")
+    }
+
     "serialize string values that look like numbers, booleans or nulls as strings" in {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""name: numeric_strings
           |id: https://example.org/numeric-strings

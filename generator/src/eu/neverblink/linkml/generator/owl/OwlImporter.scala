@@ -108,6 +108,8 @@ object OwlImporter {
     * @param inputFormat
     *   RDF syntax of the ontology. The Turtle parser also reads N-Triples; the N-Triples parser is
     *   only slightly faster.
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
     */
   final case class Options(
       config: OwlImportConfig = OwlImportConfig(),
@@ -115,6 +117,7 @@ object OwlImporter {
       schemas: Importer = FileSystemImporter,
       base: String = "",
       inputFormat: RdfFormat = RdfFormat.ttl,
+      fullUris: Boolean = false,
   ) extends SchemaImporter.Options
 
   /** `warnings` has one line per kind of thing that could not be imported. */
