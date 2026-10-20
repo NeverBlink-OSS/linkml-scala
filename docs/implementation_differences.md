@@ -70,6 +70,15 @@ Imports are easier to write in LinkML-Scala: file extensions are optional and in
 | One file imported as `dir/a`, `dir/./a`, `dir//a` or `dir/x/../a` | Loaded once per spelling | Loaded once |
 | One file reached through a symbolic or hard link | Loaded twice | Loaded once (JVM and Native) |
 | An import back to the root schema | Loads the root again, unless its `name` matches the file name | Loaded once, when the root is loaded from a path |
+| A CURIE import, such as `ex:core` | Expanded with the prefixes of all schemas loaded so far; when two schemas declare `ex` differently, the result depends on the load order | Expanded with the prefixes of the schema that contains the import |
+| Two files with the same `id` and different content | Both loaded | Import error that names both files |
+
+Both support import maps, which load an import from another location (see [Import maps](import_maps.md)). They differ in a few ways:
+
+| Case | LinkML-Python 1.12.1 | LinkML-Scala |
+|------|----------------------|--------------|
+| A key that is a CURIE, such as `units:core` | Matches the import `units:core`, but not the import `https://example.org/units/core` | Rejected. Write the full URI, which matches both imports |
+| A relative location | Joined to the directory of the importing schema | Used as it is: relative to the current directory, or a key of the in-memory map |
 
 ## Eager validation of references
 

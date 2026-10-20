@@ -547,7 +547,10 @@ object SchemaView {
       uri: String,
       importer: Importer = FileSystemImporter,
   ): Either[ImportFailure, Seq[SchemaDefinition]] =
-    loadSchemasInternal(uri, true, importer, mutable.Set.empty)
+    importer.mapImport(ImportMap.rootLookupKey(uri)) match {
+      case Right(location) => loadSchemasInternal(location, true, importer, new LoadState)
+      case err => err.asInstanceOf[Either[ImportFailure, Seq[SchemaDefinition]]]
+    }
 
   /** Build a view from already-loaded schemas, turning the constructor's fatal validation problems
     * into a Left rather than an exception.
@@ -574,11 +577,44 @@ object SchemaView {
       case err => err.asInstanceOf[Either[ImportFailure, SchemaDefinition]]
     }
 
+  /** What one load has seen so far. */
+  private final class LoadState {
+
+    /** Keys of the schemas loaded or being loaded, to load each schema once. */
+    val visited: mutable.Set[String] = mutable.Set.empty
+
+    /** The first location and content loaded for each schema `id`. */
+    private val loadedById = new java.util.HashMap[String, (String, SchemaDefinition)]
+
+    /** Return the schema, or a [[SchemaImportError]] that names both locations when a schema with
+      * the same `id` and other content was already loaded from another location. Without it, a
+      * stale local copy and a mapped copy of one schema would both be loaded. Identical copies are
+      * allowed, as some published schemas ship them.
+      */
+    def checkId(
+        schema: SchemaDefinition,
+        location: String,
+    ): Either[SchemaImportError, SchemaDefinition] = {
+      val id = schema.id.original
+      val other = loadedById.putIfAbsent(id, (location, schema))
+      if ((other eq null) || other._2.equals(schema)) new Right(schema)
+      else
+        new Left(
+          new SchemaImportError(
+            location = new IssueLocation(schemaId = new Some(schema.id)),
+            importUri = location,
+            reason = s"Schema id '$id' is declared both in '${other._1}' and in '$location', " +
+              "with different content",
+          ),
+        )
+    }
+  }
+
   private def loadSchemasInternal(
       uri: String,
       doImportLoading: Boolean,
       importer: Importer,
-      visited: mutable.Set[String],
+      state: LoadState,
   ): Either[ImportFailure, Seq[SchemaDefinition]] = {
     val normalizedUri = Importer.normalizePath(Importer.normalizeUri(uri))
     val isBuiltIn =
@@ -591,10 +627,10 @@ object SchemaView {
     // same schema. The importer's key also catches one file reached through different links.
     val key = if (isBuiltIn) normalizedUri else importer.schemaKey(normalizedUri)
     val otherKey = if (isBuiltIn) key else importer.schemaKey(otherUri)
-    if visited.contains(key) || visited.contains(otherKey) then new Right(Nil)
+    if state.visited.contains(key) || state.visited.contains(otherKey) then new Right(Nil)
     else
-      visited.add(key)
-      visited.add(otherKey)
+      state.visited.add(key)
+      state.visited.add(otherKey)
       // Built-in schemas come from bundled resources, everything else from the importer. Both
       // routes yield the same structured issues on failure.
       val loaded: Either[ImportFailure, SchemaDefinition] =
@@ -614,12 +650,11 @@ object SchemaView {
             case other => other
           }
         }
-      loaded.flatMap { schema =>
+      loaded.flatMap(schema => state.checkId(schema, normalizedUri)).flatMap { schema =>
         if (doImportLoading) {
-          var baseUri = ""
-          val idx = Importer.lastSeparator(normalizedUri)
-          if (idx > 0) baseUri = normalizedUri.substring(0, idx)
-          loadImportsInternal(schema, baseUri, importer, visited).map(schema +: _)
+          // Relative imports are joined to the directory the schema was actually loaded from.
+          val directory = ImportMap.directoryOf(normalizedUri)
+          loadImportsInternal(schema, directory, importer, state).map(schema +: _)
         } else new Right(Seq(schema))
       }
   }
@@ -630,7 +665,8 @@ object SchemaView {
     * @param schema
     *   The schema with some imports.
     * @param baseUri
-    *   This can be a URL starting with "https://", "http://", or a file path.
+    *   The directory to resolve relative imports against. This can be a URL starting with
+    *   "https://", "http://", or a file path.
     * @param importer
     *   An importer of schema imports. Default is [[FileSystemImporter]] that reads from the file
     *   system.
@@ -643,31 +679,34 @@ object SchemaView {
       baseUri: String = "",
       importer: Importer = FileSystemImporter,
   ): Either[ImportFailure, Seq[SchemaDefinition]] =
-    loadImportsInternal(schema, baseUri, importer, mutable.Set.empty)
+    loadImportsInternal(schema, ImportMap.directory(baseUri), importer, new LoadState)
 
+  /** Load the imports of `schema`, joining relative ones to `directory`, which is empty or ends
+    * with a separator.
+    */
   private def loadImportsInternal(
       schema: SchemaDefinition,
-      baseUri: String,
+      directory: String,
       importer: Importer,
-      visited: mutable.Set[String],
-  ): Either[ImportFailure, Seq[SchemaDefinition]] = {
-    val prefixResolver = createPrefixResolver(schema)
+      state: LoadState,
+  ): Either[ImportFailure, Seq[SchemaDefinition]] =
     // Short-circuits on the first import that cannot be loaded.
     schema.imports.foldLeft[Either[ImportFailure, Seq[SchemaDefinition]]](new Right(Nil)) {
       (acc, uoc) =>
         acc.flatMap { loadedSoFar =>
-          var sUri = uoc.uri(using prefixResolver).stripPrefix("./")
-          if (baseUri.nonEmpty && !sUri.contains("://") && !sUri.startsWith("urn:"))
-            sUri = baseUri + Importer.separatorFor(baseUri) + sUri
-          loadSchemasInternal(sUri, true, importer, visited).map(loadedSoFar ++ _)
+          ImportMap.lookupKeyIn(uoc.original, schema, directory)
+            .flatMap(importer.mapImport) match {
+            case Right(location) =>
+              loadSchemasInternal(location, true, importer, state).map(loadedSoFar ++ _)
+            case err => err.asInstanceOf[Either[ImportFailure, Seq[SchemaDefinition]]]
+          }
         }
     }
-  }
 
   /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
     * resolves "semweb_context" curi map and loads user defined prefixes.
     */
-  private def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
+  private[schemaview] def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
     val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
     prefixResolver.addAll {
       if (forSchema.defaultCuriMaps.contains("semweb_context")) {

@@ -2,7 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.cli.ValidationReport.Format
-import eu.neverblink.linkml.schemaview.{SchemaValidator, SchemaView}
+import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView}
 import eu.neverblink.linkml.validation.{
   IssueLocation,
   IssueSeverity,
@@ -23,6 +23,8 @@ final case class ValidateOptions(
     format: String = "terminal",
     @HelpMessage("Treat warnings as failures: exit with a non-zero code if any warnings are found.")
     strict: Boolean = false,
+    @HelpMessage(BaseCommand.importMapHelp)
+    importMap: Option[String] = None,
 )
 
 object Validate extends BaseCommand[ValidateOptions] {
@@ -38,8 +40,9 @@ object Validate extends BaseCommand[ValidateOptions] {
     val inputNames = remainingArgs.remaining
     if inputNames.isEmpty then err("At least one input file is required.")
 
+    val schemaImporter = importer(options.importMap)
     // Every file is checked even if an earlier one failed.
-    val reports = inputNames.map(name => name -> collectIssues(name))
+    val reports = inputNames.map(name => name -> collectIssues(name, schemaImporter))
     printLine(ValidationReport.renderAll(reports, format))
 
     // Errors and fatal problems always fail the command. Warnings only fail in --strict mode.
@@ -57,9 +60,9 @@ object Validate extends BaseCommand[ValidateOptions] {
     * schema with fatal problems), so loading returns them as a Left. Errors and warnings come from
     * the linter on the successfully-built view.
     */
-  private def collectIssues(inputName: String): Seq[SchemaIssue] =
+  private def collectIssues(inputName: String, importer: Importer): Seq[SchemaIssue] =
     try
-      SchemaView.loadSchemaViewFromUri(inputName) match {
+      SchemaView.loadSchemaViewFromUri(inputName, importer) match {
         case Right(sv) => SchemaValidator(using sv).lintProblems
         case Left(problems) => problems
       }

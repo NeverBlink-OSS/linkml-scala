@@ -11,6 +11,8 @@ final case class GenerateOptions(
       "Destination file or directory. If not specified, output will be written to stdout.",
     )
     to: Option[String] = None,
+    @HelpMessage(BaseCommand.importMapHelp)
+    importMap: Option[String] = None,
 )
 object GenerateOptions:
   given Parser[GenerateOptions] = Parser.derive
@@ -39,7 +41,7 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
           s"${inputs.mkString(", ")}.\n" +
           "Generate one schema at a time, or point at a schema that `imports` the others.",
       )
-    val sv = loadSchema(inputs.headOption)
+    val sv = loadSchema(inputs.headOption, options.common.importMap)
     val to = options.common.to
     this match {
       case g: ManyFilesGenerate[T @unchecked] =>
