@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohi.neverblink.eu/contracts/catalog-config",
+  "$ref": "#/$defs/CatalogConfig",
+  "$defs": {
+    "CatalogConfig": {
+      "title": "CatalogConfig",
+      "type": "object",
+      "properties": {
+        "search_url": {
+          "title": "search_url",
+          "description": "Complete HTTP search endpoint, including its collection path. Omit both search_url and query_by to use https://api.ohi.dev/search/collections/packages/documents/search. Supply both to select another catalog.",
+          "type": "string",
+          "format": "uri"
+        },
+        "query_by": {
+          "title": "query_by",
+          "description": "Comma-separated indexed fields used for text search. Omit both query_by and search_url to use title,name,description,namespace at ohi.dev. Supply both to select another catalog.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "timeout_ms": {
+          "title": "timeout_ms",
+          "description": "Positive native request timeout in milliseconds. Omitted means 30000.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "title": "Catalog connection settings",
+  "description": "Search endpoint and request timeout settings for a catalog client."
+}

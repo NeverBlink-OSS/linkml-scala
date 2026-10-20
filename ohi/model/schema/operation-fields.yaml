@@ -1,0 +1,21 @@
+id: https://ohi.neverblink.eu/contracts/operation-fields
+name: ohi_operation_fields
+description: Shared error context and local delivery path definitions.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- linkml:types
+slots:
+  message:
+    description: Human-readable explanation of the failure.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+  url:
+    description: Original target supplied by the caller, when available.
+    range: string
+  path:
+    description: Absolute normalized local target path.
+    range: string

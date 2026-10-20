@@ -4,6 +4,9 @@ on:
     tags:
       - 'v*' # Triggers on tags starting with 'v', like v1.0.0 or v2.1.3-rc1
 
+permissions:
+  contents: read
+
 jobs:
   jar-assemble:
     # Separate workflow to speed up library publishing
@@ -33,6 +36,8 @@ jobs:
         run: |
           ./mill cli.jvm.assembly
           mv out/cli/jvm/assembly.dest/*.jar linkml-scala.jar
+          ./mill cli.ohi.jvm.assembly
+          mv out/cli/ohi/jvm/assembly.dest/*.jar ohi.jar
 
       - name: Upload Uber-JAR
         uses: actions/upload-artifact@v7
@@ -40,80 +45,31 @@ jobs:
           name: linkml-scala-assembly
           path: linkml-scala.jar
 
-  aot-compile:
-    name: AOT compile on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        # Oldest available image per platform, so the binaries stay usable on older systems.
-        os: [macos-15, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v7
-
-      # Matters most here: nativeImage pulls a ~360 MB GraalVM tarball and unpacks it
-      # to ~1 GB, and both copies used to land in the cache. See checks.yml.
-      - name: Relocate the coursier archive cache
-        shell: bash
-        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
-
-      - name: Cache Dependencies
-        uses: coursier/cache-action@v8
-
-      - name: Setup JVM
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17 # The minimal JDK version for Scala Next
-
-      - name: Setup MSVC (Windows only)
-        if: runner.os == 'Windows'
-        uses: TheMrMilchmann/setup-msvc-dev@v4.1.0
-        with:
-          arch: x64
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
-
-      - name: Build Native Executable with Mill
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            ./mill.bat cli.jvm.nativeImage
-          else
-            ./mill cli.jvm.nativeImage
-          fi
-
-      - name: Smoke Tests for Executable
-        shell: bash
-        run: |
-          if [ "$RUNNER_OS" == "Windows" ]; then
-            BIN_PATH="./out/cli/jvm/nativeImage.dest/linkml-scala.exe"
-          else
-            BIN_PATH="./out/cli/jvm/nativeImage.dest/linkml-scala"
-          fi
-          OUTPUT=$($BIN_PATH validate tests/resources/models/basic/model.yaml)
-          echo "$OUTPUT"
-          if ! echo "$OUTPUT" | grep -Fq "Schema is valid."; then
-            echo "Error: Expected success message not found."
-            exit 1 # Forces the GitHub Action step to fail
-          fi
-
-          # Make sure the binary still runs on macOS 14 (see nativeImageOptions in cli/package.mill)
-          if [ "$RUNNER_OS" == "macOS" ]; then
-            otool -l "$BIN_PATH" | grep -A4 LC_BUILD_VERSION
-            otool -l "$BIN_PATH" | grep -A4 LC_BUILD_VERSION | grep -q "minos 14.0" \
-              || exit 1
-          fi
-
-      - name: Upload Binary
+      - name: Upload Ohi JAR
         uses: actions/upload-artifact@v7
         with:
-          name: linkml-scala-${{ matrix.os }}
-          path: out/cli/jvm/nativeImage.dest/*
+          name: ohi-assembly
+          path: ohi.jar
+          if-no-files-found: error
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+      - name: Build Ohi Python distributions
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          python -m pip install --quiet build twine
+          bash cli/package-ohi.sh python "$RUNNER_TEMP/ohi-python" "$version"
+          python -m twine check "$RUNNER_TEMP/ohi-python/"*
+      - name: Upload Ohi Python distributions
+        uses: actions/upload-artifact@v7
+        with:
+          name: ohi-python
+          path: ${{ runner.temp }}/ohi-python/*
+          if-no-files-found: error
+
+  aot-compile:
+    uses: ./.github/workflows/cli-native.yml
 
   wheels:
     # The library, the release archives, the wheels and the source distribution.
@@ -122,6 +78,7 @@ jobs:
     uses: ./.github/workflows/wheels.yml
 
   publish:
+    if: github.repository == 'NeverBlink-OSS/linkml-scala'
     name: Publish to Maven and GitHub
     runs-on: ubuntu-latest
     env:
@@ -144,30 +101,28 @@ jobs:
       - name: Download Binaries
         uses: actions/download-artifact@v8
         with:
-          pattern: linkml-scala-*
+          pattern: '{linkml-scala,ohi}-*'
           path: bin
-          
+
       - name: Rename Binaries
         run: |
-          mv bin/linkml-scala-assembly/linkml-scala.jar linkml-scala.jar
-          mv bin/linkml-scala-macos-15/linkml-scala linkml-scala-macos-arm64
-          mv bin/linkml-scala-macos-15-intel/linkml-scala linkml-scala-macos-x86_64
-          mv bin/linkml-scala-ubuntu-22.04/linkml-scala linkml-scala-linux-x86_64
-          mv bin/linkml-scala-ubuntu-22.04-arm/linkml-scala linkml-scala-linux-arm64
-          mv bin/linkml-scala-windows-latest/linkml-scala.exe linkml-scala-windows-x86_64.exe
-          chmod +x linkml-scala-macos-arm64
-          chmod +x linkml-scala-macos-x86_64
-          chmod +x linkml-scala-linux-x86_64
-          chmod +x linkml-scala-linux-arm64
+          for tool in linkml-scala ohi; do
+            mv "bin/$tool-assembly/$tool.jar" "$tool.jar"
+            mv "bin/$tool-macos-15/$tool" "$tool-macos-arm64"
+            mv "bin/$tool-macos-15-intel/$tool" "$tool-macos-x86_64"
+            mv "bin/$tool-ubuntu-22.04/$tool" "$tool-linux-x86_64"
+            mv "bin/$tool-ubuntu-22.04-arm/$tool" "$tool-linux-arm64"
+            mv "bin/$tool-windows-latest/$tool.exe" "$tool-windows-x86_64.exe"
+            chmod +x "$tool"-macos-* "$tool"-linux-*
+          done
 
       - name: Create Gzipped Versions
         run: |
-          gzip -9 -k linkml-scala-macos-arm64 &
-          gzip -9 -k linkml-scala-macos-x86_64 &
-          gzip -9 -k linkml-scala-linux-x86_64 &
-          gzip -9 -k linkml-scala-linux-arm64 &
-          gzip -9 -k linkml-scala-windows-x86_64.exe &
-          wait
+          for tool in linkml-scala ohi; do
+            for platform in macos-arm64 macos-x86_64 linux-x86_64 linux-arm64 windows-x86_64.exe; do
+              gzip -9 -k "$tool-$platform"
+            done
+          done
 
       - name: Download Shared Libraries
         uses: actions/download-artifact@v8
@@ -188,13 +143,15 @@ jobs:
 
       # See: docs/verifying_downloads.md
       - name: Generate Checksums
-        run: sha256sum linkml-scala* | tee SHA256SUMS
+        run: sha256sum linkml-scala* ohi-* ohi.jar | tee SHA256SUMS
 
       - name: Attest Build Provenance
         uses: actions/attest@v4
         with:
           subject-path: |
             linkml-scala*
+            ohi-*
+            ohi.jar
             SHA256SUMS
 
       - name: Upload Binaries
@@ -202,7 +159,8 @@ jobs:
         with:
           tag: "${{ github.ref_name }}"
           name: "${{ github.ref_name }}"
-          artifacts: "linkml-scala*,SHA256SUMS"
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          artifacts: "linkml-scala*,ohi-*,ohi.jar,SHA256SUMS"
           allowUpdates: true
           replacesArtifacts: true
           omitBodyDuringUpdate: true
@@ -237,13 +195,26 @@ jobs:
           name: linkml-sdist
           path: wheels
 
+      - name: Download Ohi distributions
+        uses: actions/download-artifact@v8
+        with:
+          name: ohi-python
+          path: ohi-dist
+
       - name: List Distributions
-        run: ls -l wheels
+        run: ls -l wheels ohi-dist
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: wheels
+          skip-existing: true
+
+      # Separate upload, so a rejected Ohi file cannot stop the LinkML files.
+      - name: Publish Ohi to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: ohi-dist
           skip-existing: true
 
   npm-publish:
@@ -293,6 +264,80 @@ jobs:
         working-directory: out/generator/js/npmPackage.dest
         run: |
           VERSION=$(node -p "require('./package.json').version")
-          if [[ "$VERSION" == *SNAPSHOT* ]]; then TAG=next; else TAG=latest; fi
+          if [[ "$VERSION" == *-* ]]; then TAG=next; else TAG=latest; fi
           echo "Publishing @neverblink/linkml@$VERSION under dist-tag $TAG"
           npm publish --tag "$TAG"
+
+  npm-publish-ohi:
+    name: Publish Ohi TypeScript SDK
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    defaults:
+      run:
+        working-directory: ohi/typescript
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+      - name: Ensure npm supports trusted publishing
+        run: npm install -g npm@latest
+      - name: Build and test package
+        run: |
+          npm ci
+          npm test
+      - name: Publish package
+        working-directory: .
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          bash cli/package-ohi.sh npm "$RUNNER_TEMP/ohi-npm" "$version"
+          if [[ "$version" == *-* ]]; then tag=next; else tag=latest; fi
+          npm publish "$RUNNER_TEMP"/ohi-npm/neverblink-ohi-*.tgz --tag "$tag"
+
+  verify-ohi-install:
+    name: Verify released Ohi on ${{ matrix.os }}
+    needs: publish
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-22.04-arm, macos-15, macos-15-intel, windows-latest]
+    env:
+      LINKML_SCALA_VERSION: ${{ github.ref_name }}
+      LINKML_SCALA_TOOL: ohi
+      LINKML_SCALA_REQUIRE_CHECKSUM: '1'
+      LINKML_SCALA_REQUIRE_ATTESTATION: '1'
+      GH_TOKEN: ${{ github.token }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+      - name: Select installation directory
+        run: echo "LINKML_SCALA_INSTALL_DIR=$RUNNER_TEMP/ohi-installed" >> "$GITHUB_ENV"
+      - name: Install exact release with checksum and provenance required
+        if: runner.os != 'Windows'
+        run: |
+          bash cli/install.sh
+          python cli/check-ohi.py "$LINKML_SCALA_INSTALL_DIR/ohi" "${LINKML_SCALA_VERSION#v}"
+      - name: Download and verify Windows executable
+        if: runner.os == 'Windows'
+        run: |
+          mkdir -p "$LINKML_SCALA_INSTALL_DIR"
+          cd "$LINKML_SCALA_INSTALL_DIR"
+          release="https://github.com/NeverBlink-OSS/linkml-scala/releases/download/$LINKML_SCALA_VERSION"
+          curl -fL "$release/ohi-windows-x86_64.exe" -o ohi.exe
+          curl -fL "$release/SHA256SUMS" -o SHA256SUMS
+          expected=$(awk '$2 == "ohi-windows-x86_64.exe" { print $1 }' SHA256SUMS)
+          actual=$(sha256sum ohi.exe | cut -d ' ' -f 1)
+          test "$actual" = "$expected"
+          gh attestation verify ohi.exe --repo NeverBlink-OSS/linkml-scala
+      - name: Check installed Windows executable
+        if: runner.os == 'Windows'
+        run: python cli/check-ohi.py "$LINKML_SCALA_INSTALL_DIR/ohi.exe" "${LINKML_SCALA_VERSION#v}"

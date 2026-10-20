@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "linkml-scala",
-  "description": "LinkML agent skills by NeverBlink, powered by linkml-scala.",
+  "description": "Ohi and LinkML agent skills by NeverBlink.",
   "owner": {
     "name": "NeverBlink",
     "email": "contact@neverblink.eu"
@@ -29,6 +29,12 @@
         "validation",
         "code-generation"
       ],
+      "source": "./.agents/skills",
+      "category": "data"
+    },
+    {
+      "name": "ohi",
+      "description": "Ohi + LinkML: ontology discovery, file acquisition, project selections and schema authoring.",
       "source": "./.agents",
       "category": "data"
     }

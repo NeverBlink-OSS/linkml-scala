@@ -67,14 +67,21 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
   /** Like [[runTestCommand]] but also returns the exit code (0 if the command didn't call `exit`).
     * For tests only.
     */
-  final def runTestCommandWithExitCode(args: List[String]): (String, String, Int) = {
+  final def runTestCommandWithExitCode(args: List[String]): (String, String, Int) =
+    runTestCommandWithExitCode(args, args => App(testMode, outStream, errStream).main(args))
+
+  /** Runs a supplied entry point with this command's captured streams and test exits. */
+  final def runTestCommandWithExitCode(
+      args: List[String],
+      runMain: Array[String] => Unit,
+  ): (String, String, Int) = {
     val bufOut = ByteArrayOutputStream()
     val bufErr = ByteArrayOutputStream()
     testMode = true
     outStream = PrintStream(bufOut, true, "UTF-8")
     errStream = PrintStream(bufErr, true, "UTF-8")
     var exitCode = 0
-    try App(testMode, outStream, errStream).main(args.toArray)
+    try runMain(args.toArray)
     catch { case ExitException(code) => exitCode = code }
     finally {
       outStream.flush()

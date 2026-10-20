@@ -8,6 +8,7 @@ on:
     branches: [ "main" ]
     paths:
       - 'cli/install.sh'
+      - 'cli/test-install.sh'
       - '.github/workflows/install.yml'
   schedule:
     - cron: '0 5 * * 1'
@@ -35,6 +36,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v7
+
+      - name: Check installer against controlled releases
+        run: bash cli/test-install.sh
 
       # The invocation documented in README. Sourcing also puts the install dir on PATH
       # for the rest of this step, which executing the script cannot do.

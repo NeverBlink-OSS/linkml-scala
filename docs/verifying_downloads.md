@@ -1,25 +1,26 @@
 # Verifying downloads
 
-Every LinkML-Scala artifact is published with a cryptographic signature, so you can be sure you downloaded a genuine build:
+LinkML and Ohi release downloads include checksums and build provenance:
 
 | Release channel                                                                                                  | Signature type                                                | How to check it           |
 |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|---------------------------|
-| [GitHub Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases) (native binaries, `linkml-scala.jar`) | `SHA256SUMS` manifest + Sigstore build provenance attestation | [below](#github-releases) |
-| [npm](https://www.npmjs.com/package/@neverblink/linkml) (`@neverblink/linkml`)                                   | Registry signature + SLSA provenance (npm trusted publishing) | [below](#npm)             |
+| [GitHub Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases) (native binaries, shared libraries, `linkml-scala.jar`, `ohi.jar`) | `SHA256SUMS` manifest + Sigstore build provenance attestation | [below](#github-releases) |
+| npm (`@neverblink/linkml`, `@neverblink/ohi`)                                   | Registry signature + SLSA provenance (npm trusted publishing) | [below](#npm)             |
 | [Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)                                     | PGP signature on every artifact                               | [below](#maven-central)   |
 
 ## GitHub Releases
 
 ### Checksums
 
-Each release publishes a `SHA256SUMS` file covering every asset – the five native binaries, their `.gz` counterparts, and `linkml-scala.jar`. Download it next to whatever you grabbed and compare:
+Each release publishes a `SHA256SUMS` file covering its native binaries, compressed binaries, shared-library archives and CLI JARs. Download the manifest from the same release as the artifact and compare:
 
 ```shell
-curl -fsSLO https://github.com/NeverBlink-OSS/linkml-scala/releases/latest/download/SHA256SUMS
+VERSION=vX.Y.Z # Replace with the downloaded artifact's release tag.
+curl -fsSLO "https://github.com/NeverBlink-OSS/linkml-scala/releases/download/$VERSION/SHA256SUMS"
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-`--ignore-missing` is what lets you verify a single asset without downloading all eleven. On macOS, use `shasum -a 256 --ignore-missing -c SHA256SUMS` instead.
+`--ignore-missing` lets you verify the files you downloaded without fetching the other assets. On macOS, use `shasum -a 256 --ignore-missing -c SHA256SUMS` instead.
 
 Expect one `OK` line per file you actually have:
 
@@ -29,9 +30,8 @@ linkml-scala-linux-x86_64.gz: OK
 
 ### Build provenance
 
-Checksums only prove that your copy matches the manifest. The provenance attestation also proves that these exact bytes were produced by our release workflow, from a specific commit in this repository. Nobody can forge one without control of the repository's Actions runs.
-
-Verify it with the [GitHub CLI](https://cli.github.com/):
+Use the [GitHub CLI](https://cli.github.com/) to verify which repository commit and release
+workflow produced the download:
 
 ```shell
 gh attestation verify linkml-scala-linux-x86_64 --repo NeverBlink-OSS/linkml-scala
@@ -43,18 +43,20 @@ gh attestation verify linkml-scala-linux-x86_64 --repo NeverBlink-OSS/linkml-sca
 gh attestation verify SHA256SUMS --repo NeverBlink-OSS/linkml-scala
 ```
 
-Note that `install.sh` performs both of these checks for you – the checksum always, and the attestation when `gh` happens to be installed.
+Use the downloaded Ohi filename in the same commands to verify an Ohi asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/linkml-scala`.
+
+`install.sh` checks the checksum when a manifest exists and verifies provenance when `gh` is installed. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` and `LINKML_SCALA_REQUIRE_ATTESTATION=1` to require both checks and reject an installation when either cannot be completed.
 
 ## npm
 
-`@neverblink/linkml` is published with [npm trusted publishing](https://docs.npmjs.com/trusted-publishers), which means the registry holds both a signature and a SLSA provenance attestation tying the tarball to the release workflow. Once it is in your dependency tree, check the whole tree at once:
+The release workflow uses [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) for `@neverblink/linkml` and `@neverblink/ohi`, tying their provenance to the public source and workflow. Once a package is in your dependency tree, check the tree:
 
 ```shell
 npm audit signatures
 ```
 
 You can also see the provenance, including the source commit and the workflow that published it, on
-the [package page](https://www.npmjs.com/package/@neverblink/linkml).
+the [LinkML package page](https://www.npmjs.com/package/@neverblink/linkml) or [Ohi package page](https://www.npmjs.com/package/@neverblink/ohi).
 
 ## Maven Central
 

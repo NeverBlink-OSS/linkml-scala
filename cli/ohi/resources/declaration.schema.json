@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohi.neverblink.eu/contracts/declaration",
+  "$ref": "#/$defs/Declaration",
+  "$defs": {
+    "Declaration": {
+      "title": "Declaration",
+      "description": "Contents of ohi.yaml. Each selection names a publication and the one artifact of it the project uses. ohi.lock.json lists the resolved files, including dependencies.",
+      "type": "object",
+      "required": [
+        "format_version",
+        "selections"
+      ],
+      "properties": {
+        "format_version": {
+          "title": "format_version",
+          "description": "Version of the declaration format.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "selections": {
+          "title": "selections",
+          "description": "Direct publication and artifact selections in supplied order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactSelection"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtifactSelection": {
+      "title": "ArtifactSelection",
+      "description": "Exact publication identity and artifact download URL, compared without normalization.",
+      "type": "object",
+      "required": [
+        "base_url",
+        "url"
+      ],
+      "properties": {
+        "base_url": {
+          "title": "base_url",
+          "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
+          "type": "string",
+          "format": "uri"
+        },
+        "url": {
+          "title": "url",
+          "description": "Permanent absolute download URL of an immutable ontology file.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "title": "Editable project declaration",
+  "description": "Ontology publications a project depends on, with the chosen artifact of each."
+}

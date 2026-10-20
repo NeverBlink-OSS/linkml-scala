@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "base_url": "https://example.org/packages/sensors/1.0.0/",
+  "version": "1.0.0",
+  "namespace": "example",
+  "name": "sensors",
+  "description": "Sensors and their observations.",
+  "keywords": [
+    "sensors",
+    "observations"
+  ],
+  "artifacts": [
+    {
+      "format": "owl-turtle",
+      "url": "https://example.org/packages/sensors/1.0.0/sensors.ttl",
+      "origin": "UPSTREAM",
+      "roots": [
+        "https://example.org/packages/sensors/1.0.0/sensors.ttl"
+      ],
+      "size_bytes": 42,
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    },
+    {
+      "format": "linkml-yaml",
+      "url": "https://example.org/packages/sensors/1.0.0/sensors.yaml",
+      "origin": "GENERATED",
+      "roots": [
+        "https://example.org/packages/sensors/1.0.0/sensors.yaml"
+      ],
+      "size_bytes": 42,
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "dependencies": [
+    {
+      "base_url": "https://example.org/packages/units/2.0.0/"
+    }
+  ],
+  "title": "Sensors",
+  "published_at": "2026-10-13T12:30:00Z",
+  "publisher": "Example Project",
+  "licenses": [
+    "Apache-2.0"
+  ],
+  "namespace_iri": "https://example.org/sensors#",
+  "preferred_prefix": "sensors"
+}
