@@ -1,0 +1,28 @@
+{
+  "schema_version": 2,
+  "base_url": "https://example.org/packages/units/2.0.0/",
+  "version": "2.0.0",
+  "namespace": "example",
+  "name": "units",
+  "description": "Units used to express measured quantities.",
+  "keywords": [],
+  "artifacts": [
+    {
+      "format": "owl-turtle",
+      "url": "https://example.org/packages/units/2.0.0/units.ttl",
+      "origin": "UPSTREAM",
+      "roots": [
+        "https://example.org/packages/units/2.0.0/units.ttl"
+      ],
+      "size_bytes": 42,
+      "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    }
+  ],
+  "dependencies": [],
+  "title": "Units",
+  "published_at": "2026-10-13T12:30:00Z",
+  "publisher": "Example Project",
+  "licenses": [
+    "Apache-2.0"
+  ]
+}

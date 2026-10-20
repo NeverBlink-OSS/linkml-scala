@@ -1,0 +1,24 @@
+id: https://ohi.neverblink.eu/contracts/project-result
+name: ohi_project_result
+title: Project operation result
+description: Result of a successful project command.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- project-fields
+- cli-delivery
+classes:
+  ProjectResult:
+    tree_root: true
+    slots:
+    - operation
+    - project_directory
+    - declaration_changed
+    - lock_changed
+    attributes:
+      delivery:
+        description: Artifact file saved by ADD.
+        range: DeliveryResult
+        inlined: true

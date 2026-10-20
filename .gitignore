@@ -38,6 +38,7 @@ target/
 # Node.js
 node_modules/
 ui/dist/
+/ohi/typescript/dist/
 
 # apache/ossie checkout for OssieIntegrationSpec, cloned by `./mill generator.jvm.test.ossieRepo`
 /generator/test/ossie-repo/

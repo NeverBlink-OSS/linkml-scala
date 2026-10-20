@@ -1,21 +1,20 @@
 {
-  "name": "linkml",
-  "description": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, importing OWL, RDFS and Apache Ossie ontologies, bootstrapping from SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
+  "name": "ohi",
+  "description": "Use Ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
   "author": {
     "name": "NeverBlink",
     "url": "https://neverblink.eu"
   },
-  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/.agents/skills/linkml",
+  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/ohi",
   "repository": "https://github.com/NeverBlink-OSS/linkml-scala",
   "license": "Apache-2.0",
   "keywords": [
+    "ohi",
+    "ontology",
     "linkml",
     "schema",
-    "json-schema",
-    "shacl",
-    "rdf",
-    "data-modelling",
     "validation",
     "code-generation"
-  ]
+  ],
+  "skills": "./skills"
 }

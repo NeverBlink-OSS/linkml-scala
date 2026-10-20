@@ -1,0 +1,109 @@
+id: https://ohi.neverblink.eu/contracts/search
+name: ohi_search
+title: Publication search result
+description: One page of ungrouped publication search results, with the matching count and effective pagination
+  settings and optional facet counts.
+status: draft
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- publication-fields
+classes:
+  SearchResult:
+    description: One ordered page of publication summaries, with count, effective paging information
+      and optional facet counts.
+    tree_root: true
+    extra_slots:
+      allowed: true
+    attributes:
+      hits:
+        description: Publication summaries in search-result order.
+        range: SearchHit
+        required: true
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+        list_elements_ordered: true
+      total:
+        description: Matching indexed publications after query and filters, before pagination. May be
+          incomplete when search_cutoff is true. An exact total can exceed the retrieval window.
+        range: integer
+        required: true
+        minimum_value: 0
+      page:
+        description: Effective one-based page for this response.
+        range: integer
+        required: true
+        minimum_value: 1
+      per_page:
+        description: Effective requested page size, not the number of returned hits.
+        range: integer
+        required: true
+        minimum_value: 1
+        maximum_value: 250
+      search_cutoff:
+        description: Whether search stopped early. When true, hits or total may be incomplete.
+        range: boolean
+        required: true
+      facet_counts:
+        description: Facet values and counts for the query and filters, independently of hit pagination.
+          The number of returned facet values may be limited.
+        range: FacetCount
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+        list_elements_ordered: true
+  SearchHit:
+    description: Summary of one immutable publication.
+    extra_slots:
+      allowed: true
+    slots:
+    - base_url
+    - namespace
+    - name
+    - version
+    - title
+    - description
+    - licenses
+    - published_at
+    attributes:
+      formats:
+        description: Formats of the publication's available artifacts. Each value identifies both the
+          ontology language and serialization syntax, as in artifact.format.
+        range: Format
+        required: true
+        multivalued: true
+        minimum_cardinality: 1
+  FacetCount:
+    description: Counts for the returned values of one indexed field.
+    extra_slots:
+      allowed: true
+    attributes:
+      field_name:
+        description: Indexed field used for this facet.
+        range: string
+        required: true
+      counts:
+        description: Value counts in search-result order.
+        range: FacetValueCount
+        required: true
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+        list_elements_ordered: true
+  FacetValueCount:
+    description: A facet value and its matching-publication count.
+    extra_slots:
+      allowed: true
+    attributes:
+      value:
+        description: Facet value or range label.
+        range: string
+        required: true
+      count:
+        description: Number of matching publications for this facet value or range.
+        range: integer
+        required: true
+        minimum_value: 0

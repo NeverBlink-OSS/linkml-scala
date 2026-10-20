@@ -19,7 +19,7 @@ Common tasks with mill:
 - Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project: `./mill lint` (scalafix + scalafmt)
-- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests): `./mill regenerate`
+- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, Ohi client models): `./mill regenerate`
 - Fetch the metamodel definitions from [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`

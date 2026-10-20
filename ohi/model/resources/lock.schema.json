@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohi.neverblink.eu/contracts/lock",
+  "$ref": "#/$defs/Lock",
+  "$defs": {
+    "Lock": {
+      "title": "Lock",
+      "description": "Exact direct selections and the complete file set supplied by the application.",
+      "type": "object",
+      "required": [
+        "format_version",
+        "files",
+        "selections"
+      ],
+      "properties": {
+        "format_version": {
+          "title": "format_version",
+          "description": "Lock record revision, independent of ontology and publication schema versions.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1
+        },
+        "files": {
+          "title": "files",
+          "description": "Complete supplied artifact download records in supplied order. Each selection must match one file by exact base_url and url. Each pair occurs once.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/LockedFile"
+          }
+        },
+        "selections": {
+          "title": "selections",
+          "description": "Direct publication and artifact selections in supplied order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ArtifactSelection"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "LockedFile": {
+      "title": "LockedFile",
+      "description": "One artifact download identity and format. Excludes entry roots and integrity metadata.",
+      "type": "object",
+      "required": [
+        "format",
+        "base_url",
+        "url"
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/Format",
+          "title": "format",
+          "description": "Ontology language and syntax of the artifact."
+        },
+        "base_url": {
+          "title": "base_url",
+          "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
+          "type": "string",
+          "format": "uri"
+        },
+        "url": {
+          "title": "url",
+          "description": "Permanent absolute download URL of an immutable ontology file.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArtifactSelection": {
+      "title": "ArtifactSelection",
+      "description": "Exact publication identity and artifact download URL, compared without normalization.",
+      "type": "object",
+      "required": [
+        "base_url",
+        "url"
+      ],
+      "properties": {
+        "base_url": {
+          "title": "base_url",
+          "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
+          "type": "string",
+          "format": "uri"
+        },
+        "url": {
+          "title": "url",
+          "description": "Permanent absolute download URL of an immutable ontology file.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "Format": {
+      "title": "Format",
+      "description": "A combination of ontology language and syntax.",
+      "type": "string",
+      "enum": [
+        "owl-turtle",
+        "owl-rdfxml",
+        "rdfs-turtle",
+        "linkml-yaml",
+        "ossie-yaml"
+      ]
+    }
+  },
+  "title": "Supplied complete file lock",
+  "description": "Exact direct selections and the complete file set supplied by the application."
+}

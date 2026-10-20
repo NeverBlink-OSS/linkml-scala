@@ -1,0 +1,10 @@
+export { CatalogClient, CatalogException } from "./catalog.js";
+export { decodePublication } from "./publication.js";
+export { decodeLock, encodeLock, LockException } from "./lock.js";
+export type { Lock, ArtifactSelection, LockedFile } from "./generated_lock.js";
+export type * from "./generated_lock_error.js";
+export type * from "./generated.js";
+export type * from "./generated_config.js";
+export type * from "./generated_error.js";
+export type { FacetCount, FacetValueCount, SearchHit, SearchResult } from "./generated_search.js";
+export type * from "./generated_search_request.js";

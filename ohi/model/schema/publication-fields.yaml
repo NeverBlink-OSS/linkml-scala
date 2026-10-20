@@ -1,0 +1,78 @@
+id: https://ohi.neverblink.eu/contracts/publication-fields
+name: ohi_publication_fields
+title: Publication fields and formats
+description: Ontology publication fields and artifact formats.
+status: draft
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- linkml:types
+slots:
+  base_url:
+    description: Permanent absolute URL identifying one exact immutable publication. GET this exact URL
+      returns its publication JSON. Do not append a filename.
+    range: uri
+    required: true
+  url:
+    description: Permanent absolute download URL of an immutable ontology file.
+    range: uri
+    required: true
+  format:
+    description: Ontology language and syntax of the artifact.
+    range: Format
+    required: true
+  namespace:
+    description: Namespace qualifying the ontology name, such as w3c in w3c/prov-o.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+  name:
+    description: Short catalog identifier, qualified by namespace. The namespace/name pair identifies
+      the same ontology across releases. URLs must not be derived from this identifier.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+  version:
+    description: Complete publication version label, including amendments.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+  title:
+    description: Display title of the ontology.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+  description:
+    description: Short description of the ontology's domain and intended use.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+  licenses:
+    description: Reported license names or standard identifiers such as Apache-2.0. Empty means no
+      information supplied. The list specifies neither AND nor OR combination semantics.
+    range: string
+    required: true
+    pattern: ^[\s\S]*\S
+    multivalued: true
+  published_at:
+    description: First successful Hub publication time for this immutable release. Backend emits UTC
+      date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime
+      of this publication. Not an upstream release date.
+    range: datetime
+    required: true
+enums:
+  Format:
+    description: A combination of ontology language and syntax.
+    permissible_values:
+      owl-turtle:
+        description: OWL in Turtle syntax.
+      owl-rdfxml:
+        description: OWL in RDF/XML syntax.
+      rdfs-turtle:
+        description: RDFS in Turtle syntax.
+      linkml-yaml:
+        description: LinkML in YAML syntax.
+      ossie-yaml:
+        description: Apache Ossie in YAML syntax.

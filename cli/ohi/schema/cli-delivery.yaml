@@ -1,0 +1,24 @@
+id: https://ohi.neverblink.eu/contracts/cli-delivery
+name: ohi_cli_delivery
+title: CLI file delivery result
+description: One completed explicit file delivery to a local directory.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+  - ../../../ohi/model/schema/operation-fields
+classes:
+  DeliveryResult:
+    tree_root: true
+    slots:
+    - path
+    slot_usage:
+      path:
+        required: true
+        pattern: ^[\s\S]*\S
+    attributes:
+      url:
+        description: Exact URL supplied for retrieval. No publication or immutability claim is implied.
+        range: uri
+        required: true

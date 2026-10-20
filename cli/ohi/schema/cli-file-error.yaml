@@ -1,0 +1,42 @@
+id: https://ohi.neverblink.eu/contracts/cli-file-error
+name: ohi_cli_file_error
+title: CLI file delivery failure
+description: Local destination or file-write failure, separate from an SDK transport failure.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+  - ../../../ohi/model/schema/operation-fields
+classes:
+  CliFileError:
+    tree_root: true
+    slots:
+    - message
+    - url
+    - path
+    slot_usage:
+      url:
+        required: true
+    attributes:
+      code:
+        range: CliFileErrorCode
+        required: true
+      directory:
+        description: Destination directory argument exactly as supplied.
+        range: string
+        required: true
+      partial_path:
+        description: Newly created target retained because cleanup after a failed write also failed.
+        range: string
+enums:
+  CliFileErrorCode:
+    permissible_values:
+      UNSUPPORTED_FILENAME:
+        description: The URL cannot supply one usable local filename for directory delivery.
+      INVALID_DESTINATION:
+        description: The destination cannot be interpreted or created as a directory.
+      DESTINATION_EXISTS:
+        description: A file, directory or symbolic link already occupies the target path.
+      FILE_WRITE_FAILED:
+        description: Creation, writing or closing of the new target failed.

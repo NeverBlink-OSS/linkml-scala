@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Installs the linkml-scala CLI from GitHub Releases.
+# Installs the linkml-scala CLI, or the ohi CLI, from GitHub Releases.
 #
 # Source it, so that the install directory lands on the PATH of the current shell:
 #
@@ -11,7 +11,12 @@
 #   curl -fsSLO https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/main/cli/install.sh
 #   bash install.sh
 #
+# Select ohi through the environment in either form:
+#
+#   LINKML_SCALA_TOOL=ohi . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/main/cli/install.sh)
+#
 # Environment variables:
+#   LINKML_SCALA_TOOL              CLI to install: linkml-scala (default) or ohi.
 #   LINKML_SCALA_VERSION           Release tag to install, e.g. v0.12.0 (default: latest).
 #   LINKML_SCALA_INSTALL_DIR       Where to put the binary (default: $HOME/.local/bin).
 #   LINKML_SCALA_REQUIRE_CHECKSUM  Set to 1 to abort if the release publishes no SHA256SUMS.
@@ -39,8 +44,17 @@ _linkml_scala_install() {
   local repo_base="NeverBlink-OSS/linkml-scala"
   local install_dir="${LINKML_SCALA_INSTALL_DIR:-$HOME/.local/bin}"
   local tag="${LINKML_SCALA_VERSION:-}"
+  local name="${LINKML_SCALA_TOOL:-linkml-scala}"
   local tool os arch arch_suffix binary_name asset release_url tmp_dir
   local latest_url expected actual attestation profile path_line answer
+
+  case "$name" in
+    linkml-scala | ohi) ;;
+    *)
+      echo "Error: LINKML_SCALA_TOOL must be linkml-scala or ohi, not '$name'." >&2
+      return 1
+      ;;
+  esac
 
   for tool in curl gzip mktemp; do
     if ! command -v "$tool" >/dev/null 2>&1; then
@@ -80,11 +94,11 @@ _linkml_scala_install() {
   arch=$(uname -m)
 
   case "$os" in
-    linux) binary_name="linkml-scala-linux" ;;
-    darwin) binary_name="linkml-scala-macos" ;;
+    linux) binary_name="$name-linux" ;;
+    darwin) binary_name="$name-macos" ;;
     *)
       echo "Error: unsupported operating system '$os'." >&2
-      echo "On Windows, install with mise instead:  mise use 'ubi:$repo_base'" >&2
+      echo "On Windows, download $name-windows-x86_64.exe from https://github.com/$repo_base/releases instead." >&2
       return 1
       ;;
   esac
@@ -106,7 +120,7 @@ _linkml_scala_install() {
     return 1
   }
 
-  echo "Installing linkml-scala $tag ($asset)"
+  echo "Installing $name $tag ($asset)"
 
   if ! curl -fL --progress-bar "$release_url/$asset.gz" -o "$tmp_dir/$asset.gz"; then
     echo "Error: failed to download $release_url/$asset.gz" >&2
@@ -196,18 +210,18 @@ _linkml_scala_install() {
   fi
 
   chmod +x "$tmp_dir/$asset"
-  if ! mv -f "$tmp_dir/$asset" "$install_dir/linkml-scala"; then
+  if ! mv -f "$tmp_dir/$asset" "$install_dir/$name"; then
     echo "Error: could not install into $install_dir." >&2
     rm -rf "$tmp_dir"
     return 1
   fi
   rm -rf "$tmp_dir"
 
-  echo "Installed linkml-scala $tag to $install_dir/linkml-scala"
+  echo "Installed $name $tag to $install_dir/$name"
 
   case ":$PATH:" in
     *":$install_dir:"*)
-      echo "Run 'linkml-scala --help' to get started."
+      echo "Run '$name --help' to get started."
       return 0
       ;;
   esac
@@ -254,7 +268,7 @@ _linkml_scala_install() {
       echo "  $path_line"
       echo
       echo "Or call the binary by its full path:"
-      echo "  $install_dir/linkml-scala --help"
+      echo "  $install_dir/$name --help"
       ;;
   esac
 }

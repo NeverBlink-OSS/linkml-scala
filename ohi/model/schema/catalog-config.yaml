@@ -1,0 +1,26 @@
+id: https://ohi.neverblink.eu/contracts/catalog-config
+name: ohi_catalog_config
+title: Catalog connection settings
+description: Search endpoint and request timeout settings for a catalog client.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- linkml:types
+classes:
+  CatalogConfig:
+    tree_root: true
+    attributes:
+      search_url:
+        description: Complete HTTP search endpoint, including its collection path. Omit both search_url and query_by to use https://api.ohi.dev/search/collections/packages/documents/search. Supply both to select another catalog.
+        range: uri
+      query_by:
+        description: Comma-separated indexed fields used for text search. Omit both query_by and search_url to use title,name,description,namespace at ohi.dev. Supply both to select another catalog.
+        range: string
+        pattern: ^[\s\S]*\S
+      timeout_ms:
+        description: Positive native request timeout in milliseconds. Omitted means 30000.
+        range: integer
+        minimum_value: 1
+        maximum_value: 2147483647

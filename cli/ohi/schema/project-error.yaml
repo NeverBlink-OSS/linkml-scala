@@ -1,0 +1,51 @@
+id: https://ohi.neverblink.eu/contracts/project-error
+name: ohi_project_error
+title: Project operation error
+description: Error from a failed project command.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- project-fields
+- ../../../ohi/model/schema/catalog-error
+- ../../../ohi/model/schema/lock-error
+- cli-file-error
+classes:
+  ProjectError:
+    tree_root: true
+    slots:
+    - message
+    - operation
+    - project_directory
+    - declaration_changed
+    - lock_changed
+    attributes:
+      code:
+        range: ProjectErrorCode
+        required: true
+      catalog_error:
+        description: Catalog error that caused OPERATION_FAILED.
+        range: CatalogError
+        inlined: true
+      lock_error:
+        description: Lock file error that caused OPERATION_FAILED.
+        range: LockError
+        inlined: true
+      file_error:
+        description: Download error that caused OPERATION_FAILED.
+        range: CliFileError
+        inlined: true
+enums:
+  ProjectErrorCode:
+    permissible_values:
+      INVALID_DECLARATION:
+        description: ohi.yaml is missing or invalid, or the added selection is invalid.
+      INVALID_PROJECT:
+        description: The project directory or its files are invalid.
+      INVALID_SELECTION:
+        description: A selected publication, its chosen artifact or one of the publication's dependencies cannot be resolved.
+      STORAGE_ERROR:
+        description: A file system operation on the project failed.
+      OPERATION_FAILED:
+        description: A catalog, lock file or download operation failed. The matching nested error holds the cause.

@@ -1,11 +1,22 @@
 {
   "name": "linkml-scala",
   "interface": {
-    "displayName": "LinkML (linkml-scala)"
+    "displayName": "Ohi and LinkML"
   },
   "plugins": [
     {
       "name": "linkml",
+      "source": {
+        "source": "local",
+        "path": "./.agents/skills"
+      },
+      "policy": {
+        "installation": "AVAILABLE"
+      },
+      "category": "Development"
+    },
+    {
+      "name": "ohi",
       "source": {
         "source": "local",
         "path": "./.agents"

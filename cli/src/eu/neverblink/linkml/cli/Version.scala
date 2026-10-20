@@ -15,7 +15,16 @@ final case class VersionOptions(
     format: String = "terminal",
 )
 
-object Version extends BaseCommand[VersionOptions] {
+object Version extends VersionCommand("linkml-scala")
+
+class VersionCommand(displayName: String)
+    extends BaseCommand[VersionOptions](using
+      Parser[VersionOptions],
+      Help[VersionOptions].copy(
+        helpMessage =
+          Some(HelpMessage(s"Print the version of $displayName and its key components.")),
+      ),
+    ) {
   override def names: List[List[String]] = List(
     List("version"),
     List("v"),
@@ -33,7 +42,7 @@ object Version extends BaseCommand[VersionOptions] {
     val info = CurrentBuild.info
     printLine(
       s"""
-         |linkml-scala   ${info.linkmlScalaVersion}
+         |$displayName   ${info.linkmlScalaVersion}
          |-------------------------------------------------------------
          |Metamodel      ${info.metamodelVersion}
          |Scala          ${info.scalaVersion}
