@@ -1,0 +1,29 @@
+id: https://neverblink.eu/linkml/tests/recursiveTree/
+name: recursiveTree
+description: >-
+  A class inlines itself as a dictionary keyed by its identifier, so a tree can be any depth. A
+  non-inlined reference to the same class points back to the parent node.
+
+imports:
+  - linkml:types
+
+classes:
+  Node:
+    tree_root: true
+    attributes:
+      id:
+        rank: 1
+        identifier: true
+        range: string
+      label:
+        rank: 2
+        range: string
+        required: true
+      parent:
+        rank: 3
+        range: Node
+      children:
+        rank: 4
+        range: Node
+        multivalued: true
+        inlined: true

@@ -1,0 +1,23 @@
+id: https://neverblink.eu/linkml/tests/importedOverride/imported/
+name: imported
+prefixes:
+  imported: https://neverblink.eu/linkml/tests/importedOverride/imported/
+default_prefix: imported
+
+imports:
+  - linkml:types
+
+classes:
+  Base:
+    slots:
+      - label
+      - code
+
+slots:
+  label:
+    rank: 1
+    range: string
+    slot_uri: imported:oldLabel
+  code:
+    rank: 2
+    range: string

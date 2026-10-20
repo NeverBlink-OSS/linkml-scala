@@ -12,6 +12,7 @@ import org.scalatest.wordspec.AnyWordSpec
   */
 class OwlIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
 
+  override val skipModels: Map[String, String] = OwlIntegrationSpec.skipModels
   override val skipInstances: Map[(String, String), String] = OwlIntegrationSpec.skipInstances
 
   "OwlGenerator" should {
@@ -21,6 +22,7 @@ class OwlIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
           OwlGenerator(using entry.model).serialize(OwlGenerator.Options(format = RdfFormat.nt))
 
         "the OWL is in OWL 2 DL" in {
+          processSkip(entry.name, "")
           withClue(s"$nt\n") {
             OwlApi.dlViolations(OwlApi.load(nt)) shouldBe empty
           }
@@ -67,6 +69,16 @@ object OwlIntegrationSpec {
   private val anyLiteral =
     "BUG: A slot with range Any takes literals as well as links, and an OWL property cannot take both"
 
+  /** Models whose OWL is wrong, with the reason. */
+  val skipModels: Map[String, String] = {
+    val slotUsageUri =
+      "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost"
+    Map(
+      "importedOverride" -> slotUsageUri,
+      "mixinFacets" -> slotUsageUri,
+    )
+  }
+
   /** Invalid instances OWL can't tell from valid ones, and valid ones it can't handle. */
   val skipInstances: Map[(String, String), String] = Map(
     "cardinality" -> "one0" -> openWorld,
@@ -111,7 +123,16 @@ object OwlIntegrationSpec {
     "memberCardinality" -> "integerAndString" ->
       "Not yet implemented: cardinality in `any_of` members",
     "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
+    "requiredOverride" -> "missingTitle" -> openWorld,
+    "requiredOverride" -> "missingName" -> openWorld,
+    "identifierAlias" -> "missingLabel" -> openWorld,
+    "recursiveTree" -> "deepMissingLabel" -> openWorld,
+    "mutualRecursion" -> "deepMissingName" -> openWorld,
+    "rangeOverride" -> "basePart" ->
+      s"OWL infers that the part is also a `CarPart` rather than rejecting it, and $openWorld",
     // Valid instances
+    "multivaluedOverride" -> "many" ->
+      "LNK-238: OWL: a `slot_usage` that makes a slot multivalued has no effect",
     "anything" -> "atomic" -> anyLiteral,
     "anything" -> "complex" -> anyLiteral,
   )

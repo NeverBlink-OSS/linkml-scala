@@ -93,13 +93,28 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))
 
   override def expand(curie: String): String = {
+    val uri = expandOrNull(curie)
+    if (uri ne null) uri
+    else {
+      val index = curie.indexOf(':')
+      if (index >= 0) {
+        val prefix = curie.substring(0, index)
+        sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
+      } else curie // relative reference
+    }
+  }
+
+  /** Expand a CURIE into a URI using prefixes defined in this resolver.
+    * @return
+    *   The URI, or null if the CURIE has no prefix or this resolver doesn't know it
+    */
+  def expandOrNull(curie: String): String = {
     val index = curie.indexOf(':')
     if (index >= 0) {
-      val prefix = curie.substring(0, index)
-      val baseUri = prefixToUri.get(prefix)
+      val baseUri = prefixToUri.get(curie.substring(0, index))
       if (baseUri ne null) baseUri.concat(curie.substring(index + 1))
-      else sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
-    } else curie // relative reference
+      else null
+    } else null
   }
 
   override def compact(uri: String): String = {

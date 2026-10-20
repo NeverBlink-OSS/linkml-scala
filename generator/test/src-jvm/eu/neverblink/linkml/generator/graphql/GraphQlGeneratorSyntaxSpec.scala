@@ -9,6 +9,13 @@ import sangria.schema.Schema
 import sangria.parser.{ParserConfig, QueryParser}
 
 class GraphQlGeneratorSyntaxSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
+  private val slotUsageType =
+    "LNK-234: GraphQL: a `slot_usage` that makes a field multivalued gives an invalid schema"
+
+  override val skipModels: Map[String, String] = Map(
+    "multivaluedOverride" -> slotUsageType,
+  )
+
   // dummy query object to make the generated types a valid graphql schema
   val dummyQuery: String =
     """type Query {

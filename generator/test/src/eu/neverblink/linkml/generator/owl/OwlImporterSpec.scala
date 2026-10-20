@@ -61,6 +61,9 @@ object OwlImporterSpec {
     "BUG: The OWL of a class with a `slot_usage` that sets neither `range` nor `any_of` gets an " +
       "extra `owl:allValuesFrom` restriction after it is imported"
 
+  private val slotUsageUri =
+    "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost"
+
   /** Models that do not give the same ontology again, with the reason. */
   private val skipModels: Map[String, String] = Map(
     "allOfInheritance" -> slotUsageWithoutRange,
@@ -68,6 +71,9 @@ object OwlImporterSpec {
     "noneOfInheritance" -> slotUsageWithoutRange,
     "exactlyOneOfWidening" -> slotUsageWithoutRange,
     "allOfNoneOfChain" -> slotUsageWithoutRange,
+    "requiredOverride" -> slotUsageWithoutRange,
+    "importedOverride" -> slotUsageUri,
+    "mixinFacets" -> slotUsageUri,
   )
 
   private def stream(text: String) = ByteArrayInputStream(text.getBytes(UTF_8))

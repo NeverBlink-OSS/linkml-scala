@@ -29,7 +29,10 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
   ).map(model =>
     (model, "empty") ->
       "an instance with no slots set encodes to an empty document, which cannot be parsed back",
-  ).toMap
+  ).toMap + (
+    ("recursiveTree", "nested") ->
+      "LNK-233: Scala YAML codec drops slots when it writes a dict entry in the short form"
+  )
 
   private def noCodecForType(types: String*): String =
     s"LinkmlYamlCodec cannot be derived for the ${types.mkString(" and ")} " +
@@ -81,7 +84,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       s"""package generated
          |
          |import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-         |import org.virtuslab.yaml.*
+         |import org.virtuslab.yaml.{NodeOps, parseYaml}
          |
          |object RoundTripDriver {
          |  private val codec: LinkmlYamlCodec[$rootImpl] = LinkmlYamlCodec.derived

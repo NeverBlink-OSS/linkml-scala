@@ -1,0 +1,15 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifierAlias/> .
+@base <https://neverblink.eu/linkml/tests/instances/> .
+
+_:b a :Registry;
+  :nodes <n1>, <n2> .
+
+<n1> a :Node;
+  :node_id "n1"; # TODO LNK-59
+  :label "first";
+  :size 1 .
+
+<n2> a :Node;
+  :node_id "n2"; # TODO LNK-59
+  :label "second";
+  :size 2 .

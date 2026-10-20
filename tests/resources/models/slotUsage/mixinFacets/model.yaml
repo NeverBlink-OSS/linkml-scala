@@ -1,0 +1,64 @@
+id: https://neverblink.eu/linkml/tests/mixinFacets/
+name: mixinFacets
+description: >-
+  Each mixin changes a different part of the same slot with `slot_usage`. The class that uses all
+  the mixins gets all the changes: `value` is a required percent with an alias and a new URI.
+prefixes:
+  alt: https://example.org/alt/
+
+imports:
+  - linkml:types
+
+classes:
+  WithRange:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        range: percent
+  WithAlias:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        alias: number
+  WithUri:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        slot_uri: alt:number
+  WithRequired:
+    mixin: true
+    slots:
+      - value
+    slot_usage:
+      value:
+        required: true
+  Thing:
+    tree_root: true
+    mixins:
+      - WithRange
+      - WithAlias
+      - WithUri
+      - WithRequired
+    slots:
+      - value
+      - note
+
+types:
+  percent:
+    typeof: integer
+    minimum_value: 0
+    maximum_value: 100
+
+slots:
+  value:
+    rank: 1
+    range: integer
+  note:
+    rank: 2
+    range: string

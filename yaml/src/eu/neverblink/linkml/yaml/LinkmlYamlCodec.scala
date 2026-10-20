@@ -815,6 +815,8 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       ) &&
       // A '@serializeDefault' field must always be written, so the class cannot collapse to the
       // compact (bare value) form. Decoding of that form stays supported either way.
+      // This checks that the other fields have a default, not that they still hold it, so the
+      // compact form drops their values (LNK-233).
       fields.forall(x =>
         x.kind == FieldKind.Id || x.kind == FieldKind.Value ||
           (x.defaultValue.isDefined && !x.serializeDefault),

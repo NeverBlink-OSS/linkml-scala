@@ -1,0 +1,14 @@
+{
+  "id": "root",
+  "label": "Root",
+  "children": {
+    "a": {
+      "label": "A",
+      "children": {
+        "a1": {
+          "parent": "a"
+        }
+      }
+    }
+  }
+}

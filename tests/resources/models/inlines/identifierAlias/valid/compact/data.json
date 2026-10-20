@@ -1,0 +1,12 @@
+{
+  "nodes": {
+    "n1": {
+      "label": "first",
+      "size": 1
+    },
+    "n2": {
+      "label": "second",
+      "size": 2
+    }
+  }
+}

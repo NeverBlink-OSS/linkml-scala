@@ -58,7 +58,7 @@ implementation they describe:
 |---|---|
 | `900-metaslots.tsv` | the real LinkML metamodel YAML, fetched by the build |
 | `200-limitations.md` | `docs/implementation_differences.md` |
-| `210-inherited-boolean-expressions.md` | `docs/inherited_boolean_expressions.md` |
+| `210-slot-usage-inheritance.md` | `docs/slot_usage_inheritance.md` |
 | `910-examples.md` | `tests/resources/models/` |
 
 ```shell

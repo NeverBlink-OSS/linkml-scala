@@ -314,6 +314,8 @@ final class PydanticGenerator(using sv: SchemaView)
       if doc.nonEmpty then sink.append('\n')
       sink.append(s"    model_config = ConfigDict(extra=${pyString(value)})\n")
     }
+    // A field renamed by an alias in a `slot_usage` is written under its new name, but the field
+    // under the old name is still inherited from the parent (LNK-235).
     val attributes = cls.sortedAttributeViews
     if (doc.nonEmpty || extra.isDefined) && attributes.nonEmpty then sink.append('\n')
     attributes.foreach(a => writeField(sink, a, cls, ctx))

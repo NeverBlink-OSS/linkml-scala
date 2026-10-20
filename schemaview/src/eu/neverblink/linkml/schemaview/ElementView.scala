@@ -364,7 +364,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   ): SlotView = {
     // Use empty slot base here to avoid an extra allocation
     var currentSlot = ClassView.emptySlotDef
-    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls)
+    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls, source.definingSchema)
     sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]).foreachFast { (resolved: SlotView) =>
       // Note this is a bit off-spec, but it's a pretty reasonable
       if (!isSlotFromAttributes(slotRef)) {

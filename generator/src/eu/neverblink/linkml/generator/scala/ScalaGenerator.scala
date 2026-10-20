@@ -107,6 +107,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
           cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
         val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
         val name = className(classView)
+        // A field changed by a `slot_usage` is declared again here, with a type that may not
+        // match the parent's, so the code does not compile (LNK-232).
         val interfaceFields =
           (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(name =>
             scalaCamel(Case.base(name)),
@@ -276,7 +278,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case ClassInlineAttributeView(_, _, classView, _) =>
         // Abstract classes and mixins have no case class, so the slot uses the interface type.
         // A type designator union also uses the interface type, so that the slot can hold any
-        // implementation.
+        // implementation. A concrete class uses its case class, so a subclass can't narrow the
+        // range to a subclass of it (LNK-232).
         (
           if (classView.isConcrete && !classView.isTypeDesignatorUnion) implName(classView, options)
           else className(classView),

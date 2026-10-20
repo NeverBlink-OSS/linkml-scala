@@ -1,0 +1,20 @@
+{
+  "id": "root",
+  "label": "Root",
+  "children": {
+    "a": {
+      "label": "A",
+      "parent": "root",
+      "children": {
+        "a1": {
+          "label": "A1",
+          "parent": "a"
+        }
+      }
+    },
+    "b": {
+      "label": "B",
+      "parent": "root"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Ann",
+  "employer": {
+    "name": "Acme",
+    "founders": [
+      {
+        "employer": {
+          "name": "Beta"
+        }
+      }
+    ]
+  }
+}

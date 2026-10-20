@@ -81,6 +81,9 @@ class GraphQlGenerator(using sv: SchemaView)
     * linkml:Any
     */
   def generateClass(cls: ClassView)(using GraphQlGenerator.Options): Iterable[GraphQlDefinition] = {
+    // The fields use the class's derived slots, while the class implements its parents'
+    // interfaces. A field made multivalued by a `slot_usage` is not a subtype of the interface's
+    // field, so the schema is invalid (LNK-234).
     lazy val fields = cls.attributeViews.values.map(av => {
       val range: String = av match {
         case AnyView(_, _) =>
