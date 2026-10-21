@@ -1,0 +1,6 @@
+{
+  "id": "https://neverblink.eu/linkml/tests/instances/nested-one",
+  "some_slot": {
+    "some_other_slot": 1
+  }
+}

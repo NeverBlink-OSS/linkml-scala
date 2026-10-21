@@ -147,6 +147,7 @@ The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generator
 
 In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. LinkML-Python can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 
+## Tree root extension
 
 LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.
 For example, this allows specifying that the root of a JSON document should be a JSON array with instances of this class:
@@ -189,6 +190,9 @@ But rejects:
 * `compact_dict`: dict object mapping the key field to the identifier-optional object instances
 * `simple_dict`: dict object mapping the key field to the value field of the object instances
 
+LinkML-Python doesn't know this extension, so its generators always expect one object.
+In LinkML-Scala, the JSON Schema and Pydantic generators use it.
+The Scala and TypeScript generators ignore it for now, so their types describe one object.
 
 ## Language strings
 

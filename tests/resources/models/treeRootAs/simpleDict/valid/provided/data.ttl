@@ -1,0 +1,10 @@
+@prefix : <https://neverblink.eu/linkml/tests/treeRootAs/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+_:b1 a :SomeClass ;
+  :key "some_key";
+  :value "some_value" .
+
+_:b2 a :SomeClass ;
+  :key "some_other_key";
+  :value "some_other_value" .

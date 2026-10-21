@@ -49,6 +49,9 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `enumInheritance` | 0 | 0 |  |
 | `equalsExpression` | 0 | 0 |  |
 | `externalType` | 0 | 0 | This model uses a type which has an unknown and empty 'base… |
+| `identifiedNested` | 6 | 0 | A tree root named by a uri identifier, owning an inlined cl… |
+| `identifiedReference` | 8 | 0 | A tree root named by a uri identifier, referencing another… |
+| `identifiedUri` | 6 | 0 | A tree root named by a uri identifier, alongside slots of s… |
 | `ifabsent/enums` | 0 | 0 |  |
 | `implicitPrefix` | 22 | 0 |  |
 | `inheritance` | 0 | 0 |  |
@@ -77,6 +80,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `nonHermetic` | 0 | 0 |  |
 | `pruning` | 0 | 0 |  |
 | `pruningDefaultRange` | 0 | 0 |  |
+| `realistic/library` | 6 | 0 | A library, in the shape a real model tends to have: identif… |
 | `reference` | 9 | 6 |  |
 | `referenceInteger` | 6 | 3 |  |
 | `slotUsage/importedOverride` | 8 | 9 | A class changes the slots of an imported parent class with… |
@@ -85,6 +89,11 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `slotUsage/rangeOverride` | 3 | 6 | A child class narrows the ranges of inherited slots with `s… |
 | `slotUsage/requiredOverride` | 4 | 8 | A `slot_usage` in the middle of an `is_a` chain makes `titl… |
 | `syntheticUris` | 0 | 0 |  |
+| `treeRootAs/base` | 0 | 0 | The model the other treeRootAs models are compared with. Th… |
+| `treeRootAs/compactDict` | 8 | 0 | A document is a dict that maps the `key` of each `SomeClass… |
+| `treeRootAs/list` | 8 | 0 | A document is a list of `SomeClass` objects, and may be emp… |
+| `treeRootAs/optional` | 8 | 0 | A document is one `SomeClass` object or null (`tree_root_as… |
+| `treeRootAs/simpleDict` | 8 | 0 | A document is a dict that maps the `key` of each `SomeClass… |
 | `treeRootless` | 0 | 0 |  |
 | `typeDerivation` | 2 | 8 |  |
 | `typeDesignator` | 10 | 12 |  |

@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/treeRootAs/compactDict/
+name: treeRootAsCompactDict
+description: >-
+  A document is a dict that maps the `key` of each `SomeClass` to the rest of its slots
+  (`tree_root_as: compact_dict`).
+
+imports:
+  - linkml:types
+
+prefixes:
+  root: https://neverblink.eu/linkml/tests/treeRootAs/
+
+default_prefix: root
+
+classes:
+  SomeClass:
+    tree_root: true
+    extensions:
+      tree_root_as: compact_dict
+    attributes:
+      key:
+        range: string
+        rank: 1
+        key: true
+      value:
+        range: string
+        rank: 2
+        required: true

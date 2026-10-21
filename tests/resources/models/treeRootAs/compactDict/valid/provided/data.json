@@ -1,0 +1,8 @@
+{
+  "some_key": {
+    "value": "some_value"
+  },
+  "some_other_key": {
+    "value": "some_other_value"
+  }
+}
