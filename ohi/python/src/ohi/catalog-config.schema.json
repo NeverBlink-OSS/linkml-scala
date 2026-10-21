@@ -11,7 +11,7 @@
           "title": "search_url",
           "description": "Complete HTTP search endpoint, including its collection path. Omit both search_url and query_by to use https://api.ohi.dev/search/collections/packages/documents/search. Supply both to select another catalog.",
           "type": "string",
-          "format": "uri"
+          "format": "iri"
         },
         "query_by": {
           "title": "query_by",
