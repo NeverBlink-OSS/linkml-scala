@@ -228,9 +228,13 @@ private object Options {
 
 /** @param inferMessages
   *   Whether to fill in each issue's human-readable `message` and `details`.
+  * @param importMap
+  *   Where to load imports from: each key is an import and each value is the location to load it
+  *   from (see `ImportMap` in `schemaview`).
   */
 private final case class LoadOptions(
     inferMessages: Boolean = true,
+    importMap: Map[String, String] = Map.empty,
 )
 
 /** @param config

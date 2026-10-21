@@ -38,21 +38,23 @@ export interface LinkMLApi {
 
   /**
    * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the schema's YAML text.  The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of its imports (transitively) imports the main schema back by filename, that import cannot be matched against the root and the main schema will be loaded a second time. Use [[loadFromPath]] instead when the root schema takes part in an import cycle.  See [[loadFromPath]] for the correct key format.
-   * @param mainSchema Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all imports must be made available in the [[importMap]].
-   * @param importMap JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
+   * @param mainSchema Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all imports must be made available in the [[imports]].
+   * @param imports JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details`.
+   * @param importMap Optional JS dictionary from an import to the location to load it from, which is a key of the [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it. CURIE imports are expanded with the prefixes of the schema that contains them before they are matched.
    * @returns The validation report, and a handle to pass to the generator functions unless the schema had fatal problems.
    */
-  loadFromString(mainSchema: string, importMap: Record<string, string>, inferMessages?: boolean): LoadResult;
+  loadFromString(mainSchema: string, imports: Record<string, string>, inferMessages?: boolean, importMap?: Record<string, string>): LoadResult;
 
   /**
-   * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path into the [[importMap]].  Unlike [[loadFromString]], the main schema is read through the import map by its own path, so it is tracked from the start of import resolution. This makes it immune to cyclic imports involving the root schema: an import that (transitively) references the root back by path resolves to the already-loaded root instead of loading it again.  Keys in the [[importMap]] are import paths as seen from the root schema. The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once, even when it is reached through different relative paths.
-   * @param path Path of the main LinkML model within the [[importMap]] (e.g. `"model.yaml"`).
-   * @param importMap JS dictionary (object) containing a mapping from path to LinkML models (in YAML format), including the main schema itself under [[path]].
+   * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path into the [[imports]].  Unlike [[loadFromString]], the main schema is read through the imports by its own path, so it is tracked from the start of import resolution. This makes it immune to cyclic imports involving the root schema: an import that (transitively) references the root back by path resolves to the already-loaded root instead of loading it again.  Keys in the [[imports]] are import paths as seen from the root schema. The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once, even when it is reached through different relative paths.
+   * @param path Path of the main LinkML model within the [[imports]] (e.g. `"model.yaml"`).
+   * @param imports JS dictionary (object) containing a mapping from path to LinkML models (in YAML format), including the main schema itself under [[path]].
    * @param inferMessages Whether to fill in each issue's human-readable `message` and `details`.
+   * @param importMap Optional JS dictionary from an import to the location to load it from, which is a key of the [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it. CURIE imports are expanded with the prefixes of the schema that contains them before they are matched.
    * @returns The validation report, and a handle to pass to the generator functions unless the schema had fatal problems.
    */
-  loadFromPath(path: string, importMap: Record<string, string>, inferMessages?: boolean): LoadResult;
+  loadFromPath(path: string, imports: Record<string, string>, inferMessages?: boolean, importMap?: Record<string, string>): LoadResult;
 
   /**
    * Generate JSON Schema from a loaded LinkML schema.
@@ -107,11 +109,11 @@ export interface LinkMLApi {
    * @param config How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a file (see `docs/owl.md`). By default, settings that suit most ontologies.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
    * @param listNotImported Whether to list what could not be imported, in comments at the top of the YAML. Default: false
-   * @param importMap The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]]. The schema then uses their terms by name rather than copying them in.
+   * @param imports The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]]. The schema then uses their terms by name rather than copying them in.
    * @param inputFormat RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
    * @returns The LinkML schema, serialized in the specified format.
    */
-  fromOwl(ontology: string, config?: string, outFormat?: string, listNotImported?: boolean, importMap?: Record<string, string>, inputFormat?: string): string;
+  fromOwl(ontology: string, config?: string, outFormat?: string, listNotImported?: boolean, imports?: Record<string, string>, inputFormat?: string): string;
 
   /**
    * Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes unreachable elements.

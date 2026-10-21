@@ -1,0 +1,11 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedNested/> .
+
+<https://neverblink.eu/linkml/tests/instances/nested-many> a :SomeClass ;
+  :id <https://neverblink.eu/linkml/tests/instances/nested-many> ;
+  :some_multivalued_slot [
+    a :SomeOtherClass ;
+    :some_other_slot 1
+  ], [
+    a :SomeOtherClass ;
+    :some_other_slot 2
+  ] .

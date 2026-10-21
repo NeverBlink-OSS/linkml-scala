@@ -1,0 +1,7 @@
+{
+  "id": "https://neverblink.eu/linkml/tests/instances/nested-many",
+  "some_multivalued_slot": [
+    { "some_other_slot": 1 },
+    { "some_other_slot": 2 }
+  ]
+}

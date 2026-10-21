@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedUri/> .
+
+<https://neverblink.eu/linkml/tests/instances/two> a :SomeClass ;
+  :id <https://neverblink.eu/linkml/tests/instances/two> .

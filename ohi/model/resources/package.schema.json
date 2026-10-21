@@ -1,0 +1,225 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohi.neverblink.eu/contracts/package",
+  "$ref": "#/$defs/Publication",
+  "$defs": {
+    "Publication": {
+      "title": "Publication",
+      "description": "One immutable release of one ontology, including its metadata, artifacts and dependencies. Package, publication and release refer to the same entity.",
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "schema_version",
+        "version",
+        "publisher",
+        "keywords",
+        "title",
+        "dependencies",
+        "published_at",
+        "namespace",
+        "licenses",
+        "artifacts",
+        "base_url"
+      ],
+      "properties": {
+        "name": {
+          "title": "name",
+          "description": "Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases. URLs must not be derived from this identifier.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "description": {
+          "title": "description",
+          "description": "Short description of the ontology's domain and intended use.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "schema_version": {
+          "title": "schema_version",
+          "description": "Metadata contract revision, independent of the ontology's version.",
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 2
+        },
+        "version": {
+          "title": "version",
+          "description": "Complete publication version label, including amendments.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "namespace_iri": {
+          "title": "namespace_iri",
+          "description": "Optional preferred primary RDF term namespace. Preserve the complete value including any trailing delimiter. Not the catalog namespace and not necessarily the ontology IRI.",
+          "type": "string",
+          "format": "uri"
+        },
+        "publisher": {
+          "title": "publisher",
+          "description": "Name of the upstream person or organization responsible for publishing the ontology. Not inferred from catalog namespace.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "keywords": {
+          "title": "keywords",
+          "description": "Keywords describing the ontology's subject. An empty list means no keywords are provided.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "title": {
+          "title": "title",
+          "description": "Display title of the ontology.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "dependencies": {
+          "title": "dependencies",
+          "description": "Complete set of direct and indirect runtime dependency publications, excluding this publication. Each base_url occurs once. An empty list means this publication has no runtime dependencies.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Dependency"
+          }
+        },
+        "published_at": {
+          "title": "published_at",
+          "description": "First successful Hub publication time for this immutable release. Backend emits UTC date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this publication. Not an upstream release date.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "namespace": {
+          "title": "namespace",
+          "description": "Namespace qualifying the ontology name, such as w3c in w3c/prov-o.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "licenses": {
+          "title": "licenses",
+          "description": "Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[\\s\\S]*\\S"
+          }
+        },
+        "artifacts": {
+          "title": "artifacts",
+          "description": "Available artifacts of this ontology. Each artifact URL occurs once. Multiple artifacts may share a format.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Artifact"
+          }
+        },
+        "preferred_prefix": {
+          "title": "preferred_prefix",
+          "description": "Optional abbreviation for namespace_iri, without whitespace or a colon. Requires namespace_iri. This constraint does not certify prefix syntax for every ontology language.",
+          "type": "string",
+          "pattern": "^[^\\s:]+(?![\\s\\S])"
+        },
+        "base_url": {
+          "title": "base_url",
+          "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": true
+    },
+    "Artifact": {
+      "title": "Artifact",
+      "description": "Ontology content in a declared format, with explicitly identified entry files.",
+      "type": "object",
+      "required": [
+        "format",
+        "url",
+        "size_bytes",
+        "roots",
+        "sha256",
+        "origin"
+      ],
+      "properties": {
+        "format": {
+          "$ref": "#/$defs/Format",
+          "title": "format",
+          "description": "Ontology language and syntax of the artifact."
+        },
+        "url": {
+          "title": "url",
+          "description": "Permanent absolute download URL of an immutable ontology file.",
+          "type": "string",
+          "format": "uri"
+        },
+        "size_bytes": {
+          "title": "size_bytes",
+          "description": "Byte length of the final immutable artifact file, before HTTP content encoding. Measured from the same bytes as sha256.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "roots": {
+          "title": "roots",
+          "description": "Permanent absolute URLs of the entry files from which this artifact's ontology is loaded.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "sha256": {
+          "title": "sha256",
+          "description": "SHA-256 of the final immutable file bytes, before HTTP content encoding, as exactly 64 lowercase hexadecimal characters.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+        },
+        "origin": {
+          "$ref": "#/$defs/ArtifactOrigin",
+          "title": "origin",
+          "description": "Origin of the artifact content."
+        }
+      },
+      "additionalProperties": true
+    },
+    "Dependency": {
+      "title": "Dependency",
+      "description": "A reference to an exact immutable publication required by this publication.",
+      "type": "object",
+      "required": [
+        "base_url"
+      ],
+      "properties": {
+        "base_url": {
+          "title": "base_url",
+          "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": true
+    },
+    "ArtifactOrigin": {
+      "title": "ArtifactOrigin",
+      "description": "Origin of published artifact content.",
+      "type": "string",
+      "enum": [
+        "UPSTREAM",
+        "GENERATED"
+      ]
+    },
+    "Format": {
+      "title": "Format",
+      "description": "A combination of ontology language and syntax.",
+      "type": "string",
+      "enum": [
+        "owl-turtle",
+        "owl-rdfxml",
+        "rdfs-turtle",
+        "linkml-yaml",
+        "ossie-yaml"
+      ]
+    }
+  },
+  "title": "Publication metadata",
+  "description": "Metadata for one immutable ontology release, its artifacts and its dependencies."
+}

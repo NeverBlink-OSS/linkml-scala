@@ -71,6 +71,15 @@ Imports are easier to write in LinkML-Scala: file extensions are optional and in
 | One file imported as `dir/a`, `dir/./a`, `dir//a` or `dir/x/../a` | Loaded once per spelling | Loaded once |
 | One file reached through a symbolic or hard link | Loaded twice | Loaded once (JVM and Native) |
 | An import back to the root schema | Loads the root again, unless its `name` matches the file name | Loaded once, when the root is loaded from a path |
+| A CURIE import, such as `ex:core` | Expanded with the prefixes of all schemas loaded so far; when two schemas declare `ex` differently, the result depends on the load order | Expanded with the prefixes of the schema that contains the import |
+| Two files with the same `id` and different content | Both loaded | Import error that names both files |
+
+Both support import maps, which load an import from another location (see [Import maps](import_maps.md)). They differ in a few ways:
+
+| Case | LinkML-Python 1.12.1 | LinkML-Scala |
+|------|----------------------|--------------|
+| A key that is a CURIE, such as `units:core` | Matches the import `units:core`, but not the import `https://example.org/units/core` | Rejected. Write the full URI, which matches both imports |
+| A relative location | Joined to the directory of the importing schema | Used as it is: relative to the current directory, or a key of the in-memory map |
 
 ## Eager validation of references
 
@@ -151,6 +160,7 @@ The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generator
 
 In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. LinkML-Python can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 
+## Tree root extension
 
 LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.
 For example, this allows specifying that the root of a JSON document should be a JSON array with instances of this class:
@@ -193,6 +203,9 @@ But rejects:
 * `compact_dict`: dict object mapping the key field to the identifier-optional object instances
 * `simple_dict`: dict object mapping the key field to the value field of the object instances
 
+LinkML-Python doesn't know this extension, so its generators always expect one object.
+In LinkML-Scala, the JSON Schema and Pydantic generators use it.
+The Scala and TypeScript generators ignore it for now, so their types describe one object.
 
 ## Language strings
 

@@ -1,0 +1,67 @@
+name: Native CLI
+
+on:
+  workflow_call:
+  pull_request:
+    branches: [main]
+    paths: &paths
+      - '**/*.scala'
+      - '**/*.mill'
+      - '**/*.json'
+      - '**/*.yaml'
+      - '**/*.yml'
+      - 'cli/**'
+      - 'mill'
+      - 'mill.bat'
+      - 'mill-build/**'
+  push:
+    branches: [main]
+    paths: *paths
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Relocate the coursier archive cache
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+      - uses: coursier/cache-action@v8
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Setup MSVC
+        if: runner.os == 'Windows'
+        uses: TheMrMilchmann/setup-msvc-dev@v4.1.0
+        with:
+          arch: x64
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+      - name: Build and check both executables
+        shell: bash
+        run: bash cli/check-native.sh
+      - name: Upload LinkML executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: linkml-scala-${{ matrix.os }}
+          path: out/cli/jvm/nativeImage.dest/linkml-scala*
+          if-no-files-found: error
+      - name: Upload Ohi executable
+        uses: actions/upload-artifact@v7
+        with:
+          name: ohi-${{ matrix.os }}
+          path: out/cli/ohi/jvm/nativeImage.dest/ohi*
+          if-no-files-found: error

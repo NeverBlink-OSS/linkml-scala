@@ -15,7 +15,14 @@ import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
-import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{
+  FileSystemImporter,
+  ImportMapImporter,
+  Importer,
+  SchemaValidator,
+  SchemaView,
+  StringImporter,
+}
 import eu.neverblink.linkml.validation.{Codec, SchemaIssue, SchemaValidationReport}
 import org.virtuslab.yaml.{Node, StringNode}
 
@@ -57,20 +64,24 @@ object LinkMlNativeApi {
     * @return
     *   a handle and the report, or handle 0 and a report saying why the schema could not be loaded
     */
-  def loadFile(path: String, optionsJson: String): Loaded =
-    loaded(SchemaView.loadSchemaViewFromUri(path), Some(path), Options.load(optionsJson))
+  def loadFile(path: String, optionsJson: String): Loaded = {
+    val options = Options.load(optionsJson)
+    withImportMap(FileSystemImporter, Some(path), options) { importer =>
+      SchemaView.loadSchemaViewFromUri(path, importer)
+    }
+  }
 
-  /** Load a schema from YAML text, resolving its imports against a caller-supplied map.
+  /** Load a schema from YAML text, resolving its imports against caller-supplied schema texts.
     *
     * @param path
-    *   the root schema's own path within the import map, or null to load [[schema]] directly.
-    *   Giving a path makes loading immune to an import that references the root back, because the
-    *   root is then tracked from the start.
+    *   the root schema's own path within the imports, or null to load [[schema]] directly. Giving a
+    *   path makes loading immune to an import that references the root back, because the root is
+    *   then tracked from the start.
     * @param schema
     *   the root schema as YAML. Ignored when [[path]] is given, since the root is read from the
     *   map.
     * @param importNames
-    *   import map keys, positionally matched with [[importBodies]]
+    *   file names of the imports, positionally matched with [[importBodies]]
     */
   def loadString(
       path: String,
@@ -81,15 +92,15 @@ object LinkMlNativeApi {
   ): Loaded = {
     if importNames.length != importBodies.length then
       throw BadRequest(
-        s"the import map has ${importNames.length} names but ${importBodies.length} bodies",
+        s"the imports have ${importNames.length} names but ${importBodies.length} bodies",
       )
-    val importer = ImportMap(importNames.zip(importBodies).toMap)
+    val files = SchemaTexts(importNames.zip(importBodies).toMap)
     val options = Options.load(optionsJson)
     if path ne null then
-      loaded(SchemaView.loadSchemaViewFromUri(path, importer), Some(path), options)
+      withImportMap(files, Some(path), options)(SchemaView.loadSchemaViewFromUri(path, _))
     else {
       if schema eq null then throw BadRequest("loading needs either a path or the schema text")
-      loaded(SchemaView.loadSchemaViewFromString(schema, importer), None, options)
+      withImportMap(files, None, options)(SchemaView.loadSchemaViewFromString(schema, _))
     }
   }
 
@@ -263,6 +274,19 @@ object LinkMlNativeApi {
 
   // Internals
 
+  /** Load with `underlying` wrapped by the `importMap` of the options, or report an entry of it
+    * that is not allowed.
+    */
+  private def withImportMap(
+      underlying: Importer,
+      runId: Option[String],
+      options: LoadOptions,
+  )(load: Importer => Either[Seq[SchemaIssue], SchemaView]): Loaded =
+    ImportMapImporter.fromEntries(options.importMap, underlying) match {
+      case Right(importer) => loaded(load(importer), runId, options)
+      case Left(issue) => loaded(new Left(Seq(issue)), runId, options)
+    }
+
   private def loaded(
       result: Either[Seq[SchemaIssue], SchemaView],
       runId: Option[String],
@@ -308,11 +332,11 @@ object LinkMlNativeApi {
   private def entry(name: String, value: Node): (Node, Node) = StringNode(name) -> value
 
   /** A schema importer backed by the caller-supplied filename to YAML map. */
-  private final case class ImportMap(entries: Map[String, String]) extends StringImporter {
+  private final case class SchemaTexts(entries: Map[String, String]) extends StringImporter {
     private val lookup = Importer.normalizedMap(entries)
 
     override def read(path: String): String =
-      lookup.getOrElse(path, throw BadRequest(s"could not read from the import map: $path"))
+      lookup.getOrElse(path, throw BadRequest(s"could not read from the imports: $path"))
   }
 
 }

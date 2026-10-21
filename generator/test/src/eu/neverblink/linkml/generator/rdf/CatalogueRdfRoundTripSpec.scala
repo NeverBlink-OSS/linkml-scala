@@ -11,15 +11,18 @@ import org.scalatest.wordspec.AnyWordSpec
 class CatalogueRdfRoundTripSpec extends AnyWordSpec, Matchers {
   import CatalogueRdfRoundTripSpec.*
 
-  /** Write what `write` pushes in both formats, and read it back.
+  /** Write what the source pushes in both formats, and read it back.
     *
     * N-Triples keeps every blank node label, so it must read back exactly what was pushed. Turtle
     * writes `[ ... ]` and `( ... )` without labels, so only the labels may differ there.
+    *
+    * Generated RDF is never empty, but an instance file can be, like an empty list of instances.
     */
-  private def roundTrip(write: RdfSink => Unit): Unit = {
+  private def roundTrip(source: CatalogueRdf.Source): Unit = {
+    val write = source.write
     val pushed = new CollectingRdfSink
     write(pushed)
-    pushed.triples should not be empty
+    if (source.turtle.isEmpty) pushed.triples should not be empty
 
     val nTriples = RdfUtils.toNTriples(write)
     withClue(s"N-Triples:\n$nTriples\n") {
@@ -36,7 +39,7 @@ class CatalogueRdfRoundTripSpec extends AnyWordSpec, Matchers {
       s"round-trip model '${entry.name}'" when {
         for source <- CatalogueRdf.sources(entry) do
           source.name in {
-            roundTrip(source.write)
+            roundTrip(source)
           }
       }
   }

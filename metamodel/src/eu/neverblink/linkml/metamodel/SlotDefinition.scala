@@ -48,6 +48,10 @@ import eu.neverblink.linkml.runtime.*
   *   whose value is the range instance.
   * @param pattern
   *   The string value of the slot must conform to this regular expression expressed in the string
+  * @param minimumLength
+  *   The string value must contain at least this many characters (Unicode code-points).
+  * @param maximumLength
+  *   The string value must contain at most this many characters (Unicode code-points).
   * @param rank
   *   The relative order in which the element occurs, lower values are given precedence
   * @param aliases
@@ -345,6 +349,10 @@ final case class SlotDefinition(
     @named("inlined_as_list")
     inlinedAsList: Boolean = false,
     pattern: Option[String] = None,
+    @named("minimum_length")
+    minimumLength: Option[Int] = None,
+    @named("maximum_length")
+    maximumLength: Option[Int] = None,
     rank: Option[Int] = None,
     aliases: Seq[LocalizedText] = Seq(),
     @named("alt_descriptions")
@@ -405,7 +413,7 @@ final case class SlotDefinition(
     @named("slot_group")
     slotGroup: Option[Reference[SlotDefinition]] = None,
     source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
+    status: Option[String] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
@@ -550,6 +558,8 @@ final case class SlotDefinition(
       inlined = combineBoolean(this.inlined, other.inlined),
       inlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList),
       pattern = combineOption(this.pattern, other.pattern, combinePattern),
+      minimumLength = combineOption(this.minimumLength, other.minimumLength, combineFallback),
+      maximumLength = combineOption(this.maximumLength, other.maximumLength, combineFallback),
       rank = combineOption(this.rank, other.rank, combineFallback),
       aliases = combineSeq(this.aliases, other.aliases),
       altDescriptions = combineMap(this.altDescriptions, other.altDescriptions),

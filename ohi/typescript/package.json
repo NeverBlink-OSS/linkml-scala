@@ -1,0 +1,35 @@
+{
+  "name": "@neverblink/ohi",
+  "version": "0.0.0",
+  "description": "Ohi catalog search, publication inspection and artifact retrieval.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/NeverBlink-OSS/linkml-scala.git",
+    "directory": "ohi/typescript"
+  },
+  "publishConfig": { "access": "public" },
+  "engines": { "node": ">=22" },
+  "type": "module",
+  "exports": {
+    ".": "./dist/index.js",
+    "./node": "./dist/node.js"
+  },
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:browser": "npm run build && node --test test/browser.mjs"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.5",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.64.0",
+    "typescript": "7.0.2"
+  }
+}

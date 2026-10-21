@@ -1,13 +1,31 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
-import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
+import eu.neverblink.linkml.schemaview.{
+  FileSystemImporter,
+  ImportMap,
+  ImportMapImporter,
+  Importer,
+  SchemaIssues,
+  SchemaView,
+}
 import eu.neverblink.linkml.runtime.FastUtils.*
 
 import java.io.{ByteArrayOutputStream, OutputStream, PrintStream}
+import scala.util.control.NonFatal
 
 /** Thrown instead of a real process exit when a command runs in test mode. */
 final case class ExitException(code: Int) extends RuntimeException
+
+object BaseCommand {
+
+  /** The help text of the `--import-map` option. */
+  final val importMapHelp =
+    "A JSON file that maps imports to the locations to load them from, such as " +
+      "{\"https://example.org/units/\": \"deps/units/\"}. Keys are full URIs or paths, not " +
+      "CURIEs. A key that ends with / or # matches every import that starts with it. A relative " +
+      "location is relative to the current directory."
+}
 
 /** Base for all CLI commands. Output goes through overridable streams so tests can capture
   * stdout/stderr via [[runTestCommand]] without touching globals.
@@ -27,11 +45,23 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     printLine(message, toStderr = true)
     exit(1)
 
-  def loadSchema(inFile: Option[String]): SchemaView =
+  /** The importer for the JSON file of the `--import-map` option, if there is one. */
+  protected final def importer(importMapFile: Option[String]): Importer =
+    importMapFile.foldFast(FileSystemImporter: Importer) { file =>
+      val json =
+        try os.read(os.Path(file, os.pwd))
+        catch { case NonFatal(e) => err(s"Cannot read --import-map '$file': ${e.getMessage}") }
+      ImportMap.fromJson(json, file) match {
+        case Right(map) => ImportMapImporter(map, FileSystemImporter)
+        case Left(issue) => err("Invalid --import-map: " + SchemaIssues.verbose(issue.infer()))
+      }
+    }
+
+  def loadSchema(inFile: Option[String], importMapFile: Option[String] = None): SchemaView =
     inFile.foldFast {
       err("Input file is required.")
     } { inputName =>
-      SchemaView.loadSchemaViewFromUri(inputName) match {
+      SchemaView.loadSchemaViewFromUri(inputName, importer(importMapFile)) match {
         case Right(sv) => sv
         case Left(problems) =>
           val formatted = SchemaIssues.format(
@@ -67,14 +97,21 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
   /** Like [[runTestCommand]] but also returns the exit code (0 if the command didn't call `exit`).
     * For tests only.
     */
-  final def runTestCommandWithExitCode(args: List[String]): (String, String, Int) = {
+  final def runTestCommandWithExitCode(args: List[String]): (String, String, Int) =
+    runTestCommandWithExitCode(args, args => App(testMode, outStream, errStream).main(args))
+
+  /** Runs a supplied entry point with this command's captured streams and test exits. */
+  final def runTestCommandWithExitCode(
+      args: List[String],
+      runMain: Array[String] => Unit,
+  ): (String, String, Int) = {
     val bufOut = ByteArrayOutputStream()
     val bufErr = ByteArrayOutputStream()
     testMode = true
     outStream = PrintStream(bufOut, true, "UTF-8")
     errStream = PrintStream(bufErr, true, "UTF-8")
     var exitCode = 0
-    try App(testMode, outStream, errStream).main(args.toArray)
+    try runMain(args.toArray)
     catch { case ExitException(code) => exitCode = code }
     finally {
       outStream.flush()

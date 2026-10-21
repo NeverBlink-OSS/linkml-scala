@@ -46,6 +46,20 @@ trait Importer {
     */
   def schemaKey(path: String): String = path
 
+  /** Return the location to load for an import, given its lookup key (see [[ImportMap.lookupKey]]).
+    * The loader calls it for every import and for the root schema, before it checks whether the
+    * schema was already loaded and before it loads built-in `linkml:` schemas, and uses the result
+    * as it is. An importer that wraps another one must pass the result to the `mapImport` of the
+    * wrapped importer, as [[ImportMapImporter]] does.
+    *
+    * @param lookupKey
+    *   The lookup key of the import.
+    * @return
+    *   The location to load, or the issue describing why there is none. The default is the lookup
+    *   key itself.
+    */
+  def mapImport(lookupKey: String): Either[SchemaImportError, String] = new Right(lookupKey)
+
   /** Decode a SchemaDefinition directly from a string.
     *
     * @param yaml

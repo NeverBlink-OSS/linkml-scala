@@ -31,8 +31,8 @@ classes:
         range: integer
 `;
 
-// Parse the schema once into a reusable handle. The second argument 
-// is an import map (filename -> YAML source) for any models referenced
+// Parse the schema once into a reusable handle. The second argument
+// maps file names to YAML source for any models referenced
 // via LinkML \`imports:\`. Pass {} when there are none.
 const { view, report } = LinkML.loadFromString(schema, {});
 if (!view) throw new Error(JSON.stringify(report, null, 2)); // fatal problems: nothing to generate from
@@ -49,22 +49,36 @@ console.log(shacl);
 
 There are two ways to load a schema into a `SchemaView` handle:
 
-- `loadFromString(schema, importMap)` – start from the schema's YAML text. Imported models
-  must be provided in the import map (filename → YAML).
-- `loadFromPath(path, importMap)` – start from a path into the import map. The root schema is
-  read from `importMap[path]`. Because the root is tracked from the start of import resolution,
+- `loadFromString(schema, imports)` – start from the schema's YAML text. Imported models
+  must be provided in `imports` (filename → YAML).
+- `loadFromPath(path, imports)` – start from a path into `imports`, which also holds the root
+  schema itself. The root schema is read from `imports[path]`. Because the root is tracked from the start of import resolution,
   this variant is immune to cyclic imports that reference the root schema back.
 
-Import map keys are import paths as seen from the root schema. The `.yaml` and `.yml` extensions
+Keys of `imports` are import paths as seen from the root schema. The `.yaml` and `.yml` extensions
 are optional and interchangeable, and each imported schema is loaded only once, even when it is
 reached through different relative paths.
 
+Both take an optional fourth argument, `importMap`, which maps an import to the key of `imports`
+to load it from. Use it when a schema imports another one by URI or CURIE. Keys are full URIs or
+paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it. To use
+a JSON file, pass `JSON.parse` of its text. See
+[Import maps](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/import_maps.md).
+
 ```js no-test
-// loadFromPath: the root lives in the import map under its own path.
+// loadFromPath: the root lives in `imports` under its own path.
 const { view } = LinkML.loadFromPath("model.yaml", {
   "model.yaml": schema,
   "person.yaml": personSchema, // referenced via `imports: - person`
 });
+
+// importMap: `units:core` (or `https://example.org/units/core`) is read from "deps/units.yaml".
+const { view: withUnits } = LinkML.loadFromPath(
+  "model.yaml",
+  { "model.yaml": schema, "deps/units.yaml": unitsSchema },
+  true,
+  { "https://example.org/units/core": "deps/units.yaml" },
+);
 ```
 
 ### Available functions
@@ -73,8 +87,8 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 
 | Function                                                                     | Returns                  | Notes                                                                          |
 |------------------------------------------------------------------------------|--------------------------|--------------------------------------------------------------------------------|
-| `loadFromString(schema, importMap, inferMessages?)`                          | `LoadResult`             | parse from YAML text; `{ view?, report }`                                      |
-| `loadFromPath(path, importMap, inferMessages?)`                              | `LoadResult`             | parse from a path in the import map; cycle-safe for the root                   |
+| `loadFromString(schema, imports, inferMessages?, importMap?)`                | `LoadResult`             | parse from YAML text; `{ view?, report }`                                      |
+| `loadFromPath(path, imports, inferMessages?, importMap?)`                    | `LoadResult`             | parse from a path in `imports`; cycle-safe for the root                        |
 | `jsonSchema(view, open?, treeRootOverride?)`                                 | `string`                 | JSON Schema                                                                    |
 | `shacl(view, open?, onlyClassesFromRootSchema?, format?)`                    | `string`                 | SHACL shapes, `ttl` (default) or `nt`                                          |
 | `rdfs(view, onlyClassesFromRootSchema?, format?)`                            | `string`                 | RDFS, `ttl` (default) or `nt`                                                  |
@@ -91,7 +105,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 | `fromOssie(ontology, schemaId?, outFormat?)`                                 | `string`                 | the LinkML schema from an Apache Ossie ontology                                |
-| `fromOwl(ontology, config?, outFormat?, listNotImported?, importMap?, inputFormat?)` | `string`         | the LinkML schema from an OWL ontology in Turtle or N-Triples (see the OWL guide) |
+| `fromOwl(ontology, config?, outFormat?, listNotImported?, imports?, inputFormat?)`   | `string`         | the LinkML schema from an OWL ontology in Turtle or N-Triples (see the OWL guide) |
 
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind

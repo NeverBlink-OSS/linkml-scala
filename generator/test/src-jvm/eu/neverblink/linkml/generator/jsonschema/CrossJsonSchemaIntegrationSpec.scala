@@ -20,9 +20,15 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     "typeDesignator" -> "Type designators seem to be very broken in LinkML-py",
     "unionRange" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
     "unionOf" -> "LinkML-py ignores constraints of union_of members",
+  ) ++ Seq("treeRootAsCompactDict", "treeRootAsList", "treeRootAsSimpleDict").map(
+    _ -> noTreeRootAs,
   )
 
+  private def noTreeRootAs: String =
+    "`tree_root_as` is a LinkML-Scala extension, so LinkML-py expects one object as a document"
+
   override val skipInstances: Map[(String, String), String] = Map(
+    "treeRootAsOptional" -> "empty" -> noTreeRootAs,
     "memberCardinality" -> "oneInteger" -> "LinkML-py ignores cardinality in `any_of` members",
     "memberCardinality" -> "integerAndString" ->
       "LinkML-py ignores cardinality in `any_of` members",

@@ -16,7 +16,13 @@ import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode}
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
-import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView, StringImporter}
+import eu.neverblink.linkml.schemaview.{
+  ImportMapImporter,
+  Importer,
+  SchemaValidator,
+  SchemaView,
+  StringImporter,
+}
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReport}
 
@@ -58,7 +64,7 @@ object LinkMlJsApi {
     private val lookup = Importer.normalizedMap(map)
 
     override def read(path: String): String =
-      lookup.getOrElse(path, sys.error(s"Could not read from import map: $path"))
+      lookup.getOrElse(path, sys.error(s"Could not read from the imports: $path"))
   }
 
   /** Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML
@@ -84,59 +90,90 @@ object LinkMlJsApi {
     *
     * @param mainSchema
     *   Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all
-    *   imports must be made available in the [[importMap]].
-    * @param importMap
+    *   imports must be made available in the [[imports]].
+    * @param imports
     *   JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
     * @param inferMessages
     *   Whether to fill in each issue's human-readable `message` and `details`.
+    * @param importMap
+    *   Optional JS dictionary from an import to the location to load it from, which is a key of the
+    *   [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or
+    *   paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it.
+    *   CURIE imports are expanded with the prefixes of the schema that contains them before they
+    *   are matched.
     * @return
     *   The validation report, and a handle to pass to the generator functions unless the schema had
     *   fatal problems.
     */
   def loadFromString(
       mainSchema: String,
-      importMap: js.Dictionary[String],
+      imports: js.Dictionary[String],
       inferMessages: Boolean = true,
+      importMap: js.UndefOr[js.Dictionary[String]] = js.undefined,
   ): LoadResult =
     loadResult(
-      SchemaView.loadSchemaViewFromString(mainSchema, JsImporter(importMap)),
+      withImportMap(imports, importMap)(SchemaView.loadSchemaViewFromString(mainSchema, _)),
       runId = None,
       inferMessages,
     )
 
   /** Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path
-    * into the [[importMap]].
+    * into the [[imports]].
     *
-    * Unlike [[loadFromString]], the main schema is read through the import map by its own path, so
-    * it is tracked from the start of import resolution. This makes it immune to cyclic imports
+    * Unlike [[loadFromString]], the main schema is read through the imports by its own path, so it
+    * is tracked from the start of import resolution. This makes it immune to cyclic imports
     * involving the root schema: an import that (transitively) references the root back by path
     * resolves to the already-loaded root instead of loading it again.
     *
-    * Keys in the [[importMap]] are import paths as seen from the root schema. The `.yaml` and
-    * `.yml` extensions are optional and interchangeable, and each imported schema is loaded only
-    * once, even when it is reached through different relative paths.
+    * Keys in the [[imports]] are import paths as seen from the root schema. The `.yaml` and `.yml`
+    * extensions are optional and interchangeable, and each imported schema is loaded only once,
+    * even when it is reached through different relative paths.
     *
     * @param path
-    *   Path of the main LinkML model within the [[importMap]] (e.g. `"model.yaml"`).
-    * @param importMap
+    *   Path of the main LinkML model within the [[imports]] (e.g. `"model.yaml"`).
+    * @param imports
     *   JS dictionary (object) containing a mapping from path to LinkML models (in YAML format),
     *   including the main schema itself under [[path]].
     * @param inferMessages
     *   Whether to fill in each issue's human-readable `message` and `details`.
+    * @param importMap
+    *   Optional JS dictionary from an import to the location to load it from, which is a key of the
+    *   [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or
+    *   paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it.
+    *   CURIE imports are expanded with the prefixes of the schema that contains them before they
+    *   are matched.
     * @return
     *   The validation report, and a handle to pass to the generator functions unless the schema had
     *   fatal problems.
     */
   def loadFromPath(
       path: String,
-      importMap: js.Dictionary[String],
+      imports: js.Dictionary[String],
       inferMessages: Boolean = true,
+      importMap: js.UndefOr[js.Dictionary[String]] = js.undefined,
   ): LoadResult =
     loadResult(
-      SchemaView.loadSchemaViewFromUri(path, JsImporter(importMap)),
+      withImportMap(imports, importMap)(SchemaView.loadSchemaViewFromUri(path, _)),
       runId = Some(path),
       inferMessages,
     )
+
+  /** Load through the [[imports]], with the `importMap` applied to every import, or report an entry
+    * of it that is not allowed.
+    */
+  private def withImportMap(
+      imports: js.Dictionary[String],
+      importMap: js.UndefOr[js.Dictionary[String]],
+  )(
+      load: Importer => Either[Seq[SchemaFatal], SchemaView],
+  ): Either[Seq[SchemaFatal], SchemaView] =
+    ImportMapImporter.fromEntries(
+      importMap.fold(Map.empty[String, String])(_.toMap),
+      JsImporter(imports),
+    ) match {
+      case Right(importer) => load(importer)
+      case Left(issue) => new Left(Seq(issue))
+    }
 
   /** Turn a load outcome into a [[LoadResult]]. A schema that loaded is linted straight away, so
     * that the report covers errors and warnings too - not just the fatals that blocked loading.
@@ -317,7 +354,7 @@ object LinkMlJsApi {
     * @param listNotImported
     *   Whether to list what could not be imported, in comments at the top of the YAML. Default:
     *   false
-    * @param importMap
+    * @param imports
     *   The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]].
     *   The schema then uses their terms by name rather than copying them in.
     * @param inputFormat
@@ -330,7 +367,7 @@ object LinkMlJsApi {
       config: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
       listNotImported: Boolean = false,
-      importMap: js.UndefOr[js.Dictionary[String]] = js.undefined,
+      imports: js.UndefOr[js.Dictionary[String]] = js.undefined,
       inputFormat: String = "ttl",
   ): String = {
     val format = outputFormat(outFormat)
@@ -339,7 +376,7 @@ object LinkMlJsApi {
       java.io.ByteArrayInputStream(ontology.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
       OwlImporter.Options(
         config = config.toOption.fold(OwlImportConfig())(OwlImportConfigs.parse),
-        schemas = JsImporter(importMap.getOrElse(js.Dictionary())),
+        schemas = JsImporter(imports.getOrElse(js.Dictionary())),
         inputFormat = rdfFormat(inputFormat),
       ),
     )

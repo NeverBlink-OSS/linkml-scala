@@ -1,0 +1,23 @@
+id: https://ohi.neverblink.eu/contracts/declaration
+name: ohi_declaration
+title: Editable project declaration
+description: Ontology publications a project depends on, with the chosen artifact of each.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- ../../../ohi/model/schema/selection
+classes:
+  Declaration:
+    tree_root: true
+    description: Contents of ohi.yaml. Each selection names a publication and the one artifact of it the project uses. ohi.lock.json lists the resolved files, including dependencies.
+    slots:
+    - selections
+    attributes:
+      format_version:
+        description: Version of the declaration format.
+        range: integer
+        required: true
+        minimum_value: 1
+        maximum_value: 1

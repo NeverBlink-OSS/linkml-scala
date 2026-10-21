@@ -1,0 +1,120 @@
+id: https://ohi.neverblink.eu/contracts/package
+name: ohi_package
+title: Publication metadata
+description: Metadata for one immutable ontology release, its artifacts and its dependencies.
+status: draft
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- publication-fields
+classes:
+  Publication:
+    description: One immutable release of one ontology, including its metadata, artifacts and dependencies.
+      Package, publication and release refer to the same entity.
+    tree_root: true
+    extra_slots:
+      allowed: true
+    slots:
+    - base_url
+    - namespace
+    - name
+    - version
+    - title
+    - description
+    - licenses
+    - published_at
+    attributes:
+      schema_version:
+        description: Metadata contract revision, independent of the ontology's version.
+        range: integer
+        required: true
+        minimum_value: 2
+        maximum_value: 2
+      publisher:
+        description: Name of the upstream person or organization responsible for publishing the ontology.
+          Not inferred from catalog namespace.
+        range: string
+        required: true
+        pattern: ^[\s\S]*\S
+      keywords:
+        description: Keywords describing the ontology's subject. An empty list means no keywords are provided.
+        range: string
+        required: true
+        multivalued: true
+      namespace_iri:
+        description: Optional preferred primary RDF term namespace. Preserve the complete value including
+          any trailing delimiter. Not the catalog namespace and not necessarily the ontology IRI.
+        range: uri
+      preferred_prefix:
+        description: Optional abbreviation for namespace_iri, without whitespace or a colon. Requires
+          namespace_iri. This constraint does not certify prefix syntax for every ontology language.
+        range: string
+        required: false
+        pattern: ^[^\s:]+(?![\s\S])
+      artifacts:
+        description: Available artifacts of this ontology. Each artifact URL occurs once. Multiple artifacts
+          may share a format.
+        range: Artifact
+        required: true
+        multivalued: true
+        minimum_cardinality: 1
+        inlined: true
+        inlined_as_list: true
+      dependencies:
+        description: Complete set of direct and indirect runtime dependency publications, excluding this
+          publication. Each base_url occurs once. An empty list means this publication has no runtime
+          dependencies.
+        range: Dependency
+        required: true
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+  Artifact:
+    description: Ontology content in a declared format, with explicitly identified entry files.
+    extra_slots:
+      allowed: true
+    slots:
+    - format
+    - url
+    attributes:
+      origin:
+        description: Origin of the artifact content.
+        range: ArtifactOrigin
+        required: true
+      roots:
+        description: Permanent absolute URLs of the entry files from which this artifact's ontology is
+          loaded.
+        range: uri
+        required: true
+        multivalued: true
+        minimum_cardinality: 1
+        list_elements_ordered: true
+      size_bytes:
+        description: Byte length of the final immutable artifact file, before HTTP content encoding. Measured
+          from the same bytes as sha256.
+        range: integer
+        required: true
+        minimum_value: 0
+      sha256:
+        description: SHA-256 of the final immutable file bytes, before HTTP content encoding, as exactly
+          64 lowercase hexadecimal characters.
+        range: string
+        required: true
+        pattern: ^[0-9a-f]{64}(?![\s\S])
+  Dependency:
+    description: A reference to an exact immutable publication required by this publication.
+    extra_slots:
+      allowed: true
+    slots:
+    - base_url
+enums:
+  ArtifactOrigin:
+    description: Origin of published artifact content.
+    permissible_values:
+      UPSTREAM:
+        description: File bytes preserved from the upstream publisher.
+      GENERATED:
+        description: File produced from source ontology content by conversion, import rewriting or other
+          transformations.

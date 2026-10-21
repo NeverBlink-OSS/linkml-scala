@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohi.neverblink.eu/contracts/search",
+  "$ref": "#/$defs/SearchResult",
+  "$defs": {
+    "SearchResult": {
+      "title": "SearchResult",
+      "description": "One ordered page of publication summaries, with count, effective paging information and optional facet counts.",
+      "type": "object",
+      "required": [
+        "page",
+        "total",
+        "per_page",
+        "hits",
+        "search_cutoff"
+      ],
+      "properties": {
+        "page": {
+          "title": "page",
+          "description": "Effective one-based page for this response.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "total": {
+          "title": "total",
+          "description": "Matching indexed publications after query and filters, before pagination. May be incomplete when search_cutoff is true. An exact total can exceed the retrieval window.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "per_page": {
+          "title": "per_page",
+          "description": "Effective requested page size, not the number of returned hits.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "hits": {
+          "title": "hits",
+          "description": "Publication summaries in search-result order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/SearchHit"
+          }
+        },
+        "facet_counts": {
+          "title": "facet_counts",
+          "description": "Facet values and counts for the query and filters, independently of hit pagination. The number of returned facet values may be limited.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FacetCount"
+          }
+        },
+        "search_cutoff": {
+          "title": "search_cutoff",
+          "description": "Whether search stopped early. When true, hits or total may be incomplete.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    },
+    "SearchHit": {
+      "title": "SearchHit",
+      "description": "Summary of one immutable publication.",
+      "type": "object",
+      "required": [
+        "licenses",
+        "name",
+        "description",
+        "base_url",
+        "version",
+        "formats",
+        "title",
+        "published_at",
+        "namespace"
+      ],
+      "properties": {
+        "licenses": {
+          "title": "licenses",
+          "description": "Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[\\s\\S]*\\S"
+          }
+        },
+        "name": {
+          "title": "name",
+          "description": "Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases. URLs must not be derived from this identifier.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "description": {
+          "title": "description",
+          "description": "Short description of the ontology's domain and intended use.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "base_url": {
+          "title": "base_url",
+          "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
+          "type": "string",
+          "format": "uri"
+        },
+        "version": {
+          "title": "version",
+          "description": "Complete publication version label, including amendments.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "formats": {
+          "title": "formats",
+          "description": "Formats of the publication's available artifacts. Each value identifies both the ontology language and serialization syntax, as in artifact.format.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Format"
+          }
+        },
+        "title": {
+          "title": "title",
+          "description": "Display title of the ontology.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "published_at": {
+          "title": "published_at",
+          "description": "First successful Hub publication time for this immutable release. Backend emits UTC date-time text with Z. Consumers accept timezone-bearing RFC 3339 text. Fixed for the lifetime of this publication. Not an upstream release date.",
+          "type": "string",
+          "format": "date-time"
+        },
+        "namespace": {
+          "title": "namespace",
+          "description": "Namespace qualifying the ontology name, such as w3c in w3c/prov-o.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        }
+      },
+      "additionalProperties": true
+    },
+    "FacetCount": {
+      "title": "FacetCount",
+      "description": "Counts for the returned values of one indexed field.",
+      "type": "object",
+      "required": [
+        "field_name",
+        "counts"
+      ],
+      "properties": {
+        "field_name": {
+          "title": "field_name",
+          "description": "Indexed field used for this facet.",
+          "type": "string"
+        },
+        "counts": {
+          "title": "counts",
+          "description": "Value counts in search-result order.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/FacetValueCount"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "FacetValueCount": {
+      "title": "FacetValueCount",
+      "description": "A facet value and its matching-publication count.",
+      "type": "object",
+      "required": [
+        "value",
+        "count"
+      ],
+      "properties": {
+        "value": {
+          "title": "value",
+          "description": "Facet value or range label.",
+          "type": "string"
+        },
+        "count": {
+          "title": "count",
+          "description": "Number of matching publications for this facet value or range.",
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "Format": {
+      "title": "Format",
+      "description": "A combination of ontology language and syntax.",
+      "type": "string",
+      "enum": [
+        "owl-turtle",
+        "owl-rdfxml",
+        "rdfs-turtle",
+        "linkml-yaml",
+        "ossie-yaml"
+      ]
+    }
+  },
+  "title": "Publication search result",
+  "description": "One page of ungrouped publication search results, with the matching count and effective pagination settings and optional facet counts."
+}

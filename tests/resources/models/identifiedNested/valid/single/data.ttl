@@ -1,0 +1,8 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedNested/> .
+
+<https://neverblink.eu/linkml/tests/instances/nested-one> a :SomeClass ;
+  :id <https://neverblink.eu/linkml/tests/instances/nested-one> ;
+  :some_slot [
+    a :SomeOtherClass ;
+    :some_other_slot 1
+  ] .

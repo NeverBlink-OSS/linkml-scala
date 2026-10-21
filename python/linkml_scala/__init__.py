@@ -17,8 +17,10 @@ repository for more information, including how to build the library yourself.
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Mapping, Union
 
 from ._generated import Generators
 from ._runtime import (
@@ -36,6 +38,7 @@ __all__ = [
     "WARNING",
     "__version__",
     "BuildInfo",
+    "ImportMap",
     "LinkMlError",
     "NativeLibraryNotFound",
     "Runtime",
@@ -173,7 +176,36 @@ class Schema(Generators):
         return self._handle
 
 
-def load_file(path: str | Path, *, infer_messages: bool = True) -> Schema:
+ImportMap = Union[Mapping[str, str], str, "os.PathLike[str]"]
+"""An import map: a mapping from an import to its location, or the path of a JSON file with one."""
+
+
+def _import_map_entries(import_map: ImportMap | None) -> dict[str, Any]:
+    if import_map is None:
+        return {}
+    if isinstance(import_map, (str, os.PathLike)):
+        with open(import_map, encoding="utf-8") as file:
+            entries = json.load(file)
+        if not isinstance(entries, dict):
+            raise ValueError(f"the import map in {os.fspath(import_map)} is not a JSON object")
+        return entries
+    return dict(import_map)
+
+
+def _load_options(infer_messages: bool, import_map: ImportMap | None) -> dict[str, Any]:
+    options: dict[str, Any] = {"inferMessages": infer_messages}
+    entries = _import_map_entries(import_map)
+    if entries:
+        options["importMap"] = entries
+    return options
+
+
+def load_file(
+    path: str | Path,
+    *,
+    infer_messages: bool = True,
+    import_map: ImportMap | None = None,
+) -> Schema:
     """Load a schema from the file system, reading its ``imports`` from disk too.
 
     Imports resolve exactly as they do for the ``linkml-scala`` CLI: relative ones against the
@@ -181,10 +213,19 @@ def load_file(path: str | Path, *, infer_messages: bool = True) -> Schema:
 
     :param path: path to the schema file.
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param import_map: import to the location to load it from, as a mapping such as
+        ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
+        object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
+        matches every import that starts with it. CURIE imports are expanded with the prefixes of
+        the schema that contains them before they are matched. A relative location is relative to
+        the current directory.
     :raises SchemaLoadError: if fatal problems stopped the schema from loading.
     """
     current = runtime()
-    return _schema(current, *current.load_file(str(path), {"inferMessages": infer_messages}))
+    return _schema(
+        current,
+        *current.load_file(str(path), _load_options(infer_messages, import_map)),
+    )
 
 
 def load_string(
@@ -192,6 +233,7 @@ def load_string(
     imports: Mapping[str, str] | None = None,
     *,
     infer_messages: bool = True,
+    import_map: ImportMap | None = None,
 ) -> Schema:
     """Load a schema from YAML text, resolving ``imports`` against an in-memory map.
 
@@ -204,12 +246,20 @@ def load_string(
     :param schema: the schema, as YAML.
     :param imports: filename to YAML text, covering everything the schema imports.
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param import_map: import to the location to load it from, as a mapping such as
+        ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
+        object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
+        matches every import that starts with it. CURIE imports are expanded with the prefixes of
+        the schema that contains them before they are matched. A relative location is relative to
+        the current directory.
     :raises SchemaLoadError: if fatal problems stopped the schema from loading.
     """
     current = runtime()
     return _schema(
         current,
-        *current.load_string(None, schema, imports, {"inferMessages": infer_messages}),
+        *current.load_string(
+            None, schema, imports, _load_options(infer_messages, import_map)
+        ),
     )
 
 
@@ -218,6 +268,7 @@ def load_path(
     imports: Mapping[str, str],
     *,
     infer_messages: bool = True,
+    import_map: ImportMap | None = None,
 ) -> Schema:
     """Load a schema from an in-memory map, by its path within that map.
 
@@ -232,12 +283,21 @@ def load_path(
     :param path: the root schema's key in ``imports``.
     :param imports: path to YAML text, including the root schema itself.
     :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param import_map: import to the location to load it from, as a mapping such as
+        ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
+        object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
+        matches every import that starts with it. CURIE imports are expanded with the prefixes of
+        the schema that contains them before they are matched. A relative location is relative to
+        the current directory.
+        The locations are keys of ``imports``.
     :raises SchemaLoadError: if fatal problems stopped the schema from loading.
     """
     current = runtime()
     return _schema(
         current,
-        *current.load_string(path, None, imports, {"inferMessages": infer_messages}),
+        *current.load_string(
+            path, None, imports, _load_options(infer_messages, import_map)
+        ),
     )
 
 

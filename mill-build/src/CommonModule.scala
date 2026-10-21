@@ -8,9 +8,8 @@ import mill.javalib.publish.{Developer, License, PomSettings, VersionControl}
 import mill.scalalib.{PlatformScalaModule, ScalaModule}
 import mill.scalalib.scalafmt.ScalafmtModule
 
-trait CommonModule
+trait CommonBuildModule
     extends ScalaModule,
-      PublishModule,
       PlatformScalaModule,
       ScalafixModule,
       ScalafmtModule,
@@ -21,6 +20,19 @@ trait CommonModule
 
   final def scoverageVersion = "2.5.2"
 
+  final def scalaVersion = v.scala
+
+  def scalacOptions = Seq(
+    "-release",
+    "17",
+    "-Wunused:all",
+    "-Xcheck-macros",
+    "-explain",
+    "-opt", // the scala 3 optimizer for libraries
+  )
+}
+
+trait CommonModule extends CommonBuildModule, PublishModule {
   final def pomSettings = PomSettings(
     description =
       "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
@@ -83,15 +95,4 @@ trait CommonModule
         s"$other-SNAPSHOT"
     }
   }
-
-  final def scalaVersion = v.scala
-
-  def scalacOptions = Seq(
-    "-release",
-    "17",
-    "-Wunused:all",
-    "-Xcheck-macros",
-    "-explain",
-    "-opt", // the scala 3 optimizer for libraries
-  )
 }

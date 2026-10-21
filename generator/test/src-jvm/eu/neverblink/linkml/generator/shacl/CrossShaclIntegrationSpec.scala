@@ -26,6 +26,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "curie" -> "LinkML-py treats CURIEs as literals instead of expanding them",
   )
   override val skipInstances: Map[(String, String), String] = Map(
+    ("library", "full") -> "We went with a different approach to Linkml-py for enums",
     ("importedOverride", "full") ->
       "LinkML-py puts `code` in the namespace of the class with the `slot_usage`, not of the slot",
     ("importedOverride", "withoutLabel") ->

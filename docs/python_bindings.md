@@ -52,6 +52,11 @@ links.
 All three take `infer_messages=True`, which fills in each issue's human-readable `message` and
 `details`. Turn it off for only the structured fields.
 
+All three also take `import_map=`, which maps an import to the location to load it from, such as
+`{"https://example.org/units/": "deps/units/"}`, or is the path of a JSON file with such an object.
+For `load_file` a location is a path, and for `load_string` and `load_path` it is a key of the
+`imports` map. See [Import maps](import_maps.md).
+
 Fatal problems raise `SchemaLoadError`, which carries the report as `.report`. Errors and warnings do
 not: a schema can load and still have things to say about it.
 
@@ -157,6 +162,13 @@ Conventions:
 ```c
 char *shacl = linkml_shacl(handle, NULL, &err);               /* defaults */
 char *open  = linkml_shacl(handle, "{\"open\":true}", &err);  /* one option */
+```
+
+The options of `linkml_load_file` and `linkml_load_string` take `inferMessages` and `importMap` (see [Import maps](import_maps.md)):
+
+```c
+long long h = linkml_load_file("model.yaml",
+    "{\"importMap\":{\"https://example.org/units/\":\"deps/units/\"}}", &report, &err);
 ```
 
 **Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.

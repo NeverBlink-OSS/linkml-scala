@@ -1130,6 +1130,33 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       )
     }
 
+    "decode Dicts with Uri and Curie keys" in {
+      case class UriEntry(@id id: Uri, @value value: String)
+      case class CurieEntry(@id id: Curie, value: String, x: Option[String] = None)
+      case class Root(
+          @simpleDict
+          uris: Map[String, UriEntry],
+          @compactDict
+          curies: Map[String, CurieEntry],
+      )
+      val yaml =
+        """uris:
+          |  https://example.org/a: a value
+          |curies:
+          |  ex:b:
+          |    value: b value
+          |""".stripMargin
+
+      val codec = LinkmlYamlCodec.derived[Root]
+
+      parseYaml(yaml).map(x => codec.decode(x)) shouldEqual Right(
+        Root(
+          Map("https://example.org/a" -> UriEntry(Uri("https://example.org/a"), "a value")),
+          Map("ex:b" -> CurieEntry(Curie("ex:b"), "b value")),
+        ),
+      )
+    }
+
     "support LocalizedText" when {
       case class LocTest(
           field: LocalizedText,

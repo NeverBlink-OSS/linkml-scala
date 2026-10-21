@@ -11,7 +11,7 @@ object Main {
   def main(args: Array[String]): Unit = new App().main(args)
 }
 
-final class App private[cli] (
+class App protected[cli] (
     testMode: Boolean,
     outStream: PrintStream,
     errStream: PrintStream,
@@ -47,7 +47,7 @@ final class App private[cli] (
   )
 
   /** Flags that are not a command, but must still be treated as success. */
-  private val helpFlags = Set("--help", "-h", "-help", "--usage")
+  protected val helpFlags = Set("--help", "-h", "-help", "--usage")
 
   override def printLine(line: String, toStderr: Boolean): Unit =
     if toStderr then errStream.println(line) else outStream.println(line)

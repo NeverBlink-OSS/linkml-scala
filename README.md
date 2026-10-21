@@ -65,6 +65,8 @@ LinkML-Scala was built to work great with large schemas. In our benchmarks it's 
 
 ## CLI tool installation
 
+For ontology search, acquisition and project selections, install [the Ohi CLI](cli/ohi/README.md#install). It also exposes the LinkML commands through `ohi linkml`.
+
 ### Method 1: Install script (recommended for Unix/macOS)
 
 If you are on Linux, macOS, or WSL on Windows, the easiest installation method is with our script:
@@ -149,6 +151,22 @@ Generate a LinkML model that:
 ./linkml-scala generate linkml --to <output-path> <input-file>
 ```
 
+#### Loading imports from other locations
+
+Load an import from another place without changing the schema, for example a local copy of a
+schema that is imported by URI or CURIE. Write an import map as a JSON file:
+
+```json
+{"https://example.org/units/": "deps/units/"}
+```
+
+```shell
+./linkml-scala validate --import-map imports.json <input-file>
+```
+
+The option works with `generate` too. The Python, JavaScript and C libraries take the same map as
+`import_map` / `importMap`. See [Import maps](docs/import_maps.md).
+
 ## JavaScript / TypeScript library
 
 The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml) – a single ES module with TypeScript declarations, with no runtime dependencies.
@@ -160,14 +178,14 @@ npm install @neverblink/linkml
 ```js
 import { LinkML } from "@neverblink/linkml";
 
-// Parse once into a reusable SchemaView handle. The second argument is an
-// import map (filename -> YAML) for `imports:`.
+// Parse once into a reusable SchemaView handle. The second argument maps
+// file names to YAML for `imports:`.
 const view = LinkML.loadFromString(mySchemaYaml, {});
 const jsonSchema = LinkML.jsonSchema(view);
 ```
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
-import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
+map of schema texts, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
 `rdfs`, `owl`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `pydantic`, `erDiagram`, `ossie`, or `lint`
 against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
@@ -192,40 +210,34 @@ See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and fo
 
 ## Scala library
 
-All modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli).
+The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli). Ohi's Scala modules ship inside its CLI and are not published to Maven Central.
 
 ## GitHub Action (CI)
 
 We have a pre-packaged GitHub Action that can do schema validation and generation in your CI pipelines. See **[NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action)** for details.
 
-## Agent skill (Claude Code, Codex, …)
+## Agent skills (Claude Code, Codex, …)
 
-We ship an [agent skill](https://agentskills.io/specification) that teaches AI agents to author, validate, review and release LinkML schemas with LinkML-Scala. See [.agents/README.md](.agents/README.md) for what it covers.
+Choose **LinkML** for schema authoring and engine operations, or **Ohi + LinkML** for catalog acquisition, project selections and schema work. Both plugins contain instructions and references. The CLI is installed separately.
 
-It drives the CLI, so install that first (see [CLI tool installation](#cli-tool-installation)).
-
-**Claude Code** – install it as a plugin:
+**Claude Code**
 
 ```
 /plugin marketplace add NeverBlink-OSS/linkml-scala
 /plugin install linkml@linkml-scala
 ```
 
-**Codex** – add this repository as a plugin marketplace, then install **linkml** from `/plugins`:
+Choose `/plugin install ohi@linkml-scala` instead for Ohi with LinkML.
+
+**Codex**
 
 ```shell
 codex plugin marketplace add NeverBlink-OSS/linkml-scala
 ```
 
-If you added the marketplace before, refresh it first with `codex plugin marketplace upgrade linkml-scala`.
+Install either **linkml** or **ohi** from `/plugins`. If the marketplace is already installed, refresh it with `codex plugin marketplace upgrade linkml-scala`.
 
-**Cursor, OpenCode, and any other agent** – these load [Agent Skills](https://agentskills.io) directly from the vendor-neutral `~/.agents/skills/` directory:
-
-```shell
-git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala /tmp/linkml-scala
-mkdir -p ~/.agents/skills
-cp -r /tmp/linkml-scala/.agents/skills/linkml ~/.agents/skills/
-```
+The [skill guide](.agents/README.md) covers installing from a checkout, switching plugins and direct copying for other applications. Install one plugin to avoid loading LinkML guidance twice.
 
 ## Contributing
 

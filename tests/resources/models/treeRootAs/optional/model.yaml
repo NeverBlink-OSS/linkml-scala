@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/treeRootAs/optional/
+name: treeRootAsOptional
+description: >-
+  A document is one `SomeClass` object or null (`tree_root_as: optional`).
+
+imports:
+  - linkml:types
+
+prefixes:
+  root: https://neverblink.eu/linkml/tests/treeRootAs/
+
+default_prefix: root
+
+classes:
+  SomeClass:
+    tree_root: true
+    extensions:
+      tree_root_as: optional
+    attributes:
+      key:
+        range: string
+        rank: 1
+        key: true
+      value:
+        range: string
+        rank: 2
+        required: true

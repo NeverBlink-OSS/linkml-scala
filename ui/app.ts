@@ -1088,9 +1088,9 @@ function breakdown(res: Extract<ConvertResponse, { ok: true }>, displayMs: numbe
 /** The step that would undo what is on screen: for a generator, the importer that reads its output
  * back; for an importer, the generator it undoes. */
 function reverseStep(): Step | undefined {
-  return direction === "toLinkml"
-    ? targetById((activeStep() as Importer).reverses ?? "")
-    : IMPORTERS.find((i) => i.reverses === activeTargetId);
+  if (direction === "fromLinkml") return IMPORTERS.find((i) => i.reverses?.includes(activeTargetId));
+  const reverses = (activeStep() as Importer).reverses ?? [];
+  return targetById(reverses.includes(activeTargetId) ? activeTargetId : (reverses[0] ?? ""));
 }
 
 /** The output as it would be handed over, while there is one to hand over. */

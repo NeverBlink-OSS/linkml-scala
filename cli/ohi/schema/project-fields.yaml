@@ -1,0 +1,33 @@
+id: https://ohi.neverblink.eu/contracts/project-fields
+name: ohi_project_fields
+title: Project operation fields
+description: Fields shared by project command results and errors.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- linkml:types
+slots:
+  operation:
+    description: Project command that ran.
+    range: ProjectOperation
+    required: true
+  project_directory:
+    description: Absolute path of the project directory.
+    range: string
+    required: true
+  declaration_changed:
+    description: Whether the command wrote ohi.yaml.
+    range: boolean
+    required: true
+  lock_changed:
+    description: Whether the command wrote ohi.lock.json.
+    range: boolean
+    required: true
+enums:
+  ProjectOperation:
+    permissible_values:
+      INIT:
+      ADD:
+      LOCK:

@@ -225,8 +225,18 @@ imports:
   - ./common            # a sibling file, common.yaml
 ```
 
-Relative imports resolve against the importing file, without the `.yaml` extension. `linkml:` and
-other prefixed imports resolve via the prefix map.
+Relative imports resolve against the importing file. The `.yaml` or `.yml` extension is optional,
+and the two are interchangeable. `linkml:` and other prefixed imports resolve via the prefix map.
+
+CURIEs are allowed in `imports`. A CURIE import such as `units:core` is expanded with the prefixes
+of the schema that contains it.
+
+To load an import from another place without editing the schema, write an import map as a JSON
+file (for example `{"https://example.org/units/": "deps/units/"}`) and pass
+`--import-map imports.json` to `validate` or `generate`. CURIEs are not allowed in an import map:
+its keys and locations are full URIs or paths, because a map doesn't belong to any schema whose
+prefixes could expand them. A full URI key also matches CURIE imports that expand to it, so
+`https://example.org/units/core` matches `units:core`. See [Import maps](220-import-maps.md).
 
 All references are checked **eagerly** in linkml-scala: an unresolvable name is fatal and the
 schema will not load at all, so imports must be right before anything else works.

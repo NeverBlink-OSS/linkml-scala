@@ -544,6 +544,16 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     }
   }
 
+  /** Make an id of type `tpe`, which is `UriOrCurie` or one of its subtypes, from a string.
+    * `'[UriOrCurie]` also matches the subtypes, so they are checked here.
+    */
+  private def genUriOrCurie(tpe: TypeRepr, s: Expr[String])(using Quotes): Expr[UriOrCurie] =
+    tpe.asType match {
+      case '[Uri] => '{ Uri($s) }
+      case '[Curie] => '{ Curie($s) }
+      case _ => '{ UriOrCurie($s) }
+    }
+
   private def genDecodeNonAbstractClass[T: Type](
       tpe: TypeRepr,
       node: Expr[Node],
@@ -572,7 +582,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                   case '[UriOrCurie] =>
                     '{
                       $id match {
-                        case Some(s: String) => UriOrCurie(s)
+                        case Some(s: String) => ${ genUriOrCurie(kTpe, 's) }
                         case None => ${ defaultVal.asExpr }
                         case _ =>
                           LinkmlYamlCodec.decodeError(
@@ -711,7 +721,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                                   val mappedName = Expr(field.mappedName)
                                   val kTpe = field.resolvedTpe
                                   (kTpe.asType match {
-                                    case '[UriOrCurie] => '{ UriOrCurie(s.toString) }
+                                    case '[UriOrCurie] => genUriOrCurie(kTpe, '{ s.toString })
                                     case '[kt] =>
                                       '{
                                         s match {

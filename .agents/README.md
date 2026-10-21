@@ -1,87 +1,104 @@
-# LinkML agent skill
+# Agent skills
 
-An [agent skill](https://agentskills.io/specification) for authoring LinkML schemas with
-[linkml-scala](https://github.com/NeverBlink-OSS/linkml-scala). One skill, several topic files:
-[`skills/linkml/SKILL.md`](skills/linkml/SKILL.md) carries the always-loaded guidance and routes
-to the rest on demand.
+These skills help agents acquire ontologies and maintain project selections with Ohi, and author and validate schemas with LinkML-Scala.
 
-Works with **OpenAI Codex** (which reads `.agents/skills/` natively) and **Claude Code**. Requires
-the `linkml-scala` CLI, 0.12.0 or newer — the skill walks the user through installing it.
+## Choose a plugin
 
-## Installing
+Install **Ohi** (`ohi`) for ontology acquisition, project selections and LinkML schema work.
+Choose **LinkML** (`linkml`) for schema work alone. Install one plugin, since Ohi already includes LinkML.
+
+Plugins provide instructions. [Install the Ohi CLI](../cli/ohi/README.md#install) separately from
+the same release or checkout. The standalone LinkML skill requires `linkml-scala` 0.12.0 or newer.
+
+## Install
+
+These commands install Ohi. For LinkML alone, replace `ohi@linkml-scala` with `linkml@linkml-scala`.
+To install from a local checkout, replace the repository argument with its absolute path.
 
 ### Codex
 
-Add this repository as a plugin marketplace, then install **linkml** from `/plugins`:
-
-```shell
+```sh
 codex plugin marketplace add NeverBlink-OSS/linkml-scala
-codex plugin marketplace upgrade linkml-scala   # if you added it before
-```
-
-Codex also discovers `.agents/skills/` in the repository you are working in, or
-`~/.agents/skills/` for every project, if you would rather copy the skill in:
-
-```shell
-git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala /tmp/linkml-scala
-mkdir -p ~/.agents/skills
-cp -r /tmp/linkml-scala/.agents/skills/linkml ~/.agents/skills/
+codex plugin add ohi@linkml-scala
 ```
 
 ### Claude Code
 
-```
-/plugin marketplace add NeverBlink-OSS/linkml-scala
-/plugin install linkml@linkml-scala
+```sh
+claude plugin marketplace add NeverBlink-OSS/linkml-scala
+claude plugin install ohi@linkml-scala
 ```
 
-Claude Code does **not** read `.agents/skills/`, so a manual install needs a copy or a symlink.
-Symlinks are supported and let `git pull` update the skill in place:
+### Updates and switching
 
-```shell
+| Application | Refresh the marketplace | Update the installed plugin |
+| --- | --- | --- |
+| Codex | `codex plugin marketplace upgrade linkml-scala` | Included in the marketplace upgrade |
+| Claude Code | `claude plugin marketplace update linkml-scala` | `claude plugin update ohi@linkml-scala` |
+
+Start a new session after updating. For a local checkout marketplace, remove and reinstall the
+plugin after editing its files.
+
+When switching choices, remove the installed plugin first, then install the other choice. For example, to switch from LinkML to Ohi + LinkML:
+
+```sh
+codex plugin remove linkml@linkml-scala
+codex plugin add ohi@linkml-scala
+```
+
+In Claude Code, use `claude plugin uninstall linkml@linkml-scala` followed by `claude plugin install ohi@linkml-scala`. Reverse the plugin names to switch back.
+
+### Manual installation
+
+Without a plugin, copy complete skill folders, including their references, to the host's skills directory.
+For Ohi, copy both `linkml` and `ohi`. For example, install both for all Codex projects:
+
+```sh
 git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala ~/src/linkml-scala
-mkdir -p ~/.claude/skills
-ln -s ~/src/linkml-scala/.agents/skills/linkml ~/.claude/skills/linkml
+mkdir -p ~/.agents/skills
+cp -r ~/src/linkml-scala/.agents/skills/{linkml,ohi} ~/.agents/skills/
 ```
 
-### Any other agent
+For Claude Code, use `~/.claude/skills/`. For project-only installation, use `.agents/skills/`
+for Codex or `.claude/skills/` for Claude Code in that project. Replace whole folders when updating.
+Use either manual installation or the plugin to avoid duplicate skills.
 
-Copy `skills/linkml/` wherever your tool looks for skills. It is self-contained, and the
-frontmatter sticks to the fields in the Agent Skills spec, so it should load anywhere.
+### Other applications
 
-## Maintaining
+For other applications supporting [Agent Skills](https://agentskills.io/specification), use their
+documented skills directory.
 
-Four files are derived from sources in this repository, so they cannot drift from the
-implementation they describe:
+## Ohi
+
+Give the agent search terms or a publication URL, the required format and a download destination.
+For example, ask it to find a provenance ontology and download its `owl-turtle` artifact.
+Search uses ohi.dev by default. For project changes, identify the project directory.
+The [Ohi skill](skills/ohi/SKILL.md) and its [CLI reference](skills/ohi/references/cli.md) cover
+selection, downloads and recovery.
+
+## LinkML
+
+The [LinkML skill](skills/linkml/SKILL.md) covers schema authoring, validation, importing and generation. Its topic files provide detailed guidance when needed. [Installation options](skills/linkml/990-install.md) cover the standalone `linkml-scala` CLI.
+
+When using the Ohi CLI, run the LinkML examples as `ohi linkml <command>` in place of `linkml-scala <command>`. Tell the agent to use this invocation. Ohi includes the engine commands, so this route does not need a second executable.
+
+## Maintenance
+
+Edit skills in `.agents/skills/`. Regenerate these LinkML references from their sources:
 
 | File | Source |
-|---|---|
-| `900-metaslots.tsv` | the real LinkML metamodel YAML, fetched by the build |
+| --- | --- |
+| `900-metaslots.tsv` | LinkML metamodel YAML fetched by the build |
 | `200-limitations.md` | `docs/implementation_differences.md` |
 | `210-slot-usage-inheritance.md` | `docs/slot_usage_inheritance.md` |
+| `220-import-maps.md` | `docs/import_maps.md` |
 | `910-examples.md` | `tests/resources/models/` |
 
-```shell
-./mill show metamodel.definitions      # fetch the metamodel YAML (not committed)
-python3 .agents/generate.py            # write the derived files
-python3 .agents/generate.py --check    # CI: fail if stale
-python3 .agents/check.py               # frontmatter, links, and every schema example
+```sh
+./mill show metamodel.definitions
+python3 .agents/generate.py
+python3 .agents/generate.py --check
+python3 .agents/check.py --require-cli
 ```
 
-`check.py` runs `linkml-scala validate --strict` over every ` ```yaml ` block in the skill, so a
-documented schema that does not validate fails CI. It also rejects frontmatter outside the Agent
-Skills spec, Claude-Code-only syntax that Codex cannot interpret, and links that go nowhere. Both
-run in the `skills-check` job of [`checks.yml`](../.github/workflows/checks.yml).
-
-Version numbers are checked too. The requirement in
-[`990-install.md`](skills/linkml/990-install.md) is a feature floor, so it moves only when the
-skill starts relying on something newer — but every restatement of it, here included, has to
-move with it. The install commands deliberately name no version at all (`mise use --pin`
-resolves the newest release and records it), so there is no number left to go stale.
-
-Neither plugin manifest carries a `version`. Both Claude Code and Codex treat a declared version
-as the cache key, so a fixed one pins every user to the copy they first installed. Left out,
-Claude Code falls back to the commit SHA and picks up each change to this directory.
-
-There is deliberately **no** bundled CLI reference and no validator-issue catalogue: `--help` and
-the validator's own messages are self-describing, so a copy would only rot.
+The checks require `linkml-scala` on PATH. Review nested Ohi reference links separately.

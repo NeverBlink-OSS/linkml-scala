@@ -1,0 +1,25 @@
+package build.cli.ohi
+
+import mill.*
+import mill.scalalib.*
+import millbuild.*
+
+object `package` extends Module {
+  object jvm extends build.cli.NativeCliModule {
+    def nativeImageMainClass = "eu.neverblink.ohi.cli.Main"
+
+    def nativeImageName = "ohi"
+
+    override def nativeImageOptions =
+      super.nativeImageOptions() :+ "--enable-url-protocols=http,https"
+
+    override def moduleDeps = Seq(build.cli.jvm, build.ohi.catalog.jvm)
+
+    // SDK schema validation must not write logging initialization warnings into CLI results.
+    override def runMvnDeps = Seq(mvn"org.slf4j:slf4j-nop:2.0.19")
+
+    object test extends ScalaTests, CommonTestModule {
+      override def moduleDeps = super.moduleDeps :+ build.tests.jvm
+    }
+  }
+}

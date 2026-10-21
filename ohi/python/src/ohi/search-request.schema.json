@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ohi.neverblink.eu/contracts/search-request",
+  "$ref": "#/$defs/SearchRequest",
+  "$defs": {
+    "SearchRequest": {
+      "title": "SearchRequest",
+      "description": "Query and options for retrieving one page of ontology publications.",
+      "type": "object",
+      "required": [
+        "q"
+      ],
+      "properties": {
+        "page": {
+          "title": "page",
+          "description": "One-based page number. Omitted means 1.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "filter_by": {
+          "title": "filter_by",
+          "description": "Typesense filter expression over filterable fields.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "per_page": {
+          "title": "per_page",
+          "description": "Maximum hits requested for this page, from 1 through 250. Omitted means 10.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 250
+        },
+        "facet_by": {
+          "title": "facet_by",
+          "description": "Typesense facet expression over facetable fields.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "q": {
+          "title": "q",
+          "description": "Text query over the configured search fields. Use the wildcard * for browsing.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "sort_by": {
+          "title": "sort_by",
+          "description": "Typesense sort expression. Omitted preserves default search ordering.",
+          "type": "string",
+          "pattern": "^[\\s\\S]*\\S"
+        },
+        "max_facet_values": {
+          "title": "max_facet_values",
+          "description": "Maximum values returned per facet. Omitted uses the backend default.",
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "title": "Publication search request",
+  "description": "Search query, filters, facets, ordering and pagination for ontology publications."
+}
