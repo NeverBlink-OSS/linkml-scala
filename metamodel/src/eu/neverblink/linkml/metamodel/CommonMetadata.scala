@@ -260,7 +260,7 @@ trait CommonMetadata {
     * @see
     *   From schema: https://w3id.org/linkml/meta
     */
-  def status: Option[UriOrCurie]
+  def status: Option[String]
 
   /** A list of structured_alias objects, used to provide aliases in conjunction with additional
     * metadata.

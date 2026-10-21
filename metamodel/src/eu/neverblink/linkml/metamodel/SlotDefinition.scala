@@ -405,7 +405,7 @@ final case class SlotDefinition(
     @named("slot_group")
     slotGroup: Option[Reference[SlotDefinition]] = None,
     source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
+    status: Option[String] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),

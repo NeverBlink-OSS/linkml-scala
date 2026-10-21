@@ -241,7 +241,7 @@ final case class SchemaDefinition(
     sourceFileDate: Option[LinkmlDateTime] = None,
     @named("source_file_size")
     sourceFileSize: Option[Int] = None,
-    status: Option[UriOrCurie] = None,
+    status: Option[String] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),
