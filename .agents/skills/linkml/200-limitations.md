@@ -125,6 +125,26 @@ This ensures that all schema Elements always can construct a valid URI, even if 
 Enum `permissible_values` always have a meaning, even if `meaning` is not explicitly defined.
 Thanks to this, enum values can always be represented as IRIs in RDF, and LinkML-Scala does not allow string-based enums.
 
+A permissible value without a `meaning` gets an IRI made of the schema's default namespace, the
+enum's name, `.` and the value's name in upper case.
+LinkML-Python uses the value's text as a string instead, so the RDF of the same data differs.
+For example:
+
+```yaml
+prefixes:
+  ex: https://example.org/
+default_prefix: ex
+enums:
+  LoanStatus:
+    permissible_values:
+      AVAILABLE:
+```
+
+In RDF, LinkML-Scala writes `AVAILABLE` as `<https://example.org/LoanStatus.AVAILABLE>`, and its
+SHACL has `sh:in ( <https://example.org/LoanStatus.AVAILABLE> )`.
+LinkML-Python's SHACL has `sh:in ( "AVAILABLE" )`, so it rejects the RDF that LinkML-Scala writes.
+In JSON and YAML, both write the name: `"AVAILABLE"`.
+
 ## Additional identifier constraints
 
 The identifier slot for classes must have a scalar `type` range.
@@ -155,6 +175,7 @@ The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generator
 
 In LinkML-Scala, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. LinkML-Python can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 
+## Tree root extension
 
 LinkML-Scala provides a `tree_root_as` extension for classes, which allows specifying how the `tree_root` class will be laid out.
 For example, this allows specifying that the root of a JSON document should be a JSON array with instances of this class:
@@ -191,12 +212,15 @@ But rejects:
 
 `tree_root_as` accepts the following options:
 
-* `plain`: object instance, 
-* `optional`: object instance or null, 
-* `list`: array of object instances, may be empty, 
-* `compact_dict`: dict object mapping the key field to the identifier-optional object instances
-* `simple_dict`: dict object mapping the key field to the value field of the object instances
+* `plain`: one object (the default)
+* `optional`: one object or null
+* `list`: a list of objects, which may be empty
+* `compact_dict`: a dict that maps the key of each object to the rest of its slots
+* `simple_dict`: a dict that maps the key of each object to the value of its other slot
 
+LinkML-Python doesn't know this extension, so its generators always expect one object.
+In LinkML-Scala, the JSON Schema and Pydantic generators use it.
+The Scala and TypeScript generators ignore it for now, so their types describe one object.
 
 ## Language strings
 
