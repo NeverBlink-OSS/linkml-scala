@@ -250,7 +250,7 @@ final case class EnumDefinition(
     @named("see_also")
     seeAlso: Seq[UriOrCurie] = Seq(),
     source: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
+    status: Option[String] = None,
     @named("structured_aliases")
     structuredAliases: Seq[StructuredAlias] = Seq(),
     todos: Seq[String] = Seq(),

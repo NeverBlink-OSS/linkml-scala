@@ -25,7 +25,7 @@ final case class Metadata(
     createdOn: Option[LinkmlDateTime] = None,
     lastUpdatedOn: Option[LinkmlDateTime] = None,
     modifiedBy: Option[UriOrCurie] = None,
-    status: Option[UriOrCurie] = None,
+    status: Option[String] = None,
     inLanguage: Option[String] = None,
     keywords: Seq[LocalizedText] = Nil,
     categories: Seq[UriOrCurie] = Nil,
@@ -385,7 +385,7 @@ object Metadata {
       _.modifiedBy,
       (m, v) => m.copy(modifiedBy = v),
     ),
-    refField(
+    stringField(
       "status",
       "http://purl.org/ontology/bibo/status",
       _.status,
