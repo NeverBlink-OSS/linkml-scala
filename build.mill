@@ -30,17 +30,11 @@ import mill.contrib.buildinfo.BuildInfo
 import mill.api.Evaluator
 import mill.javalib.Dep
 import millbuild.*
+import os.Path
 
 import java.net.InetSocketAddress
 
 object `package` extends Module {
-
-  /** Whether to compile and test Scala Native in this run.
-    *
-    * This is disabled by default, because Scala Native has a pretty complex and slow toolchain. To
-    * run it locally: `LINKML_NATIVE=1 ./mill --no-server runtime.native.test.testForked`
-    */
-
   object LinkMlAliases extends Aliases {
     private def ohiGeneration: Seq[String] = {
       val schemas = Seq(
@@ -77,10 +71,11 @@ object `package` extends Module {
           "cli.jvm.run generate scala --clean " +
             s"--to cli/ohi/src/eu/neverblink/ohi/cli/generated/$scalaPackage/ " +
             s"--package eu.neverblink.ohi.cli.generated.$scalaPackage $schema",
-        ) ++ (if (name == "declaration") Seq(
-                s"cli.jvm.run generate json-schema --to cli/ohi/resources/$name.schema.json $schema",
-                "pruneOhiDeclaration",
-              )
+        ) ++ (if (name == "declaration")
+                Seq(
+                  s"cli.jvm.run generate json-schema --to cli/ohi/resources/$name.schema.json $schema",
+                  "pruneOhiDeclaration",
+                )
               else Seq.empty)
       } ++ Seq(
         "ohi.copySchema",
@@ -100,29 +95,32 @@ object `package` extends Module {
     }
 
     /** Regenerate every checked-in source generated from a LinkML model. */
-    def regenerate: Seq[String] = alias((Seq(
-      "cli.jvm.run generate scala --clean --to metamodel/src/eu/neverblink/linkml/metamodel/ " +
-        "linkml:meta",
-      "cli.jvm.run generate scala --clean --to validation/src/eu/neverblink/linkml/validation/ " +
-        "--package eu.neverblink.linkml.validation model/issue-types.yaml",
-      "cli.jvm.run generate typescript --to generator/npm/validation-report.d.ts " +
-        "model/issue-types.yaml",
-      "cli.jvm.run generate scala --clean " +
-        "--to generator/src/eu/neverblink/linkml/generator/owl/config/ " +
-        "--package eu.neverblink.linkml.generator.owl.config model/owl-import-config.yaml",
-      "cli.jvm.run generate scala --clean " +
-        "--to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
-        "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
-      // The npm package's index.d.ts uses this as the return type of `buildInfo`
-      "cli.jvm.run generate typescript --to generator/npm/build-info.d.ts model/build-info.yaml",
-      "tests.conformanceDefinitions",
-      "cli.jvm.run generate scala --clean --to tests/src/eu/neverblink/linkml/tests/conformance " +
-        "--package eu.neverblink.linkml.tests.conformance " +
-        // TODO LNK-218: We should pass this as the output from tests.conformanceDefinitions, somehow
-        "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
-      "{metamodel,validation,generator,schemaview,tests}.jvm.fix",
-      "{metamodel,validation,generator,schemaview,tests}.jvm.reformat",
-    ) ++ ohiGeneration)*)
+    def regenerate: Seq[String] = alias(
+      (Seq(
+        "cli.jvm.run generate scala --clean --to metamodel/src/eu/neverblink/linkml/metamodel/ " +
+          "linkml:meta",
+        "cli.jvm.run generate scala --clean --to validation/src/eu/neverblink/linkml/validation/ " +
+          "--package eu.neverblink.linkml.validation model/issue-types.yaml",
+        "cli.jvm.run generate typescript --to generator/npm/validation-report.d.ts " +
+          "model/issue-types.yaml",
+        "cli.jvm.run generate scala --clean " +
+          "--to generator/src/eu/neverblink/linkml/generator/owl/config/ " +
+          "--package eu.neverblink.linkml.generator.owl.config model/owl-import-config.yaml",
+        "cli.jvm.run generate scala --clean " +
+          "--to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
+          "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
+        // The npm package's index.d.ts uses this as the return type of `buildInfo`
+        "cli.jvm.run generate typescript --to generator/npm/build-info.d.ts model/build-info.yaml",
+        "tests.conformanceDefinitions",
+        "cli.jvm.run generate scala --clean --to tests/src/eu/neverblink/linkml/tests/conformance " +
+          "--package eu.neverblink.linkml.tests.conformance " +
+          // TODO LNK-218: We should pass this as the output from tests.conformanceDefinitions, somehow
+          "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
+        "{metamodel,validation,generator,schemaview,tests}.jvm.fix",
+        "{metamodel,validation,generator,schemaview,tests}.jvm.reformat",
+        "agents.generate",
+      ) ++ ohiGeneration)*,
+    )
 
     def regenerateBindings: Seq[String] = alias(
       "nativelib.generateBindings",
@@ -166,5 +164,30 @@ object `package` extends Module {
     override def scalaVersion = Version.scala
 
     override def scoverageVersion = "2.5.2"
+  }
+
+  /** Agents module; defined here because we can't have a module name with a starting dot
+    * (`.agents`).
+    */
+  object agents extends Module {
+    override def moduleDir: Path = build.moduleDir / ".agents"
+
+    def generate() = Task.Command {
+      build.metamodel.definitions()
+      os.call(("python3", moduleDir / "generate.py"))
+    }
+
+    def generateCi() = Task.Command {
+      build.metamodel.definitions()
+      os.call(("python3", moduleDir / "generate.py", "--check"))
+    }
+
+    def check() = Task.Command {
+      os.call(("python3", moduleDir / "check.py"))
+    }
+
+    def checkCi() = Task.Command {
+      os.call(("python3", moduleDir / "check.py", "--require-cli"))
+    }
   }
 }

@@ -84,10 +84,10 @@ jobs:
         run: ./mill --no-server show metamodel.definitions
 
       - name: Regenerate the skill's derived files and check they are committed
-        run: python3 .agents/generate.py --check
+        run: ./mill agents.generateCi
 
       - name: Check skill structure, links and every schema example
-        run: python3 .agents/check.py --require-cli
+        run: ./mill agents.checkCi
 
 
   ui-check:
