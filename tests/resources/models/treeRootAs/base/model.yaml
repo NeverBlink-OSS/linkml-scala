@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/treeRootAs/base/
+name: treeRootAsBase
+description: >-
+  The model the other treeRootAs models are compared with. The tree root has no `tree_root_as`, so
+  a document is one object. The other models in this directory are the same, except that the tree
+  root sets `tree_root_as`.
+
+imports:
+  - linkml:types
+
+prefixes:
+  root: https://neverblink.eu/linkml/tests/treeRootAs/
+
+default_prefix: root
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      key:
+        range: string
+        rank: 1
+        key: true
+      value:
+        range: string
+        rank: 2
+        required: true

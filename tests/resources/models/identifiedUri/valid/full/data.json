@@ -1,0 +1,7 @@
+{
+  "id": "https://neverblink.eu/linkml/tests/instances/one",
+  "some_slot": "a string",
+  "some_int_slot": 42,
+  "some_boolean_slot": true,
+  "some_multivalued_slot": ["first", "second"]
+}

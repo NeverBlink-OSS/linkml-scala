@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/identifiedNested/
+name: identifiedNested
+description: A tree root named by a uri identifier, owning an inlined class with no identifier.
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    attributes:
+      some_other_slot:
+        range: integer
+        required: true
+
+  SomeClass:
+    tree_root: true
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      some_slot:
+        range: SomeOtherClass
+        inlined: true
+      some_multivalued_slot:
+        range: SomeOtherClass
+        inlined: true
+        multivalued: true

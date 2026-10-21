@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/library/> .
+@prefix inst: <https://neverblink.eu/linkml/tests/instances/> .
+
+inst:branch-library a :Library ;
+  :id inst:branch-library ;
+  :name "Branch library" .

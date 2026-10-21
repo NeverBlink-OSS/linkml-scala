@@ -1,0 +1,23 @@
+id: https://neverblink.eu/linkml/tests/identifiedUri/
+name: identifiedUri
+description: A tree root named by a uri identifier, alongside slots of several types.
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      some_slot:
+        range: string
+      some_int_slot:
+        range: integer
+      some_boolean_slot:
+        range: boolean
+      some_multivalued_slot:
+        range: string
+        multivalued: true

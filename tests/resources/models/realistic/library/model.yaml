@@ -1,0 +1,79 @@
+id: https://neverblink.eu/linkml/tests/library/
+name: library
+description: >-
+  A library, in the shape a real model tends to have: identified classes that name each other, an
+  inlined class with no identifier of its own, an enum, and slots of several types.
+
+imports:
+  - linkml:types
+
+enums:
+  LoanStatus:
+    permissible_values:
+      AVAILABLE:
+      ON_LOAN:
+      LOST:
+
+classes:
+  Person:
+    description: An author, or a member of the library.
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      name:
+        range: string
+        required: true
+      email:
+        range: string
+
+  Note:
+    description: A remark about a book. Notes are not named on their own.
+    attributes:
+      text:
+        range: string
+        required: true
+
+  Book:
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      title:
+        range: string
+        required: true
+      isbn:
+        description: International Standard Book Number.
+        range: string
+      published_year:
+        range: integer
+      in_print:
+        range: boolean
+      tags:
+        range: string
+        multivalued: true
+      status:
+        range: LoanStatus
+      author:
+        range: Person
+      note:
+        range: Note
+        inlined: true
+
+  Library:
+    tree_root: true
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      name:
+        range: string
+        required: true
+      people:
+        range: Person
+        multivalued: true
+        inlined_as_list: true
+      books:
+        range: Book
+        multivalued: true
+        inlined_as_list: true

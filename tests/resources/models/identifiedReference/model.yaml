@@ -1,0 +1,27 @@
+id: https://neverblink.eu/linkml/tests/identifiedReference/
+name: identifiedReference
+description: A tree root named by a uri identifier, referencing another identified class by id.
+
+imports:
+  - linkml:types
+
+classes:
+  SomeOtherClass:
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      some_other_slot:
+        range: string
+
+  SomeClass:
+    tree_root: true
+    attributes:
+      id:
+        identifier: true
+        range: uri
+      some_slot:
+        range: SomeOtherClass
+      some_multivalued_slot:
+        range: SomeOtherClass
+        multivalued: true

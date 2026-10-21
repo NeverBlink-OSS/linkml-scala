@@ -1,0 +1,32 @@
+{
+  "id": "https://neverblink.eu/linkml/tests/instances/city-library",
+  "name": "City library",
+  "people": [
+    {
+      "id": "https://neverblink.eu/linkml/tests/instances/lem",
+      "name": "Stanislaw Lem",
+      "email": "lem@example.org"
+    }
+  ],
+  "books": [
+    {
+      "id": "https://neverblink.eu/linkml/tests/instances/solaris",
+      "title": "Solaris",
+      "isbn": "978-0156027601",
+      "published_year": 1961,
+      "in_print": true,
+      "tags": ["science fiction", "classic"],
+      "status": "ON_LOAN",
+      "author": "https://neverblink.eu/linkml/tests/instances/lem",
+      "note": {
+        "text": "Held for the reading group."
+      }
+    },
+    {
+      "id": "https://neverblink.eu/linkml/tests/instances/cyberiad",
+      "title": "The Cyberiad",
+      "in_print": false,
+      "status": "AVAILABLE"
+    }
+  ]
+}

@@ -20,6 +20,8 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       "typed" -> noCodecForType("decimal", "date"),
       "constraints" -> noCodecForType("float"),
       "constraintsOnTypes" -> noCodecForType("float"),
+    ) ++ Seq("treeRootAsCompactDict", "treeRootAsList", "treeRootAsSimpleDict").map(
+      _ -> noTreeRootAs,
     )
 
   override val skipInstances: Map[(String, String), String] = Seq(
@@ -32,7 +34,11 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
   ).toMap + (
     ("recursiveTree", "nested") ->
       "LNK-233: Scala YAML codec drops slots when it writes a dict entry in the short form"
-  )
+  ) + (("treeRootAsOptional", "empty") -> noTreeRootAs)
+
+  private def noTreeRootAs: String =
+    "LNK-242: the Scala generator ignores `tree_root_as`, so the codec of the tree root reads " +
+      "one object, not a list, a dict or null"
 
   private def noCodecForType(types: String*): String =
     s"LinkmlYamlCodec cannot be derived for the ${types.mkString(" and ")} " +

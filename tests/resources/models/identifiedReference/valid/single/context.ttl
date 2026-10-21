@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedReference/> .
+@prefix inst: <https://neverblink.eu/linkml/tests/instances/> .
+
+inst:target-one a :SomeOtherClass ;
+  :id inst:target-one .

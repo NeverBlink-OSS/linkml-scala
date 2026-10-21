@@ -1,0 +1,6 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedReference/> .
+
+<https://neverblink.eu/linkml/tests/instances/ref-many> a :SomeClass ;
+  :id <https://neverblink.eu/linkml/tests/instances/ref-many> ;
+  :some_multivalued_slot <https://neverblink.eu/linkml/tests/instances/target-one>,
+    <https://neverblink.eu/linkml/tests/instances/target-two> .
