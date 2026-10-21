@@ -10,22 +10,34 @@ import {
 } from "@neverblink/linkml";
 
 const schema = "id: https://example.org/s\nname: s";
-const importMap: Record<string, string> = {};
+const imports: Record<string, string> = {};
 
 // Build metadata needs no schema.
 const build: any = LinkML.buildInfo();
 const buildVersion: string = build.linkml_scala_version;
 
 // Loading always yields a report; `view` is absent when the schema has fatal problems.
-const loaded: LoadResult = LinkML.loadFromString(schema, importMap);
+const loaded: LoadResult = LinkML.loadFromString(schema, imports);
 const loadReport: SchemaValidationReport = loaded.report;
 if (!loaded.view) throw new Error("schema did not load");
 const view: SchemaView = loaded.view;
 
 const loadedFromPath: LoadResult = LinkML.loadFromPath("model.yaml", { "model.yaml": schema });
-const loadedNoMessages: LoadResult = LinkML.loadFromString(schema, importMap, false);
+const loadedNoMessages: LoadResult = LinkML.loadFromString(schema, imports, false);
+// `importMap` maps an import to the key of the imports to load it from.
+const loadedWithImportMap: LoadResult = LinkML.loadFromPath(
+  "model.yaml",
+  { "model.yaml": schema, "deps/units.yaml": schema },
+  true,
+  { "https://example.org/units/": "deps/units/" },
+);
+const loadedFromStringWithImportMap: LoadResult = LinkML.loadFromString(schema, imports, true, {
+  "https://example.org/units/core": "deps/units.yaml",
+});
 void loadedFromPath;
 void loadedNoMessages;
+void loadedWithImportMap;
+void loadedFromStringWithImportMap;
 
 const jsonSchema: string = LinkML.jsonSchema(view);
 const jsonSchemaFull: string = LinkML.jsonSchema(view, true, "Person");

@@ -151,6 +151,22 @@ Generate a LinkML model that:
 ./linkml-scala generate linkml --to <output-path> <input-file>
 ```
 
+#### Loading imports from other locations
+
+Load an import from another place without changing the schema, for example a local copy of a
+schema that is imported by URI or CURIE. Write an import map as a JSON file:
+
+```json
+{"https://example.org/units/": "deps/units/"}
+```
+
+```shell
+./linkml-scala validate --import-map imports.json <input-file>
+```
+
+The option works with `generate` too. The Python, JavaScript and C libraries take the same map as
+`import_map` / `importMap`. See [Import maps](docs/import_maps.md).
+
 ## JavaScript / TypeScript library
 
 The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml) – a single ES module with TypeScript declarations, with no runtime dependencies.
@@ -162,14 +178,14 @@ npm install @neverblink/linkml
 ```js
 import { LinkML } from "@neverblink/linkml";
 
-// Parse once into a reusable SchemaView handle. The second argument is an
-// import map (filename -> YAML) for `imports:`.
+// Parse once into a reusable SchemaView handle. The second argument maps
+// file names to YAML for `imports:`.
 const view = LinkML.loadFromString(mySchemaYaml, {});
 const jsonSchema = LinkML.jsonSchema(view);
 ```
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
-import map, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
+map of schema texts, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
 `rdfs`, `owl`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `pydantic`, `erDiagram`, `ossie`, or `lint`
 against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.

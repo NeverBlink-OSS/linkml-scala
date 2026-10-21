@@ -93,7 +93,7 @@ int main(void) {
         expect("build info", out, &error, "linkml_scala_version");
     }
 
-    /* Load. No import map, so the array arguments are NULL and the count is 0. */
+    /* Load. No imports, so the array arguments are NULL and the count is 0. */
     char *report = NULL, *error = NULL;
     long long handle =
         linkml_load_string(NULL, SCHEMA, NULL, NULL, 0, NULL, &report, &error);

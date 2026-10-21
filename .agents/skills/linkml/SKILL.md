@@ -170,6 +170,9 @@ Read these when the task calls for them; do not load them up front.
 * [Inherited slots and `slot_usage`](210-slot-usage-inheritance.md) — why a `slot_usage` can make a
   slot required or multivalued, but not optional or single-valued, and how `any_of`, `all_of`,
   `exactly_one_of` and `none_of` from parent classes, mixins and the slot definition are combined.
+* [Import maps](220-import-maps.md) — how to load an import from another place without editing
+  the schema, with a JSON file of import to location, and how imports, including CURIEs, are
+  matched.
 
 ### Workflows
 

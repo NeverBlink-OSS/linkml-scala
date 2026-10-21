@@ -139,7 +139,7 @@ object LinkMlCApi {
   private def strings(ptr: Ptr[CString], count: CInt): Array[String] =
     if count <= 0 then Array.empty
     else if ptr == null then
-      throw new IllegalArgumentException(s"import map has $count entries but no array")
+      throw new IllegalArgumentException(s"the imports have $count entries but no array")
     else Array.tabulate(count)(i => string(ptr(i)))
 
   private def clear(out: Ptr[CString]): Unit =

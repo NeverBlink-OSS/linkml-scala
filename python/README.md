@@ -40,6 +40,19 @@ schema = linkml_scala.load_path("model.yaml", {
 })
 ```
 
+To load an import from another location without changing the schema, pass `import_map=`, a
+mapping or the path of a JSON file:
+
+```python
+schema = linkml_scala.load_file(
+    "model.yaml",
+    import_map={"https://example.org/units/": "deps/units/"},
+)
+schema = linkml_scala.load_file("model.yaml", import_map="imports.json")
+```
+
+See [Import maps](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/import_maps.md).
+
 ## Supported platforms
 
 We provide both sdist (source distribution) and pre-built wheels for popular platforms (Linux, macOS, Windows, x86-64 and ARM64).

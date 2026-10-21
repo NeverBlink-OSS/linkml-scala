@@ -18,6 +18,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 import textwrap
 import threading
 import unittest
@@ -337,6 +338,57 @@ class LoadTest(unittest.TestCase):
         with self.assertRaises(SchemaLoadError) as caught:
             linkml_scala.load_string(root, {})
         self.assertIn("nowhere", json.dumps(caught.exception.report))
+
+    def test_import_map_loads_a_curie_import_from_another_location(self):
+        root = schema(
+            "root",
+            """
+            prefixes:
+              shapes: https://example.org/shapes/
+            imports:
+              - linkml:types
+              - shapes:core
+            classes:
+              Drawing:
+                attributes:
+                  shape:
+                    range: Square
+            """,
+        )
+        shapes = schema(
+            "shapes",
+            """
+            classes:
+              Square:
+                attributes:
+                  side:
+                    range: string
+            """,
+        )
+        imports = {"root.yaml": root, "deps/shapes.yaml": shapes}
+        import_map = {"https://example.org/shapes/core": "deps/shapes.yaml"}
+        with linkml_scala.load_path("root.yaml", imports, import_map=import_map) as loaded:
+            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+            self.assertIn("Square", loaded.json_schema())
+        with tempfile.TemporaryDirectory() as tmp:
+            map_file = Path(tmp) / "map.json"
+            map_file.write_text(json.dumps(import_map), encoding="utf-8")
+            for given in (map_file, str(map_file)):
+                with linkml_scala.load_path("root.yaml", imports, import_map=given) as loaded:
+                    self.assertIn("Square", loaded.json_schema())
+
+    def test_import_map_with_a_curie_key_is_reported(self):
+        with self.assertRaises(SchemaLoadError) as caught:
+            linkml_scala.load_string(PERSON, {}, import_map={"linkml:types": "types.yaml"})
+        self.assertIn("is a CURIE", json.dumps(caught.exception.report))
+
+    def test_import_map_file_that_is_not_an_object_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            map_file = Path(tmp) / "map.json"
+            map_file.write_text("[]", encoding="utf-8")
+            with self.assertRaises(ValueError) as caught:
+                linkml_scala.load_string(PERSON, {}, import_map=map_file)
+            self.assertIn("not a JSON object", str(caught.exception))
 
     def test_fatal_problems_raise_with_a_report(self):
         with self.assertRaises(SchemaLoadError) as caught:

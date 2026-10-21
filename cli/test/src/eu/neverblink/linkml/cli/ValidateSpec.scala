@@ -477,4 +477,110 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       }
     }
   }
+
+  "the --import-map option" should {
+    val model =
+      """id: https://neverblink.eu/test/model
+        |name: model
+        |prefixes:
+        |  units: https://example.org/units/
+        |imports:
+        |  - units:core
+        |default_range: string
+        |types:
+        |  string:
+        |classes:
+        |  Root:
+        |    tree_root: true
+        |    is_a: Unit
+        |""".stripMargin
+    val units =
+      """id: https://example.org/units/core
+        |name: units
+        |classes:
+        |  Unit:
+        |""".stripMargin
+
+    /** A JSON object with the given entries, with the backslashes of Windows paths escaped. */
+    def json(entries: (String, String)*): String =
+      entries
+        .map(e => s""""${e._1}": "${e._2.replace("\\", "\\\\")}"""")
+        .mkString("{", ", ", "}")
+
+    "load a CURIE import from the location in the JSON file" in {
+      withSchemaDir("model.yaml" -> model, "units.yaml" -> units, "map.json" -> "") { dir =>
+        Files.writeString(
+          dir.resolve("map.json"),
+          json("https://example.org/units/core" -> dir.resolve("units.yaml").toString),
+        )
+        val (out, _, code) = Validate.runTestCommandWithExitCode(
+          List(
+            "validate",
+            "--format",
+            "plain",
+            "--import-map",
+            dir.resolve("map.json").toString,
+            dir.resolve("model.yaml").toString,
+          ),
+        )
+        code shouldBe 0
+        out should not include "SchemaImportError"
+      }
+    }
+
+    "report an import that has no location" in {
+      withSchemaDir("model.yaml" -> model) { dir =>
+        val (out, _, code) = Validate.runTestCommandWithExitCode(
+          List("validate", "--format", "json", dir.resolve("model.yaml").toString),
+        )
+        code shouldBe 1
+        out should include("SchemaImportError")
+        out should include("https://example.org/units/core.yaml")
+      }
+    }
+
+    "report a file that cannot be read" in {
+      withSchemaDir("model.yaml" -> model) { dir =>
+        val missing = dir.resolve("missing.json").toString
+        val (_, err, code) = Validate.runTestCommandWithExitCode(
+          List("validate", "--import-map", missing, dir.resolve("model.yaml").toString),
+        )
+        code shouldBe 1
+        err should include(s"Cannot read --import-map '$missing'")
+      }
+    }
+
+    "reject a file that is not a JSON object" in {
+      withSchemaDir("model.yaml" -> model, "map.json" -> "[]") { dir =>
+        val (_, err, code) = Validate.runTestCommandWithExitCode(
+          List(
+            "validate",
+            "--import-map",
+            dir.resolve("map.json").toString,
+            dir.resolve("model.yaml").toString,
+          ),
+        )
+        code shouldBe 1
+        err should include("Invalid --import-map")
+        err should include("not a JSON object")
+      }
+    }
+
+    "reject a CURIE key" in {
+      withSchemaDir("model.yaml" -> model, "map.json" -> json("linkml:types" -> "types.yaml")) {
+        dir =>
+          val (_, err, code) = Validate.runTestCommandWithExitCode(
+            List(
+              "validate",
+              "--import-map",
+              dir.resolve("map.json").toString,
+              dir.resolve("model.yaml").toString,
+            ),
+          )
+          code shouldBe 1
+          err should include("Invalid --import-map")
+          err should include("'linkml:types' is a CURIE")
+      }
+    }
+  }
 }
