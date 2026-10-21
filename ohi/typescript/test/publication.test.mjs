@@ -140,6 +140,18 @@ test("requires namespace IRI when a preferred prefix is supplied", () => {
   reject(data);
 });
 
+test("accepts a namespace IRI with non-ASCII letters", () => {
+  data.namespace_iri = "https://example.org/czujniki-żółwi#";
+  assert.equal(decode(data).namespace_iri, "https://example.org/czujniki-żółwi#");
+});
+
+for (const iri of ["https://example.org/a b#", "not an iri", "https://example.org/\u0085#", "https://example.org/\ud83d#"]) {
+  test(`rejects malformed namespace IRI ${JSON.stringify(iri)}`, () => {
+    data.namespace_iri = iri;
+    reject(data);
+  });
+}
+
 test("rejects malformed publication time", () => {
   data.published_at = "2026-13-13T12:30:00Z";
   reject(data);

@@ -1,5 +1,4 @@
-import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { newAjv } from "./ajv.js";
 import type { Publication } from "./generated.js";
 import type { CatalogConfig } from "./generated_config.js";
 import type { CatalogError, CatalogOperation } from "./generated_error.js";
@@ -10,8 +9,7 @@ import configSchema from "./catalog-config.schema.json" with { type: "json" };
 import requestSchema from "./search-request.schema.json" with { type: "json" };
 import resultSchema from "./search.schema.json" with { type: "json" };
 
-const ajv = new Ajv2020();
-addFormats.default(ajv, ["uri", "date-time"]);
+const ajv = newAjv();
 const validateConfig = ajv.compile<CatalogConfig>(configSchema);
 const validateRequest = ajv.compile<SearchRequest>(requestSchema);
 const validateResult = ajv.compile<SearchResult>(resultSchema);
