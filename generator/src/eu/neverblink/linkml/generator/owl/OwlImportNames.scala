@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{prefixMap, re
 import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig}
 import eu.neverblink.linkml.rdf.{Iri, Literal}
 import eu.neverblink.linkml.metamodel.SchemaDefinition
-import eu.neverblink.linkml.runtime.{Curie, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{Uri, UriOrCurie}
 import eu.neverblink.linkml.schemaview.{Case, FileSystemImporter, SchemaView}
 
 import java.net.URLDecoder
@@ -100,20 +100,38 @@ private[owl] final class OwlImportNames(
 
   allTerms.distinct.sorted.foreach(ensurePrefix)
 
-  /** A CURIE if a prefix covers the IRI and the rest is a plain local name, else the IRI.
-    *
-    * @param record
-    *   Whether to mark the prefix as used, so the schema declares it. False for warning text.
+  /** The prefix and local name of the CURIE for the IRI, if a prefix covers it and the rest is a
+    * plain local name.
     */
-  def curie(iri: String, record: Boolean = true): UriOrCurie =
+  private def split(iri: String): Option[(String, String)] =
     prefixes.toSeq.filter((ns, _) => iri.startsWith(ns) && iri.length > ns.length)
       .maxByOption(_._1.length)
       .map((ns, p) => p -> iri.substring(ns.length))
       .filter((_, local) => local.forall(c => Case.isStandard(c) || c == '-' || c == '.'))
-      .fold[UriOrCurie](Uri(iri)) { (p, local) =>
-        if record then usedPrefixes += p
-        Curie(s"$p:$local")
-      }
+
+  /** The prefix of the CURIE for the IRI, if it has one (see [[curie]]). */
+  def prefixOf(iri: String): Option[String] = split(iri).map(_._1)
+
+  /** The IRI as a CURIE if a prefix covers it and the rest is a plain local name, else the IRI.
+    *
+    * Use it for text, such as the value of `equals_string`. For a `uriorcurie` slot, use [[uri]].
+    *
+    * @param record
+    *   Whether to mark the prefix as used, so the schema declares it. False for warning text.
+    */
+  def curie(iri: String, record: Boolean = true): String =
+    split(iri).fold(iri) { (p, local) =>
+      if record then usedPrefixes += p
+      s"$p:$local"
+    }
+
+  /** The IRI as a URI. Its prefix is marked as used, if it has one (see [[curie]]), so the schema
+    * declares the prefix, and the URI is written as a CURIE.
+    */
+  def uri(iri: String): Uri = {
+    prefixOf(iri).foreach(usedPrefixes += _)
+    Uri(iri)
+  }
 
   /** Element names by IRI. Names are unique across classes, enums, slots and types. */
   private val byIri = mutable.HashMap.empty[String, String]
@@ -177,7 +195,7 @@ private[owl] final class OwlImportNames(
   def explicitIri(iri: String, group: NameGroup): Option[UriOrCurie] =
     Option.when(iri != defaultIri(byIri(iri), group)) {
       ensurePrefix(iri)
-      curie(iri)
+      uri(iri)
     }
 }
 
@@ -217,7 +235,7 @@ private[owl] object OwlImportNames {
   )
 
   private val vann = "http://purl.org/vocab/vann/"
-  private val linkmlNs = "https://w3id.org/linkml/"
+  val linkmlNs = "https://w3id.org/linkml/"
 
   /** The catch-all class, added when some slot needs it. */
   val anyClass = "Any"
@@ -229,7 +247,7 @@ private[owl] object OwlImportNames {
     val root = SchemaDefinition(
       id = Uri("urn:linkml-scala:owl-import-reserved"),
       name = "reserved",
-      imports = Seq(UriOrCurie("linkml:types"), UriOrCurie("linkml:extended_types")),
+      imports = Seq(Uri(linkmlNs.concat("types")), Uri(linkmlNs.concat("extended_types"))),
     )
     SchemaView.loadImports(root, "", FileSystemImporter) match {
       case Right(schemas) =>

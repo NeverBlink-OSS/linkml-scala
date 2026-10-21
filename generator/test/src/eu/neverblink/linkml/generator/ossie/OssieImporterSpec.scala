@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.ossie.expression.{Expression, Literal}
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{SchemaDefinition, SlotDefinition}
-import eu.neverblink.linkml.runtime.{Curie, PlainText, Reference, Uri}
+import eu.neverblink.linkml.runtime.{PlainText, Reference, Uri}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -94,7 +94,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         |  - concept: Thing
         |    type: EntityType
         """))
-      schema.imports.map(_.original) shouldBe Seq("linkml:types")
+      schema.imports.map(_.original) shouldBe Seq("https://w3id.org/linkml/types")
       schema.prefixes.keys should contain("linkml")
     }
 
@@ -532,7 +532,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         )
     }
 
-    "put each iri where LinkML keeps the element's URI, keeping a QName as a CURIE" in {
+    "put each iri where LinkML keeps the element's URI, expanding a QName" in {
       val schema = importOf(ossie("""
         |prefixes:
         |  foaf: http://xmlns.com/foaf/0.1/
@@ -553,9 +553,14 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         |    requires:
         |      - Status IN ('OK')
         """))
-      schema.classes("Agent").classUri shouldBe Some(Curie("foaf:Agent"))
-      schema.classes("Agent").attributes("homepage").slotUri shouldBe Some(Curie("foaf:homepage"))
+      schema.classes("Agent").classUri shouldBe Some(Uri("http://xmlns.com/foaf/0.1/Agent"))
+      schema.classes("Agent").attributes("homepage").slotUri shouldBe
+        Some(Uri("http://xmlns.com/foaf/0.1/homepage"))
       schema.enums("Status").enumUri shouldBe Some(Uri("http://www.w3.org/ns/org#Status"))
+      // The schema declares `foaf`, so the URIs are written as CURIEs
+      val written = OssieImporter().serializeSchema(schema, JsonOutputFormat.yaml)
+      written should include("class_uri: foaf:Agent")
+      written should include("slot_uri: foaf:homepage")
     }
 
     "make a value type's iri the uri of the type" in {
@@ -599,7 +604,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         |        multiplicity: ManyToOne
         |        verbalizes: ['{Thing} whatever {Any}']
         """))
-      schema.classes("Any").classUri.map(_.original) shouldBe Some("linkml:Any")
+      schema.classes("Any").classUri.map(_.original) shouldBe Some("https://w3id.org/linkml/Any")
       schema.classes("Thing").attributes("whatever").range shouldBe Some(Reference("Any"))
     }
 

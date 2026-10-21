@@ -11,7 +11,7 @@ import eu.neverblink.linkml.generator.owl.config.{
 }
 import eu.neverblink.linkml.metamodel.{AnonymousSlotExpression, SchemaDefinition}
 import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Owl, Rdfs, XmlSchema}
-import eu.neverblink.linkml.runtime.{Curie, MultilingualText, PlainText, Reference}
+import eu.neverblink.linkml.runtime.{MultilingualText, PlainText, Reference, Uri}
 import eu.neverblink.linkml.schemaview.{MapImporter, yamlAs}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -33,7 +33,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       )
       s.classes("A").isA shouldBe Some(Reference("B"))
       s.classes("A").mixins shouldBe Seq(Reference("Z"))
-      s.classes("Z").classUri shouldBe Some(Curie("other:Z"))
+      s.classes("Z").classUri shouldBe Some(Uri("https://other.example.com/Z"))
     }
 
     "drop owl:Thing as a parent" in {
@@ -68,7 +68,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
 
     "turn an equivalent named class into an exact mapping" in {
       schema(cls("A"), cls("B"), EquivalentClasses(Seq(c("A"), c("B"))))
-        .classes("A").exactMappings shouldBe Seq(Curie("ex:B"))
+        .classes("A").exactMappings shouldBe Seq(Uri("https://example.org/B"))
     }
 
     "keep what LinkML cannot say in the notes, and report it" in {
@@ -91,19 +91,20 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
 
     "be snake_cased, with the IRI kept in slot_uri" in {
       val s = schema(obj("hasPart"))
-      s.slotDefinitions("has_part").slotUri shouldBe Some(Curie("ex:hasPart"))
+      s.slotDefinitions("has_part").slotUri shouldBe Some(Uri("https://example.org/hasPart"))
     }
 
     "get their range, or Any when they have none" in {
       val s = schema(cls("A"), obj("p"), obj("q"), Range(ns + "p", c("A")))
       s.slotDefinitions("p").range shouldBe Some(Reference("A"))
       s.slotDefinitions("q").range shouldBe Some(Reference("Any"))
-      s.imports.map(_.original) should contain("linkml:extended_types")
+      s.imports.map(_.original) should contain("https://w3id.org/linkml/extended_types")
     }
 
     "say they are data properties when the range does not" in {
       val s = schema(data("d"))
-      s.slotDefinitions("d").implements.map(_.original) shouldBe Seq("owl:DatatypeProperty")
+      s.slotDefinitions("d").implements.map(_.original) shouldBe
+        Seq("http://www.w3.org/2002/07/owl#DatatypeProperty")
     }
 
     "turn a union range into any_of" in {
@@ -153,9 +154,10 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       )
       val s = result.schema
       s.slotDefinitions("p").isA shouldBe Some(Reference("related"))
-      s.slotDefinitions("related").slotUri shouldBe Some(Curie("other:related"))
+      s.slotDefinitions("related").slotUri shouldBe Some(Uri("https://other.example.com/related"))
       s.slotDefinitions("d").isA shouldBe Some(Reference("value"))
-      s.slotDefinitions("value").implements.map(_.original) shouldBe Seq("owl:DatatypeProperty")
+      s.slotDefinitions("value").implements.map(_.original) shouldBe
+        Seq("http://www.w3.org/2002/07/owl#DatatypeProperty")
       result.warnings shouldBe empty
     }
 
@@ -243,7 +245,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
         AnnotationAssertion(ns + "on", Annotation.text(Rdfs.label.value, "Switched on")),
       ).enums("Status")
       e.permissibleValues.keys.toSeq shouldBe Seq("ON", "off")
-      e.permissibleValues("ON").meaning shouldBe Some(Curie("ex:on"))
+      e.permissibleValues("ON").meaning shouldBe Some(Uri("https://example.org/on"))
       e.permissibleValues("ON").title shouldBe Some(PlainText("Switched on"))
     }
 
@@ -291,7 +293,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       )
       val e = result.schema.enums("LegalForceStatus")
       e.permissibleValues.keySet shouldBe Set("InForce", "NotInForce")
-      e.exactMappings.map(_.original) shouldBe Seq("other:LegalForce")
+      e.exactMappings.map(_.original) shouldBe Seq("https://other.example.com/LegalForce")
       result.schema.enums("USNonprofitType").permissibleValues.keySet shouldBe Set("Nonprofit501c3")
       e.isA.map(_.value) shouldBe Some("StatusEnumeration")
       result.schema.classes.keySet should contain allOf ("StatusEnumeration", "NonprofitType")
@@ -354,7 +356,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       a.title shouldBe Some(PlainText("A"))
       a.description shouldBe Some(PlainText("First."))
       a.comments shouldBe Seq(PlainText("Second."))
-      a.seeAlso shouldBe Seq(Curie("ex:B"))
+      a.seeAlso shouldBe Seq(Uri("https://example.org/B"))
       a.deprecated shouldBe Some(PlainText("true"))
     }
 
@@ -450,7 +452,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
     "tell apart terms with the same local name by their prefix" in {
       val s = schema(cls("Agent"), Declaration(EntityKind.Class, other + "Agent"))
       s.classes("Agent").classUri shouldBe None
-      s.classes("OtherAgent").classUri shouldBe Some(Curie("other:Agent"))
+      s.classes("OtherAgent").classUri shouldBe Some(Uri("https://other.example.com/Agent"))
     }
 
     "not take the names of LinkML's types" in {
@@ -508,7 +510,7 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
     "use the terms of a mapped LinkML schema by name, and not copy them in" in {
       val result = importWith("other.yaml" -> imported)()
       val s = result.schema
-      s.imports.map(_.original) shouldBe Seq("linkml:types", "other.yaml")
+      s.imports.map(_.original) shouldBe Seq("https://w3id.org/linkml/types", "other.yaml")
       s.classes.keySet shouldBe Set("Dog")
       s.slotDefinitions.keySet shouldBe Set("owner")
       s.classes("Dog").isA shouldBe Some(Reference("Animal"))
@@ -536,7 +538,9 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       val result = OwlImporter().importOntology(
         Ontology(prefixes = prefixes, imports = Seq(other + "onto"), axioms = axioms),
       )
-      result.schema.imports.map(_.original).filterNot(_.startsWith("linkml:")) shouldBe empty
+      result.schema.imports.map(_.original).filterNot(
+        _.startsWith("https://w3id.org/linkml/"),
+      ) shouldBe empty
       result.warnings.exists(_.startsWith("Import that is not mapped")) shouldBe true
     }
   }

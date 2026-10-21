@@ -117,27 +117,35 @@ private[owl] final class OwlAnnotationReader(
   }
 
   private def valueOf(field: Metadata.Field, value: Node): Option[String | UriOrCurie] =
-    (field.kind, value) match {
-      case (Metadata.Kind.Flag, Literal(v, _)) => Option.when(v == "true" || v == "1")("true")
-      case (Metadata.Kind.Flag, _) => None
-      // An IRI that is neither a URL nor a CURIE, like `mailto:`, would be read back as a CURIE
-      // with an unknown prefix, so leave it to the annotations.
-      case (Metadata.Kind.Reference, Iri(v))
-          if !v.contains("://") && !v.startsWith("urn:") &&
-            names.curie(v, record = false).isInstanceOf[Uri] =>
-        None
-      case (Metadata.Kind.Reference, Iri(v)) => Some(names.curie(v))
-      // Text is a reference only if it is an IRI or a CURIE with a known prefix.
-      case (Metadata.Kind.Reference, Literal(v, _)) if v.nonEmpty && !v.exists(notInIri) =>
-        if v.contains("://") || v.startsWith("urn:") then Some(v)
-        else
-          Some(names.expand(v)).filter(_ != v).map { iri =>
-            names.ensurePrefix(iri)
-            names.curie(iri)
-          }
-      case (Metadata.Kind.Reference, _) => None
-      case (_, Iri(v)) => Some(v)
-      case (_, other) => textIn(other)
+    field.kind match {
+      case Metadata.Kind.Flag =>
+        value match {
+          case Literal(v, _) => Option.when(v == "true" || v == "1")("true")
+          case _ => None
+        }
+      case Metadata.Kind.Reference =>
+        value match {
+          case Iri(v) =>
+            // An IRI that is neither a URL nor a CURIE, like `mailto:`, would be read back as a
+            // CURIE with an unknown prefix, so leave it to the annotations.
+            if (v.contains("://") || v.startsWith("urn:") || names.prefixOf(v).isDefined) {
+              Some(names.uri(v))
+            } else None
+          // Text is a reference only if it is an IRI or a CURIE with a known prefix.
+          case Literal(v, _) if v.nonEmpty && !v.exists(notInIri) =>
+            if v.contains("://") || v.startsWith("urn:") then Some(v)
+            else
+              Some(names.expand(v)).filter(_ != v).map { iri =>
+                names.ensurePrefix(iri)
+                names.uri(iri)
+              }
+          case _ => None
+        }
+      case _ =>
+        value match {
+          case Iri(v) => Some(v)
+          case other => textIn(other)
+        }
     }
 
   private def oneTextInLanguages(values: Seq[Annotation]): Seq[Annotation] =
@@ -165,17 +173,18 @@ private[owl] final class OwlAnnotationReader(
     else
       VectorMap.from(rest.groupBy(_.property).toSeq.sortBy(_._1).flatMap { (property, values) =>
         names.ensurePrefix(property)
-        val tag = names.curie(property)
+        // The key is written as it is, so it is a CURIE if it can be.
+        val key = names.curie(property)
         // Dropping language tags can make two values equal, so remove duplicates.
         val texts = values.map(_.value).flatMap {
-          case Iri(v) => Some(names.curie(v).original)
+          case Iri(v) => Some(names.curie(v))
           case other => textIn(other)
         }.distinct
         Option.when(texts.nonEmpty) {
           val value =
             if texts.sizeIs == 1 then yamlString(texts.head)
             else LinkmlAny(texts.map(t => "- " + yamlString(t).value).mkString)
-          tag.original -> LinkmlAnnotation(extensionTag = tag, extensionValue = value)
+          key -> LinkmlAnnotation(extensionTag = Uri(property), extensionValue = value)
         }
       })
 }
