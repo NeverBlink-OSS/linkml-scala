@@ -212,11 +212,11 @@ But rejects:
 
 `tree_root_as` accepts the following options:
 
-* `plain`: one object (the default)
-* `optional`: one object or null
-* `list`: a list of objects, which may be empty
-* `compact_dict`: a dict that maps the key of each object to the rest of its slots
-* `simple_dict`: a dict that maps the key of each object to the value of its other slot
+* `plain`: object instance, 
+* `optional`: object instance or null, 
+* `list`: array of object instances, may be empty, 
+* `compact_dict`: dict object mapping the key field to the identifier-optional object instances
+* `simple_dict`: dict object mapping the key field to the value field of the object instances
 
 LinkML-Python doesn't know this extension, so its generators always expect one object.
 In LinkML-Scala, the JSON Schema and Pydantic generators use it.
