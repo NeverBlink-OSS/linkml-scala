@@ -1378,6 +1378,28 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       codec.encode(Thing(Curie("other:blip")), prefixes = prefixes).asYaml shouldBe
         "blep: other:blip\n"
     }
+    "read xsd:string as the URI xsd:string when xsd is not declared" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val node = parseYaml("blep: xsd:string").toOption.get
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq(ex))) shouldBe
+        Thing(Uri("xsd:string"))
+      val xsd = "xsd" -> "http://www.w3.org/2001/XMLSchema#"
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq(xsd))) shouldBe
+        Thing(Uri("http://www.w3.org/2001/XMLSchema#string"))
+    }
+    "expand a value that looks like a URI when its scheme is declared as a prefix" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val node = parseYaml("blep: http://example.org/blip").toOption.get
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq("http" -> "urn:other:"))) shouldBe
+        Thing(Uri("urn:other://example.org/blip"))
+      // Without an `http` prefix, it is the URI as written
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq(ex))) shouldBe
+        Thing(Uri("http://example.org/blip"))
+    }
     "not expand or compact fields of type Uri or Curie" in {
       case class Thing(uri: Uri, curie: Curie) derives LinkmlYamlCodec
 

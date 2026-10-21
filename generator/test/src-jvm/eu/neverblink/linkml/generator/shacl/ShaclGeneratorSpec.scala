@@ -1404,6 +1404,20 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
     }
 
+    "use a CURIE with an undeclared prefix as a URI with that prefix as its scheme" in {
+      val sv = loadWithImports(
+        s"""$schemaShared
+           |classes:
+           |  Person:
+           |    class_uri: acme:Person
+           |""".stripMargin,
+      )
+      sv.classes("Person").uriStr shouldBe "acme:Person"
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_))
+      turtle should include("<acme:Person>")
+      Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
+    }
+
     "works for the metamodel without runtime exceptions" in {
       val schemaView =
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))

@@ -15,8 +15,9 @@ LinkML-Scala follows the approach discussed in [linkml/linkml#3906](https://gith
 Expansion:
 
 - The text before the first colon is the prefix. If the prefix is known, it is replaced with its namespace: `xsd:string` becomes `http://www.w3.org/2001/XMLSchema#string`.
-- This is also done when the value looks like a URI. If `http` is declared as a prefix, `http://example.org/a` is expanded with it.
+- This is also done when the value looks like a URI. With `http: urn:other:` declared as a prefix, `http://example.org/a` becomes `urn:other://example.org/a`. Declaring such a prefix is the author's choice. Without it, `http://example.org/a` is kept as it is written.
 - Nothing is guessed. If the prefix is unknown, the value is a URI as it is written, with the prefix as its scheme: without an `xsd` prefix, `xsd:string` is the URI `xsd:string`.
+- The same is true in schemas. With no `acme` prefix, `class_uri: acme:Person` is the URI `acme:Person`, and `generate shacl` writes it as `<acme:Person>`, as LinkML-Python does. It is a valid URI, but most likely not what the author meant, so declare every prefix that a schema uses.
 - A value without a colon, such as `Person`, is not a URI and is kept as it is written.
 
 Compaction:
