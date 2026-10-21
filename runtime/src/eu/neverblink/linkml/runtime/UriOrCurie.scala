@@ -162,9 +162,11 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
 /** URI and CURIE validation functions.
   *
   * Each function checks the whole input in a single left-to-right pass, without regular
-  * expressions, backtracking or allocations. The grammars are taken from RFC 3986 (URI and relative
-  * reference) and W3C CURIE Syntax 1.0 (CURIE). Only ASCII characters are accepted; others must be
-  * percent-encoded.
+  * expressions, backtracking or allocations. The grammars are taken from RFC 3987 (IRI and relative
+  * reference) and W3C CURIE Syntax 1.0 (CURIE). RDF identifiers are IRIs, so the characters RFC
+  * 3987 calls `ucschar` are accepted unencoded wherever it allows them: in the userinfo, host,
+  * path, query and fragment. Everything else outside US-ASCII must be percent-encoded, and the
+  * scheme stays ASCII, as RFC 3987 leaves it unchanged.
   */
 object UriCurieValidator {
   // Bit flags of character classes, looked up in the `charClasses` table for ASCII characters
@@ -197,6 +199,28 @@ object UriCurieValidator {
   }
 
   private inline def is(c: Char, flags: Int): Boolean = c < 128 && (charClasses(c) & flags) != 0
+
+  /** True for a code point in RFC 3987's `ucschar`, which an IRI may carry unencoded. */
+  private def isUcsChar(cp: Int): Boolean =
+    (cp >= 0xa0 && cp <= 0xd7ff) || (cp >= 0xf900 && cp <= 0xfdcf) ||
+      (cp >= 0xfdf0 && cp <= 0xffef) ||
+      // Planes 1 to 13, each without its last two code points, then most of plane 14.
+      (cp >= 0x10000 && cp <= 0xdfffd && (cp & 0xffff) <= 0xfffd) ||
+      (cp >= 0xe1000 && cp <= 0xefffd)
+
+  /** How many chars the `ucschar` at [[i]] takes: 2 for a surrogate pair, 1 for one in the basic
+    * plane, 0 if there is no `ucschar` there.
+    */
+  private def ucsCharLength(s: String, len: Int, i: Int): Int = {
+    val c = s.charAt(i)
+    if (c < 128) 0
+    else if (
+      Character.isHighSurrogate(c) && i + 1 < len && Character.isLowSurrogate(s.charAt(i + 1))
+    )
+      if (isUcsChar(Character.toCodePoint(c, s.charAt(i + 1)))) 2 else 0
+    else if (isUcsChar(c.toInt)) 1
+    else 0
+  }
 
   /** Check that [[s]] is a URI: `scheme ":" hier-part [ "?" query ] [ "#" fragment ]` */
   def isValidUri(s: String): Boolean = {
@@ -252,6 +276,7 @@ object UriCurieValidator {
     while (i < len && i >= 0) {
       val c = s.charAt(i)
       if (is(c, RegNameChar) || c == '@') i += 1
+      else if (ucsCharLength(s, len, i) > 0) i += ucsCharLength(s, len, i)
       else if (c == '/' || c == '?') {
         colonForbidden = false
         i += 1
@@ -283,6 +308,9 @@ object UriCurieValidator {
       if (is(c, RegNameChar)) {
         if (hasColon && !is(c, Digit)) isPort = false
         i += 1
+      } else if (ucsCharLength(s, len, i) > 0) {
+        if (hasColon) isPort = false
+        i += ucsCharLength(s, len, i)
       } else if (c == ':') {
         if (hasColon) isPort = false
         hasColon = true
@@ -317,6 +345,7 @@ object UriCurieValidator {
       while (loop && i < len) {
         val c = s.charAt(i)
         if (is(c, RegNameChar)) i += 1
+        else if (ucsCharLength(s, len, i) > 0) i += ucsCharLength(s, len, i)
         else if (c == '%' && isPctEncoded(s, len, i)) i += 3
         else loop = false
       }

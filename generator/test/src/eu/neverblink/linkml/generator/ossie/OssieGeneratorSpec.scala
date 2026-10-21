@@ -158,6 +158,20 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       relationship(o, "Person", "many").multiplicity shouldBe None
     }
 
+    "set ManyToOne when maximum_cardinality caps a multivalued slot at one value" in {
+      relationship(ontologyOf(maxCardinalityOne), "Wheel", "mounts_to").multiplicity shouldBe
+        Some(Multiplicity.ManyToOne)
+    }
+
+    "play a union range with Any rather than the schema's default_range" in {
+      role(ontologyOf(unionRange), "Agreement", "party").concept shouldBe BuiltInConcept.any
+    }
+
+    "keep the declared range of a union that only narrows it" in {
+      role(ontologyOf(unionRangeUnderDeclaredRange), "Expression", "adaption").concept shouldBe
+        "Work"
+    }
+
     "list required slots as concept-level requires" in {
       concept(ontologyOf(requiredSlot), "Person").requires shouldBe Seq("Person.name")
     }

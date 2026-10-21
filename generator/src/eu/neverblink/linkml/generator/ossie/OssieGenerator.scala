@@ -10,7 +10,7 @@ import eu.neverblink.linkml.generator.ossie.expression.{
   Verbalization,
 }
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
-import eu.neverblink.linkml.metamodel.Extensible
+import eu.neverblink.linkml.metamodel.{Extensible, SlotDefinition}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.HasMetadataLanguage
 import eu.neverblink.linkml.schemaview.*
@@ -183,8 +183,9 @@ class OssieGenerator(using sv: SchemaView)
       val selfReference = range == conceptName
       val role = Role(range, if selfReference then Some(name) else None)
 
+      val singleValued = !slot.multivalued || slot.maximumCardinality.contains(1)
       val multiplicity =
-        if slot.multivalued then None
+        if !singleValued then None
         else if singleIdentifier.contains(slot.name) then Some(Multiplicity.OneToOne)
         else Some(Multiplicity.ManyToOne)
 
@@ -260,8 +261,26 @@ class OssieGenerator(using sv: SchemaView)
     case _ => Nil
   }
 
-  /** The concept that plays the role in the range of a slot. */
-  private def rangeOf(av: AttributeView, conceptOf: Map[String, String]): String = av match {
+  /** The concept that plays the role in the range of a slot.
+    *
+    * A role has exactly one concept. A slot with an `any_of` range usually has a range of its own
+    * as well, from the slot or from a parent slot, which the union only narrows; that range is the
+    * concept. Without one, LinkML fills in the schema's `default_range`, usually `string`, which
+    * would say the values are strings when they are not. So a union that lands on a built-in value
+    * type uses `Any` instead.
+    */
+  private def rangeOf(av: AttributeView, conceptOf: Map[String, String]): String = {
+    val concept = player(av, conceptOf)
+    if unionRange(av.slotView.slot) && BuiltInConcept.valueTypes.contains(concept) then
+      BuiltInConcept.any
+    else concept
+  }
+
+  /** True if the slot's range is a union of two or more named ranges. */
+  private def unionRange(slot: SlotDefinition): Boolean =
+    slot.anyOf.sizeIs > 1 && slot.anyOf.forall(_.range.isDefined)
+
+  private def player(av: AttributeView, conceptOf: Map[String, String]): String = av match {
     case _: AnyView => BuiltInConcept.any
     case inline: ClassInlineAttributeView =>
       conceptOf.getOrElse(inline.classView.name, BuiltInConcept.any)

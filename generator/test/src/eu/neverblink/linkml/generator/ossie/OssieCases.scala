@@ -170,6 +170,44 @@ object OssieCases {
     |        multivalued: true
     """)
 
+  val maxCardinalityOne: Case = of("a multivalued slot capped at one value")("""
+    |classes:
+    |  Wheel:
+    |    attributes:
+    |      mounts_to:
+    |        multivalued: true
+    |        maximum_cardinality: 1
+    """)
+
+  val unionRange: Case = of("a slot whose range is a union")("""
+    |classes:
+    |  Agreement:
+    |    attributes:
+    |      party:
+    |        any_of:
+    |          - range: Person
+    |          - range: Organization
+    |  Person: {}
+    |  Organization: {}
+    """)
+
+  val unionRangeUnderDeclaredRange: Case =
+    of("a union range that narrows a declared range")("""
+    |classes:
+    |  Work: {}
+    |  Book:
+    |    is_a: Work
+    |  Article:
+    |    is_a: Work
+    |  Expression:
+    |    attributes:
+    |      adaption:
+    |        range: Work
+    |        any_of:
+    |          - range: Book
+    |          - range: Article
+    """)
+
   val requiredSlot: Case = of("a required slot")("""
     |classes:
     |  Person:
@@ -441,6 +479,9 @@ object OssieCases {
     aliasedClass,
     selfReference,
     multivalued,
+    maxCardinalityOne,
+    unionRange,
+    unionRangeUnderDeclaredRange,
     requiredSlot,
     numericBounds,
     pattern,

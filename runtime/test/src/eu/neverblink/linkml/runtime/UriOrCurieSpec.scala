@@ -66,6 +66,12 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "http://[1:2:3:4:5:6:255.255.255.255]",
         "http://[v1.fe80::a+en1]",
         "http://@host",
+        // RFC 3987 `ucschar` is allowed unencoded: this is an IRI, not a URI.
+        "http://example.org/\u00e9",
+        "https://onerecord.iata.org/ns/code-lists/CommodityCode#LIVE_MMLS_DOGS_L\u00f6wchen",
+        "http://ex\u00e4mple.org/a",
+        "http://example.org/a?q=\u00e9#f\u00e9",
+        "http://example.org/\ud83d\ude00",
       ).foreach(s => withClue(s)(UriCurieValidator.isValidUri(s) shouldBe true))
     }
     "reject invalid URIs" in {
@@ -76,7 +82,10 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "http//example.org",
         "http://<>",
         "http://exa mple.org",
-        "http://example.org/é",
+        // Outside `ucschar`: a C1 control, a noncharacter, and a lone surrogate.
+        "http://example.org/\u0085",
+        "http://example.org/\ufffe",
+        "http://example.org/\ud83d",
         "http://example.org/%4",
         "http://example.org/%G1",
         "http://example.org#a#b",
@@ -122,6 +131,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "?q:1",
         "#f:1",
         "ex:%41",
+        "ex:\u00e9",
       ).foreach(s => withClue(s)(UriCurieValidator.isValidCurie(s) shouldBe true))
     }
     "reject invalid CURIEs" in {
@@ -134,7 +144,7 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "a:b:c",
         "ex:a#b#c",
         "ex:%4",
-        "ex:é",
+        "ex:\ufffe",
       ).foreach(s => withClue(s)(UriCurieValidator.isValidCurie(s) shouldBe false))
     }
   }
