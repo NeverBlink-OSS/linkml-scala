@@ -64,16 +64,20 @@ classes:
     tree_root: true
     attributes:
       id:
+        rank: 1
         identifier: true
         range: uri
       name:
+        rank: 2
         range: string
         required: true
       people:
+        rank: 3
         range: Person
         multivalued: true
         inlined_as_list: true
       books:
+        rank: 4
         range: Book
         multivalued: true
         inlined_as_list: true

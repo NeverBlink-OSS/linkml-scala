@@ -16,12 +16,15 @@ classes:
     tree_root: true
     attributes:
       id:
+        rank: 1
         identifier: true
         range: uri
       some_slot:
+        rank: 2
         range: SomeOtherClass
         inlined: true
       some_multivalued_slot:
+        rank: 3
         range: SomeOtherClass
         inlined: true
         multivalued: true
