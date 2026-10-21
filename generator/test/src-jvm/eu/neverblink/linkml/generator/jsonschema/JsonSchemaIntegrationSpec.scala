@@ -303,6 +303,34 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
       ) shouldBe empty
     }
 
+    "accept IRIs, not only ASCII URIs, for `uri` and `uriorcurie`" in {
+      for model <- Seq(ModelCatalogue.uri.model, ModelCatalogue.uriOrCurie.model) do {
+        val schema = sr.getSchema(JsonSchemaGenerator(using model).serialize())
+
+        def accepts(value: String): Boolean =
+          schema.validate(
+            s"""{"some_slot": "$value"}""",
+            InputFormat.JSON,
+            (ec: ExecutionContext) =>
+              ec.setExecutionConfig(
+                ExecutionConfig.builder().formatAssertionsEnabled(true).build(),
+              ),
+          ).isEmpty
+
+        withClue(model.root.name)(accepts("http://example.org/Löwchen") shouldBe true)
+      }
+    }
+
+    "reject an invalid IRI for `uri`" in {
+      val schema = sr.getSchema(JsonSchemaGenerator(using ModelCatalogue.uri.model).serialize())
+      schema.validate(
+        """{"some_slot": "http://example.org/a b"}""",
+        InputFormat.JSON,
+        (ec: ExecutionContext) =>
+          ec.setExecutionConfig(ExecutionConfig.builder().formatAssertionsEnabled(true).build()),
+      ) should not be empty
+    }
+
     for entry <- ModelCatalogue.all do
       s"generate Json Schema for model '${entry.model.root.name}'" when {
 

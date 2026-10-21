@@ -628,11 +628,11 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       stringSlot.pattern shouldBe Some(Pattern("""^([0-9]{3})?[0-9]{3}-[0-9]{4}$"""))
     }
 
-    "add format for URIs" in {
+    "add format for IRIs" in {
       given SchemaView = ModelCatalogue.uri.model
       val json = JsonSchemaGenerator().generate()
       val someClass = json.$defs.get("SomeClass").asInstanceOf[Schema]
-      someClass.properties("some_slot").asInstanceOf[Schema].format shouldBe Some("uri")
+      someClass.properties("some_slot").asInstanceOf[Schema].format shouldBe Some("iri")
     }
 
     "add format for CURIEs" in {
@@ -642,7 +642,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someClass.properties("some_slot").asInstanceOf[Schema].format shouldBe Some("curie")
     }
 
-    "add format for URIs or CURIEs" in {
+    "add format for IRIs or CURIEs" in {
       given SchemaView = ModelCatalogue.uriOrCurie.model
 
       val json = JsonSchemaGenerator().generate()
@@ -650,7 +650,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       someClass.properties("some_slot").asInstanceOf[Schema]
         .anyOf.collect { case schema: Schema =>
           schema.format
-        } should contain theSameElementsAs Seq(Some("uri"), Some("curie"))
+        } should contain theSameElementsAs Seq(Some("iri"), Some("curie"))
     }
 
     "add format for dates" in {

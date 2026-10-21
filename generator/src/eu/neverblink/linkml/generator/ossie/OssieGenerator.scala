@@ -262,12 +262,6 @@ class OssieGenerator(using sv: SchemaView)
   }
 
   /** The concept that plays the role in the range of a slot.
-    *
-    * A role has exactly one concept. A slot with an `any_of` range usually has a range of its own
-    * as well, from the slot or from a parent slot, which the union only narrows; that range is the
-    * concept. Without one, LinkML fills in the schema's `default_range`, usually `string`, which
-    * would say the values are strings when they are not. So a union that lands on a built-in value
-    * type uses `Any` instead.
     */
   private def rangeOf(av: AttributeView, conceptOf: Map[String, String]): String = {
     val concept = player(av, conceptOf)

@@ -462,9 +462,6 @@ object OwlImporter {
     import naming.{curie, defaultNamespace, ensurePrefix, explicitIri, names}
 
     /** The LinkML schemas that `owl:imports` map to, for the schema's `imports`.
-      *
-      * Sorted, because RDF has no order: the order the triples come in is not stable, and the
-      * schema has to come out the same when the OWL generated from it is imported again.
       */
     private val importRefs: Seq[String] = ontology.imports.flatMap { i =>
       config.importMap.get(i).orElse {
@@ -550,7 +547,7 @@ object OwlImporter {
             (typeNameFor(base), facets, None)
           case Some(DatatypeDefinition(_, DataRange.Datatype(base), _)) =>
             (typeNameFor(base), Nil, None)
-          // LinkML has no value list on a type, but a pattern of the values says the same thing.
+          // N possible literal values. We express this as a regex in LinkML.
           case Some(DatatypeDefinition(_, DataRange.OneOf(values), _)) if values.nonEmpty =>
             val base = values.map(literalType).distinct match {
               case Seq(only) => typeNameFor(only)
@@ -765,8 +762,8 @@ object OwlImporter {
             slotUri = explicitIri(p, NameGroup.Slot),
             range =
               if kind == EntityKind.AnnotationProperty then
-                // A vacuous range such as `rdfs:Literal` maps to `Any`, which is not written back
-                // as a range, so leave it off rather than lose it on the way out.
+                // A vacuous range such as `rdfs:Literal` maps to `Any`. Don't set it explicitly
+                // because it only adds noise.
                 ranges.get(p).flatMap(_.headOption).flatMap(r => slotRange(r._2))
                   .flatMap(_.range).filter(_ != anyClass).map(Reference(_))
               else range.range.map(Reference(_)),
@@ -812,12 +809,10 @@ object OwlImporter {
 
     // Classes
 
-    /** Parents that follow from an axiom other than `rdfs:subClassOf`.
+    /** Parents of a class that can be inferred from an axiom other than `rdfs:subClassOf`.
       *
       * A class defined by an intersection is a subclass of each named conjunct, and the members of
-      * a union or a disjoint union are subclasses of the class they define. LinkML cannot say that
-      * these are also sufficient conditions, but the subclass half is worth keeping, and with the
-      * members as children `abstract` and `children_are_mutually_disjoint` say the rest.
+      * a union or a disjoint union are subclasses of the class they define.
       */
     private lazy val impliedParents: Map[String, Seq[String]] = {
       val out = mutable.LinkedHashMap.empty[String, mutable.LinkedHashSet[String]]
@@ -836,7 +831,7 @@ object OwlImporter {
             case _ =>
           }
         }
-        // Colour disjointUnionOf (Red Green): every red thing is a colour.
+        // Color disjointUnionOf (Red Green): every red thing is a color.
         disjointUnions.get(c).foreach(a => named(a.operands).foreach(add(_, c)))
       }
       out.view.mapValues(_.toSeq).toMap
@@ -958,9 +953,6 @@ object OwlImporter {
         case DataRange.Datatype(iri) if iri == Rdfs.Literal.value => true
         case other =>
           val own = effectiveRange(p).copy(data = false)
-          // A `slot_usage` cannot drop the constraints the slot already carries, so a filler that
-          // only widens the property's range, such as `xsd:string` where the range is
-          // `xsd:string[pattern ...]`, has nothing to say here.
           val widened = own.copy(minimumValue = None, maximumValue = None, pattern = None)
           slotRange(other).map(_.copy(data = false)).exists(r => r == own || r == widened)
       }
@@ -1040,7 +1032,6 @@ object OwlImporter {
           case ClassExpr.Named(o) =>
             ensurePrefix(o)
             exact = exact :+ curie(o)
-          // `abstract`, with the members as children, says exactly this.
           case ClassExpr.UnionOf(ops) if isUnionOfChildren(ops) => isAbstract = true
           case expr =>
             // Keep it as a superclass. LinkML can't say that it is also a sufficient condition.

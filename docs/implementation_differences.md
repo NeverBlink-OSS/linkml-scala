@@ -28,6 +28,7 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 - Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
+- IRIs with non-ASCII characters are accepted in slots of type `uri` and `uriorcurie`.
 
 These features work differently in LinkML-Scala than in the LinkML specification and LinkML-Python:
 
@@ -102,6 +103,18 @@ To make generators to emit an "accept anything" schema, set the range to a class
 
 If a `default_prefix` is not provided, then the schema's `id` will be used instead.
 This ensures that all schema Elements always can construct a valid URI, even if it is synthetic.
+
+## URIs are IRIs
+
+Wherever LinkML expects a URI (the `uri` and `uriorcurie` types, and URIs in the schema itself such as `class_uri`, `slot_uri` or `meaning`), LinkML-Scala accepts an IRI ([RFC 3987](https://www.rfc-editor.org/rfc/rfc3987)).
+Letters outside ASCII may appear unencoded, as in `http://example.org/Löwchen` or `ex:Löwchen`.
+The scheme and the CURIE prefix must still be ASCII.
+
+LinkML-Python 1.12.1 checks URIs against RFC 3986, which allows only ASCII, so the same schema or data fails there unless such letters are percent-encoded.
+
+For the same reason, the JSON Schema generator gives `uri` slots `format: "iri"`, where LinkML-Python gives `format: "uri"`.
+A `uriorcurie` slot gets `iri` or `curie`.
+Some validators, such as Ajv with `ajv-formats`, do not know the `iri` format, just as they do not know `curie` or `ncname`.
 
 ## Always meaningful enums
 

@@ -433,12 +433,7 @@ object JsonSchemaGenerator {
   private val datetimeSchema: Schema = stringSchema.copy(format = new Some(SchemaFormat.DateTime))
   private val timeSchema: Schema = stringSchema.copy(format = new Some("time"))
   private val ncNameSchema: Schema = stringSchema.copy(format = new Some("ncname"))
-  private val uriSchema: Schema = stringSchema.copy(format = new Some("uri"))
+  private val uriSchema: Schema = stringSchema.copy(format = new Some("iri"))
   private val curieSchema: Schema = stringSchema.copy(format = new Some("curie"))
-  private val uriOrCurieSchema: Schema = new Schema(anyOf =
-    List(
-      stringSchema.copy(format = new Some("uri")),
-      stringSchema.copy(format = new Some("curie")),
-    ),
-  )
+  private val uriOrCurieSchema: Schema = new Schema(anyOf = List(uriSchema, curieSchema))
 }

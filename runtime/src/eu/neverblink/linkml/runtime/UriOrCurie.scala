@@ -163,10 +163,7 @@ final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
   *
   * Each function checks the whole input in a single left-to-right pass, without regular
   * expressions, backtracking or allocations. The grammars are taken from RFC 3987 (IRI and relative
-  * reference) and W3C CURIE Syntax 1.0 (CURIE). RDF identifiers are IRIs, so the characters RFC
-  * 3987 calls `ucschar` are accepted unencoded wherever it allows them: in the userinfo, host,
-  * path, query and fragment. Everything else outside US-ASCII must be percent-encoded, and the
-  * scheme stays ASCII, as RFC 3987 leaves it unchanged.
+  * reference) and W3C CURIE Syntax 1.0 (CURIE).
   */
 object UriCurieValidator {
   // Bit flags of character classes, looked up in the `charClasses` table for ASCII characters
