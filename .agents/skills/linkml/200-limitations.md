@@ -36,6 +36,7 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 - Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
+- IRIs with non-ASCII characters are accepted in slots of type `uri` and `uriorcurie`.
 
 These features work differently in LinkML-Scala than in the LinkML specification and LinkML-Python:
 

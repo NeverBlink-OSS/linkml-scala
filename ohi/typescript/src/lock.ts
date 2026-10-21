@@ -1,11 +1,9 @@
-import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { newAjv } from "./ajv.js";
 import type { ArtifactSelection, Lock } from "./generated_lock.js";
 import type { LockError, LockOperation } from "./generated_lock_error.js";
 import schema from "./lock.schema.json" with { type: "json" };
 
-const ajv = new Ajv2020();
-addFormats.default(ajv, ["uri"]);
+const ajv = newAjv();
 const validate = ajv.compile<Lock>(schema);
 
 export class LockException extends Error {

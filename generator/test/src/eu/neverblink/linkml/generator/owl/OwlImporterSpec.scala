@@ -53,6 +53,82 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
           .classes.keySet shouldBe Set("Book")
     }
   }
+
+  "importing a class axiom" should {
+    "make the named conjunct of a defining intersection the parent" in {
+      val result = importing(
+        """:Manager a owl:Class ;
+          |    owl:equivalentClass [ a owl:Class ; owl:intersectionOf (
+          |        :Staff [ a owl:Restriction ;
+          |                 owl:onProperty :manages ; owl:someValuesFrom :Team ] ) ] .
+          |:Staff a owl:Class .
+          |:Team a owl:Class .
+          |:manages a owl:ObjectProperty .""",
+      )
+      result.schema.classes("Manager").isA.map(_.value) shouldBe Some("Staff")
+      // LinkML cannot say that the conditions are also sufficient, so that half is reported.
+      result.warnings should have size 1
+    }
+
+    "make the members of a defining union its children" in {
+      val result = importing(
+        """:Vehicle a owl:Class ;
+          |    owl:equivalentClass [ a owl:Class ; owl:unionOf ( :Car :Truck ) ] .
+          |:Car a owl:Class .
+          |:Truck a owl:Class .""",
+      )
+      val classes = result.schema.classes
+      classes("Vehicle").`abstract` shouldBe true
+      classes("Car").isA.map(_.value) shouldBe Some("Vehicle")
+      classes("Truck").isA.map(_.value) shouldBe Some("Vehicle")
+      // `abstract` and the two children together say the whole axiom, so nothing is left over.
+      result.warnings shouldBe empty
+    }
+
+    "make the members of a disjoint union its disjoint children" in {
+      val result = importing(
+        """:Colour a owl:Class ; owl:disjointUnionOf ( :Red :Green ) .
+          |:Red a owl:Class .
+          |:Green a owl:Class .""",
+      )
+      val classes = result.schema.classes
+      classes("Colour").`abstract` shouldBe true
+      classes("Colour").childrenAreMutuallyDisjoint shouldBe true
+      classes("Red").isA.map(_.value) shouldBe Some("Colour")
+      classes("Green").isA.map(_.value) shouldBe Some("Colour")
+      result.warnings shouldBe empty
+    }
+  }
+
+  "importing a datatype" should {
+    "turn a list of literal values into a pattern" in {
+      val result = importing(
+        """:StatusCode a rdfs:Datatype ;
+          |    owl:equivalentClass [ a rdfs:Datatype ; owl:oneOf ( "Open" "Closed" ) ] .""",
+      )
+      val statusCode = result.schema.types("StatusCode")
+      statusCode.typeof.map(_.value) shouldBe Some("string")
+      statusCode.pattern shouldBe Some("^(Open|Closed)$")
+    }
+
+    "escape regular expression characters in the values" in {
+      val result = importing(
+        """:Code a rdfs:Datatype ;
+          |    owl:equivalentClass [ a rdfs:Datatype ; owl:oneOf ( "a.b" "c+d" ) ] .""",
+      )
+      result.schema.types("Code").pattern shouldBe Some("^(a\\.b|c\\+d)$")
+    }
+
+    "report a facet it cannot express" in {
+      val result = importing(
+        """:ShortString a rdfs:Datatype ;
+          |    owl:equivalentClass [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
+          |        owl:withRestrictions ( [ xsd:maxLength 5 ] ) ] .""",
+      )
+      result.schema.types("ShortString").typeof.map(_.value) shouldBe Some("string")
+      result.warnings.mkString should include("ShortString: xsd:maxLength")
+    }
+  }
 }
 
 object OwlImporterSpec {
@@ -77,6 +153,19 @@ object OwlImporterSpec {
   )
 
   private def stream(text: String) = ByteArrayInputStream(text.getBytes(UTF_8))
+
+  /** Imports `body` as Turtle, with the usual prefixes and an ontology header in front. */
+  def importing(body: String): OwlImporter.Result =
+    OwlImporter().importWithWarnings(
+      stream(
+        """@prefix : <https://example.org/test/> .
+        |@prefix owl: <http://www.w3.org/2002/07/owl#> .
+        |@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+        |<https://example.org/test> a owl:Ontology .
+        |""".stripMargin + body.stripMargin + "\n",
+      ),
+    )
 
   /** Generates OWL, imports it back and loads the schema. Also returns the import warnings. */
   def reimport(sv: SchemaView, format: RdfFormat = RdfFormat.ttl): (SchemaView, Seq[String]) = {

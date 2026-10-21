@@ -1,11 +1,8 @@
-import { Ajv2020 } from "ajv/dist/2020.js";
-import addFormats from "ajv-formats";
+import { newAjv } from "./ajv.js";
 import type { Publication } from "./generated.js";
 import schema from "./package.schema.json" with { type: "json" };
 
-const ajv = new Ajv2020();
-// The CommonJS plugin exposes its callable default under NodeNext.
-addFormats.default(ajv, ["uri", "date-time"]);
+const ajv = newAjv();
 const validate = ajv.compile<Publication>(schema);
 
 /** Decode publication metadata, validating consumed fields and discarding extras. */

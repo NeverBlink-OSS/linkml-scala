@@ -143,6 +143,19 @@ object OwlImporter {
   private val rangeIncludes =
     Set("http://schema.org/rangeIncludes", "https://schema.org/rangeIncludes")
 
+  /** The datatype facets LinkML can express, on a type or in a range. */
+  private val typeFacets: Set[String] =
+    Set(XmlSchema.minInclusive.value, XmlSchema.maxInclusive.value, XmlSchema.pattern.value)
+
+  private val regexMeta: Set[Char] = "\\^$.|?*+()[]{}".toSet
+
+  /** A LinkML pattern that matches exactly one of the values. */
+  private def alternationOf(values: Seq[String]): String =
+    values.map(quoteRegex).mkString("^(", "|", ")$")
+
+  private def quoteRegex(value: String): String =
+    value.flatMap(c => if regexMeta.contains(c) then s"\\$c" else c.toString)
+
   private val builtInTypes: Map[String, String] = Map(
     XmlSchema.string.value -> "string",
     XmlSchema.integer.value -> "integer",
@@ -448,13 +461,14 @@ object OwlImporter {
     )
     import naming.{curie, defaultNamespace, ensurePrefix, explicitIri, names}
 
-    /** The LinkML schemas that `owl:imports` map to, for the schema's `imports`. */
+    /** The LinkML schemas that `owl:imports` map to, for the schema's `imports`.
+      */
     private val importRefs: Seq[String] = ontology.imports.flatMap { i =>
       config.importMap.get(i).orElse {
         warn("Import that is not mapped to a LinkML schema (see `imports` in the config)", i)
         None
       }
-    }
+    }.distinct.sorted
 
     /** Slot ranges from the imported schemas, by slot IRI. */
     private val importedRanges = mutable.Map.empty[String, SlotRange]
@@ -528,14 +542,25 @@ object OwlImporter {
         val name = names(iri)
         val (metadata, annotations) = documentation(iri)
         ensurePrefix(iri)
-        val (typeof, facets) = datatypeDefinitions.get(iri).map(take) match {
+        val (typeof, facets, valuePattern) = datatypeDefinitions.get(iri).map(take) match {
           case Some(DatatypeDefinition(_, DataRange.Restriction(base, facets), _)) =>
-            (typeNameFor(base), facets)
-          case Some(DatatypeDefinition(_, DataRange.Datatype(base), _)) => (typeNameFor(base), Nil)
+            (typeNameFor(base), facets, None)
+          case Some(DatatypeDefinition(_, DataRange.Datatype(base), _)) =>
+            (typeNameFor(base), Nil, None)
+          // N possible literal values. We express this as a regex in LinkML.
+          case Some(DatatypeDefinition(_, DataRange.OneOf(values), _)) if values.nonEmpty =>
+            val base = values.map(literalType).distinct match {
+              case Seq(only) => typeNameFor(only)
+              case _ => "string"
+            }
+            (base, Nil, Some(alternationOf(values.map(literalValue))))
           case Some(other) =>
             warn("Datatype definition that LinkML cannot express", s"$iri: ${render(other.range)}")
-            ("string", Nil)
-          case None => (derivedTypes.getOrElse(iri, "string"), Nil)
+            ("string", Nil, None)
+          case None => (derivedTypes.getOrElse(iri, "string"), Nil, None)
+        }
+        facets.map(_._1).distinct.filterNot(typeFacets).foreach { f =>
+          warn("Datatype facet that LinkML cannot express", s"$name: ${short(f)}")
         }
         metadata.applyTo(
           TypeDefinition(
@@ -549,13 +574,23 @@ object OwlImporter {
             pattern = facets.collectFirst {
               case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
                 LinkmlPattern.fromXsd(v).linkml
-            },
+            }.orElse(valuePattern),
           ),
         )
     }
 
     private def facet(facets: Seq[(String, Literal)], which: Iri): Option[LinkmlAny] =
       facets.collectFirst { case (f, Literal(v, _)) if f == which.value => LinkmlAny(v) }
+
+    private def literalValue(v: Literal | LanguageLiteral): String = v match {
+      case Literal(value, _) => value
+      case LanguageLiteral(value, _) => value
+    }
+
+    private def literalType(v: Literal | LanguageLiteral): String = v match {
+      case Literal(_, datatype) => datatype.value
+      case LanguageLiteral(_, _) => Rdf.langString.value
+    }
 
     private def typeNameFor(iri: String): String =
       configuredTypes.get(iri)
@@ -576,9 +611,7 @@ object OwlImporter {
       case DataRange.Datatype(iri) if isDeclared(iri, EntityKind.Class) => None
       case DataRange.Datatype(iri) => Some(SlotRange(range = Some(typeNameFor(iri)), data = true))
       case DataRange.Restriction(base, facets) =>
-        val known =
-          Set(XmlSchema.minInclusive.value, XmlSchema.maxInclusive.value, XmlSchema.pattern.value)
-        Option.when(facets.forall(f => known(f._1)))(
+        Option.when(facets.forall(f => typeFacets(f._1)))(
           SlotRange(
             range = Some(typeNameFor(base)),
             minimumValue = facets.collectFirst {
@@ -729,9 +762,10 @@ object OwlImporter {
             slotUri = explicitIri(p, NameGroup.Slot),
             range =
               if kind == EntityKind.AnnotationProperty then
-                ranges.get(p).flatMap(_.headOption).flatMap(r => slotRange(r._2)).flatMap(
-                  _.range,
-                ).map(Reference(_))
+                // A vacuous range such as `rdfs:Literal` maps to `Any`. Don't set it explicitly
+                // because it only adds noise.
+                ranges.get(p).flatMap(_.headOption).flatMap(r => slotRange(r._2))
+                  .flatMap(_.range).filter(_ != anyClass).map(Reference(_))
               else range.range.map(Reference(_)),
             anyOf = range.anyOf.map(r => AnonymousSlotExpression(range = Some(Reference(r)))),
             multivalued = kind != EntityKind.AnnotationProperty &&
@@ -775,10 +809,38 @@ object OwlImporter {
 
     // Classes
 
+    /** Parents of a class that can be inferred from an axiom other than `rdfs:subClassOf`.
+      *
+      * A class defined by an intersection is a subclass of each named conjunct, and the members of
+      * a union or a disjoint union are subclasses of the class they define.
+      */
+    private lazy val impliedParents: Map[String, Seq[String]] = {
+      val out = mutable.LinkedHashMap.empty[String, mutable.LinkedHashSet[String]]
+      def add(child: String, parent: String): Unit =
+        if child != parent && names.contains(parent) && !enumMembers.contains(parent) &&
+          !wellKnownClasses(parent)
+        then out.getOrElseUpdate(child, mutable.LinkedHashSet.empty) += parent
+      def named(ops: Seq[ClassExpr]) = ops.collect { case ClassExpr.Named(o) => o }
+      classes.filterNot(enumMembers.contains).foreach { c =>
+        equivalents.getOrElse(c, Nil).foreach { (_, other) =>
+          other match {
+            // Manager = Staff and (manages some Team): every manager is a staff member.
+            case ClassExpr.IntersectionOf(ops) => named(ops).foreach(add(c, _))
+            // Vehicle = Car or Truck: every car is a vehicle.
+            case ClassExpr.UnionOf(ops) => named(ops).foreach(add(_, c))
+            case _ =>
+          }
+        }
+        // Color disjointUnionOf (Red Green): every red thing is a color.
+        disjointUnions.get(c).foreach(a => named(a.operands).foreach(add(_, c)))
+      }
+      out.view.mapValues(_.toSeq).toMap
+    }
+
     /** The named parents of each class, minus any that would create a cycle. */
     private lazy val classParents: Map[String, Seq[String]] = {
       val raw = classes.map { c =>
-        c -> subClassOf.getOrElse(c, Nil).flatMap {
+        c -> (subClassOf.getOrElse(c, Nil).flatMap {
           case (a, ClassExpr.Named(p)) if names.contains(p) && p != c && !enumMembers.contains(p) =>
             take(a)
             Some(p)
@@ -787,7 +849,7 @@ object OwlImporter {
             take(a)
             None
           case _ => None
-        }.distinct
+        } ++ impliedParents.getOrElse(c, Nil)).distinct
       }.toMap
       // Equivalent classes are subclasses of each other. LinkML doesn't allow cycles, so drop any
       // parent that leads back to the child.
@@ -890,7 +952,9 @@ object OwlImporter {
         case ClassExpr.Named(iri) if wellKnownClasses(iri) => true
         case DataRange.Datatype(iri) if iri == Rdfs.Literal.value => true
         case other =>
-          slotRange(other).exists(_.copy(data = false) == effectiveRange(p).copy(data = false))
+          val own = effectiveRange(p).copy(data = false)
+          val widened = own.copy(minimumValue = None, maximumValue = None, pattern = None)
+          slotRange(other).map(_.copy(data = false)).exists(r => r == own || r == widened)
       }
 
       /** True if the expressions are exactly the class's children, so the children cover it. */
@@ -968,6 +1032,7 @@ object OwlImporter {
           case ClassExpr.Named(o) =>
             ensurePrefix(o)
             exact = exact :+ curie(o)
+          case ClassExpr.UnionOf(ops) if isUnionOfChildren(ops) => isAbstract = true
           case expr =>
             // Keep it as a superclass. LinkML can't say that it is also a sufficient condition.
             warn(

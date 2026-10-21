@@ -52,7 +52,7 @@
           "title": "namespace_iri",
           "description": "Optional preferred primary RDF term namespace. Preserve the complete value including any trailing delimiter. Not the catalog namespace and not necessarily the ontology IRI.",
           "type": "string",
-          "format": "uri"
+          "format": "iri"
         },
         "publisher": {
           "title": "publisher",
@@ -122,7 +122,7 @@
           "title": "base_url",
           "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
           "type": "string",
-          "format": "uri"
+          "format": "iri"
         }
       },
       "additionalProperties": true
@@ -149,7 +149,7 @@
           "title": "url",
           "description": "Permanent absolute download URL of an immutable ontology file.",
           "type": "string",
-          "format": "uri"
+          "format": "iri"
         },
         "size_bytes": {
           "title": "size_bytes",
@@ -164,7 +164,7 @@
           "minItems": 1,
           "items": {
             "type": "string",
-            "format": "uri"
+            "format": "iri"
           }
         },
         "sha256": {
@@ -193,7 +193,7 @@
           "title": "base_url",
           "description": "Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename.",
           "type": "string",
-          "format": "uri"
+          "format": "iri"
         }
       },
       "additionalProperties": true
