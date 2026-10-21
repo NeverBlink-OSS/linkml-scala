@@ -125,26 +125,6 @@ This ensures that all schema Elements always can construct a valid URI, even if 
 Enum `permissible_values` always have a meaning, even if `meaning` is not explicitly defined.
 Thanks to this, enum values can always be represented as IRIs in RDF, and LinkML-Scala does not allow string-based enums.
 
-A permissible value without a `meaning` gets an IRI made of the schema's default namespace, the
-enum's name, `.` and the value's name in upper case.
-LinkML-Python uses the value's text as a string instead, so the RDF of the same data differs.
-For example:
-
-```yaml
-prefixes:
-  ex: https://example.org/
-default_prefix: ex
-enums:
-  LoanStatus:
-    permissible_values:
-      AVAILABLE:
-```
-
-In RDF, LinkML-Scala writes `AVAILABLE` as `<https://example.org/LoanStatus.AVAILABLE>`, and its
-SHACL has `sh:in ( <https://example.org/LoanStatus.AVAILABLE> )`.
-LinkML-Python's SHACL has `sh:in ( "AVAILABLE" )`, so it rejects the RDF that LinkML-Scala writes.
-In JSON and YAML, both write the name: `"AVAILABLE"`.
-
 ## Additional identifier constraints
 
 The identifier slot for classes must have a scalar `type` range.
