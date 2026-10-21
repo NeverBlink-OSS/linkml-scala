@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "neverblink-ohi"
+name = "ohi-sdk"
 version = "0.0.0"
 description = "Ohi catalog search, publication inspection and artifact retrieval."
 requires-python = ">=3.10"

@@ -7,7 +7,7 @@ The Ohi SDK lets Scala/JVM, Python and TypeScript applications search publicatio
 Install the Python SDK on Python 3.10 or later:
 
 ```sh
-python -m pip install neverblink-ohi
+python -m pip install ohi-sdk
 ```
 
 ```python
