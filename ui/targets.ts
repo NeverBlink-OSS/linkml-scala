@@ -76,9 +76,10 @@ export interface Importer extends Step {
   inputLabel: string;
   /** Starting point for the Load example button. */
   example: string;
-  /** Id of the generator this undoes, when there is one. Both directions of that pair get the
-   * reverse button in the output pane. */
-  reverses?: string;
+  /** Ids of the generators this undoes, if any. Both directions of each pair get the reverse
+   * button in the output pane. Going back from the importer picks the first one, unless the
+   * generator last used is also on the list. */
+  reverses?: string[];
   /** How to highlight the input pane. Defaults to YAML. */
   inputLang?: OutputLang;
   call: (api: LinkMLApi, input: string, o: OptionValues) => string;
@@ -295,7 +296,7 @@ export const IMPORTERS: Importer[] = [
     id: "ossie",
     label: "Apache Ossie",
     inputLabel: "Ossie ontology (YAML or JSON)",
-    reverses: "ossie",
+    reverses: ["ossie"],
     lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     example: EXAMPLE_OSSIE,
     options: [
@@ -307,9 +308,9 @@ export const IMPORTERS: Importer[] = [
   },
   {
     id: "owl",
-    label: "OWL 2",
-    inputLabel: "OWL 2 ontology (Turtle)",
-    reverses: "owl",
+    label: "OWL 2 / RDFS",
+    inputLabel: "OWL 2 or RDFS ontology (Turtle)",
+    reverses: ["owl", "rdfs"],
     inputLang: "turtle",
     lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     example: EXAMPLE_OWL,
