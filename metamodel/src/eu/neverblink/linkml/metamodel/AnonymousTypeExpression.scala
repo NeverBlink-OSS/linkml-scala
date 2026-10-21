@@ -9,6 +9,10 @@ import eu.neverblink.linkml.runtime.*
   *
   * @param pattern
   *   The string value of the slot must conform to this regular expression expressed in the string
+  * @param minimumLength
+  *   The string value must contain at least this many characters (Unicode code-points).
+  * @param maximumLength
+  *   The string value must contain at most this many characters (Unicode code-points).
   * @param unit
   *   An encoding of a unit
   * @param equalsNumber
@@ -39,6 +43,10 @@ import eu.neverblink.linkml.runtime.*
   */
 final case class AnonymousTypeExpression(
     pattern: Option[String] = None,
+    @named("minimum_length")
+    minimumLength: Option[Int] = None,
+    @named("maximum_length")
+    maximumLength: Option[Int] = None,
     unit: Option[UnitOfMeasure] = None,
     @named("equals_number")
     equalsNumber: Option[Int] = None,

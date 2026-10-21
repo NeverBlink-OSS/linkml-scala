@@ -19,6 +19,26 @@ trait TypeExpression extends Expression {
     */
   def pattern: Option[String]
 
+  /** The string value must contain at least this many characters (Unicode code-points).
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   For binary values (like base64Binary), this restriction should measure the number of octets
+    *   instead.
+    */
+  def minimumLength: Option[Int]
+
+  /** The string value must contain at most this many characters (Unicode code-points).
+    *
+    * @see
+    *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   For binary values (like base64Binary), this restriction should measure the number of octets
+    *   instead.
+    */
+  def maximumLength: Option[Int]
+
   /** An encoding of a unit
     *
     * @see
