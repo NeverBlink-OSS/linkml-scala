@@ -18,7 +18,7 @@ The Ohi SDK lets Python and TypeScript applications search publications, inspect
 Install on Python 3.10 or later:
 
 ```sh
-python -m pip install neverblink-ohi
+python -m pip install ohi-sdk
 ```
 
 Install for Node 22 or later, or a browser application:
