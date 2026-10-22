@@ -6,13 +6,16 @@ import mill.javalib.Dep
 
 /** The LinkML validation report model, generated into Scala by this project's own Scala
  * generator.
- *
- * @note
- *   The sources are checked in, because regenerating them needs `cli`, which transitively
- *   depends on this module. If they ever stop compiling, revert them before running
- *   `./mill regenerate`.
  */
-object `package` extends Module, NativeOptional {
+object `package` extends Module, NativeOptional, build.LinkMlModelModule {
+  def modelSchema = Task { "model/issue-types.yaml" }
+
+  def modelPackage = "eu.neverblink.linkml.validation"
+
+  // The npm package ships these types, see `TsDefsGen.modelTypes`
+  override def otherModelOutputs =
+    Map("typescript" -> os.sub / "generator" / "npm" / "validation-report.d.ts")
+
   object jvm extends CommonModule {
     def moduleDeps = Seq(
       build.yaml.jvm,
