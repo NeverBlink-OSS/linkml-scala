@@ -2,6 +2,7 @@ package eu.neverblink.linkml.generator.erdiagram
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, readFromString}
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
@@ -133,15 +134,23 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta")),
       )
 
-  /** Generated schemas plus fixtures for optional markers and writer escaping. */
+  /** Generated schemas, the same schemas drawn as the documentation's class pages draw them, plus
+    * fixtures for optional markers and writer escaping.
+    */
   private lazy val diagrams: Seq[(String, ErDiagram)] =
-    schemas.map((name, sv) => (name, ErDiagramGenerator(using sv).generate())) ++ Seq(
-      (
-        "cardinalityWithoutOptionalMarker",
-        ErDiagramGenerator(using ModelCatalogue.cardinality.model)
-          .generate(ErDiagramGenerator.Options(optionalMarker = false)),
-      ),
-    )
+    schemas.map((name, sv) => (name, ErDiagramGenerator(using sv).generate())) ++
+      schemas.map((name, sv) =>
+        (
+          name.concat("Docs"),
+          DocsGenerator(using sv).diagramOf(sv.sortedClasses.filterNot(_.isAny)),
+        ),
+      ) ++ Seq(
+        (
+          "cardinalityWithoutOptionalMarker",
+          ErDiagramGenerator(using ModelCatalogue.cardinality.model)
+            .generate(ErDiagramGenerator.Options(optionalMarker = false)),
+        ),
+      )
 
   /** Generated diagrams, and what Mermaid made of them. Both are computed once: Node startup costs
     * far more than parsing every diagram in the catalogue.
