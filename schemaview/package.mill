@@ -11,6 +11,7 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.metamodel.jvm,
       build.validation.jvm,
+      build.schemaview.buildinfo.jvm,
     )
 
     object test extends ScalaTests, CommonTestModule
@@ -20,6 +21,7 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.metamodel.js,
       build.validation.js,
+      build.schemaview.buildinfo.js,
     )
 
     object test extends ScalaJSTests, CommonTestModule
@@ -29,6 +31,7 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.metamodel.native,
       build.validation.native,
+      build.schemaview.buildinfo.native,
     )
 
     object test extends ScalaNativeTests, CommonTestModule {

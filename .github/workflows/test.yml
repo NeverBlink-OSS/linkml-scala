@@ -96,7 +96,7 @@ jobs:
       - name: Re-generate the model-derived sources and check they are committed
         run: |
           ./mill --no-server regenerate
-          paths=(metamodel/src validation/src schemaview/src/eu/neverblink/linkml/schemaview/buildinfo
+          paths=(metamodel/src validation/src schemaview/buildinfo/src
             generator/owlconfig/src tests/src/eu/neverblink/linkml/tests/conformance
             generator/npm/validation-report.d.ts generator/npm/build-info.d.ts ohi cli/ohi)
           if [ -n "$(git status --porcelain -- "${paths[@]}")" ]; then
