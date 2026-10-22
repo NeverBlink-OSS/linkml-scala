@@ -6,9 +6,9 @@ import _root_.scala.meta.*
   * so the types can never drift from the implementation. Syntactic parse only – no compiler needed.
   *
   * The types of the values that follow a LinkML model (the validation report, the build info) are
-  * generated from the models by the TypeScript generator into generator/npm (see the `regenerate`
-  * alias). They ship next to index.d.ts as they are,
-  * and index.d.ts imports and re-exports them.
+  * generated from the models by the TypeScript generator into generator/npm (see
+  * `otherModelOutputs` of `validation` and `schemaview.buildinfo`). They ship next to index.d.ts as
+  * they are, and index.d.ts imports and re-exports them.
   */
 object TsDefsGen {
   private val exportedName = "LinkML"
