@@ -45,6 +45,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `curie` | 14 | 0 |  |
 | `emitPrefixes` | 0 | 0 |  |
 | `emptyClass` | 0 | 0 |  |
+| `emptyEnum` | 0 | 0 | A slot whose range is an enum without permissible values |
 | `enum` | 8 | 8 |  |
 | `enumInheritance` | 0 | 0 |  |
 | `equalsExpression` | 0 | 0 |  |

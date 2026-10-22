@@ -191,6 +191,14 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generate empty enums" in {
+      given SchemaView = ModelCatalogue.emptyEnum.model
+
+      GraphQlGenerator().serialize() should include(
+        "enum SomeEnum {\n  \"Empty enum stub\"\n  _\n}",
+      )
+    }
+
     "generate split interface/implementation when concrete inheritance" in {
       given SchemaView = ModelCatalogue.inheritance.model
 

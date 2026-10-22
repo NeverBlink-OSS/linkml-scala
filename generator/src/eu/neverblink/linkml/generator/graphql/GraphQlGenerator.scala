@@ -305,13 +305,22 @@ case class GraphQlEnumDefinition(
     extends GraphQlDefinition:
   val name: String = GraphQlRenamer.enumName(enumView)
   override def print: String = {
-    val serializedValues = values.map(_.print.strip())
+    val serializedValues =
+      if values.isEmpty then Seq(GraphQlEnumDefinition.emptyEnumStub)
+      else values.map(_.print.strip())
     indent"""${descriptionFor(enumView._enum)}
             |enum $name {
             |  ${serializedValues.mkString("\n")}
             |}
             |""".stripMargin
   }
+
+object GraphQlEnumDefinition:
+
+  /** The only value of an enum without permissible values. GraphQL does not allow empty enums. */
+  val emptyEnumStub: String =
+    """"Empty enum stub"
+      |_""".stripMargin
 
 /** Container for information needed to generate an enum value definition
   *

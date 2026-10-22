@@ -245,7 +245,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
         enumName(ev),
         objectSchema.copy(
           `type` = new Some(List(SchemaType.String)),
-          `enum` = new Some(enumValues),
+          // An empty `enum` would reject every value, so an enum without values is any string
+          `enum` = if (enumValues.isEmpty) None else new Some(enumValues),
           title = enum_.title.localized.orElseFast(Some(enum_.name)),
           description = enum_.description.localized,
         ),
