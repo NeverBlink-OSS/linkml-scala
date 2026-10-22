@@ -12,6 +12,12 @@ object GeneratedHeader {
     s"$commentPrefix$lead$id\n$commentPrefix DO NOT EDIT.\n"
   }
 
+  /** The header as one HTML comment, for Markdown, ending with a newline. */
+  def html(using sv: SchemaView): String = {
+    val id = sv.root.id.uri(using sv.rootPrefixResolver)
+    s"<!--$lead$id. DO NOT EDIT. -->\n"
+  }
+
   /** Whether [[line]] is the first line of a header written with [[commentPrefix]]. */
   def startsHeader(line: String, commentPrefix: String): Boolean =
     line.startsWith(commentPrefix) && line.startsWith(lead, commentPrefix.length)

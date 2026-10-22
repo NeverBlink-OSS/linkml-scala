@@ -7,6 +7,7 @@ object Version {
   val scalaJS = "1.22.0"
   val scalaNative = "0.5.12"
   val rdf4j = "6.1.0"
+  val markdown = "0.4.9"
 
   require(
     scalaNative == "0.5.12",
