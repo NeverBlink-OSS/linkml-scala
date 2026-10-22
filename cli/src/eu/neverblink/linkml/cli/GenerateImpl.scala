@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -553,4 +554,50 @@ object Translation extends StreamGenerate[TranslationOptions] {
       TranslationGenerator.Options(options.target, derivedAttributes = options.derivedAttributes),
     )
   }
+}
+
+// Documentation
+
+@HelpMessage(
+  "Generate Markdown documentation\n" +
+    "If --to is a directory, the documentation is written as index.md plus one page per class, " +
+    "slot, enum and type, in the classes/, slots/, enums/ and types/ folders. If --to is a .md " +
+    "file, or with no --to at all, it is written as a single document.",
+)
+@ArgsName("<input-file>")
+final case class DocsOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: PruningOptions = PruningOptions(),
+    @HelpMessage(
+      "Whether to add a Mermaid ER diagram to each class page, showing the class and the " +
+        "classes it is linked with. Default: true",
+    )
+    diagrams: Boolean = true,
+    @HelpMessage("Which language to use for titles and descriptions. Default: en")
+    metadataLanguage: String = "en",
+) extends HasGenerateOptions
+
+object Docs extends SplitGenerate[DocsOptions] {
+  override protected def generatorName: String = "docs"
+
+  override protected def singleFileExtension: String = ".md"
+
+  private def generator(options: DocsOptions): DocsGenerator.Options =
+    DocsGenerator.Options(
+      pruningMode = options.pruning.resolvedPruningMode,
+      diagrams = options.diagrams,
+      metadataLanguage = options.metadataLanguage,
+    )
+
+  override protected[cli] def generateSingle(options: DocsOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    DocsGenerator().writeTo(out, generator(options))
+
+  override protected[cli] def generateFiles(options: DocsOptions)(using
+      SchemaView,
+  ): Iterable[(String, String)] =
+    DocsGenerator().generateFiles(generator(options))
 }
