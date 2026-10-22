@@ -20,6 +20,7 @@ import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.{
   Case,
   FileSystemImporter,
@@ -1022,7 +1023,7 @@ object OwlImporter {
           else cardinality(p, bound, n, singleValuedSlot(p), restrict)
         case ClassExpr.HasValue(PropertyRef(p, false), value) if propertyKinds.contains(p) =>
           val text = value match {
-            case Iri(v) => enumValueText(p, v).getOrElse { ensurePrefix(v); curie(v) }
+            case Iri(v) => enumValueText(p, v).getOrElseFast { ensurePrefix(v); curie(v) }
             case Literal(v, _) => v
             case LanguageLiteral(v, _) => v
           }
@@ -1214,7 +1215,7 @@ object OwlImporter {
           text -> pvMetadata.applyTo(
             PermissibleValue(
               text = text,
-              meaning = Option.when(m != defaultMeaning(e, text))(uri(m)),
+              meaning = if (m != defaultMeaning(e, text)) Some(uri(m)) else None,
               annotations = pvAnnotations,
             ),
           )
@@ -1317,8 +1318,6 @@ object OwlImporter {
         s.range.exists(_.value == anyClass) || s.anyOf.exists(_.range.exists(_.value == anyClass))
       val usesAny = keptSlots.exists(isAny) ||
         keptClasses.exists(c => (c.slotUsage.values ++ c.attributes.values).exists(isAny))
-      // Import `Any` from LinkML so schemas that import each other don't each define their own.
-      val any = Option.when(usesAny)(Uri(linkmlNs.concat("extended_types")))
 
       // Warn about every axiom that was not used.
       unhandled.foreach {
@@ -1351,7 +1350,15 @@ object OwlImporter {
           prefixes = VectorMap.from(naming.declared.map((p, ns) => p -> Prefix(p, Uri(ns)))),
           defaultPrefix = Some(naming.defaultPrefix),
           defaultRange = Some(Reference("string")),
-          imports = (Uri(linkmlNs.concat("types")) +: any.toSeq) ++ importRefs.map(importOf),
+          imports = {
+            val b = Seq.newBuilder[UriOrCurie]
+            b.addOne(Uri(linkmlNs.concat("types")))
+            // Import `Any` from LinkML so schemas that import each other don't each define their
+            // own.
+            if (usesAny) b.addOne(Uri(linkmlNs.concat("extended_types")))
+            importRefs.foreach(r => b.addOne(importOf(r)))
+            b.result()
+          },
           classes = VectorMap.from(keptClasses.map(c => c.name -> c)),
           slotDefinitions = VectorMap.from(keptSlots.map(s => s.name -> s)),
           enums = VectorMap.from(
@@ -1380,7 +1387,9 @@ object OwlImporter {
     /** The prefixes of the CURIEs anywhere in a value, and of the URIs that are written as CURIEs.
       */
     private def prefixesIn(value: Any): Iterator[String] = value match {
-      case u: Uri => naming.prefixOf(u.original).iterator
+      case u: Uri =>
+        val p = naming.prefixOrNull(u.original)
+        if (p ne null) Iterator.single(p) else Iterator.empty
       case c: Curie => Iterator(c.original.takeWhile(_ != ':'))
       // Text can be a CURIE too, such as the value of `equals_string`.
       case t: String if t.indexOf(':') > 0 => Iterator(t.takeWhile(_ != ':'))

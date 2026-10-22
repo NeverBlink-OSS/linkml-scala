@@ -120,7 +120,7 @@ private[owl] final class OwlAnnotationReader(
     field.kind match {
       case Metadata.Kind.Flag =>
         value match {
-          case Literal(v, _) => Option.when(v == "true" || v == "1")("true")
+          case Literal(v, _) => if (v == "true" || v == "1") Some("true") else None
           case _ => None
         }
       case Metadata.Kind.Reference =>
@@ -128,17 +128,19 @@ private[owl] final class OwlAnnotationReader(
           case Iri(v) =>
             // An IRI that is neither a URL nor a CURIE, like `mailto:`, would be read back as a
             // CURIE with an unknown prefix, so leave it to the annotations.
-            if (v.contains("://") || v.startsWith("urn:") || names.prefixOf(v).isDefined) {
+            if (v.contains("://") || v.startsWith("urn:") || (names.prefixOrNull(v) ne null)) {
               Some(names.uri(v))
             } else None
           // Text is a reference only if it is an IRI or a CURIE with a known prefix.
           case Literal(v, _) if v.nonEmpty && !v.exists(notInIri) =>
-            if v.contains("://") || v.startsWith("urn:") then Some(v)
-            else
-              Some(names.expand(v)).filter(_ != v).map { iri =>
+            if (v.contains("://") || v.startsWith("urn:")) Some(v)
+            else {
+              val iri = names.expand(v)
+              if (iri != v) {
                 names.ensurePrefix(iri)
-                names.uri(iri)
-              }
+                Some(names.uri(iri))
+              } else None
+            }
           case _ => None
         }
       case _ =>

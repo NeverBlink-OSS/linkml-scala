@@ -100,17 +100,46 @@ private[owl] final class OwlImportNames(
 
   allTerms.distinct.sorted.foreach(ensurePrefix)
 
-  /** The prefix and local name of the CURIE for the IRI, if a prefix covers it and the rest is a
-    * plain local name.
+  /** Get the longest namespace that the IRI starts with, if the rest of the IRI is a plain local
+    * name.
+    *
+    * @return
+    *   The namespace, or null if there is none
     */
-  private def split(iri: String): Option[(String, String)] =
-    prefixes.toSeq.filter((ns, _) => iri.startsWith(ns) && iri.length > ns.length)
-      .maxByOption(_._1.length)
-      .map((ns, p) => p -> iri.substring(ns.length))
-      .filter((_, local) => local.forall(c => Case.isStandard(c) || c == '-' || c == '.'))
+  private def namespaceOrNull(iri: String): String = {
+    var namespace: String = null
+    val it = prefixes.keysIterator
+    while (it.hasNext) {
+      val ns = it.next()
+      if (
+        ((namespace eq null) || ns.length > namespace.length) && iri.length > ns.length &&
+        iri.startsWith(ns)
+      ) namespace = ns
+    }
+    if ((namespace ne null) && isPlainLocalName(iri, namespace.length)) namespace
+    else null
+  }
 
-  /** The prefix of the CURIE for the IRI, if it has one (see [[curie]]). */
-  def prefixOf(iri: String): Option[String] = split(iri).map(_._1)
+  /** Whether `iri` from index `from` has only letters, digits, `_`, `-` and `.` */
+  private def isPlainLocalName(iri: String, from: Int): Boolean = {
+    var i = from
+    while (i < iri.length) {
+      val c = iri.charAt(i)
+      if (!(Case.isStandard(c) || c == '-' || c == '.')) return false
+      i += 1
+    }
+    true
+  }
+
+  /** Get the prefix of the CURIE for the IRI (see [[curie]]).
+    *
+    * @return
+    *   The prefix, or null if the IRI has no CURIE
+    */
+  def prefixOrNull(iri: String): String = {
+    val ns = namespaceOrNull(iri)
+    if (ns eq null) null else prefixes(ns)
+  }
 
   /** The IRI as a CURIE if a prefix covers it and the rest is a plain local name, else the IRI.
     *
@@ -119,17 +148,22 @@ private[owl] final class OwlImportNames(
     * @param record
     *   Whether to mark the prefix as used, so the schema declares it. False for warning text.
     */
-  def curie(iri: String, record: Boolean = true): String =
-    split(iri).fold(iri) { (p, local) =>
-      if record then usedPrefixes += p
-      s"$p:$local"
+  def curie(iri: String, record: Boolean = true): String = {
+    val ns = namespaceOrNull(iri)
+    if (ns eq null) iri
+    else {
+      val p = prefixes(ns)
+      if (record) usedPrefixes += p
+      p.concat(":").concat(iri.substring(ns.length))
     }
+  }
 
   /** The IRI as a URI. Its prefix is marked as used, if it has one (see [[curie]]), so the schema
     * declares the prefix, and the URI is written as a CURIE.
     */
   def uri(iri: String): Uri = {
-    prefixOf(iri).foreach(usedPrefixes += _)
+    val p = prefixOrNull(iri)
+    if (p ne null) usedPrefixes += p
     Uri(iri)
   }
 

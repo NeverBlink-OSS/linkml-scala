@@ -170,11 +170,13 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   private def generateEmitPrefixes(pkg: String): Option[(String, String)] = {
     if sv.root.emitPrefixes.isEmpty then return None
 
-    val prefixes = sv.root.emitPrefixes.map { prefix =>
+    val sb = new java.lang.StringBuilder
+    sv.root.emitPrefixes.foreach { prefix =>
       val uri = sv.rootPrefixes.namespaceOrNull(prefix)
       if (uri eq null) sys.error(s"Unknown prefix to emit: $prefix")
-      s""""$prefix" -> "$uri",\n"""
-    }.mkString
+      sb.append('"').append(prefix).append("\" -> \"").append(uri).append("\",\n")
+    }
+    val prefixes = sb.toString
     Some(
       "Prefixes.scala" ->
         indent"""package $pkg

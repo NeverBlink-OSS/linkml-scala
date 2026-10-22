@@ -112,11 +112,9 @@ object OssieImporter {
       */
     private def uriOf(iri: String): Uri = {
       val colon = iri.indexOf(':')
-      val prefix = Option.when(colon > 0)(iri.substring(0, colon))
-      prefix.flatMap(ontology.prefixes.get) match {
-        case Some(ns) => Uri(ns.concat(iri.substring(colon + 1)))
-        case None => Uri(iri)
-      }
+      val ns = if (colon > 0) ontology.prefixes.getOrElse(iri.substring(0, colon), null) else null
+      if (ns ne null) Uri(ns.concat(iri.substring(colon + 1)))
+      else Uri(iri)
     }
 
     def schema: SchemaDefinition = {

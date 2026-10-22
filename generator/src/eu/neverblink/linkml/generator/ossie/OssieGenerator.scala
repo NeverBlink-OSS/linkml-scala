@@ -296,8 +296,11 @@ object OssieGenerator {
     * Remembers which prefixes `compact` has used, so that only those get declared.
     */
   private final class Namespaces(sv: SchemaView) {
-    private val all: Seq[(String, String)] =
-      sv.root.prefixes.keys.toSeq.map(p => (p, sv.rootPrefixes.namespaceOrNull(p)))
+    private val all: Seq[(String, String)] = {
+      val b = Seq.newBuilder[(String, String)]
+      sv.root.prefixes.keys.foreach(p => b.addOne((p, sv.rootPrefixes.namespaceOrNull(p))))
+      b.result()
+    }
 
     private val usedPrefixes = mutable.Set.empty[String]
 

@@ -784,8 +784,8 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case "double" => DoubleType
     case "float" =>
       // "thanks, python" => LinkML's float and double both use the Python base `float`.
-      if derivedType.typeUri.exists(_.original == "http://www.w3.org/2001/XMLSchema#double") then
-        DoubleType
+      val typeUri = derivedType.typeUri.foldFast("")(_.original)
+      if (typeUri == "http://www.w3.org/2001/XMLSchema#double") DoubleType
       else FloatType
     case "Decimal" => DecimalType
     case "URI" => UriType

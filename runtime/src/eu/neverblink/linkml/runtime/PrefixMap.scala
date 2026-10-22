@@ -44,8 +44,6 @@ final class PrefixMap private (
     java.util.Arrays.sort(sorted, (a, b) => b.getKey.length - a.getKey.length)
     sorted
   }
-  private val compactNamespaces: Array[String] = compactEntries.map(_.getKey)
-  private val compactPrefixes: Array[String] = compactEntries.map(_.getValue)
 
   /** Get the namespace of a prefix.
     *
@@ -86,16 +84,17 @@ final class PrefixMap private (
     */
   def compactOrNull(uri: String): String = {
     val uriLen = uri.length
-    val len = compactNamespaces.length
+    val len = compactEntries.length
     var i = 0
     while (i < len) {
-      val ns = compactNamespaces(i)
+      val entry = compactEntries(i)
+      val ns = entry.getKey
       val nsLen = ns.length
       if (
         nsLen < uriLen && uri.startsWith(ns) &&
         (uri.charAt(nsLen) != '/' || nsLen + 1 == uriLen || uri.charAt(nsLen + 1) != '/')
       ) {
-        val curie = compactPrefixes(i) + ':' + uri.substring(nsLen)
+        val curie = entry.getValue + ':' + uri.substring(nsLen)
         if (UriCurieValidator.isValidCurie(curie)) return curie
       }
       i += 1

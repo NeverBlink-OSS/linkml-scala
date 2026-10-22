@@ -4,8 +4,11 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase
 import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
-import eu.neverblink.linkml.runtime.Reference
+import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.{LocalizedText, Reference}
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
+
+import scala.collection.mutable
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator.Options] {
 
@@ -14,24 +17,40 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
   /** Emit the RDFS metadata of every definition describing the same subject, skipping titles,
     * descriptions and links repeated between them.
     *
-    * @param cms
-    *   Each definition's metadata
+    * @param definitions
+    *   The definitions describing the subject
+    * @param metadataOf
+    *   Get the metadata of a definition
     */
-  private def emitCommonMetadata(
+  private def emitCommonMetadata[D](
       sink: RdfSink,
       subject: Resource,
-      cms: Seq[CommonMetadata],
-  ): Unit = {
+      definitions: collection.Seq[D],
+  )(metadataOf: D => CommonMetadata): Unit = {
     // Text without a language is in the element's language, or the schema's.
-    def language(cm: CommonMetadata) = cm.inLanguage.orElse(sv.root.inLanguage)
-    cms.flatMap(cm => cm.title.map((_, language(cm)))).distinct.foreach { (t, l) =>
-      langStringProperty(sink, subject, Rdfs.label, t, l)
+    def language(cm: CommonMetadata) = cm.inLanguage.orElseFast(sv.root.inLanguage)
+    val titles = new java.util.HashSet[(LocalizedText, Option[String])]
+    definitions.foreach { d =>
+      val cm = metadataOf(d)
+      cm.title.foreachFast { t =>
+        val l = language(cm)
+        if (titles.add((t, l))) langStringProperty(sink, subject, Rdfs.label, t, l)
+      }
     }
-    cms.flatMap(cm => cm.description.map((_, language(cm)))).distinct.foreach { (d, l) =>
-      langStringProperty(sink, subject, Rdfs.comment, d, l)
+    val descriptions = new java.util.HashSet[(LocalizedText, Option[String])]
+    definitions.foreach { d =>
+      val cm = metadataOf(d)
+      cm.description.foreachFast { t =>
+        val l = language(cm)
+        if (descriptions.add((t, l))) langStringProperty(sink, subject, Rdfs.comment, t, l)
+      }
     }
-    cms.flatMap(_.seeAlso.map(_.original)).distinct.foreach { uri =>
-      sink.triple(subject, Rdfs.seeAlso, Iri(uri))
+    val links = new java.util.HashSet[String]
+    definitions.foreach { d =>
+      metadataOf(d).seeAlso.foreach { x =>
+        val uri = x.original
+        if (links.add(uri)) sink.triple(subject, Rdfs.seeAlso, Iri(uri))
+      }
     }
   }
 
@@ -48,7 +67,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       usages: Seq[SlotView],
   ): Unit = {
     sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-    emitCommonMetadata(sink, propertyNameIri, usages.map(_.slot))
+    emitCommonMetadata(sink, propertyNameIri, usages)(_.slot)
 
     sv.lowestCommonAncestors(
       usages
@@ -106,7 +125,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       val definitions = classDefinitions(c.uriStr)
       if (definitions.head eq c) {
         sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(sink, classNameIri, definitions.map(_.cls))
+        emitCommonMetadata(sink, classNameIri, definitions)(_.cls)
         definitions
           .flatMap(d => d.cls.isA.toList ++ d.cls.mixins)
           .flatMap(m => sv.getElement(m.value).toList)
@@ -145,7 +164,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       .groupBy(_.uriStr).toSeq.sortBy(_._1)
       .foreach { (uri, definitions) =>
         sink.triple(Iri(uri), Rdf.`type`, Rdfs.Datatype)
-        emitCommonMetadata(sink, Iri(uri), definitions.sortBy(_.name).map(_._type))
+        emitCommonMetadata(sink, Iri(uri), definitions.sortBy(_.name))(_._type)
       }
 
     val enums =
@@ -155,9 +174,12 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     val enumDefinitions: Map[String, Seq[EnumView]] = enums.values.toSeq.groupBy(_.uriStr)
     // A permissible value may be shared between enums, which each give it their own type but
     // possibly the same metadata, so group these by URI as well.
-    val valueUsages: Map[String, Seq[(EnumView, PermissibleValue)]] = enums.values.toSeq
-      .flatMap(e => e.derivedValues.map(v => (v.uriStr, (e, v.pv))))
-      .groupMap(_._1)(_._2)
+    val valueUsages = new mutable.HashMap[String, mutable.ArrayBuffer[(EnumView, PermissibleValue)]]
+    enums.values.foreach { e =>
+      e.derivedValues.foreach { v =>
+        valueUsages.getOrElseUpdate(v.uriStr, new mutable.ArrayBuffer).addOne((e, v.pv))
+      }
+    }
 
     // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
     // permissible values as an instance of that class.
@@ -166,7 +188,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       val definitions = enumDefinitions(e.uriStr)
       if (definitions.head eq e) {
         sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(sink, enumIri, definitions.map(_._enum))
+        emitCommonMetadata(sink, enumIri, definitions)(_._enum)
       }
       definitions.flatMap(_.parents).map(_.uriStr).distinct.foreach { parent =>
         sink.triple(enumIri, Rdfs.subClassOf, Iri(parent))
@@ -178,7 +200,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }
-          emitCommonMetadata(sink, pvIri, usages.map(_._2))
+          emitCommonMetadata(sink, pvIri, usages)(_._2)
         }
       }
     }
