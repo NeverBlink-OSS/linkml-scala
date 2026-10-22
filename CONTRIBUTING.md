@@ -19,13 +19,29 @@ Common tasks with mill:
 - Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project: `./mill lint` (scalafix + scalafmt)
-- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, Ohi client models): `./mill regenerate`
+- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, Ohi client models): `./mill regenerate`. To re-generate the classes of one model, run `regenerate` on its module, like `./mill validation.regenerate` (see [Generated models](#generated-models)).
 - Fetch the metamodel definitions from [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
 - Build native binary: `./mill cli.jvm.nativeImage` (requires Coursier (cs) to be installed)
 - Assemble the npm package: `./mill generator.js.npmPackage` (TS declarations are generated from the Scala facade)
 - Verify the npm package (README examples run + types compile): `./mill generator.js.verifyPackage` (requires Node.js and npm)
+
+### Generated models
+
+The classes generated from each LinkML schema in this repo live in their own module, which extends `LinkMlModelModule` (in `build.mill`):
+
+| Module                 | Schema                              |
+|------------------------|-------------------------------------|
+| `metamodel`            | `linkml:meta`                       |
+| `validation`           | `model/issue-types.yaml`            |
+| `schemaview.buildinfo` | `model/build-info.yaml`             |
+| `generator.owlconfig`  | `model/owl-import-config.yaml`      |
+| `tests.conformance`    | the conformance suite's model.yaml  |
+
+The generated classes are committed, because generating them needs the CLI, which depends on them. CI runs `./mill regenerate` and fails if the result differs from what is committed.
+
+To add a model, create a module that extends `LinkMlModelModule`, set `modelSchema` and `modelPackage`, and add the `jvm` (and if needed `js` and `native`) modules that compile its `src` directory. `./mill regenerate` finds it on its own. Hand-written code that uses the generated classes, like codecs, can stay in the module that uses it.
 
 ### Scala Native
 
