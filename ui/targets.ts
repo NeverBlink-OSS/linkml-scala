@@ -59,8 +59,9 @@ export interface Step {
 /** A generator: LinkML in, something else out. */
 export interface Target extends Step {
   /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`.
-   * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. */
-  view?: "report" | "diagram";
+   * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. `page` renders it
+   * as Markdown, behind a Page/Code tab pair. */
+  view?: "report" | "diagram" | "page";
   /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
    * the multi-MB Scala.js bundle, which the UI thread never loads. */
   call: (api: LinkMLApi, view: SchemaView, o: OptionValues) => TargetResult;
@@ -122,6 +123,7 @@ export const TARGETS: Target[] = [
     id: "docs",
     label: "Documentation",
     lang: "text",
+    view: "page",
     options: [
       // Defaults to `schema`, like the ER diagram: documentation is for the whole model.
       { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
@@ -133,16 +135,11 @@ export const TARGETS: Target[] = [
         title: "Add a Mermaid ER diagram to each class page",
         default: true,
       },
-      {
-        key: "singleFile",
-        type: "checkbox",
-        label: "One document",
-        title: "Write all pages as sections of one Markdown document, instead of a file per page",
-        default: true,
-      },
     ],
+    // Always one document: the page view links its sections with anchors, and a file tab per class
+    // would be too many for a real schema.
     call: (api, v, o) =>
-      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.diagrams, !!o.singleFile),
+      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.diagrams, true)["docs.md"] ?? "",
   },
   {
     id: "erDiagram",

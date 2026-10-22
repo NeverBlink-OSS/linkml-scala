@@ -21,9 +21,22 @@ const appOptions = {
   sourcemap: true,
   minify: true,
   logLevel: "info",
-  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle) and dist/mermaid/mermaid.js (see
-  // mermaidOptions); keep esbuild from inlining either.
-  external: ["./linkml.js", "./mermaid/mermaid.js"],
+  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle), dist/mermaid/mermaid.js (see
+  // mermaidOptions) and dist/markdown/markdown.js (see markdownOptions); keep esbuild from inlining
+  // them.
+  external: ["./linkml.js", "./mermaid/mermaid.js", "./markdown/markdown.js"],
+};
+
+// The Markdown renderer for the documentation page view, bundled into dist/markdown/ so that it is
+// loaded only when someone opens that view.
+const markdownOptions = {
+  entryPoints: ["markdown.ts"],
+  bundle: true,
+  format: "esm",
+  target: "es2020",
+  outdir: "dist/markdown",
+  minify: true,
+  logLevel: "info",
 };
 
 // Mermaid, for rendering the ER diagram, bundled into dist/mermaid/.
@@ -79,7 +92,7 @@ async function minifyScalaBundle() {
 }
 
 if (process.argv.includes("--watch")) {
-  await Promise.all([minifyScalaBundle(), buildMermaid()]);
+  await Promise.all([minifyScalaBundle(), buildMermaid(), esbuild.build(markdownOptions)]);
   const ctx = await esbuild.context(appOptions);
   await ctx.watch();
   console.log("esbuild watching…");
@@ -87,6 +100,7 @@ if (process.argv.includes("--watch")) {
   await Promise.all([
     esbuild.build(appOptions),
     buildMermaid(),
+    esbuild.build(markdownOptions),
     minifyScalaBundle(),
   ]);
 }

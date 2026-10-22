@@ -47,9 +47,12 @@ Options:
 - `--metadata-language <tag>`: which language to use for titles and descriptions that are given
   in more than one language. Default: `en`.
 
-The generator is also available from JavaScript (`docs()`), Python (`Schema.docs()`), the C API
-(`linkml_docs`) and the [playground](https://linkml.neverblink.eu/playground/). These return
-the pages as a map from file name to content.
+The generator is also available from JavaScript (`docs()`), Python (`Schema.docs()`) and the C API
+(`linkml_docs`), which return the pages as a map from file name to content.
+
+The [playground](https://linkml.neverblink.eu/playground/) has a Documentation target. It shows
+the documentation as one page, as GitHub would show it, with the diagrams drawn. The Code tab shows
+the Markdown.
 
 ## What the pages show
 

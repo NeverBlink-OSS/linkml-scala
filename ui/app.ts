@@ -28,6 +28,9 @@ const WORKER_URL = "./worker.js";
 // Mermaid, bundled into dist/mermaid by build.mjs. Imported on first use only: it and its chunks
 // are ~210 KB gzipped, which nobody who never opens the ER diagram tab should pay for.
 const MERMAID_URL = "./mermaid/mermaid.js";
+// The Markdown renderer for the documentation page view, bundled into dist/markdown by build.mjs and
+// imported on first use only, like Mermaid.
+const MARKDOWN_URL = "./markdown/markdown.js";
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -86,6 +89,10 @@ let diagramTab: "diagram" | "code" = "diagram";
 // The Mermaid source currently on screen, kept so the tab buttons and the theme toggle can
 // re-render without waiting for another generation. Non-null exactly while the diagram view is up.
 let diagramSource: string | null = null;
+// Which half of the documentation target is showing, sticky like `diagramTab`.
+let pageTab: "page" | "code" = "page";
+// The Markdown currently on screen. Non-null exactly while the page view is up.
+let pageSource: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
 let diagramTimer: ReturnType<typeof setTimeout> | undefined;
 let busyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -156,6 +163,7 @@ const $fileTabs = $("fileTabs");
 const $outputPanel = $("outputPanel");
 const $reportView = $("reportView");
 const $diagramView = $("diagramView");
+const $pageView = $("pageView");
 const $outputEditorHost = $("outputEditor");
 const $targetCombo = $("targetCombo");
 const $targetButton = $<HTMLButtonElement>("targetButton");
@@ -459,6 +467,7 @@ function renderOptions(): void {
 function showOutputText(text: string, lang: OutputLang): void {
   hideReport();
   hideDiagram();
+  hidePage();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.remove("cm-output--error");
@@ -468,6 +477,7 @@ function showOutputText(text: string, lang: OutputLang): void {
 function showOutputError(text: string): void {
   hideReport();
   hideDiagram();
+  hidePage();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.add("cm-output--error");
@@ -484,6 +494,21 @@ interface MermaidApi {
 }
 
 let mermaidPromise: Promise<MermaidApi> | null = null;
+
+/** Mermaid's settings for the current theme, for the diagram view and the page view alike. */
+function mermaidConfig(): Record<string, unknown> {
+  return {
+    startOnLoad: false,
+    // Diagram text is derived from the user's own schema, but it still ends up as markup.
+    securityLevel: "strict",
+    theme: document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark",
+    // Both default caps (50 000 characters, 500 edges) are below what a real-world schema
+    // produces. The size gate is what actually keeps the page responsive, so lift these and let
+    // it decide.
+    maxTextSize: 5_000_000,
+    maxEdges: 10_000,
+  };
+}
 
 function loadMermaid(): Promise<MermaidApi> {
   mermaidPromise ??= import(MERMAID_URL).then((m: { default: MermaidApi }) => m.default);
@@ -659,6 +684,7 @@ $diagramView.addEventListener("dblclick", () => {
 /** Render the Mermaid source, behind a Diagram/Code tab pair sharing the file tab bar. */
 function showDiagram(text: string): void {
   hideReport();
+  hidePage();
   outputView.dom.classList.remove("cm-output--error");
   diagramSource = text;
   // Keep the editor's document in sync even while it is hidden, so switching to Code is instant and
@@ -735,14 +761,20 @@ function showDiagramNotice(notice: HTMLElement): void {
   $diagramView.appendChild(notice);
 }
 
-function showDiagramError(message: string): void {
+/** A notice with [[title]] and the error [[message]], for a diagram or a page that failed. */
+function errorNotice(title: string, message: string): HTMLElement {
   const notice = document.createElement("div");
   notice.className = "diagram-notice diagram-notice--error";
-  notice.innerHTML = "<strong>Could not draw this diagram</strong>";
+  const heading = document.createElement("strong");
+  heading.textContent = title;
   const detail = document.createElement("code");
   detail.textContent = message;
-  notice.appendChild(detail);
-  showDiagramNotice(notice);
+  notice.append(heading, detail);
+  return notice;
+}
+
+function showDiagramError(message: string): void {
+  showDiagramNotice(errorNotice("Could not draw this diagram", message));
 }
 
 async function renderDiagram(text: string): Promise<void> {
@@ -750,17 +782,7 @@ async function renderDiagram(text: string): Promise<void> {
   try {
     const mermaid = await loadMermaid();
     if (token !== diagramToken) return;
-    mermaid.initialize({
-      startOnLoad: false,
-      // Diagram text is derived from the user's own schema, but it still ends up as markup.
-      securityLevel: "strict",
-      theme: document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark",
-      // Both default caps (50 000 characters, 500 edges) are below what a real-world schema
-      // produces. The gate above is what actually keeps the page responsive, so lift these and let
-      // it decide.
-      maxTextSize: 5_000_000,
-      maxEdges: 10_000,
-    });
+    mermaid.initialize(mermaidConfig());
     // Parse first: `render` answers a size or syntax problem with a picture of an error message
     // rather than by failing, which would otherwise reach the page as a successful render.
     await mermaid.parse(text, { suppressErrors: false });
@@ -781,6 +803,127 @@ async function renderDiagram(text: string): Promise<void> {
     showDiagramError(err instanceof Error ? err.message : String(err));
   }
 }
+
+// ── Documentation page view ─────────────────────────────────────────────────
+
+/** The module built from markdown.ts. */
+interface MarkdownApi {
+  renderMarkdown(markdown: string): string;
+}
+
+let markdownPromise: Promise<MarkdownApi> | null = null;
+
+function loadMarkdown(): Promise<MarkdownApi> {
+  markdownPromise ??= import(MARKDOWN_URL) as Promise<MarkdownApi>;
+  return markdownPromise;
+}
+
+/** Only the newest page render may reach the DOM, as for diagrams. */
+let pageToken = 0;
+
+function hidePage(): void {
+  $pageView.hidden = true;
+  $pageView.innerHTML = "";
+  pageSource = null;
+  $outputEditorHost.hidden = false;
+}
+
+/** Show the Markdown as a page, behind a Page/Code tab pair sharing the file tab bar. */
+function showPage(text: string): void {
+  hideReport();
+  hideDiagram();
+  outputView.dom.classList.remove("cm-output--error");
+  // Keep the editor in sync while it is hidden, so Code is instant and Copy gives the Markdown.
+  setOutput(outputView, text, "text");
+
+  $fileTabs.hidden = false;
+  $fileTabs.innerHTML = "";
+  for (const [tab, label] of [["page", "Page"], ["code", "Code"]] as const) {
+    const btn = document.createElement("button");
+    btn.className = "file-tab" + (tab === pageTab ? " file-tab--active" : "");
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      if (pageTab === tab) return;
+      pageTab = tab;
+      if (pageSource !== null) showPage(pageSource);
+    });
+    $fileTabs.appendChild(btn);
+  }
+
+  // A new schema starts at the top. The same schema regenerated, as while typing, keeps its place.
+  const sameDocument = pageSource !== null && !$pageView.hidden;
+  pageSource = text;
+
+  if (pageTab === "code") {
+    $pageView.hidden = true;
+    $outputEditorHost.hidden = false;
+    return;
+  }
+
+  $outputEditorHost.hidden = true;
+  $pageView.hidden = false;
+  void renderPage(text, sameDocument ? $pageView.scrollTop : 0);
+}
+
+async function renderPage(text: string, scrollTop: number): Promise<void> {
+  const token = ++pageToken;
+  try {
+    const { renderMarkdown } = await loadMarkdown();
+    if (token !== pageToken || $pageView.hidden) return;
+    $pageView.innerHTML = renderMarkdown(text);
+    $pageView.scrollTop = scrollTop;
+    // Links out of the schema open in a new tab, so the playground keeps its state.
+    for (const a of $pageView.querySelectorAll<HTMLAnchorElement>('a[href^="http"]')) {
+      a.target = "_blank";
+      a.rel = "noopener";
+    }
+    await drawPageDiagrams(token);
+  } catch (err) {
+    if (token !== pageToken || $pageView.hidden) return;
+    $pageView.replaceChildren(
+      errorNotice("Could not show this page", err instanceof Error ? err.message : String(err)),
+    );
+  }
+}
+
+/** Replace each Mermaid code block on the page with its drawing. A block that is too large to draw
+ * quickly, or that Mermaid cannot parse, stays as code. */
+async function drawPageDiagrams(token: number): Promise<void> {
+  const blocks = [...$pageView.querySelectorAll<HTMLElement>("pre > code.language-mermaid")];
+  if (blocks.length === 0) return;
+  const mermaid = await loadMermaid();
+  if (token !== pageToken || $pageView.hidden) return;
+  mermaid.initialize(mermaidConfig());
+  let i = 0;
+  for (const code of blocks) {
+    const source = code.textContent ?? "";
+    if (over(diagramSize(source), DIAGRAM_SOFT_LIMIT)) continue;
+    try {
+      await mermaid.parse(source, { suppressErrors: false });
+      const { svg } = await mermaid.render(`page-mermaid-${token}-${i++}`, source);
+      if (token !== pageToken || $pageView.hidden) return;
+      const figure = document.createElement("div");
+      figure.className = "md-diagram";
+      figure.innerHTML = svg;
+      code.parentElement!.replaceWith(figure);
+    } catch {
+      if (token !== pageToken || $pageView.hidden) return;
+    }
+  }
+}
+
+// Links between sections are anchors. Scroll the panel to them, rather than letting the browser
+// change the playground's own address.
+$pageView.addEventListener("click", (e) => {
+  const link = (e.target as Element).closest("a");
+  const href = link?.getAttribute("href");
+  if (!href?.startsWith("#")) return;
+  e.preventDefault();
+  const id = decodeURIComponent(href.slice(1));
+  const target = id ? $pageView.querySelector(`[id="${CSS.escape(id)}"]`) : null;
+  if (target) target.scrollIntoView({ block: "start" });
+  else $pageView.scrollTop = 0;
+});
 
 // ── Validation report ───────────────────────────────────────────────────────
 
@@ -828,6 +971,7 @@ function hideReport(): void {
 
 function showReport(report: SchemaValidationReport): void {
   hideDiagram();
+  hidePage();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.remove("cm-output--error");
@@ -938,6 +1082,7 @@ function rawSummary(issue: SchemaIssue): string {
 function showFiles(target: Target, dict: Record<string, string>): void {
   hideReport();
   hideDiagram();
+  hidePage();
   const names = Object.keys(dict);
   let active = activeFile[target.id] ?? null;
   if (!active || !names.includes(active)) active = names[0] ?? null;
@@ -1070,6 +1215,8 @@ function onResult(res: ConvertResponse): void {
     showFiles(step as Target, res.result as Record<string, string>);
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
+  } else if (res.kind === "page") {
+    showPage(res.result as string);
   } else {
     showOutputText((res.result as string) || "Schema is clean", stepLang(step, res.direction));
   }
@@ -1615,6 +1762,9 @@ $themeToggle.addEventListener("click", () => {
   // A rendered diagram bakes in the theme's colours, so it has to be drawn again to follow along.
   if (diagramSource !== null && diagramTab === "diagram" && !$diagramView.hidden) {
     scheduleDiagramRender(diagramSource, 0);
+  }
+  if (pageSource !== null && pageTab === "page" && !$pageView.hidden) {
+    void renderPage(pageSource, $pageView.scrollTop);
   }
 });
 
