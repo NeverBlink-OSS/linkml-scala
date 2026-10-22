@@ -22,9 +22,9 @@ object UriOrCurie {
     * isn't a known prefix, or else the same value as [[apply]].
     */
   def expanded(s: String, prefixes: PrefixMap): UriOrCurie = {
-    val uri = prefixes.expandOrNull(s)
+    var uri = prefixes.expandOrNull(s)
+    if ((uri eq null) && UriCurieValidator.isValidUri(s)) uri = s
     if (uri ne null) new Uri(uri)
-    else if (UriCurieValidator.isValidUri(s)) new Uri(s)
     else apply(s)
   }
 

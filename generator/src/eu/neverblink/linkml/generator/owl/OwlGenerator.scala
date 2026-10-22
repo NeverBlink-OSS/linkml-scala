@@ -451,19 +451,19 @@ object OwlGenerator {
       }
 
     /** The value that `equals_string` means for the slot's range. */
-    private def valueOf(s: SlotView, text: String): Option[Value] =
-      s.derivedRange.resolve match {
-        case Some(range) =>
-          range match {
-            case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
-            case tv: TypeView =>
-              if (tv.isIri) Some(Iri(UriOrCurie.expanded(text, s.definingPrefixes).original))
-              else Some(Literal(text, Iri(baseDatatype(tv))))
-            case _: ClassView => Some(Iri(UriOrCurie.expanded(text, s.definingPrefixes).original))
-            case _ => Some(Literal(text))
-          }
-        case _ => Some(Literal(text))
+    private def valueOf(s: SlotView, text: String): Option[Value] = {
+      def iri: Value = Iri(UriOrCurie.expanded(text, s.definingPrefixes).original)
+      val range = s.derivedRange.resolve.orNullFast
+      range match {
+        case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
+        case _ =>
+          Some(range match {
+            case tv: TypeView => if (tv.isIri) iri else Literal(text, Iri(baseDatatype(tv)))
+            case _: ClassView => iri
+            case _ => Literal(text)
+          })
       }
+    }
 
     // Ranges
 
