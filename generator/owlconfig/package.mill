@@ -6,7 +6,9 @@ import millbuild.*
 /** The configuration of the OWL importer, generated into Scala by this project's own Scala
  * generator.
  */
-object `package` extends Module, NativeOptional, build.LinkMlModelModule {
+object `package` extends Module, NativeOptional, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
   def modelSchema = Task { "model/owl-import-config.yaml" }
 
   def modelPackage = "eu.neverblink.linkml.generator.owl.config"

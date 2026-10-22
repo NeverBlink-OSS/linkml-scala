@@ -29,7 +29,7 @@ Common tasks with mill:
 
 ### Generated models
 
-The classes generated from each LinkML schema in this repo live in their own module, which extends `LinkMlModelModule` (in `build.mill`):
+The classes generated from each LinkML schema in this repo live in their own module, which extends `LinkMlModelModule` (in `mill-build/src`):
 
 | Module                 | Schema                             | Other generated files                  |
 |------------------------|------------------------------------|----------------------------------------|
@@ -65,7 +65,7 @@ Things to know:
 #### Adding a model
 
 1. Create a `package.mill` for the module, next to the module that uses the classes (like `generator/owlconfig/package.mill`).
-2. Make the module extend `build.LinkMlModelModule`, and set `modelSchema` and `modelPackage`. Set `otherModelOutputs` to also run other generators, like `typescript`.
+2. Make the module extend `LinkMlModelModule`, set `modelGeneratorCli` to `build.cli.jvm.runner`, and set `modelSchema` and `modelPackage`. Set `otherModelOutputs` to also run other generators, like `typescript`.
 3. Add the `jvm` module, and `js` and `native` if the classes are needed there, with a dependency on `build.runtime` (or `build.yaml`, if hand-written codecs live next to the classes).
 4. Add the new module to the `moduleDeps` of the modules that use it.
 5. Run `./mill regenerate` and commit the generated classes.

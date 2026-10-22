@@ -4,14 +4,16 @@ import mill.*
 import millbuild.*
 
 /** The build info model, generated into Scala by this project's own Scala generator. */
-object `package` extends Module, NativeOptional, build.LinkMlModelModule {
+object `package` extends Module, NativeOptional, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
   def modelSchema = Task { "model/build-info.yaml" }
 
   def modelPackage = "eu.neverblink.linkml.schemaview.buildinfo"
 
   // The npm package's index.d.ts uses this as the return type of `buildInfo`
   override def otherModelOutputs =
-    Map("typescript" -> os.sub / "generator" / "npm" / "build-info.d.ts")
+    Map("typescript" -> build.generator.moduleDir / "npm" / "build-info.d.ts")
 
   object jvm extends CommonModule {
     def moduleDeps = Seq(

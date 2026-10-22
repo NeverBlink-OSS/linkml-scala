@@ -7,7 +7,9 @@ import millbuild.*
  * generator. Only the generator's JVM tests run the suite, so there is no Scala.js or Scala Native
  * module.
  */
-object `package` extends Module, build.LinkMlModelModule {
+object `package` extends Module, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
   def modelSchema = Task {
     (build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml").toString
   }
