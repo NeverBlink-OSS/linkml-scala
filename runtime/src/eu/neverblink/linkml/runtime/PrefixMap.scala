@@ -16,10 +16,10 @@ package eu.neverblink.linkml.runtime
   *   https://github.com/linkml/linkml/issues/3906
   */
 final class PrefixMap private (
-    val overrides: Seq[(String, String)],
-    val defaults: Seq[(String, String)],
+    overrides: Seq[(String, String)],
+    defaults: Seq[(String, String)],
     // False for a map made with `withoutCompaction`
-    val compacts: Boolean,
+    compacts: Boolean,
 ) {
   // Namespace of each prefix, after precedence is applied. Filled together with `compactEntries`
   private val namespaces: java.util.HashMap[String, String] = new java.util.HashMap[String, String](
@@ -29,12 +29,12 @@ final class PrefixMap private (
 
   // Pairs of namespace and prefix used for compaction, longest namespace first. Each namespace
   // appears once, with the prefix from the place with the highest precedence, and the first one
-  // declared there.
+  // declared there. Empty for a map made with `withoutCompaction`.
   private val compactEntries: Array[java.util.Map.Entry[String, String]] = {
     val prefixOfNamespace = new java.util.LinkedHashMap[String, String]
     // The places are read in the order of precedence, so the first namespace of a prefix is used
     def addAll(ps: Seq[(String, String)]): Unit = ps.foreach { (p, ns) =>
-      if (namespaces.putIfAbsent(p, ns) eq null) prefixOfNamespace.putIfAbsent(ns, p)
+      if ((namespaces.putIfAbsent(p, ns) eq null) && compacts) prefixOfNamespace.putIfAbsent(ns, p)
     }
     addAll(overrides)
     addAll(defaults)
@@ -47,22 +47,12 @@ final class PrefixMap private (
   private val compactNamespaces: Array[String] = compactEntries.map(_.getKey)
   private val compactPrefixes: Array[String] = compactEntries.map(_.getValue)
 
-  /** True if this map has no prefixes, so it never expands or compacts anything. */
-  def isEmpty: Boolean = namespaces.isEmpty
-
   /** Get the namespace of a prefix.
     *
     * @return
     *   The namespace, or null if the prefix isn't known
     */
   def namespaceOrNull(prefix: String): String = namespaces.get(prefix)
-
-  /** All prefixes with their namespaces, after precedence is applied. */
-  def toMap: Map[String, String] = {
-    val b = Map.newBuilder[String, String]
-    namespaces.forEach((p, ns) => b.addOne((p, ns)))
-    b.result()
-  }
 
   /** Expand a CURIE into a URI.
     *
@@ -74,7 +64,7 @@ final class PrefixMap private (
     *   The URI, or null if the value has no colon or has an unknown prefix
     */
   def expandOrNull(curie: String): String = {
-    val index = curie.indexOf(':')
+    val index = if (namespaces.isEmpty) -1 else curie.indexOf(':')
     if (index < 0) null
     else {
       val ns = namespaces.get(curie.substring(0, index))
@@ -91,10 +81,10 @@ final class PrefixMap private (
     * URL. Otherwise, the next longest namespace is tried.
     *
     * @return
-    *   The CURIE, or null if no namespace gives one, or if [[compacts]] is false
+    *   The CURIE, or null if no namespace gives one, or if this map was made with
+    *   [[withoutCompaction]]
     */
   def compactOrNull(uri: String): String = {
-    if (!compacts) return null
     val uriLen = uri.length
     val len = compactNamespaces.length
     var i = 0
@@ -112,14 +102,6 @@ final class PrefixMap private (
     }
     null
   }
-
-  /** A copy of this map with the given overrides. They replace the current overrides. */
-  def withOverrides(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(prefixes.toSeq, defaults, compacts)
-
-  /** A copy of this map with the given defaults. They replace the current defaults. */
-  def withDefaults(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(overrides, prefixes.toSeq, compacts)
 
   /** A copy of this map that expands CURIEs as this one does, but compacts no URIs, so they are
     * written in full.

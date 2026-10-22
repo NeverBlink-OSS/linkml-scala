@@ -476,8 +476,9 @@ object OwlImporter {
     /** An import from the config, with a CURIE expanded with the config's prefixes, as if the
       * schema was loaded.
       */
-    private def importOf(ref: String): UriOrCurie =
-      UriOrCurie.expanded(ref, PrefixMap(overrides = config.prefixMap))
+    private def importOf(ref: String): UriOrCurie = UriOrCurie.expanded(ref, configPrefixes)
+
+    private lazy val configPrefixes: PrefixMap = PrefixMap(overrides = config.prefixMap)
 
     /** Mappings without duplicates, in the order of their CURIEs. */
     private def sorted(mappings: Seq[UriOrCurie]): Seq[UriOrCurie] =

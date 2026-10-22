@@ -86,16 +86,11 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
       val pm = PrefixMap(defaults = Seq(ex)).withoutCompaction
       pm.expandOrNull("ex:x") shouldBe "http://example.org/x"
       pm.compactOrNull("http://example.org/x") shouldBe null
-      // Copies keep it
-      pm.withOverrides(Seq("d" -> "http://d.org/")).compactOrNull(
-        "http://example.org/x",
-      ) shouldBe null
     }
   }
 
   "PrefixMap.empty" should {
     "expand and compact nothing" in {
-      PrefixMap.empty.isEmpty shouldBe true
       PrefixMap.empty.expandOrNull("ex:x") shouldBe null
       PrefixMap.empty.compactOrNull("http://example.org/x") shouldBe null
     }
