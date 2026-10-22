@@ -128,17 +128,14 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       .addAll(classes)
       .result()
 
-  /** Cached prefix resolvers for each schema in the view.
-    *
-    * These should be used in ElementView instead of creating a new prefix resolver every time.
-    */
-  private lazy val prefixResolvers: Map[Uri, BasicPrefixResolver] =
-    schemas.foldLeft(Map.newBuilder[Uri, BasicPrefixResolver]) { (acc, schema) =>
-      acc.addOne((schema.id, createPrefixResolver(schema)))
+  // Prefixes of each schema in the view, by schema ID
+  private lazy val prefixMaps: Map[Uri, PrefixMap] =
+    schemas.foldLeft(Map.newBuilder[Uri, PrefixMap]) { (acc, schema) =>
+      acc.addOne((schema.id, SchemaCodec.prefixMap(schema)))
     }.result()
 
-  def getPrefixResolver(schema: SchemaDefinition): BasicPrefixResolver =
-    prefixResolvers(schema.id)
+  /** Get the prefixes of a schema in this view, see [[SchemaCodec.prefixMap]]. */
+  def getPrefixes(schema: SchemaDefinition): PrefixMap = prefixMaps(schema.id)
 
   private val defaultRange = new Reference[TypeView]("string")
 
@@ -153,22 +150,18 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
     * (this fallback mirrors the python implementation).
     */
-  def getDefaultPrefix(schema: SchemaDefinition): String = {
-    val prefixResolver = prefixResolvers(schema.id)
+  def getDefaultPrefix(schema: SchemaDefinition): String =
     schema.defaultPrefix.flatMapFast { prefix =>
       schema.prefixes.get(prefix)
     }.foldFast {
-      val uri = schema.id.uri(using prefixResolver)
+      val uri = schema.id.original
       val len = uri.length
       if (len > 0) {
         val ch = uri.charAt(len - 1)
         if (ch == '#' || ch == '/') uri
         else uri.concat("/")
       } else "/"
-    } { ref =>
-      ref.prefixReference.uri(using prefixResolver)
-    }
-  }
+    }(_.prefixReference.original)
 
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
     * other reference slots. This will run the query without schema derivation.
@@ -384,7 +377,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case Some(curie: Curie) =>
         val classSchema = classes(cls.name).definingSchema
         if (classSchema ne sourceSchema) {
-          val uri = getPrefixResolver(classSchema).expandOrNull(curie.original)
+          val uri = getPrefixes(classSchema).expandOrNull(curie.original)
           if (uri ne null) slot.copy(slotUri = Some(Uri(uri)))
           else slot
         } else slot
@@ -400,7 +393,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       @unused v2: Reference[Element],
   ): Reference[Element] = v1
 
-  val rootPrefixResolver: BasicPrefixResolver = createPrefixResolver(root)
+  /** The prefixes of the root schema */
+  val rootPrefixes: PrefixMap = SchemaCodec.prefixMap(root)
   private val validator = new SchemaValidator()
 
   {
@@ -702,31 +696,4 @@ object SchemaView {
           }
         }
     }
-
-  /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
-    * resolves "semweb_context" curi map and loads user defined prefixes.
-    */
-  private[schemaview] def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
-    prefixResolver.addAll {
-      if (forSchema.defaultCuriMaps.contains("semweb_context")) {
-        linkmlWithSemWebContextPrefixResolver
-      } else linkmlPrefixResolver
-    }
-    forSchema.prefixes.values.foreach { prefix =>
-      prefixResolver.add(prefix.prefixPrefix, prefix.prefixReference.original)
-    }
-    prefixResolver
-  }
-
-  private lazy val linkmlPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver("emit_prefixes")
-    Prefixes.map.foreach((prefix, uri) => prefixResolver.add(prefix, uri))
-    prefixResolver
-  }
-  private lazy val linkmlWithSemWebContextPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver("emit_prefixes+semweb_context")
-    SchemaCodec.semwebContextPrefixes.foreach((prefix, uri) => prefixResolver.add(prefix, uri))
-    prefixResolver
-  }
 }

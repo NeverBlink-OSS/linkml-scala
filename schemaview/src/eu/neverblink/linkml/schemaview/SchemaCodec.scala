@@ -29,10 +29,7 @@ object SchemaCodec {
     */
   def decode(node: Node): SchemaDefinition = {
     val declared = prefixesCodec.decode(node)
-    Codec.codec.decode(
-      node,
-      prefixes = prefixMap(declared.prefixes.values, declared.defaultCuriMaps),
-    )
+    Codec.codec.decode(node, prefixes = prefixMap(declared.prefixes, declared.defaultCuriMaps))
   }
 
   /** Encode a schema, compacting URIs with its prefixes.
@@ -41,28 +38,34 @@ object SchemaCodec {
     *   Write URIs in full instead
     */
   def encode(schema: SchemaDefinition, fullUris: Boolean = false): Node = {
-    val prefixes = prefixMap(schema.prefixes.values, schema.defaultCuriMaps)
+    val prefixes = prefixMap(schema.prefixes, schema.defaultCuriMaps)
     Codec.codec.encode(schema, prefixes = if (fullUris) prefixes.withoutCompaction else prefixes)
   }
 
-  /** Get the prefixes of a schema.
+  /** Get the prefixes of a schema, in the order of precedence given above.
     *
-    * @param prefixes
-    *   The schema's `prefixes`
-    * @param defaultCuriMaps
-    *   The schema's `default_curi_maps`
+    * @throws java.net.URISyntaxException
+    *   If a namespace in the schema's `prefixes` is not a valid URI
     */
-  def prefixMap(prefixes: Iterable[Prefix], defaultCuriMaps: Seq[String]): PrefixMap = PrefixMap(
-    overrides = prefixes.map(p => (p.prefixPrefix, p.prefixReference.original)),
-    defaults =
-      if (defaultCuriMaps.contains("semweb_context")) semwebContextPrefixes
-      else metamodelPrefixes,
-  )
+  def prefixMap(schema: SchemaDefinition): PrefixMap = {
+    schema.prefixes.values.foreach(p => new java.net.URI(p.prefixReference.original))
+    prefixMap(schema.prefixes, schema.defaultCuriMaps)
+  }
 
+  /** Get the prefixes of a schema from its `prefixes` and `default_curi_maps`. */
+  private def prefixMap(prefixes: Map[String, Prefix], defaultCuriMaps: Seq[String]): PrefixMap =
+    PrefixMap(
+      overrides = prefixes.values.map(p => (p.prefixPrefix, p.prefixReference.original)),
+      defaults =
+        if (defaultCuriMaps.contains("semweb_context")) semwebContextPrefixes
+        else metamodelPrefixes,
+    )
+
+  /** The prefixes of the LinkML metamodel. */
   private val metamodelPrefixes: Seq[(String, String)] = Prefixes.map.toSeq
 
   /** The prefixes of the `semweb_context` CURIE map, together with the metamodel's. */
-  private[schemaview] val semwebContextPrefixes: Seq[(String, String)] = metamodelPrefixes ++ Seq(
+  private val semwebContextPrefixes: Seq[(String, String)] = metamodelPrefixes ++ Seq(
     "dc" -> "http://purl.org/dc/terms/",
     "faldo" -> "http://biohackathon.org/resource/faldo#",
     "foaf" -> "http://xmlns.com/foaf/0.1/",

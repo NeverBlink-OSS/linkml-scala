@@ -113,7 +113,6 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
           (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(name =>
             scalaCamel(Case.base(name)),
           ).toSet
-        val prefixResolver = classView.definingPrefixResolver
         Some(
           name.concat(".scala") -> ScalaClassInfo(
             name,
@@ -129,9 +128,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             // Data matching `range_expression` has to be allowed, but is not checked against it.
             classView.allowsExtraSlots,
             typeDesignatorAnnotation(classView, options),
-            ScalaDoc(classView.materialize, classView.definingSchema.id, options)(using
-              prefixResolver,
-            ),
+            ScalaDoc(classView.materialize, classView.definingSchema.id, options),
           ).print,
         )
       }
@@ -147,14 +144,13 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       val en = ev._enum
       if (en.permissibleValues.isEmpty) None
       else {
-        val prefixResolver = ev.definingPrefixResolver
         val name = enumName(ev)
         val enumCases = ev.derivedValues.map(v =>
           ScalaEnumCase(
             caseName = v.aliasedName,
             objectName = permissibleValueName(ev, v.pv),
             enumName = name,
-            doc = ScalaDoc(v.pv, ev.definingSchema.id, options)(using prefixResolver),
+            doc = ScalaDoc(v.pv, ev.definingSchema.id, options),
           ),
         )
         val enumInfo =
@@ -164,7 +160,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
             enumCases,
             !en.`abstract`,
             en.mixin,
-            ScalaDoc(en, ev.definingSchema.id, options)(using prefixResolver),
+            ScalaDoc(en, ev.definingSchema.id, options),
           )
             .generate()
         Some(name.concat(".scala") -> enumInfo)
@@ -174,11 +170,11 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   private def generateEmitPrefixes(pkg: String): Option[(String, String)] = {
     if sv.root.emitPrefixes.isEmpty then return None
 
-    val prefixes = sv.root.emitPrefixes.map(prefix =>
-      sv.rootPrefixResolver.resolvePrefix(prefix)
-        .mapFast(uri => s""""$prefix" -> "$uri",\n""")
-        .getOrElseFast(sys.error(s"Unknown prefix to emit: $prefix")),
-    ).mkString
+    val prefixes = sv.root.emitPrefixes.map { prefix =>
+      val uri = sv.rootPrefixes.namespaceOrNull(prefix)
+      if (uri eq null) sys.error(s"Unknown prefix to emit: $prefix")
+      s""""$prefix" -> "$uri",\n"""
+    }.mkString
     Some(
       "Prefixes.scala" ->
         indent"""package $pkg
@@ -201,12 +197,11 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     sv.types.values.collect {
       case tv if !tv.isPrimitive =>
         val name = typeName(tv)
-        val prefixResolver = tv.definingPrefixResolver
         s"$name.scala" -> typeDef(
           options.`package`,
           name,
           typeToRuntime(tv),
-          ScalaDoc(tv._type, tv.definingSchema.id, options)(using prefixResolver),
+          ScalaDoc(tv._type, tv.definingSchema.id, options),
         )
     }
   }
@@ -385,11 +380,12 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   ): TypedDefault = {
     val literal = attribute match {
       case TypeAttributeView(_, _, typeView) =>
-        given PrefixResolver = owner.definingPrefixResolver
         typeView.runtimeType match {
           case StringType => Some(scalaStringLiteral(owner.cls.name))
-          case UriType => Some(s"Uri(${scalaStringLiteral(owner.uriOrCurie.uri)})")
-          case CurieType => Some(s"Curie(${scalaStringLiteral(owner.uriOrCurie.curie)})")
+          case UriType => Some(s"Uri(${scalaStringLiteral(owner.uriStr)})")
+          case CurieType =>
+            val curie = UriOrCurie.compacted(owner.uriOrCurie, owner.definingPrefixes)
+            Some(s"Curie(${scalaStringLiteral(curie)})")
           case UriOrCurieType =>
             Some(s"UriOrCurie(${scalaStringLiteral(owner.uriOrCurie.original)})")
           case _ => None
@@ -639,7 +635,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         baseRange(attribute, options).scalaType,
       ),
       slot.inherited,
-      ScalaDoc(slot, view.definingSchema.id, options)(using view.definingPrefixResolver),
+      ScalaDoc(slot, view.definingSchema.id, options),
     )
   }
 }
@@ -982,19 +978,21 @@ object ScalaGenerator {
     }
 
   object ScalaDoc {
-    def apply(metadata: CommonMetadata, fromSchema: Uri, options: ScalaGenerator.Options)(using
-        pr: PrefixResolver,
+    def apply(
+        metadata: CommonMetadata,
+        fromSchema: Uri,
+        options: ScalaGenerator.Options,
     ): ScalaDoc = {
       given ScalaGenerator.Options = options
       new ScalaDoc(
         metadata.description.localized
           .mapFast(_.capitalize)
           .getOrElseFast(""),
-        metadata.seeAlso.map(_.uri) ++
+        metadata.seeAlso.map(_.original) ++
           metadata.aliases.localized
             .reduceOption(_ + ", " + _)
             .mapFast("Aliases: ".concat) ++
-          Seq("From schema: ".concat(fromSchema.uri)),
+          Seq("From schema: ".concat(fromSchema.original)),
         (metadata.notes ++ metadata.comments).localized
           .map(_.capitalize),
         metadata.todos.map(_.capitalize),

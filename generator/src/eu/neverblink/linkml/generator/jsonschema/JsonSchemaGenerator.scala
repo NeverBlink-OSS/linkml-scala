@@ -254,7 +254,7 @@ class JsonSchemaGenerator(using sv: SchemaView)
     }
     baseSchema.copy(
       $schema = new Some("https://json-schema.org/draft/2020-12/schema"),
-      $id = new Some(sv.root.id.uri(using sv.rootPrefixResolver)),
+      $id = new Some(sv.root.id.original),
       title = sv.root.title.localized.orElseFast(Some(sv.root.name)),
       description = sv.root.description.localized,
       $defs = new Some(

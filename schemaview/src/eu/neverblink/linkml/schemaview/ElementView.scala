@@ -80,8 +80,8 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
   // TODO LNK-63: implement other types in ifabsent
   private[schemaview] def evaluateConstructor(expr: String): Option[R] = None
 
-  /** The defining schema's prefix resolver */
-  given definingPrefixResolver: PrefixResolver = sv.getPrefixResolver(definingSchema)
+  /** The prefixes of the defining schema */
+  def definingPrefixes: PrefixMap = sv.getPrefixes(definingSchema)
 
   /** Get the URI of this element, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
@@ -93,7 +93,7 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
     *
     * This MUST be used when serializing to RDF formats.
     */
-  lazy val uriStr: String = uriOrCurie.uri
+  lazy val uriStr: String = uriOrCurie.original
 
   /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
     * schema ID (this fallback mirrors the python implementation).
@@ -267,7 +267,8 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     * the range of the type designator:
     *   - `string`: the class name
     *   - `uri`: the class URI
-    *   - `curie`: the class CURIE
+    *   - `curie`: the class CURIE, made with the prefixes of the defining schema, or the class URI
+    *     if no prefix matches it
     *   - `uriorcurie`: the class URI and the class CURIE, or just one value when they are the same
     *
     * Empty if this class has no type designator, or its range is some other type.
@@ -277,12 +278,11 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
       case Some(tav: TypeAttributeView) =>
         tav.typeView.runtimeType match {
           case _: StringType.type => cls.name :: Nil
-          case _: UriType.type => uriOrCurie.uri :: Nil
-          case _: CurieType.type => uriOrCurie.curie :: Nil
+          case _: UriType.type => uriStr :: Nil
+          case _: CurieType.type => UriOrCurie.compacted(uriOrCurie, definingPrefixes) :: Nil
           case _: UriOrCurieType.type =>
-            val uri = uriOrCurie.uri
-            val curie = uriOrCurie.curie
-            if (uri.equals(curie)) uri :: Nil else uri :: curie :: Nil
+            val curie = UriOrCurie.compacted(uriOrCurie, definingPrefixes)
+            if (uriStr.equals(curie)) uriStr :: Nil else uriStr :: curie :: Nil
           case _ => Nil
         }
       case _ => Nil
@@ -488,7 +488,7 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
   def implicitPrefixReference: Option[String] =
-    slot.implicitPrefix.flatMapFast(definingPrefixResolver.resolvePrefix)
+    slot.implicitPrefix.flatMapFast(p => Option(definingPrefixes.namespaceOrNull(p)))
 
   /** Direct parents (mixins + inheritance) of this slot
     */
@@ -616,7 +616,6 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
   * methods
   */
 final case class PermissibleValueView(pv: PermissibleValue, enumView: EnumView) {
-  private given PrefixResolver = enumView.definingPrefixResolver
 
   /** @see
     *   [[ElementView.baseName]]
@@ -644,7 +643,7 @@ final case class PermissibleValueView(pv: PermissibleValue, enumView: EnumView) 
   /** @see
     *   [[PermissibleValue.meaning]]
     */
-  def meaning: Uri = pv.meaning.foldFast(modelUri)(x => Uri(x.uri))
+  def meaning: Uri = pv.meaning.foldFast(modelUri)(x => Uri(x.original))
 
   /** @see
     *   [[ElementView.uriStr]]
@@ -731,12 +730,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
         val parent = ancestor._type
         derived.copy(
           base = combineOption(derived.base, parent.base, combineFallback),
-          typeUri = derived.typeUri.orElseFast {
-            // Preserve the declaring schema's prefix meaning across imports.
-            parent.typeUri.mapFast { value =>
-              new Uri(value.uri(using ancestor.definingPrefixResolver))
-            }
-          },
+          typeUri = derived.typeUri.orElseFast(parent.typeUri),
           repr = combineOption(derived.repr, parent.repr, combineFallback),
           pattern = combineOption(derived.pattern, parent.pattern, combinePattern),
           structuredPattern =
@@ -760,10 +754,10 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case _: UriOrCurieType.type => SubjectType.uriOrCurie
     case _ =>
       inner.implicitPrefix.foldFast(SubjectType.base) { prefix =>
-        val reference =
-          definingPrefixResolver.resolvePrefix(prefix).getOrElseFast {
-            throw RuntimeException(s"Unknown implicit prefix for type $name: $prefix")
-          }
+        val reference = definingPrefixes.namespaceOrNull(prefix)
+        if (reference eq null) {
+          throw RuntimeException(s"Unknown implicit prefix for type $name: $prefix")
+        }
         new SubjectType.implicitPrefix(reference)
       }
   }
@@ -790,7 +784,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     case "double" => DoubleType
     case "float" =>
       // "thanks, python" => LinkML's float and double both use the Python base `float`.
-      if derivedType.typeUri.exists(_.uri == "http://www.w3.org/2001/XMLSchema#double") then
+      if derivedType.typeUri.exists(_.original == "http://www.w3.org/2001/XMLSchema#double") then
         DoubleType
       else FloatType
     case "Decimal" => DecimalType

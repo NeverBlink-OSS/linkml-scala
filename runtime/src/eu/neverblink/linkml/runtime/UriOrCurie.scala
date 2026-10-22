@@ -6,10 +6,6 @@ import java.nio.charset.StandardCharsets
 sealed trait UriOrCurie {
   def original: String
 
-  def uri(implicit resolver: PrefixResolver): String
-
-  def curie(implicit resolver: PrefixResolver): String
-
   /** Validate the value of this UriOrCurie. Returns true if valid, false if invalid.
     */
   def isValid: Boolean
@@ -45,10 +41,6 @@ object UriOrCurie {
 }
 
 @flatten final case class Uri(original: String) extends UriOrCurie {
-  def uri(implicit resolver: PrefixResolver): String = original
-
-  def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
-
   def isValid: Boolean = UriCurieValidator.isValidUri(original)
 }
 
@@ -64,95 +56,10 @@ object Uri {
 }
 
 @flatten final case class Curie(original: String) extends UriOrCurie {
-  def uri(implicit resolver: PrefixResolver): String = resolver.expand(original)
-
-  def curie(implicit resolver: PrefixResolver): String = original
-
   def isValid: Boolean = UriCurieValidator.isValidCurie(original)
 }
 
 type NcName = String
-
-trait PrefixResolver {
-
-  /** Expand a CURIE into a URI using prefixes defined in this resolver.
-    * @throws java.lang.RuntimeException
-    *   If this prefix resolver can't expand the CURIE
-    */
-  def expand(curie: String): String
-
-  /** Compact a URI into a CURIE using prefixes defined in this resolver.
-    * @throws java.lang.RuntimeException
-    *   If this prefix resolver can't compact the URI
-    */
-  def compact(uri: String): String
-
-  /** Get the expansion of a prefix from this resolver.
-    * @return
-    *   The URI [[prefix]] maps to, or None if the prefix isn't found.
-    */
-  def resolvePrefix(prefix: String): Option[String]
-}
-
-final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
-  private val prefixToUri = new java.util.HashMap[String, String](64, 0.5f)
-
-  /** Add a prefix. The namespace is used as it is written.
-    *
-    * @throws java.net.URISyntaxException
-    *   If the namespace is not a valid URI
-    */
-  def add(prefix: String, uri: String): Unit = {
-    new java.net.URI(uri)
-    prefixToUri.put(prefix, uri)
-  }
-
-  def addAll(other: BasicPrefixResolver): Unit = prefixToUri.putAll(other.prefixToUri)
-
-  override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))
-
-  override def expand(curie: String): String = {
-    val uri = expandOrNull(curie)
-    if (uri ne null) uri
-    else {
-      val index = curie.indexOf(':')
-      if (index >= 0) {
-        val prefix = curie.substring(0, index)
-        sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
-      } else curie // relative reference
-    }
-  }
-
-  /** Expand a CURIE into a URI using prefixes defined in this resolver.
-    * @return
-    *   The URI, or null if the CURIE has no prefix or this resolver doesn't know it
-    */
-  def expandOrNull(curie: String): String = {
-    val index = curie.indexOf(':')
-    if (index >= 0) {
-      val baseUri = prefixToUri.get(curie.substring(0, index))
-      if (baseUri ne null) baseUri.concat(curie.substring(index + 1))
-      else null
-    } else null
-  }
-
-  /** Compact a URI into a CURIE with the longest namespace that the URI starts with. */
-  override def compact(uri: String): String = {
-    var prefix: String = null
-    var namespace = ""
-    val it = prefixToUri.entrySet.iterator
-    while (it.hasNext) {
-      val e = it.next()
-      val ns = e.getValue
-      if (ns.length > namespace.length && uri.length > ns.length && uri.startsWith(ns)) {
-        prefix = e.getKey
-        namespace = ns
-      }
-    }
-    if (prefix eq null) sys.error(s"Unknown uri: $uri")
-    s"$prefix:${uri.substring(namespace.length)}"
-  }
-}
 
 /** URI and CURIE validation functions.
   *

@@ -297,7 +297,7 @@ object OssieGenerator {
     */
   private final class Namespaces(sv: SchemaView) {
     private val all: Seq[(String, String)] =
-      sv.root.prefixes.keys.toSeq.flatMap(p => sv.rootPrefixResolver.resolvePrefix(p).map(p -> _))
+      sv.root.prefixes.keys.toSeq.map(p => (p, sv.rootPrefixes.namespaceOrNull(p)))
 
     private val usedPrefixes = mutable.Set.empty[String]
 

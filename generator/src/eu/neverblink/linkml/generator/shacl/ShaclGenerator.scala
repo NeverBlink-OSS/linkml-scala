@@ -74,7 +74,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       case enumView: EnumView =>
         val permissibleValues =
           enumView.derivedValues.map { value =>
-            Iri(value.meaning.uri(using enumView.definingPrefixResolver))
+            Iri(value.meaning.original)
           }
         sink.list(subject, Shacl.in, permissibleValues)
       case _ => throw RuntimeException(s"Couldn't map range $range")

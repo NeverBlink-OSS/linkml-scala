@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{NcName, PrefixResolver, Reference, Uri}
+import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
@@ -391,12 +391,12 @@ final class SchemaValidator(using sv: SchemaView) {
 
   private def slotImplicitPrefix(
       slotDefinition: SlotDefinition,
-      prefixResolver: PrefixResolver,
+      prefixes: PrefixMap,
       locationPrefix: String,
       schemaId: Uri,
   ): Option[SchemaError] = {
     slotDefinition.implicitPrefix match {
-      case Some(prefix) if prefixResolver.resolvePrefix(prefix).isEmpty =>
+      case Some(prefix) if prefixes.namespaceOrNull(prefix) eq null =>
         new Some(
           undefinedPrefix(
             prefix,
@@ -410,13 +410,13 @@ final class SchemaValidator(using sv: SchemaView) {
 
   private lazy val unknownPrefixes: Seq[SchemaError] = {
     sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
-      if sv.rootPrefixResolver.resolvePrefix(prefix).isEmpty
+      if sv.rootPrefixes.namespaceOrNull(prefix) eq null
       then new Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx", sv.root.id))
       else None,
     ) ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
-          case Some(prefix) if tv.definingPrefixResolver.resolvePrefix(prefix).isEmpty =>
+          case Some(prefix) if tv.definingPrefixes.namespaceOrNull(prefix) eq null =>
             new Some(
               undefinedPrefix(
                 prefix,
@@ -430,7 +430,7 @@ final class SchemaValidator(using sv: SchemaView) {
       sv.slotDefinitions.values.flatMap(slotView =>
         slotImplicitPrefix(
           slotView.inner,
-          slotView.definingPrefixResolver,
+          slotView.definingPrefixes,
           "/slots",
           slotView.definingSchema.id,
         ),
@@ -439,7 +439,7 @@ final class SchemaValidator(using sv: SchemaView) {
         classView.cls.slotUsage.values.flatMap(
           slotImplicitPrefix(
             _,
-            classView.definingPrefixResolver,
+            classView.definingPrefixes,
             s"/classes/${classView.cls.name}/slot_usage",
             classView.definingSchema.id,
           ),
@@ -447,7 +447,7 @@ final class SchemaValidator(using sv: SchemaView) {
           classView.cls.attributes.values.flatMap(
             slotImplicitPrefix(
               _,
-              classView.definingPrefixResolver,
+              classView.definingPrefixes,
               s"/classes/${classView.cls.name}/attributes",
               classView.definingSchema.id,
             ),

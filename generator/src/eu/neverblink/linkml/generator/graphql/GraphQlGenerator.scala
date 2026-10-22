@@ -7,7 +7,7 @@ import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, PrefixResolver, UriOrCurie}
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, UriOrCurie}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 
@@ -54,7 +54,6 @@ class GraphQlGenerator(using sv: SchemaView)
           GraphQlEnumValueDefinition(
             value.pv,
             value.meaning,
-            ev.definingPrefixResolver,
           ),
         )
         GraphQlEnumDefinition(
@@ -328,13 +327,10 @@ object GraphQlEnumDefinition:
   *   The metamodel permissible value this element is generated for
   * @param meaning
   *   The provided permissible value meaning, or a synthetic meaning
-  * @param prefixResolver
-  *   The prefix resolver to use when processing the meaning of the enum
   */
 case class GraphQlEnumValueDefinition(
     pv: PermissibleValue,
     meaning: UriOrCurie,
-    prefixResolver: PrefixResolver,
 )(using opt: GraphQlGenerator.Options)
     extends GraphQlElement:
   val name: String = GraphQlRenamer.permissibleValueName(pv)

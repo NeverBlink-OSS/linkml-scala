@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase
 import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
-import eu.neverblink.linkml.runtime.{PrefixResolver, Reference}
+import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
 class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator.Options] {
@@ -15,23 +15,22 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     * descriptions and links repeated between them.
     *
     * @param cms
-    *   Each definition's metadata, paired with the prefix resolver of the schema that declared it.
-    *   `see_also` holds CURIEs, which only mean something against the prefixes of their own schema.
+    *   Each definition's metadata
     */
   private def emitCommonMetadata(
       sink: RdfSink,
       subject: Resource,
-      cms: Seq[(CommonMetadata, PrefixResolver)],
+      cms: Seq[CommonMetadata],
   ): Unit = {
     // Text without a language is in the element's language, or the schema's.
     def language(cm: CommonMetadata) = cm.inLanguage.orElse(sv.root.inLanguage)
-    cms.flatMap(cm => cm._1.title.map((_, language(cm._1)))).distinct.foreach { (t, l) =>
+    cms.flatMap(cm => cm.title.map((_, language(cm)))).distinct.foreach { (t, l) =>
       langStringProperty(sink, subject, Rdfs.label, t, l)
     }
-    cms.flatMap(cm => cm._1.description.map((_, language(cm._1)))).distinct.foreach { (d, l) =>
+    cms.flatMap(cm => cm.description.map((_, language(cm)))).distinct.foreach { (d, l) =>
       langStringProperty(sink, subject, Rdfs.comment, d, l)
     }
-    cms.flatMap((cm, pr) => cm.seeAlso.map(_.uri(using pr))).distinct.foreach { uri =>
+    cms.flatMap(_.seeAlso.map(_.original)).distinct.foreach { uri =>
       sink.triple(subject, Rdfs.seeAlso, Iri(uri))
     }
   }
@@ -49,11 +48,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       usages: Seq[SlotView],
   ): Unit = {
     sink.triple(propertyNameIri, Rdf.`type`, Rdf.Property)
-    emitCommonMetadata(
-      sink,
-      propertyNameIri,
-      usages.map(u => (u.slot, u.definingPrefixResolver)),
-    )
+    emitCommonMetadata(sink, propertyNameIri, usages.map(_.slot))
 
     sv.lowestCommonAncestors(
       usages
@@ -111,11 +106,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       val definitions = classDefinitions(c.uriStr)
       if (definitions.head eq c) {
         sink.triple(classNameIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(
-          sink,
-          classNameIri,
-          definitions.map(d => (d.cls, d.definingPrefixResolver)),
-        )
+        emitCommonMetadata(sink, classNameIri, definitions.map(_.cls))
         definitions
           .flatMap(d => d.cls.isA.toList ++ d.cls.mixins)
           .flatMap(m => sv.getElement(m.value).toList)
@@ -154,11 +145,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       .groupBy(_.uriStr).toSeq.sortBy(_._1)
       .foreach { (uri, definitions) =>
         sink.triple(Iri(uri), Rdf.`type`, Rdfs.Datatype)
-        emitCommonMetadata(
-          sink,
-          Iri(uri),
-          definitions.sortBy(_.name).map(d => (d._type, d.definingPrefixResolver)),
-        )
+        emitCommonMetadata(sink, Iri(uri), definitions.sortBy(_.name).map(_._type))
       }
 
     val enums =
@@ -169,40 +156,29 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     // A permissible value may be shared between enums, which each give it their own type but
     // possibly the same metadata, so group these by URI as well.
     val valueUsages: Map[String, Seq[(EnumView, PermissibleValue)]] = enums.values.toSeq
-      .flatMap(e =>
-        e.derivedValues.map(v => (v.meaning.uri(using e.definingPrefixResolver), (e, v.pv))),
-      )
+      .flatMap(e => e.derivedValues.map(v => (v.uriStr, (e, v.pv))))
       .groupMap(_._1)(_._2)
 
     // Emit each enum as an rdfs:Class (its URI controlled by enum_uri), and each of its
     // permissible values as an instance of that class.
     enums.values.foreach { e =>
-      val prefixResolver = e.definingPrefixResolver
       val enumIri = Iri(e.uriStr)
       val definitions = enumDefinitions(e.uriStr)
       if (definitions.head eq e) {
         sink.triple(enumIri, Rdf.`type`, Rdfs.Class)
-        emitCommonMetadata(
-          sink,
-          enumIri,
-          definitions.map(d => (d._enum, d.definingPrefixResolver)),
-        )
+        emitCommonMetadata(sink, enumIri, definitions.map(_._enum))
       }
       definitions.flatMap(_.parents).map(_.uriStr).distinct.foreach { parent =>
         sink.triple(enumIri, Rdfs.subClassOf, Iri(parent))
       }
       e.derivedValues.foreach { pvv =>
-        val pvIri = Iri(pvv.meaning.uri(using prefixResolver))
+        val pvIri = Iri(pvv.uriStr)
         val usages = valueUsages(pvIri.value)
         if ((usages.head._1 eq e) && (usages.head._2 eq pvv.pv)) {
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }
-          emitCommonMetadata(
-            sink,
-            pvIri,
-            usages.map(u => (u._2, u._1.definingPrefixResolver)),
-          )
+          emitCommonMetadata(sink, pvIri, usages.map(_._2))
         }
       }
     }
