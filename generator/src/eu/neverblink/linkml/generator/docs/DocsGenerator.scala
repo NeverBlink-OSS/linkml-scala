@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.docs
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.erdiagram.{ErDiagram, ErDiagramGenerator}
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode}
 import eu.neverblink.linkml.metamodel.{CommonMetadata, Element, SlotDefinition}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
@@ -87,6 +87,22 @@ final class DocsGenerator(using sv: SchemaView)
     addSections(site.types)
   }
 
+  /** The Mermaid ER diagram that class pages show, of [[classes]]. Each class is an empty box, as
+    * the slot table lists its attributes already, and each slot between two of them is a line.
+    */
+  private[generator] def diagramOf(classes: Seq[ClassView]): ErDiagram =
+    erDiagrams.diagramOf(classes, optionalMarker = false, withAttributes = false, diagramLabel)
+
+  private lazy val erDiagrams = new ErDiagramGenerator
+
+  /** The label of a relationship line: the slot's name as the slot table shows it, if it is a plain
+    * identifier. Mermaid reads some words in a label as statements even inside quotes, so other
+    * names get the ER diagram's safe spelling instead.
+    */
+  private def diagramLabel(cv: ClassView, slot: SlotDefinition): String =
+    if (slot.name.forall(c => Case.isStandard(c) || c == '-')) slot.name
+    else erDiagrams.classAttributeName(cv, slot)
+
   /** One page as a string, starting with the generated header. */
   private def render(write: Markdown => Unit): String = {
     val sink = new StringSink
@@ -98,8 +114,6 @@ final class DocsGenerator(using sv: SchemaView)
   /** Writes the pages of one [[DocsSite]]. */
   private final class PageWriter(site: DocsSite, options: Options) {
     private given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
-
-    private lazy val diagrams = new ErDiagramGenerator
 
     private val treeRoot: Option[ClassView] = sv.treeRoot
 
@@ -302,26 +316,10 @@ final class DocsGenerator(using sv: SchemaView)
       if (linked.sizeIs > 1) {
         md.heading(2, "Diagram")
         md.startCodeBlock("mermaid")
-        diagrams
-          .diagramOf(
-            site.classes.filter(c => linked(c.name)),
-            optionalMarker = false,
-            // The slot table lists the attributes already.
-            withAttributes = false,
-            label = diagramLabel,
-          )
-          .writeTo(md)
+        diagramOf(site.classes.filter(c => linked(c.name))).writeTo(md)
         md.endCodeBlock()
       }
     }
-
-    /** The label of a relationship line: the slot's name as the slot table shows it, if it is a
-      * plain identifier. Mermaid reads some words in a label as statements even inside quotes, so
-      * other names get the ER diagram's safe spelling instead.
-      */
-    private def diagramLabel(cv: ClassView, slot: SlotDefinition): String =
-      if (slot.name.forall(c => Case.isStandard(c) || c == '-')) slot.name
-      else diagrams.classAttributeName(cv, slot)
 
     private def slotPage(md: Markdown, s: SlotView, from: Option[Page]): Unit = {
       val slot = s.slot
