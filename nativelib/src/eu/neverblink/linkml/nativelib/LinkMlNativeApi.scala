@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.nativelib
 
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -221,6 +222,14 @@ object LinkMlNativeApi {
   def frictionlessFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     writeFiles(FrictionlessGenerator().generateFiles(Options.frictionless(optionsJson)), out)
+  }
+
+  /** Markdown documentation, as a filename-to-content JSON object: `index.md` plus a page for each
+    * class, slot, enum and type.
+    */
+  def docsFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    writeFiles(DocsGenerator().generateFiles(Options.docs(optionsJson)), out)
   }
 
   /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the

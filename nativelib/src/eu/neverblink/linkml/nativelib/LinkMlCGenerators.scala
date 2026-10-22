@@ -69,6 +69,13 @@ object LinkMlCGenerators {
   def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.erDiagram)
 
+  /** Generate Markdown documentation, as a JSON object mapping filename to content. Options:
+    * `pruningMode`, `diagrams`, `metadataLanguage`.
+    */
+  @exported("linkml_docs")
+  def docs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.docsFiles)
+
   /** Generate an Apache Ossie ontology. Options: `pruningMode`, `outputFormat`, `metadataLanguage`.
     */
   @exported("linkml_ossie")
