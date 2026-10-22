@@ -1,0 +1,16 @@
+id: https://neverblink.eu/linkml/tests/emptyEnum/
+name: emptyEnum
+description: A slot whose range is an enum without permissible values
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      some_slot:
+        range: SomeEnum
+
+enums:
+  SomeEnum: {}
