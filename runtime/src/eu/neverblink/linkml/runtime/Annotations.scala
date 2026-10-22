@@ -23,33 +23,6 @@ import scala.annotation.meta.field
   */
 @field final class serializeDefault extends StaticAnnotation
 
-/** Marks a field that holds the prefixes of a document, such as the `prefixes` of a LinkML schema.
-  *
-  * The field is a `Map` or a `Seq` of objects. In each object, the field named [[prefixField]]
-  * holds a prefix, and the field named [[namespaceField]] holds its namespace. Codecs read this
-  * field before the other fields of the class, and use its prefixes for everything in the object,
-  * as described in [[PrefixMap]]. The field itself is decoded and encoded without prefixes.
-  *
-  * Inside a nested object with such a field, the nested prefixes replace the outer document's
-  * prefixes. They are not added to them, so a prefix that only the outer document declares is
-  * unknown inside the nested object.
-  *
-  * The Scala generator adds it to a slot that is multivalued and inlined, when the range class has
-  * a slot with the `sh:prefix` URI and a slot with the `sh:namespace` URI, as suggested in
-  * https://github.com/linkml/linkml/issues/3906.
-  *
-  * {{{
-  * final case class Prefix(@id prefix: String, @value namespace: Uri)
-  *
-  * final case class Dataset(
-  *     @documentPrefixes("prefix", "namespace") @simpleDict prefixes: Map[String, Prefix] = Map(),
-  *     items: Seq[UriOrCurie] = Nil,
-  * )
-  * }}}
-  */
-@field final class documentPrefixes(@unused prefixField: String, @unused namespaceField: String)
-    extends StaticAnnotation
-
 /** Marks a class with exactly one field that is serialized as the value of that field, instead of
   * as an object holding it. For example, `Uri("http://x")` is written as `"http://x"` rather than
   * `{original: "http://x"}`.

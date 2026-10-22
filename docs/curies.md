@@ -83,11 +83,10 @@ A namespace without a separator at the end is a mistake: with `ex: http://exampl
 The `LinkmlYamlCodec` of generated Scala classes takes a `PrefixMap` when it decodes and encodes data.
 With the default, `PrefixMap.empty`, values are kept as they are written.
 
-A `PrefixMap` has prefixes from three places. An earlier place has precedence over a later one:
+A `PrefixMap` has prefixes from two places. The overrides have precedence over the defaults:
 
-1. Overrides, given by the caller to replace what a document declares
-2. The document's own prefixes (see below)
-3. Defaults, given by the caller for prefixes that a document doesn't declare
+1. Overrides, such as the prefixes that a document declares
+2. Defaults, for prefixes that are not in the overrides
 
 ```scala
 import eu.neverblink.linkml.runtime.*
@@ -107,45 +106,6 @@ Namespaces in a `PrefixMap` are used as they are written. Nothing is added to th
 
 ### Prefixes declared in the data
 
-A document can declare its own prefixes, the way a LinkML schema does with `prefixes`.
-The Scala generator marks a slot as holding such prefixes when:
-
-- the slot is multivalued and inlined, and
-- its range class has a slot with the `sh:prefix` URI and a slot with the `sh:namespace` URI.
-
-This is the rule suggested in [linkml/linkml#3906](https://github.com/linkml/linkml/issues/3906), and the metamodel's `prefixes` slot follows it.
-The generated field gets a `@documentPrefixes` annotation, which names the fields of the prefix and the namespace:
-
-```scala
-final case class PrefixDeclaration(@id prefixName: String, @value namespaceUri: Uri)
-
-final case class Dataset(
-    @documentPrefixes("prefixName", "namespaceUri")
-    @simpleDict
-    declaredPrefixes: Map[String, PrefixDeclaration] = Map(),
-    about: Option[UriOrCurie] = None,
-)
-```
-
-The codec reads this field first, and then uses its prefixes for the rest of the object, including nested objects.
-The field itself is read and written without prefixes, so namespaces are never compacted.
-
-Nested prefix declarations are not merged. If an object inside the document has its own prefixes, they replace the document's prefixes for everything inside that object:
-
-```yaml
-prefixes:
-  ex: http://example.org/
-  a: http://a.org/
-values:
-  - ex:x # http://example.org/x
-  - a:x # http://a.org/x
-nested:
-  prefixes:
-    ex: http://x.com/
-  values:
-    - ex:x # http://x.com/x
-    - a:x # the URI a:x, as `a` is only declared outside
-```
-
-Overrides and defaults given by the caller are still used inside the nested object.
-Writing uses the same prefixes, so inside `nested`, `http://x.com/x` is written as `ex:x`.
+The codec doesn't read prefixes that a document declares, such as the `prefixes` of a LinkML schema.
+To use them, read them first and pass them as overrides.
+`SchemaCodec` does this for schemas.

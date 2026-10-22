@@ -643,12 +643,8 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
 
     def genDecodeFields(kvs: Expr[java.util.HashMap[String, Node]])(using Quotes): Expr[T] = {
       val readBlock = new mutable.ListBuffer[Statement]
-      val valDefs = mutable.ArrayBuffer.fill[ValDef](fields.size)(null.asInstanceOf[ValDef])
-
-      // Adds the statements that read the field at `index`, decoding its value with
-      // `fieldPrefixes`
-      def genReadField(index: Int, fieldPrefixes: Expr[PrefixMap]): Unit = {
-        val fieldInfo = fields(index)
+      val valDefs = new mutable.ArrayBuffer[ValDef](fields.size)
+      fields.foreach { fieldInfo =>
         val fTpe = fieldInfo.resolvedTpe
         fTpe.asType match
           case '[ft] =>
@@ -691,7 +687,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                 }).asTerm
               } else defaultVal
             val valDef = ValDef(sym, new Some(valVal.changeOwner(sym)))
-            valDefs(index) = valDef
+            valDefs.addOne(valDef)
             readBlock.addOne(valDef)
             readBlock.addOne('{
               (if ($kvs ne null) {
@@ -730,12 +726,12 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                     val assign =
                       Assign(
                         Ref(valDef.symbol),
-                        genDecode[ft](fTpe, 'v, '{ None }, fieldPrefixes).asTerm,
+                        genDecode[ft](fTpe, 'v, '{ None }, prefixes).asTerm,
                       ).asExpr
                     // A class inlined in a dict has its id written twice: as the enclosing key and,
                     // optionally, as a field of its own body. We raise an error if the two disagree.
                     if (fieldInfo.kind == FieldKind.Id) {
-                      val fromBody = genDecode[ft](fTpe, 'v, '{ None }, fieldPrefixes)
+                      val fromBody = genDecode[ft](fTpe, 'v, '{ None }, prefixes)
                       val fromKey = Ref(valDef.symbol).asExpr
                       '{
                         if ($id.isDefined && $fromBody != $fromKey) {
@@ -752,20 +748,6 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
             }.asTerm.changeOwner(Symbol.spliceOwner))
       }
 
-      // The field with the document's prefixes is read first, without prefixes. The other fields
-      // are then decoded with the document's prefixes added to `prefixes`.
-      val docIndex = fields.indexWhere(_.documentPrefixes.isDefined)
-      if (docIndex >= 0) {
-        genReadField(docIndex, '{ PrefixMap.empty })
-        val docField = fields(docIndex)
-        val pairs = genDocumentPrefixPairs(docField, Ref(valDefs(docIndex).symbol).asExpr)
-        val sym = symbol("_prefixes", prefixMapTpe)
-        readBlock.addOne(
-          ValDef(sym, new Some('{ $prefixes.withDocumentPrefixes($pairs) }.asTerm.changeOwner(sym))),
-        )
-        val docPrefixes = Ref(sym).asExpr.asInstanceOf[Expr[PrefixMap]]
-        fields.indices.foreach(i => if (i != docIndex) genReadField(i, docPrefixes))
-      } else fields.indices.foreach(i => genReadField(i, prefixes))
       if (rejectUnknownFields) {
         readBlock.addOne('{
           if (($kvs ne null) && ! $kvs.isEmpty)
@@ -878,25 +860,8 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     val fields = classInfo.fields
 
     def genEncodeFields(kvs: Expr[mutable.Growable[(Node, Node)]])(using Quotes): Expr[Unit] = {
-      // The field with the document's prefixes is encoded without prefixes. The other fields are
-      // encoded with the document's prefixes added to `prefixes`.
-      val docIndex = fields.indexWhere(_.documentPrefixes.isDefined)
-      var docPrefixes = prefixes
-      val prefixesDef =
-        if (docIndex >= 0) {
-          val docField = fields(docIndex)
-          val pairs =
-            genDocumentPrefixPairs(docField, Select(x.asTerm, docField.getterOrField).asExpr)
-          val sym = symbol("_prefixes", prefixMapTpe)
-          docPrefixes = Ref(sym).asExpr.asInstanceOf[Expr[PrefixMap]]
-          ValDef(
-            sym,
-            new Some('{ $prefixes.withDocumentPrefixes($pairs) }.asTerm.changeOwner(sym)),
-          ) :: Nil
-        } else Nil
       Block(
-        prefixesDef ++ fields.zipWithIndex.map { (fieldInfo, index) =>
-          val fieldPrefixes = if (index == docIndex) '{ PrefixMap.empty } else docPrefixes
+        fields.map { fieldInfo =>
           val fTpe = fieldInfo.resolvedTpe
           val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
           val fSkipId = Expr(
@@ -906,7 +871,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           (fTpe.asType match {
             case '[ft] =>
               val encodeVal =
-                genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, fieldPrefixes)
+                genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
               fieldInfo.defaultValue match {
                 // '@serializeDefault' fields carry a meaningful default (e.g. from 'ifabsent'),
                 // so they are written out even when they still hold it.
@@ -986,50 +951,6 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         ${ genEncodeFields('kvs) }
         Node.MappingNode(kvs.result())
       }
-    }
-  }
-
-  /** Generate the `(prefix, namespace)` pairs held by a field with `@documentPrefixes`.
-    *
-    * @param value
-    *   The value of the field: a `Map` or a `Seq` of objects with the prefix and namespace fields
-    *   named in the annotation
-    */
-  private def genDocumentPrefixPairs(
-      fieldInfo: FieldInfo,
-      value: Expr[Any],
-  )(using Quotes): Expr[Iterable[(String, String)]] = {
-    val info = fieldInfo.documentPrefixes.get
-    val fTpe = fieldInfo.resolvedTpe
-    def malformed(detail: String): Nothing =
-      fail(s"'@documentPrefixes' is defined for '${fieldInfo.mappedName}', but $detail")
-    val eTpe =
-      if (fTpe <:< mapOfWildcardsTpe) typeArg2(fTpe)
-      else if (fTpe <:< seqOfWildcardTpe) typeArg1(fTpe)
-      else malformed(s"its type '${fTpe.show}' is not a 'Map' or a 'Seq'.")
-    if (!isNonAbstractClass(eTpe)) malformed(s"'${eTpe.show}' is not a concrete class.")
-    val eFields = getClassInfo(eTpe).fields
-    // Reads the named field of `e` as a string
-    def genFieldValue(e: Expr[Any], name: String): Expr[String] =
-      eFields.find(_.symbol.name == name) match {
-        case Some(f) =>
-          val getter = Select(e.asTerm, f.getterOrField).asExpr
-          if (f.resolvedTpe =:= stringTpe) getter.asInstanceOf[Expr[String]]
-          else if (f.resolvedTpe <:< TypeRepr.of[UriOrCurie]) {
-            '{ ${ getter.asInstanceOf[Expr[UriOrCurie]] }.original }
-          } else malformed(s"field '$name' of '${eTpe.show}' is not a string, URI or CURIE.")
-        case _ => malformed(s"'${eTpe.show}' has no field '$name'.")
-      }
-    eTpe.asType match {
-      case '[et] =>
-        val elems =
-          if (fTpe <:< mapOfWildcardsTpe) '{ ${ value.asInstanceOf[Expr[Map[?, et]]] }.values }
-          else value.asInstanceOf[Expr[Seq[et]]]
-        '{
-          $elems.map(e =>
-            (${ genFieldValue('e, info.prefixField) }, ${ genFieldValue('e, info.namespaceField) }),
-          )
-        }
     }
   }
 

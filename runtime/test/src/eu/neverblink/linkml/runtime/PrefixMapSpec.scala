@@ -25,17 +25,16 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
       val pm = PrefixMap(defaults = Seq("http" -> "http://other.org/"))
       pm.expandOrNull("http://example.org/blip") shouldBe "http://other.org///example.org/blip"
     }
-    "give overrides precedence over document prefixes, and those over defaults" in {
+    "give overrides precedence over defaults" in {
       val pm = PrefixMap(
         overrides = Seq("a" -> "http://overrides.org/"),
         defaults = Seq("a" -> "http://defaults.org/", "b" -> "http://defaults.org/"),
-      ).withDocumentPrefixes(Seq("a" -> "http://document.org/", "b" -> "http://document.org/"))
+      )
       pm.expandOrNull("a:x") shouldBe "http://overrides.org/x"
-      pm.expandOrNull("b:x") shouldBe "http://document.org/x"
+      pm.expandOrNull("b:x") shouldBe "http://defaults.org/x"
     }
     "use the first declaration of a prefix that a place declares twice" in {
-      val pm = PrefixMap.empty
-        .withDocumentPrefixes(Seq("a" -> "http://first.org/", "a" -> "http://second.org/"))
+      val pm = PrefixMap(overrides = Seq("a" -> "http://first.org/", "a" -> "http://second.org/"))
       pm.expandOrNull("a:x") shouldBe "http://first.org/x"
       pm.compactOrNull("http://first.org/x") shouldBe "a:x"
       pm.compactOrNull("http://second.org/x") shouldBe null
@@ -69,8 +68,10 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
       pm.compactOrNull("http://other.org/x") shouldBe "ex:x"
     }
     "pick the prefix with the highest precedence when two have the same namespace" in {
-      val pm = PrefixMap(defaults = Seq("b" -> "http://example.org/"))
-        .withDocumentPrefixes(Seq("a" -> "http://example.org/", "c" -> "http://example.org/"))
+      val pm = PrefixMap(
+        overrides = Seq("a" -> "http://example.org/", "c" -> "http://example.org/"),
+        defaults = Seq("b" -> "http://example.org/"),
+      )
       pm.compactOrNull("http://example.org/x") shouldBe "a:x"
     }
     "give a CURIE that expands back to the same URI" in {
@@ -82,12 +83,13 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
 
   "PrefixMap.withoutCompaction" should {
     "expand CURIEs, but compact no URIs" in {
-      val pm = PrefixMap(defaults = Seq(ex)).withDocumentPrefixes(Seq("d" -> "http://d.org/"))
-        .withoutCompaction
+      val pm = PrefixMap(defaults = Seq(ex)).withoutCompaction
       pm.expandOrNull("ex:x") shouldBe "http://example.org/x"
       pm.compactOrNull("http://example.org/x") shouldBe null
       // Copies keep it
-      pm.withDocumentPrefixes(Nil).compactOrNull("http://example.org/x") shouldBe null
+      pm.withOverrides(Seq("d" -> "http://d.org/")).compactOrNull(
+        "http://example.org/x",
+      ) shouldBe null
     }
   }
 

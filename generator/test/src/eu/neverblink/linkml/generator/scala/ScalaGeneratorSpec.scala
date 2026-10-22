@@ -486,44 +486,6 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "mark a slot that holds the prefixes of a document with @documentPrefixes" in {
-      given SchemaView = decode(
-        s"""$schemaShared
-           |prefixes:
-           |  sh: http://www.w3.org/ns/shacl#
-           |default_range: string
-           |classes:
-           |  PrefixDeclaration:
-           |    attributes:
-           |      prefix_name:
-           |        identifier: true
-           |        slot_uri: sh:prefix
-           |      namespace_uri:
-           |        range: uri
-           |        slot_uri: sh:namespace
-           |  Dataset:
-           |    attributes:
-           |      declared_prefixes:
-           |        range: PrefixDeclaration
-           |        multivalued: true
-           |        inlined: true
-           |      other_declarations:
-           |        range: PrefixDeclaration
-           |        multivalued: false
-           |        inlined: true
-           |""".stripMargin,
-      )
-      val code =
-        ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap.apply("Dataset.scala")
-      code should include(
-        """@documentPrefixes("prefixName", "namespaceUri")
-          |    @simpleDict
-          |    declaredPrefixes: Map[String, PrefixDeclaration]""".stripMargin,
-      )
-      // Only multivalued slots hold the prefixes of a document
-      code.split("@documentPrefixes").length shouldBe 2
-    }
-
     "explicitly inline multivalued other classes (implicitly as list)" in {
       given SchemaView = ModelCatalogue.inlines.explicitInlineImplicitlyAsList.model
 

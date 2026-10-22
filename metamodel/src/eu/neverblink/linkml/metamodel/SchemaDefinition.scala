@@ -170,7 +170,6 @@ final case class SchemaDefinition(
     name: NcName,
     title: Option[LocalizedText] = None,
     description: Option[LocalizedText] = None,
-    @documentPrefixes("prefixPrefix", "prefixReference")
     @simpleDict
     prefixes: Map[String, Prefix] = Map(),
     @named("default_prefix")

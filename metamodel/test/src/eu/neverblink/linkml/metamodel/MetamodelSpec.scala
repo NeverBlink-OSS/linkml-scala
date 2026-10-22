@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.metamodel.Codec.*
-import eu.neverblink.linkml.runtime.PrefixMap
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.*
@@ -59,24 +58,18 @@ class MetamodelSpec extends AnyWordSpec, Matchers {
 
   private def roundTrip(path: String): Unit = {
     val expected = parseYaml(Resources.read(path)).getOrElse(Node.ScalarNode(null))
-    val decoded = codec.decode(expected)
-    val result = codec.encode(decoded)
-    // Encoding compacts the URIs that the schema's prefixes match, so strings are compared with
-    // their CURIEs expanded
-    val prefixes = PrefixMap.empty.withDocumentPrefixes(
-      decoded.prefixes.values.map(p => (p.prefixPrefix, p.prefixReference.original)),
-    )
-    yamlToJson(result, prefixes) shouldBe yamlToJson(expected, prefixes)
+    val result = codec.encode(codec.decode(expected))
+    yamlToJson(result) shouldBe yamlToJson(expected)
   }
 
-  private def yamlToJson(yaml: Node, prefixes: PrefixMap): Json = yaml match {
+  private def yamlToJson(yaml: Node): Json = yaml match {
     case Node.MappingNode(entries, _) =>
       if (entries.isEmpty) {
         Json.fromString("") // empty mappings are represented as empty strings
       } else {
         val fields = Array.newBuilder[(String, Json)]
         entries.foreach { kv =>
-          val value = yamlToJson(kv._2, prefixes)
+          val value = yamlToJson(kv._2)
           if (value != Json.False) { // skip default false values
             fields.addOne((kv._1.asYaml.trim, value))
           }
@@ -85,8 +78,8 @@ class MetamodelSpec extends AnyWordSpec, Matchers {
       }
     case Node.SequenceNode(elements, _) =>
       if (elements.sizeCompare(1) == 0) {
-        yamlToJson(elements.head, prefixes) // single-element sequences as the element
-      } else Json.arr(elements.map(yamlToJson(_, prefixes))*)
+        yamlToJson(elements.head) // single-element sequences as the element
+      } else Json.arr(elements.map(yamlToJson)*)
     case Node.ScalarNode(value, _) =>
       value match {
         case "true" | "True" | "TRUE" => Json.True
@@ -100,9 +93,7 @@ class MetamodelSpec extends AnyWordSpec, Matchers {
             case Right(v) => Json.fromBigDecimal(v)
             case _ => Json.fromString(value)
           }
-        case _ =>
-          val uri = prefixes.expandOrNull(value)
-          Json.fromString(if (uri ne null) uri else value)
+        case _ => Json.fromString(value)
       }
     case _ => Json.Null
   }

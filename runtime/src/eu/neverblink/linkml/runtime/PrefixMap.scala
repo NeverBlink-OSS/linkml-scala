@@ -3,12 +3,10 @@ package eu.neverblink.linkml.runtime
 /** Prefixes that turn CURIEs into URIs when data is decoded, and URIs back into CURIEs when it is
   * encoded.
   *
-  * The prefixes come from three places. When a prefix is in more than one, the earlier place in
-  * this list has precedence:
+  * The prefixes come from two places. When a prefix is in both, the overrides have precedence:
   *
-  *   1. Overrides, given by the caller to replace what a document declares.
-  *   2. The document's own prefixes, read from a field marked with [[documentPrefixes]].
-  *   3. Defaults, given by the caller for prefixes that a document doesn't declare.
+  *   1. Overrides, such as the prefixes that a document declares.
+  *   2. Defaults, for prefixes that are not in the overrides.
   *
   * When a place declares a prefix more than once, the first declaration is used.
   *
@@ -19,14 +17,13 @@ package eu.neverblink.linkml.runtime
   */
 final class PrefixMap private (
     val overrides: Seq[(String, String)],
-    val documentPrefixes: Seq[(String, String)],
     val defaults: Seq[(String, String)],
     // False for a map made with `withoutCompaction`
     val compacts: Boolean,
 ) {
   // Namespace of each prefix, after precedence is applied. Filled together with `compactEntries`
   private val namespaces: java.util.HashMap[String, String] = new java.util.HashMap[String, String](
-    (overrides.size + documentPrefixes.size + defaults.size) << 1,
+    (overrides.size + defaults.size) << 1,
     0.5f,
   )
 
@@ -40,7 +37,6 @@ final class PrefixMap private (
       if (namespaces.putIfAbsent(p, ns) eq null) prefixOfNamespace.putIfAbsent(ns, p)
     }
     addAll(overrides)
-    addAll(documentPrefixes)
     addAll(defaults)
     val sorted = new Array[java.util.Map.Entry[String, String]](prefixOfNamespace.size)
     prefixOfNamespace.entrySet.toArray(sorted)
@@ -119,40 +115,35 @@ final class PrefixMap private (
 
   /** A copy of this map with the given overrides. They replace the current overrides. */
   def withOverrides(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(prefixes.toSeq, documentPrefixes, defaults, compacts)
-
-  /** A copy of this map with the given document prefixes. They replace the current ones. */
-  def withDocumentPrefixes(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(overrides, prefixes.toSeq, defaults, compacts)
+    new PrefixMap(prefixes.toSeq, defaults, compacts)
 
   /** A copy of this map with the given defaults. They replace the current defaults. */
   def withDefaults(prefixes: Iterable[(String, String)]): PrefixMap =
-    new PrefixMap(overrides, documentPrefixes, prefixes.toSeq, compacts)
+    new PrefixMap(overrides, prefixes.toSeq, compacts)
 
   /** A copy of this map that expands CURIEs as this one does, but compacts no URIs, so they are
     * written in full.
     */
-  def withoutCompaction: PrefixMap = new PrefixMap(overrides, documentPrefixes, defaults, false)
+  def withoutCompaction: PrefixMap = new PrefixMap(overrides, defaults, false)
 
   override def toString: String =
-    s"PrefixMap(overrides = $overrides, documentPrefixes = $documentPrefixes, defaults = $defaults, " +
-      s"compacts = $compacts)"
+    s"PrefixMap(overrides = $overrides, defaults = $defaults, compacts = $compacts)"
 }
 
 object PrefixMap {
 
   /** A map with no prefixes. Decoding and encoding with it keep values as they are written. */
-  val empty: PrefixMap = new PrefixMap(Nil, Nil, Nil, true)
+  val empty: PrefixMap = new PrefixMap(Nil, Nil, true)
 
   /** Create a map with overrides and defaults.
     *
     * @param overrides
-    *   Prefixes that have precedence over the ones a document declares
+    *   Prefixes that have precedence over the defaults
     * @param defaults
-    *   Prefixes used when a document doesn't declare them
+    *   Prefixes used when the overrides don't have them
     */
   def apply(
       overrides: Iterable[(String, String)] = Nil,
       defaults: Iterable[(String, String)] = Nil,
-  ): PrefixMap = new PrefixMap(overrides.toSeq, Nil, defaults.toSeq, true)
+  ): PrefixMap = new PrefixMap(overrides.toSeq, defaults.toSeq, true)
 }

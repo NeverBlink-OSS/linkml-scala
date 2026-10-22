@@ -566,33 +566,6 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     s""""$escaped""""
   }
 
-  /** Get the `@documentPrefixes` annotation for a slot that holds the prefixes of a document.
-    *
-    * Such a slot is multivalued and inlined, and its range class has a slot with the `sh:prefix`
-    * URI and a slot with the `sh:namespace` URI. The `prefixes` slot of the LinkML metamodel is
-    * one.
-    *
-    * @see
-    *   https://github.com/linkml/linkml/issues/3906
-    */
-  private def documentPrefixesAnnotation(attribute: AttributeView): Option[String] =
-    attribute match {
-      case a: ClassInlineAttributeView if a.slotView.slot.multivalued =>
-        var prefixField: String = null
-        var namespaceField: String = null
-        a.classView.attributeViews.valuesIterator.foreach { x =>
-          val uri = x.slotView.uriStr
-          if (uri == ShaclPrefix) prefixField = slotName(x.slotView)
-          else if (uri == ShaclNamespace) namespaceField = slotName(x.slotView)
-        }
-        if ((prefixField ne null) && (namespaceField ne null)) {
-          Some(
-            s"@documentPrefixes(${scalaStringLiteral(prefixField)}, ${scalaStringLiteral(namespaceField)})",
-          )
-        } else None
-      case _ => None
-    }
-
   /** Create a [[ScalaField]] instance, by inferring the [[TypedDefault]] and additional annotations
     * @param attribute
     *   Attribute to construct the [[ScalaField]] instance for
@@ -627,8 +600,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       name,
       typedDefault.typeName,
       typedDefault.default,
-      Seq() ++ thisAnnotation ++ aliasAnnotation ++ documentPrefixesAnnotation(attribute) ++
-        typedDefault.annotations,
+      Seq() ++ thisAnnotation ++ aliasAnnotation ++ typedDefault.annotations,
       remapMetamodelCombineFunctions(
         view,
         typedDefault.combineFunc,
@@ -641,10 +613,6 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 }
 
 object ScalaGenerator {
-
-  /** URIs of the slots that mark a prefix map, see [[ScalaGenerator.documentPrefixesAnnotation]] */
-  private val ShaclPrefix = "http://www.w3.org/ns/shacl#prefix"
-  private val ShaclNamespace = "http://www.w3.org/ns/shacl#namespace"
 
   /** Options for [[ScalaGenerator]].
     *
