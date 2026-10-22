@@ -58,6 +58,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
     "preserve every publication summary field and exact format value" in {
       val raw = response()
       raw("hits")(0)("document")("extra") = "ignored"
+      raw("hits")(0)("document")("keywords") = ujson.Arr("sensors", "observations")
       val hit = CatalogJson.decodeSearch(ujson.write(raw), 1, 2).hits.head
       hit.baseUrl.original shouldBe "urn:ohi:b"
       hit.namespace shouldBe "example"
@@ -73,6 +74,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         "linkml-yaml",
       )
       hit.licenses shouldBe Seq("MIT", "Apache-2.0")
+      hit.keywords shouldBe Seq("sensors", "observations")
       hit.publishedAt.value shouldBe "2026-10-13T13:30:00+01:00"
     }
 
@@ -117,6 +119,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         "missing summary title" -> (v => { v("hits")(0)("document").obj.remove("title"); () }),
         "language-only format" -> (v => v("hits")(0)("document")("formats") = ujson.Arr("owl")),
         "empty formats" -> (v => v("hits")(0)("document")("formats") = ujson.Arr()),
+        "non-string keyword" -> (v => v("hits")(0)("document")("keywords") = ujson.Arr(1)),
         "invalid timestamp" -> (v => v("hits")(0)("document")("published_at") = "yesterday"),
         "timestamp without timezone" -> (v =>
           v("hits")(0)("document")("published_at") = "2026-10-13T12:30:00"

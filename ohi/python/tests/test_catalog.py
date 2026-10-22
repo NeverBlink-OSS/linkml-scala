@@ -65,7 +65,7 @@ class SearchCodecTests(unittest.TestCase):
         data["hits"][0]["document"].update({
             "formats": ["rdfs-turtle", "owl-rdfxml", "ossie-yaml", "owl-turtle", "linkml-yaml"],
             "licenses": ["MIT", "Apache-2.0"], "published_at": "2026-10-14T10:20:30.123456+02:30",
-            "future": {"enabled": True},
+            "keywords": ["sensors", "observations"], "future": {"enabled": True},
         })
         result = _decode_search(json.dumps(data), 1, 2)
         self.assertEqual(result.hits[0].model_dump(mode="json"), {
@@ -73,6 +73,7 @@ class SearchCodecTests(unittest.TestCase):
             "title": "Sensors", "description": "Sensor observations",
             "formats": ["rdfs-turtle", "owl-rdfxml", "ossie-yaml", "owl-turtle", "linkml-yaml"],
             "licenses": ["MIT", "Apache-2.0"], "published_at": "2026-10-14T10:20:30.123456+02:30",
+            "keywords": ["sensors", "observations"],
         })
         self.assertEqual(result.hits[0].published_at,
                          datetime(2026, 10, 14, 10, 20, 30, 123456, timezone(timedelta(hours=2, minutes=30))))
@@ -81,7 +82,7 @@ class SearchCodecTests(unittest.TestCase):
     def test_rejects_invalid_summary_values(self):
         values = [(field, " \t") for field in ("namespace", "name", "version", "title", "description")]
         values += [("base_url", "relative"), ("title", 1), ("formats", []),
-                   ("formats", ["owl"]), ("formats", ["OWL-TURTLE"]), ("licenses", [" "]),
+                   ("formats", ["owl"]), ("formats", ["OWL-TURTLE"]), ("licenses", [" "]), ("keywords", [1]),
                    ("published_at", "2026-10-14T10:20:30"),
                    ("published_at", "2026-02-30T10:20:30Z"), ("published_at", 1791973230)]
         for field, value in values:

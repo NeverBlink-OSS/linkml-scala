@@ -84,6 +84,8 @@ for (const [name, request] of Object.entries({
 test("search encodes original values once and preserves complete summaries in backend order", async (t) => {
   const wire = page(["https://example.org/z", "https://example.org/a", "https://example.org/z"], 2, 3, 7);
   wire.hits[1].document.licenses = [];
+  wire.hits[0].document.keywords = ["sensors", "observations"];
+  wire.hits[1].document.keywords = [];
   const fixture = await server(t, (_, res) => res.end(JSON.stringify(wire)));
   const config = { search_url: `${fixture.url}/collections/packages/search`, query_by: "name,description" };
   const client = new CatalogClient(config);
@@ -98,6 +100,7 @@ test("search encodes original values once and preserves complete summaries in ba
       description: "Sensor observations and devices.",
       formats: ["ossie-yaml", "owl-rdfxml", "linkml-yaml", "owl-turtle", "rdfs-turtle"],
       licenses: index === 1 ? [] : ["MIT", "Apache-2.0"], published_at: "2026-10-13T14:30:00+02:00",
+      ...[{ keywords: ["sensors", "observations"] }, { keywords: [] }, {}][index],
     })),
     total: 7, page: 2, per_page: 3, search_cutoff: false,
   });
@@ -170,6 +173,7 @@ for (const [name, mutate] of Object.entries({
   "empty formats": (wire) => { wire.hits[0].document.formats = []; },
   "unknown format": (wire) => { wire.hits[0].document.formats = ["owl"]; },
   "blank license": (wire) => { wire.hits[0].document.licenses = [" "]; },
+  "non-string keyword": (wire) => { wire.hits[0].document.keywords = [1]; },
   "invalid publication time": (wire) => { wire.hits[0].document.published_at = "yesterday"; },
   "nonobject document": (wire) => { wire.hits = [{ document: null }]; },
   "missing request parameters": (wire) => { delete wire.request_params; },

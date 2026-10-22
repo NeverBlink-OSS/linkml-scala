@@ -27,6 +27,8 @@ export interface SearchHit {
   description: string;
   /** Formats of the publication's available artifacts. Each value identifies both the ontology language and serialization syntax, as in artifact.format. */
   formats: Format[];
+  /** Keywords describing the ontology's subject. An empty list means no keywords are provided. */
+  keywords?: string[];
   /** Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics. */
   licenses: string[];
   /** Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases. URLs must not be derived from this identifier. */

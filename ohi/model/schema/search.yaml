@@ -68,6 +68,7 @@ classes:
     - description
     - licenses
     - published_at
+    - keywords
     attributes:
       formats:
         description: Formats of the publication's available artifacts. Each value identifies both the

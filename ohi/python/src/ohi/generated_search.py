@@ -100,6 +100,8 @@ class SearchHit(LinkMLModel):
     """Short description of the ontology's domain and intended use."""
     formats: list[Format] = Field(min_length=1)
     """Formats of the publication's available artifacts. Each value identifies both the ontology language and serialization syntax, as in artifact.format."""
+    keywords: list[str] | None = None
+    """Keywords describing the ontology's subject. An empty list means no keywords are provided."""
     licenses: list[Annotated[str, Field(pattern=r"^[\s\S]*\S")]]
     """Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics."""
     name: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
