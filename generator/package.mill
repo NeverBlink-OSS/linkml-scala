@@ -14,6 +14,7 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.schemaview.jvm,
       build.rdf.jvm,
+      build.generator.owlconfig.jvm,
     )
 
     // Tests parse the generated RDF back and cross-validate it with rdf4j-shacl, so they compile
@@ -120,6 +121,7 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.schemaview.js,
       build.rdf.js,
+      build.generator.owlconfig.js,
     )
 
     // README and the TS usage sample; the .d.ts itself is generated.
@@ -184,6 +186,7 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.schemaview.native,
       build.rdf.native,
+      build.generator.owlconfig.native,
     )
 
     object test extends ScalaNativeTests, CommonTestModule {

@@ -103,9 +103,6 @@ object `package` extends Module {
     def regenerate: Seq[String] = alias((Seq(
       "__:LinkMlModelModule.regenerate",
       "cli.jvm.run generate scala --clean " +
-        "--to generator/src/eu/neverblink/linkml/generator/owl/config/ " +
-        "--package eu.neverblink.linkml.generator.owl.config model/owl-import-config.yaml",
-      "cli.jvm.run generate scala --clean " +
         "--to schemaview/src/eu/neverblink/linkml/schemaview/buildinfo/ " +
         "--package eu.neverblink.linkml.schemaview.buildinfo model/build-info.yaml",
       // The npm package's index.d.ts uses this as the return type of `buildInfo`
@@ -117,8 +114,8 @@ object `package` extends Module {
         "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
       "__:LinkMlModelModule.jvm.fix",
       "__:LinkMlModelModule.jvm.reformat",
-      "{generator,schemaview,tests}.jvm.fix",
-      "{generator,schemaview,tests}.jvm.reformat",
+      "{schemaview,tests}.jvm.fix",
+      "{schemaview,tests}.jvm.reformat",
     ) ++ ohiGeneration)*)
 
     def regenerateBindings: Seq[String] = alias(
