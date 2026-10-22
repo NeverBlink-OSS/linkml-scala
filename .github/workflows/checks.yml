@@ -29,6 +29,10 @@ jobs:
 
       - name: Cache dependencies
         uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
 
       - name: Run scalafmt
         run: |
@@ -53,6 +57,10 @@ jobs:
 
       - name: Cache dependencies
         uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
 
       - name: Setup JVM
         uses: actions/setup-java@v5
@@ -106,6 +114,10 @@ jobs:
 
       - name: Cache dependencies
         uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
 
       - name: Setup JVM
         uses: actions/setup-java@v5
@@ -145,6 +157,10 @@ jobs:
 
       - name: Cache dependencies
         uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
 
       - name: Run scalafix
         run: |
