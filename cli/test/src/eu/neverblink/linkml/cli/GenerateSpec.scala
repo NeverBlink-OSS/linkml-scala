@@ -35,6 +35,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (TypeScript, "typescript", Seq("export interface Root {", "name?: string;")),
     (Pydantic, "pydantic", Seq("class Root(LinkMLModel):", "name: str | None = None")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
+    (Docs, "docs", Seq("Class: Root", "| name | [string](")),
     (Translation, "translation", Seq("\"Root\": \"root\"")),
     (Ossie, "ossie", Seq("concept: Root", "type: EntityType", "name: name")),
     (Owl, "owl", Seq("a owl:Class", "owl:onProperty")),
@@ -233,6 +234,41 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           out should include("\"fields\"")
           out should not include "schemas/"
         }
+      }
+    }
+
+    "generating documentation" should {
+      def docs(to: os.Path): (String, String, Int) =
+        withSchemas(1, prunableSchema) { paths =>
+          Docs.runTestCommandWithExitCode(
+            List("generate", "docs", "--pruning-mode", "schema", "--to", to.toString) ++ paths,
+          )
+        }
+
+      "write a page per element when --to does not name a .md file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val (_, err, code) = docs(dir / "site")
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          snapshot(dir / "site").keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/Root.md",
+            "classes/Other.md",
+            "types/string.md",
+          )
+          os.read(dir / "site" / "index.md") should include("[Root](classes/Root.md)")
+        } finally os.remove.all(dir)
+      }
+
+      "write a single document when --to names a .md file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val (_, err, code) = docs(dir / "docs.md")
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          val content = os.read(dir / "docs.md")
+          content should include("[Root](#class-root)")
+          content should not include "classes/"
+        } finally os.remove.all(dir)
       }
     }
 

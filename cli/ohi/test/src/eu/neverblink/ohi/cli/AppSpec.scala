@@ -26,6 +26,7 @@ class AppSpec extends AnyWordSpec, Matchers {
     ("linkml generate pydantic", Pydantic, "Generate Python classes based on pydantic"),
     ("linkml generate ossie", Ossie, "Generate an Apache Ossie ontology"),
     ("linkml generate er-diagram", ErDiagram, "Generate a Mermaid entity relationship diagram"),
+    ("linkml generate docs", Docs, "Generate Markdown documentation"),
     ("linkml generate translation", Translation, "Generate translation dictionaries"),
     ("linkml from ossie", FromOssie, "Read an Apache Ossie ontology"),
     ("linkml from owl", FromOwl, "Read an OWL ontology or RDFS vocabulary"),
