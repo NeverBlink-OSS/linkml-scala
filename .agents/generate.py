@@ -143,6 +143,11 @@ def gen_limitations() -> str:
         .replace("(slot_usage_inheritance.md", "(210-slot-usage-inheritance.md")
         .replace("(import_maps.md)", "(220-import-maps.md)")
         .replace("(curies.md)", "(230-curies.md)")
+        # The skill has no copy of the documentation generator's guide, so link to it on GitHub.
+        .replace(
+            "(docs.md#",
+            "(https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/docs.md#",
+        )
     )
     return (
         BANNER
