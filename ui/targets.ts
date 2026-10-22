@@ -132,6 +132,32 @@ export const TARGETS: Target[] = [
       api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml"), !!o.fullUris),
   },
   {
+    id: "docs",
+    label: "Documentation",
+    lang: "text",
+    options: [
+      // Defaults to `schema`, like the ER diagram: documentation is for the whole model.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      TREE_ROOT,
+      {
+        key: "diagrams",
+        type: "checkbox",
+        label: "Diagrams",
+        title: "Add a Mermaid ER diagram to each class page",
+        default: true,
+      },
+      {
+        key: "singleFile",
+        type: "checkbox",
+        label: "One document",
+        title: "Write all pages as sections of one Markdown document, instead of a file per page",
+        default: true,
+      },
+    ],
+    call: (api, v, o) =>
+      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.diagrams, !!o.singleFile),
+  },
+  {
     id: "erDiagram",
     label: "ER diagram",
     lang: "text",

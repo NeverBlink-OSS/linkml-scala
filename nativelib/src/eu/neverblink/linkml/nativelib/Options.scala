@@ -15,6 +15,7 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, PruningMode}
@@ -142,6 +143,9 @@ private object Options {
   private given erDiagramOptions: JsonValueCodec[ErDiagramGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
+  private given docsOptions: JsonValueCodec[DocsGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
   private given ossieOptions: JsonValueCodec[OssieGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
@@ -192,6 +196,8 @@ private object Options {
 
   def erDiagram(json: String): ErDiagramGenerator.Options =
     apply(json, ErDiagramGenerator.Options())
+
+  def docs(json: String): DocsGenerator.Options = apply(json, DocsGenerator.Options())
 
   def ossie(json: String): OssieGenerator.Options = apply(json, OssieGenerator.Options())
 

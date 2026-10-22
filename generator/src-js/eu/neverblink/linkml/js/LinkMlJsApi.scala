@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.js
 
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -610,6 +611,45 @@ object LinkMlJsApi {
         optionalMarker = optionalMarker,
       ),
     )
+
+  /** Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for
+    * each class, slot, enum and type, which link to each other.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Which classes to document. One of treeRoot|schema|skip. treeRoot - only classes reachable
+    *   from the tree_root class. schema - only classes reachable from any of the classes defined in
+    *   the root schema. skip - every class. The enums, types and slots these classes use are
+    *   documented with them. Default: schema
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
+    *   tree root pruning mode.
+    * @param diagrams
+    *   Whether to add a Mermaid ER diagram to each class page, showing the class and the classes it
+    *   is linked with. Default: true
+    * @param singleFile
+    *   Whether to write all pages as sections of one `docs.md` document. Default: false
+    * @return
+    *   JS dictionary (object) containing a mapping from filename to file content: `index.md` plus
+    *   `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md` and `types/<name>.md`, or only
+    *   `docs.md` if [[singleFile]] is true.
+    */
+  def docs(
+      schema: SchemaViewJs,
+      pruningMode: String = "schema",
+      treeRoot: js.UndefOr[String] = js.undefined,
+      diagrams: Boolean = true,
+      singleFile: Boolean = false,
+  ): js.Dictionary[String] = {
+    val generator = DocsGenerator(using schema.underlying)
+    val options = DocsGenerator.Options(
+      pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+      diagrams = diagrams,
+    )
+    if (singleFile) js.Dictionary("docs.md" -> generator.serialize(options))
+    else generator.generateFiles(options).toMap.toJSDictionary
+  }
 
   /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
     * useful when the framework symbols are significant and must be known, like when constructing a
