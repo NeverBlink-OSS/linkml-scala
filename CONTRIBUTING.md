@@ -19,7 +19,7 @@ Common tasks with mill:
 - Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project: `./mill lint` (scalafix + scalafmt)
-- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, Ohi client models): `./mill regenerate`. To re-generate the classes of one model, run `regenerate` on its module, like `./mill validation.regenerate` (see [Generated models](#generated-models)).
+- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, Ohi client models): `./mill regenerate` (see [Generated models](#generated-models))
 - Fetch the metamodel definitions from [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
@@ -31,17 +31,46 @@ Common tasks with mill:
 
 The classes generated from each LinkML schema in this repo live in their own module, which extends `LinkMlModelModule` (in `build.mill`):
 
-| Module                 | Schema                              |
-|------------------------|-------------------------------------|
-| `metamodel`            | `linkml:meta`                       |
-| `validation`           | `model/issue-types.yaml`            |
-| `schemaview.buildinfo` | `model/build-info.yaml`             |
-| `generator.owlconfig`  | `model/owl-import-config.yaml`      |
-| `tests.conformance`    | the conformance suite's model.yaml  |
+| Module                 | Schema                             | Other generated files                  |
+|------------------------|------------------------------------|----------------------------------------|
+| `metamodel`            | `linkml:meta`                      |                                        |
+| `validation`           | `model/issue-types.yaml`           | `generator/npm/validation-report.d.ts` |
+| `schemaview.buildinfo` | `model/build-info.yaml`            | `generator/npm/build-info.d.ts`        |
+| `generator.owlconfig`  | `model/owl-import-config.yaml`     |                                        |
+| `tests.conformance`    | the conformance suite's model.yaml |                                        |
 
-The generated classes are committed, because generating them needs the CLI, which depends on them. CI runs `./mill regenerate` and fails if the result differs from what is committed.
+The generated classes are committed, because generating them needs the CLI, which depends on them.
 
-To add a model, create a module that extends `LinkMlModelModule`, set `modelSchema` and `modelPackage`, and add the `jvm` (and if needed `js` and `native`) modules that compile its `src` directory. `./mill regenerate` finds it on its own. Hand-written code that uses the generated classes, like codecs, can stay in the module that uses it.
+#### Regenerating
+
+Regenerate the classes after you change one of the schemas, the Scala or TypeScript generator, or the metamodel version:
+
+- All models: `./mill regenerate`. It runs `regenerate`, `fix` and `reformat` on every model module, and then regenerates the Ohi models (see [ohi/README.md](ohi/README.md)).
+- One model: run its `regenerate` command, and then format the result, as separate commands:
+  ```shell
+  ./mill validation.regenerate
+  ./mill validation.jvm.fix
+  ./mill validation.jvm.reformat
+  ```
+  Don't join them with `+`: Mill can then format the files before they are written.
+
+Then commit the changed files.
+
+Things to know:
+
+- The metamodel and the conformance suite's model.yaml come from a copy of [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) that Mill keeps in `out/`, and Mill does not fetch it again on its own. To regenerate from the latest version, as CI does, run `./mill clean metamodel.definitionsRepo` first.
+- `regenerate` runs the CLI, so the generated classes must compile. If they don't (for example, after a bad manual edit), revert them with `git checkout -- <module>/src` and regenerate again.
+- CI runs `./mill regenerate` and fails if the result differs from what is committed in the model modules, `generator/npm`, `ohi` and `cli/ohi`.
+
+#### Adding a model
+
+1. Create a `package.mill` for the module, next to the module that uses the classes (like `generator/owlconfig/package.mill`).
+2. Make the module extend `build.LinkMlModelModule`, and set `modelSchema` and `modelPackage`. Set `otherModelOutputs` to also run other generators, like `typescript`.
+3. Add the `jvm` module, and `js` and `native` if the classes are needed there, with a dependency on `build.runtime` (or `build.yaml`, if hand-written codecs live next to the classes).
+4. Add the new module to the `moduleDeps` of the modules that use it.
+5. Run `./mill regenerate` and commit the generated classes.
+
+`./mill regenerate` and the CI check find the new module on their own. Hand-written code that needs more than the generated classes can stay in the module that uses it, in the same package.
 
 ### Scala Native
 
