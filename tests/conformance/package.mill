@@ -1,0 +1,22 @@
+package build.tests.conformance
+
+import mill.*
+import millbuild.*
+
+/** The model of the LinkML conformance test suite, generated into Scala by this project's own Scala
+ * generator. Only the generator's JVM tests run the suite, so there is no Scala.js or Scala Native
+ * module.
+ */
+object `package` extends Module, build.LinkMlModelModule {
+  def modelSchema = Task {
+    (build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml").toString
+  }
+
+  def modelPackage = "eu.neverblink.linkml.tests.conformance"
+
+  object jvm extends CommonModule {
+    def moduleDeps = Seq(
+      build.yaml.jvm,
+    )
+  }
+}

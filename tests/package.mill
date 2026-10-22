@@ -8,10 +8,6 @@ import mill.scalajslib.TestScalaJSModule
 import mill.scalanativelib.TestScalaNativeModule
 
 object `package` extends Module, NativeOptional {
-  def conformanceDefinitions: T[PathRef] = Task {
-    PathRef(build.metamodel.definitionsRepo().path / "tests" / "conformance" / "model.yaml")
-  }
-
   object jvm
       extends ResourcesAsStrings("tests"),
         ModelCatalogueEntries,

@@ -102,15 +102,8 @@ object `package` extends Module {
     /** Regenerate every checked-in source generated from a LinkML model. */
     def regenerate: Seq[String] = alias((Seq(
       "__:LinkMlModelModule.regenerate",
-      "tests.conformanceDefinitions",
-      "cli.jvm.run generate scala --clean --to tests/src/eu/neverblink/linkml/tests/conformance " +
-        "--package eu.neverblink.linkml.tests.conformance " +
-        // TODO LNK-218: We should pass this as the output from tests.conformanceDefinitions, somehow
-        "out/metamodel/definitionsRepo.dest/tests/conformance/model.yaml",
       "__:LinkMlModelModule.jvm.fix",
       "__:LinkMlModelModule.jvm.reformat",
-      "tests.jvm.fix",
-      "tests.jvm.reformat",
     ) ++ ohiGeneration)*)
 
     def regenerateBindings: Seq[String] = alias(
