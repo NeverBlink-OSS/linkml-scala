@@ -96,9 +96,9 @@ jobs:
       - name: Re-generate the model-derived sources and check they are committed
         run: |
           ./mill --no-server regenerate
-          paths=(metamodel/src validation/src schemaview/buildinfo/src
-            generator/owlconfig/src tests/conformance/src
-            generator/npm/validation-report.d.ts generator/npm/build-info.d.ts ohi cli/ohi)
+          # The folders of the LinkMlModelModule modules, the npm package's model types and Ohi
+          models=$(./mill --no-server --ticker false resolve '__:LinkMlModelModule' | tr . /)
+          paths=($models generator/npm ohi cli/ohi)
           if [ -n "$(git status --porcelain -- "${paths[@]}")" ]; then
             git status --short -- "${paths[@]}"
             git diff -- "${paths[@]}"
