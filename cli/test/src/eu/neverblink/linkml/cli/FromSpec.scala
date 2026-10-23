@@ -110,10 +110,28 @@ class FromSpec extends AnyWordSpec, Matchers {
 
     "say so when the document is not an ontology" in {
       withOntology("name: [unclosed") { path =>
-        val thrown = intercept[RuntimeException](
-          FromOssie.runTestCommandWithExitCode(List("from", "ossie", path)),
-        )
-        thrown.getMessage should include("Ossie ontology")
+        val (out, err, code) = FromOssie.runTestCommandWithExitCode(List("from", "ossie", path))
+        code shouldBe 1
+        out shouldBe empty
+        err should startWith(s"Cannot import $path: Not a readable Ossie ontology")
+      }
+    }
+
+    "say why an iri can't be imported, and write no file" in {
+      val bad =
+        ontology.replace("    type: EntityType\n", "    type: EntityType\n    iri: John Doe\n")
+      withOntology(bad) { path =>
+        val to = Files.createTempFile("linkml-from", ".yaml")
+        Files.delete(to)
+        try {
+          val (_, err, code) =
+            FromOssie.runTestCommandWithExitCode(List("from", "ossie", "--to", to.toString, path))
+          code shouldBe 1
+          err.trim shouldBe
+            s"Cannot import $path: The iri 'John Doe' is neither a full IRI nor a QName with a " +
+            "declared prefix"
+          Files.exists(to) shouldBe false
+        } finally Files.deleteIfExists(to)
       }
     }
   }
