@@ -86,11 +86,11 @@ final case class TypeAttributeView(
 
   private def upgradeToImplicit(st: SubjectType): SubjectType = slot.implicitPrefix.foldFast(st) {
     value =>
-      SubjectType.implicitPrefix(
-        slotView.definingPrefixResolver.resolvePrefix(value).getOrElseFast(
-          throw RuntimeException(s"Unknown implicit_prefix for slot ${slot.name}: $value"),
-        ),
-      )
+      val reference = slotView.definingPrefixes.namespaceOrNull(value)
+      if (reference eq null) {
+        throw RuntimeException(s"Unknown implicit_prefix for slot ${slot.name}: $value")
+      }
+      SubjectType.implicitPrefix(reference)
   }
 
   /** Return the RDF subject type that corresponds to this type/slot combination. This is used to

@@ -68,6 +68,8 @@ final case class FromOssieOptions(
     schemaId: Option[String] = None,
     @HelpMessage(outputFormatHelp)
     format: String = "yaml",
+    @HelpMessage(fullUrisHelp)
+    fullUris: Boolean = false,
 ) extends HasFromOptions
 
 object FromOssie extends From[FromOssieOptions] {
@@ -85,6 +87,7 @@ object FromOssie extends From[FromOssieOptions] {
         schemaId = options.schemaId,
         outputFormat = JsonOutputFormat.parse(options.format)
           .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+        fullUris = options.fullUris,
       ),
     )
 }
@@ -113,6 +116,8 @@ final case class FromOwlOptions(
     inputFormat: String = "ttl",
     @HelpMessage(outputFormatHelp)
     format: String = "yaml",
+    @HelpMessage(fullUrisHelp)
+    fullUris: Boolean = false,
 ) extends HasFromOptions
 
 object FromOwl extends From[FromOwlOptions] {
@@ -145,6 +150,6 @@ object FromOwl extends From[FromOwlOptions] {
     )
     if options.listNotImported then
       result.warnings.foreach(w => printLine(s"Not imported: $w", toStderr = true))
-    OwlImporter().writeSchema(result.schema, out, format)
+    OwlImporter().writeSchema(result.schema, out, format, options.fullUris)
   }
 }

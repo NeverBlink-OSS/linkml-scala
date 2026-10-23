@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.SchemaDefinition
-import eu.neverblink.linkml.runtime.PrefixResolver
+import eu.neverblink.linkml.runtime.PrefixMap
 import eu.neverblink.linkml.validation.{SchemaImportError, SchemaParseError}
 import org.virtuslab.yaml.{Node, Tag, parseYaml}
 
@@ -207,7 +207,7 @@ object ImportMap {
       schema: SchemaDefinition,
       directory: String,
   ): Either[SchemaImportError, String] =
-    expand(written, SchemaView.createPrefixResolver(schema), schema.id.original) match {
+    expand(written, SchemaCodec.prefixMap(schema), schema.id.original) match {
       case Right(expanded) =>
         val joined =
           if (directory.isEmpty || isUri(expanded) || isAbsolutePath(expanded)) expanded
@@ -250,18 +250,18 @@ object ImportMap {
   /** Expand a CURIE, or return any other import as it is, without a leading `./`. */
   private def expand(
       s: String,
-      resolver: PrefixResolver,
+      prefixes: PrefixMap,
       schemaId: String,
   ): Either[SchemaImportError, String] = {
     val colon = curieColon(s)
     if (colon < 0) new Right(withoutDotSlash(s))
     else {
       val prefix = s.substring(0, colon)
-      resolver.resolvePrefix(prefix) match {
-        case Some(base) => new Right(base.concat(s.substring(colon + 1)))
-        case _ =>
-          val where = if (schemaId.isEmpty) "" else s" in schema '$schemaId'"
-          new Left(Importer.importError(s, s"Unknown prefix '$prefix' for CURIE '$s'$where"))
+      val base = prefixes.namespaceOrNull(prefix)
+      if (base ne null) new Right(base.concat(s.substring(colon + 1)))
+      else {
+        val where = if (schemaId.isEmpty) "" else s" in schema '$schemaId'"
+        new Left(Importer.importError(s, s"Unknown prefix '$prefix' for CURIE '$s'$where"))
       }
     }
   }

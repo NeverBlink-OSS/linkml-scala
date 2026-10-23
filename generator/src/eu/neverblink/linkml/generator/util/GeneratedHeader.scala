@@ -8,7 +8,7 @@ object GeneratedHeader {
 
   /** The header as line comments starting with [[commentPrefix]], ending with a newline. */
   def apply(commentPrefix: String)(using sv: SchemaView): String = {
-    val id = sv.root.id.uri(using sv.rootPrefixResolver)
+    val id = sv.root.id.original
     s"$commentPrefix$lead$id\n$commentPrefix DO NOT EDIT.\n"
   }
 

@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.ossie.expression.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, PlainText, Reference, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{LinkmlAny, PlainText, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.schemaview.Case
 import org.virtuslab.yaml.{NodeOps, parseYaml}
 
@@ -40,10 +40,13 @@ object OssieImporter {
     *   name.
     * @param outputFormat
     *   Output serialization format to use.
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
     */
   final case class Options(
       schemaId: Option[String] = None,
       outputFormat: JsonOutputFormat = yaml,
+      fullUris: Boolean = false,
   ) extends SchemaImporter.Options
 
   /** The LinkML type behind each of Ossie's built-in value types. */
@@ -101,19 +104,16 @@ object OssieImporter {
     private val keptPrefixes: VectorMap[String, String] =
       VectorMap.from(ontology.prefixes.filter((p, ns) => p != "linkml" || ns == linkmlNamespace))
 
-    /** An `iri` as a LinkML URI or CURIE.
+    /** An `iri` as a LinkML URI.
       *
-      * A QName over a declared prefix stays a CURIE. Anything else is assumed to be a full IRI -
-      * including a QName over an undeclared prefix.
+      * A QName over a declared prefix is expanded. Anything else is assumed to be a full IRI -
+      * including a QName over an undeclared prefix. A URI that a kept prefix covers is written as a
+      * CURIE.
       */
-    private def uriOf(iri: String): UriOrCurie = {
+    private def uriOf(iri: String): Uri = {
       val colon = iri.indexOf(':')
-      val prefix = Option.when(colon > 0)(iri.substring(0, colon))
-      prefix.flatMap(p => ontology.prefixes.get(p).map(p -> _)) match {
-        case Some((p, _)) if keptPrefixes.contains(p) => Curie(iri)
-        case Some((_, ns)) => Uri(ns + iri.substring(colon + 1))
-        case None => Uri(iri)
-      }
+      val ns = if (colon > 0) ontology.prefixes.getOrElse(iri.substring(0, colon), null) else null
+      Uri(if (ns ne null) ns.concat(iri.substring(colon + 1)) else iri)
     }
 
     def schema: SchemaDefinition = {
@@ -123,7 +123,7 @@ object OssieImporter {
       val any = Option.when(
         classes.exists(_.attributes.values.exists(_.range.contains(Reference(anyClass)))) &&
           !classes.exists(_.name == anyClass),
-      )(ClassDefinition(name = anyClass, classUri = Some(UriOrCurie("linkml:Any"))))
+      )(ClassDefinition(name = anyClass, classUri = Some(Uri(linkmlNamespace.concat("Any")))))
 
       SchemaDefinition(
         id = Uri(options.schemaId.getOrElse {
@@ -136,7 +136,7 @@ object OssieImporter {
           "linkml" -> Prefix("linkml", Uri(linkmlNamespace)),
         ) ++ keptPrefixes.map((p, ns) => p -> Prefix(p, Uri(ns))),
         defaultRange = Some(Reference("string")),
-        imports = Seq(UriOrCurie("linkml:types")),
+        imports = Seq(Uri(linkmlNamespace.concat("types"))),
         extensions = aiContext,
         classes = byName(classes ++ any),
         enums = byName(enumConcepts.map(enumOf)),

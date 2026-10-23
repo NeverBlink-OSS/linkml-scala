@@ -85,8 +85,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
           val child = sv.types(name)
 
           child.uriStr shouldBe expectedUri
-          child.derivedType.typeUri
-            .map(_.uri(using child.definingPrefixResolver)) shouldBe Some(expectedUri)
+          child.derivedType.typeUri.map(_.original) shouldBe Some(expectedUri)
           child.inner.typeUri shouldBe None
         }
       }
@@ -135,8 +134,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
           val child = importedView.types(name)
 
           child.uriStr shouldBe inheritedUri
-          child.derivedType.typeUri
-            .map(_.uri(using child.definingPrefixResolver)) shouldBe Some(inheritedUri)
+          child.derivedType.typeUri.map(_.original) shouldBe Some(inheritedUri)
           child.inner.typeUri shouldBe None
         }
       }

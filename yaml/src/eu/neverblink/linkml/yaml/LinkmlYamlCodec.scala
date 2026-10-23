@@ -4,16 +4,21 @@ import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.runtime.FastUtils.*
 import org.virtuslab.yaml.*
 
-import scala.annotation.nowarn
 import scala.collection.immutable.{ListMap, VectorMap}
 import scala.collection.mutable
 import scala.quoted.*
 import scala.util.control.NoStackTrace
 
+/** Decodes values of `T` from YAML nodes and encodes them back.
+  *
+  * Both take a [[PrefixMap]]. Decoding expands each URI or CURIE value that it can, and encoding
+  * compacts each URI that it can. With the default [[PrefixMap.empty]], values are kept as they are
+  * written.
+  */
 abstract class LinkmlYamlCodec[T] {
-  def decode(node: Node, id: Option[Any] = None): T
+  def decode(node: Node, id: Option[Any] = None, prefixes: PrefixMap = PrefixMap.empty): T
 
-  def encode(x: T, skipId: Boolean = false): Node
+  def encode(x: T, skipId: Boolean = false, prefixes: PrefixMap = PrefixMap.empty): Node
 }
 
 object LinkmlYamlCodec {
@@ -25,9 +30,12 @@ object LinkmlYamlCodec {
   )
 
   implicit val anythingCodec: LinkmlYamlCodec[LinkmlAny] = new LinkmlYamlCodec[LinkmlAny] {
-    override def decode(node: Node, id: Option[Any]): LinkmlAny = LinkmlAny.apply(node.asYaml)
+    override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): LinkmlAny =
+      LinkmlAny.apply(node.asYaml)
 
-    override def encode(x: LinkmlAny, skipId: Boolean): Node = parseYaml(x.toString) match {
+    override def encode(x: LinkmlAny, skipId: Boolean, prefixes: PrefixMap): Node = parseYaml(
+      x.toString,
+    ) match {
       case Right(n) => n
       case _ => nullNode
     }
@@ -36,35 +44,40 @@ object LinkmlYamlCodec {
   }
 
   implicit val uriOrCurieCodec: LinkmlYamlCodec[UriOrCurie] = new LinkmlYamlCodec[UriOrCurie] {
-    override def decode(node: Node, id: Option[Any]): UriOrCurie = node match {
-      case n: Node.ScalarNode if Tag.str eq n.tag => UriOrCurie(n.value)
-      case n => decodeError("URI or CURIE string value", n)
-    }
+    override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): UriOrCurie =
+      node match {
+        case n: Node.ScalarNode if Tag.str eq n.tag => UriOrCurie.expanded(n.value, prefixes)
+        case n => decodeError("URI or CURIE string value", n)
+      }
 
-    override def encode(x: UriOrCurie, skipId: Boolean): Node = StringNode(x.original)
+    override def encode(x: UriOrCurie, skipId: Boolean, prefixes: PrefixMap): Node =
+      StringNode(UriOrCurie.compacted(x, prefixes))
   }
 
   implicit val localizedTextCodec: LinkmlYamlCodec[LocalizedText] =
     new LinkmlYamlCodec[LocalizedText] {
-      override def decode(node: Node, id: Option[Any]): LocalizedText = node match {
-        case scalar: Node.ScalarNode if Tag.str eq scalar.tag => new PlainText(scalar.value)
-        case mapping: Node.MappingNode if mapping.mappings.nonEmpty =>
-          new MultilingualText(mapping.mappings.map {
-            case (k: Node.ScalarNode, v: Node.ScalarNode)
-                if (Tag.str eq k.tag) && (Tag.str eq v.tag) =>
-              k.value -> v.value
-            case (k: Node.ScalarNode, v) if Tag.str eq k.tag =>
-              decodeError("A string in a language specified by the lang tag", v)
-            case (k, _) =>
-              decodeError("A langauge tag string (key of multilingual string mapping)", k)
-          })
-        case mapping: Node.MappingNode =>
-          decodeError("At least one language entry in the language mapping", mapping)
-        case other =>
-          decodeError("Localized string (plain string or language to string mapping)", other)
-      }
+      override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): LocalizedText =
+        node match {
+          case scalar: Node.ScalarNode if Tag.str eq scalar.tag => new PlainText(scalar.value)
+          case mapping: Node.MappingNode =>
+            if (mapping.mappings.nonEmpty) {
+              new MultilingualText(mapping.mappings.map { kv =>
+                kv._1 match {
+                  case k: Node.ScalarNode if Tag.str eq k.tag =>
+                    kv._2 match {
+                      case v: Node.ScalarNode if Tag.str eq v.tag => (k.value, v.value)
+                      case v => decodeError("A string in a language specified by the lang tag", v)
+                    }
+                  case k =>
+                    decodeError("A langauge tag string (key of multilingual string mapping)", k)
+                }
+              })
+            } else decodeError("At least one language entry in the language mapping", mapping)
+          case other =>
+            decodeError("Localized string (plain string or language to string mapping)", other)
+        }
 
-      override def encode(x: LocalizedText, skipId: Boolean): Node = x match {
+      override def encode(x: LocalizedText, skipId: Boolean, prefixes: PrefixMap): Node = x match {
         case plain: PlainText => StringNode(plain.value)
         case lang: MultilingualText =>
           Node.MappingNode(lang.mapping.map(StringNode(_) -> StringNode(_)))
@@ -116,14 +129,14 @@ object LinkmlYamlCodec {
       m
     }
 
-    override def decode(node: Node, id: Option[Any]): T = {
+    override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): T = {
       val v = typeDesignatorValue(node, designatorField)
       val codec = byValue.get(v.value)
-      if (codec ne null) codec.decode(node, id)
+      if (codec ne null) codec.decode(node, id, prefixes)
       else unknownTypeDesignatorError(v, designatorField)
     }
 
-    override def encode(x: T, skipId: Boolean): Node = {
+    override def encode(x: T, skipId: Boolean, prefixes: PrefixMap): Node = {
       val codec = byClass.get(x.getClass)
       if (codec eq null) {
         throw new IllegalArgumentException(
@@ -131,7 +144,7 @@ object LinkmlYamlCodec {
             "Add a TypeDesignatorEntry for it.",
         )
       }
-      codec.asInstanceOf[LinkmlYamlCodec[T]].encode(x, skipId)
+      codec.asInstanceOf[LinkmlYamlCodec[T]].encode(x, skipId, prefixes)
     }
   }
 
@@ -239,9 +252,11 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     inferredCodecs.put(rootTpe, None)
     val codecDef = '{
       new LinkmlYamlCodec[T] {
-        def decode(node: Node, id: Option[Any]): T = ${ genDecode[T](rootTpe, 'node, 'id) }
+        def decode(node: Node, id: Option[Any], prefixes: PrefixMap): T =
+          ${ genDecode[T](rootTpe, 'node, 'id, 'prefixes) }
 
-        def encode(x: T, skipId: Boolean): Node = ${ genEncode[T](rootTpe, 'x, 'skipId) }
+        def encode(x: T, skipId: Boolean, prefixes: PrefixMap): Node =
+          ${ genEncode[T](rootTpe, 'x, 'skipId, 'prefixes) }
       }
     }
     val codec = Block(defs.toList, codecDef.asTerm).asExpr.asInstanceOf[Expr[LinkmlYamlCodec[T]]]
@@ -253,14 +268,15 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       tpe: TypeRepr,
       node: Expr[Node],
       id: Expr[Option[Any]],
+      prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[T] = {
     val implCodec = findImplicitCodec(tpe)
     if (implCodec.isDefined) {
-      '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.decode($node, $id) }
-    } else if (isUnion(tpe)) withDecoderFor(tpe, node, id) { (node, id) =>
-      genDecodeUnion[T](tpe, node, id)
+      '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.decode($node, $id, $prefixes) }
+    } else if (isUnion(tpe)) withDecoderFor(tpe, node, id, prefixes) { (node, id, prefixes) =>
+      genDecodeUnion[T](tpe, node, id, prefixes)
     }
-    else if (tpe =:= stringTpe) withDecoderFor(tpe, node, id) { (node, _) =>
+    else if (tpe =:= stringTpe) withDecoderFor(tpe, node, id, prefixes) { (node, _, _) =>
       '{
         $node match {
           case n: Node.ScalarNode
@@ -270,7 +286,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         }
       }
     }
-    else if (tpe =:= intTpe) withDecoderFor(tpe, node, id) { (node, _) =>
+    else if (tpe =:= intTpe) withDecoderFor(tpe, node, id, prefixes) { (node, _, _) =>
       '{
         $node match {
           case n: Node.ScalarNode if Tag.int eq n.tag =>
@@ -283,7 +299,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         }
       }
     }
-    else if (tpe =:= booleanTpe) withDecoderFor(tpe, node, id) { (node, _) =>
+    else if (tpe =:= booleanTpe) withDecoderFor(tpe, node, id, prefixes) { (node, _, _) =>
       '{
         $node match {
           case n: Node.ScalarNode if Tag.boolean eq n.tag =>
@@ -292,59 +308,70 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         }
       }
     }
-    else if (tpe <:< optionOfWildcardTpe) withDecoderFor(tpe, node, id) { (node, id) =>
-      val tpe1 = typeArg1(tpe)
-      tpe1.asType match {
-        case '[t1] =>
-          '{
-            if (Tag.nullTag eq $node.tag) None
-            else new Some(${ genDecode[t1](tpe1, node, id) })
-          }
-      }
-    }
-    else if (tpe <:< seqOfWildcardTpe) withDecoderFor(tpe, node, id) { (node, id) =>
-      val tpe1 = typeArg1(tpe)
-      tpe1.asType match {
-        case '[t1] =>
-          '{
-            $node match {
-              case n: Node.SequenceNode =>
-                n.nodes.map(en => ${ genDecode[t1](tpe1, 'en, id) })
-              case n: Node.ScalarNode =>
-                if (Tag.nullTag eq n.tag) Seq.empty
-                else Seq(${ genDecode[t1](tpe1, node, id) })
-              case n => LinkmlYamlCodec.decodeError("sequence or null value", n)
+    else if (tpe <:< optionOfWildcardTpe) withDecoderFor(tpe, node, id, prefixes) {
+      (node, id, prefixes) =>
+        val tpe1 = typeArg1(tpe)
+        tpe1.asType match {
+          case '[t1] =>
+            '{
+              if (Tag.nullTag eq $node.tag) None
+              else new Some(${ genDecode[t1](tpe1, node, id, prefixes) })
             }
-          }
-      }
+        }
     }
-    else if (tpe <:< mapOfWildcardsTpe) withDecoderFor(tpe, node, id) { (node, _) =>
-      val tpe1 = typeArg1(tpe)
-      val tpe2 = typeArg2(tpe)
-      ((tpe1.asType, tpe2.asType): @nowarn) match {
-        case ('[t1], '[t2]) =>
-          '{
-            $node match {
-              case n: Node.MappingNode =>
-                n.mappings.foldLeft(VectorMap.newBuilder[t1, t2]) { case (acc, (k, v)) =>
-                  val vId = ${ genDecode[t1](tpe1, 'k, '{ None }) }
-                  acc.addOne((vId, ${ genDecode[t2](tpe2, 'v, '{ new Some(vId) }) }))
-                }.result().asInstanceOf[Map[t1, t2]]
-              case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty
-              case n => LinkmlYamlCodec.decodeError("map or null value", n)
+    else if (tpe <:< seqOfWildcardTpe) withDecoderFor(tpe, node, id, prefixes) {
+      (node, id, prefixes) =>
+        val tpe1 = typeArg1(tpe)
+        tpe1.asType match {
+          case '[t1] =>
+            '{
+              $node match {
+                case n: Node.SequenceNode =>
+                  n.nodes.map(en => ${ genDecode[t1](tpe1, 'en, id, prefixes) })
+                case n: Node.ScalarNode =>
+                  if (Tag.nullTag eq n.tag) Seq.empty
+                  else Seq(${ genDecode[t1](tpe1, node, id, prefixes) })
+                case n => LinkmlYamlCodec.decodeError("sequence or null value", n)
+              }
             }
-          }
-      }
+        }
     }
-    else if (isAbstractClassOrTraitOrEnum(tpe)) withDecoderFor(tpe, node, id) { (node, id) =>
-      getTypeDesignator(tpe) match {
-        case Some(td) => genDecodeTypeDesignator[T](td, node, id)
-        case _ => genDecodeEnum[T](tpe, node)
-      }
+    else if (tpe <:< mapOfWildcardsTpe) withDecoderFor(tpe, node, id, prefixes) {
+      (node, _, prefixes) =>
+        val tpe1 = typeArg1(tpe)
+        val tpe2 = typeArg2(tpe)
+        tpe1.asType match {
+          case '[t1] =>
+            tpe2.asType match {
+              case '[t2] =>
+                '{
+                  $node match {
+                    case n: Node.MappingNode =>
+                      n.mappings.foldLeft(VectorMap.newBuilder[t1, t2]) { (acc, kv) =>
+                        val k = kv._1
+                        val v = kv._2
+                        val vId = ${ genDecode[t1](tpe1, 'k, '{ None }, prefixes) }
+                        acc.addOne(
+                          (vId, ${ genDecode[t2](tpe2, 'v, '{ new Some(vId) }, prefixes) }),
+                        )
+                      }.result().asInstanceOf[Map[t1, t2]]
+                    case n: Node.ScalarNode if Tag.nullTag eq n.tag => Map.empty
+                    case n => LinkmlYamlCodec.decodeError("map or null value", n)
+                  }
+                }
+            }
+        }
+    }
+    else if (isAbstractClassOrTraitOrEnum(tpe)) withDecoderFor(tpe, node, id, prefixes) {
+      (node, id, prefixes) =>
+        getTypeDesignator(tpe) match {
+          case Some(td) => genDecodeTypeDesignator[T](td, node, id, prefixes)
+          case _ => genDecodeEnum[T](tpe, node)
+        }
     }
     else
-      withDecoderFor(tpe, node, id) { (node, id) =>
-        genDecodeNonAbstractClass(tpe, node, id)
+      withDecoderFor(tpe, node, id, prefixes) { (node, id, prefixes) =>
+        genDecodeNonAbstractClass(tpe, node, id, prefixes)
       }
   }.asInstanceOf[Expr[T]]
 
@@ -361,64 +388,80 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     }
   }
 
-  private def genEncode[T: Type](tpe: TypeRepr, x: Expr[T], skipId: Expr[Boolean])(using
-      Quotes,
-  ): Expr[Node] = {
+  private def genEncode[T: Type](
+      tpe: TypeRepr,
+      x: Expr[T],
+      skipId: Expr[Boolean],
+      prefixes: Expr[PrefixMap],
+  )(using Quotes): Expr[Node] = {
     val implCodec = findImplicitCodec(tpe)
     if (implCodec.isDefined) {
-      '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.encode($x, $skipId) }
-    } else if (isUnion(tpe)) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
-      genEncodeUnion[T](tpe, x, skipId)
+      '{ ${ implCodec.get.asInstanceOf[Expr[LinkmlYamlCodec[T]]] }.encode($x, $skipId, $prefixes) }
+    } else if (isUnion(tpe)) withEncoderFor(tpe, x, skipId, prefixes) { (x, skipId, prefixes) =>
+      genEncodeUnion[T](tpe, x, skipId, prefixes)
     }
-    else if (tpe =:= stringTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
+    else if (tpe =:= stringTpe) withEncoderFor(tpe, x, skipId, prefixes) { (x, _, _) =>
       '{ StringNode(${ x.asInstanceOf[Expr[String]] }) }
     }
-    else if (tpe =:= intTpe || tpe =:= booleanTpe) withEncoderFor(tpe, x, skipId) { (x, _) =>
-      '{ Node.ScalarNode($x.toString) }
+    else if (tpe =:= intTpe || tpe =:= booleanTpe) withEncoderFor(tpe, x, skipId, prefixes) {
+      (x, _, _) =>
+        '{ Node.ScalarNode($x.toString) }
     }
-    else if (tpe <:< optionOfWildcardTpe) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
-      val tpe1 = typeArg1(tpe)
-      tpe1.asType match {
-        case '[t1] =>
-          val opt = x.asInstanceOf[Expr[Option[t1]]]
-          '{
-            if ($opt ne None) ${ genEncode[t1](tpe1, '{ $opt.get }, skipId) }
-            else Node.ScalarNode(null)
-          }
-      }
+    else if (tpe <:< optionOfWildcardTpe) withEncoderFor(tpe, x, skipId, prefixes) {
+      (x, skipId, prefixes) =>
+        val tpe1 = typeArg1(tpe)
+        tpe1.asType match {
+          case '[t1] =>
+            val opt = x.asInstanceOf[Expr[Option[t1]]]
+            '{
+              if ($opt ne None) ${ genEncode[t1](tpe1, '{ $opt.get }, skipId, prefixes) }
+              else Node.ScalarNode(null)
+            }
+        }
     }
-    else if (tpe <:< seqOfWildcardTpe) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
-      val tpe1 = typeArg1(tpe)
-      tpe1.asType match {
-        case '[t1] =>
-          val seq = x.asInstanceOf[Expr[Seq[t1]]]
-          '{ Node.SequenceNode($seq.map(e => ${ genEncode[t1](tpe1, 'e, skipId) })*) }
-      }
+    else if (tpe <:< seqOfWildcardTpe) withEncoderFor(tpe, x, skipId, prefixes) {
+      (x, skipId, prefixes) =>
+        val tpe1 = typeArg1(tpe)
+        tpe1.asType match {
+          case '[t1] =>
+            val seq = x.asInstanceOf[Expr[Seq[t1]]]
+            '{ Node.SequenceNode($seq.map(e => ${ genEncode[t1](tpe1, 'e, skipId, prefixes) })*) }
+        }
     }
-    else if (tpe <:< mapOfWildcardsTpe) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
-      val tpe1 = typeArg1(tpe)
-      val tpe2 = typeArg2(tpe)
-      ((tpe1.asType, tpe2.asType): @nowarn) match {
-        case ('[t1], '[t2]) =>
-          val map = x.asInstanceOf[Expr[Map[t1, t2]]]
-          '{
-            Node.MappingNode($map.map { case (k, v) =>
-              (${ genEncode[t1](tpe1, 'k, skipId) }, ${ genEncode[t2](tpe2, 'v, skipId) })
-            })
-          }
-      }
+    else if (tpe <:< mapOfWildcardsTpe) withEncoderFor(tpe, x, skipId, prefixes) {
+      (x, skipId, prefixes) =>
+        val tpe1 = typeArg1(tpe)
+        val tpe2 = typeArg2(tpe)
+        tpe1.asType match {
+          case '[t1] =>
+            tpe2.asType match {
+              case '[t2] =>
+                val map = x.asInstanceOf[Expr[Map[t1, t2]]]
+                '{
+                  Node.MappingNode($map.map { kv =>
+                    val k = kv._1
+                    val v = kv._2
+                    (
+                      ${ genEncode[t1](tpe1, 'k, skipId, prefixes) },
+                      ${ genEncode[t2](tpe2, 'v, skipId, prefixes) },
+                    )
+                  })
+                }
+            }
+        }
     }
-    else if (isAbstractClassOrTraitOrEnum(tpe)) withEncoderFor(tpe, x, skipId) { (x, skipId) =>
-      getTypeDesignator(tpe) match {
-        case Some(td) => genEncodeFirstMatching[T](tpe, td.members.map(_._1), x, skipId)
-        case _ =>
-          val m = withReverseEnumMapFor[T](tpe)
-          '{ StringNode($m.get($x)) }
-      }
+    else if (isAbstractClassOrTraitOrEnum(tpe)) withEncoderFor(tpe, x, skipId, prefixes) {
+      (x, skipId, prefixes) =>
+        getTypeDesignator(tpe) match {
+          case Some(td) => genEncodeFirstMatching[T](tpe, td.members.map(_._1), x, skipId, prefixes)
+          case _ =>
+            val m = withReverseEnumMapFor[T](tpe)
+            '{ StringNode($m.get($x)) }
+        }
     }
     else
-      withEncoderFor(tpe, x, skipId) { (x, skipId) =>
-        genEncodeNonAbstractClass(tpe, x, skipId)
+      withEncoderFor(tpe, x, skipId, prefixes) { (x, skipId, prefixes) =>
+        genEncodeNonAbstractClass(tpe, x, skipId, prefixes)
       }
   }.asInstanceOf[Expr[Node]]
 
@@ -459,6 +502,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       tpe: TypeRepr,
       node: Expr[Node],
       id: Expr[Option[Any]],
+      prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[T] = {
     val members = unionMembers(tpe)
     val expected = Expr(s"value of one of the types: ${members.map(_.show).mkString(", ")}")
@@ -474,7 +518,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
             }
             else
               '{
-                try ${ genDecode[m](mTpe, node, id) }.asInstanceOf[T]
+                try ${ genDecode[m](mTpe, node, id, prefixes) }.asInstanceOf[T]
                 catch { case _: DecodeError => $orElse }
               }
         }
@@ -482,9 +526,13 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
   }
 
   /** Encode a union value with the codec of the first member its runtime class matches. */
-  private def genEncodeUnion[T: Type](tpe: TypeRepr, x: Expr[T], skipId: Expr[Boolean])(using
-      Quotes,
-  ): Expr[Node] = genEncodeFirstMatching[T](tpe, unionMembers(tpe), x, skipId)
+  private def genEncodeUnion[T: Type](
+      tpe: TypeRepr,
+      x: Expr[T],
+      skipId: Expr[Boolean],
+      prefixes: Expr[PrefixMap],
+  )(using Quotes): Expr[Node] =
+    genEncodeFirstMatching[T](tpe, unionMembers(tpe), x, skipId, prefixes)
 
   /** Decode a class with [[eu.neverblink.linkml.runtime.typeDesignator]]. The value of the
     * designator field selects the implementation.
@@ -496,6 +544,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       td: TypeDesignatorInfo,
       node: Expr[Node],
       id: Expr[Option[Any]],
+      prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[T] = {
     val slot = Expr(td.slot)
     '{
@@ -507,7 +556,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
             case ps => Alternatives(ps)
           }
           mTpe.asType match {
-            case '[m] => CaseDef(pattern, None, genDecode[m](mTpe, node, id).asTerm)
+            case '[m] => CaseDef(pattern, None, genDecode[m](mTpe, node, id, prefixes).asTerm)
           }
         }
         val unknown =
@@ -527,6 +576,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       members: List[TypeRepr],
       x: Expr[T],
       skipId: Expr[Boolean],
+      prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[Node] = {
     val tpeName = Expr(tpe.show)
     members.foldRight('{
@@ -537,27 +587,54 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       mTpe.asType match {
         case '[m] =>
           '{
-            if ($x.isInstanceOf[m]) ${ genEncode[m](mTpe, '{ $x.asInstanceOf[m] }, skipId) }
+            if ($x.isInstanceOf[m]) ${
+              genEncode[m](mTpe, '{ $x.asInstanceOf[m] }, skipId, prefixes)
+            }
             else $orElse
           }
       }
     }
   }
 
-  /** Make an id of type `tpe`, which is `UriOrCurie` or one of its subtypes, from a string.
-    * `'[UriOrCurie]` also matches the subtypes, so they are checked here.
+  /** Make an id of type `tpe`, which is `UriOrCurie` or one of its subtypes, from a key that is a
+    * string or a `UriOrCurie`. `'[UriOrCurie]` also matches the subtypes, so they are checked here.
+    * Only a `UriOrCurie` id is expanded with `prefixes`. An id of type `Uri` or `Curie` is kept as
+    * written, like other fields of these types. A key that is a `UriOrCurie` is already expanded.
     */
-  private def genUriOrCurie(tpe: TypeRepr, s: Expr[String])(using Quotes): Expr[UriOrCurie] =
+  private def genUriOrCurie(tpe: TypeRepr, s: Expr[Any], prefixes: Expr[PrefixMap])(using
+      Quotes,
+  ): Expr[UriOrCurie] =
     tpe.asType match {
-      case '[Uri] => '{ Uri($s) }
-      case '[Curie] => '{ Curie($s) }
-      case _ => '{ UriOrCurie($s) }
+      case '[Uri] =>
+        '{
+          $s match {
+            case u: Uri => u
+            case x: UriOrCurie => new Uri(x.original)
+            case _ => new Uri($s.toString)
+          }
+        }
+      case '[Curie] =>
+        '{
+          $s match {
+            case c: Curie => c
+            case x: UriOrCurie => new Curie(x.original)
+            case _ => new Curie($s.toString)
+          }
+        }
+      case _ =>
+        '{
+          $s match {
+            case u: UriOrCurie => u
+            case _ => UriOrCurie.expanded($s.toString, $prefixes)
+          }
+        }
     }
 
   private def genDecodeNonAbstractClass[T: Type](
       tpe: TypeRepr,
       node: Expr[Node],
       id: Expr[Option[Any]],
+      prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[T] = {
     lazy val tpeName = Expr(tpe.show)
     val classInfo = getClassInfo(tpe)
@@ -582,13 +659,17 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                   case '[UriOrCurie] =>
                     '{
                       $id match {
-                        case Some(s: String) => ${ genUriOrCurie(kTpe, 's) }
-                        case None => ${ defaultVal.asExpr }
-                        case _ =>
-                          LinkmlYamlCodec.decodeError(
-                            s"value of type '${$ftName}' for id field '${$mappedName}'",
-                            $node,
-                          )
+                        case Some(s) =>
+                          s match {
+                            // The key belongs to the enclosing object, so its prefixes are used
+                            case _: String | _: UriOrCurie => ${ genUriOrCurie(kTpe, 's, prefixes) }
+                            case _ =>
+                              LinkmlYamlCodec.decodeError(
+                                s"value of type '${$ftName}' for id field '${$mappedName}'",
+                                $node,
+                              )
+                          }
+                        case _ => ${ defaultVal.asExpr }
                       }
                     }
                   case _ =>
@@ -643,11 +724,14 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                 case v =>
                   ${
                     val assign =
-                      Assign(Ref(valDef.symbol), genDecode[ft](fTpe, 'v, '{ None }).asTerm).asExpr
+                      Assign(
+                        Ref(valDef.symbol),
+                        genDecode[ft](fTpe, 'v, '{ None }, prefixes).asTerm,
+                      ).asExpr
                     // A class inlined in a dict has its id written twice: as the enclosing key and,
                     // optionally, as a field of its own body. We raise an error if the two disagree.
                     if (fieldInfo.kind == FieldKind.Id) {
-                      val fromBody = genDecode[ft](fTpe, 'v, '{ None })
+                      val fromBody = genDecode[ft](fTpe, 'v, '{ None }, prefixes)
                       val fromKey = Ref(valDef.symbol).asExpr
                       '{
                         if ($id.isDefined && $fromBody != $fromKey) {
@@ -663,6 +747,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
               }
             }.asTerm.changeOwner(Symbol.spliceOwner))
       }
+
       if (rejectUnknownFields) {
         readBlock.addOne('{
           if (($kvs ne null) && ! $kvs.isEmpty)
@@ -684,7 +769,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       val fTpe = fieldInfo.resolvedTpe
       fTpe.asType match {
         case '[ft] =>
-          classInfo.genNew(List(List(genDecode[ft](fTpe, node, '{ None }).asTerm))).asExpr
+          classInfo.genNew(List(List(genDecode[ft](fTpe, node, '{ None }, prefixes).asTerm))).asExpr
       }
     } else {
       val valFieldInfoIndex = fields.indexWhere(_.kind == FieldKind.Value)
@@ -721,7 +806,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                                   val mappedName = Expr(field.mappedName)
                                   val kTpe = field.resolvedTpe
                                   (kTpe.asType match {
-                                    case '[UriOrCurie] => genUriOrCurie(kTpe, '{ s.toString })
+                                    case '[UriOrCurie] => genUriOrCurie(kTpe, 's, prefixes)
                                     case '[kt] =>
                                       '{
                                         s match {
@@ -735,7 +820,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
                                       }
                                   }).asTerm
                                 } else if (index == valFieldInfoIndex) {
-                                  genDecode[vt](vTpe, node, '{ None }).asTerm
+                                  genDecode[vt](vTpe, node, '{ None }, prefixes).asTerm
                                 } else fields(index).defaultValue.get,
                               )
                           }.toList),
@@ -769,6 +854,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       tpe: TypeRepr,
       x: Expr[T],
       skipId: Expr[Boolean],
+      prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[Node] = {
     val classInfo = getClassInfo(tpe)
     val fields = classInfo.fields
@@ -784,7 +870,8 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           val name = Expr(fieldInfo.mappedName)
           (fTpe.asType match {
             case '[ft] =>
-              val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId)
+              val encodeVal =
+                genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
               fieldInfo.defaultValue match {
                 // '@serializeDefault' fields carry a meaningful default (e.g. from 'ifabsent'),
                 // so they are written out even when they still hold it.
@@ -813,7 +900,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       val fSkipId =
         Expr(fieldInfo.kind == FieldKind.SimpleDict || fieldInfo.kind == FieldKind.CompactDict)
       fTpe.asType match {
-        case '[ft] => genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId)
+        case '[ft] => genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
       }
     } else if (
       fields.exists(_.kind == FieldKind.Id) &&
@@ -839,7 +926,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
         Expr(fieldInfo.kind == FieldKind.SimpleDict || fieldInfo.kind == FieldKind.CompactDict)
       fTpe.asType match {
         case '[ft] =>
-          val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId)
+          val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
           '{
             def fullForm: Node = {
               val kvs = ListMap.newBuilder[
@@ -867,8 +954,13 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
     }
   }
 
-  private def withDecoderFor[T: Type](tpe: TypeRepr, node: Expr[Node], id: Expr[Option[Any]])(
-      f: (Expr[Node], Expr[Option[Any]]) => Expr[T],
+  private def withDecoderFor[T: Type](
+      tpe: TypeRepr,
+      node: Expr[Node],
+      id: Expr[Option[Any]],
+      prefixes: Expr[PrefixMap],
+  )(
+      f: (Expr[Node], Expr[Option[Any]], Expr[PrefixMap]) => Expr[T],
   ): Expr[T] =
     Apply(
       decodeRefs.getOrElse(
@@ -876,7 +968,10 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           val sym = Symbol.newMethod(
             Symbol.spliceOwner,
             s"d${decodeRefs.size}",
-            MethodType("node" :: "id" :: Nil)(_ => nodeTpe :: optionOfAnyTpe :: Nil, _ => tpe),
+            MethodType("node" :: "id" :: "prefixes" :: Nil)(
+              _ => nodeTpe :: optionOfAnyTpe :: prefixMapTpe :: Nil,
+              _ => tpe,
+            ),
           )
           val ref = Ref(sym)
           decodeRefs.update(tpe, ref)
@@ -884,11 +979,12 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
             DefDef(
               sym,
               params => {
-                val List(node, id) = params.head
+                val List(node, id, prefixes) = params.head
                 new Some(
                   f(
                     node.asExpr.asInstanceOf[Expr[Node]],
                     id.asExpr.asInstanceOf[Expr[Option[Any]]],
+                    prefixes.asExpr.asInstanceOf[Expr[PrefixMap]],
                   ).asTerm.changeOwner(sym),
                 )
               },
@@ -897,11 +993,16 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           ref
         },
       ),
-      node.asTerm :: id.asTerm :: Nil,
+      node.asTerm :: id.asTerm :: prefixes.asTerm :: Nil,
     ).asExpr.asInstanceOf[Expr[T]]
 
-  private def withEncoderFor[T: Type](tpe: TypeRepr, x: Expr[T], skipId: Expr[Boolean])(
-      f: (Expr[T], Expr[Boolean]) => Expr[Node],
+  private def withEncoderFor[T: Type](
+      tpe: TypeRepr,
+      x: Expr[T],
+      skipId: Expr[Boolean],
+      prefixes: Expr[PrefixMap],
+  )(
+      f: (Expr[T], Expr[Boolean], Expr[PrefixMap]) => Expr[Node],
   ): Expr[Node] =
     Apply(
       encodeRefs.getOrElse(
@@ -909,7 +1010,10 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           val sym = Symbol.newMethod(
             Symbol.spliceOwner,
             s"e${encodeRefs.size}",
-            MethodType("x" :: "skipId" :: Nil)(_ => tpe :: booleanTpe :: Nil, _ => nodeTpe),
+            MethodType("x" :: "skipId" :: "prefixes" :: Nil)(
+              _ => tpe :: booleanTpe :: prefixMapTpe :: Nil,
+              _ => nodeTpe,
+            ),
           )
           val ref = Ref(sym)
           encodeRefs.update(tpe, ref)
@@ -917,11 +1021,12 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
             DefDef(
               sym,
               params => {
-                val List(x, skipId) = params.head
+                val List(x, skipId, prefixes) = params.head
                 new Some(
                   f(
                     x.asExpr.asInstanceOf[Expr[T]],
                     skipId.asExpr.asInstanceOf[Expr[Boolean]],
+                    prefixes.asExpr.asInstanceOf[Expr[PrefixMap]],
                   ).asTerm.changeOwner(sym),
                 )
               },
@@ -930,7 +1035,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
           ref
         },
       ),
-      List(x.asTerm, skipId.asTerm),
+      List(x.asTerm, skipId.asTerm, prefixes.asTerm),
     ).asExpr.asInstanceOf[Expr[Node]]
 
   private def withEnumMapFor[T: Type](tpe: TypeRepr)(using
@@ -1027,6 +1132,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
   private val enumMaps = new mutable.HashMap[TypeRepr, Ref]
   private val reverseEnumMaps = new mutable.HashMap[TypeRepr, Ref]
   private val nodeTpe = Symbol.requiredClass("org.virtuslab.yaml.Node").typeRef
+  private val prefixMapTpe = Symbol.requiredClass("eu.neverblink.linkml.runtime.PrefixMap").typeRef
   private val linkmlYamlCodecTpe =
     Symbol.requiredClass("eu.neverblink.linkml.yaml.LinkmlYamlCodec").typeRef
 }

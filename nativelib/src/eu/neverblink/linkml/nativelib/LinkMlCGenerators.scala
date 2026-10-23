@@ -32,7 +32,7 @@ object LinkMlCGenerators {
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.rdfs)
 
   /** Materialize a derived LinkML schema. Options: `pruningMode`, `skipClassDerivation`,
-    * `outputFormat`.
+    * `outputFormat`, `fullUris`.
     */
   @exported("linkml_linkml")
   def linkml(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

@@ -135,6 +135,7 @@ class Generators:
         tree_root: str | None = None,
         skip_class_derivation: bool = False,
         output_format: str = "yaml",
+        full_uris: bool = False,
     ) -> str:
         """Materialize a derived LinkML schema: imports resolved, slots pushed into attributes.
 
@@ -144,12 +145,15 @@ class Generators:
         :param skip_class_derivation: If true, will not derive classes and instead copy them
             as-is.
         :param output_format: Output serialization format to use.
+        :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the
+            schema's prefixes.
         """
         return self._document(
             "linkml_linkml",
             pruningMode=_pruning(pruning_mode, tree_root),
             skipClassDerivation=skip_class_derivation,
             outputFormat=output_format,
+            fullUris=full_uris,
         )
 
     def frictionless(

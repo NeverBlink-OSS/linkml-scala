@@ -20,6 +20,7 @@ import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.{
   Case,
   FileSystemImporter,
@@ -108,6 +109,8 @@ object OwlImporter {
     * @param inputFormat
     *   RDF syntax of the ontology. The Turtle parser also reads N-Triples; the N-Triples parser is
     *   only slightly faster.
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
     */
   final case class Options(
       config: OwlImportConfig = OwlImportConfig(),
@@ -115,6 +118,7 @@ object OwlImporter {
       schemas: Importer = FileSystemImporter,
       base: String = "",
       inputFormat: RdfFormat = RdfFormat.ttl,
+      fullUris: Boolean = false,
   ) extends SchemaImporter.Options
 
   /** `warnings` has one line per kind of thing that could not be imported. */
@@ -459,7 +463,7 @@ object OwlImporter {
           annotationsOf.values.flatten.map(_.property) ++ ontology.annotations.map(_.property),
       warn,
     )
-    import naming.{curie, defaultNamespace, ensurePrefix, explicitIri, names}
+    import naming.{curie, defaultNamespace, ensurePrefix, explicitIri, names, uri}
 
     /** The LinkML schemas that `owl:imports` map to, for the schema's `imports`.
       */
@@ -469,6 +473,17 @@ object OwlImporter {
         None
       }
     }.distinct.sorted
+
+    /** An import from the config, with a CURIE expanded with the config's prefixes, as if the
+      * schema was loaded.
+      */
+    private def importOf(ref: String): UriOrCurie = UriOrCurie.expanded(ref, configPrefixes)
+
+    private lazy val configPrefixes: PrefixMap = PrefixMap(overrides = config.prefixMap)
+
+    /** Mappings without duplicates, in the order of their CURIEs. */
+    private def sorted(mappings: Seq[UriOrCurie]): Seq[UriOrCurie] =
+      mappings.distinctBy(_.original).sortBy(m => curie(m.original, record = false))
 
     /** Slot ranges from the imported schemas, by slot IRI. */
     private val importedRanges = mutable.Map.empty[String, SlotRange]
@@ -497,7 +512,7 @@ object OwlImporter {
         id = Uri("urn:linkml-scala:owl-import"),
         name = "owl_import",
         prefixes = VectorMap.from(config.prefixMap.map((p, ns) => p -> Prefix(p, Uri(ns)))),
-        imports = Seq(UriOrCurie(ref)),
+        imports = Seq(importOf(ref)),
       )
       try
         SchemaView.loadImports(root, options.base, options.schemas).left.map {
@@ -565,7 +580,7 @@ object OwlImporter {
         metadata.applyTo(
           TypeDefinition(
             name = name,
-            typeUri = Some(curie(iri)),
+            typeUri = Some(uri(iri)),
             typeof = Some(Reference(typeof)),
             annotations = annotations,
           ).copy(
@@ -744,18 +759,15 @@ object OwlImporter {
         // The property kind that the range implies.
         val inferred = if range.data then EntityKind.DataProperty else EntityKind.ObjectProperty
         val implements =
-          if kind == EntityKind.AnnotationProperty then Seq("owl:AnnotationProperty")
+          if kind == EntityKind.AnnotationProperty then Seq(owlNs.concat("AnnotationProperty"))
           // Mark a data property explicitly unless its range is a type. `Any` or an inherited
           // range doesn't show that it is a data property.
           else if kind == EntityKind.DataProperty &&
             (!range.data || range.range.forall(_ == anyClass))
-          then Seq("owl:DatatypeProperty")
+          then Seq(owlNs.concat("DatatypeProperty"))
           else if kind == EntityKind.ObjectProperty && inferred != kind then
-            Seq("owl:ObjectProperty")
+            Seq(owlNs.concat("ObjectProperty"))
           else Nil
-        // Registers the `owl` prefix used in `implements`.
-        if implements.nonEmpty then curie(owlNs + "DatatypeProperty")
-
         metadata.applyTo(
           SlotDefinition(
             name = name,
@@ -782,16 +794,16 @@ object OwlImporter {
             asymmetric = characteristics.contains(PropertyCharacteristic.Asymmetric),
             reflexive = characteristics.contains(PropertyCharacteristic.Reflexive),
             irreflexive = characteristics.contains(PropertyCharacteristic.Irreflexive),
-            implements = implements.map(UriOrCurie(_)),
+            implements = implements.map(uri),
             annotations = annotations,
           ).copy(
             minimumValue = range.minimumValue.map(LinkmlAny(_)),
             maximumValue = range.maximumValue.map(LinkmlAny(_)),
             pattern = range.pattern,
           ),
-        ).copy(exactMappings = (metadata.exactMappings ++ equivalent.map(e => {
-          ensurePrefix(e); curie(e)
-        })).distinctBy(_.original).sortBy(_.original))
+        ).copy(exactMappings = sorted(metadata.exactMappings ++ equivalent.map(e => {
+          ensurePrefix(e); uri(e)
+        })))
       }
 
     /** Splits named parents into `is_a` and `mixins`. `is_a` prefers a parent in the child's
@@ -1011,7 +1023,7 @@ object OwlImporter {
           else cardinality(p, bound, n, singleValuedSlot(p), restrict)
         case ClassExpr.HasValue(PropertyRef(p, false), value) if propertyKinds.contains(p) =>
           val text = value match {
-            case Iri(v) => enumValueText(p, v).getOrElse { ensurePrefix(v); curie(v).original }
+            case Iri(v) => enumValueText(p, v).getOrElseFast { ensurePrefix(v); curie(v) }
             case Literal(v, _) => v
             case LanguageLiteral(v, _) => v
           }
@@ -1031,7 +1043,7 @@ object OwlImporter {
         other match {
           case ClassExpr.Named(o) =>
             ensurePrefix(o)
-            exact = exact :+ curie(o)
+            exact = exact :+ uri(o)
           case ClassExpr.UnionOf(ops) if isUnionOfChildren(ops) => isAbstract = true
           case expr =>
             // Keep it as a superclass. LinkML can't say that it is also a sufficient condition.
@@ -1110,7 +1122,7 @@ object OwlImporter {
           annotations = annotations,
         ),
       ).copy(
-        exactMappings = (metadata.exactMappings ++ exact).distinctBy(_.original).sortBy(_.original),
+        exactMappings = sorted(metadata.exactMappings ++ exact),
         notes = metadata.notes ++ notes.map(PlainText(_)),
       )
     }
@@ -1203,7 +1215,7 @@ object OwlImporter {
           text -> pvMetadata.applyTo(
             PermissibleValue(
               text = text,
-              meaning = Option.when(m != defaultMeaning(e, text))(curie(m)),
+              meaning = if (m != defaultMeaning(e, text)) Some(uri(m)) else None,
               annotations = pvAnnotations,
             ),
           )
@@ -1213,7 +1225,7 @@ object OwlImporter {
         val exact = equivalents.getOrElse(e, Nil).collect { case (a, ClassExpr.Named(o)) =>
           take(a)
           ensurePrefix(o)
-          curie(o)
+          uri(o)
         }
         metadata.applyTo(
           EnumDefinition(
@@ -1224,9 +1236,7 @@ object OwlImporter {
             mixins = mixins.map(Reference(_)),
             annotations = annotations,
           ),
-        ).copy(exactMappings =
-          (metadata.exactMappings ++ exact).distinctBy(_.original).sortBy(_.original),
-        )
+        ).copy(exactMappings = sorted(metadata.exactMappings ++ exact))
       }
 
     /** The enums and classes an enum is a subclass of. */
@@ -1308,8 +1318,6 @@ object OwlImporter {
         s.range.exists(_.value == anyClass) || s.anyOf.exists(_.range.exists(_.value == anyClass))
       val usesAny = keptSlots.exists(isAny) ||
         keptClasses.exists(c => (c.slotUsage.values ++ c.attributes.values).exists(isAny))
-      // Import `Any` from LinkML so schemas that import each other don't each define their own.
-      val any = Option.when(usesAny)(UriOrCurie("linkml:extended_types"))
 
       // Warn about every axiom that was not used.
       unhandled.foreach {
@@ -1342,7 +1350,15 @@ object OwlImporter {
           prefixes = VectorMap.from(naming.declared.map((p, ns) => p -> Prefix(p, Uri(ns)))),
           defaultPrefix = Some(naming.defaultPrefix),
           defaultRange = Some(Reference("string")),
-          imports = (UriOrCurie("linkml:types") +: any.toSeq) ++ importRefs.map(UriOrCurie(_)),
+          imports = {
+            val b = Seq.newBuilder[UriOrCurie]
+            b.addOne(Uri(linkmlNs.concat("types")))
+            // Import `Any` from LinkML so schemas that import each other don't each define their
+            // own.
+            if (usesAny) b.addOne(Uri(linkmlNs.concat("extended_types")))
+            importRefs.foreach(r => b.addOne(importOf(r)))
+            b.result()
+          },
           classes = VectorMap.from(keptClasses.map(c => c.name -> c)),
           slotDefinitions = VectorMap.from(keptSlots.map(s => s.name -> s)),
           enums = VectorMap.from(
@@ -1354,7 +1370,9 @@ object OwlImporter {
       )
       // Keep only used prefixes. Some were made for terms that ended up not needing one, such as
       // imported terms.
-      val used = prefixesIn(schema).toSet ++ config.prefixMap.keySet + naming.defaultPrefix
+      // The id and the namespaces are of type `uri`, so they are written in full.
+      val used = prefixesIn(schema.copy(id = Uri(""), prefixes = VectorMap.empty)).toSet ++
+        config.prefixMap.keySet + naming.defaultPrefix
       Result(
         schema.copy(prefixes = schema.prefixes.filter((p, _) => used(p))),
         warnings.toSeq.map { (kind, details) =>
@@ -1366,8 +1384,12 @@ object OwlImporter {
       )
     }
 
-    /** The prefixes of the CURIEs anywhere in a value. */
+    /** The prefixes of the CURIEs anywhere in a value, and of the URIs that are written as CURIEs.
+      */
     private def prefixesIn(value: Any): Iterator[String] = value match {
+      case u: Uri =>
+        val p = naming.prefixOrNull(u.original)
+        if (p ne null) Iterator.single(p) else Iterator.empty
       case c: Curie => Iterator(c.original.takeWhile(_ != ':'))
       // Text can be a CURIE too, such as the value of `equals_string`.
       case t: String if t.indexOf(':') > 0 => Iterator(t.takeWhile(_ != ':'))
@@ -1380,7 +1402,7 @@ object OwlImporter {
 
     // Rendering what could not be imported
 
-    private def short(iri: String): String = curie(iri, record = false).original
+    private def short(iri: String): String = curie(iri, record = false)
 
     private val render = OwlRender(short)
   }

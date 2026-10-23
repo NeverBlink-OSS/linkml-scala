@@ -173,6 +173,8 @@ Read these when the task calls for them; do not load them up front.
 * [Import maps](220-import-maps.md) — how to load an import from another place without editing
   the schema, with a JSON file of import to location, and how imports, including CURIEs, are
   matched.
+* [URIs and CURIEs](230-curies.md) — how CURIEs are expanded when a schema is loaded and URIs
+  compacted when it is written, and which prefixes are used.
 
 ### Workflows
 

@@ -162,7 +162,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       type StringFirst = String | UriOrCurie
       locally {
         implicit val codec: LinkmlYamlCodec[UriFirst] = LinkmlYamlCodec.derived
-        roundTrip[UriFirst](UriOrCurie("ex:abc"), "ex:abc\n")
+        roundTrip[UriFirst](Uri("ex:abc"), "ex:abc\n")
         // A String value still encodes, as encoding picks the member by the value's class.
         codec.encode("abc").asYaml shouldBe "abc\n"
       }
@@ -173,7 +173,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       }
       case class MyClass(a: UriFirst, b: StringFirst) derives LinkmlYamlCodec
 
-      roundTrip(MyClass(UriOrCurie("ex:abc"), "ex:abc"), "a: ex:abc\nb: ex:abc\n")
+      roundTrip(MyClass(Uri("ex:abc"), "ex:abc"), "a: ex:abc\nb: ex:abc\n")
     }
     "decode and encode case classes with fields of union types" in {
       type Count = Int
@@ -885,12 +885,13 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         private val trueNode = Node.ScalarNode("1")
         private val falseNode = Node.ScalarNode("0")
 
-        override def decode(node: Node, id: Option[Any]): Boolean = node match {
-          case Node.ScalarNode(value, _) => value == "true" || value == "1"
-          case _ => false
-        }
+        override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): Boolean =
+          node match {
+            case Node.ScalarNode(value, _) => value == "true" || value == "1"
+            case _ => false
+          }
 
-        override def encode(x: Boolean, skipId: Boolean): Node =
+        override def encode(x: Boolean, skipId: Boolean, prefixes: PrefixMap): Node =
           if (x) trueNode
           else falseNode
       }
@@ -1344,6 +1345,83 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       }).getMessage.contains {
         """'eu.neverblink.linkml.runtime.flatten' is defined for 'MyClass', which has 2 fields. The annotation is only valid on classes with exactly one field."""
       })
+    }
+  }
+
+  "LinkmlYamlCodec with a PrefixMap" should {
+    val ex = "ex" -> "http://example.org/"
+
+    "expand CURIEs with prefixes given by the caller, and compact URIs back" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val prefixes = PrefixMap(overrides = Seq(ex))
+      val node = parseYaml("blep: ex:blip").toOption.get
+      codec.decode(node, prefixes = prefixes) shouldBe Thing(Uri("http://example.org/blip"))
+      codec.encode(Thing(Uri("http://example.org/blip")), prefixes = prefixes).asYaml shouldBe
+        "blep: ex:blip\n"
+      // Without prefixes, nothing is expanded. `ex:blip` is a valid URI with the scheme `ex`
+      codec.decode(node) shouldBe Thing(Uri("ex:blip"))
+      codec.encode(Thing(Uri("http://example.org/blip"))).asYaml shouldBe
+        "blep: http://example.org/blip\n"
+    }
+    "read a value with an unknown prefix as a URI if it is a valid one" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val prefixes = PrefixMap(defaults = Seq(ex))
+      codec.decode(parseYaml("blep: other:blip").toOption.get, prefixes = prefixes) shouldBe
+        Thing(Uri("other:blip"))
+      // Not a URI, as it has no scheme
+      codec.decode(parseYaml("blep: blip").toOption.get, prefixes = prefixes) shouldBe
+        Thing(Curie("blip"))
+      codec.encode(Thing(Curie("other:blip")), prefixes = prefixes).asYaml shouldBe
+        "blep: other:blip\n"
+    }
+    "read xsd:string as the URI xsd:string when xsd is not declared" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val node = parseYaml("blep: xsd:string").toOption.get
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq(ex))) shouldBe
+        Thing(Uri("xsd:string"))
+      val xsd = "xsd" -> "http://www.w3.org/2001/XMLSchema#"
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq(xsd))) shouldBe
+        Thing(Uri("http://www.w3.org/2001/XMLSchema#string"))
+    }
+    "expand a value that looks like a URI when its scheme is declared as a prefix" in {
+      case class Thing(blep: UriOrCurie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val node = parseYaml("blep: http://example.org/blip").toOption.get
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq("http" -> "urn:other:"))) shouldBe
+        Thing(Uri("urn:other://example.org/blip"))
+      // Without an `http` prefix, it is the URI as written
+      codec.decode(node, prefixes = PrefixMap(defaults = Seq(ex))) shouldBe
+        Thing(Uri("http://example.org/blip"))
+    }
+    "not expand or compact fields of type Uri or Curie" in {
+      case class Thing(uri: Uri, curie: Curie) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Thing]]
+      val prefixes = PrefixMap(defaults = Seq(ex))
+      val thing = Thing(Uri("http://example.org/a"), Curie("ex:b"))
+      val yaml = "uri: http://example.org/a\ncurie: ex:b\n"
+      codec.decode(parseYaml(yaml).toOption.get, prefixes = prefixes) shouldBe thing
+      codec.encode(thing, prefixes = prefixes).asYaml shouldBe yaml
+    }
+    "expand keys of type UriOrCurie" in {
+      case class Item(@id id: UriOrCurie, @value label: String) derives LinkmlYamlCodec
+      case class Items(@simpleDict items: Map[UriOrCurie, Item]) derives LinkmlYamlCodec
+
+      val codec = summon[LinkmlYamlCodec[Items]]
+      val prefixes = PrefixMap(defaults = Seq(ex))
+      val yaml = "items:\n  ex:a: A\n"
+      val items = codec.decode(parseYaml(yaml).toOption.get, prefixes = prefixes)
+      items shouldBe Items(
+        Map(Uri("http://example.org/a") -> Item(Uri("http://example.org/a"), "A")),
+      )
+      codec.encode(items, prefixes = prefixes).asYaml shouldBe yaml
     }
   }
 

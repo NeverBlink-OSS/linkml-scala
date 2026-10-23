@@ -6,6 +6,7 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.{Iri, Literal, Owl, RdfSink, Rdf, Rdfs, Shacl, XmlSchema}
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.*
 import org.virtuslab.yaml.Node.{ScalarNode, SequenceNode}
 
@@ -154,8 +155,8 @@ object OwlGenerator {
         else
           sv.schemas.tail.map(_.id.original)
             .filterNot(_.startsWith("https://w3id.org/linkml/")).distinct
-      val header = metadataAnnotations(Metadata.of(root), sv.rootPrefixResolver) ++
-        linkmlAnnotations(root, sv.rootPrefixResolver) ++ preferredNamespace
+      val header = metadataAnnotations(Metadata.of(root)) ++
+        linkmlAnnotations(root, sv.rootPrefixes) ++ preferredNamespace
       val (defaultName, defaultNamespace) = defaultPrefix
       val prefixes =
         root.prefixes.values.toSeq.map(p => p.prefixPrefix -> p.prefixReference.original)
@@ -235,26 +236,28 @@ object OwlGenerator {
         el: ElementView[?, ?],
         equivalent: Set[String] = Set.empty,
     ): Unit =
-      annotate(iri, el.inner, el.definingPrefixResolver, equivalent)
+      annotate(iri, el.inner, el.definingPrefixes, equivalent)
 
+    /** @param prefixes
+      *   The prefixes of the schema that defines `metadata`, to expand CURIEs in annotation values
+      */
     private def annotate(
         iri: String,
         metadata: CommonMetadata & Annotatable,
-        resolver: PrefixResolver,
+        prefixes: PrefixMap,
         equivalent: Set[String],
     ): Unit = {
       val m = Metadata.of(metadata)
-      val kept =
-        m.copy(exactMappings = m.exactMappings.filterNot(e => equivalent(e.uri(using resolver))))
-      (metadataAnnotations(kept, resolver) ++ linkmlAnnotations(metadata, resolver))
+      val kept = m.copy(exactMappings = m.exactMappings.filterNot(e => equivalent(e.original)))
+      (metadataAnnotations(kept) ++ linkmlAnnotations(metadata, prefixes))
         .foreach(a => add(AnnotationAssertion(iri, a)))
     }
 
     private def annotate(
         iri: String,
         metadata: CommonMetadata & Annotatable,
-        resolver: PrefixResolver,
-    ): Unit = annotate(iri, metadata, resolver, Set.empty)
+        prefixes: PrefixMap,
+    ): Unit = annotate(iri, metadata, prefixes, Set.empty)
 
     private lazy val classIris: Set[String] = sv.classes.values.filter(included).map(_.uriStr).toSet
     private lazy val slotIris: Set[String] =
@@ -263,18 +266,19 @@ object OwlGenerator {
     /** Exact mappings to another element of the same kind in this ontology. These become OWL
       * equivalences. The rest stay `skos:exactMatch`.
       */
-    private def equivalentsOf(el: ElementView[?, ?], among: Set[String]): Set[String] =
-      el.inner.exactMappings.map(_.uri(using el.definingPrefixResolver)).filter(
-        among,
-      ).toSet - el.uriStr
+    private def equivalentsOf(el: ElementView[?, ?], among: Set[String]): Set[String] = {
+      val b = Set.newBuilder[String]
+      el.inner.exactMappings.foreach { m =>
+        val uri = m.original
+        if (among(uri) && uri != el.uriStr) b.addOne(uri)
+      }
+      b.result()
+    }
 
     /** `rdfs:label` is the title in each of its languages. OWL tools show `rdfs:label`, so the
       * title goes there and not to `dcterms:title`.
       */
-    private def metadataAnnotations(
-        metadata: Metadata,
-        resolver: PrefixResolver,
-    ): Seq[Annotation] = {
+    private def metadataAnnotations(metadata: Metadata): Seq[Annotation] = {
       // Use the element's language, or the schema's, as `gen-owl` does with `in_language`.
       val language = metadata.inLanguage.orElse(sv.root.inLanguage)
       val labels = metadata.title match {
@@ -283,46 +287,58 @@ object OwlGenerator {
           m.toSeq.sortBy(_._1).map((lang, t) => Annotation.text(rdfsLabel, t, Some(lang)))
         case None => Nil
       }
-      labels ++ Metadata.annotations(
-        metadata.copy(title = None),
-        _.uri(using resolver),
-        descriptionProperty,
-        language,
-      )
+      labels ++ Metadata.annotations(metadata.copy(title = None), descriptionProperty, language)
     }
 
-    /** LinkML `annotations` with plain values, with the tag as the property. A tag that is not a
-      * CURIE goes in the default namespace, as in `gen-owl`.
+    /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
+      * goes in the default namespace. An annotation whose tag isn't a URI is skipped, as the tag
+      * can't be an IRI in RDF.
+      *
+      * @param prefixes
+      *   The prefixes of the schema that defines `el`, to expand CURIEs in values
       */
-    private def linkmlAnnotations(el: Annotatable, resolver: PrefixResolver): Seq[Annotation] =
-      el.annotations.values.toSeq.flatMap { a =>
+    private def linkmlAnnotations(el: Annotatable, prefixes: PrefixMap): Seq[Annotation] = {
+      val b = Seq.newBuilder[Annotation]
+      val language = sv.root.inLanguage
+      el.annotations.values.foreach { a =>
         val tag = a.extensionTag.original
-        val property =
-          if tag.contains(':') then scala.util.Try(a.extensionTag.uri(using resolver)).toOption
-          else Some(sv.getDefaultPrefix(sv.root) + tag)
-        val values = a.extensionValue.yaml.toOption.toSeq.flatMap {
-          case ScalarNode(v, _) => Seq(v)
-          case SequenceNode(items, _) => items.collect { case ScalarNode(v, _) => v }
-          case _ => Nil
+        val property = if (tag.contains(':')) tag else sv.getDefaultPrefix(sv.root).concat(tag)
+        def add(v: String): Unit =
+          b.addOne(
+            Annotation(property, Metadata.inLanguage(annotationValue(v, prefixes), language)),
+          )
+        if (UriCurieValidator.isValidUri(property)) a.extensionValue.yaml match {
+          case Right(node) =>
+            node match {
+              case ScalarNode(v, _) => add(v)
+              case SequenceNode(items, _) =>
+                items.foreach {
+                  case ScalarNode(v, _) => add(v)
+                  case _ =>
+                }
+              case _ =>
+            }
+          case _ =>
         }
-        val language = sv.root.inLanguage
-        for p <- property.toSeq; v <- values
-        yield Annotation(p, Metadata.inLanguage(annotationValue(v, resolver), language))
       }
+      b.result()
+    }
 
     /** Reads a value as an IRI if it is a full IRI or a CURIE with a declared prefix, since the
       * importer writes IRIs that way. Anything else is text.
       */
-    private def annotationValue(v: String, resolver: PrefixResolver): Value =
+    private def annotationValue(v: String, prefixes: PrefixMap): Value =
       if v.contains("://") || v.startsWith("urn:") || v.startsWith("mailto:") then
-        if v.exists(_.isWhitespace) then Literal(v) else Iri(v)
+        if (UriCurieValidator.isValidUri(v)) Iri(v) else Literal(v)
       else {
         val colon = v.indexOf(':')
         val prefix = if colon > 0 then v.substring(0, colon) else ""
-        if prefix.nonEmpty && prefix.forall(c => Case.isStandard(c) || c == '-') &&
-          !v.exists(_.isWhitespace) && resolver.resolvePrefix(prefix).isDefined
-        then Iri(resolver.expand(v))
-        else Literal(v)
+        val uri =
+          if prefix.nonEmpty && prefix.forall(c => Case.isStandard(c) || c == '-') &&
+            !v.exists(_.isWhitespace)
+          then prefixes.expandOrNull(v)
+          else null
+        if uri ne null then Iri(uri) else Literal(v)
       }
 
     // Classes
@@ -435,17 +451,22 @@ object OwlGenerator {
         }
       }
 
-    /** The value that `equals_string` means for the slot's range. */
-    private def valueOf(s: SlotView, text: String): Option[Value] =
-      s.derivedRange.resolve match {
-        case Some(ev: EnumView) =>
-          ev.toMeaning.get(text).map(m => Iri(m.uri(using ev.definingPrefixResolver)))
-        case Some(tv: TypeView) if tv.isIri =>
-          Some(Iri(UriOrCurie(text).uri(using s.definingPrefixResolver)))
-        case Some(tv: TypeView) => Some(Literal(text, Iri(baseDatatype(tv))))
-        case Some(_: ClassView) => Some(Iri(UriOrCurie(text).uri(using s.definingPrefixResolver)))
-        case _ => Some(Literal(text))
+    /** The value that `equals_string` means for the slot's range. Nothing for a value that should
+      * be an IRI but isn't a URI, as it can't be an IRI in RDF.
+      */
+    private def valueOf(s: SlotView, text: String): Option[Value] = {
+      def iri(uri: String): Option[Value] =
+        if (UriCurieValidator.isValidUri(uri)) new Some(Iri(uri))
+        else None
+      def expanded: Option[Value] = iri(UriOrCurie.expanded(text, s.definingPrefixes).original)
+      s.derivedRange.resolve.orNullFast match {
+        case ev: EnumView => ev.toMeaning.get(text).flatMapFast(m => iri(m.original))
+        case tv: TypeView =>
+          if (tv.isIri) expanded else new Some(Literal(text, Iri(baseDatatype(tv))))
+        case _: ClassView => expanded
+        case _ => new Some(Literal(text))
       }
+    }
 
     // Ranges
 
@@ -607,11 +628,11 @@ object OwlGenerator {
         .groupMapReduce(_.uriStr)(!_.slot.multivalued)(_ && _)
 
     private def kindOf(s: SlotView): EntityKind = {
-      val implements = s.slot.implements.map(_.uri(using s.definingPrefixResolver)).toSet
       val owl = "http://www.w3.org/2002/07/owl#"
-      if implements.contains(owl + "AnnotationProperty") then EntityKind.AnnotationProperty
-      else if implements.contains(owl + "DatatypeProperty") then EntityKind.DataProperty
-      else if implements.contains(owl + "ObjectProperty") then EntityKind.ObjectProperty
+      def implements(uri: String): Boolean = s.slot.implements.exists(_.original == uri)
+      if implements(owl + "AnnotationProperty") then EntityKind.AnnotationProperty
+      else if implements(owl + "DatatypeProperty") then EntityKind.DataProperty
+      else if implements(owl + "ObjectProperty") then EntityKind.ObjectProperty
       else {
         // Look at every use of the property, since a slot may only get its range in a class.
         // An attribute has no range outside its classes.
@@ -694,7 +715,7 @@ object OwlGenerator {
         then {
           val kind = kindOf(derived)
           add(Declaration(kind, iri))
-          annotate(iri, attribute, cv.definingPrefixResolver)
+          annotate(iri, attribute, cv.definingPrefixes)
           if kind != EntityKind.AnnotationProperty then {
             // If every use of the property has the same range, that becomes its range.
             val uses = sv.classes.values.toSeq
@@ -722,7 +743,7 @@ object OwlGenerator {
         .foreach(parent => add(SubClassOf(ClassExpr.Named(iri), ClassExpr.Named(parent))))
       val values = ev.derivedValues.map { pvv =>
         val pv = pvv.pv
-        val pvIri = pvv.meaning.uri(using ev.definingPrefixResolver)
+        val pvIri = pvv.uriStr
         options.permissibleValues match {
           case PermissibleValueKind.individual =>
             add(Declaration(EntityKind.NamedIndividual, pvIri))
@@ -736,7 +757,7 @@ object OwlGenerator {
         // classes, which Schema.org has.
         if OwlImportNames.localName(pvIri) != pv.text then
           add(AnnotationAssertion(pvIri, Annotation.text(skosNotation, pv.text)))
-        annotate(pvIri, pv, ev.definingPrefixResolver)
+        annotate(pvIri, pv, ev.definingPrefixes)
         pvIri
       }
       if values.nonEmpty then
