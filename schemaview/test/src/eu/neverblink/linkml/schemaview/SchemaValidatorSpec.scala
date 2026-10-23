@@ -800,7 +800,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |    - "bad mapping"
            |    attributes:
            |      some_attr:
-           |        slot_uri: "ex:a:b"
+           |        slot_uri: "ex:a b"
            |        range: string
            |""".stripMargin
       val sv = load(schemaYaml)
@@ -811,7 +811,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "Invalid URI or CURIE 'bad mapping' at /classes/SomeClass/exact_mappings/1",
       )
       msg should include(
-        "Invalid URI or CURIE 'ex:a:b' at /classes/SomeClass/attributes/some_attr/slot_uri",
+        "Invalid URI or CURIE 'ex:a b' at /classes/SomeClass/attributes/some_attr/slot_uri",
       )
       msg should not include "ex:fine"
     }

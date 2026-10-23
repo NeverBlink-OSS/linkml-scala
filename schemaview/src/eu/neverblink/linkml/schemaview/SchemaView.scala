@@ -128,17 +128,14 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       .addAll(classes)
       .result()
 
-  /** Cached prefix resolvers for each schema in the view.
-    *
-    * These should be used in ElementView instead of creating a new prefix resolver every time.
-    */
-  private lazy val prefixResolvers: Map[Uri, BasicPrefixResolver] =
-    schemas.foldLeft(Map.newBuilder[Uri, BasicPrefixResolver]) { (acc, schema) =>
-      acc.addOne((schema.id, createPrefixResolver(schema)))
+  // Prefixes of each schema in the view, by schema ID
+  private lazy val prefixMaps: Map[Uri, PrefixMap] =
+    schemas.foldLeft(Map.newBuilder[Uri, PrefixMap]) { (acc, schema) =>
+      acc.addOne((schema.id, SchemaCodec.prefixMap(schema)))
     }.result()
 
-  def getPrefixResolver(schema: SchemaDefinition): BasicPrefixResolver =
-    prefixResolvers(schema.id)
+  /** Get the prefixes of a schema in this view, see [[SchemaCodec.prefixMap]]. */
+  def getPrefixes(schema: SchemaDefinition): PrefixMap = prefixMaps(schema.id)
 
   private val defaultRange = new Reference[TypeView]("string")
 
@@ -153,22 +150,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Get the default URI prefix (prefix map value) for the schema, with a fallback to the schema ID
     * (this fallback mirrors the python implementation).
     */
-  def getDefaultPrefix(schema: SchemaDefinition): String = {
-    val prefixResolver = prefixResolvers(schema.id)
-    schema.defaultPrefix.flatMapFast { prefix =>
-      schema.prefixes.get(prefix)
-    }.foldFast {
-      val uri = schema.id.uri(using prefixResolver)
-      val len = uri.length
-      if (len > 0) {
-        val ch = uri.charAt(len - 1)
-        if (ch == '#' || ch == '/') uri
-        else uri.concat("/")
-      } else "/"
-    } { ref =>
-      ref.prefixReference.uri(using prefixResolver)
-    }
-  }
+  def getDefaultPrefix(schema: SchemaDefinition): String =
+    SchemaCodec.defaultNamespace(schema.id.original, schema.defaultPrefix, schema.prefixes)
 
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
     * other reference slots. This will run the query without schema derivation.
@@ -339,8 +322,6 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.
     *
-    * @param sourceSchema
-    *   The schema of the original slot definition, which the derived slot uses for prefixes
     * @see
     *   `ApplySlotUsage` from
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
@@ -349,47 +330,26 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       slot: SlotDefinition,
       slotName: String,
       cls: ClassDefinition,
-      sourceSchema: SchemaDefinition,
   ): SlotDefinition = {
     var currentSlot = slot
     cls.slotUsage.get(slotName).foreachFast { s =>
-      currentSlot = currentSlot.combineWith(expandSlotUri(s, cls, sourceSchema), combineRange)
+      currentSlot = currentSlot.combineWith(s, combineRange)
     }
     cls.attributes.get(slotName).foreachFast { s =>
-      currentSlot = currentSlot.combineWith(expandSlotUri(s, cls, sourceSchema), combineRange)
+      currentSlot = currentSlot.combineWith(s, combineRange)
     }
     cls.mixins.foreach { r =>
       resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c, sourceSchema)
+        currentSlot = applySlotUsage(currentSlot, slotName, c)
       }
     }
     cls.isA.foreachFast { r =>
       resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c, sourceSchema)
+        currentSlot = applySlotUsage(currentSlot, slotName, c)
       }
     }
     currentSlot
   }
-
-  /** Expand the `slot_uri` CURIE of a `slot_usage` or an attribute to a URI, when the class is
-    * defined in another schema than `sourceSchema`. The CURIE is expanded with the prefixes of the
-    * class's schema, because `sourceSchema` may not have them.
-    */
-  private def expandSlotUri(
-      slot: SlotDefinition,
-      cls: ClassDefinition,
-      sourceSchema: SchemaDefinition,
-  ): SlotDefinition =
-    slot.slotUri match {
-      case Some(curie: Curie) =>
-        val classSchema = classes(cls.name).definingSchema
-        if (classSchema ne sourceSchema) {
-          val uri = getPrefixResolver(classSchema).expandOrNull(curie.original)
-          if (uri ne null) slot.copy(slotUri = Some(Uri(uri)))
-          else slot
-        } else slot
-      case _ => slot
-    }
 
   /** Combine values for the `range` metaslot. The nearest range is used, with no check that it is
     * derived from the inherited one, as the spec requires (LNK-237).
@@ -400,7 +360,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       @unused v2: Reference[Element],
   ): Reference[Element] = v1
 
-  val rootPrefixResolver: BasicPrefixResolver = createPrefixResolver(root)
+  /** The prefixes of the root schema */
+  val rootPrefixes: PrefixMap = SchemaCodec.prefixMap(root)
   private val validator = new SchemaValidator()
 
   {
@@ -702,39 +663,4 @@ object SchemaView {
           }
         }
     }
-
-  /** Create a [[BasicPrefixResolver]] based on the given schema. Loads metamodel emit_prefixes,
-    * resolves "semweb_context" curi map and loads user defined prefixes.
-    */
-  private[schemaview] def createPrefixResolver(forSchema: SchemaDefinition): BasicPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver(forSchema.id.original)
-    prefixResolver.addAll {
-      if (forSchema.defaultCuriMaps.contains("semweb_context")) {
-        linkmlWithSemWebContextPrefixResolver
-      } else linkmlPrefixResolver
-    }
-    forSchema.prefixes.values.foreach { prefix =>
-      prefixResolver.add(prefix.prefixPrefix, prefix.prefixReference.original)
-    }
-    prefixResolver
-  }
-
-  private lazy val linkmlPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver("emit_prefixes")
-    Prefixes.map.foreach((prefix, uri) => prefixResolver.add(prefix, uri))
-    prefixResolver
-  }
-  private lazy val linkmlWithSemWebContextPrefixResolver = {
-    val prefixResolver = new BasicPrefixResolver("emit_prefixes+semweb_context")
-    prefixResolver.addAll(linkmlPrefixResolver)
-    prefixResolver.add("dc", "http://purl.org/dc/terms/")
-    prefixResolver.add("faldo", "http://biohackathon.org/resource/faldo#")
-    prefixResolver.add("foaf", "http://xmlns.com/foaf/0.1/")
-    prefixResolver.add("oa", "http://www.w3.org/ns/oa#")
-    prefixResolver.add("idot", "http://identifiers.org/")
-    prefixResolver.add("void", "http://rdfs.org/ns/void#")
-    prefixResolver.add("prov", "http://www.w3.org/ns/prov#")
-    prefixResolver.add("dcat", "http://www.w3.org/ns/dcat#")
-    prefixResolver
-  }
 }

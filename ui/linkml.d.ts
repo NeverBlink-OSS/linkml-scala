@@ -111,9 +111,10 @@ export interface LinkMLApi {
    * @param listNotImported Whether to list what could not be imported, in comments at the top of the YAML. Default: false
    * @param imports The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]]. The schema then uses their terms by name rather than copying them in.
    * @param inputFormat RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
+   * @param fullUris Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. Default: false
    * @returns The LinkML schema, serialized in the specified format.
    */
-  fromOwl(ontology: string, config?: string, outFormat?: string, listNotImported?: boolean, imports?: Record<string, string>, inputFormat?: string): string;
+  fromOwl(ontology: string, config?: string, outFormat?: string, listNotImported?: boolean, imports?: Record<string, string>, inputFormat?: string, fullUris?: boolean): string;
 
   /**
    * Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes unreachable elements.
@@ -122,9 +123,10 @@ export interface LinkMLApi {
    * @param skipDerivation If true, will not derive classes and instead copy them as-is.
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
+   * @param fullUris Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. Default: false
    * @returns The derived [[SchemaDefinition]] serialized in the specified format.
    */
-  linkml(schema: SchemaView, pruningMode?: string, skipDerivation?: boolean, treeRoot?: string, outFormat?: string): string;
+  linkml(schema: SchemaView, pruningMode?: string, skipDerivation?: boolean, treeRoot?: string, outFormat?: string, fullUris?: boolean): string;
 
   /**
    * Generate a Frictionless Data Package from a loaded LinkML schema. Every class becomes a CSV table, described by its own Table Schema, and references between classes become foreign keys between the tables.
@@ -201,9 +203,10 @@ export interface LinkMLApi {
    * @param ontology The ontology document, as YAML or JSON.
    * @param schemaId The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it is a placeholder built from the ontology's name.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
+   * @param fullUris Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. Default: false
    * @returns The LinkML schema, serialized in the specified format.
    */
-  fromOssie(ontology: string, schemaId?: string, outFormat?: string): string;
+  fromOssie(ontology: string, schemaId?: string, outFormat?: string, fullUris?: boolean): string;
 
   /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.

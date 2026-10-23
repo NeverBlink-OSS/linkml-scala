@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.runtime.{Curie, Uri}
+import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.linkml.schemaview.InlineType.plain
 import eu.neverblink.linkml.schemaview.SubjectType.{base, implicitPrefix}
 import eu.neverblink.linkml.schemaview.expression.StringInterpolationExpression.{
@@ -90,7 +90,7 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
       ref.slotView.uriOrCurie shouldBe Uri("urn:ref")
       ref.classView.uriOrCurie shouldBe Uri("urn:C2")
       ref.identifierView.slotView.uriOrCurie shouldBe Uri("urn:id")
-      ref.identifierView.typeView.uriOrCurie shouldBe Curie("xsd:string")
+      ref.identifierView.typeView.uriOrCurie shouldBe Uri("http://www.w3.org/2001/XMLSchema#string")
       ref.identifierView.subjectType shouldBe base
     }
 
@@ -98,7 +98,7 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
       val t = c1.attributeViews("type")
         .shouldBeA[TypeAttributeView]
       t.slotView.uriOrCurie shouldBe Uri("urn:type")
-      t.typeView.uriOrCurie shouldBe Curie("xsd:string")
+      t.typeView.uriOrCurie shouldBe Uri("http://www.w3.org/2001/XMLSchema#string")
       t.subjectType shouldBe base
     }
 

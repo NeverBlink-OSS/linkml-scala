@@ -6,7 +6,7 @@ import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import eu.neverblink.linkml.validation.{NonAsciiName, NonStandardSeparator}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.virtuslab.yaml.parseYaml
+import org.virtuslab.yaml.*
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
@@ -298,6 +298,25 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
           s"${cwd}${sep}schemaview${sep}test${sep}resources${sep}importBundled.yaml",
         ),
       ).schemas should contain(linkmlTypes)
+    }
+    "use prefix namespaces as they are written" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/s
+          |name: s
+          |prefixes:
+          |  ex: http://example.org
+          |  GO: http://purl.obolibrary.org/obo/GO_
+          |classes:
+          |  Person:
+          |    class_uri: ex:Person
+          |  Process:
+          |    class_uri: GO:0008150
+          |""".stripMargin,
+        ),
+      )
+      sv.classes("Person").uriStr shouldBe "http://example.orgPerson"
+      sv.classes("Process").uriStr shouldBe "http://purl.obolibrary.org/obo/GO_0008150"
     }
     "resolve default uris and ranges of classes, slots, types, enums in imported schemas" in {
       val sv =
@@ -742,10 +761,52 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       ifSv.lintProblems.collect { case s: NonStandardSeparator => s } shouldBe empty
     }
 
+    "put a URI or CURIE value without a colon after the namespace of the default prefix" in {
+      val schema = parse(
+        """id: https://example.org/schema
+          |name: schema
+          |prefixes:
+          |  ex: https://example.org/ex/
+          |default_prefix: ex
+          |imports:
+          |  - core
+          |  - linkml:types
+          |annotations:
+          |  foo: bar
+          |contributors:
+          |  - John Doe
+          |classes:
+          |  Person:
+          |    class_uri: Person
+          |""".stripMargin,
+      )
+      schema.classes("Person").classUri shouldBe Some(Uri("https://example.org/ex/Person"))
+      schema.annotations("foo").extensionTag shouldBe Uri("https://example.org/ex/foo")
+      // Not a valid CURIE, so it is kept as written
+      schema.contributors shouldBe Seq(Curie("John Doe"))
+      // An import without a colon is a path relative to the importing schema
+      schema.imports shouldBe
+        Seq(Curie("core"), Uri("https://w3id.org/linkml/types"))
+      // A bare URI in the default namespace is written as a CURIE, which reads back the same
+      SchemaCodec.encode(schema).asYaml should include("class_uri: ex:Person\n")
+    }
+
+    "put a URI or CURIE value without a colon after the schema id without a default prefix" in {
+      val schema = parse(
+        """id: https://example.org/schema
+          |name: schema
+          |classes:
+          |  Person:
+          |    class_uri: Person
+          |""".stripMargin,
+      )
+      schema.classes("Person").classUri shouldBe Some(Uri("https://example.org/schema/Person"))
+    }
+
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))
 
     def parse(content: String): SchemaDefinition = parseYaml(content) match {
-      case Right(node) => Codec.codec.decode(node)
+      case Right(node) => SchemaCodec.decode(node)
       case Left(err) => throw err
     }
   }

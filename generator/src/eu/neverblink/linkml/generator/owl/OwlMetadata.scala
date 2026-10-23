@@ -443,20 +443,17 @@ object Metadata {
 
   val byName: Map[String, Field] = fields.map(f => f.name -> f).toMap
 
-  /** @param expand
-    *   Expands a CURIE to a full IRI for this element.
-    * @param description
+  /** @param description
     *   The property used for `description`.
     */
   def annotations(
       metadata: Metadata,
-      expand: UriOrCurie => String,
       description: String = skos + "definition",
       language: Option[String] = None,
   ): Seq[Annotation] =
     fields.flatMap { field =>
       val property = if field.name == "description" then description else field.property
-      field.get(metadata).flatMap(v => values(field.kind, v, expand))
+      field.get(metadata).flatMap(v => values(field.kind, v))
         .map(v => if humanText(field.name) then inLanguage(v, language) else v)
         .map {
           // Write a license that is an IRI as a link, as most ontologies do.
@@ -484,17 +481,21 @@ object Metadata {
   private def values(
       kind: Kind,
       value: String | LocalizedText | UriOrCurie,
-      expand: UriOrCurie => String,
   ): Seq[Node] =
     (kind, value) match {
       case (_, PlainText(v)) => Seq(Literal(v))
       case (_, MultilingualText(mapping)) =>
         mapping.toSeq.sortBy(_._1).map((lang, v) => LanguageLiteral(v, lang))
-      case (Kind.Reference, v: String) => Seq(Iri(expand(UriOrCurie(v))))
-      case (Kind.Reference, v: UriOrCurie) => Seq(Iri(expand(v)))
+      case (Kind.Reference, v: String) => iri(v)
+      case (Kind.Reference, v: UriOrCurie) => iri(v.original)
       case (_, v: UriOrCurie) => Seq(Literal(v.original))
       case (Kind.DateTime, v: String) => Seq(Literal(v, XmlSchema.dateTime))
       case (Kind.Flag, _) => Seq(Literal("true", XmlSchema.boolean))
       case (_, v: String) => Seq(Literal(v))
     }
+
+  /** The value as an IRI, or nothing if it isn't a URI, as it can't be an IRI in RDF. */
+  private def iri(v: String): Seq[Node] =
+    if (UriCurieValidator.isValidUri(v)) Seq(Iri(v))
+    else Nil
 }

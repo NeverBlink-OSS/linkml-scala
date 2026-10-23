@@ -113,10 +113,11 @@ export const TARGETS: Target[] = [
       { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
       { key: "skipDerivation", type: "checkbox", label: "Skip derivation" },
       TREE_ROOT,
+      { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
       { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
     call: (api, v, o) =>
-      api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
+      api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml"), !!o.fullUris),
   },
   {
     id: "erDiagram",
@@ -301,10 +302,11 @@ export const IMPORTERS: Importer[] = [
     example: EXAMPLE_OSSIE,
     options: [
       { key: "schemaId", type: "text", label: "Schema id", placeholder: "https://… (optional)" },
+      { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
       { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
     call: (api, input, o) =>
-      api.fromOssie(input, blankToUndef(o.schemaId), String(o.outFormat || "yaml")),
+      api.fromOssie(input, blankToUndef(o.schemaId), String(o.outFormat || "yaml"), !!o.fullUris),
   },
   {
     id: "owl",
@@ -322,9 +324,11 @@ export const IMPORTERS: Importer[] = [
         title: "List what could not be imported, in comments at the top",
         showIf: (o) => o.outFormat !== "json",
       },
+      { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
       { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, input, o) => api.fromOwl(input, undefined, String(o.outFormat || "yaml"), !!o.listNotImported),
+    call: (api, input, o) =>
+      api.fromOwl(input, undefined, String(o.outFormat || "yaml"), !!o.listNotImported, undefined, undefined, !!o.fullUris),
   },
 ];
 

@@ -2,7 +2,7 @@ package eu.neverblink.linkml.schemaview.expression
 
 import eu.neverblink.linkml.schemaview.SchemaIssues
 
-import eu.neverblink.linkml.runtime.Curie
+import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -40,7 +40,7 @@ class ConstructorExpressionSpec extends AnyWordSpec, Matchers {
 
     "return the full permissible value, not just its text" in {
       ConstructorExpression.evaluateEnum("E1(V1)", e1).meaning shouldBe
-        Some(Curie("ex:FirstValue"))
+        Some(Uri("https://example.org/FirstValue"))
     }
 
     "accept enum names containing underscores" in {

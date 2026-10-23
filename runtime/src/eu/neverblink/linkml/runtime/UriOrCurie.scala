@@ -6,10 +6,6 @@ import java.nio.charset.StandardCharsets
 sealed trait UriOrCurie {
   def original: String
 
-  def uri(implicit resolver: PrefixResolver): String
-
-  def curie(implicit resolver: PrefixResolver): String
-
   /** Validate the value of this UriOrCurie. Returns true if valid, false if invalid.
     */
   def isValid: Boolean
@@ -19,13 +15,32 @@ object UriOrCurie {
   def apply(s: String): UriOrCurie =
     if (s.startsWith("urn:") || s.contains("://")) new Uri(s)
     else new Curie(s)
+
+  /** Create a [[Uri]] with the expansion of [[s]], if [[prefixes]] can expand it.
+    *
+    * Otherwise, [[s]] is a [[Uri]] if it is a valid absolute URI, such as `xsd:string` when `xsd`
+    * isn't a known prefix, or else the same value as [[apply]].
+    */
+  def expanded(s: String, prefixes: PrefixMap): UriOrCurie = {
+    var uri = prefixes.expandOrNull(s)
+    if ((uri eq null) && UriCurieValidator.isValidUri(s)) uri = s
+    if (uri ne null) new Uri(uri)
+    else apply(s)
+  }
+
+  /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,
+    * or else the original text.
+    */
+  def compacted(x: UriOrCurie, prefixes: PrefixMap): String = x match {
+    case u: Uri =>
+      val curie = prefixes.compactOrNull(u.original)
+      if (curie ne null) curie
+      else u.original
+    case _ => x.original
+  }
 }
 
 @flatten final case class Uri(original: String) extends UriOrCurie {
-  def uri(implicit resolver: PrefixResolver): String = original
-
-  def curie(implicit resolver: PrefixResolver): String = resolver.compact(original)
-
   def isValid: Boolean = UriCurieValidator.isValidUri(original)
 }
 
@@ -41,123 +56,10 @@ object Uri {
 }
 
 @flatten final case class Curie(original: String) extends UriOrCurie {
-  def uri(implicit resolver: PrefixResolver): String = resolver.expand(original)
-
-  def curie(implicit resolver: PrefixResolver): String = original
-
   def isValid: Boolean = UriCurieValidator.isValidCurie(original)
 }
 
 type NcName = String
-
-trait PrefixResolver {
-
-  /** Expand a CURIE into a URI using prefixes defined in this resolver.
-    * @throws java.lang.RuntimeException
-    *   If this prefix resolver can't expand the CURIE
-    */
-  def expand(curie: String): String
-
-  /** Compact a URI into a CURIE using prefixes defined in this resolver.
-    * @throws java.lang.RuntimeException
-    *   If this prefix resolver can't compact the URI
-    */
-  def compact(uri: String): String
-
-  /** Get the expansion of a prefix from this resolver.
-    * @return
-    *   The URI [[prefix]] maps to, or None if the prefix isn't found.
-    */
-  def resolvePrefix(prefix: String): Option[String]
-}
-
-final class BasicPrefixResolver(schemaId: String) extends PrefixResolver {
-  private val prefixToUri = new java.util.HashMap[String, String](64, 0.5f)
-  private val uriToPrefix = new java.util.HashMap[String, String](64, 0.5f)
-
-  def add(prefix: String, uri: String): Unit = {
-    val u = new java.net.URI(uri)
-    var normalizedUri = u.normalize().toString
-    if (
-      !normalizedUri.endsWith("/") && !normalizedUri.endsWith("?") && !normalizedUri.endsWith("#")
-    ) normalizedUri = normalizedUri.concat("/")
-    prefixToUri.put(prefix, normalizedUri)
-    uriToPrefix.put(normalizedUri, prefix)
-  }
-
-  def addAll(other: BasicPrefixResolver): Unit = {
-    prefixToUri.putAll(other.prefixToUri)
-    uriToPrefix.putAll(other.uriToPrefix)
-  }
-
-  override def resolvePrefix(prefix: String): Option[String] = Option(prefixToUri.get(prefix))
-
-  override def expand(curie: String): String = {
-    val uri = expandOrNull(curie)
-    if (uri ne null) uri
-    else {
-      val index = curie.indexOf(':')
-      if (index >= 0) {
-        val prefix = curie.substring(0, index)
-        sys.error(s"Unknown prefix '$prefix' for CURIE '$curie' in schema '$schemaId'")
-      } else curie // relative reference
-    }
-  }
-
-  /** Expand a CURIE into a URI using prefixes defined in this resolver.
-    * @return
-    *   The URI, or null if the CURIE has no prefix or this resolver doesn't know it
-    */
-  def expandOrNull(curie: String): String = {
-    val index = curie.indexOf(':')
-    if (index >= 0) {
-      val baseUri = prefixToUri.get(curie.substring(0, index))
-      if (baseUri ne null) baseUri.concat(curie.substring(index + 1))
-      else null
-    } else null
-  }
-
-  override def compact(uri: String): String = {
-    val normalizedUri = new java.net.URI(uri).normalize()
-    var curie = normalizedUri.getFragment
-    val baseUri =
-      if (curie ne null) {
-        normalizedUri.toString.stripSuffix(curie)
-      } else if ({
-        curie = normalizedUri.getQuery
-        curie ne null
-      }) {
-        normalizedUri.toString.stripSuffix(curie)
-      } else if ({
-        curie = getLastPathSegment(normalizedUri)
-        curie.nonEmpty
-      }) {
-        new java.net.URI(
-          normalizedUri.getScheme,
-          normalizedUri.getAuthority,
-          normalizedUri.getPath.stripSuffix(curie),
-          null,
-          null,
-        ).toString
-      } else normalizedUri.toString
-    val prefix = uriToPrefix.get(baseUri)
-    if (prefix eq null) sys.error(s"Unknown uri: $baseUri")
-    if ((curie eq null) || curie.isEmpty) {
-      sys.error(s"Cannot compact uri without fragment, query, or last path segment: $uri")
-    }
-    s"$prefix:$curie"
-  }
-
-  private def getLastPathSegment(uri: java.net.URI): String = {
-    var path = uri.getPath
-    if (path ne null) {
-      path = path.stripSuffix("/")
-      val index = path.lastIndexOf('/')
-      if (index >= 0) path.substring(index + 1)
-      else ""
-    } else ""
-  }
-}
 
 /** URI and CURIE validation functions.
   *

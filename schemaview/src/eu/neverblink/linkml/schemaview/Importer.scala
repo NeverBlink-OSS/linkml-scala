@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.metamodel.{Codec, SchemaDefinition}
+import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 import eu.neverblink.linkml.yaml.DecodeError
@@ -75,7 +75,7 @@ trait Importer {
       case Right(node) =>
         // The metamodel decoder signals structural problems by throwing DecodeError, which carries
         // the offending node's position.
-        try return new Right(Codec.codec.decode(node))
+        try return new Right(SchemaCodec.decode(node))
         catch {
           case ex: DecodeError =>
             Importer.parseError(ex.getMessage, uri, ex.position.map(Importer.codeRegion))

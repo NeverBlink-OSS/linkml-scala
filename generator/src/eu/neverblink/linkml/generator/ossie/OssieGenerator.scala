@@ -94,8 +94,7 @@ class OssieGenerator(using sv: SchemaView)
 
   /** The element's `ai_context` extension, if it declares one. */
   private def aiContext(obj: Extensible): Option[Node] =
-    obj.extensions.values
-      .find(_.extensionTag.original == "ai_context")
+    obj.extensions.get("ai_context")
       .flatMap(ext => parseYaml(ext.extensionValue.toString).toOption)
 
   override def serialize(options: Options = Options()): String =
@@ -296,8 +295,11 @@ object OssieGenerator {
     * Remembers which prefixes `compact` has used, so that only those get declared.
     */
   private final class Namespaces(sv: SchemaView) {
-    private val all: Seq[(String, String)] =
-      sv.root.prefixes.keys.toSeq.flatMap(p => sv.rootPrefixResolver.resolvePrefix(p).map(p -> _))
+    private val all: Seq[(String, String)] = {
+      val b = Seq.newBuilder[(String, String)]
+      sv.root.prefixes.keys.foreach(p => b.addOne((p, sv.rootPrefixes.namespaceOrNull(p))))
+      b.result()
+    }
 
     private val usedPrefixes = mutable.Set.empty[String]
 

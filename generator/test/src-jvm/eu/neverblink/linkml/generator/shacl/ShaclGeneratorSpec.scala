@@ -37,6 +37,30 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
         |imports:
         |  - linkml:types"""
 
+    "skip enum meanings that aren't URIs in sh:in" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      kind:
+           |        range: SomeEnum
+           |enums:
+           |  SomeEnum:
+           |    permissible_values:
+           |      SOME_VALUE:
+           |        meaning: not a URI
+           |      SOME_OTHER_VALUE: {}
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      turtle should include(
+        "sh:in ( <https://neverblink.eu/linkml/shacl/test/SomeEnum.SOME_OTHER_VALUE> )",
+      )
+      turtle should not include "not a URI"
+      // The output is valid RDF
+      Rio.parse(StringReader(turtle), RDFFormat.TURTLE) should not be empty
+    }
+
     "classes with basic types" in {
       val input =
         s"""$schemaShared
@@ -1401,6 +1425,20 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
         turtle should include(snippet)
       }
 
+      Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
+    }
+
+    "use a CURIE with an undeclared prefix as a URI with that prefix as its scheme" in {
+      val sv = loadWithImports(
+        s"""$schemaShared
+           |classes:
+           |  Person:
+           |    class_uri: acme:Person
+           |""".stripMargin,
+      )
+      sv.classes("Person").uriStr shouldBe "acme:Person"
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using sv).generate(_))
+      turtle should include("<acme:Person>")
       Rio.parse(StringReader(turtle), RDFFormat.TURTLE).isEmpty shouldBe false
     }
 

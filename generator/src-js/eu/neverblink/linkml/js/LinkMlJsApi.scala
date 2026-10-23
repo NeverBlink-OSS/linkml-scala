@@ -359,6 +359,9 @@ object LinkMlJsApi {
     *   The schema then uses their terms by name rather than copying them in.
     * @param inputFormat
     *   RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
+    *   Default: false
     * @return
     *   The LinkML schema, serialized in the specified format.
     */
@@ -369,6 +372,7 @@ object LinkMlJsApi {
       listNotImported: Boolean = false,
       imports: js.UndefOr[js.Dictionary[String]] = js.undefined,
       inputFormat: String = "ttl",
+      fullUris: Boolean = false,
   ): String = {
     val format = outputFormat(outFormat)
     val importer = OwlImporter()
@@ -380,7 +384,7 @@ object LinkMlJsApi {
         inputFormat = rdfFormat(inputFormat),
       ),
     )
-    val schema = importer.serializeSchema(result.schema, format)
+    val schema = importer.serializeSchema(result.schema, format, fullUris)
     if listNotImported && format == JsonOutputFormat.yaml then
       result.warnings.map(w => s"# Not imported: $w\n").mkString + schema
     else schema
@@ -416,6 +420,9 @@ object LinkMlJsApi {
     *   tree root pruning mode.
     * @param outFormat
     *   Output serialization format to use. One of yaml|json. Default: yaml
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
+    *   Default: false
     * @return
     *   The derived [[SchemaDefinition]] serialized in the specified format.
     */
@@ -425,6 +432,7 @@ object LinkMlJsApi {
       skipDerivation: Boolean = false,
       treeRoot: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
+      fullUris: Boolean = false,
   ): String = {
     val mode = PruningMode(pruningMode, treeRoot.toOption)
 
@@ -434,6 +442,7 @@ object LinkMlJsApi {
         pruningMode = mode,
         skipClassDerivation = skipDerivation,
         outputFormat = format,
+        fullUris = fullUris,
       ),
     )
   }
@@ -676,6 +685,9 @@ object LinkMlJsApi {
     *   is a placeholder built from the ontology's name.
     * @param outFormat
     *   Output serialization format to use. One of yaml|json. Default: yaml
+    * @param fullUris
+    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
+    *   Default: false
     * @return
     *   The LinkML schema, serialized in the specified format.
     */
@@ -683,12 +695,14 @@ object LinkMlJsApi {
       ontology: String,
       schemaId: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
+      fullUris: Boolean = false,
   ): String =
     OssieImporter().serializeFromString(
       ontology,
       OssieImporter.Options(
         schemaId = schemaId.toOption,
         outputFormat = outputFormat(outFormat),
+        fullUris = fullUris,
       ),
     )
 

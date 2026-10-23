@@ -269,6 +269,11 @@ private[cli] object RdfOutput {
 private val outputFormatHelp: String =
   "Serialization format: 'yaml' (the default) or 'json'. Default: yaml"
 
+/** The `--full-uris` flag of the commands that write a LinkML schema. */
+private val fullUrisHelp: String =
+  "Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. " +
+    "Default: false"
+
 // LinkML -> LinkML
 
 @HelpMessage(
@@ -284,6 +289,8 @@ final case class LinkMlOptions(
     pruning: PruningOptions = PruningOptions(),
     @HelpMessage(outputFormatHelp)
     format: String = "yaml",
+    @HelpMessage(fullUrisHelp)
+    fullUris: Boolean = false,
 ) extends HasGenerateOptions
 
 object LinkMl extends StreamGenerate[LinkMlOptions] {
@@ -299,6 +306,7 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
         skipClassDerivation = options.skipDerivation,
         outputFormat = JsonOutputFormat.parse(options.format)
           .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+        fullUris = options.fullUris,
       ),
     )
 }

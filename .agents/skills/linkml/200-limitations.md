@@ -110,6 +110,12 @@ Metamodel `emit_prefixes` is honored, meaning the following prefixes are defined
 - `owl`: http://www.w3.org/2002/07/owl#
 - `pav`: http://purl.org/pav/
 
+## CURIEs
+
+CURIEs in `uriorcurie` slots are expanded to URIs when a schema is loaded, with the prefixes of the schema they are written in, and URIs are compacted to CURIEs when a schema is written.
+So `generate linkml` writes a URI from an imported schema in full when the output schema has no prefix for it, and a CURIE never changes its meaning when it moves into another schema.
+See [URIs and CURIEs](230-curies.md).
+
 ## Default `default_range`
 
 If a `default_range` is not provided, then it will be filled with `string` (as per [the specification](https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata))

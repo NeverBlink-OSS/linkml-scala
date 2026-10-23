@@ -306,6 +306,7 @@ def from_ossie(
     *,
     schema_id: str | None = None,
     output_format: str = "yaml",
+    full_uris: bool = False,
 ) -> str:
     """Read an Apache Ossie ontology and return the LinkML schema it describes.
 
@@ -316,12 +317,14 @@ def from_ossie(
     :param schema_id: The ``id`` of the schema to produce. An Ossie ontology has none of its own,
         so by default it is a placeholder built from the ontology's name.
     :param output_format: Output serialization format to use, ``yaml`` or ``json``.
+    :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the schema's
+        prefixes.
     :raises LinkMlError: if the document could not be read.
     """
     return runtime().import_document(
         "linkml_from_ossie",
         ontology,
-        {"schemaId": schema_id, "outputFormat": output_format},
+        {"schemaId": schema_id, "outputFormat": output_format, "fullUris": full_uris},
     )
 
 
@@ -334,6 +337,7 @@ def from_owl(
     list_not_imported: bool = False,
     imports: Mapping[str, str] | None = None,
     input_format: str = "ttl",
+    full_uris: bool = False,
 ) -> str:
     """Read an OWL ontology, in Turtle or N-Triples, and return the LinkML schema it describes.
 
@@ -354,6 +358,8 @@ def from_owl(
         rather than copying them in. By default they are read from the file system.
     :param input_format: The RDF syntax of ``ontology``: ``ttl`` (Turtle, the default, which also
         reads N-Triples) or ``nt`` (N-Triples).
+    :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the schema's
+        prefixes.
     :raises LinkMlError: if the document or the config could not be read.
     """
     return runtime().import_document(
@@ -366,6 +372,7 @@ def from_owl(
             "listNotImported": list_not_imported,
             "imports": None if imports is None else dict(imports),
             "inputFormat": input_format,
+            "fullUris": full_uris,
         },
     )
 

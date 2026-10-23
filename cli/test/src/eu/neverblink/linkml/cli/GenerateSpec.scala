@@ -186,6 +186,31 @@ class GenerateSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "generating a LinkML schema" should {
+      val schema =
+        """id: https://neverblink.eu/test/
+          |name: test
+          |prefixes:
+          |  ex: https://example.org/
+          |classes:
+          |  Root:
+          |    class_uri: ex:Root
+          |""".stripMargin
+
+      "write CURIEs by default, and URIs in full with --full-uris" in {
+        withSchemas(1, schema) { paths =>
+          val (out, _, code) =
+            LinkMl.runTestCommandWithExitCode(List("generate", "linkml") ++ paths)
+          code shouldBe 0
+          out should include("class_uri: ex:Root")
+          val (full, _, fullCode) =
+            LinkMl.runTestCommandWithExitCode(List("generate", "linkml", "--full-uris") ++ paths)
+          fullCode shouldBe 0
+          full should include("class_uri: https://example.org/Root")
+        }
+      }
+    }
+
     "generating a data package" should {
       def frictionless(to: os.Path): (String, String, Int) =
         withSchemas(1, prunableSchema) { paths =>
