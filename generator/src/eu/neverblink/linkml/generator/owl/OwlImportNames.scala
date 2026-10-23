@@ -3,8 +3,8 @@ package eu.neverblink.linkml.generator.owl
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{prefixMap, renameMap}
 import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig}
 import eu.neverblink.linkml.rdf.{Iri, Literal}
-import eu.neverblink.linkml.metamodel.SchemaDefinition
-import eu.neverblink.linkml.runtime.{Uri, UriOrCurie}
+import eu.neverblink.linkml.metamodel.{Prefixes, SchemaDefinition}
+import eu.neverblink.linkml.runtime.{Uri, UriCurieValidator, UriOrCurie}
 import eu.neverblink.linkml.schemaview.{Case, FileSystemImporter, SchemaView}
 
 import java.net.URLDecoder
@@ -160,11 +160,49 @@ private[owl] final class OwlImportNames(
 
   /** The IRI as a URI. Its prefix is marked as used, if it has one (see [[curie]]), so the schema
     * declares the prefix, and the URI is written as a CURIE.
+    *
+    * @throws IllegalArgumentException
+    *   if the IRI can't be a URI in the schema (see [[isWritable]])
     */
   def uri(iri: String): Uri = {
+    if (!UriCurieValidator.isValidUri(iri))
+      throw new IllegalArgumentException(
+        s"The IRI <$iri> can't be imported, as it isn't a valid URI",
+      )
+    if (isReadBackAsCurie(iri))
+      throw new IllegalArgumentException(
+        s"The IRI <$iri> can't be imported, as '${iri.substring(0, iri.indexOf(':'))}' is a " +
+          "prefix in the schema, so the IRI would be read back as a CURIE with another meaning",
+      )
     val p = prefixOrNull(iri)
     if (p ne null) usedPrefixes += p
     Uri(iri)
+  }
+
+  /** Whether the IRI can be a URI in the schema: it is a valid URI, and its text wouldn't be read
+    * back as a CURIE. Use it to leave out a value that doesn't have to be a URI, such as a
+    * reference in an annotation. [[uri]] fails for an IRI that isn't writable.
+    */
+  def isWritable(iri: String): Boolean =
+    UriCurieValidator.isValidUri(iri) && !isReadBackAsCurie(iri)
+
+  /** Whether the IRI would be read back as a CURIE, such as `<xsd:string>` or `<ex:Person>`: no
+    * prefix covers it, but the text before its colon is the name of a prefix that the schema can
+    * declare, or of a prefix of the metamodel.
+    */
+  private def isReadBackAsCurie(iri: String): Boolean = {
+    val colon = iri.indexOf(':')
+    colon > 0 && (namespaceOrNull(iri) eq null) && {
+      val p = iri.substring(0, colon)
+      Prefixes.map.contains(p) || prefixes.valuesIterator.contains(p)
+    }
+  }
+
+  /** All prefixes that the schema can declare, as prefix and namespace. */
+  def all: Seq[(String, String)] = {
+    val b = Seq.newBuilder[(String, String)]
+    prefixes.foreach(e => b.addOne((e._2, e._1)))
+    b.result()
   }
 
   /** Element names by IRI. Names are unique across classes, enums, slots and types. */

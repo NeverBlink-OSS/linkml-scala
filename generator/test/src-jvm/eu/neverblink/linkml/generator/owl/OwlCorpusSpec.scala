@@ -4,10 +4,10 @@ import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.config.{ImportMapping, OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
-import eu.neverblink.linkml.metamodel.Codec
+
 import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, NTriplesParser, Triple}
-import eu.neverblink.linkml.schemaview.{MapImporter, SchemaView}
+import eu.neverblink.linkml.schemaview.{MapImporter, SchemaCodec, SchemaView}
 import org.scalatest.Assertions
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -211,7 +211,7 @@ object OwlCorpusSpec {
   }
 
   def yamlOf(schema: SchemaDefinition): String =
-    JsonUtil.write(Codec.codec.encode(schema), JsonOutputFormat.yaml)
+    JsonUtil.write(SchemaCodec.encode(schema), JsonOutputFormat.yaml)
 
   /** Each ontology with the minimum percent of logical axioms that must survive the round trip, set
     * a little below the current result. Most losses are things LinkML can't express: individuals,
