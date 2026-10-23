@@ -32,6 +32,7 @@ A URI is written as a CURIE with the prefix of the longest namespace it starts w
 That CURIE is only used if its local part is not empty, doesn't start with `//` (as `ex://host/a` would look like a URL), and reads back as the same URI.
 Otherwise, the next longest namespace is tried, and if none fits, the URI is written in full.
 If two prefixes have the same namespace, the one with the highest precedence is used, and then the one declared first.
+A URI written in full that would be read back as a CURIE, such as the URI `ex:Person` when `ex` is a declared prefix, can't be written, so writing fails with an error that names the URI and the prefix.
 
 To write every URI in full, use the `--full-uris` flag of `generate linkml`, `from owl` and `from ossie`.
 In the APIs, it is the `fullUris` option in Scala and JavaScript, and `full_uris` in Python.
@@ -80,7 +81,9 @@ In the same way, the `exact_mappings` of `string` from `linkml:types` is written
 
 An unknown prefix breaks this.
 If `other.yaml` didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`, and `validate` would warn about it.
-`generate linkml` would write it as `ex:Imported`, and reading the output with the root's `ex` prefix would give `https://root.org/Imported`.
+Reading `ex:Imported` with the root's `ex` prefix gives `https://root.org/Imported`, so no output with this prefix can hold the URI `ex:Imported`.
+`generate linkml` fails with an error about `ex:Imported`, also with `--full-uris`.
+To fix it, declare `ex` in `other.yaml`.
 
 ## Data in Scala
 

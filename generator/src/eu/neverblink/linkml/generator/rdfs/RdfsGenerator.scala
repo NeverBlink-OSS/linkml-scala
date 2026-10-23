@@ -196,7 +196,8 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       e.derivedValues.foreach { pvv =>
         val pvIri = Iri(pvv.uriStr)
         val usages = valueUsages(pvIri.value)
-        if ((usages.head._1 eq e) && (usages.head._2 eq pvv.pv)) {
+        val first = usages.head
+        if ((first._1 eq e) && (first._2 eq pvv.pv)) {
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }

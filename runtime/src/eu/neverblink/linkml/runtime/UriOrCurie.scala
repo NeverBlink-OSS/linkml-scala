@@ -30,12 +30,28 @@ object UriOrCurie {
 
   /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,
     * or else the original text.
+    *
+    * @throws IllegalArgumentException
+    *   if [[x]] is a [[Uri]] that can't be compacted, but whose text [[prefixes]] would expand when
+    *   it is read back, such as the URI `ex:Person` when `ex` is a declared prefix
     */
   def compacted(x: UriOrCurie, prefixes: PrefixMap): String = x match {
     case u: Uri =>
-      val curie = prefixes.compactOrNull(u.original)
+      val uri = u.original
+      val curie = prefixes.compactOrNull(uri)
       if (curie ne null) curie
-      else u.original
+      else {
+        val colon = uri.indexOf(':')
+        if (colon > 0 && (prefixes.expandOrNull(uri) ne null)) {
+          val prefix = uri.substring(0, colon)
+          throw new IllegalArgumentException(
+            s"The URI '$uri' can't be written, as it would be read back as a CURIE with the " +
+              s"prefix '$prefix'. Declare the prefix '$prefix' in the schema that uses it, or " +
+              "write the full URI",
+          )
+        }
+        uri
+      }
     case _ => x.original
   }
 
