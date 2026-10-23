@@ -2,8 +2,8 @@ package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
-import eu.neverblink.linkml.metamodel.Codec
-import eu.neverblink.linkml.schemaview.SchemaView
+
+import eu.neverblink.linkml.schemaview.{SchemaCodec, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -129,6 +129,48 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       result.warnings.mkString should include("ShortString: xsd:maxLength")
     }
   }
+
+  "importing IRIs" should {
+    "fail on an IRI that isn't a valid URI" in {
+      (the[IllegalArgumentException] thrownBy importing(
+        """:Person a owl:Class ; owl:equivalentClass <http://other.org/q[2]> .""",
+      )).getMessage shouldBe
+        "The IRI <http://other.org/q[2]> can't be imported, as it isn't a valid URI"
+    }
+
+    "fail on an IRI that would be read back as a CURIE" in {
+      (the[IllegalArgumentException] thrownBy importing(
+        """:Person a owl:Class .
+          |:name a owl:DatatypeProperty ; rdfs:domain :Person ; rdfs:range <xsd:string> .""",
+      )).getMessage shouldBe
+        "The IRI <xsd:string> can't be imported, as 'xsd' is a prefix in the schema, so the IRI " +
+        "would be read back as a CURIE with another meaning"
+    }
+
+    "fail on a schema id that isn't a valid URI" in {
+      (the[IllegalArgumentException] thrownBy OwlImporter().importWithWarnings(
+        stream(
+          """@prefix owl: <http://www.w3.org/2002/07/owl#> .
+            |<https://example.org/test[1]> a owl:Ontology .
+            |<https://example.org/test/Person> a owl:Class .
+            |""".stripMargin,
+        ),
+      )).getMessage should include("The schema id <https://example.org/test[1]> isn't a valid URI")
+    }
+
+    "keep a reference that can't be a URI as an annotation" in {
+      val result = importing(
+        """:Person a owl:Class ;
+          |    rdfs:seeAlso <https://example.org/docs>, <https://example.org/a[1]>,
+          |        "https://example.org/b c" .""",
+      )
+      val person = result.schema.classes("Person")
+      person.seeAlso.map(_.original) shouldBe Seq("https://example.org/docs")
+      person.annotations.values.map(_.extensionValue.toString).mkString should include(
+        "https://example.org/a[1]",
+      )
+    }
+  }
 }
 
 object OwlImporterSpec {
@@ -172,7 +214,7 @@ object OwlImporterSpec {
     val text = OwlGenerator(using sv).serialize(OwlGenerator.Options(format = format))
     val result =
       OwlImporter().importWithWarnings(stream(text), OwlImporter.Options(inputFormat = format))
-    val yaml = JsonUtil.write(Codec.codec.encode(result.schema), JsonOutputFormat.yaml)
+    val yaml = JsonUtil.write(SchemaCodec.encode(result.schema), JsonOutputFormat.yaml)
     val loaded = SchemaView.loadSchemaViewFromString(yaml) match {
       case Right(view) => view
       case Left(issues) => throw AssertionError(s"$issues\n$yaml")
