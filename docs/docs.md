@@ -159,21 +159,3 @@ markdown_extensions:
 
 The pages work as they are, but VitePress reads `{{ ... }}` in text as Vue code, so check the
 descriptions for it. For the diagrams, add a Mermaid plugin such as `vitepress-plugin-mermaid`.
-
-## Differences from LinkML-Python
-
-Compared with `gen-doc` from LinkML-Python:
-
-- Pages are always in a folder per kind of element. LinkML-Python puts them in one folder by
-  default.
-- File names are the element names as written, and are unique without regard to case.
-  LinkML-Python converts names to CamelCase or snake_case, and names that differ only in case
-  overwrite each other on macOS and Windows.
-- The documentation can also be one document, written to a `.md` file or to stdout.
-- The output is Markdown only, with no templates. LinkML-Python can use your own Jinja2 templates,
-  which also allow other formats.
-- Each class page has an ER diagram of the class and the classes it is linked with. There is no
-  diagram of the whole schema.
-- Which elements are documented depends on the pruning mode. LinkML-Python documents every
-  imported element, and gives each imported schema a page of its own.
-- There are no pages for subsets, and no examples read from files.
