@@ -80,7 +80,7 @@ class Artifact(LinkMLModel):
     roots: list[str] = Field(min_length=1)
     """Permanent absolute URLs of the entry files from which this artifact's ontology is loaded."""
     sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}(?![\s\S])")]
-    """SHA-256 of the final immutable file bytes, before HTTP content encoding, as exactly 64 lowercase hexadecimal characters."""
+    """SHA-256 of the file bytes before HTTP content encoding."""
     size_bytes: Annotated[StrictInt, Field(ge=0)]
     """Byte length of the final immutable artifact file, before HTTP content encoding. Measured from the same bytes as sha256."""
     url: str

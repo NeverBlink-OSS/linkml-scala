@@ -15,19 +15,45 @@ import scala.util.control.NonFatal
 
 private[cli] object FileDelivery {
 
-  /** Returns an absolute normalized target, rejecting unusable basenames and existing entries.
-    * Performs no writes or reservation. Throws [[CliFileException]] on preflight failure.
+  /** Returns an absolute normalized path without reserving it. Throws [[CliFileException]] for
+    * invalid or occupied targets.
     */
   def target(url: String, directory: String): Path = {
-    val filename = try {
+    val path = resolve(url, directory, filename(url, directory))
+    if Files.exists(path, NOFOLLOW_LINKS) then throw exists(url, directory, path)
+    path
+  }
+
+  /** Returns the decoded URL filename or throws [[CliFileException]] if unusable.
+    */
+  def filename(url: String, directory: String): String =
+    try {
       val rawPath = Option(URI.create(url).getRawPath).getOrElse("")
       val segment = rawPath.substring(rawPath.lastIndexOf('/') + 1)
       // URLDecoder handles forms, so protect a literal '+' from becoming a space.
       val name = URLDecoder.decode(segment.replace("+", "%2B"), UTF_8)
-      val path = Path.of(name)
       if name.isEmpty || name == "." || name == ".." ||
-        name.exists(c => c == '/' || c == '\\' || c == '\u0000') ||
-        path.getRoot != null || path.getNameCount != 1 || path.getFileName.toString != name
+        name.exists(c => c == '/' || c == '\\' || c == '\u0000')
+      then throw new IllegalArgumentException("The URL does not name one local file")
+      name
+    } catch {
+      case NonFatal(cause) =>
+        throw failure(
+          CliFileErrorCode.UnsupportedFilename,
+          s"Cannot derive a local filename from '$url'. Choose a URL ending in a usable filename.",
+          url,
+          directory,
+          cause = Some(cause),
+        )
+    }
+
+  /** Resolves a name from [[filename]] to an absolute normalized path, allowing existing targets.
+    * Throws [[CliFileException]] for invalid paths.
+    */
+  def resolve(url: String, directory: String, filename: String): Path = {
+    val name = try {
+      val path = Path.of(filename)
+      if path.getRoot != null || path.getNameCount != 1 || path.getFileName.toString != filename
       then throw new IllegalArgumentException("The URL does not name one local file")
       path
     } catch {
@@ -51,7 +77,7 @@ private[cli] object FileDelivery {
           cause = Some(cause),
         )
     }
-    val path = destination.resolve(filename)
+    val path = destination.resolve(name)
     if Files.exists(destination, NOFOLLOW_LINKS) && !Files.isDirectory(destination) then
       throw failure(
         CliFileErrorCode.InvalidDestination,
@@ -60,13 +86,11 @@ private[cli] object FileDelivery {
         directory,
         Some(path),
       )
-    if Files.exists(path, NOFOLLOW_LINKS) then throw exists(url, directory, path)
     path
   }
 
-  /** Fetches before creating directories and writes exclusively, returning after the file closes.
-    * On write or close failure, deletes the new file or reports its path in [[CliFileException]].
-    * Fetch failures propagate unchanged.
+  /** Fetches before creating files or directories. Never overwrites. Reports `partial_path` if
+    * failed-write cleanup fails. Fetch failures propagate.
     */
   def save(url: String, directory: String, fetch: String => Array[Byte]): DeliveryResult =
     save(
@@ -138,7 +162,7 @@ private[cli] object FileDelivery {
     DeliveryResult(url = Uri(url), path = path.toString)
   }
 
-  private def exists(
+  private[cli] def exists(
       url: String,
       directory: String,
       path: Path,
@@ -152,7 +176,7 @@ private[cli] object FileDelivery {
     cause = cause,
   )
 
-  private def failure(
+  private[cli] def failure(
       code: CliFileErrorCode,
       message: String,
       url: String,

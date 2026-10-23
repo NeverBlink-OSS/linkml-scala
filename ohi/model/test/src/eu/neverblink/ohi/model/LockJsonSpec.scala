@@ -8,11 +8,21 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class LockJsonSpec extends AnyWordSpec, Matchers {
-  private def example(): ujson.Value = ujson.read(
-    Files.readString(
-      Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", "selection.lock.json"),
-    ),
-  )
+  private def example(revision: Int = 1): ujson.Value = {
+    val data = ujson.read(
+      Files.readString(
+        Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", "selection.lock.json"),
+      ),
+    )
+    data("format_version") = revision
+    if revision == 2 then {
+      data("files")(0)("sha256") =
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      data("files")(1)("sha256") =
+        "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    }
+    data
+  }
 
   private def decode(value: ujson.Value): Lock = LockJson.decode(ujson.write(value))
 
@@ -25,31 +35,41 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
   }
 
   "LockJson.decode" should {
-    "preserve the supplied direct selection and dependency file order and URI spelling" in {
-      val lock = decode(example())
-      lock.formatVersion shouldBe 1
-      lock.selections.map(s => (s.baseUrl.original, s.url.original)) shouldBe Seq(
-        (
-          "https://Hub.example/releases/z/2/?v=%2F#chosen",
-          "https://Files.example/Z%2F.ttl?download=1#file",
-        ),
-      )
-      lock.files.map(f => (f.baseUrl.original, f.url.original, f.format)) shouldBe Seq(
-        (
-          "https://Hub.example/releases/z/2/?v=%2F#chosen",
-          "https://Files.example/Z%2F.ttl?download=1#file",
-          Format.OwlTurtle,
-        ),
-        ("https://Hub.example/releases/a/1/", "https://files.example/a.yaml", Format.LinkmlYaml),
-      )
-    }
+    for revision <- Seq(1, 2) do
+      s"preserve revision $revision selections, ordered files, URI spelling and hashes" in {
+        val lock = decode(example(revision))
+        lock.formatVersion shouldBe revision
+        lock.selections.map(s => (s.baseUrl.original, s.url.original)) shouldBe Seq(
+          (
+            "https://Hub.example/releases/z/2/?v=%2F#chosen",
+            "https://Files.example/Z%2F.ttl?download=1#file",
+          ),
+        )
+        lock.files.map(
+          _.sha256,
+        ) shouldBe (if revision == 1 then Seq(None, None)
+                    else
+                      Seq(
+                        Some("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+                        Some("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+                      ))
+        lock.files.map(f => (f.baseUrl.original, f.url.original, f.format)) shouldBe Seq(
+          (
+            "https://Hub.example/releases/z/2/?v=%2F#chosen",
+            "https://Files.example/Z%2F.ttl?download=1#file",
+            Format.OwlTurtle,
+          ),
+          ("https://Hub.example/releases/a/1/", "https://files.example/a.yaml", Format.LinkmlYaml),
+        )
+      }
 
-    "accept an empty lock with an integral decimal revision" in {
-      val lock = LockJson.decode("""{"format_version":1.0,"selections":[],"files":[]}""")
-      lock.formatVersion shouldBe 1
-      lock.selections shouldBe empty
-      lock.files shouldBe empty
-    }
+    for revision <- Seq(1, 2) do
+      s"accept an empty lock with integral decimal revision $revision" in {
+        val lock = LockJson.decode(s"""{"format_version":$revision.0,"selections":[],"files":[]}""")
+        lock.formatVersion shouldBe revision
+        lock.selections shouldBe empty
+        lock.files shouldBe empty
+      }
 
     for (text, behavior) <- Seq(
         "{" -> "malformed JSON",
@@ -89,6 +109,33 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
       }
 
+    for (label, hash) <- Seq(
+        "a missing hash" -> None,
+        "a null hash" -> Some(ujson.Null),
+        "a non-string hash" -> Some(ujson.Num(7)),
+        "an uppercase hash" -> Some(
+          ujson.Str("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
+        ),
+      )
+    do
+      s"reject revision 2 with $label" in {
+        val data = example(2)
+        data("files")(1).obj.remove("sha256")
+        hash.foreach(value => data("files")(1)("sha256") = value)
+        assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
+      }
+
+    for hash <- Seq(
+        ujson.Null,
+        ujson.Str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+      )
+    do
+      s"reject revision 1 with a supplied hash $hash" in {
+        val data = example()
+        data("files")(0)("sha256") = hash
+        assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
+      }
+
     "reject unknown artifact formats" in {
       val data = example()
       data("files")(0)("format") = "future-format"
@@ -114,7 +161,7 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
       }
 
-    for revision <- Seq("2.0", "1e400") do
+    for revision <- Seq("3.0", "1e400") do
       s"report unsupported integral revision $revision before missing collections" in {
         assertError(
           intercept[LockException](LockJson.decode(s"""{"format_version":$revision}""")),
@@ -163,16 +210,18 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
       assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
     }
 
-    "distinguish same URLs across publications and preserve selection order" in {
+    "distinguish same URLs across publications without imposing hash consistency" in {
       val data = ujson.read("""{
-        "format_version":1,
+        "format_version":2,
         "selections":[
           {"base_url":"urn:release:z","url":"urn:file:shared"},
           {"base_url":"urn:release:a","url":"urn:file:shared"}
         ],
         "files":[
-          {"base_url":"urn:release:z","url":"urn:file:shared","format":"owl-turtle"},
-          {"base_url":"urn:release:a","url":"urn:file:shared","format":"owl-turtle"}
+          {"base_url":"urn:release:z","url":"urn:file:shared","format":"owl-turtle",
+           "sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
+          {"base_url":"urn:release:a","url":"urn:file:shared","format":"owl-turtle",
+           "sha256":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
         ]
       }""")
       val lock = decode(data)
@@ -200,42 +249,69 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
   }
 
   "LockJson.encode" should {
-    "emit the independently specified keys, values, formats and file order" in {
-      val data = ujson.read(LockJson.encode(decode(example())))
-      data.obj.keySet shouldBe Set("format_version", "selections", "files")
-      data("format_version").num shouldBe 1
-      data("selections") shouldBe ujson.Arr(
-        ujson.Obj(
-          "base_url" -> "https://Hub.example/releases/z/2/?v=%2F#chosen",
-          "url" -> "https://Files.example/Z%2F.ttl?download=1#file",
-        ),
-      )
-      data("files") shouldBe ujson.Arr(
-        ujson.Obj(
-          "base_url" -> "https://Hub.example/releases/z/2/?v=%2F#chosen",
-          "url" -> "https://Files.example/Z%2F.ttl?download=1#file",
-          "format" -> "owl-turtle",
-        ),
-        ujson.Obj(
-          "base_url" -> "https://Hub.example/releases/a/1/",
-          "url" -> "https://files.example/a.yaml",
-          "format" -> "linkml-yaml",
-        ),
-      )
-    }
+    for revision <- Seq(1, 2) do
+      s"emit the independently specified revision $revision keys, values, formats and file order" in {
+        val data = ujson.read(LockJson.encode(decode(example(revision))))
+        data.obj.keySet shouldBe Set("format_version", "selections", "files")
+        data("format_version").num shouldBe revision
+        data("selections") shouldBe ujson.Arr(
+          ujson.Obj(
+            "base_url" -> "https://Hub.example/releases/z/2/?v=%2F#chosen",
+            "url" -> "https://Files.example/Z%2F.ttl?download=1#file",
+          ),
+        )
+        val expectedFiles = ujson.Arr(
+          ujson.Obj(
+            "base_url" -> "https://Hub.example/releases/z/2/?v=%2F#chosen",
+            "url" -> "https://Files.example/Z%2F.ttl?download=1#file",
+            "format" -> "owl-turtle",
+          ),
+          ujson.Obj(
+            "base_url" -> "https://Hub.example/releases/a/1/",
+            "url" -> "https://files.example/a.yaml",
+            "format" -> "linkml-yaml",
+          ),
+        )
+        if revision == 2 then {
+          expectedFiles(0)("sha256") =
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          expectedFiles(1)("sha256") =
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+        data("files") shouldBe expectedFiles
+      }
 
-    "retain both required empty arrays" in {
-      ujson.read(LockJson.encode(Lock(Seq.empty, 1, Seq.empty))) shouldBe
-        ujson.Obj("format_version" -> 1, "selections" -> ujson.Arr(), "files" -> ujson.Arr())
-    }
+    for revision <- Seq(1, 2) do
+      s"retain both required empty arrays in revision $revision" in {
+        ujson.read(LockJson.encode(Lock(Seq.empty, revision, Seq.empty))) shouldBe
+          ujson.Obj(
+            "format_version" -> revision,
+            "selections" -> ujson.Arr(),
+            "files" -> ujson.Arr(),
+          )
+      }
 
     "classify unsupported typed revisions as encode errors" in {
       assertError(
-        intercept[LockException](LockJson.encode(Lock(Seq.empty, 2, Seq.empty))),
+        intercept[LockException](LockJson.encode(Lock(Seq.empty, 3, Seq.empty))),
         "UNSUPPORTED_VERSION",
         "ENCODE",
       )
     }
+
+    for (revision, hash) <- Seq(
+        1 -> Some("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+        2 -> None,
+      )
+    do
+      s"reject revision $revision with invalid typed hash $hash" in {
+        val lock = Lock(
+          Seq(LockedFile(Uri("urn:release:z"), Format.OwlTurtle, Uri("urn:file:z"), hash)),
+          revision,
+          Seq.empty,
+        )
+        assertError(intercept[LockException](LockJson.encode(lock)), "INVALID_LOCK", "ENCODE")
+      }
 
     "validate URI fields reachable through generated constructors" in {
       val lock = Lock(

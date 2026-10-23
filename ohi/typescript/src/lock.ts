@@ -25,12 +25,19 @@ function uniquePairs(records: ArtifactSelection[], field: string): Set<string> {
 
 function checkedLock(data: unknown, operation: LockOperation): Lock {
   if (typeof data === "object" && data !== null && !Array.isArray(data) &&
-      "format_version" in data && Number.isInteger(data.format_version) && data.format_version !== 1) {
+      "format_version" in data && Number.isInteger(data.format_version) &&
+      data.format_version !== 1 && data.format_version !== 2) {
     throw new LockException({ code: "UNSUPPORTED_VERSION", operation,
-      message: `Unsupported lock revision ${data.format_version}. Supply revision 1 or use a reader supporting this revision.` });
+      message: `Unsupported lock revision ${data.format_version}. Supply revision 1 or 2 or use a reader supporting this revision.` });
   }
   try {
     if (!validate(data)) throw new Error(ajv.errorsText(validate.errors));
+    if (data.format_version === 1 && data.files.some((file) => file.sha256 !== undefined)) {
+      throw new Error("Revision 1 files must omit sha256.");
+    }
+    if (data.format_version === 2 && data.files.some((file) => file.sha256 === undefined)) {
+      throw new Error("Revision 2 files require sha256.");
+    }
     const selections = uniquePairs(data.selections, "selections");
     const files = uniquePairs(data.files, "files");
     if ([...selections].some((selection) => !files.has(selection))) {

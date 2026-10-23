@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.model
 
 import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.ohi.model.generated.lock.{ArtifactSelectionImpl, Lock}
+import eu.neverblink.ohi.model.generated.lock.{Format, Lock, LockedFile}
 import java.io.{FilterOutputStream, IOException}
 import java.nio.charset.StandardCharsets.{UTF_8, UTF_16LE}
 import java.nio.file.{AtomicMoveNotSupportedException, Files, Path}
@@ -64,16 +64,16 @@ class LockFilesSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "preserve prior bytes and avoid staging when validation fails" in {
+    "preserve prior bytes and avoid staging for a revision 2 file without a hash" in {
       withDirectory { root =>
         val path = root.resolve("./chosen.json")
         Files.write(path, previous)
-        val incomplete = Lock(
+        val invalid = Lock(
+          Seq(LockedFile(Uri("urn:release:z"), Format.OwlTurtle, Uri("urn:file:z"))),
+          2,
           Seq.empty,
-          1,
-          Seq(ArtifactSelectionImpl(Uri("urn:release:z"), Uri("urn:file:z"))),
         )
-        val failure = intercept[LockException](LockFiles.write(path, incomplete))
+        val failure = intercept[LockException](LockFiles.write(path, invalid))
         assertFailure(failure, path, "INVALID_LOCK", "WRITE")
         failure.error.path.get should endWith("/./chosen.json")
         Files.readAllBytes(path).toSeq shouldBe Seq[Byte](71, 72, 0, -1)

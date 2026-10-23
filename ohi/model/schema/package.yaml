@@ -77,6 +77,7 @@ classes:
     slots:
     - format
     - url
+    - sha256
     attributes:
       origin:
         description: Origin of the artifact content.
@@ -96,12 +97,9 @@ classes:
         range: integer
         required: true
         minimum_value: 0
+    slot_usage:
       sha256:
-        description: SHA-256 of the final immutable file bytes, before HTTP content encoding, as exactly
-          64 lowercase hexadecimal characters.
-        range: string
         required: true
-        pattern: ^[0-9a-f]{64}(?![\s\S])
   Dependency:
     description: A reference to an exact immutable publication required by this publication.
     extra_slots:

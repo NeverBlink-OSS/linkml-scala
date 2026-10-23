@@ -67,6 +67,10 @@ slots:
       of this publication. Not an upstream release date.
     range: datetime
     required: true
+  sha256:
+    description: SHA-256 of the file bytes before HTTP content encoding.
+    range: string
+    pattern: ^[0-9a-f]{64}(?![\s\S])
 enums:
   Format:
     description: A combination of ontology language and syntax.

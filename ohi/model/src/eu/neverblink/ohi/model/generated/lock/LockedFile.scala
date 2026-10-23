@@ -5,15 +5,15 @@ package eu.neverblink.ohi.model.generated.lock
 
 import eu.neverblink.linkml.runtime.*
 
-/** One artifact download identity and format. Excludes entry roots and integrity metadata.
-  *
-  * @param baseUrl
+/** @param baseUrl
   *   Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns
   *   its publication JSON. Do not append a filename.
   * @param format
   *   Ontology language and syntax of the artifact.
   * @param url
   *   Permanent absolute download URL of an immutable ontology file.
+  * @param sha256
+  *   SHA-256 of the file bytes before HTTP content encoding.
   * @see
   *   From schema: https://ohi.neverblink.eu/contracts/lock
   */
@@ -22,6 +22,7 @@ final case class LockedFile(
     baseUrl: Uri,
     format: Format,
     url: Uri,
+    sha256: Option[String] = None,
 ) extends ArtifactSelection {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that

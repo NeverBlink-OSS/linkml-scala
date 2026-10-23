@@ -2,6 +2,13 @@ package eu.neverblink.ohi.cli
 
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
 import eu.neverblink.linkml.cli.BaseCommand
+import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.ohi.cli.generated.fileerror.{CliFileError, CliFileErrorCode}
+import eu.neverblink.ohi.cli.generated.lockdownload.{
+  LockDownloadResult,
+  LockFileResult,
+  LockFileStatus,
+}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tools.jackson.databind.JsonNode
@@ -9,6 +16,7 @@ import tools.jackson.databind.json.JsonMapper
 
 import java.net.{InetSocketAddress, URI, URLDecoder}
 import java.nio.charset.StandardCharsets.UTF_8
+import java.nio.file.Files
 import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters.*
 
@@ -55,13 +63,19 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
 
   private def withServerBytes(bytes: Array[Byte], status: Int = 200)(
       check: (String, ConcurrentLinkedQueue[String]) => Unit,
+  ): Unit = withServerResponses(_ => status -> bytes)(check)
+
+  private def withServerResponses(response: String => (Int, Array[Byte]))(
+      check: (String, ConcurrentLinkedQueue[String]) => Unit,
   ): Unit = {
     val requests = new ConcurrentLinkedQueue[String]()
     val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
     server.createContext(
       "/",
       (exchange: HttpExchange) => {
-        requests.add(exchange.getRequestURI.toString)
+        val request = exchange.getRequestURI.toString
+        requests.add(request)
+        val (status, bytes) = response(request)
         exchange.getResponseHeaders.set("Cache-Control", "no-store")
         try {
           exchange.sendResponseHeaders(status, if bytes.isEmpty then -1L else bytes.length.toLong)
@@ -111,6 +125,29 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       val pair = parameter.split("=", 2)
       URLDecoder.decode(pair(0), UTF_8) -> URLDecoder.decode(pair(1), UTF_8)
     }.toMap
+
+  private def withDirectory(check: os.Path => Unit): Unit = {
+    val directory = os.temp.dir(prefix = "ohi lock download ")
+    try check(directory)
+    finally os.remove.all(directory)
+  }
+
+  private def writeLock(
+      directory: os.Path,
+      entries: Seq[(String, String)] = Seq.empty,
+      version: Int = 2,
+  ): os.Path = {
+    val files = entries.zipWithIndex.map { case ((url, digest), index) =>
+      s"""{"base_url":"https://example.org/publication/$index","url":"$url",
+         |"format":"owl-turtle","sha256":"$digest"}""".stripMargin
+    }.mkString(",")
+    val selection = entries.headOption.map { case (url, _) =>
+      s"""{"base_url":"https://example.org/publication/0","url":"$url"}"""
+    }.getOrElse("")
+    val path = directory / "ohi.lock.json"
+    os.write(path, s"""{"format_version":$version,"selections":[$selection],"files":[$files]}""")
+    path
+  }
 
   "catalog search" should {
     "forward every supplied option once and preserve all JSON fields and backend order" in {
@@ -368,6 +405,267 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           os.list(directory).map(_.last) shouldBe Seq("file.ttl")
         }
       } finally os.remove.all(directory)
+    }
+  }
+
+  "locked file delivery" should {
+    "reject mixed lock and URL modes before configuration" in {
+      val error = failed(
+        Get,
+        "get",
+        "https://example.org/file.ttl",
+        "--lock",
+        "missing.json",
+        "--to",
+        ".",
+        "--timeout-ms",
+        "0",
+        "--json",
+      )
+      error should include("either a file URL or --lock")
+      error should include("ohi get --help")
+      error.trim should not startWith "{"
+    }
+
+    "reject a provider-invalid lock argument before timeout configuration" in {
+      // The harness accepts NUL arguments that an OS process launcher rejects.
+      val error = failed(
+        Get,
+        "get",
+        "--lock",
+        "bad\u0000lock",
+        "--to",
+        ".",
+        "--timeout-ms",
+        "0",
+        "--json",
+      )
+      error should include("Invalid lock path")
+      error should include("ohi get --help")
+      error.trim should not startWith "{"
+    }
+
+    for emptyLock <- Seq(false, true) do
+      s"validate configuration before ${
+          if emptyLock then "an empty lock" else "a missing lock"
+        }" in {
+        withDirectory { directory =>
+          val path = if emptyLock then writeLock(directory) else directory / "missing.json"
+          val error = json(
+            failed(
+              Get,
+              "get",
+              "--lock",
+              path.toString,
+              "--to",
+              "bad\u0000destination",
+              "--timeout-ms",
+              "0",
+              "--json",
+            ),
+          )
+          keys(error) shouldBe Set("files", "catalog_error")
+          error.get("files") shouldBe json("[]")
+          val cause = error.get("catalog_error")
+          keys(cause) shouldBe Set("code", "operation", "message")
+          cause.get("code").stringValue() shouldBe "INVALID_INPUT"
+          cause.get("operation").stringValue() shouldBe "CONFIGURE"
+          cause.get("message").stringValue() should include("timeout_ms")
+        }
+      }
+
+    "return an empty result without interpreting the destination of an empty version-2 lock" in {
+      withDirectory { directory =>
+        val path = writeLock(directory)
+        val args = Seq("get", "--lock", path.toString, "--to", "bad\u0000destination")
+        json(successful(Get, (args :+ "--json")*)) shouldBe json("""{"files":[]}""")
+        successful(Get, args*) shouldBe "No files in lock.\n"
+        os.list(directory).map(_.last) shouldBe Seq("ohi.lock.json")
+      }
+    }
+
+    "refuse an empty legacy lock with its supplied path and regeneration guidance" in {
+      withDirectory { directory =>
+        val path = writeLock(directory, version = 1)
+        val error = json(
+          failed(
+            Get,
+            "get",
+            "--lock",
+            path.toString,
+            "--to",
+            (directory / "out").toString,
+            "--json",
+          ),
+        )
+        keys(error) shouldBe Set("files", "lock_error")
+        error.get("files") shouldBe json("[]")
+        val cause = error.get("lock_error")
+        keys(cause) shouldBe Set("code", "operation", "path", "message")
+        cause.get("code").stringValue() shouldBe "UNSUPPORTED_VERSION"
+        cause.get("operation").stringValue() shouldBe "READ"
+        cause.get("path").stringValue() shouldBe path.toString
+        cause.get("message").stringValue() should include("ohi lock --project <directory>")
+        cause.get("message").stringValue() should include("originating application")
+        os.exists(directory / "out") shouldBe false
+      }
+    }
+
+    "wrap a lock read failure before accessing the destination" in {
+      withDirectory { directory =>
+        val path = directory / "missing.json"
+        val error = json(
+          failed(
+            Get,
+            "get",
+            "--lock",
+            path.toString,
+            "--to",
+            "bad\u0000destination",
+            "--json",
+          ),
+        )
+        keys(error) shouldBe Set("files", "lock_error")
+        error.get("files") shouldBe json("[]")
+        val cause = error.get("lock_error")
+        cause.get("code").stringValue() shouldBe "STORAGE_ERROR"
+        cause.get("operation").stringValue() shouldBe "READ"
+        cause.get("path").stringValue() shouldBe path.toString
+        os.list(directory) shouldBe empty
+      }
+    }
+
+    "serialize a file failure with its target and no inactive causes" in {
+      val failure = new CliFileException(
+        CliFileError(
+          code = CliFileErrorCode.HashMismatch,
+          directory = "/out",
+          message = "Hash mismatch",
+          path = Some("/out/file.ttl"),
+          url = "https://example.org/file.ttl",
+        ),
+      )
+      val error = json(
+        LockDownloadOutput.error(LockDownloadOutput.failure(Seq.empty, failure), json = true),
+      )
+      keys(error) shouldBe Set("files", "file_error")
+      error.get("files") shouldBe json("[]")
+      val cause = error.get("file_error")
+      keys(cause) shouldBe Set("code", "message", "directory", "path", "url")
+      cause.get("code").stringValue() shouldBe "HASH_MISMATCH"
+      cause.get("directory").stringValue() shouldBe "/out"
+      cause.get("path").stringValue() shouldBe "/out/file.ttl"
+      cause.get("url").stringValue() shouldBe "https://example.org/file.ttl"
+    }
+
+    "report only the completed prefix on failure and resume the same command in lock order" in {
+      withDirectory { directory =>
+        val zBytes = Array[Byte](0, -1, 65, -128)
+        val unavailable = new java.util.concurrent.atomic.AtomicBoolean(true)
+        val serverError = """{"error":{"reason":null,"retry":true},"attempt":2,"delay":1.25}"""
+        withServerResponses {
+          case "/z.ttl?revision=2" => 200 -> zBytes
+          case "/a.ttl" if unavailable.get() => 503 -> serverError.getBytes(UTF_8)
+          case "/a.ttl" => 200 -> "abc".getBytes(UTF_8)
+          case "/b.ttl" => 200 -> Array.emptyByteArray
+          case _ => 404 -> "Unexpected request".getBytes(UTF_8)
+        } { (base, requests) =>
+          val path = writeLock(
+            directory,
+            Seq(
+              (base + "/z.ttl?revision=2") ->
+                "ac7fa209c616517439d0e93add6855a02d7c4340f990084224ea290315ee3bd1",
+              (base + "/a.ttl") ->
+                "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+              (base + "/b.ttl") ->
+                "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              (base + "/m.ttl") ->
+                "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+            ),
+          )
+          val lockBytes = os.read.bytes(path).toSeq
+          os.write(directory / "ohi.yaml", "unchanged declaration\n")
+          os.write(directory / "m.ttl", "hello")
+          val mTime = Files.getLastModifiedTime((directory / "m.ttl").toNIO)
+          val args = Seq("get", "--lock", path.toString, "--to", directory.toString, "--json")
+          val error = json(failed(Get, args*))
+          keys(error) shouldBe Set("files", "catalog_error")
+          error.get("files") shouldBe json(s"""[
+            {"url":"$base/z.ttl?revision=2","path":"$directory/z.ttl","status":"DOWNLOADED"}
+          ]""")
+          val cause = error.get("catalog_error")
+          keys(cause) shouldBe Set("code", "message", "operation", "url", "status", "response_json")
+          cause.get("code").stringValue() shouldBe "HTTP_ERROR"
+          cause.get("operation").stringValue() shouldBe "GET"
+          cause.get("url").stringValue() shouldBe base + "/a.ttl"
+          cause.get("status").intValue() shouldBe 503
+          cause.get("response_json") shouldBe json(serverError)
+          requests.asScala.toSeq shouldBe Seq("/z.ttl?revision=2", "/a.ttl")
+          os.read.bytes(directory / "z.ttl").toSeq shouldBe zBytes.toSeq
+          os.read(directory / "m.ttl") shouldBe "hello"
+          Files.getLastModifiedTime((directory / "m.ttl").toNIO) shouldBe mTime
+          os.exists(directory / "a.ttl") shouldBe false
+          os.exists(directory / "b.ttl") shouldBe false
+          os.read.bytes(path).toSeq shouldBe lockBytes
+          os.read(directory / "ohi.yaml") shouldBe "unchanged declaration\n"
+
+          val zTime = Files.getLastModifiedTime((directory / "z.ttl").toNIO)
+          unavailable.set(false)
+          requests.clear()
+          json(successful(Get, args*)) shouldBe json(s"""{"files":[
+            {"url":"$base/z.ttl?revision=2","path":"$directory/z.ttl","status":"VERIFIED"},
+            {"url":"$base/a.ttl","path":"$directory/a.ttl","status":"DOWNLOADED"},
+            {"url":"$base/b.ttl","path":"$directory/b.ttl","status":"DOWNLOADED"},
+            {"url":"$base/m.ttl","path":"$directory/m.ttl","status":"VERIFIED"}
+          ]}""")
+          requests.asScala.toSeq shouldBe Seq("/a.ttl", "/b.ttl")
+          os.read.bytes(directory / "z.ttl").toSeq shouldBe zBytes.toSeq
+          Files.getLastModifiedTime((directory / "z.ttl").toNIO) shouldBe zTime
+          os.read(directory / "a.ttl") shouldBe "abc"
+          os.read.bytes(directory / "b.ttl") shouldBe empty
+          os.read(directory / "m.ttl") shouldBe "hello"
+          Files.getLastModifiedTime((directory / "m.ttl").toNIO) shouldBe mTime
+          os.read.bytes(path).toSeq shouldBe lockBytes
+          os.read(directory / "ohi.yaml") shouldBe "unchanged declaration\n"
+        }
+      }
+    }
+
+    "render downloaded and verified human receipts in supplied order" in {
+      val result = LockDownloadResult(
+        Seq(
+          LockFileResult("/out/z.ttl", LockFileStatus.Downloaded, Uri("https://example.org/z.ttl")),
+          LockFileResult("/out/a.ttl", LockFileStatus.Verified, Uri("https://example.org/a.ttl")),
+        ),
+      )
+      LockDownloadOutput.result(
+        result,
+        json = false,
+      ) shouldBe "Saved /out/z.ttl\nVerified /out/a.ttl"
+    }
+
+    "render the reached prefix, retained partial file and retry guidance on a human failure" in {
+      val failure = new CliFileException(
+        CliFileError(
+          code = CliFileErrorCode.FileWriteFailed,
+          directory = "/out",
+          message =
+            "Cannot finish writing '/out/a.ttl'. Remove the incomplete file before retrying.",
+          partialPath = Some("/out/a.ttl"),
+          path = Some("/out/a.ttl"),
+          url = "https://example.org/a.ttl",
+        ),
+      )
+      val error = LockDownloadOutput.failure(
+        Seq(
+          LockFileResult("/out/z.ttl", LockFileStatus.Downloaded, Uri("https://example.org/z.ttl")),
+        ),
+        failure,
+      )
+      LockDownloadOutput.error(error, json = false) shouldBe
+        "Saved /out/z.ttl\n" +
+        "Cannot finish writing '/out/a.ttl'. Remove the incomplete file before retrying.\n" +
+        "Partial file retained: /out/a.ttl\nCorrect the cause and repeat the same command."
     }
   }
 

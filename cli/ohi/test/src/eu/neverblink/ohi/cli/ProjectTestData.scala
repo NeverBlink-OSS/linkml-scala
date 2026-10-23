@@ -9,13 +9,14 @@ private[cli] object ProjectTestData {
       baseUrl: String,
       artifacts: Seq[(String, Format)],
       dependencies: Seq[String] = Seq.empty,
+      sha256: String = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
   ): Publication = Publication(
     artifacts = artifacts.map { (url, format) =>
       Artifact(
         format = format,
         origin = ArtifactOrigin.Upstream,
         roots = Seq(Uri("https://example.org/entry-root")),
-        sha256 = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+        sha256 = sha256,
         sizeBytes = 4,
         url = Uri(url),
       )

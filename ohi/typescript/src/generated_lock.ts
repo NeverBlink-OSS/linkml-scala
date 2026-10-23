@@ -9,17 +9,16 @@ export interface ArtifactSelection {
   url: string;
 }
 
-/** Exact direct selections and the complete file set supplied by the application. */
+/** Direct selections and their artifact files. */
 export interface Lock {
-  /** Complete supplied artifact download records in supplied order. Each selection must match one file by exact base_url and url. Each pair occurs once. */
+  /** Each (base_url, url) pair is unique. Every selection matches a file by that pair. */
   files: LockedFile[];
-  /** Lock record revision, independent of ontology and publication schema versions. */
+  /** Version 1 omits file hashes. Version 2 requires sha256 for every file. */
   format_version: number;
   /** Direct publication and artifact selections in supplied order. */
   selections: ArtifactSelection[];
 }
 
-/** One artifact download identity and format. Excludes entry roots and integrity metadata. */
 export interface LockedFile {
   /** Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename. */
   base_url: string;
@@ -27,6 +26,8 @@ export interface LockedFile {
   format: Format;
   /** Permanent absolute download URL of an immutable ontology file. */
   url: string;
+  /** SHA-256 of the file bytes before HTTP content encoding. */
+  sha256?: string;
 }
 
 /** A combination of ontology language and syntax. */

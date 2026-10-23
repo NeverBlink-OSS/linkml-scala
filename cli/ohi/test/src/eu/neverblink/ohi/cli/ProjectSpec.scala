@@ -184,7 +184,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         data.get("message").stringValue() should not include "ohi lock"
         val recorded = mapper.readTree(os.read(directory / "ohi.lock.json"))
         recorded shouldBe mapper.readTree(
-          s"""{"format_version":1,"selections":[{"base_url":"$base","url":"$url"}],"files":[{"base_url":"$base","url":"$url","format":"owl-turtle"}]}""",
+          s"""{"format_version":2,"selections":[{"base_url":"$base","url":"$url"}],"files":[{"base_url":"$base","url":"$url","format":"owl-turtle","sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}""",
         )
         mapper.readTree(
           JsonUtil.yamlToJson(parseYaml(os.read(directory / "ohi.yaml")).toOption.get),
