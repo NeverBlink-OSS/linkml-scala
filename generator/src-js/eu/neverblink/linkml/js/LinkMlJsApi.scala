@@ -625,9 +625,6 @@ object LinkMlJsApi {
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
     *   tree root pruning mode.
-    * @param diagrams
-    *   Whether to add a Mermaid ER diagram to each class page, showing the class and the classes it
-    *   is linked with. Default: true
     * @param singleFile
     *   Whether to write all pages as sections of one `docs.md` document. Default: false
     * @return
@@ -639,14 +636,10 @@ object LinkMlJsApi {
       schema: SchemaViewJs,
       pruningMode: String = "schema",
       treeRoot: js.UndefOr[String] = js.undefined,
-      diagrams: Boolean = true,
       singleFile: Boolean = false,
   ): js.Dictionary[String] = {
     val generator = DocsGenerator(using schema.underlying)
-    val options = DocsGenerator.Options(
-      pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-      diagrams = diagrams,
-    )
+    val options = DocsGenerator.Options(pruningMode = PruningMode(pruningMode, treeRoot.toOption))
     if (singleFile) js.Dictionary("docs.md" -> generator.serialize(options))
     else generator.generateFiles(options).toMap.toJSDictionary
   }

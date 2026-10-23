@@ -4,7 +4,6 @@ import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
-import eu.neverblink.linkml.metamodel.SlotDefinition
 import eu.neverblink.linkml.schemaview.*
 
 /** Generator for
@@ -36,36 +35,12 @@ final class ErDiagramGenerator(using sv: SchemaView)
     val classes = sv.sortedClasses
       .filter(cv => query.reachable(cv) && !cv.isAny) // Never plot linkml:Any
 
-    diagramOf(classes, optionalMarker)
-  }
-
-  /** The ER diagram of [[classes]] and the relationships between them.
-    *
-    * @param classes
-    *   The classes to draw, in the order to draw them. Must not contain `linkml:Any`.
-    * @param optionalMarker
-    *   Whether to mark optional attributes with a trailing `?` on their type
-    * @param withAttributes
-    *   Whether to list the attributes of each entity. Without them, entities are empty boxes.
-    * @param label
-    *   The label of the relationship line for a slot of a class. It is written in quotes, so it
-    *   must not contain `"`.
-    */
-  def diagramOf(
-      classes: Seq[ClassView],
-      optionalMarker: Boolean,
-      withAttributes: Boolean = true,
-      label: (ClassView, SlotDefinition) => String = classAttributeName,
-  ): ErDiagram = {
-    val entities = classes.map { cv =>
-      ErEntity(className(cv), if (withAttributes) attributesOf(cv, optionalMarker) else Nil)
-    }
+    val entities = classes.map(cv => ErEntity(className(cv), attributesOf(cv, optionalMarker)))
 
     // Only draw an edge if both ends are on the diagram. Mermaid would otherwise conjure the
     // missing end up as an empty box.
     val drawn = entities.map(_.name).toSet
-    val relationships =
-      classes.flatMap(cv => relationshipsOf(cv, label)).filter(r => drawn.contains(r.to))
+    val relationships = classes.flatMap(relationshipsOf).filter(r => drawn.contains(r.to))
 
     ErDiagram(entities, relationships)
   }
@@ -109,15 +84,11 @@ final class ErDiagramGenerator(using sv: SchemaView)
       }
     }
 
-  private def relationshipsOf(
-      cv: ClassView,
-      label: (ClassView, SlotDefinition) => String,
-  ): Seq[ErRelationship] =
+  private def relationshipsOf(cv: ClassView): Seq[ErRelationship] =
     cv.sortedAttributeViews.collect {
-      case av: ClassInlineAttributeView =>
-        relationship(cv, av, av.classView, identifying = true, label)
+      case av: ClassInlineAttributeView => relationship(cv, av, av.classView, identifying = true)
       case av: ClassReferenceAttributeView =>
-        relationship(cv, av, av.classView, identifying = false, label)
+        relationship(cv, av, av.classView, identifying = false)
     }
 
   private def relationship(
@@ -125,7 +96,6 @@ final class ErDiagramGenerator(using sv: SchemaView)
       av: AttributeView,
       range: ClassView,
       identifying: Boolean,
-      label: (ClassView, SlotDefinition) => String,
   ): ErRelationship = {
     val slot = av.slotView.slot
     ErRelationship(
@@ -141,7 +111,7 @@ final class ErDiagramGenerator(using sv: SchemaView)
         case (false, false) => ErCardinality.zeroOrOne
       },
       identifying = identifying,
-      label = label(cv, slot),
+      label = classAttributeName(cv, slot),
     )
   }
 }

@@ -43,7 +43,6 @@ Options:
   - `skip`: everything, including all the types from `linkml:types`. This is the default on the
     command line, as for the other generators.
 - `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
-- `--diagrams=false`: leave out the diagram on each class page.
 - `--metadata-language <tag>`: which language to use for titles and descriptions that are given
   in more than one language. Default: `en`.
 
@@ -51,8 +50,7 @@ The generator is also available from JavaScript (`docs()`), Python (`Schema.docs
 (`linkml_docs`), which return the pages as a map from file name to content.
 
 The [playground](https://linkml.neverblink.eu/playground/) has a Documentation target. It shows
-the documentation as one page, as GitHub would show it, with the diagrams drawn. The Code tab shows
-the Markdown.
+the documentation as one page, as GitHub would show it. The Code tab shows the Markdown.
 
 ## What the pages show
 
@@ -92,9 +90,7 @@ A **class page** has:
   description, and the class they are inherited from. Ranges with `slot_usage` applied are
   shown as they are in this class. A class range that is a reference rather than inlined is
   marked `(reference)`.
-- the slots of other classes that have this class as their range,
-- a [Mermaid](https://mermaid.js.org/syntax/entityRelationshipDiagram.html) diagram of the class and
-  the classes it is linked with. Classes with no links to other classes get no diagram.
+- the slots of other classes that have this class as their range.
 
 A **slot page** has the slot URI, range, cardinality and constraints, and a table of the classes
 that declare the slot or change it with `slot_usage`, with the range and cardinality it has in
@@ -119,25 +115,51 @@ When two names would give the same file name, ignoring case (like `Person` and `
 second one gets `_2`. This keeps both pages on macOS and Windows, whose file systems ignore case.
 Names that Windows does not allow for files, like `CON`, get a `_` in front.
 
+## Adding sections
+
+From Scala, extend `DocsGenerator` and override `indexSections` or `elementSections` to add
+sections at the end of the index page or of each element's page. Write them with the `Markdown`
+writer they get:
+
+- Headings get the right level, both on a page of its own and in one document. `heading` writes
+  a fixed title. For a title from the schema, use `startHeading`, then `text`, then `endBlock`.
+- `text` and `code` escape text from the schema, so that it shows as written.
+- `codeBlock` writes a fenced code block whose fence cannot be ended by the text in it.
+
+For example, a Mermaid diagram of the whole schema on the index page, which GitHub draws:
+
+```scala
+import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite, Markdown}
+import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.schemaview.SchemaView
+
+class DocsWithDiagram(using SchemaView) extends DocsGenerator {
+  override protected def indexSections(md: Markdown, site: DocsSite): Unit = {
+    md.heading(2, "Diagram")
+    md.codeBlock("mermaid", ErDiagramGenerator().serialize(ErDiagramGenerator.Options()))
+  }
+}
+```
+
+`DocsSite` tells which classes, slots, enums and types are documented, and how they are used.
+
 ## Publishing
 
 ### GitHub
 
-Commit the folder. GitHub shows the pages, follows the links and draws the diagrams.
+Commit the folder. GitHub shows the pages and follows the links.
 
 ### Docusaurus
 
 Docusaurus reads `.md` files as MDX by default, and MDX does not accept HTML comments, a `{`, or a
-`<` before a letter in text. Make Docusaurus read `.md` files as plain Markdown, and turn on Mermaid, in
+`<` before a letter in text. Make Docusaurus read `.md` files as plain Markdown in
 `docusaurus.config.js`:
 
 ```js
 export default {
   markdown: {
     format: "detect", // .md files are CommonMark, only .mdx files are MDX
-    mermaid: true,
   },
-  themes: ["@docusaurus/theme-mermaid"],
 };
 ```
 
@@ -145,19 +167,9 @@ The sidebar can be generated from the folders.
 
 ### MkDocs
 
-The pages work as they are. For the diagrams with Material for MkDocs, turn on Mermaid in
-`mkdocs.yml`:
-
-```yaml
-markdown_extensions:
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
-```
+The pages work as they are.
 
 ### VitePress
 
 The pages work as they are, but VitePress reads `{{ ... }}` in text as Vue code, so check the
-descriptions for it. For the diagrams, add a Mermaid plugin such as `vitepress-plugin-mermaid`.
+descriptions for it.

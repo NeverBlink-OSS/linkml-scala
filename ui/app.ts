@@ -525,26 +525,6 @@ interface MermaidApi {
 
 let mermaidPromise: Promise<MermaidApi> | null = null;
 
-/** Mermaid's theme for the playground's current theme. */
-function mermaidTheme(): string {
-  return document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark";
-}
-
-/** Mermaid's settings for the current theme, for the diagram view and the page view alike. */
-function mermaidConfig(): Record<string, unknown> {
-  return {
-    startOnLoad: false,
-    // Diagram text is derived from the user's own schema, but it still ends up as markup.
-    securityLevel: "strict",
-    theme: mermaidTheme(),
-    // Both default caps (50 000 characters, 500 edges) are below what a real-world schema
-    // produces. The size gate is what actually keeps the page responsive, so lift these and let
-    // it decide.
-    maxTextSize: 5_000_000,
-    maxEdges: 10_000,
-  };
-}
-
 function loadMermaid(): Promise<MermaidApi> {
   mermaidPromise ??= import(MERMAID_URL).then((m: { default: MermaidApi }) => m.default);
   return mermaidPromise;
@@ -817,7 +797,17 @@ async function renderDiagram(text: string): Promise<void> {
   try {
     const mermaid = await loadMermaid();
     if (token !== diagramToken) return;
-    mermaid.initialize(mermaidConfig());
+    mermaid.initialize({
+      startOnLoad: false,
+      // Diagram text is derived from the user's own schema, but it still ends up as markup.
+      securityLevel: "strict",
+      theme: document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark",
+      // Both default caps (50 000 characters, 500 edges) are below what a real-world schema
+      // produces. The gate above is what actually keeps the page responsive, so lift these and let
+      // it decide.
+      maxTextSize: 5_000_000,
+      maxEdges: 10_000,
+    });
     // Parse first: `render` answers a size or syntax problem with a picture of an error message
     // rather than by failing, which would otherwise reach the page as a successful render.
     await mermaid.parse(text, { suppressErrors: false });
@@ -857,7 +847,6 @@ function loadMarkdown(): Promise<MarkdownApi> {
 let pageToken = 0;
 
 function hidePage(): void {
-  stopPageDiagrams();
   $pageView.hidden = true;
   $pageView.innerHTML = "";
   pageSource = null;
@@ -913,105 +902,12 @@ async function renderPage(text: string, scrollTop: number): Promise<void> {
       a.target = "_blank";
       a.rel = "noopener";
     }
-    watchPageDiagrams(token);
   } catch (err) {
     if (token !== pageToken || $pageView.hidden) return;
     $pageView.replaceChildren(
       errorNotice("Could not show this page", err instanceof Error ? err.message : String(err)),
     );
   }
-}
-
-/** Drawn diagrams, keyed by theme and Mermaid source. Drawing the page again, as when the schema is
- * regenerated while typing, reuses them instead of laying the diagrams out again. */
-const pageDiagramCache = new Map<string, string>();
-/** Above this, the cache starts over rather than growing without end. */
-const PAGE_DIAGRAM_CACHE_LIMIT = 500;
-
-/** Mermaid code blocks that have come into view and wait to be drawn, oldest first. */
-const pageDiagramQueue: { pre: HTMLElement; token: number }[] = [];
-let drawingPageDiagrams = false;
-let pageDiagramObserver: IntersectionObserver | null = null;
-let pageDiagramId = 0;
-
-/** Draw the page's Mermaid code blocks as they come close to view, rather than all at once.
- *
- * Laying out a diagram blocks the page, and in Safari a schema with a few hundred classes would
- * block it for half a minute. Drawing only what is about to be seen keeps the page responsive, also
- * when a link jumps far down the page. */
-function watchPageDiagrams(token: number): void {
-  stopPageDiagrams();
-  const blocks = $pageView.querySelectorAll<HTMLElement>("pre > code.language-mermaid");
-  if (blocks.length === 0) return;
-  const theme = mermaidTheme();
-  pageDiagramObserver = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        pageDiagramObserver?.unobserve(entry.target);
-        pageDiagramQueue.push({ pre: entry.target as HTMLElement, token });
-      }
-      void drawQueuedPageDiagrams();
-    },
-    // Start a screen early, so a diagram is usually drawn by the time it scrolls into view.
-    { root: $pageView, rootMargin: "100% 0px" },
-  );
-  for (const code of blocks) {
-    const pre = code.parentElement!;
-    const svg = pageDiagramCache.get(theme + "\n" + (code.textContent ?? ""));
-    if (svg !== undefined) showPageDiagram(pre, svg);
-    else pageDiagramObserver.observe(pre);
-  }
-}
-
-function stopPageDiagrams(): void {
-  pageDiagramObserver?.disconnect();
-  pageDiagramObserver = null;
-  pageDiagramQueue.length = 0;
-}
-
-/** Draw the queued diagrams one at a time, giving the page a turn between them. */
-async function drawQueuedPageDiagrams(): Promise<void> {
-  if (drawingPageDiagrams) return;
-  drawingPageDiagrams = true;
-  try {
-    let next;
-    while ((next = pageDiagramQueue.shift())) {
-      if (next.token !== pageToken || $pageView.hidden || !next.pre.isConnected) continue;
-      await drawPageDiagram(next.pre, next.token);
-      // Let clicks and scrolling through before laying out the next one.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-  } finally {
-    drawingPageDiagrams = false;
-  }
-}
-
-/** Replace a Mermaid code block with its drawing. A block that is too large to draw quickly, or
- * that Mermaid cannot parse, stays as code. */
-async function drawPageDiagram(pre: HTMLElement, token: number): Promise<void> {
-  const source = pre.textContent ?? "";
-  if (over(diagramSize(source), DIAGRAM_SOFT_LIMIT)) return;
-  const mermaid = await loadMermaid();
-  const theme = mermaidTheme();
-  try {
-    mermaid.initialize(mermaidConfig());
-    await mermaid.parse(source, { suppressErrors: false });
-    const { svg } = await mermaid.render(`page-mermaid-${++pageDiagramId}`, source);
-    if (pageDiagramCache.size >= PAGE_DIAGRAM_CACHE_LIMIT) pageDiagramCache.clear();
-    pageDiagramCache.set(theme + "\n" + source, svg);
-    if (token !== pageToken || $pageView.hidden || !pre.isConnected) return;
-    showPageDiagram(pre, svg);
-  } catch {
-    // Left as code.
-  }
-}
-
-function showPageDiagram(pre: HTMLElement, svg: string): void {
-  const figure = document.createElement("div");
-  figure.className = "md-diagram";
-  figure.innerHTML = svg;
-  pre.replaceWith(figure);
 }
 
 // Links between sections are anchors. Scroll the panel to them, rather than letting the browser
@@ -2193,9 +2089,6 @@ $themeToggle.addEventListener("click", () => {
   // A rendered diagram bakes in the theme's colours, so it has to be drawn again to follow along.
   if (diagramSource !== null && diagramTab === "diagram" && !$diagramView.hidden) {
     scheduleDiagramRender(diagramSource, 0);
-  }
-  if (pageSource !== null && pageTab === "page" && !$pageView.hidden) {
-    void renderPage(pageSource, $pageView.scrollTop);
   }
 });
 

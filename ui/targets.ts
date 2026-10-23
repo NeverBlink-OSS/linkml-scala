@@ -141,18 +141,11 @@ export const TARGETS: Target[] = [
       // Defaults to `schema`, like the ER diagram: documentation is for the whole model.
       { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
       TREE_ROOT,
-      {
-        key: "diagrams",
-        type: "checkbox",
-        label: "Diagrams",
-        title: "Add a Mermaid ER diagram to each class page",
-        default: true,
-      },
     ],
     // Always one document: the page view links its sections with anchors, and a file tab per class
     // would be too many for a real schema.
     call: (api, v, o) =>
-      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.diagrams, true)["docs.md"] ?? "",
+      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), true)["docs.md"] ?? "",
   },
   {
     id: "erDiagram",

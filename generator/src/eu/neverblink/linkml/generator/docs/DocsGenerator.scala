@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.generator.docs
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.erdiagram.{ErDiagram, ErDiagramGenerator}
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
 import eu.neverblink.linkml.generator.pydantic.PydanticRenamer
 import eu.neverblink.linkml.generator.scala.ScalaRenamer
@@ -35,12 +34,35 @@ import scala.util.control.NonFatal
   *     to each other with anchors.
   *
   * Descriptions are Markdown and are copied to the pages as they are.
+  *
+  * To add sections to the pages, such as diagrams, extend this class and override [[indexSections]]
+  * or [[elementSections]].
   */
-final class DocsGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[DocsGenerator.Options] {
+class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGenerator.Options] {
   import DocsGenerator.*
 
   override protected def defaultOptions: Options = Options()
+
+  /** Write sections at the end of the index page. Does nothing here, and can be overridden to add
+    * sections such as a diagram of the schema.
+    *
+    * @param md
+    *   Where to write. Its methods escape text from the schema, and its headings get the right
+    *   level whether the page is a file of its own or a section of one document.
+    * @param site
+    *   The documented elements and their pages
+    */
+  protected def indexSections(md: Markdown, site: DocsSite): Unit = ()
+
+  /** Write sections at the end of the page about [[el]], a class, slot, enum or type. Does nothing
+    * here, and can be overridden to add sections such as a diagram of a class.
+    *
+    * @param md
+    *   Where to write. See [[indexSections]].
+    * @param site
+    *   The documented elements and their pages
+    */
+  protected def elementSections(md: Markdown, el: ElementView[?, ?], site: DocsSite): Unit = ()
 
   /** The documentation as `index.md` plus one file for each documented element, as pairs of file
     * path and content. Paths are relative to the output folder and use `/`.
@@ -90,22 +112,6 @@ final class DocsGenerator(using sv: SchemaView)
     addSections(site.enums)
     addSections(site.types)
   }
-
-  /** The Mermaid ER diagram that class pages show, of [[classes]]. Each class is an empty box, as
-    * the slot table lists its attributes already, and each slot between two of them is a line.
-    */
-  private[generator] def diagramOf(classes: Seq[ClassView]): ErDiagram =
-    erDiagrams.diagramOf(classes, optionalMarker = false, withAttributes = false, diagramLabel)
-
-  private lazy val erDiagrams = new ErDiagramGenerator
-
-  /** The label of a relationship line: the slot's name as the slot table shows it, if it is a plain
-    * identifier. Mermaid reads some words in a label as statements even inside quotes, so other
-    * names get the ER diagram's safe spelling instead.
-    */
-  private def diagramLabel(cv: ClassView, slot: SlotDefinition): String =
-    if (slot.name.forall(c => Case.isStandard(c) || c == '-')) slot.name
-    else erDiagrams.classAttributeName(cv, slot)
 
   /** One page as a string, starting with the generated header. */
   private def render(write: Markdown => Unit): String = {
@@ -160,6 +166,7 @@ final class DocsGenerator(using sv: SchemaView)
       elementTable(md, "Slots", "Slot", site.slots)(_ => "")
       elementTable(md, "Enums", "Enum", site.enums)(_ => "")
       elementTable(md, "Types", "Type", site.types)(_ => "")
+      indexSections(md, site)
     }
 
     /** A table of [[elements]] with their descriptions, under its own heading. */
@@ -201,6 +208,7 @@ final class DocsGenerator(using sv: SchemaView)
         case tv: TypeView => typePage(md, tv, from)
         case _ =>
       }
+      elementSections(md, el, site)
     }
 
     private def classPage(md: Markdown, cv: ClassView, from: Option[Page]): Unit = {
@@ -260,8 +268,6 @@ final class DocsGenerator(using sv: SchemaView)
       }
 
       usages(md, cv, from)
-
-      if (options.diagrams) diagram(md, cv)
     }
 
     /** The `is_a` ancestors of [[cv]] and its direct children, as a nested list. Left out if [[cv]]
@@ -300,24 +306,6 @@ final class DocsGenerator(using sv: SchemaView)
           md.endItem()
         }
         md.endList()
-      }
-    }
-
-    /** A Mermaid ER diagram of [[cv]] and the classes it is linked with through slots. Left out if
-      * there are no such classes, as the diagram would only repeat the slot table.
-      */
-    private def diagram(md: Markdown, cv: ClassView): Unit = {
-      val linked = mutable.HashSet(cv.name)
-      cv.sortedAttributeViews.foreach {
-        case av: ClassAttributeView if !av.classView.isAny => linked.add(av.classView.name)
-        case _ =>
-      }
-      site.usagesOf(cv).foreach(usage => linked.add(usage.classView.name))
-      if (linked.sizeIs > 1) {
-        md.heading(2, "Diagram")
-        md.startCodeBlock("mermaid")
-        diagramOf(site.classes.filter(c => linked(c.name))).writeTo(md)
-        md.endCodeBlock()
       }
     }
 
@@ -669,15 +657,11 @@ object DocsGenerator {
     * @param pruningMode
     *   Which classes to document, schemaRoot by default (classes reachable from any class defined
     *   in the root schema). The enums, types and slots these classes use are documented with them.
-    * @param diagrams
-    *   Whether to add a Mermaid ER diagram to each class page that shows the class and the classes
-    *   it is linked with. GitHub shows these diagrams on its own. Default: true
     * @param metadataLanguage
     *   Which language to use for titles and descriptions.
     */
   final case class Options(
       pruningMode: PruningMode = PruningMode.schemaRoot,
-      diagrams: Boolean = true,
       metadataLanguage: String = "en",
   ) extends HasMetadataLanguage
 
