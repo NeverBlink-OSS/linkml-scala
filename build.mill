@@ -67,6 +67,7 @@ object `package` extends Module {
       } ++ Seq(
         "cli-delivery" -> "delivery",
         "cli-file-error" -> "fileerror",
+        "cli-lock-download" -> "lockdownload",
         "declaration" -> "declaration",
         "project-result" -> "projectresult",
         "project-error" -> "projecterror",

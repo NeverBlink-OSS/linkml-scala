@@ -10,7 +10,7 @@ import eu.neverblink.linkml.runtime.*
   * @param message
   *   Human-readable explanation of the failure.
   * @param partialPath
-  *   Newly created target retained because cleanup after a failed write also failed.
+  *   Incomplete file retained after cleanup failed.
   * @param path
   *   Absolute normalized local target path.
   * @param url

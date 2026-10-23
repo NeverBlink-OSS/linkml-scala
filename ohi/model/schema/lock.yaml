@@ -1,7 +1,7 @@
 id: https://ohi.neverblink.eu/contracts/lock
 name: ohi_lock
 title: Supplied complete file lock
-description: Exact direct selections and the complete file set supplied by the application.
+description: Selected publications and their artifact files.
 prefixes:
   ohi: https://ohi.neverblink.eu/contracts/
 default_prefix: ohi
@@ -9,20 +9,19 @@ imports:
 - selection
 classes:
   Lock:
-    description: Exact direct selections and the complete file set supplied by the application.
+    description: Direct selections and their artifact files.
     tree_root: true
     slots:
     - selections
     attributes:
       format_version:
-        description: Lock record revision, independent of ontology and publication schema versions.
+        description: Version 1 omits file hashes. Version 2 requires sha256 for every file.
         range: integer
         required: true
         minimum_value: 1
-        maximum_value: 1
+        maximum_value: 2
       files:
-        description: Complete supplied artifact download records in supplied order. Each selection
-          must match one file by exact base_url and url. Each pair occurs once.
+        description: Each (base_url, url) pair is unique. Every selection matches a file by that pair.
         range: LockedFile
         required: true
         multivalued: true
@@ -30,7 +29,14 @@ classes:
         inlined_as_list: true
         list_elements_ordered: true
   LockedFile:
-    description: One artifact download identity and format. Excludes entry roots and integrity metadata.
     is_a: ArtifactSelection
     slots:
     - format
+    - sha256
+    slot_usage:
+      base_url:
+        rank: 0
+      format:
+        rank: 1
+      url:
+        rank: 2

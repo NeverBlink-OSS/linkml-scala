@@ -5,7 +5,7 @@
   "$defs": {
     "Lock": {
       "title": "Lock",
-      "description": "Exact direct selections and the complete file set supplied by the application.",
+      "description": "Direct selections and their artifact files.",
       "type": "object",
       "required": [
         "format_version",
@@ -15,14 +15,14 @@
       "properties": {
         "format_version": {
           "title": "format_version",
-          "description": "Lock record revision, independent of ontology and publication schema versions.",
+          "description": "Version 1 omits file hashes. Version 2 requires sha256 for every file.",
           "type": "integer",
           "minimum": 1,
-          "maximum": 1
+          "maximum": 2
         },
         "files": {
           "title": "files",
-          "description": "Complete supplied artifact download records in supplied order. Each selection must match one file by exact base_url and url. Each pair occurs once.",
+          "description": "Each (base_url, url) pair is unique. Every selection matches a file by that pair.",
           "type": "array",
           "items": {
             "$ref": "#/$defs/LockedFile"
@@ -41,7 +41,6 @@
     },
     "LockedFile": {
       "title": "LockedFile",
-      "description": "One artifact download identity and format. Excludes entry roots and integrity metadata.",
       "type": "object",
       "required": [
         "format",
@@ -53,6 +52,12 @@
           "$ref": "#/$defs/Format",
           "title": "format",
           "description": "Ontology language and syntax of the artifact."
+        },
+        "sha256": {
+          "title": "sha256",
+          "description": "SHA-256 of the file bytes before HTTP content encoding.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
         },
         "base_url": {
           "title": "base_url",
@@ -107,5 +112,5 @@
     }
   },
   "title": "Supplied complete file lock",
-  "description": "Exact direct selections and the complete file set supplied by the application."
+  "description": "Selected publications and their artifact files."
 }

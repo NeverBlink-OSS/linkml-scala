@@ -14,8 +14,7 @@ import eu.neverblink.linkml.runtime.*
   * @param roots
   *   Permanent absolute URLs of the entry files from which this artifact's ontology is loaded.
   * @param sha256
-  *   SHA-256 of the final immutable file bytes, before HTTP content encoding, as exactly 64
-  *   lowercase hexadecimal characters.
+  *   SHA-256 of the file bytes before HTTP content encoding.
   * @param sizeBytes
   *   Byte length of the final immutable artifact file, before HTTP content encoding. Measured from
   *   the same bytes as sha256.

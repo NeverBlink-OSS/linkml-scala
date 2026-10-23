@@ -5,9 +5,12 @@ import caseapp.core.Error
 import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.runtime.{Uri, stringify}
 import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException}
-import eu.neverblink.ohi.model.CatalogErrorJson
+import eu.neverblink.ohi.model.{CatalogErrorJson, LockException, LockFiles}
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
+import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
+
+import java.nio.file.{InvalidPathException, Path}
 
 final case class CatalogOptions(
     @HelpMessage("Emit one JSON result or error instead of human-readable output.")
@@ -43,7 +46,7 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Ba
 
   protected def execute(options: T, input: String, client: CatalogClient): String
 
-  override final def run(options: T, remainingArgs: RemainingArgs): Unit = {
+  override def run(options: T, remainingArgs: RemainingArgs): Unit = {
     val inputs = remainingArgs.all
     if inputs.size != 1 then
       err(
@@ -144,18 +147,61 @@ object Inspect extends CatalogCommand[InspectOptions] {
   ): String = CatalogOutput.publication(client.inspect(input), options.common.json)
 }
 
-@HelpMessage("Save an exact file URL into a directory without overwriting existing entries.")
-@ArgsName("<file-url>")
+@HelpMessage("Download a file or all files in a lock.")
+@ArgsName("[file-url]")
 final case class GetOptions(
     @Recurse
     common: CatalogOptions,
-    @HelpMessage("Destination directory. Missing directories are created after retrieval.")
+    @HelpMessage("Destination directory.")
     to: String,
+    @HelpMessage("Download every file in a version-2 lock.")
+    lock: Option[String] = None,
 ) extends HasCatalogOptions
 
 object Get extends CatalogCommand[GetOptions] {
   override protected def commandName: String = "get"
   override protected def argumentName: String = "file URL"
+
+  override def run(options: GetOptions, remainingArgs: RemainingArgs): Unit = options.lock match {
+    case None => super.run(options, remainingArgs)
+    case Some(suppliedPath) =>
+      if remainingArgs.all.nonEmpty then
+        err(
+          "Use either a file URL or --lock, without extra arguments. Run 'ohi get --help' for usage.",
+        )
+      val path = try Path.of(suppliedPath)
+      catch {
+        case cause: InvalidPathException =>
+          err(s"Invalid lock path: ${cause.getMessage}. Run 'ohi get --help' for usage.")
+      }
+      try {
+        val client = new CatalogClient(config(options))
+        val lock = LockFiles.read(path)
+        if lock.formatVersion != 2 then
+          throw new LockException(
+            LockError(
+              code = LockErrorCode.UnsupportedVersion,
+              operation = LockOperation.Read,
+              path = Some(suppliedPath),
+              message = s"Lock '$suppliedPath' requires format version 2 for downloads. " +
+                "Rebuild a project lock with 'ohi lock --project <directory>'. " +
+                "Regenerate a standalone lock with its originating application.",
+            ),
+          )
+        LockDownload.download(lock.files, options.to, client.get) match {
+          case Right(result) => printLine(LockDownloadOutput.result(result, options.common.json))
+          case Left(error) => err(LockDownloadOutput.error(error, options.common.json))
+        }
+      } catch {
+        case cause: (CatalogException | LockException) =>
+          err(
+            LockDownloadOutput.error(
+              LockDownloadOutput.failure(Seq.empty, cause),
+              options.common.json,
+            ),
+          )
+      }
+  }
 
   override protected def execute(
       options: GetOptions,

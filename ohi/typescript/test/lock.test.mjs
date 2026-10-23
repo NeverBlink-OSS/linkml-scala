@@ -3,22 +3,33 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { decodeLock, encodeLock, LockException } from "@neverblink/ohi";
 
-function example() {
-  return JSON.parse(readFileSync(new URL("../../examples/selection.lock.json", import.meta.url), "utf8"));
+function example(version = 1) {
+  const lock = JSON.parse(readFileSync(new URL("../../examples/selection.lock.json", import.meta.url), "utf8"));
+  if (version === 2) {
+    lock.format_version = 2;
+    lock.files[0].sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    lock.files[1].sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  }
+  return lock;
 }
 
-function assertValues(lock) {
+function assertValues(lock, version = 1) {
   assert.deepEqual(Object.keys(lock).sort(), ["files", "format_version", "selections"]);
-  assert.equal(lock.format_version, 1);
+  assert.equal(lock.format_version, version);
   assert.deepEqual(lock.selections, [{
     base_url: "https://Hub.example/releases/z/2/?v=%2F#chosen",
     url: "https://Files.example/Z%2F.ttl?download=1#file",
   }]);
-  assert.deepEqual(lock.files, [
+  const files = [
     { base_url: "https://Hub.example/releases/z/2/?v=%2F#chosen",
       url: "https://Files.example/Z%2F.ttl?download=1#file", format: "owl-turtle" },
     { base_url: "https://Hub.example/releases/a/1/", url: "https://files.example/a.yaml", format: "linkml-yaml" },
-  ]);
+  ];
+  if (version === 2) {
+    files[0].sha256 = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    files[1].sha256 = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  }
+  assert.deepEqual(lock.files, files);
 }
 
 function rejects(action, code = "INVALID_LOCK", operation = "DECODE") {
@@ -36,13 +47,23 @@ function rejects(action, code = "INVALID_LOCK", operation = "DECODE") {
   return failure;
 }
 
-test("decode preserves exact URLs, file formats and supplied order", () => {
-  assertValues(decodeLock(JSON.stringify(example())));
-});
+for (const version of [1, 2]) {
+  test(`revision ${version} decode preserves exact URLs, formats, hashes and supplied order`, () => {
+    assertValues(decodeLock(JSON.stringify(example(version))), version);
+  });
 
-test("encode emits the complete record with exact URLs, formats and order", () => {
-  assertValues(JSON.parse(encodeLock(example())));
-});
+  test(`revision ${version} encode emits exact URLs, formats, hashes and supplied order`, () => {
+    const lock = example(version);
+    if (version === 1) lock.files[0].sha256 = undefined;
+    assertValues(JSON.parse(encodeLock(lock)), version);
+  });
+
+  test(`integral revision ${version}.0 accepts required empty arrays`, () => {
+    const lock = decodeLock(`{"format_version":${version}.0,"selections":[],"files":[]}`);
+    assert.deepEqual(lock, { format_version: version, selections: [], files: [] });
+    assert.deepEqual(JSON.parse(encodeLock(lock)), { format_version: version, selections: [], files: [] });
+  });
+}
 
 test("encode preserves direct selection order", () => {
   const lock = example();
@@ -54,12 +75,6 @@ test("encode preserves direct selection order", () => {
   ]);
 });
 
-test("integral revision 1.0 accepts required empty arrays", () => {
-  const lock = decodeLock('{"format_version":1.0,"selections":[],"files":[]}');
-  assert.deepEqual(lock, { format_version: 1, selections: [], files: [] });
-  assert.deepEqual(JSON.parse(encodeLock(lock)), { format_version: 1, selections: [], files: [] });
-});
-
 test("malformed JSON retains the native parser cause", () => {
   assert.ok(rejects(() => decodeLock("{")).cause instanceof SyntaxError);
 });
@@ -69,7 +84,33 @@ test("text decoding rejects a leading BOM", () => {
 });
 
 test("unsupported integral revision takes precedence over missing revision-specific fields", () => {
-  rejects(() => decodeLock('{"format_version":2.0}'), "UNSUPPORTED_VERSION");
+  rejects(() => decodeLock('{"format_version":3.0}'), "UNSUPPORTED_VERSION");
+});
+
+for (const [name, version, sha256] of [
+  ["revision 1 hash", 1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
+  ["revision 1 null hash", 1, null],
+  ["revision 2 missing hash", 2, undefined],
+  ["revision 2 null hash", 2, null],
+  ["revision 2 uppercase hash", 2, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"],
+]) {
+  test(`decode rejects ${name}`, () => {
+    const lock = example(version);
+    lock.files[0].sha256 = sha256;
+    rejects(() => decodeLock(JSON.stringify(lock)));
+  });
+}
+
+test("revision 1 encode rejects a defined hash", () => {
+  const lock = example(2);
+  lock.format_version = 1;
+  rejects(() => encodeLock(lock), "INVALID_LOCK", "ENCODE");
+});
+
+test("revision 2 encode rejects an undefined hash", () => {
+  const lock = example(2);
+  lock.files[0].sha256 = undefined;
+  rejects(() => encodeLock(lock), "INVALID_LOCK", "ENCODE");
 });
 
 for (const [name, change] of [
@@ -130,5 +171,5 @@ test("encode enforces selection-to-file relations", () => {
 });
 
 test("encode reports unsupported revision before validating lists", () => {
-  rejects(() => encodeLock({ format_version: 2 }), "UNSUPPORTED_VERSION", "ENCODE");
+  rejects(() => encodeLock({ format_version: 3 }), "UNSUPPORTED_VERSION", "ENCODE");
 });

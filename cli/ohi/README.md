@@ -47,7 +47,7 @@ Supplying only one fails.
 
 `inspect` retrieves the exact publication URL supplied. It reports publication metadata, artifacts and dependency publication URLs.
 
-`get` saves the file under its URL filename in the `--to` directory, creating the directory if
+`get <file-url>` saves the file under its URL filename in the `--to` directory, creating the directory if
 needed. Existing files are not overwritten. Move the existing file or choose another directory
 before retrying. The result reports the saved path. If a failure leaves an incomplete file,
 the error tells you which file to remove.
@@ -57,8 +57,8 @@ with exit status 1. Argument errors can remain text even with `--json`. The resu
 defined in [SearchResult](../../ohi/model/schema/search.yaml), [Publication](../../ohi/model/schema/package.yaml)
 and [DeliveryResult](schema/cli-delivery.yaml).
 
-Use `--timeout-ms` to override the default 30000 ms timeout. Download dependency files separately
-with `get`.
+Use `--timeout-ms` to override the default 30000 ms timeout. Download dependency files individually
+with `get <file-url>` or [from a lock](#download-a-lock).
 
 ## Project commands
 
@@ -89,9 +89,24 @@ selections:
 
 Removing a selection does not delete its downloaded file. Adding a new selection rewrites `ohi.yaml` and drops its comments and formatting.
 
-For each selection, the lock also lists one artifact from each dependency of the selected publication, in the format of the selected artifact. `add` and `lock` fail when a dependency has no artifact or several artifacts in that format. Ohi does not download dependency artifacts.
+For each selection, the lock also lists one artifact from each dependency of the selected publication, in the format of the selected artifact. `add` and `lock` fail when a dependency has no artifact or several artifacts in that format. These commands do not download dependency artifacts.
 
 `--json` prints a [ProjectResult](schema/project-result.yaml) on stdout or a [ProjectError](schema/project-error.yaml) on stderr. When a command fails after writing some files, its error message lists the commands that finish the work.
+
+## Download a lock
+
+Download every file in a lock, including dependencies:
+
+```sh
+ohi get --lock ./ohi.lock.json --to ./ontologies
+```
+
+Files keep their URL filenames. Local files matching the lock's hashes are reused. Downloads are checked against
+the lock's hashes. The command stops on failure and keeps completed files. Correct the error and rerun.
+Move or remove a mismatching local file before retrying.
+
+Rebuild older project locks with `ohi lock --project <directory>` first.
+Use `--json` for [structured results and errors](schema/cli-lock-download.yaml).
 
 ## LinkML commands
 

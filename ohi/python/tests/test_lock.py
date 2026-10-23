@@ -12,8 +12,13 @@ from ohi import (
 from test_publication import EXAMPLES
 
 
-def example():
-    return json.loads((EXAMPLES / "selection.lock.json").read_text(encoding="utf-8"))
+def example(revision=1):
+    data = json.loads((EXAMPLES / "selection.lock.json").read_text(encoding="utf-8"))
+    if revision == 2:
+        data["format_version"] = 2
+        data["files"][0]["sha256"] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        data["files"][1]["sha256"] = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+    return data
 
 
 class LockAssertions(unittest.TestCase):
@@ -29,19 +34,23 @@ class LockAssertions(unittest.TestCase):
             self.assertEqual(set(data), {"code", "operation", "message", "path"})
             self.assertEqual(data["path"], os.fspath(path))
 
-    def assert_example_wire(self, data):
+    def assert_example_wire(self, data, revision=1):
         self.assertEqual(set(data), {"format_version", "selections", "files"})
-        self.assertEqual(data["format_version"], 1)
+        self.assertEqual(data["format_version"], revision)
         self.assertEqual(data["selections"], [{
             "base_url": "https://Hub.example/releases/z/2/?v=%2F#chosen",
             "url": "https://Files.example/Z%2F.ttl?download=1#file",
         }])
-        self.assertEqual(data["files"], [
+        expected_files = [
             {"base_url": "https://Hub.example/releases/z/2/?v=%2F#chosen",
              "url": "https://Files.example/Z%2F.ttl?download=1#file", "format": "owl-turtle"},
             {"base_url": "https://Hub.example/releases/a/1/",
              "url": "https://files.example/a.yaml", "format": "linkml-yaml"},
-        ])
+        ]
+        if revision == 2:
+            expected_files[0]["sha256"] = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+            expected_files[1]["sha256"] = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"
+        self.assertEqual(data["files"], expected_files)
 
 
 class LockCodecTests(LockAssertions):
@@ -51,24 +60,57 @@ class LockCodecTests(LockAssertions):
         self.assert_error(caught.exception, code, "DECODE")
 
     def test_decodes_exact_direct_and_dependency_records_in_supplied_order(self):
-        lock = decode_lock((EXAMPLES / "selection.lock.json").read_text(encoding="utf-8"))
-        self.assertIsInstance(lock, Lock)
-        self.assertIsInstance(lock.selections[0], ArtifactSelection)
-        self.assertIsInstance(lock.files[0], LockedFile)
-        self.assert_example_wire(lock.model_dump(mode="json"))
+        for revision in (1, 2):
+            with self.subTest(revision=revision):
+                lock = decode_lock(json.dumps(example(revision)))
+                self.assertIsInstance(lock, Lock)
+                self.assertIsInstance(lock.selections[0], ArtifactSelection)
+                self.assertIsInstance(lock.files[0], LockedFile)
+                self.assert_example_wire(lock.model_dump(mode="json"), revision)
 
     def test_encodes_exact_fields_and_order_with_public_publication_format(self):
-        lock = Lock.model_validate(example())
-        lock.files[0].format = Format.owl_turtle
-        self.assert_example_wire(json.loads(encode_lock(lock)))
+        for revision in (1, 2):
+            with self.subTest(revision=revision):
+                data = example(revision)
+                lock = Lock(
+                    format_version=revision,
+                    selections=[ArtifactSelection(**item) for item in data["selections"]],
+                    files=[LockedFile(**item) for item in data["files"]],
+                )
+                lock.files[0].format = Format.owl_turtle
+                self.assert_example_wire(json.loads(encode_lock(lock)), revision)
 
     def test_accepts_integral_revision_and_preserves_required_empty_arrays(self):
-        lock = decode_lock('{"format_version": 1.0, "selections": [], "files": []}')
-        self.assertIs(type(lock.format_version), int)
-        self.assertEqual(lock.selections, [])
-        self.assertEqual(lock.files, [])
-        self.assertEqual(json.loads(encode_lock(lock)),
-                         {"format_version": 1, "selections": [], "files": []})
+        for revision in (1, 2):
+            with self.subTest(revision=revision):
+                lock = decode_lock(f'{{"format_version": {revision}.0, "selections": [], "files": []}}')
+                self.assertIs(type(lock.format_version), int)
+                self.assertEqual(lock.selections, [])
+                self.assertEqual(lock.files, [])
+                self.assertEqual(json.loads(encode_lock(lock)),
+                                 {"format_version": revision, "selections": [], "files": []})
+
+    def test_rejects_revision_one_file_hashes_including_null(self):
+        for digest in ("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", None):
+            with self.subTest(digest=digest):
+                data = example()
+                data["files"][1]["sha256"] = digest
+                self.reject(data)
+
+    def test_rejects_revision_two_files_without_a_hash(self):
+        for missing in (True, False):
+            with self.subTest(missing=missing):
+                data = example(2)
+                if missing:
+                    del data["files"][1]["sha256"]
+                else:
+                    data["files"][1]["sha256"] = None
+                self.reject(data)
+
+    def test_rejects_revision_two_uppercase_hashes(self):
+        data = example(2)
+        data["files"][1]["sha256"] = "A" * 64
+        self.reject(data)
 
     def test_rejects_malformed_json_and_leading_bom(self):
         for text in ("{", "\ufeff" + json.dumps(example())):
@@ -115,7 +157,7 @@ class LockCodecTests(LockAssertions):
                 self.reject(data)
 
     def test_reports_unsupported_integer_revision_before_missing_fields(self):
-        self.reject({"format_version": 2.0}, "UNSUPPORTED_VERSION")
+        self.reject({"format_version": 3.0}, "UNSUPPORTED_VERSION")
 
     def test_rejects_missing_or_noninteger_revision(self):
         data = {"selections": [], "files": []}
@@ -182,10 +224,22 @@ class LockCodecTests(LockAssertions):
                 self.assertIsNotNone(caught.exception.__cause__)
 
     def test_encode_classifies_unsupported_constructed_revision(self):
-        lock = Lock.model_construct(format_version=2, selections=[], files=[])
+        lock = Lock.model_construct(format_version=3, selections=[], files=[])
         with self.assertRaises(LockException) as caught:
             encode_lock(lock)
         self.assert_error(caught.exception, "UNSUPPORTED_VERSION", "ENCODE")
+
+    def test_encode_rejects_revision_dependent_hash_presence(self):
+        for revision in (1, 2):
+            with self.subTest(revision=revision):
+                lock = Lock.model_validate(example(revision))
+                lock.files[1].sha256 = (
+                    "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+                    if revision == 1 else None
+                )
+                with self.assertRaises(LockException) as caught:
+                    encode_lock(lock)
+                self.assert_error(caught.exception, "INVALID_LOCK", "ENCODE")
 
 
 class LockFileTests(LockAssertions):
@@ -284,16 +338,16 @@ class LockFileTests(LockAssertions):
         self.assert_entries()
 
     def test_read_preserves_public_operation_for_unsupported_revision(self):
-        self.path.write_text('{"format_version": 2.0}', encoding="utf-8")
+        self.path.write_text('{"format_version": 3.0}', encoding="utf-8")
         with self.assertRaises(LockException) as caught:
             read_lock(self.path)
         self.assert_error(caught.exception, "UNSUPPORTED_VERSION", "READ", self.path)
-        self.assertEqual(self.path.read_bytes(), b'{"format_version": 2.0}')
+        self.assertEqual(self.path.read_bytes(), b'{"format_version": 3.0}')
         self.assert_entries(self.path.name)
 
     def test_validation_precedes_staging_and_preserves_destination(self):
         self.path.write_bytes(b"previous bytes")
-        self.lock.files.pop(0)
+        self.lock.format_version = 2
         supplied = str(self.directory) + "/./chosen.lock.json"
         with patch("ohi.lock.NamedTemporaryFile") as stage:
             with self.assertRaises(LockException) as caught:
@@ -305,7 +359,7 @@ class LockFileTests(LockAssertions):
 
     def test_write_classifies_unsupported_revision_before_missing_parent(self):
         path = self.directory / "absent" / "lock.json"
-        lock = Lock.model_construct(format_version=2, selections=[], files=[])
+        lock = Lock.model_construct(format_version=3, selections=[], files=[])
         with self.assertRaises(LockException) as caught:
             write_lock(path, lock)
         self.assert_error(caught.exception, "UNSUPPORTED_VERSION", "WRITE", path)

@@ -5,13 +5,12 @@ package eu.neverblink.ohi.model.generated.lock
 
 import eu.neverblink.linkml.runtime.*
 
-/** Exact direct selections and the complete file set supplied by the application.
+/** Direct selections and their artifact files.
   *
   * @param files
-  *   Complete supplied artifact download records in supplied order. Each selection must match one
-  *   file by exact base_url and url. Each pair occurs once.
+  *   Each (base_url, url) pair is unique. Every selection matches a file by that pair.
   * @param formatVersion
-  *   Lock record revision, independent of ontology and publication schema versions.
+  *   Version 1 omits file hashes. Version 2 requires sha256 for every file.
   * @param selections
   *   Direct publication and artifact selections in supplied order.
   * @see

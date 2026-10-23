@@ -12,7 +12,7 @@ sealed abstract class CliFileErrorCode derives Stringify
 
 object CliFileErrorCode {
 
-  /** The URL cannot supply one usable local filename for directory delivery.
+  /** The URL does not provide a usable filename.
     *
     * @see
     *   From schema: https://ohi.neverblink.eu/contracts/cli-file-error
@@ -33,10 +33,31 @@ object CliFileErrorCode {
     */
   @named("DESTINATION_EXISTS") case object DestinationExists extends CliFileErrorCode
 
-  /** Creation, writing or closing of the new target failed.
+  /** The file could not be written.
     *
     * @see
     *   From schema: https://ohi.neverblink.eu/contracts/cli-file-error
     */
   @named("FILE_WRITE_FAILED") case object FileWriteFailed extends CliFileErrorCode
+
+  /** Incompatible files or filenames at one destination.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/cli-file-error
+    */
+  @named("OUTPUT_CONFLICT") case object OutputConflict extends CliFileErrorCode
+
+  /** File contents do not match the lock's SHA-256.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/cli-file-error
+    */
+  @named("HASH_MISMATCH") case object HashMismatch extends CliFileErrorCode
+
+  /** An existing file could not be checked.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/cli-file-error
+    */
+  @named("FILE_READ_FAILED") case object FileReadFailed extends CliFileErrorCode
 }

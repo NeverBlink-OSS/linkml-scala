@@ -64,6 +64,7 @@ object LockJson {
           baseUrl = Uri(file.get("base_url").stringValue()),
           url = Uri(file.get("url").stringValue()),
           format = formats(file.get("format").stringValue()),
+          sha256 = Option(file.get("sha256")).map(_.stringValue()),
         )
       }.toSeq,
     )
@@ -74,9 +75,11 @@ object LockJson {
     val selections = data.putArray("selections")
     lock.selections.foreach(value => selections.add(selectionNode(value)))
     val files = data.putArray("files")
-    lock.files.foreach(value =>
-      files.add(selectionNode(value).put("format", stringify(value.format))),
-    )
+    lock.files.foreach { value =>
+      val file = selectionNode(value).put("format", stringify(value.format))
+      value.sha256.foreach(hash => file.put("sha256", hash))
+      files.add(file)
+    }
     validate(data, operation, path)
     mapper.writeValueAsString(data)
   }
@@ -89,13 +92,14 @@ object LockJson {
   private def validate(data: JsonNode, operation: LockOperation, path: Option[String]): Unit = {
     val revision = data.path("format_version")
     if revision.isNumber && revision.decimalValue().stripTrailingZeros().scale() <= 0 &&
-      revision.decimalValue().compareTo(java.math.BigDecimal.ONE) != 0
+      revision.decimalValue().compareTo(java.math.BigDecimal.ONE) != 0 &&
+      revision.decimalValue().compareTo(java.math.BigDecimal.valueOf(2)) != 0
     then
       throw LockException.failure(
         LockErrorCode.UnsupportedVersion,
         operation,
         path,
-        s"Lock revision $revision is unsupported. Supply revision 1 or use a reader that supports this revision.",
+        s"Lock revision $revision is unsupported. Supply revision 1 or 2, or use a reader that supports this revision.",
       )
     val errors = schema.validate(
       data,
@@ -115,7 +119,9 @@ object LockJson {
     val selections = pairs("selections")
     val files = pairs("files")
     val problem =
-      if selections.distinct.size != selections.size then
+      if data.get("files").iterator().asScala.exists(_.has("sha256") != (revision.intValue() == 2))
+      then Some("Revision 1 files must omit sha256 and revision 2 files must supply it")
+      else if selections.distinct.size != selections.size then
         Some("Each selection pair must occur once")
       else if files.distinct.size != files.size then Some("Each file pair must occur once")
       else if !selections.forall(files.toSet.contains) then
