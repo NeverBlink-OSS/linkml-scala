@@ -19,7 +19,7 @@ Expansion:
 - Nothing is guessed. If the prefix is unknown, the value is a URI as it is written, with the prefix as its scheme: without an `xsd` prefix, `xsd:string` is the URI `xsd:string`.
 - The same is true in schemas. With no `acme` prefix, `class_uri: acme:Person` is the URI `acme:Person`, and `generate shacl` writes it as `<acme:Person>`, as LinkML-Python does. It is a valid URI, but most likely not what the author meant, so declare every prefix that a schema uses.
 - A value without a colon, such as `Person`, is put after the default namespace, if there is one. In a schema, it is the namespace of `default_prefix`, or the schema's `id` if there is no `default_prefix` (see [Default `default_prefix`](implementation_differences.md#default-default_prefix)). So with `id: https://example.org/schema` and no `default_prefix`, `class_uri: Person` is `https://example.org/schema/Person`, and an annotation tag `foo` is `https://example.org/schema/foo`. This keeps generators from writing relative IRIs, such as `<Person>`, that aren't valid in RDF.
-- A value without a colon that isn't a valid CURIE, such as `John Doe`, is kept as it is written.
+- A value without a colon that isn't a valid CURIE, such as `John Doe`, is kept as it is written. It isn't a URI, so the OWL, RDFS and SHACL generators skip it where they would write it as an IRI: in mappings and other metadata, `see_also`, annotation tags, enum `meaning`s and `equals_string`.
 
 Compaction:
 

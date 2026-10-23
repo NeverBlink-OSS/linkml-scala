@@ -291,7 +291,8 @@ object OwlGenerator {
     }
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
-      * goes in the default namespace.
+      * goes in the default namespace. An annotation whose tag isn't a URI is skipped, as the tag
+      * can't be an IRI in RDF.
       *
       * @param prefixes
       *   The prefixes of the schema that defines `el`, to expand CURIEs in values
@@ -306,7 +307,7 @@ object OwlGenerator {
           b.addOne(
             Annotation(property, Metadata.inLanguage(annotationValue(v, prefixes), language)),
           )
-        a.extensionValue.yaml match {
+        if (UriCurieValidator.isValidUri(property)) a.extensionValue.yaml match {
           case Right(node) =>
             node match {
               case ScalarNode(v, _) => add(v)
@@ -328,7 +329,7 @@ object OwlGenerator {
       */
     private def annotationValue(v: String, prefixes: PrefixMap): Value =
       if v.contains("://") || v.startsWith("urn:") || v.startsWith("mailto:") then
-        if v.exists(_.isWhitespace) then Literal(v) else Iri(v)
+        if (UriCurieValidator.isValidUri(v)) Iri(v) else Literal(v)
       else {
         val colon = v.indexOf(':')
         val prefix = if colon > 0 then v.substring(0, colon) else ""
@@ -450,18 +451,20 @@ object OwlGenerator {
         }
       }
 
-    /** The value that `equals_string` means for the slot's range. */
+    /** The value that `equals_string` means for the slot's range. Nothing for a value that should
+      * be an IRI but isn't a URI, as it can't be an IRI in RDF.
+      */
     private def valueOf(s: SlotView, text: String): Option[Value] = {
-      def iri: Value = Iri(UriOrCurie.expanded(text, s.definingPrefixes).original)
-      val range = s.derivedRange.resolve.orNullFast
-      range match {
-        case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
-        case _ =>
-          Some(range match {
-            case tv: TypeView => if (tv.isIri) iri else Literal(text, Iri(baseDatatype(tv)))
-            case _: ClassView => iri
-            case _ => Literal(text)
-          })
+      def iri(uri: String): Option[Value] =
+        if (UriCurieValidator.isValidUri(uri)) new Some(Iri(uri))
+        else None
+      def expanded: Option[Value] = iri(UriOrCurie.expanded(text, s.definingPrefixes).original)
+      s.derivedRange.resolve.orNullFast match {
+        case ev: EnumView => ev.toMeaning.get(text).flatMapFast(m => iri(m.original))
+        case tv: TypeView =>
+          if (tv.isIri) expanded else new Some(Literal(text, Iri(baseDatatype(tv))))
+        case _: ClassView => expanded
+        case _ => new Some(Literal(text))
       }
     }
 
