@@ -151,17 +151,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     * (this fallback mirrors the python implementation).
     */
   def getDefaultPrefix(schema: SchemaDefinition): String =
-    schema.defaultPrefix.flatMapFast { prefix =>
-      schema.prefixes.get(prefix)
-    }.foldFast {
-      val uri = schema.id.original
-      val len = uri.length
-      if (len > 0) {
-        val ch = uri.charAt(len - 1)
-        if (ch == '#' || ch == '/') uri
-        else uri.concat("/")
-      } else "/"
-    }(_.prefixReference.original)
+    SchemaCodec.defaultNamespace(schema.id.original, schema.defaultPrefix, schema.prefixes)
 
   /** Get all elements reachable from a given starting set, following slots, ranges, inheritance and
     * other reference slots. This will run the query without schema derivation.

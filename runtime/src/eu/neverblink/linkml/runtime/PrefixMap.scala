@@ -1,5 +1,7 @@
 package eu.neverblink.linkml.runtime
 
+import eu.neverblink.linkml.runtime.FastUtils.*
+
 /** Prefixes that turn CURIEs into URIs when data is decoded, and URIs back into CURIEs when it is
   * encoded.
   *
@@ -10,6 +12,9 @@ package eu.neverblink.linkml.runtime
   *
   * When a place declares a prefix more than once, the first declaration is used.
   *
+  * A map can also have a default namespace, for values without a colon, such as the namespace of a
+  * schema's `default_prefix`.
+  *
   * Namespaces are used as they are written: nothing is added to or removed from them.
   *
   * @see
@@ -18,6 +23,8 @@ package eu.neverblink.linkml.runtime
 final class PrefixMap private (
     overrides: Seq[(String, String)],
     defaults: Seq[(String, String)],
+    // Namespace for values without a colon, or null if there is none
+    defaultNamespace: String,
     // False for a map made with `withoutCompaction`
     compacts: Boolean,
 ) {
@@ -58,13 +65,20 @@ final class PrefixMap private (
     * namespace. This is also done for a value like `http://example.org` when `http` is declared as
     * a prefix.
     *
+    * A non-empty value without a colon, such as `Person`, is put after the default namespace, if
+    * the map has one and the value is a valid CURIE.
+    *
     * @return
-    *   The URI, or null if the value has no colon or has an unknown prefix
+    *   The URI, or null if the value has an unknown prefix, or has no colon and can't be put after
+    *   the default namespace
     */
   def expandOrNull(curie: String): String = {
-    val index = if (namespaces.isEmpty) -1 else curie.indexOf(':')
-    if (index < 0) null
-    else {
+    val index = curie.indexOf(':')
+    if (index < 0) {
+      if ((defaultNamespace ne null) && !curie.isEmpty && UriCurieValidator.isValidCurie(curie))
+        defaultNamespace.concat(curie)
+      else null
+    } else {
       val ns = namespaces.get(curie.substring(0, index))
       if (ns eq null) null
       else ns.concat(curie.substring(index + 1))
@@ -105,16 +119,16 @@ final class PrefixMap private (
   /** A copy of this map that expands CURIEs as this one does, but compacts no URIs, so they are
     * written in full.
     */
-  def withoutCompaction: PrefixMap = new PrefixMap(overrides, defaults, false)
+  def withoutCompaction: PrefixMap = new PrefixMap(overrides, defaults, defaultNamespace, false)
 
   override def toString: String =
-    s"PrefixMap(overrides = $overrides, defaults = $defaults, compacts = $compacts)"
+    s"PrefixMap(overrides = $overrides, defaults = $defaults, defaultNamespace = $defaultNamespace, compacts = $compacts)"
 }
 
 object PrefixMap {
 
   /** A map with no prefixes. Decoding and encoding with it keep values as they are written. */
-  val empty: PrefixMap = new PrefixMap(Nil, Nil, true)
+  val empty: PrefixMap = new PrefixMap(Nil, Nil, null, true)
 
   /** Create a map with overrides and defaults.
     *
@@ -122,9 +136,12 @@ object PrefixMap {
     *   Prefixes that have precedence over the defaults
     * @param defaults
     *   Prefixes used when the overrides don't have them
+    * @param defaultNamespace
+    *   Namespace for values without a colon
     */
   def apply(
       overrides: Iterable[(String, String)] = Nil,
       defaults: Iterable[(String, String)] = Nil,
-  ): PrefixMap = new PrefixMap(overrides.toSeq, defaults.toSeq, true)
+      defaultNamespace: Option[String] = None,
+  ): PrefixMap = new PrefixMap(overrides.toSeq, defaults.toSeq, defaultNamespace.orNullFast, true)
 }

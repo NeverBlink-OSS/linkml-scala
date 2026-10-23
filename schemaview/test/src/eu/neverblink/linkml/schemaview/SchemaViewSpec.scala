@@ -6,7 +6,7 @@ import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import eu.neverblink.linkml.validation.{NonAsciiName, NonStandardSeparator}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import org.virtuslab.yaml.parseYaml
+import org.virtuslab.yaml.*
 
 import scala.collection.mutable
 import scala.util.{Failure, Success}
@@ -759,6 +759,48 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       val ifSv = SchemaView.loadSchemaViewFromString(schema).getOrElse(fail("bad"))
       ifSv.lintProblems.collect { case n: NonAsciiName => n.elementName } shouldBe Seq("wąż🐍")
       ifSv.lintProblems.collect { case s: NonStandardSeparator => s } shouldBe empty
+    }
+
+    "put a URI or CURIE value without a colon after the namespace of the default prefix" in {
+      val schema = parse(
+        """id: https://example.org/schema
+          |name: schema
+          |prefixes:
+          |  ex: https://example.org/ex/
+          |default_prefix: ex
+          |imports:
+          |  - core
+          |  - linkml:types
+          |annotations:
+          |  foo: bar
+          |contributors:
+          |  - John Doe
+          |classes:
+          |  Person:
+          |    class_uri: Person
+          |""".stripMargin,
+      )
+      schema.classes("Person").classUri shouldBe Some(Uri("https://example.org/ex/Person"))
+      schema.annotations("foo").extensionTag shouldBe Uri("https://example.org/ex/foo")
+      // Not a valid CURIE, so it is kept as written
+      schema.contributors shouldBe Seq(Curie("John Doe"))
+      // An import without a colon is a path relative to the importing schema
+      schema.imports shouldBe
+        Seq(Curie("core"), Uri("https://w3id.org/linkml/types"))
+      // A bare URI in the default namespace is written as a CURIE, which reads back the same
+      SchemaCodec.encode(schema).asYaml should include("class_uri: ex:Person\n")
+    }
+
+    "put a URI or CURIE value without a colon after the schema id without a default prefix" in {
+      val schema = parse(
+        """id: https://example.org/schema
+          |name: schema
+          |classes:
+          |  Person:
+          |    class_uri: Person
+          |""".stripMargin,
+      )
+      schema.classes("Person").classUri shouldBe Some(Uri("https://example.org/schema/Person"))
     }
 
     def loadSchemaResource(resource: String): SchemaDefinition = parse(Resources.read(resource))

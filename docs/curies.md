@@ -18,7 +18,8 @@ Expansion:
 - This is also done when the value looks like a URI. With `http: urn:other:` declared as a prefix, `http://example.org/a` becomes `urn:other://example.org/a`. Declaring such a prefix is the author's choice. Without it, `http://example.org/a` is kept as it is written.
 - Nothing is guessed. If the prefix is unknown, the value is a URI as it is written, with the prefix as its scheme: without an `xsd` prefix, `xsd:string` is the URI `xsd:string`.
 - The same is true in schemas. With no `acme` prefix, `class_uri: acme:Person` is the URI `acme:Person`, and `generate shacl` writes it as `<acme:Person>`, as LinkML-Python does. It is a valid URI, but most likely not what the author meant, so declare every prefix that a schema uses.
-- A value without a colon, such as `Person`, is not a URI and is kept as it is written.
+- A value without a colon, such as `Person`, is put after the default namespace, if there is one. In a schema, it is the namespace of `default_prefix`, or the schema's `id` if there is no `default_prefix` (see [Default `default_prefix`](implementation_differences.md#default-default_prefix)). So with `id: https://example.org/schema` and no `default_prefix`, `class_uri: Person` is `https://example.org/schema/Person`, and an annotation tag `foo` is `https://example.org/schema/foo`. This keeps generators from writing relative IRIs, such as `<Person>`, that aren't valid in RDF.
+- A value without a colon that isn't a valid CURIE, such as `John Doe`, is kept as it is written.
 
 Compaction:
 
@@ -87,6 +88,8 @@ A `PrefixMap` has prefixes from two places. The overrides have precedence over t
 
 1. Overrides, such as the prefixes that a document declares
 2. Defaults, for prefixes that are not in the overrides
+
+It can also have a default namespace for values without a colon: `PrefixMap(defaultNamespace = Some("http://example.org/"))` expands `blip` to `http://example.org/blip`.
 
 ```scala
 import eu.neverblink.linkml.runtime.*

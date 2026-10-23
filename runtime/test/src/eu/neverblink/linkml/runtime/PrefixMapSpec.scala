@@ -21,6 +21,16 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
       pm.expandOrNull("blip") shouldBe null
       pm.expandOrNull("http://example.org/blip") shouldBe null
     }
+    "put a value without a colon after the default namespace" in {
+      val pm = PrefixMap(defaultNamespace = Some("http://example.org/"))
+      pm.expandOrNull("blip") shouldBe "http://example.org/blip"
+      pm.withoutCompaction.expandOrNull("blip") shouldBe "http://example.org/blip"
+    }
+    "return null for an empty value or one that isn't a valid CURIE, even with a default namespace" in {
+      val pm = PrefixMap(defaultNamespace = Some("http://example.org/"))
+      pm.expandOrNull("") shouldBe null
+      pm.expandOrNull("John Doe") shouldBe null
+    }
     "expand a value that looks like a URI when its scheme is declared as a prefix" in {
       val pm = PrefixMap(defaults = Seq("http" -> "http://other.org/"))
       pm.expandOrNull("http://example.org/blip") shouldBe "http://other.org///example.org/blip"

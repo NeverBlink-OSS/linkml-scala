@@ -65,8 +65,11 @@ class ClassViewSpec extends AnyWordSpec, Matchers {
     "be the class URI and CURIE for a uriorcurie range" in {
       values("uriorcurie") shouldBe Seq("https://example.org/Sub", "ex:Sub")
     }
-    "have one value for a uriorcurie range when the class URI has no prefix" in {
-      values("uriorcurie", "Foo") shouldBe Seq("Foo")
+    "have one value for a uriorcurie range when no prefix matches the class URI" in {
+      values("uriorcurie", "urn:other:Foo") shouldBe Seq("urn:other:Foo")
+    }
+    "put a class URI without a colon after the default prefix" in {
+      values("uriorcurie", "Foo") shouldBe Seq("https://example.org/Foo", "ex:Foo")
     }
     "be empty for a type range other than a string or a URI" in {
       values("integer") shouldBe empty

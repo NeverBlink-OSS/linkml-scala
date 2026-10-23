@@ -94,8 +94,7 @@ class OssieGenerator(using sv: SchemaView)
 
   /** The element's `ai_context` extension, if it declares one. */
   private def aiContext(obj: Extensible): Option[Node] =
-    obj.extensions.values
-      .find(_.extensionTag.original == "ai_context")
+    obj.extensions.get("ai_context")
       .flatMap(ext => parseYaml(ext.extensionValue.toString).toOption)
 
   override def serialize(options: Options = Options()): String =

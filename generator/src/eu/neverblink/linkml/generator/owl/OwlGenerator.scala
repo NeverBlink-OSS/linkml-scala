@@ -291,7 +291,7 @@ object OwlGenerator {
     }
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
-      * goes in the default namespace, as in `gen-owl`.
+      * goes in the default namespace.
       *
       * @param prefixes
       *   The prefixes of the schema that defines `el`, to expand CURIEs in values

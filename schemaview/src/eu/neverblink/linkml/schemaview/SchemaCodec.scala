@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.{Codec, Prefix, Prefixes, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{PrefixMap, named, simpleDict}
+import eu.neverblink.linkml.runtime.{PrefixMap, UriOrCurie, named, simpleDict}
+import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
 
@@ -19,6 +20,11 @@ import org.virtuslab.yaml.Node
   *   3. The prefixes of the LinkML metamodel.
   *
   * The prefixes of imported schemas are never used.
+  *
+  * A value without a colon, such as `Person`, is put after the namespace of the schema's
+  * `default_prefix`, or after the schema's `id` if it has no `default_prefix` (see
+  * [[defaultNamespace]]). This isn't done for `imports`, where such a value is a path relative to
+  * the importing schema.
   */
 object SchemaCodec {
 
@@ -29,7 +35,15 @@ object SchemaCodec {
     */
   def decode(node: Node): SchemaDefinition = {
     val declared = prefixesCodec.decode(node)
-    Codec.codec.decode(node, prefixes = prefixMap(declared.prefixes, declared.defaultCuriMaps))
+    val prefixes = prefixMap(
+      declared.prefixes,
+      declared.defaultCuriMaps,
+      new Some(defaultNamespace(declared.id, declared.defaultPrefix, declared.prefixes)),
+    )
+    val imports = importsCodec
+      .decode(node, prefixes = prefixMap(declared.prefixes, declared.defaultCuriMaps, None))
+      .imports
+    Codec.codec.decode(node, prefixes = prefixes).copy(imports = imports)
   }
 
   /** Encode a schema, compacting URIs with its prefixes.
@@ -38,7 +52,7 @@ object SchemaCodec {
     *   Write URIs in full instead
     */
   def encode(schema: SchemaDefinition, fullUris: Boolean = false): Node = {
-    val prefixes = prefixMap(schema.prefixes, schema.defaultCuriMaps)
+    val prefixes = prefixMap(schema)
     Codec.codec.encode(schema, prefixes = if (fullUris) prefixes.withoutCompaction else prefixes)
   }
 
@@ -49,16 +63,44 @@ object SchemaCodec {
     */
   def prefixMap(schema: SchemaDefinition): PrefixMap = {
     schema.prefixes.values.foreach(p => new java.net.URI(p.prefixReference.original))
-    prefixMap(schema.prefixes, schema.defaultCuriMaps)
+    prefixMap(
+      schema.prefixes,
+      schema.defaultCuriMaps,
+      new Some(defaultNamespace(schema.id.original, schema.defaultPrefix, schema.prefixes)),
+    )
   }
 
-  /** Get the prefixes of a schema from its `prefixes` and `default_curi_maps`. */
-  private def prefixMap(prefixes: Map[String, Prefix], defaultCuriMaps: Seq[String]): PrefixMap =
+  /** Get the namespace of a schema's `default_prefix`. Without a `default_prefix`, or if it isn't
+    * in the schema's `prefixes`, it is the schema's `id`, with a `/` added if the `id` doesn't end
+    * with `/` or `#`, as in LinkML-Python.
+    */
+  def defaultNamespace(
+      id: String,
+      defaultPrefix: Option[String],
+      prefixes: Map[String, Prefix],
+  ): String =
+    defaultPrefix.flatMapFast(p => prefixes.get(p)).foldFast {
+      val len = id.length
+      if (len > 0) {
+        val ch = id.charAt(len - 1)
+        if (ch == '#' || ch == '/') id
+        else id.concat("/")
+      } else "/"
+    }(_.prefixReference.original)
+
+  /** Get the prefixes of a schema from its `prefixes`, `default_curi_maps` and default namespace.
+    */
+  private def prefixMap(
+      prefixes: Map[String, Prefix],
+      defaultCuriMaps: Seq[String],
+      defaultNamespace: Option[String],
+  ): PrefixMap =
     PrefixMap(
       overrides = prefixes.values.map(p => (p.prefixPrefix, p.prefixReference.original)),
       defaults =
         if (defaultCuriMaps.contains("semweb_context")) semwebContextPrefixes
         else metamodelPrefixes,
+      defaultNamespace = defaultNamespace,
     )
 
   /** The prefixes of the LinkML metamodel. */
@@ -80,8 +122,16 @@ object SchemaCodec {
   private final case class DeclaredPrefixes(
       @simpleDict prefixes: Map[String, Prefix] = Map(),
       @named("default_curi_maps") defaultCuriMaps: Seq[String] = Nil,
+      @named("default_prefix") defaultPrefix: Option[String] = None,
+      id: String = "",
   )
 
   private val prefixesCodec: LinkmlYamlCodec[DeclaredPrefixes] =
+    LinkmlYamlCodec.derived(extraSlotsAllowed = true)
+
+  /** The imports of a schema, decoded without a default namespace. */
+  private final case class DeclaredImports(imports: Seq[UriOrCurie] = Nil)
+
+  private val importsCodec: LinkmlYamlCodec[DeclaredImports] =
     LinkmlYamlCodec.derived(extraSlotsAllowed = true)
 }
