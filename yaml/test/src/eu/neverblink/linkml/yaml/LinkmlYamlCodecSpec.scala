@@ -777,6 +777,14 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         Square(kind = "https://example.org/Square", side = 5): Shape,
         "kind: https://example.org/Square\nside: 5\n",
       )
+      // A CURIE selects the implementation of the URI it expands to, with any prefix
+      val exm = PrefixMap(defaults = Seq("exm" -> "https://example.org/"))
+      codec.decode(parseYaml("kind: exm:Square\nside: 5\n").toOption.get, prefixes = exm) shouldBe
+        Square(kind = "exm:Square", side = 5)
+      // A value that expands to no known URI is still matched as it is written
+      val default = PrefixMap(defaultNamespace = Some("https://example.org/other/"))
+      codec.decode(parseYaml("kind: Circle\nradius: 3\n").toOption.get, prefixes = default) shouldBe
+        Circle(radius = 3)
       decodeError[Shape](
         "kind: Wedge\nradius: 3\n",
         "Expected a known value of type designator 'kind' at 0:6 but got:",
@@ -824,6 +832,20 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       decode[Figure]("radius: 3\nkind: Disc\n", Disc(radius = 3))
       // The CURIE selects the implementation too. The value is kept when encoding.
       roundTrip(Box(kind = "ex:Box", side = 5): Figure, "kind: ex:Box\nside: 5\n")
+      // A CURIE with another prefix for the same namespace selects the implementation of the URI
+      // it expands to
+      val exm = PrefixMap(defaults = Seq("exm" -> "https://example.org/"))
+      codec.decode(parseYaml("kind: exm:Box\nside: 5\n").toOption.get, prefixes = exm) shouldBe
+        Box(kind = "exm:Box", side = 5)
+      // Without the prefix, `exm:Box` is no known value
+      decodeError[Figure](
+        "kind: exm:Box\nside: 5\n",
+        "Expected a known value of type designator 'kind' at 0:6 but got:",
+      )
+      // A value that expands to no known URI is still matched as it is written
+      val default = PrefixMap(defaultNamespace = Some("https://example.org/other/"))
+      codec.decode(parseYaml("kind: Disc\nradius: 3\n").toOption.get, prefixes = default) shouldBe
+        Disc(radius = 3)
       decodeError[Figure](
         "kind: Wedge\nradius: 3\n",
         "Expected a known value of type designator 'kind' at 0:6 but got:",
