@@ -392,7 +392,7 @@ final class DocsGenerator(using sv: SchemaView)
             md.append("**")
             if (pv.description.isDefined) md.append(": ")
           }
-          pv.description.localized.foreachFast(md.oneLine)
+          pv.description.localized.foreachFast(md.allOnOneLine)
           md.endRow()
         }
         md.endList()
@@ -559,7 +559,7 @@ final class DocsGenerator(using sv: SchemaView)
             md.startRow()
             md.code(value)
             md.nextCell()
-            example.valueDescription.localized.foreachFast(md.oneLine)
+            example.valueDescription.localized.foreachFast(md.allOnOneLine)
             md.endRow()
           }
         }

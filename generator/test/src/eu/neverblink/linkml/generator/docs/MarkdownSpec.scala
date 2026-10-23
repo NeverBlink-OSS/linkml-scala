@@ -68,6 +68,22 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "Markdown.allOnOneLine" should {
+    "keep all paragraphs, with a break between them" in {
+      written(
+        _.allOnOneLine("First line\nsecond line.\n   \nSecond paragraph.\n\n\nThird.\n"),
+      ) shouldBe
+        "First line second line.<br><br>Second paragraph.<br><br>Third."
+    }
+  }
+
+  "Markdown.note" should {
+    "keep all lines of the text in the quote" in {
+      written(_.note("Deprecated", "\nUse New.\r\nIt is better.\n\nSee **New**.\n")) shouldBe
+        "> **Deprecated:** Use New.\n> It is better.\n>\n> See **New**.\n\n"
+    }
+  }
+
   "Markdown.code" should {
     "use a fence longer than any backtick run in the text" in {
       written(_.code("a")) shouldBe "`a`"

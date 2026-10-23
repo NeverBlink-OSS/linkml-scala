@@ -75,12 +75,28 @@ private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends C
     endBlock()
   }
 
-  /** A paragraph that starts with a bold label, such as a deprecation notice. */
+  /** A block quote that starts with a bold label, such as a deprecation notice. [[text]] is
+    * Markdown, and is written as it is, without the whitespace around it. Each of its lines gets
+    * `>` in front, so all of its paragraphs stay in the quote.
+    */
   def note(label: String, text: String): Unit = {
     sink.append("> **")
     sink.append(label)
     sink.append(":** ")
-    oneLine(text)
+    var start = 0
+    var end = text.length
+    while (start < end && Character.isWhitespace(text.charAt(start))) start += 1
+    while (end > start && Character.isWhitespace(text.charAt(end - 1))) end -= 1
+    while (start < end) {
+      val c = text.charAt(start)
+      if (c == '\n') {
+        sink.append("\n>")
+        // An empty line gets no space after `>`, so that it has no trailing whitespace.
+        if (start + 1 < end && text.charAt(start + 1) != '\n' && text.charAt(start + 1) != '\r')
+          sink.append(' ')
+      } else if (c != '\r') sink.append(c)
+      start += 1
+    }
     endBlock()
   }
 
@@ -206,15 +222,23 @@ private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends C
   /** Markdown text from the schema, such as a description, written on one line, as a table cell or
     * a list item needs.
     *
-    * Only the first paragraph is written. Each run of whitespace, including line breaks, becomes
-    * one space, and whitespace at either end is left out. Any Markdown in the text is kept.
+    * Only the first paragraph is written, for a summary of a text that is shown in full somewhere
+    * else. Each run of whitespace, including line breaks, becomes one space, and whitespace at
+    * either end is left out. Any Markdown in the text is kept.
     */
-  def oneLine(text: String): Unit = {
+  def oneLine(text: String): Unit = writeOneLine(text, allParagraphs = false)
+
+  /** Like [[oneLine]], but all paragraphs are written, with `<br><br>` between them. For a table
+    * cell that is the only place a text is shown.
+    */
+  def allOnOneLine(text: String): Unit = writeOneLine(text, allParagraphs = true)
+
+  private def writeOneLine(text: String, allParagraphs: Boolean): Unit = {
     var started = false
     var space = false
     var newlines = 0
     var i = 0
-    while (i < text.length && newlines < 2) {
+    while (i < text.length && (allParagraphs || newlines < 2)) {
       val c = text.charAt(i)
       if (c == '\n') {
         newlines += 1
@@ -223,7 +247,7 @@ private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends C
         // A line of spaces between two line breaks still ends the paragraph.
         space = started
       } else {
-        if (space) append(' ')
+        if (space) append(if (newlines >= 2) "<br><br>" else " ")
         append(c)
         started = true
         space = false

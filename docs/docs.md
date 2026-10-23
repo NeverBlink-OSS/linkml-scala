@@ -58,7 +58,9 @@ the Markdown.
 
 Every page starts with a comment saying that it is generated, then a heading with the element's
 name, a deprecation notice if the element is deprecated, and its description. The description is
-Markdown, and is copied as it is. In tables, only the first paragraph of a description is shown.
+Markdown, and is copied as it is. In a table that links to an element's page, only the first
+paragraph of its description is shown. The descriptions of permissible values and examples, which
+have no page of their own, are shown in full, with `<br><br>` between paragraphs.
 
 Headings, links and tables use the element's name as it is written in the schema. Under the
 description, a page also lists the element's other names, each only when the element has it or
