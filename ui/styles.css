@@ -791,8 +791,6 @@ body { background: var(--bg); }
 .md-page td { padding: 5px 12px; border: 1px solid var(--border); }
 .md-page th { font-weight: 600; text-align: left; background: var(--surface-2); }
 .md-page tr:nth-child(2n) td { background: var(--surface); }
-.md-page .md-diagram { margin: 0 0 14px; overflow-x: auto; }
-.md-page .md-diagram svg { display: block; height: auto; }
 
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }

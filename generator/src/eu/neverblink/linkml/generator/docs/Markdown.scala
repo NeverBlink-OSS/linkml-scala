@@ -11,7 +11,7 @@ import eu.neverblink.linkml.rdf.io.CharSink
   * Headings are shifted down by [[headingOffset]] levels, so that the same page can be a file of
   * its own (offset 0) or a section of a single document (offset 1).
   */
-private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends CharSink {
+final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends CharSink {
 
   /** Whether a table row is being written. A `|` in a cell would end the cell, even inside a code
     * span, so in a row each `|` that is not escaped yet gets a backslash.
@@ -169,16 +169,20 @@ private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends C
     inRow = false
   }
 
-  /** Start a fenced code block. Write its text with [[append]], ending with a newline, then call
-    * [[endCodeBlock]].
+  /** A fenced code block of [[text]] in [[language]], such as `mermaid` for a diagram. The text is
+    * written as it is. Its fence is longer than any run of backticks in it, so a line of the text
+    * cannot end the block early.
     */
-  def startCodeBlock(language: String): Unit = {
-    sink.append("```")
+  def codeBlock(language: String, text: String): Unit = {
+    val fence = Math.max(3, longestBacktickRun(text) + 1)
+    backticks(fence)
     sink.append(language)
     sink.append('\n')
+    sink.append(text)
+    if (!text.endsWith("\n")) sink.append('\n')
+    backticks(fence)
+    endBlock()
   }
-
-  def endCodeBlock(): Unit = sink.append("```\n\n")
 
   /** Start an HTML anchor that a link can point to with `#id`. Write the id with [[append]], then
     * call [[endAnchor]].
@@ -261,21 +265,12 @@ private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends C
   def code(text: String): Unit = {
     // A code span cannot contain its own fence, so use a longer fence than any run of backticks in
     // the text.
-    var longest = 0
-    var run = 0
-    var i = 0
-    while (i < text.length) {
-      if (text.charAt(i) == '`') {
-        run += 1
-        if (run > longest) longest = run
-      } else run = 0
-      i += 1
-    }
+    val longest = longestBacktickRun(text)
     // A space between the fence and a backtick at either end keeps them apart.
     val pad = text.startsWith("`") || text.endsWith("`")
     backticks(longest + 1)
     if (pad) append(' ')
-    i = 0
+    var i = 0
     while (i < text.length) {
       val c = text.charAt(i)
       append(if (c == '\n') ' ' else c)
@@ -296,6 +291,21 @@ private[docs] final class Markdown(sink: CharSink, headingOffset: Int) extends C
   private def digits(n: Long): Unit = {
     if (n >= 10) digits(n / 10)
     append(('0' + (n % 10)).toChar)
+  }
+
+  /** The length of the longest run of backticks in [[text]]. */
+  private def longestBacktickRun(text: String): Int = {
+    var longest = 0
+    var run = 0
+    var i = 0
+    while (i < text.length) {
+      if (text.charAt(i) == '`') {
+        run += 1
+        if (run > longest) longest = run
+      } else run = 0
+      i += 1
+    }
+    longest
   }
 
   private def backticks(count: Int): Unit = {

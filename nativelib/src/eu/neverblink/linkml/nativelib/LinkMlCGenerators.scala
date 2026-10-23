@@ -70,7 +70,7 @@ object LinkMlCGenerators {
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.erDiagram)
 
   /** Generate Markdown documentation, as a JSON object mapping filename to content. Options:
-    * `pruningMode`, `diagrams`, `metadataLanguage`.
+    * `pruningMode`, `metadataLanguage`.
     */
   @exported("linkml_docs")
   def docs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

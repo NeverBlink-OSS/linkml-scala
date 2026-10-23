@@ -1,7 +1,8 @@
 package eu.neverblink.linkml.generator.docs
 
+import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.util.PruningMode
-import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
+import eu.neverblink.linkml.schemaview.{ElementView, SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -107,28 +108,35 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "draw a diagram of a class and the classes it is linked with" in {
-      val page = files(ModelCatalogue.inheritance.model)("classes/ChildClass.md")
-      page should include(
-        """```mermaid
-          |erDiagram
-          |  BaseRefClass
-          |  ChildClass
-          |
-          |  ChildClass ||..|| BaseRefClass : "yet_another_slot"
-          |```
-          |""".stripMargin,
-      )
-      // A class with no links to other classes gets no diagram, as it would repeat the slot table.
-      files(ModelCatalogue.inheritance.model)("classes/BaseClass.md") should not include "mermaid"
-    }
+    "add the sections of a subclass at the end of the pages" in {
+      val sv = ModelCatalogue.inheritance.model
+      val generator = new DocsGenerator(using sv) {
+        override protected def indexSections(md: Markdown, site: DocsSite): Unit = {
+          md.heading(2, "Diagram")
+          md.codeBlock(
+            "mermaid",
+            ErDiagramGenerator(using sv).serialize(ErDiagramGenerator.Options()),
+          )
+        }
 
-    "leave out the diagrams when asked" in {
-      val pages = files(
-        ModelCatalogue.inheritance.model,
-        DocsGenerator.Options(diagrams = false),
-      )
-      pages.values.foreach(_ should not include "mermaid")
+        override protected def elementSections(
+            md: Markdown,
+            el: ElementView[?, ?],
+            site: DocsSite,
+        ): Unit = {
+          md.startHeading(2)
+          md.text("Notes on " + el.name)
+          md.endBlock()
+        }
+      }
+      val pages = generator.generateFiles().toMap
+      pages("index.md") should include("## Diagram\n\n```mermaid\n")
+      pages("index.md") should include("erDiagram\n")
+      pages("classes/ChildClass.md") should endWith("## Notes on ChildClass\n\n")
+      // In one document, the pages are sections, so their headings are one level lower.
+      val document = generator.serialize()
+      document should include("## Diagram\n\n```mermaid\n")
+      document should include("### Notes on ChildClass\n\n")
     }
 
     "list the classes that have a slot on the slot's page" in {

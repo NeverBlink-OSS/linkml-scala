@@ -92,6 +92,17 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "Markdown.codeBlock" should {
+    "end the text with a line break" in {
+      written(_.codeBlock("text", "x")) shouldBe "```text\nx\n```\n\n"
+      written(_.codeBlock("text", "x\n")) shouldBe "```text\nx\n```\n\n"
+    }
+
+    "use a fence longer than any backtick run in the text" in {
+      written(_.codeBlock("text", "a\n```\nb")) shouldBe "````text\na\n```\nb\n````\n\n"
+    }
+  }
+
   "Markdown.number" should {
     "write the decimal digits" in {
       written(_.number(0)) shouldBe "0"

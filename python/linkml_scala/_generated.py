@@ -293,7 +293,6 @@ class Generators:
         *,
         pruning_mode: str = "schema",
         tree_root: str | None = None,
-        diagrams: bool = True,
         metadata_language: str = "en",
     ) -> dict[str, str]:
         """Generate Markdown documentation, as a filename to content mapping.
@@ -303,15 +302,11 @@ class Generators:
             use are documented with them.
         :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
             valid with `pruning_mode="treeRoot"`.
-        :param diagrams: Whether to add a Mermaid ER diagram to each class page that shows the
-            class and the classes it is linked with. GitHub shows these diagrams on its own.
-            Default: true
         :param metadata_language: Which language to use for titles and descriptions.
         """
         return self._json(
             "linkml_docs",
             pruningMode=_pruning(pruning_mode, tree_root),
-            diagrams=diagrams,
             metadataLanguage=metadata_language,
         )
 

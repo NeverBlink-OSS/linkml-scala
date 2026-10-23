@@ -566,11 +566,6 @@ final case class DocsOptions(
     common: GenerateOptions,
     @Recurse
     pruning: PruningOptions = PruningOptions(),
-    @HelpMessage(
-      "Whether to add a Mermaid ER diagram to each class page, showing the class and the " +
-        "classes it is linked with. Default: true",
-    )
-    diagrams: Boolean = true,
     @HelpMessage("Which language to use for titles and descriptions. Default: en")
     metadataLanguage: String = "en",
 ) extends HasGenerateOptions
@@ -583,7 +578,6 @@ object Docs extends SplitGenerate[DocsOptions] {
   private def generator(options: DocsOptions): DocsGenerator.Options =
     DocsGenerator.Options(
       pruningMode = options.pruning.resolvedPruningMode,
-      diagrams = options.diagrams,
       metadataLanguage = options.metadataLanguage,
     )
 

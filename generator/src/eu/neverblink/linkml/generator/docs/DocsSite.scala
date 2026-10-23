@@ -69,7 +69,7 @@ final case class Usage(classView: ClassView, attribute: AttributeView)
   * @param singleFile
   *   Whether all pages are sections of one document, which changes how they link to each other
   */
-private[docs] final class DocsSite(pruningMode: PruningMode, singleFile: Boolean)(using
+final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolean)(using
     sv: SchemaView,
 ) {
   private val query = pruningMode.derivedQuery(false, true)
@@ -138,7 +138,7 @@ private[docs] final class DocsSite(pruningMode: PruningMode, singleFile: Boolean
   def slotPage(name: String): Option[Page] = slotPages.get(name)
 
   /** Write the link from the page [[from]] to [[to]]. `None` stands for the index page. */
-  def appendHref(out: CharSink, from: Option[Page], to: Page): Unit =
+  private[docs] def appendHref(out: CharSink, from: Option[Page], to: Page): Unit =
     if (singleFile) {
       out.append('#')
       to.appendAnchor(out)
