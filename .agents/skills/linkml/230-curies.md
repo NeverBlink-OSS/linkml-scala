@@ -4,46 +4,50 @@
 
 # URIs and CURIEs
 
-A value of type `uriorcurie` can be written as a full URI, such as `http://www.w3.org/2001/XMLSchema#string`, or as a CURIE, such as `xsd:string`.
-A CURIE is a short form: the text before the first colon is a prefix, and the prefix stands for a namespace.
-So a CURIE only means something together with the prefixes in force where it is written.
+A value of type `uriorcurie` can be a full URI, such as `http://www.w3.org/2001/XMLSchema#string`, or a CURIE, such as `xsd:string`.
+In a CURIE, the text before the first colon is a prefix that stands for a namespace, so a CURIE only means something together with the prefixes declared where it is written.
 
-LinkML-Scala follows the approach discussed in [linkml/linkml#3906](https://github.com/linkml/linkml/issues/3906):
+LinkML-Scala follows the approach discussed in [linkml/linkml#3906](https://github.com/linkml/linkml/issues/3906): CURIEs are expanded when data is read, code that works with the data only sees URIs, and URIs are compacted back to CURIEs when data is written.
+This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` are kept as they are written.
 
-- When data is read, expansion is always tried. If it fails, the value is used as a URI.
-- Code that works with the data only sees URIs.
-- When data is written, each URI is compacted to a CURIE if a known namespace matches it.
+## Reading
 
-## Rules
+| Value | Read as |
+|---|---|
+| `xsd:string`, with an `xsd` prefix | `http://www.w3.org/2001/XMLSchema#string` |
+| `acme:Person`, with no `acme` prefix | The URI `acme:Person`, with `acme` as its scheme, as in LinkML-Python |
+| `Person`, with no colon | `Person` after the default namespace, such as `https://example.org/schema/Person` |
+| `John Doe`, with no colon and not a valid CURIE | The text `John Doe` |
 
-Expansion:
+- A namespace is used as it is written, as in LinkML-Python. With `GO: http://purl.obolibrary.org/obo/GO_`, `GO:0008150` is `http://purl.obolibrary.org/obo/GO_0008150`. So a namespace needs a separator at the end: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
+- A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
+- A value with an unknown prefix is a valid URI, but most likely a mistake, and its meaning can change when it is written (see [Schemas](#schemas)). Declare every prefix that a schema uses.
+- A value that is read as text isn't a URI, so the OWL, RDFS and SHACL generators skip it where they would write an IRI: in mappings and other metadata, `see_also`, annotation tags, enum `meaning`s and `equals_string`.
 
-- The text before the first colon is the prefix. If the prefix is known, it is replaced with its namespace: `xsd:string` becomes `http://www.w3.org/2001/XMLSchema#string`.
-- This is also done when the value looks like a URI. With `http: urn:other:` declared as a prefix, `http://example.org/a` becomes `urn:other://example.org/a`. Declaring such a prefix is the author's choice. Without it, `http://example.org/a` is kept as it is written.
-- Nothing is guessed. If the prefix is unknown, the value is a URI as it is written, with the prefix as its scheme: without an `xsd` prefix, `xsd:string` is the URI `xsd:string`.
-- The same is true in schemas. With no `acme` prefix, `class_uri: acme:Person` is the URI `acme:Person`, and `generate shacl` writes it as `<acme:Person>`, as LinkML-Python does. It is a valid URI, but most likely not what the author meant, so declare every prefix that a schema uses.
-- A value without a colon, such as `Person`, is put after the default namespace, if there is one. In a schema, it is the namespace of `default_prefix`, or the schema's `id` if there is no `default_prefix` (see [Default `default_prefix`](200-limitations.md#default-default_prefix)). So with `id: https://example.org/schema` and no `default_prefix`, `class_uri: Person` is `https://example.org/schema/Person`, and an annotation tag `foo` is `https://example.org/schema/foo`. This keeps generators from writing relative IRIs, such as `<Person>`, that aren't valid in RDF.
-- A value without a colon that isn't a valid CURIE, such as `John Doe`, is kept as it is written. It isn't a URI, so the OWL, RDFS and SHACL generators skip it where they would write it as an IRI: in mappings and other metadata, `see_also`, annotation tags, enum `meaning`s and `equals_string`.
+## Writing
 
-Compaction:
+A URI is written as a CURIE with the prefix of the longest namespace it starts with.
+That CURIE is only used if its local part is not empty, doesn't start with `//` (as `ex://host/a` would look like a URL), and reads back as the same URI.
+Otherwise, the next longest namespace is tried, and if none fits, the URI is written in full.
+If two prefixes have the same namespace, the one with the highest precedence is used, and then the one declared first.
 
-- The longest namespace that the URI starts with is replaced by its prefix.
-- The result is only used if it is a valid CURIE with a non-empty local part, and it expands back to the same URI. A local part that starts with `//` is not used either, as `ex://host/a` would look like a URL. Otherwise, the next longest namespace is tried, and the URI is written in full if none fits.
-- If two prefixes have the same namespace, the one with the highest precedence (see below) is used, and then the one declared first.
-
-Slots of type `uri` or `curie` are never expanded or compacted, only slots of type `uriorcurie`.
+To write every URI in full, use the `--full-uris` flag of `generate linkml`, `from owl` and `from ossie`.
+In the APIs, it is the `fullUris` option in Scala and JavaScript, and `full_uris` in Python.
 
 ## Schemas
 
-When a schema is loaded, the CURIEs in it are expanded with the prefixes of that schema:
+Each schema is read with its own prefixes, in this order of precedence:
 
-1. The schema's own `prefixes`
+1. The schema's `prefixes`
 2. The `semweb_context` prefixes, if the schema lists `semweb_context` in `default_curi_maps`
 3. The prefixes of the LinkML metamodel (see [Emitted prefixes](200-limitations.md#emitted-prefixes))
 
-An earlier item in this list has precedence over a later one. The prefixes of imported schemas are never used.
+The prefixes of imported schemas are never used.
 
-A CURIE in an imported schema means what the imported schema's prefixes say, even if the importing schema uses the same prefix for another namespace:
+The default namespace, for values without a colon, is the namespace of `default_prefix`, or the schema's `id` if there is no `default_prefix` (see [Default `default_prefix`](200-limitations.md#default-default_prefix)).
+This is not used for `imports`, where a value without a colon is a path relative to the importing schema.
+
+So a CURIE in an imported schema keeps the meaning that the imported schema's prefixes give it, even if the importing schema uses the same prefix for another namespace:
 
 ```yaml
 # other.yaml
@@ -69,31 +73,23 @@ classes:
     class_uri: ex:Local # https://root.org/Local
 ```
 
-`generate linkml` writes one schema with the root's prefixes, so the class URI of `Imported` is written in full, as `https://other.org/Imported`.
+`generate linkml` writes one schema with the root's prefixes, so it writes the class URI of `Imported` in full, as `https://other.org/Imported`.
 In the same way, the `exact_mappings` of `string` from `linkml:types` is written as `http://schema.org/Text` when the root schema doesn't declare `schema`.
 
-A value with an unknown prefix can change its meaning when it is written with other prefixes.
-If `other.yaml` above didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`, with `ex` as its scheme.
-`generate linkml` writes it as it is, as `ex:Imported`, but the output has the root's `ex` prefix, so reading the output gives `https://root.org/Imported`.
-To avoid this, declare every prefix that a schema uses.
-
-To write every URI in full, without compacting it, use the `--full-uris` flag of `generate linkml`, `from owl` and `from ossie`.
-In the APIs, it is the `fullUris` option in Scala and JavaScript, and `full_uris` in Python.
-
-Namespaces are used as they are written, as in LinkML-Python. Nothing is added to them, so `GO: http://purl.obolibrary.org/obo/GO_` expands `GO:0008150` to `http://purl.obolibrary.org/obo/GO_0008150`.
-A namespace without a separator at the end is a mistake: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
+An unknown prefix breaks this.
+If `other.yaml` didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`.
+`generate linkml` would write it as `ex:Imported`, and reading the output with the root's `ex` prefix would give `https://root.org/Imported`.
 
 ## Data in Scala
 
 The `LinkmlYamlCodec` of generated Scala classes takes a `PrefixMap` when it decodes and encodes data.
 With the default, `PrefixMap.empty`, values are kept as they are written.
 
-A `PrefixMap` has prefixes from two places. The overrides have precedence over the defaults:
+A `PrefixMap` has:
 
-1. Overrides, such as the prefixes that a document declares
-2. Defaults, for prefixes that are not in the overrides
-
-It can also have a default namespace for values without a colon: `PrefixMap(defaultNamespace = Some("http://example.org/"))` expands `blip` to `http://example.org/blip`.
+- Overrides, such as the prefixes that a document declares
+- Defaults, for prefixes that are not in the overrides
+- An optional default namespace, for values without a colon
 
 ```scala
 import eu.neverblink.linkml.runtime.*
@@ -109,10 +105,5 @@ codec.encode(thing, prefixes = prefixes).asYaml
 // "blep: ex:blip\n"
 ```
 
-Namespaces in a `PrefixMap` are used as they are written. Nothing is added to them.
-
-### Prefixes declared in the data
-
-The codec doesn't read prefixes that a document declares, such as the `prefixes` of a LinkML schema.
-To use them, read them first and pass them as overrides.
-`SchemaCodec` does this for schemas.
+The codec doesn't read the prefixes that a document declares, such as the `prefixes` of a LinkML schema.
+To use them, read them first and pass them as overrides, as `SchemaCodec` does for schemas.
