@@ -54,11 +54,17 @@
         <button type="button" class="dir-btn" data-dir="toLinkml">To LinkML</button>
       </div>
       <div class="combo" id="targetCombo">
-        <input id="targetInput" class="combo-input" type="text" role="combobox" aria-expanded="false"
-               aria-controls="targetList" aria-autocomplete="list" aria-label="Conversion target"
-               autocomplete="off" spellcheck="false" placeholder="Search…">
-        <svg class="combo-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
-        <ul id="targetList" class="combo-list" role="listbox" aria-label="Conversion target" hidden></ul>
+        <button type="button" id="targetButton" class="combo-button" aria-haspopup="listbox"
+                aria-expanded="false" aria-controls="targetPopup" aria-label="Conversion target">
+          <span id="targetLabel" class="combo-label"></span>
+          <svg class="combo-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="targetPopup" class="combo-popup" hidden>
+          <input id="targetSearch" class="combo-search" type="text" role="combobox" aria-expanded="true"
+                 aria-controls="targetList" aria-autocomplete="list" aria-label="Search conversion targets"
+                 autocomplete="off" spellcheck="false" placeholder="Search…">
+          <ul id="targetList" class="combo-list" role="listbox" aria-label="Conversion target"></ul>
+        </div>
       </div>
       <div class="toolbar-right">
         <div class="options-row" id="optionsRow"></div>
