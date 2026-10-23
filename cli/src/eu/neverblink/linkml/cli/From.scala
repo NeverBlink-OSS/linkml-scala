@@ -53,12 +53,8 @@ abstract class From[T <: HasFromOptions: {Parser, Help}] extends BaseCommand[T] 
     val schema = new ByteArrayOutputStream()
     val in = os.read.inputStream(path)
     try convert(options, in, schema)
-    catch {
-      case e: ExitException => throw e
-      case NonFatal(e) =>
-        val reason = e.getMessage
-        err(s"Cannot import $input: ${if (reason ne null) reason else e.toString}")
-    } finally in.close()
+    catch { case NonFatal(e) => err(s"Cannot import $input", e) }
+    finally in.close()
     writeToFileOrStdout(options.common.to, out => schema.writeTo(out))
 }
 
