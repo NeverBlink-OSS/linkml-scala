@@ -324,6 +324,9 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
             |        range: uriorcurie
             |  SubThing:
             |    is_a: Thing
+            |  AcmeThing:
+            |    is_a: Thing
+            |    class_uri: acme:AcmeThing
             |  Linked:
             |    attributes:
             |      kind:
@@ -352,6 +355,11 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files("Thing.scala") should include(
         """typeDesignator.Member(classOf[SubThing], Uri("https://example.org/SubThing"), Curie("ex:SubThing")),""",
       )
+      // The default value of the designator is the URI that the codec reads, even if the URI has
+      // the shape of a CURIE, as `acme` isn't declared
+      files("SubThing.scala") should include("""Uri("https://example.org/SubThing")""")
+      files("AcmeThing.scala") should include("""Uri("acme:AcmeThing")""")
+      files("AcmeThing.scala") should not include "UriOrCurie(\""
       files("Linked.scala") should include(
         """typeDesignator.Member(classOf[SubLinked], Uri("https://example.org/SubLinked")),""",
       )
