@@ -148,11 +148,6 @@ final class DocsGenerator(using sv: SchemaView)
         link(md, cv, None)
         md.endItem()
       }
-      if (sv.schemas.sizeIs > 1) {
-        md.startItem("Imports")
-        joined(md, sv.schemas.tail)(s => md.code(s.name))
-        md.endItem()
-      }
       md.endList()
 
       elementTable(md, "Classes", "Class", site.classes) { cv =>
