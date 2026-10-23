@@ -64,14 +64,7 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
 
   /** A paragraph of Markdown, written as it is, without the whitespace around it. */
   def paragraph(text: String): Unit = {
-    var start = 0
-    var end = text.length
-    while (start < end && Character.isWhitespace(text.charAt(start))) start += 1
-    while (end > start && Character.isWhitespace(text.charAt(end - 1))) end -= 1
-    while (start < end) {
-      sink.append(text.charAt(start))
-      start += 1
-    }
+    lines(text, "")
     endBlock()
   }
 
@@ -83,6 +76,15 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     sink.append("> **")
     sink.append(label)
     sink.append(":** ")
+    lines(text, ">")
+    endBlock()
+  }
+
+  /** [[text]] without the whitespace around it, with [[prefix]] at the start of each line but the
+    * first. A space separates the prefix from the line, except on an empty line, so that it has no
+    * trailing whitespace.
+    */
+  private def lines(text: String, prefix: String): Unit = {
     var start = 0
     var end = text.length
     while (start < end && Character.isWhitespace(text.charAt(start))) start += 1
@@ -90,14 +92,15 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     while (start < end) {
       val c = text.charAt(start)
       if (c == '\n') {
-        sink.append("\n>")
-        // An empty line gets no space after `>`, so that it has no trailing whitespace.
-        if (start + 1 < end && text.charAt(start + 1) != '\n' && text.charAt(start + 1) != '\r')
-          sink.append(' ')
+        sink.append('\n')
+        sink.append(prefix)
+        if (
+          prefix.nonEmpty && start + 1 < end && text.charAt(start + 1) != '\n' &&
+          text.charAt(start + 1) != '\r'
+        ) sink.append(' ')
       } else if (c != '\r') sink.append(c)
       start += 1
     }
-    endBlock()
   }
 
   /** One item of a bullet list, as a bold label and a value written as it is. Call [[endList]]

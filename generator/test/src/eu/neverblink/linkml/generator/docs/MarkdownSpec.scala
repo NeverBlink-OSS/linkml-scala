@@ -154,6 +154,10 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
     "leave out the whitespace around the text" in {
       written(_.paragraph("\n  Text\nmore.  \n")) shouldBe "Text\nmore.\n\n"
     }
+
+    "drop carriage returns" in {
+      written(_.paragraph("a\r\nb")) shouldBe "a\nb\n\n"
+    }
   }
 
   "DocsSite.fileStem" should {
