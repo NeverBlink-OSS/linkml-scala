@@ -230,6 +230,57 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       val pages = files(sv)
       pages.keySet should contain allOf ("classes/Person.md", "classes/person_2.md")
       pages("index.md") should include("[person](classes/person_2.md)")
+      pages("classes/person_2.md") should include("- **Canonical name:** `Person`\n")
+    }
+
+    "show the other names of an element" in {
+      val sv = schemaOf(
+        """classes:
+          |  natural person:
+          |    title: Natural person
+          |    aliases: [human, individual]
+          |    slots: [birth date]
+          |    attributes:
+          |      type:
+          |slots:
+          |  birth date:
+          |    alias: birthDate
+          |enums:
+          |  Gender:
+          |    permissible_values:
+          |      female:
+          |        alias: F
+          |        title: Female
+          |        description: A woman or a girl.
+          |""".stripMargin,
+      )
+      val pages = files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip))
+      pages("classes/natural_person.md") should include(
+        """# Class: natural person
+          |
+          |- **Title:** Natural person
+          |- **Canonical name:** `NaturalPerson`
+          |- **Other names:** human, individual
+          |- **Names in code:** `NaturalPerson` (Scala, TypeScript, Python, GraphQL)
+          |- **URI:**""".stripMargin,
+      )
+      pages("classes/natural_person.md") should include(
+        "| [birth date](../slots/birth_date.md) (`birthDate` in data) |",
+      )
+      pages("classes/natural_person.md") should include("| type |")
+      pages("slots/birth_date.md") should include(
+        """# Slot: birth date
+          |
+          |- **Canonical name:** `birth_date`
+          |- **Name in data:** `birthDate`
+          |- **Names in code:** `birthDate` (Scala, TypeScript, Python), `birth_date` (GraphQL)
+          |""".stripMargin,
+      )
+      pages("enums/Gender.md") should include(
+        "| `female` (`F` in data) |  | **Female**: A woman or a girl. |\n",
+      )
+      // All the names are the same, so there is nothing more to show.
+      pages("enums/Gender.md") should include("# Enum: Gender\n\n- **URI:**")
     }
 
     "escape names and keep descriptions on one line in tables" in {
