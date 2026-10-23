@@ -849,7 +849,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
     "warn on values with an undeclared prefix" in {
       val schemaYaml =
-        s"""id: https://example.org/test
+        """id: https://example.org/test
            |name: test
            |prefixes:
            |  ex: https://example.org/
