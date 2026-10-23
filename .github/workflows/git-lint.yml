@@ -1,0 +1,107 @@
+name: Git lint
+# Git-level quality checks for PRs
+
+on:
+  pull_request:
+    branches: [ "main" ]
+    types: [ opened, edited, synchronize, reopened ]
+
+concurrency:
+  group: ${{ github.workflow }}-ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  git-lint:
+    name: Check branch name and look for issue tags
+    runs-on: ubuntu-slim
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      issue-tag: ${{ steps.branch.outputs.issue-tag }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      # The branch name is either the issue tag like `LNK-1/issue-slug` (or a bare `LNK-1`),
+      # or a personal/hotfix branch like `kacper/some-fix` or `hotfix/for-parsing`.
+      - name: Check the branch name
+        id: branch
+        run: |
+          ID="${GITHUB_HEAD_REF%%/*}"
+          if [[ "$ID" =~ ^[A-Z]+-[0-9]+$ ]]; then
+            echo "issue-tag=$ID" >> "$GITHUB_OUTPUT"
+          elif [[ ! "$ID" =~ ^[a-z0-9-]+$ ]]; then
+            echo "::error::Bad branch name: $GITHUB_HEAD_REF. Use ISSUE-123/slug or lowercase-name/slug."
+            exit 1
+          fi
+
+      # Searches the code for the issue tag, so we don't have stranded issue tags.
+      # Given a branch name like `LNK-1/make-the-repo`, this fails if there is
+      # a `TODO LNK-1` somewhere in the code. Only tracked files are searched, as whole words,
+      # so `LNK-1` doesn't match `LNK-110`. The workflows are skipped as they use `LNK-1` as an example.
+      - name: Search for the issue tag
+        if: steps.branch.outputs.issue-tag != ''
+        env:
+          ID: ${{ steps.branch.outputs.issue-tag }}
+        run: |
+          if git grep -nwF "$ID" -- ':!.github'; then
+            echo "::error::Found references to $ID. Resolve them before merging this branch."
+            exit 1
+          fi
+
+  pr-title:
+    name: Check PR title
+    needs: git-lint
+    # Skipped when the branch has no issue tag, e.g. `kacper/some-fix`.
+    if: ${{ needs.git-lint.outputs.issue-tag != '' }}
+    runs-on: ubuntu-slim
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      # The title must start with the branch's issue tag, possibly among others:
+      # `LNK-1: Make the repo` or `LNK-1, ABC-2: Make the repo`.
+      - name: Check the PR title
+        id: title
+        shell: python3 {0}
+        env:
+          BRANCH_TAG: ${{ needs.git-lint.outputs.issue-tag }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          import os, re, sys
+
+          branch_tag = os.environ["BRANCH_TAG"]
+          title = os.environ["PR_TITLE"]
+
+          match = re.match(r"([A-Z]+-[0-9]+(?:,\s*[A-Z]+-[0-9]+)*):\s+\S", title)
+          if not match:
+              print(f"::error::Bad PR title: '{title}'. Use '{branch_tag}: Title' or '{branch_tag}, ABC-123: Title'.")
+              sys.exit(1)
+
+          tags = re.split(r",\s*", match.group(1))
+          if branch_tag not in tags:
+              print(f"::error::The PR title tags ({', '.join(tags)}) don't include the branch's issue tag {branch_tag}.")
+              sys.exit(1)
+
+          # The branch's own tag is already searched for in the `git-lint` job.
+          other_tags = [tag for tag in tags if tag != branch_tag]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              print(f"other-tags={' '.join(other_tags)}", file=output)
+
+      - name: Search for title issue tags
+        if: steps.title.outputs.other-tags != ''
+        env:
+          TAGS: ${{ steps.title.outputs.other-tags }}
+        run: |
+          FOUND=0
+          for ID in $TAGS; do
+            if git grep -nwF "$ID" -- ':!.github'; then
+              echo "::error::Found references to $ID. Resolve them before merging this branch."
+              FOUND=1
+            fi
+          done
+          exit $FOUND
