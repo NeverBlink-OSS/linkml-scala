@@ -92,7 +92,7 @@ An **enum** becomes a `ValueType` extending `String`, with its permissible value
 
 ## IRIs
 
-The LinkML → Ossie generator gives every class, slot, enum and named type an `iri`: its `class_uri`, `slot_uri`, `enum_uri` or `uri`, or the URI LinkML derives when there is none. An IRI is written as a QName (basically, same thing as short IRIs in Turtle) when one of the root schema's `prefixes` covers it, and as a full IRI otherwise. Only the prefixes that some `iri` uses go into the ontology's `prefixes`.
+The LinkML → Ossie generator gives every class, slot, enum and named type an `iri`: its `class_uri`, `slot_uri`, `enum_uri` or `uri`, or the URI LinkML derives when there is none. An IRI is written as a QName (basically, same thing as short IRIs in Turtle) when one of the root schema's `prefixes` covers it, and as a full IRI otherwise. A full IRI that would be read back as a QName, such as the IRI `ex:Person` when `ex` is a declared prefix or a prefix of the LinkML metamodel, can't be written, so the generator fails with an error. Only the prefixes that some `iri` uses go into the ontology's `prefixes`.
 
 The Ossie → LinkML importer copies the ontology's `prefixes` into the schema, and expands each `iri` that is a QName, as a LinkML schema is read. The schema then writes the URI as a CURIE again, so `iri: foaf:Agent` becomes `class_uri: foaf:Agent`. The one exception is a `linkml` prefix that points anywhere other than `https://w3id.org/linkml/`. The schema needs `linkml` for its own imports, so that prefix is not copied, and any `iri` using it is written out as a full IRI instead.
 

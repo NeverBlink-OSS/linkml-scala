@@ -16,9 +16,9 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 |---|---|
 | `xsd:string`, with an `xsd` prefix | `http://www.w3.org/2001/XMLSchema#string` |
 | `acme:Person`, with no `acme` prefix | The URI `acme:Person`, with `acme` as its scheme, as in LinkML-Python |
-| `my_ns:Foo`, with no `my_ns` prefix | The CURIE `my_ns:Foo`, as `my_ns` can't be a URI scheme, which is a fatal error in a schema |
+| `my_ns:Foo`, with no `my_ns` prefix | The CURIE `my_ns:Foo`, as `my_ns` can't be a URI scheme |
 | `Person`, with no colon | `Person` after the default namespace, such as `https://example.org/schema/Person` |
-| `John Doe`, with no colon and not a valid CURIE | The text `John Doe`, which is a fatal error in a schema |
+| `John Doe`, with no colon and not a valid CURIE | The text `John Doe` |
 
 - A namespace is used as it is written, as in LinkML-Python. With `GO: http://purl.obolibrary.org/obo/GO_`, `GO:0008150` is `http://purl.obolibrary.org/obo/GO_0008150`. So a namespace needs a separator at the end: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
 - A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
