@@ -38,6 +38,48 @@ object UriOrCurie {
       else u.original
     case _ => x.original
   }
+
+  /** Check that [[s]] has the shape of a CURIE, not of a URI or a file path.
+    *
+    * It is a CURIE when the text before the first colon is a valid prefix name, the text after the
+    * colon doesn't start with `/` or `\`, as in `http://example.org` or `C:\schemas`, and the
+    * prefix is not one of the URI schemes that are not followed by `/`, such as `urn` or `mailto`.
+    */
+  def isCurie(s: String): Boolean = {
+    val index = s.indexOf(':')
+    index > 0 && {
+      var i = 0
+      var valid = true
+      while (valid && i < index) {
+        val c = s.charAt(i)
+        valid = c < 128 && (Character.isLetter(c) || c == '_' ||
+          (i > 0 && (Character.isDigit(c) || c == '-' || c == '.')))
+        i += 1
+      }
+      valid && {
+        val next = if (index + 1 < s.length) s.charAt(index + 1) else ' '
+        next != '/' && next != '\\' &&
+        !nonHierarchicalSchemes.contains(s.substring(0, index).toLowerCase)
+      }
+    }
+  }
+
+  /** URI schemes whose URIs don't have `/` after the colon, so they look like CURIEs. */
+  private val nonHierarchicalSchemes: Set[String] = Set(
+    "about",
+    "cid",
+    "data",
+    "geo",
+    "info",
+    "mailto",
+    "mid",
+    "news",
+    "sip",
+    "sips",
+    "tag",
+    "tel",
+    "urn",
+  )
 }
 
 @flatten final case class Uri(original: String) extends UriOrCurie {

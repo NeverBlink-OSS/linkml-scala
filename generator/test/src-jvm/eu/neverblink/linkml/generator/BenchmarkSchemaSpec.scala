@@ -195,6 +195,10 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "validate" in {
             assume(!skip.contains((name, "validation")), skip.getOrElse((name, "validation"), ""))
             sv.validationProblems.map(_.infer().message) shouldBe empty
+            // The URI with an undeclared prefix gets a warning
+            undeclaredPrefixUris.get(name).foreach { uri =>
+              sv.lintProblems.flatMap(_.infer().message).exists(_.contains(s"'$uri'")) shouldBe true
+            }
           }
         }
       }
@@ -220,6 +224,13 @@ object BenchmarkSchemaSpec {
         .filter(dir => os.exists(dir / "main.yaml"))
         .sortBy(_.last)
     else Seq.empty
+
+  /** Map of dataset name -> a URI with an undeclared prefix that `validate` warns about. */
+  private val undeclaredPrefixUris: Map[String, String] = Map(
+    "cdm" -> "icma:ISO20022#Val",
+    "chem-dcat-ap" -> "NCIT:C41185",
+    "nmdc_microbiome" -> "ORCID:0009-0001-1555-1601",
+  )
 
   /** Map of (dataset name, generator id) -> reason, for skipping known-failing combinations.
     */

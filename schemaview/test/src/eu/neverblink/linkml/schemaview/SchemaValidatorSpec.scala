@@ -3,7 +3,7 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.runtime.Uri
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal}
+import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal, UndeclaredCuriePrefix}
 
 class SchemaValidatorSpec extends AnyWordSpec, Matchers {
   def load(schemaYaml: String): SchemaView =
@@ -838,6 +838,36 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         msg should include(part)
       }
       msg should not include "https://example.org/docs"
+    }
+
+    "warn on values with an undeclared prefix" in {
+      val schemaYaml =
+        s"""id: https://example.org/test
+           |name: test
+           |prefixes:
+           |  ex: https://example.org/
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    class_uri: acme:Person
+           |    see_also:
+           |    - urn:isbn:0451450523
+           |    - mailto:someone@example.org
+           |    - http://example.org/docs
+           |    - ex:docs
+           |    annotations:
+           |      acme:foo: bar
+           |  OtherClass:
+           |    class_uri: Other
+           |""".stripMargin
+      val problems = load(schemaYaml).lintProblems.collect { case p: UndeclaredCuriePrefix =>
+        p.infer().message.get
+      }
+
+      problems should contain theSameElementsAs Seq(
+        "Undeclared prefix 'acme' in 'acme:Person' at /classes/SomeClass/class_uri/",
+        "Undeclared prefix 'acme' in 'acme:foo' at /classes/SomeClass/annotations/acme:foo/tag/",
+      )
     }
 
     "catch an invalid reference in an imported file" in {

@@ -116,6 +116,9 @@ CURIEs in `uriorcurie` slots are expanded to URIs when a schema is loaded, with 
 So `generate linkml` writes a URI from an imported schema in full when the output schema has no prefix for it, and a CURIE never changes its meaning when it moves into another schema.
 See [URIs and CURIEs](230-curies.md).
 
+A value with an undeclared prefix, such as `class_uri: ex:Imported` in a schema that doesn't declare `ex`, is read as a URI with `ex` as its scheme, as in LinkML-Python.
+LinkML-Scala also warns about it in `validate`, which LinkML-Python's linter doesn't.
+
 ## Default `default_range`
 
 If a `default_range` is not provided, then it will be filled with `string` (as per [the specification](https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#rule-populate-schema-metadata))
