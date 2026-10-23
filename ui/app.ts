@@ -157,7 +157,11 @@ const $outputPanel = $("outputPanel");
 const $reportView = $("reportView");
 const $diagramView = $("diagramView");
 const $outputEditorHost = $("outputEditor");
-const $targetInput = $<HTMLInputElement>("targetInput");
+const $targetCombo = $("targetCombo");
+const $targetButton = $<HTMLButtonElement>("targetButton");
+const $targetLabel = $("targetLabel");
+const $targetPopup = $("targetPopup");
+const $targetSearch = $<HTMLInputElement>("targetSearch");
 const $targetList = $("targetList");
 const $dirToggle = $("dirToggle");
 const $inputSub = $("inputSub");
@@ -216,7 +220,7 @@ function selectStep(): void {
 function pickStep(step: Step): void {
   if (direction === "fromLinkml") activeTargetId = step.id;
   else activeImporterId = step.id;
-  closeCombo();
+  closeCombo(true);
   selectStep();
 }
 
@@ -243,7 +247,7 @@ $dirToggle.addEventListener("click", (e) => {
 // ── Target combobox ─────────────────────────────────────────────────────────
 
 /** What the user has typed to narrow the list. Null means they have not typed anything since the
- * list opened, so the input is still showing the selected label and every option is on offer. */
+ * list opened, so every option is on offer. */
 let comboQuery: string | null = null;
 /** The options currently listed, in the order they are shown, with the element for each. */
 let comboItems: { step: Step; el: HTMLElement }[] = [];
@@ -251,30 +255,35 @@ let comboItems: { step: Step; el: HTMLElement }[] = [];
 let comboActive = 0;
 
 function comboOpen(): boolean {
-  return !$targetList.hidden;
+  return !$targetPopup.hidden;
 }
 
 /** Show the label of whatever is selected. Called on every render, so a change of direction or a
- * reverse lands in the input too. */
+ * reverse lands on the button too. */
 function renderCombo(): void {
+  $targetLabel.textContent = activeStep().label;
   if (comboOpen()) renderComboList();
-  else $targetInput.value = activeStep().label;
 }
 
 function openCombo(): void {
-  $targetList.hidden = false;
-  $targetInput.setAttribute("aria-expanded", "true");
+  $targetPopup.hidden = false;
+  $targetButton.setAttribute("aria-expanded", "true");
+  comboQuery = null;
+  $targetSearch.value = "";
   renderComboList();
+  $targetSearch.focus();
 }
 
-function closeCombo(): void {
+/** `returnFocus` puts focus back on the button, for when the list closes while the search box has
+ * focus - otherwise focus would fall back to the page and keyboard users would lose their place. */
+function closeCombo(returnFocus = false): void {
   if (!comboOpen()) return;
-  $targetList.hidden = true;
-  $targetInput.setAttribute("aria-expanded", "false");
-  $targetInput.removeAttribute("aria-activedescendant");
+  $targetPopup.hidden = true;
+  $targetButton.setAttribute("aria-expanded", "false");
+  $targetSearch.removeAttribute("aria-activedescendant");
   comboQuery = null;
   comboItems = [];
-  $targetInput.value = activeStep().label;
+  if (returnFocus) $targetButton.focus();
 }
 
 function renderComboList(): void {
@@ -290,7 +299,8 @@ function renderComboList(): void {
     el.setAttribute("role", "option");
     el.setAttribute("aria-selected", String(step.id === selectedId));
     el.textContent = step.label;
-    // mousedown, not click: the input's blur fires first and would close the list out from under it.
+    // mousedown, not click, with the default stopped: otherwise the search box loses focus first
+    // and the list closes out from under it.
     el.addEventListener("mousedown", (e) => {
       e.preventDefault();
       pickStep(step);
@@ -305,7 +315,7 @@ function renderComboList(): void {
     empty.className = "combo-empty";
     empty.textContent = "No match";
     $targetList.appendChild(empty);
-    $targetInput.removeAttribute("aria-activedescendant");
+    $targetSearch.removeAttribute("aria-activedescendant");
     return;
   }
   // Start on what is selected when the list opens unfiltered, and on the first hit once filtering.
@@ -320,43 +330,48 @@ function setComboActive(index: number): void {
   comboActive = (index + comboItems.length) % comboItems.length;
   comboItems.forEach((it, i) => it.el.classList.toggle("combo-option--active", i === comboActive));
   const current = comboItems[comboActive]!;
-  $targetInput.setAttribute("aria-activedescendant", current.el.id);
+  $targetSearch.setAttribute("aria-activedescendant", current.el.id);
   current.el.scrollIntoView({ block: "nearest" });
 }
 
-// Opening on click rather than on focus, so tabbing through the toolbar does not drop a list over
-// the page. The caret is pointer-events: none, so a click on it lands here too.
-$targetInput.addEventListener("click", () => {
-  if (comboOpen()) closeCombo();
+// The default is stopped so a click on the button while the list is open does not pull focus out
+// of the search box, which would close the list before the click could. Enter and Space on the
+// button still fire the click.
+$targetButton.addEventListener("mousedown", (e) => e.preventDefault());
+$targetButton.addEventListener("click", () => {
+  if (comboOpen()) closeCombo(true);
   else openCombo();
 });
-
-// Whatever is typed replaces the label outright, which is what selecting it on focus achieves.
-$targetInput.addEventListener("focus", () => $targetInput.select());
-$targetInput.addEventListener("blur", () => closeCombo());
-
-$targetInput.addEventListener("input", () => {
-  comboQuery = $targetInput.value;
-  if (!comboOpen()) openCombo();
-  else renderComboList();
+$targetButton.addEventListener("keydown", (e) => {
+  if ((e.key === "ArrowDown" || e.key === "ArrowUp") && !comboOpen()) {
+    e.preventDefault();
+    openCombo();
+  }
 });
 
-$targetInput.addEventListener("keydown", (e) => {
+// Close once focus goes anywhere outside the button and the list.
+$targetCombo.addEventListener("focusout", (e) => {
+  if (!$targetCombo.contains(e.relatedTarget as Node | null)) closeCombo();
+});
+
+$targetSearch.addEventListener("input", () => {
+  comboQuery = $targetSearch.value;
+  renderComboList();
+});
+
+$targetSearch.addEventListener("keydown", (e) => {
   if (e.key === "ArrowDown" || e.key === "ArrowUp") {
     e.preventDefault();
-    if (!comboOpen()) openCombo();
-    else setComboActive(comboActive + (e.key === "ArrowDown" ? 1 : -1));
-  } else if (e.key === "Enter" && comboOpen()) {
+    setComboActive(comboActive + (e.key === "ArrowDown" ? 1 : -1));
+  } else if (e.key === "Enter") {
     e.preventDefault();
     const pick = comboItems[comboActive];
     if (pick) pickStep(pick.step);
-  } else if (e.key === "Escape" && comboOpen()) {
+  } else if (e.key === "Escape") {
     // Kept off the page: Escape would otherwise reach an enclosing dialog or reset the field.
     e.preventDefault();
     e.stopPropagation();
-    closeCombo();
-  } else if (e.key === "Tab") {
-    closeCombo();
+    closeCombo(true);
   }
 });
 

@@ -380,12 +380,15 @@ body { background: var(--bg); }
 /* ── Target combobox ── */
 
 .combo { position: relative; }
-.combo-input {
+.combo-button {
+  display: flex;
+  align-items: center;
   width: 150px;
   font: inherit;
   font-size: 13px;
   font-weight: 500;
-  /* Room on the right for the caret, which sits over the field. */
+  text-align: left;
+  /* Room on the right for the caret, which sits over the button. */
   padding: 7px 30px 7px 11px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -393,10 +396,10 @@ body { background: var(--bg); }
   color: var(--text);
   outline: none;
   cursor: pointer;
-  text-overflow: ellipsis;
 }
-.combo-input:focus { border-color: var(--accent); cursor: text; }
-.combo-input::placeholder { color: var(--text-muted); font-weight: 400; }
+.combo-button:focus-visible,
+.combo-button[aria-expanded="true"] { border-color: var(--accent); }
+.combo-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .combo-caret {
   position: absolute;
   right: 9px;
@@ -405,26 +408,44 @@ body { background: var(--bg); }
   width: 15px;
   height: 15px;
   color: var(--text-muted);
-  /* So a click anywhere on the field, caret included, reaches the input. */
   pointer-events: none;
 }
 
-.combo-list {
+.combo-popup {
   position: absolute;
   z-index: 20;
   top: calc(100% + 4px);
   left: 0;
   min-width: 100%;
-  max-height: 320px;
-  overflow-y: auto;
-  list-style: none;
   padding: 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   box-shadow: var(--shadow);
 }
-.combo-list[hidden] { display: none; }
+.combo-popup[hidden] { display: none; }
+
+.combo-search {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+}
+.combo-search:focus { border-color: var(--accent); }
+.combo-search::placeholder { color: var(--text-muted); }
+
+.combo-list {
+  max-height: 320px;
+  overflow-y: auto;
+  list-style: none;
+}
 
 .combo-option {
   padding: 7px 11px;
