@@ -45,9 +45,10 @@ object UriOrCurie {
         if (colon > 0 && (prefixes.expandOrNull(uri) ne null)) {
           val prefix = uri.substring(0, colon)
           throw new IllegalArgumentException(
-            s"The URI '$uri' can't be written, as it would be read back as a CURIE with the " +
-              s"prefix '$prefix'. Declare the prefix '$prefix' in the schema that uses it, or " +
-              "write the full URI",
+            s"The URI '$uri' can't be written, as '$prefix' is a declared prefix, so it would be " +
+              s"read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
+              s"prefix '$prefix' where it is used. Otherwise, use a URI whose scheme isn't a " +
+              "declared prefix",
           )
         }
         uri

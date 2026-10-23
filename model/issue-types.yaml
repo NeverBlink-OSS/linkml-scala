@@ -147,9 +147,9 @@ classes:
         equals_expression: "Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}"
       details:
         equals_expression: >-
-          Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}. A valid URI must be a
-          valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'localname' is a
-          valid relative IRI reference.
+          Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}. A URI must be a valid
+          IRI. A CURIE must be of the form 'prefix:localname', where the prefix is declared in the
+          schema and 'localname' is a valid relative IRI reference.
 
   SchemaParseError:
     is_a: SchemaFatal

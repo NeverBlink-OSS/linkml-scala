@@ -204,25 +204,32 @@ private object MacroValidator {
   given curieValidator: MacroValidator[Curie] =
     validityValidator.asInstanceOf[MacroValidator[Curie]]
 
-  /** Validator for [[UriOrCurie]] values, which are expanded when they are read. A value that is
-    * still a CURIE in shape after that, such as `acme:Person`, has a prefix that isn't declared.
+  /** Validator for [[UriOrCurie]] values, which are expanded when they are read.
+    *
+    * A [[Uri]] that still has the shape of a CURIE after that, such as `acme:Person`, has a prefix
+    * that isn't declared. A [[Curie]] with a colon, such as `my_ns:Foo`, has a prefix that isn't
+    * declared and can't be a URI scheme, so it is invalid. A [[Curie]] without a colon is a
+    * relative reference, such as an import path.
     */
   given uriOrCurieValidator: MacroValidator[UriOrCurie] =
     new MacroValidator[UriOrCurie] {
       def validate(t: UriOrCurie)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult =
-        if (!t.isValid)
-          ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", t, vc.fromSchema)))
-        else
-          t match {
-            case u: Uri if UriOrCurie.isCurie(u.original) =>
-              val uri = u.original
+        t match {
+          case u: Uri =>
+            val uri = u.original
+            if (!u.isValid)
+              ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
+            else if (UriOrCurie.isCurie(uri))
               ValidatorResult(undeclaredPrefixes =
                 Seq(
                   UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema),
                 ),
               )
-            case _ => ValidatorResult.ok
-          }
+            else ValidatorResult.ok
+          case _ =>
+            if (t.isValid && t.original.indexOf(':') < 0) ValidatorResult.ok
+            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", t, vc.fromSchema)))
+        }
     }
 
   private def formatRangeType(el: Element): String = {
