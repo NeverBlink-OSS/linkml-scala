@@ -41,19 +41,24 @@ object UriOrCurie {
       val curie = prefixes.compactOrNull(uri)
       if (curie ne null) curie
       else {
-        val colon = uri.indexOf(':')
-        if (colon > 0 && (prefixes.expandOrNull(uri) ne null)) {
-          val prefix = uri.substring(0, colon)
-          throw new IllegalArgumentException(
-            s"The URI '$uri' can't be written, as '$prefix' is a declared prefix, so it would be " +
-              s"read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
-              s"prefix '$prefix' where it is used. Otherwise, use a URI whose scheme isn't a " +
-              "declared prefix",
-          )
-        }
+        if (uri.indexOf(':') > 0 && (prefixes.expandOrNull(uri) ne null))
+          throw readBackAsCurieError(uri)
         uri
       }
     case _ => x.original
+  }
+
+  /** The error for a URI that can't be written, as its text would be read back as a CURIE with a
+    * declared prefix, such as the URI `ex:Person` when `ex` is a declared prefix.
+    */
+  def readBackAsCurieError(uri: String): IllegalArgumentException = {
+    val prefix = uri.substring(0, uri.indexOf(':'))
+    new IllegalArgumentException(
+      s"The URI '$uri' can't be written, as '$prefix' is a declared prefix, so it would be " +
+        s"read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
+        s"prefix '$prefix' where it is used. Otherwise, use a URI whose scheme isn't a " +
+        "declared prefix",
+    )
   }
 
   /** Check that [[s]] has the shape of a CURIE, not of a URI or a file path.
