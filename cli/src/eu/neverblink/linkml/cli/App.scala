@@ -38,6 +38,7 @@ class App protected[cli] (
     TypeScript,
     Pydantic,
     ErDiagram,
+    Docs,
     Translation,
     Ossie,
     FromOssie,

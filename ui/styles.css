@@ -612,10 +612,12 @@ body { background: var(--bg); }
 .panel-output .editor,
 .panel-output .report,
 .panel-output .diagram,
+.panel-output .md-page,
 .panel-output .file-tabs { transition: opacity 120ms ease; }
 .panel--busy .editor,
 .panel--busy .report,
 .panel--busy .diagram,
+.panel--busy .md-page,
 .panel--busy .file-tabs { opacity: 0.45; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -623,6 +625,7 @@ body { background: var(--bg); }
   .panel-output .editor,
   .panel-output .report,
   .panel-output .diagram,
+  .panel-output .md-page,
   .panel-output .file-tabs { transition: none; }
 }
 
@@ -717,6 +720,77 @@ body { background: var(--bg); }
 .diagram-notice strong { color: var(--text); font-weight: 600; }
 .diagram-notice--error { border-color: var(--danger); }
 .diagram-notice--error strong { color: var(--danger); }
+
+/* ── Rendered Markdown page (documentation target) ──
+   Close to how GitHub shows a Markdown file, in the playground's own colours. */
+.md-page {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 32px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+.md-page[hidden] { display: none; }
+.md-page > :first-child { margin-top: 0; }
+.md-page h1,
+.md-page h2,
+.md-page h3,
+.md-page h4 {
+  margin: 24px 0 12px;
+  font-weight: 600;
+  line-height: 1.25;
+  /* Anchor links scroll a heading to the top of the panel; leave it a little room. */
+  scroll-margin-top: 8px;
+}
+.md-page h1,
+.md-page h2 { padding-bottom: 6px; border-bottom: 1px solid var(--border-subtle); }
+.md-page h1 { font-size: 1.8em; }
+.md-page h2 { font-size: 1.45em; }
+.md-page h3 { font-size: 1.2em; }
+.md-page p,
+.md-page ul,
+.md-page ol,
+.md-page table,
+.md-page pre,
+.md-page blockquote { margin: 0 0 14px; }
+.md-page ul,
+.md-page ol { padding-left: 2em; }
+.md-page li + li { margin-top: 2px; }
+.md-page a { color: var(--blue); text-decoration: none; }
+.md-page a:hover { text-decoration: underline; }
+.md-page code {
+  padding: 0.15em 0.4em;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-family: var(--code-font);
+  font-size: 85%;
+}
+.md-page pre {
+  padding: 12px 14px;
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.md-page pre code { padding: 0; background: none; font-size: 12px; }
+.md-page blockquote {
+  padding: 0 1em;
+  border-left: 3px solid var(--border);
+  color: var(--text-secondary);
+}
+.md-page table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+.md-page th,
+.md-page td { padding: 5px 12px; border: 1px solid var(--border); }
+.md-page th { font-weight: 600; text-align: left; background: var(--surface-2); }
+.md-page tr:nth-child(2n) td { background: var(--surface); }
 
 @media (max-width: 900px) {
   .split { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }

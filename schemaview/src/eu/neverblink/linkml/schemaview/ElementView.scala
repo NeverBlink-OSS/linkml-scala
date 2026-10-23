@@ -50,10 +50,11 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
     */
   final lazy val baseName: String = Case.base(name)
 
-  /** The "canonical" name of this element. This should be used for serialization if an alias is not
-    * provided. Generators should use [[aliasedName]] instead.
+  /** The "canonical" name of this element: [[name]] re-cased as is usual for its kind of element,
+    * such as `PascalCase` for classes. It is the last part of [[modelUri]]. Generators should use
+    * [[aliasedName]] for serialization instead.
     */
-  private[schemaview] def canonicalName: String
+  def canonicalName: String
 
   /** Model URI of this element. This is the fallback URI to be used for an element that does not
     * have an explicit `???_uri`, like `class_uri`.
