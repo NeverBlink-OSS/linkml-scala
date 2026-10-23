@@ -70,8 +70,9 @@ function searchResult(bytes: Uint8Array, page: number, perPage: number): SearchR
   }
   return {
     ...result,
-    hits: result.hits.map(({ base_url, namespace, name, version, title, description, formats, licenses, published_at }) =>
-      ({ base_url, namespace, name, version, title, description, formats, licenses, published_at })),
+    hits: result.hits.map(({ base_url, namespace, name, version, title, description, formats, licenses, published_at, keywords }) =>
+      ({ base_url, namespace, name, version, title, description, formats, licenses, published_at,
+        ...(keywords === undefined ? {} : { keywords }) })),
     ...(result.facet_counts === undefined ? {} : {
       facet_counts: result.facet_counts.map(({ field_name, counts }) =>
         ({ field_name, counts: counts.map(({ value, count }) => ({ value, count })) })),

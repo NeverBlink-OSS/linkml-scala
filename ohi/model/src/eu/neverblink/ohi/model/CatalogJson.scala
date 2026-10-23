@@ -107,6 +107,7 @@ private[ohi] object CatalogJson {
           description = hit.get("description").stringValue(),
           formats =
             hit.get("formats").iterator().asScala.map(value => formats(value.stringValue())).toSeq,
+          keywords = hit.path("keywords").iterator().asScala.map(_.stringValue()).toSeq,
           licenses = hit.get("licenses").iterator().asScala.map(_.stringValue()).toSeq,
           name = hit.get("name").stringValue(),
           namespace = hit.get("namespace").stringValue(),

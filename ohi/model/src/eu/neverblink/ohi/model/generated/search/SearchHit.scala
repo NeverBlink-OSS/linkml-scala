@@ -15,6 +15,8 @@ import eu.neverblink.linkml.runtime.*
   * @param formats
   *   Formats of the publication's available artifacts. Each value identifies both the ontology
   *   language and serialization syntax, as in artifact.format.
+  * @param keywords
+  *   Keywords describing the ontology's subject. An empty list means no keywords are provided.
   * @param licenses
   *   Reported license names or standard identifiers such as Apache-2.0. Empty means no information
   *   supplied. The list specifies neither AND nor OR combination semantics.
@@ -40,6 +42,7 @@ final case class SearchHit(
     baseUrl: Uri,
     description: String,
     formats: Seq[Format],
+    keywords: Seq[String] = Seq(),
     licenses: Seq[String],
     name: String,
     namespace: String,

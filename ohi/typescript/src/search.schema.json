@@ -116,6 +116,14 @@
             "$ref": "#/$defs/Format"
           }
         },
+        "keywords": {
+          "title": "keywords",
+          "description": "Keywords describing the ontology's subject. An empty list means no keywords are provided.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
         "title": {
           "title": "title",
           "description": "Display title of the ontology.",
