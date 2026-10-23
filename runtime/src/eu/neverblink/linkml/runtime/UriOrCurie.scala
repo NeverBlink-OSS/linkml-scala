@@ -55,7 +55,7 @@ object UriOrCurie {
     val prefix = uri.substring(0, uri.indexOf(':'))
     new IllegalArgumentException(
       s"The URI '$uri' can't be written, as '$prefix' is a declared prefix, so it would be " +
-        s"read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
+        "read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
         s"prefix '$prefix' where it is used. Otherwise, use a URI whose scheme isn't a " +
         "declared prefix",
     )
