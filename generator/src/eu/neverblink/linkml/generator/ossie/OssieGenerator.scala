@@ -10,9 +10,9 @@ import eu.neverblink.linkml.generator.ossie.expression.{
   Verbalization,
 }
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
-import eu.neverblink.linkml.metamodel.{Extensible, SlotDefinition}
+import eu.neverblink.linkml.metamodel.{Extensible, Prefixes, SlotDefinition}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.HasMetadataLanguage
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, PrefixMap, UriOrCurie}
 import eu.neverblink.linkml.schemaview.*
 import org.virtuslab.yaml.{Node, parseYaml}
 
@@ -295,28 +295,42 @@ object OssieGenerator {
     * Remembers which prefixes `compact` has used, so that only those get declared.
     */
   private final class Namespaces(sv: SchemaView) {
-    private val all: Seq[(String, String)] = {
+    private val declared: Seq[(String, String)] = {
       val b = Seq.newBuilder[(String, String)]
-      sv.root.prefixes.keys.foreach(p => b.addOne((p, sv.rootPrefixes.namespaceOrNull(p))))
+      sv.root.prefixes.values.foreach(p => b.addOne((p.prefixPrefix, p.prefixReference.original)))
       b.result()
     }
 
+    private val compacting = PrefixMap(overrides = declared)
+
+    // The prefixes that an IRI in the output could be read back with: the declared ones, as any of
+    // them can be in the output, and those of the metamodel, which the Ossie importer knows too
+    private val reading = PrefixMap(overrides = declared, defaults = Prefixes.map)
+
     private val usedPrefixes = mutable.Set.empty[String]
 
-    /** `iri` as a QName if a declared prefix covers it, else unchanged. */
-    def compact(iri: String): String =
-      namespaceFor(iri).fold(iri) { (prefix, ns) =>
-        usedPrefixes += prefix
-        prefix + ":" + iri.substring(ns.length)
-      }
+    /** `iri` as a QName if a declared prefix covers it, else unchanged.
+      *
+      * @throws IllegalArgumentException
+      *   if `iri` can't be shortened, but would be read back as a QName, such as the IRI
+      *   `ex:Person` when `ex` is a declared prefix
+      */
+    def compact(iri: String): String = {
+      val qName = compacting.compactOrNull(iri)
+      if (qName ne null) {
+        usedPrefixes += qName.substring(0, qName.indexOf(':'))
+        qName
+      } else if (iri.indexOf(':') > 0 && (reading.expandOrNull(iri) ne null))
+        throw UriOrCurie.readBackAsCurieError(iri)
+      else iri
+    }
 
     /** The prefixes `compact` has used so far, in the order the schema declares them. */
-    def used: VectorMap[String, String] =
-      VectorMap.from(all.filter((prefix, _) => usedPrefixes.contains(prefix)))
-
-    /** The longest namespace that `iri` starts with, leaving a local part behind. */
-    private def namespaceFor(iri: String): Option[(String, String)] =
-      all.filter((_, ns) => iri.length > ns.length && iri.startsWith(ns)).maxByOption(_._2.length)
+    def used: VectorMap[String, String] = {
+      val b = VectorMap.newBuilder[String, String]
+      declared.foreach(p => if (usedPrefixes.contains(p._1)) b.addOne(p))
+      b.result()
+    }
   }
 
   /** A relationship, plus the bits of its slot that the containing concept needs. */
