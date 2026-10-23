@@ -691,9 +691,6 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
     "leave issue messages unpopulated until the consumer infers them" in {
       val schemaYaml =
         s"""$schemaShared
-           |classes:
-           |  SomeClass:
-           |    class_uri: "not a curie!"
            |""".stripMargin
       val sv = load(schemaYaml)
 
@@ -771,9 +768,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |    permissible_values:
            |      v1:
            |""".stripMargin
-      val sv = load(schemaYaml)
-
-      val msg = validationFailure(sv, maxProblems = 20)
+      val msg = loadFailure(schemaYaml)
 
       Seq(
         "Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri",
@@ -803,9 +798,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |        slot_uri: "ex:a b"
            |        range: string
            |""".stripMargin
-      val sv = load(schemaYaml)
-
-      val msg = validationFailure(sv, maxProblems = 20)
+      val msg = loadFailure(schemaYaml)
 
       msg should include(
         "Invalid URI or CURIE 'bad mapping' at /classes/SomeClass/exact_mappings/1",
@@ -814,6 +807,37 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "Invalid URI or CURIE 'ex:a b' at /classes/SomeClass/attributes/some_attr/slot_uri",
       )
       msg should not include "ex:fine"
+    }
+
+    "fail on metadata values, annotation tags and meanings that aren't URIs or CURIEs" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    see_also:
+           |    - https://example.org/docs
+           |    - some docs
+           |    contributors:
+           |    - John Doe
+           |    annotations:
+           |      my tag: baz
+           |enums:
+           |  SomeEnum:
+           |    permissible_values:
+           |      SOME_VALUE:
+           |        meaning: not a URI
+           |""".stripMargin
+      val msg = loadFailure(schemaYaml)
+
+      Seq(
+        "Invalid URI or CURIE 'some docs' at /classes/SomeClass/see_also/1",
+        "Invalid URI or CURIE 'John Doe' at /classes/SomeClass/contributors/0",
+        "Invalid URI or CURIE 'my tag'",
+        "Invalid URI or CURIE 'not a URI' at /enums/SomeEnum/permissible_values/SOME_VALUE/meaning",
+      ) foreach { part =>
+        msg should include(part)
+      }
+      msg should not include "https://example.org/docs"
     }
 
     "catch an invalid reference in an imported file" in {

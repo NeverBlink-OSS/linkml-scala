@@ -286,7 +286,6 @@ export interface RepeatedSeparator {
 export type SchemaError =
   | EmptyName
   | InvalidKeyOrIdSlotType
-  | InvalidUriOrCurie
   | MultipleKeyOrIdSlots
   | MultipleTreeRoots
   | NonAsciiName
@@ -297,6 +296,7 @@ export type SchemaFatal =
   | CyclicReference
   | InvalidDefaultRange
   | InvalidRange
+  | InvalidUriOrCurie
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
