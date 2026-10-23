@@ -17,12 +17,13 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 | `xsd:string`, with an `xsd` prefix | `http://www.w3.org/2001/XMLSchema#string` |
 | `acme:Person`, with no `acme` prefix | The URI `acme:Person`, with `acme` as its scheme, as in LinkML-Python |
 | `Person`, with no colon | `Person` after the default namespace, such as `https://example.org/schema/Person` |
-| `John Doe`, with no colon and not a valid CURIE | The text `John Doe` |
+| `John Doe`, with no colon and not a valid CURIE | The text `John Doe`, which is a fatal error in a schema |
 
 - A namespace is used as it is written, as in LinkML-Python. With `GO: http://purl.obolibrary.org/obo/GO_`, `GO:0008150` is `http://purl.obolibrary.org/obo/GO_0008150`. So a namespace needs a separator at the end: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
 - A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
 - A value with an unknown prefix is a valid URI, but most likely a mistake, and its meaning can change when it is written (see [Schemas](#schemas)). Declare every prefix that a schema uses.
-- A value that is read as text isn't a URI, so the OWL, RDFS and SHACL generators skip it where they would write an IRI: in mappings and other metadata, `see_also`, annotation tags, enum `meaning`s and `equals_string`.
+- In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`.
+- `equals_string` is a plain string, so it is checked only when the OWL generator writes it as an IRI, for a slot whose range is a URI type or a class. The generator stops with an error if the value isn't a URI or CURIE.
 
 ## Writing
 

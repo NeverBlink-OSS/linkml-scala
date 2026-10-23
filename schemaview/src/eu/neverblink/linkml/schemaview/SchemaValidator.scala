@@ -134,7 +134,7 @@ final class SchemaValidator(using sv: SchemaView) {
     else new Some(new UndefinedDefaultRange(location = rootLocation))
 
   /** Any malformed URI or CURIE values in the schema. */
-  private lazy val invalidUriOrCuries: Seq[SchemaError] =
+  private lazy val invalidUriOrCuries: Seq[SchemaFatal] =
     macroResult.invalidUriOrCuries.map(value =>
       new InvalidUriOrCurie(
         location = at(value.path, value.fromSchema),
@@ -539,6 +539,7 @@ final class SchemaValidator(using sv: SchemaView) {
   lazy val fatalProblems: Seq[SchemaFatal] = {
     val problems = unknownReferences ++
       invalidRangeTypes ++
+      invalidUriOrCuries ++
       usedUndefinedDefaultRange ++
       schemaIdClash
     // Looking for loops follows references, so it needs all of them to resolve.
@@ -551,7 +552,6 @@ final class SchemaValidator(using sv: SchemaView) {
       multipleTreeRoots ++
       nonUniqueNames ++
       unknownPrefixes ++
-      invalidUriOrCuries ++
       namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */

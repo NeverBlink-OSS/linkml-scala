@@ -342,8 +342,7 @@ object OwlGenerator {
     }
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
-      * goes in the default namespace. An annotation whose tag isn't a URI is skipped, as the tag
-      * can't be an IRI in RDF.
+      * goes in the default namespace.
       *
       * @param prefixes
       *   The prefixes of the schema that defines `el`, to expand CURIEs in values
@@ -360,7 +359,7 @@ object OwlGenerator {
           b.addOne(
             Annotation(property, Metadata.inLanguage(annotationValue(v, prefixes), language)),
           )
-        if (UriCurieValidator.isValidUri(property)) a.extensionValue.yaml match {
+        a.extensionValue.yaml match {
           case Right(node) =>
             node match {
               case ScalarNode(v, _) => add(v)
@@ -548,22 +547,25 @@ object OwlGenerator {
         }
       }
 
-    /** The value that `equals_string` means for the slot's range. Nothing for a value that should
-      * be an IRI but isn't a URI, as it can't be an IRI in RDF.
+    /** The value that `equals_string` means for the slot's range.
+      *
+      * @throws IllegalArgumentException
+      *   if the value should be an IRI but isn't a URI
       */
     private def valueOf(s: SlotView, text: String): Option[Value] = {
-      def iri(uri: String): Option[Value] =
-        if (UriCurieValidator.isValidUri(uri)) new Some(Iri(uri))
-        else None
-
-      def expanded: Option[Value] = iri(UriOrCurie.expanded(text, s.definingPrefixes).original)
-
+      def iri: Value = {
+        val uri = UriOrCurie.expanded(text, s.definingPrefixes).original
+        if (UriCurieValidator.isValidUri(uri)) Iri(uri)
+        else
+          throw IllegalArgumentException(
+            s"The equals_string value '$text' of slot '${s.name}' isn't a valid URI or CURIE",
+          )
+      }
       s.derivedRange.resolve.orNullFast match {
-        case ev: EnumView => ev.toMeaning.get(text).flatMapFast(m => iri(m.original))
+        case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
         case tv: TypeView =>
-          if (tv.isIri) expanded
-          else new Some(Literal(text, Iri(baseDatatype(tv))))
-        case _: ClassView => expanded
+          new Some(if (tv.isIri) iri else Literal(text, Iri(baseDatatype(tv))))
+        case _: ClassView => new Some(iri)
         case _ => new Some(Literal(text))
       }
     }

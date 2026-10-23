@@ -32,10 +32,10 @@ final case class InvalidUriOrCurie(
     location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
-    severity: IssueSeverity = IssueSeverity.Error,
+    severity: IssueSeverity = IssueSeverity.Fatal,
     @named("uri_or_curie")
     uriOrCurie: UriOrCurie,
-) extends SchemaError {
+) extends SchemaFatal {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.

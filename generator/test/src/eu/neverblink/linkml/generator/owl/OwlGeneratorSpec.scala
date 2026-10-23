@@ -185,29 +185,18 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       } shouldBe empty
     }
 
-    "skip metadata values and annotation tags that aren't URIs" in {
-      val schema = schemaOf(
+    "fail on an equals_string value that should be an IRI but isn't a URI" in {
+      val error = the[IllegalArgumentException] thrownBy ontologyOf(
         """classes:
-          |  Dog:
-          |    see_also:
-          |      - https://example.org/dogs
-          |      - dog docs
-          |    contributors:
-          |      - John Doe
-          |    annotations:
-          |      foo: bar
-          |      my tag: baz
+          |  Book:
+          |    attributes:
+          |      author:
+          |        range: uriorcurie
+          |        equals_string: John Doe
           |""",
       )
-      val annotations = OwlGenerator(using schema).ontology().axioms.collect {
-        case AnnotationAssertion(s, a, _) if s == ns + "Dog" => a.property -> a.value
-      }
-      annotations should contain theSameElementsAs Seq(
-        "http://www.w3.org/2000/01/rdf-schema#seeAlso" -> Iri("https://example.org/dogs"),
-        ns + "foo" -> Literal("bar"),
-      )
-      // The output is valid RDF
-      triplesOf(schema) should not be empty
+      error.getMessage shouldBe
+        "The equals_string value 'John Doe' of slot 'author' isn't a valid URI or CURIE"
     }
 
     "write descriptions as rdfs:comment, or as skos:definition when asked" in {

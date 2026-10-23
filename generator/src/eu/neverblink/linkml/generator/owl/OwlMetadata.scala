@@ -486,16 +486,11 @@ object Metadata {
       case (_, PlainText(v)) => Seq(Literal(v))
       case (_, MultilingualText(mapping)) =>
         mapping.toSeq.sortBy(_._1).map((lang, v) => LanguageLiteral(v, lang))
-      case (Kind.Reference, v: String) => iri(v)
-      case (Kind.Reference, v: UriOrCurie) => iri(v.original)
+      case (Kind.Reference, v: String) => Seq(Iri(v))
+      case (Kind.Reference, v: UriOrCurie) => Seq(Iri(v.original))
       case (_, v: UriOrCurie) => Seq(Literal(v.original))
       case (Kind.DateTime, v: String) => Seq(Literal(v, XmlSchema.dateTime))
       case (Kind.Flag, _) => Seq(Literal("true", XmlSchema.boolean))
       case (_, v: String) => Seq(Literal(v))
     }
-
-  /** The value as an IRI, or nothing if it isn't a URI, as it can't be an IRI in RDF. */
-  private def iri(v: String): Seq[Node] =
-    if (UriCurieValidator.isValidUri(v)) Seq(Iri(v))
-    else Nil
 }
