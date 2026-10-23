@@ -2,7 +2,11 @@ package eu.neverblink.linkml.generator.docs
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.erdiagram.{ErDiagram, ErDiagramGenerator}
-import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode}
+import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
+import eu.neverblink.linkml.generator.pydantic.PydanticRenamer
+import eu.neverblink.linkml.generator.scala.ScalaRenamer
+import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
+import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode, Renamer}
 import eu.neverblink.linkml.metamodel.{CommonMetadata, Element, SlotDefinition}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -189,6 +193,7 @@ final class DocsGenerator(using sv: SchemaView)
       md.endBlock()
       deprecation(md, meta(el))
       meta(el).description.localized.foreachFast(md.paragraph)
+      nameItems(md, el)
       el match {
         case cv: ClassView => classPage(md, cv, from)
         case s: SlotView => slotPage(md, s, from)
@@ -373,9 +378,20 @@ final class DocsGenerator(using sv: SchemaView)
         values.foreach { pv =>
           md.startRow()
           md.code(pv.text)
+          pv.alias.foreachFast { a =>
+            md.append(" (")
+            md.code(a)
+            md.append(" in data)")
+          }
           md.nextCell()
           pv.meaning.foreachFast(m => uri(md, m, ev.definingPrefixResolver))
           md.nextCell()
+          pv.title.localized.foreachFast { t =>
+            md.append("**")
+            md.text(t)
+            md.append("**")
+            if (pv.description.isDefined) md.append(": ")
+          }
           pv.description.localized.foreachFast(md.oneLine)
           md.endRow()
         }
@@ -439,20 +455,76 @@ final class DocsGenerator(using sv: SchemaView)
       slot.ifabsent.foreachFast(v => codeItem(md, "Default", v))
     }
 
-    /** List items for the metadata that every element can have. */
-    private def metadataItems(md: Markdown, el: ElementView[?, ?]): Unit = {
+    /** List items for the names of [[el]] other than its name in the schema, which is in the
+      * heading:
+      *   - its title, a name for people to read,
+      *   - its canonical name, the end of its default URI, if it is different,
+      *   - for a slot, its name in data such as JSON, if it has an `alias`,
+      *   - its other names, from `aliases`, which are only for people and searches,
+      *   - the names that generated code gives it, if any of them is different.
+      */
+    private def nameItems(md: Markdown, el: ElementView[?, ?]): Unit = {
       val m = meta(el)
-      given PrefixResolver = el.definingPrefixResolver
+      val name = el.name
       m.title.localized.foreachFast { t =>
         md.startItem("Title")
         md.text(t)
         md.endItem()
       }
+      if (el.canonicalName != name) codeItem(md, "Canonical name", el.canonicalName)
+      el match {
+        case s: SlotView if s.aliasedName != name => codeItem(md, "Name in data", s.aliasedName)
+        case _ =>
+      }
       if (m.aliases.nonEmpty) {
-        md.startItem("Aliases")
+        md.startItem("Other names")
         joined(md, m.aliases)(a => md.text(a.localized))
         md.endItem()
       }
+      val names = codeNames(el)
+      if (names.exists(_._2 != name)) {
+        md.startItem("Names in code")
+        // Targets that give the same name are listed together, like `PersonName` (Scala, Python).
+        val targets = mutable.LinkedHashMap.empty[String, mutable.ListBuffer[String]]
+        names.foreach((target, codeName) =>
+          targets.getOrElseUpdate(codeName, mutable.ListBuffer.empty).addOne(target),
+        )
+        joined(md, targets) { (codeName, ts) =>
+          md.code(codeName)
+          md.append(" (")
+          md.append(ts.mkString(", "))
+          md.append(')')
+        }
+        md.endItem()
+      }
+    }
+
+    /** The names that the code generators give [[el]], as pairs of target language and name. Types
+      * are left out, as the generated code mostly uses built-in types for them.
+      */
+    private def codeNames(el: ElementView[?, ?]): Seq[(String, String)] = el match {
+      case cv: ClassView => codeTargets.map((target, r) => (target, r.className(cv)))
+      case ev: EnumView => codeTargets.map((target, r) => (target, r.enumName(ev)))
+      case s: SlotView =>
+        codeTargets.map { (target, r) =>
+          // Python fields are named after the slot's name in data, made a valid identifier.
+          if (r eq PydanticRenamer) (target, PydanticRenamer.attribute(s.aliasedName, pythonNames))
+          else (target, r.slotName(s))
+        }
+      case _ => Nil
+    }
+
+    /** The names of the documented classes and enums in Python, which fields do not take. The
+      * Python generator also keeps a few more names, such as those of class unions, so a field that
+      * takes one of them is named differently there.
+      */
+    private lazy val pythonNames: Set[String] =
+      site.classes.map(PydanticRenamer.className).toSet ++ site.enums.map(PydanticRenamer.enumName)
+
+    /** List items for the metadata that every element can have. */
+    private def metadataItems(md: Markdown, el: ElementView[?, ?]): Unit = {
+      val m = meta(el)
+      given PrefixResolver = el.definingPrefixResolver
       urisItem(md, "Exact mappings", m.exactMappings)
       urisItem(md, "Close mappings", m.closeMappings)
       urisItem(md, "Related mappings", m.relatedMappings)
@@ -535,7 +607,7 @@ final class DocsGenerator(using sv: SchemaView)
     }
 
     /** The name of a slot of [[cv]], linked to the slot's page if it is a documented top-level
-      * slot.
+      * slot, and its name in data if it has an `alias`.
       */
     private def slotName(
         md: Markdown,
@@ -543,9 +615,15 @@ final class DocsGenerator(using sv: SchemaView)
         av: AttributeView,
         from: Option[Page],
     ): Unit = {
-      val name = av.slotView.name
+      val slot = av.slotView
+      val name = slot.name
       val page = if (site.isTopLevelSlot(cv, name)) site.slotPage(name) else None
       page.foldFast(md.text(name))(p => pageLink(md, name, from, p))
+      if (slot.aliasedName != name) {
+        md.append(" (")
+        md.code(slot.aliasedName)
+        md.append(" in data)")
+      }
     }
 
     private def slotMarker(slot: SlotDefinition): String =
@@ -602,6 +680,14 @@ object DocsGenerator {
       diagrams: Boolean = true,
       metadataLanguage: String = "en",
   ) extends HasMetadataLanguage
+
+  /** The code generators whose names element pages show, by the language they write. */
+  private val codeTargets: Seq[(String, Renamer)] = Seq(
+    ("Scala", ScalaRenamer),
+    ("TypeScript", TypeScriptRenamer),
+    ("Python", PydanticRenamer),
+    ("GraphQL", GraphQlRenamer),
+  )
 
   /** The metadata of [[el]], which every kind of element has. */
   private def meta(el: ElementView[?, ?]): CommonMetadata = el.inner.asInstanceOf[Element]

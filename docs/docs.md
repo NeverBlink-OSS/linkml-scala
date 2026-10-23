@@ -60,6 +60,25 @@ Every page starts with a comment saying that it is generated, then a heading wit
 name, a deprecation notice if the element is deprecated, and its description. The description is
 Markdown, and is copied as it is. In tables, only the first paragraph of a description is shown.
 
+Headings, links and tables use the element's name as it is written in the schema. Under the
+description, a page also lists the element's other names, each only when the element has it or
+when it is different from that name:
+
+- **Title:** the `title`, a name for people to read.
+- **Canonical name:** the name re-cased as is usual for the kind of element, like `PascalCase`
+  for classes and enums and `snake_case` for slots. It is the end of the element's URI when there
+  is no `class_uri`, `slot_uri` and so on.
+- **Name in data:** for a slot, its `alias`, which is its name in JSON, YAML and other data that
+  is not RDF. In the slot table of a class, a slot with an `alias` has it after its name, like
+  `birth date (birthDate in data)`.
+- **Other names:** the `aliases`, which are only for people and searches, and are not used in
+  data.
+- **Names in code:** for classes, enums and slots, the names that the Scala, TypeScript, Python
+  and GraphQL generators give the element. Languages that give the same name are listed together.
+
+In the table of permissible values, a value with an `alias` has it after the value, and a value
+with a `title` has it before its description.
+
 The **index page** has the schema's title, description, ID, version, license and tree root, then a
 table each of classes, slots, enums and types.
 
