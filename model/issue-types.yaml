@@ -314,6 +314,29 @@ classes:
       message:
         equals_expression: "No 'tree_root' class is defined in the schema"
 
+  UndeclaredCuriePrefix:
+    is_a: SchemaWarning
+    description: >-
+      A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has
+      it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python.
+    attributes:
+      uri_or_curie:
+        range: uriorcurie
+        required: true
+        title: URI or CURIE
+      prefix:
+        range: ncname
+        required: true
+        title: prefix
+    slot_usage:
+      message:
+        equals_expression: "Undeclared prefix '{prefix}' in '{uri_or_curie}' at {location.json_pointer}"
+      details:
+        equals_expression: >-
+          Undeclared prefix '{prefix}' in '{uri_or_curie}' at {location.json_pointer}. The value is
+          read as a URI with the prefix as its scheme. If it is meant as a CURIE, declare the prefix
+          in the schema's 'prefixes'.
+
   InvalidSlotUsage:
     is_a: SchemaWarning
     description: A class declares `slot_usage` for slots that none of its ancestors provide.

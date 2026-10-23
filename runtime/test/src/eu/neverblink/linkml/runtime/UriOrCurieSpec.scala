@@ -28,6 +28,28 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       noException should be thrownBy UriOrCurie("http://<>")
     }
   }
+  "UriOrCurie.isCurie" should {
+    "accept values with the shape of a CURIE" in {
+      Seq("acme:Person", "NCIT:C41185", "ex:a/b", "_x:y", "a-b.c:d", "ex:").foreach(s =>
+        withClue(s)(UriOrCurie.isCurie(s) shouldBe true),
+      )
+    }
+    "reject URIs, file paths and values without a prefix" in {
+      Seq(
+        "http://example.org/a",
+        "file:/schemas/core",
+        "C:\\schemas\\core",
+        "urn:isbn:0451450523",
+        "mailto:someone@example.org",
+        "URN:isbn:0451450523",
+        "Person",
+        ":Person",
+        "1ex:a",
+        "a b:c",
+      ).foreach(s => withClue(s)(UriOrCurie.isCurie(s) shouldBe false))
+    }
+  }
+
   "Uri.isValid" should {
     "be true for a valid value" in {
       Uri("http://example.org/thing").isValid shouldBe true

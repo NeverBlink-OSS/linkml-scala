@@ -22,6 +22,7 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 - A namespace is used as it is written, as in LinkML-Python. With `GO: http://purl.obolibrary.org/obo/GO_`, `GO:0008150` is `http://purl.obolibrary.org/obo/GO_0008150`. So a namespace needs a separator at the end: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
 - A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
 - A value with an unknown prefix is a valid URI, but most likely a mistake, and its meaning can change when it is written (see [Schemas](#schemas)). Declare every prefix that a schema uses.
+- In a schema, `validate` warns about such a value with `UndeclaredCuriePrefix`, such as `Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/`. This is for a value that has the shape of a CURIE: the text before the colon is a valid prefix name, it isn't followed by `/` or `\`, and it isn't a scheme such as `urn` or `mailto`. With `--strict`, the warning makes `validate` fail.
 - In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`.
 - `equals_string` is a plain string, so it is checked only when the OWL generator writes it as an IRI, for a slot whose range is a URI type or a class. The generator stops with an error if the value isn't a URI or CURIE.
 
@@ -78,7 +79,7 @@ classes:
 In the same way, the `exact_mappings` of `string` from `linkml:types` is written as `http://schema.org/Text` when the root schema doesn't declare `schema`.
 
 An unknown prefix breaks this.
-If `other.yaml` didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`.
+If `other.yaml` didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`, and `validate` would warn about it.
 `generate linkml` would write it as `ex:Imported`, and reading the output with the root's `ex` prefix would give `https://root.org/Imported`.
 
 ## Data in Scala

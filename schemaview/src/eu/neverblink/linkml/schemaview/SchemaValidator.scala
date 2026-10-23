@@ -142,6 +142,16 @@ final class SchemaValidator(using sv: SchemaView) {
       ),
     )
 
+  /** Any URI or CURIE values that look like CURIEs, but whose prefix isn't declared. */
+  private lazy val undeclaredCuriePrefixes: Seq[SchemaWarning] =
+    macroResult.undeclaredPrefixes.map(value =>
+      new UndeclaredCuriePrefix(
+        location = at(value.path, value.fromSchema),
+        uriOrCurie = value.value,
+        prefix = value.prefix,
+      ),
+    )
+
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
@@ -559,6 +569,7 @@ final class SchemaValidator(using sv: SchemaView) {
     invalidSlotUsage ++
       undefinedDefaultRange ++
       noTreeRoot ++
+      undeclaredCuriePrefixes ++
       namingIssues.collect { case e: SchemaWarning => e }
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.

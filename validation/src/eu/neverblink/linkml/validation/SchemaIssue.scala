@@ -38,6 +38,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
   typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
   typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),
+  typeDesignator.Member(classOf[UndeclaredCuriePrefix], "UndeclaredCuriePrefix"),
   typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
   typeDesignator.Member(classOf[UndefinedPrefix], "UndefinedPrefix"),
   typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
