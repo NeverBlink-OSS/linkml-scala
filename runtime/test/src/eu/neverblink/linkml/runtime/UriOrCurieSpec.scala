@@ -50,6 +50,23 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "UriOrCurie.compacted" should {
+    val prefixes = PrefixMap(defaults = Seq("ex" -> "https://example.org/"))
+    "write a URI as a CURIE if it can" in {
+      UriOrCurie.compacted(Uri("https://example.org/a"), prefixes) shouldBe "ex:a"
+      UriOrCurie.compacted(Uri("acme:a"), prefixes) shouldBe "acme:a"
+      UriOrCurie.compacted(Curie("other:a"), prefixes) shouldBe "other:a"
+    }
+    "fail on a URI that would be read back as a CURIE" in {
+      Seq(prefixes, prefixes.withoutCompaction).foreach { p =>
+        (the[IllegalArgumentException] thrownBy UriOrCurie.compacted(Uri("ex:a"), p))
+          .getMessage shouldBe
+          "The URI 'ex:a' can't be written, as it would be read back as a CURIE with the prefix " +
+          "'ex'. Declare the prefix 'ex' in the schema that uses it, or write the full URI"
+      }
+    }
+  }
+
   "Uri.isValid" should {
     "be true for a valid value" in {
       Uri("http://example.org/thing").isValid shouldBe true
