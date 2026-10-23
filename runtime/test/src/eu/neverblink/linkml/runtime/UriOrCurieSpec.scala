@@ -61,8 +61,9 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       Seq(prefixes, prefixes.withoutCompaction).foreach { p =>
         (the[IllegalArgumentException] thrownBy UriOrCurie.compacted(Uri("ex:a"), p))
           .getMessage shouldBe
-          "The URI 'ex:a' can't be written, as it would be read back as a CURIE with the prefix " +
-          "'ex'. Declare the prefix 'ex' in the schema that uses it, or write the full URI"
+          "The URI 'ex:a' can't be written, as 'ex' is a declared prefix, so it would be read " +
+          "back as a CURIE with another meaning. If it is meant as a CURIE, declare the prefix " +
+          "'ex' where it is used. Otherwise, use a URI whose scheme isn't a declared prefix"
       }
     }
   }

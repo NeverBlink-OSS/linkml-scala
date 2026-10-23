@@ -12,6 +12,7 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 |---|---|
 | `xsd:string`, with an `xsd` prefix | `http://www.w3.org/2001/XMLSchema#string` |
 | `acme:Person`, with no `acme` prefix | The URI `acme:Person`, with `acme` as its scheme, as in LinkML-Python |
+| `my_ns:Foo`, with no `my_ns` prefix | The CURIE `my_ns:Foo`, as `my_ns` can't be a URI scheme, which is a fatal error in a schema |
 | `Person`, with no colon | `Person` after the default namespace, such as `https://example.org/schema/Person` |
 | `John Doe`, with no colon and not a valid CURIE | The text `John Doe`, which is a fatal error in a schema |
 
@@ -19,7 +20,7 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 - A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
 - A value with an unknown prefix is a valid URI, but most likely a mistake, and its meaning can change when it is written (see [Schemas](#schemas)). Declare every prefix that a schema uses.
 - In a schema, `validate` warns about such a value with `UndeclaredCuriePrefix`, such as `Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/`. This is for a value that has the shape of a CURIE: the text before the colon is a valid prefix name, it isn't followed by `/` or `\`, and it isn't a scheme such as `urn` or `mailto`. With `--strict`, the warning makes `validate` fail.
-- In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`.
+- In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. So is a CURIE whose prefix isn't declared and can't be a URI scheme, such as `my_ns:Foo` or `_:b1`, as a scheme can't have `_`. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`.
 - `equals_string` is a plain string, so it is checked only when the OWL generator writes it as an IRI, for a slot whose range is a URI type or a class. The generator stops with an error if the value isn't a URI or CURIE.
 
 ## Writing

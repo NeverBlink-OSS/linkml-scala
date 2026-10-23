@@ -797,6 +797,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |      some_attr:
            |        slot_uri: "ex:a b"
            |        range: string
+           |  OtherClass:
+           |    class_uri: my_ns:Foo
+           |  BlankClass:
+           |    class_uri: _:b1
            |""".stripMargin
       val msg = loadFailure(schemaYaml)
 
@@ -806,6 +810,9 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       msg should include(
         "Invalid URI or CURIE 'ex:a b' at /classes/SomeClass/attributes/some_attr/slot_uri",
       )
+      // A CURIE whose prefix isn't declared and can't be a URI scheme
+      msg should include("Invalid URI or CURIE 'my_ns:Foo' at /classes/OtherClass/class_uri")
+      msg should include("Invalid URI or CURIE '_:b1' at /classes/BlankClass/class_uri")
       msg should not include "ex:fine"
     }
 
