@@ -5,7 +5,15 @@ import eu.neverblink.linkml.generator.ossie.expression.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{LinkmlAny, PlainText, Reference, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{
+  LinkmlAny,
+  PlainText,
+  PrefixMap,
+  Reference,
+  Uri,
+  UriCurieValidator,
+  UriOrCurie,
+}
 import eu.neverblink.linkml.schemaview.Case
 import org.virtuslab.yaml.{NodeOps, parseYaml}
 
@@ -101,19 +109,48 @@ object OssieImporter {
       *
       * `linkml` is taken, because the schema needs it for its own imports.
       */
-    private val keptPrefixes: VectorMap[String, String] =
-      VectorMap.from(ontology.prefixes.filter((p, ns) => p != "linkml" || ns == linkmlNamespace))
+    private val keptPrefixes: VectorMap[String, String] = {
+      val b = VectorMap.newBuilder[String, String]
+      ontology.prefixes.foreach { e =>
+        val p = e._1
+        val ns = e._2
+        if (!UriCurieValidator.isValidUri(ns))
+          throw RuntimeException(s"The namespace '$ns' of the prefix '$p' isn't a valid IRI")
+        if (p != "linkml" || ns == linkmlNamespace) b.addOne(e)
+      }
+      b.result()
+    }
+
+    // The ontology's prefixes, then those of the metamodel, as when a LinkML schema is read
+    private val reading = PrefixMap(overrides = ontology.prefixes, defaults = Prefixes.map)
 
     /** An `iri` as a LinkML URI.
       *
-      * A QName over a declared prefix is expanded. Anything else is assumed to be a full IRI -
-      * including a QName over an undeclared prefix. A URI that a kept prefix covers is written as a
-      * CURIE.
+      * A QName is expanded with the ontology's prefixes, or else with those of the LinkML
+      * metamodel, such as `skos`. Anything else must be a full IRI, such as `acme:Thing` when
+      * `acme` isn't a prefix. A URI that a kept prefix covers is written as a CURIE.
+      *
+      * @throws RuntimeException
+      *   if the `iri` is neither a full IRI nor a QName with a known prefix, such as `Person`
       */
     private def uriOf(iri: String): Uri = {
-      val colon = iri.indexOf(':')
-      val ns = if (colon > 0) ontology.prefixes.getOrElse(iri.substring(0, colon), null) else null
-      Uri(if (ns ne null) ns.concat(iri.substring(colon + 1)) else iri)
+      val expanded = reading.expandOrNull(iri)
+      val uri = if (expanded ne null) expanded else iri
+      if (!UriCurieValidator.isValidUri(uri))
+        throw RuntimeException(
+          s"The iri '$iri' is neither a full IRI nor a QName with a declared prefix",
+        )
+      Uri(uri)
+    }
+
+    private val schemaId: String = {
+      val id = options.schemaId.getOrElse {
+        val slug = Case.base(ontology.name)
+        "https://example.org/" + (if slug.isEmpty then "ontology" else slug)
+      }
+      if (!UriCurieValidator.isValidUri(id))
+        throw RuntimeException(s"The schema id '$id' isn't a valid URI")
+      id
     }
 
     def schema: SchemaDefinition = {
@@ -126,10 +163,7 @@ object OssieImporter {
       )(ClassDefinition(name = anyClass, classUri = Some(Uri(linkmlNamespace.concat("Any")))))
 
       SchemaDefinition(
-        id = Uri(options.schemaId.getOrElse {
-          val slug = Case.base(ontology.name)
-          "https://example.org/" + (if slug.isEmpty then "ontology" else slug)
-        }),
+        id = Uri(schemaId),
         name = ontology.name,
         description = ontology.description.map(PlainText.apply),
         prefixes = VectorMap(

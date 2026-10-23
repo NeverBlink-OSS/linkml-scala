@@ -279,14 +279,22 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
         tav.typeView.runtimeType match {
           case _: StringType.type => cls.name :: Nil
           case _: UriType.type => uriStr :: Nil
-          case _: CurieType.type => UriOrCurie.compacted(uriOrCurie, definingPrefixes) :: Nil
+          case _: CurieType.type => compactUri :: Nil
           case _: UriOrCurieType.type =>
-            val curie = UriOrCurie.compacted(uriOrCurie, definingPrefixes)
+            val curie = compactUri
             if (uriStr.equals(curie)) uriStr :: Nil else uriStr :: curie :: Nil
           case _ => Nil
         }
       case _ => Nil
     }
+
+  /** The class URI as a CURIE, made with the prefixes of the defining schema, or the class URI if
+    * no prefix covers it.
+    */
+  lazy val compactUri: String = {
+    val curie = definingPrefixes.compactOrNull(uriStr)
+    if (curie ne null) curie else uriStr
+  }
 
   /** Direct parents (mixins + inheritance) of this class
     */

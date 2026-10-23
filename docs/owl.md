@@ -92,6 +92,10 @@ Add the `--list-not-imported` option to list what could not be imported is liste
 Not imported: Property chain, which LinkML cannot express (29): has_feature_kind: saref:hasFeatureKind o skos:broader; …
 ```
 
+The import stops with an error for an IRI that can't be a URI in the schema: an IRI that isn't a valid URI, such as `<http://example.org/q[2]>`, and an IRI whose text would be read back as a CURIE, such as `<xsd:string>`, as `xsd` is a prefix of the LinkML metamodel.
+The same is true for an ontology IRI or `--schema-id` that isn't a valid URI.
+The one exception is such an IRI as a reference in an annotation, such as an `rdfs:seeAlso` value: it doesn't stop the import, and is kept as an annotation instead of a `see_also` value.
+
 Prefix names come from `sh:declare` (which the generator writes), the document's `@prefix` lines, the config, a list of well-known ones (`rdfs`, `skos`, `dcterms`, `prov`, `sosa`, …), and the last path segment of other namespaces.
 
 ### Importing RDFS vocabularies

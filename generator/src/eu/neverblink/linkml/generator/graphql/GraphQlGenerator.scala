@@ -7,7 +7,7 @@ import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
 import eu.neverblink.linkml.generator.util.*
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, UriOrCurie}
+import eu.neverblink.linkml.runtime.HasMetadataLanguage
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 
@@ -50,12 +50,7 @@ class GraphQlGenerator(using sv: SchemaView)
     val enumDefs: Iterable[GraphQlDefinition] = sv.enums.values
       .filter(query.reachable)
       .map(ev => {
-        val pvs = ev.derivedValues.map(value =>
-          GraphQlEnumValueDefinition(
-            value.pv,
-            value.meaning,
-          ),
-        )
+        val pvs = ev.derivedValues.map(value => GraphQlEnumValueDefinition(value.pv))
         GraphQlEnumDefinition(
           ev,
           pvs,
@@ -325,13 +320,8 @@ object GraphQlEnumDefinition:
   *
   * @param pv
   *   The metamodel permissible value this element is generated for
-  * @param meaning
-  *   The provided permissible value meaning, or a synthetic meaning
   */
-case class GraphQlEnumValueDefinition(
-    pv: PermissibleValue,
-    meaning: UriOrCurie,
-)(using opt: GraphQlGenerator.Options)
+case class GraphQlEnumValueDefinition(pv: PermissibleValue)(using opt: GraphQlGenerator.Options)
     extends GraphQlElement:
   val name: String = GraphQlRenamer.permissibleValueName(pv)
   override def print: String =

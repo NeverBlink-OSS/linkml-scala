@@ -437,6 +437,39 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       yaml should include("class_uri: https://other.org/Imported\n")
     }
 
+    "fail on a URI with an undeclared prefix that the output declares" in {
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported:
+          |    class_uri: ex:Imported
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  ex: https://root.org/
+          |imports:
+          |  - other
+          |classes:
+          |  Local:
+          |    class_uri: ex:Local
+          |""".stripMargin,
+          MapImporter("other" -> other),
+        ),
+      )
+      sv.classes("Imported").uriStr shouldBe "ex:Imported"
+      val generator = LinkMlGenerator(using sv)
+      // Reading `ex:Imported` back would expand it with the root's `ex`, even with full URIs
+      Seq(LinkMlGenerator.Options(pruningMode = skip), LinkMlGenerator.Options(fullUris = true))
+        .foreach { options =>
+          (the[IllegalArgumentException] thrownBy generator.serialize(options)).getMessage should
+            include("The URI 'ex:Imported' can't be written")
+        }
+    }
+
     "write URIs in full with the fullUris option" in {
       val sv = SchemaIssues.orThrow(
         SchemaView.loadSchemaViewFromString(

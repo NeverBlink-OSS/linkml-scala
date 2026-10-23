@@ -32,10 +32,10 @@ final case class InvalidUriOrCurie(
     location: IssueLocation,
     message: Option[String] = None,
     @serializeDefault
-    severity: IssueSeverity = IssueSeverity.Error,
+    severity: IssueSeverity = IssueSeverity.Fatal,
     @named("uri_or_curie")
     uriOrCurie: UriOrCurie,
-) extends SchemaError {
+) extends SchemaFatal {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -52,7 +52,7 @@ final case class InvalidUriOrCurie(
         "Invalid URI or CURIE '" + stringify(uriOrCurie) + "' at " + inferenceInput(
           "location.json_pointer",
           location.jsonPointer,
-        ) + ". A valid URI must be a valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'localname' is a valid relative IRI reference.",
+        ) + ". A URI must be a valid IRI. A CURIE must be of the form 'prefix:localname', where the prefix is declared in the schema and 'localname' is a valid relative IRI reference.",
       ),
       message = inferOptional(
         "message",

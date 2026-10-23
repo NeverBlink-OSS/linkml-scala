@@ -72,13 +72,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
           sink.triple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
         }
       case enumView: EnumView =>
-        // A meaning that isn't a URI can't be an IRI in RDF, so it is skipped
-        val permissibleValues = Seq.newBuilder[Node]
-        enumView.derivedValues.foreach { value =>
-          val uri = value.uriStr
-          if (UriCurieValidator.isValidUri(uri)) permissibleValues.addOne(Iri(uri))
-        }
-        sink.list(subject, Shacl.in, permissibleValues.result())
+        sink.list(subject, Shacl.in, enumView.derivedValues.map(value => Iri(value.uriStr)))
       case _ => throw RuntimeException(s"Couldn't map range $range")
     }
 

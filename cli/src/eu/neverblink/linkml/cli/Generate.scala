@@ -5,6 +5,7 @@ import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.runtime.FastUtils.*
 
 import java.io.OutputStream
+import scala.util.control.NonFatal
 
 final case class GenerateOptions(
     @HelpMessage(
@@ -43,15 +44,19 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
       )
     val sv = loadSchema(inputs.headOption, options.common.importMap)
     val to = options.common.to
-    this match {
-      case g: ManyFilesGenerate[T @unchecked] =>
-        writeManyFiles(to, g.generate(options)(using sv), g.staleFile(options))
-      case g: StreamGenerate[T @unchecked] =>
-        writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
-      case g: SplitGenerate[T @unchecked] =>
-        if g.writesDirectory(to) then writeManyFiles(to, g.generateFiles(options)(using sv), None)
-        else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
-    }
+    // A schema that can't be generated, such as one with a URI that can't be written, prints
+    // only the reason
+    try
+      this match {
+        case g: ManyFilesGenerate[T @unchecked] =>
+          writeManyFiles(to, g.generate(options)(using sv), g.staleFile(options))
+        case g: StreamGenerate[T @unchecked] =>
+          writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
+        case g: SplitGenerate[T @unchecked] =>
+          if g.writesDirectory(to) then writeManyFiles(to, g.generateFiles(options)(using sv), None)
+          else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
+      }
+    catch { case NonFatal(e) => err(s"Cannot generate $generatorName from ${inputs.head}", e) }
 
   private def writeManyFiles(
       to: Option[String],

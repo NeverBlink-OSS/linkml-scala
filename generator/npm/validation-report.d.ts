@@ -286,7 +286,6 @@ export interface RepeatedSeparator {
 export type SchemaError =
   | EmptyName
   | InvalidKeyOrIdSlotType
-  | InvalidUriOrCurie
   | MultipleKeyOrIdSlots
   | MultipleTreeRoots
   | NonAsciiName
@@ -297,6 +296,7 @@ export type SchemaFatal =
   | CyclicReference
   | InvalidDefaultRange
   | InvalidRange
+  | InvalidUriOrCurie
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
@@ -356,6 +356,7 @@ export type SchemaIssue =
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
+  | UndeclaredCuriePrefix
   | UndefinedDefaultRange
   | UndefinedPrefix
   | UnexpectedError
@@ -394,7 +395,26 @@ export type SchemaWarning =
   | NoTreeRootClass
   | NonStandardSeparator
   | RepeatedSeparator
+  | UndeclaredCuriePrefix
   | UndefinedDefaultRange;
+
+/** A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python. */
+export interface UndeclaredCuriePrefix {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UndeclaredCuriePrefix";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** prefix */
+  prefix: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** URI or CURIE */
+  uri_or_curie: string;
+}
 
 /** The schema has no `default_range` and no `string` type to fall back on. */
 export interface UndefinedDefaultRange {

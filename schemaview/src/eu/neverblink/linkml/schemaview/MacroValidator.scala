@@ -22,6 +22,8 @@ import scala.quoted.*
   *   Ranges whose inferred defaults wouldn't resolve
   * @param invalidUriOrCuries
   *   URI or CURIE values that are malformed
+  * @param undeclaredPrefixes
+  *   URI or CURIE values that look like CURIEs, but whose prefix isn't declared
   * @param isEmpty
   *   Set to true only if you are creating a ValidatorResult == ValidatorResult.ok
   */
@@ -30,6 +32,7 @@ final case class ValidatorResult private (
     invalidRanges: Seq[InvalidRange],
     invalidDefaultRanges: Seq[InvalidDefaultRange],
     invalidUriOrCuries: Seq[InvalidUriOrCurie],
+    undeclaredPrefixes: Seq[UndeclaredPrefixValue],
     isEmpty: Boolean,
 ):
   /** Merge the [[ValidatorResult]]s */
@@ -41,6 +44,7 @@ final case class ValidatorResult private (
         invalidRanges ++ other.invalidRanges,
         invalidDefaultRanges ++ other.invalidDefaultRanges,
         invalidUriOrCuries ++ other.invalidUriOrCuries,
+        undeclaredPrefixes ++ other.undeclaredPrefixes,
       )
 
   /** Add a [[prefix]] to each result's source path */
@@ -52,23 +56,26 @@ final case class ValidatorResult private (
         invalidRanges.map(_.prependedPath(prefix)),
         invalidDefaultRanges.map(_.prependedPath(prefix)),
         invalidUriOrCuries.map(_.prependedPath(prefix)),
+        undeclaredPrefixes.map(_.prependedPath(prefix)),
       )
 
 object ValidatorResult {
   val ok: ValidatorResult =
-    ValidatorResult(Seq.empty, Seq.empty, Seq.empty, Seq.empty, isEmpty = true)
+    ValidatorResult(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, isEmpty = true)
 
   def apply(
       unknownReferences: Seq[UnknownReference] = Seq(),
       invalidRanges: Seq[InvalidRange] = Seq(),
       invalidDefaultRanges: Seq[InvalidDefaultRange] = Seq(),
       invalidUriOrCuries: Seq[InvalidUriOrCurie] = Seq(),
+      undeclaredPrefixes: Seq[UndeclaredPrefixValue] = Seq(),
   ): ValidatorResult =
     new ValidatorResult(
       unknownReferences,
       invalidRanges,
       invalidDefaultRanges,
       invalidUriOrCuries,
+      undeclaredPrefixes,
       isEmpty = false,
     )
 }
@@ -116,6 +123,20 @@ final case class InvalidDefaultRange(path: String, fromSchema: Uri):
 final case class InvalidUriOrCurie(path: String, value: UriOrCurie, fromSchema: Uri):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): InvalidUriOrCurie = copy(path = prefix.concat(path))
+
+/** A URI or CURIE value that looks like a CURIE, but whose prefix isn't declared, so it was read as
+  * a URI with the prefix as its scheme
+  *
+  * @param path
+  *   JSON path to the value
+  * @param value
+  *   The value
+  * @param prefix
+  *   The prefix that isn't declared
+  */
+final case class UndeclaredPrefixValue(path: String, value: Uri, prefix: String, fromSchema: Uri):
+  /** Add a [[prefix]] to this class' path */
+  def prependedPath(prefix: String): UndeclaredPrefixValue = copy(path = prefix.concat(path))
 
 private trait MacroValidator[T] {
   def validate(t: T)(using SchemaView, ValidatorContext): ValidatorResult
@@ -170,16 +191,46 @@ private object MacroValidator {
       ValidatorResult.ok
   }
 
-  private val uriOrCurieValidatorInstance: MacroValidator[UriOrCurie] =
+  /** Validator for [[Uri]] and [[Curie]] values, which are kept as they are written */
+  private val validityValidator: MacroValidator[UriOrCurie] =
     new MacroValidator[UriOrCurie] {
       def validate(t: UriOrCurie)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult =
-        if t.isValid then ValidatorResult.ok
+        if (t.isValid) ValidatorResult.ok
         else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", t, vc.fromSchema)))
     }
 
-  /** Validator for [[UriOrCurie]], [[Uri]] and [[Curie]] values, sharing a single instance */
-  given uriOrCurieValidator[T <: UriOrCurie]: MacroValidator[T] =
-    uriOrCurieValidatorInstance.asInstanceOf[MacroValidator[T]]
+  given uriValidator: MacroValidator[Uri] = validityValidator.asInstanceOf[MacroValidator[Uri]]
+
+  given curieValidator: MacroValidator[Curie] =
+    validityValidator.asInstanceOf[MacroValidator[Curie]]
+
+  /** Validator for [[UriOrCurie]] values, which are expanded when they are read.
+    *
+    * A [[Uri]] that still has the shape of a CURIE after that, such as `acme:Person`, has a prefix
+    * that isn't declared. A [[Curie]] with a colon, such as `my_ns:Foo`, has a prefix that isn't
+    * declared and can't be a URI scheme, so it is invalid. A [[Curie]] without a colon is a
+    * relative reference, such as an import path.
+    */
+  given uriOrCurieValidator: MacroValidator[UriOrCurie] =
+    new MacroValidator[UriOrCurie] {
+      def validate(t: UriOrCurie)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult =
+        t match {
+          case u: Uri =>
+            val uri = u.original
+            if (!u.isValid)
+              ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
+            else if (UriOrCurie.isCurie(uri))
+              ValidatorResult(undeclaredPrefixes =
+                Seq(
+                  UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema),
+                ),
+              )
+            else ValidatorResult.ok
+          case _ =>
+            if (t.isValid && t.original.indexOf(':') < 0) ValidatorResult.ok
+            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", t, vc.fromSchema)))
+        }
+    }
 
   private def formatRangeType(el: Element): String = {
     el match {

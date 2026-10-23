@@ -45,6 +45,16 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     printLine(message, toStderr = true)
     exit(1)
 
+  /** Prints `message` with the reason for `e`, without a stack trace, and exits with 1. An
+    * [[ExitException]] is thrown again, as the command has already printed why it stopped.
+    */
+  protected final def err(message: String, e: Throwable): Nothing = e match {
+    case _: ExitException => throw e
+    case _ =>
+      val reason = e.getMessage
+      err(s"$message: ${if (reason ne null) reason else e.toString}")
+  }
+
   /** The importer for the JSON file of the `--import-map` option, if there is one. */
   protected final def importer(importMapFile: Option[String]): Importer =
     importMapFile.foldFast(FileSystemImporter: Importer) { file =>
@@ -74,16 +84,25 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
       }
     }
 
-  /** Write to `file`, or to the command's stdout when there is none. */
+  /** Write to `file`, or to the command's stdout when there is none. If `write` fails, `file` is
+    * removed, so no partly written file is left behind.
+    */
   protected final def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
     file.foldFast {
       // `out` is the command's stdout (redirected in tests). Flush but never close it.
       write(outStream)
       outStream.flush()
     } { value =>
-      val stream = os.write.over.outputStream(os.Path(value, os.pwd))
-      try write(stream)
-      finally stream.close()
+      val path = os.Path(value, os.pwd)
+      val stream = os.write.over.outputStream(path)
+      try {
+        try write(stream)
+        finally stream.close()
+      } catch {
+        case NonFatal(e) =>
+          os.remove(path)
+          throw e
+      }
     }
 
   /** Runs the whole CLI (via [[App]]) with the given args, capturing stdout and stderr. For tests

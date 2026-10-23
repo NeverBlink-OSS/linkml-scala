@@ -209,6 +209,35 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           full should include("class_uri: https://example.org/Root")
         }
       }
+
+      "say why a URI can't be written, and write no file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate")
+        try {
+          // `other` doesn't declare `ex`, so its class URI is the URI `ex:Imported`
+          os.write(
+            dir / "other.yaml",
+            """id: https://neverblink.eu/other
+              |name: other
+              |classes:
+              |  Imported:
+              |    class_uri: ex:Imported
+              |""".stripMargin,
+          )
+          os.write(dir / "root.yaml", schema + "imports:\n  - other\n")
+          val root = (dir / "root.yaml").toString
+          val to = dir / "out.yaml"
+          val (out, err, code) =
+            LinkMl.runTestCommandWithExitCode(List("generate", "linkml", "--to", to.toString, root))
+          code shouldBe 1
+          out shouldBe empty
+          err.trim shouldBe
+            s"Cannot generate linkml from $root: The URI 'ex:Imported' can't be written, as 'ex' " +
+            "is a declared prefix, so it would be read back as a CURIE with another meaning. If " +
+            "it is meant as a CURIE, declare the prefix 'ex' where it is used. Otherwise, use a " +
+            "URI whose scheme isn't a declared prefix"
+          os.exists(to) shouldBe false
+        } finally os.remove.all(dir)
+      }
     }
 
     "generating a data package" should {

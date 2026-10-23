@@ -474,12 +474,13 @@ object OwlImporter {
       }
     }.distinct.sorted
 
-    /** An import from the config, with a CURIE expanded with the config's prefixes, as if the
-      * schema was loaded.
+    /** An import from the config, with a CURIE expanded as if the schema was loaded: with the
+      * config's prefixes, the prefixes that the schema can declare, and those of the metamodel.
       */
-    private def importOf(ref: String): UriOrCurie = UriOrCurie.expanded(ref, configPrefixes)
+    private def importOf(ref: String): UriOrCurie = UriOrCurie.expanded(ref, importPrefixes)
 
-    private lazy val configPrefixes: PrefixMap = PrefixMap(overrides = config.prefixMap)
+    private lazy val importPrefixes: PrefixMap =
+      PrefixMap(overrides = config.prefixMap.toSeq ++ naming.all, defaults = Prefixes.map)
 
     /** Mappings without duplicates, in the order of their CURIEs. */
     private def sorted(mappings: Seq[UriOrCurie]): Seq[UriOrCurie] =
@@ -1336,16 +1337,21 @@ object OwlImporter {
         warn("RDF that is not OWL", s"${ts.size} triples with $p")
       }
 
+      // Without an ontology IRI, use the namespace. That is how others import such vocabularies
+      // (e.g. DC terms).
+      val schemaId =
+        config.schemaId.orElse(ontology.iri).getOrElse(defaultNamespace.stripSuffix("#"))
+      if (!UriCurieValidator.isValidUri(schemaId))
+        throw new IllegalArgumentException(
+          s"The schema id <$schemaId> isn't a valid URI. Set another one with `--schema-id`, or " +
+            "with `schema_id` in the config",
+        )
       val schema = metadata.copy(
         version = metadata.version.orElse(ontology.versionIri),
         inLanguage = metadata.inLanguage.orElse(reader.language),
       ).applyTo(
         SchemaDefinition(
-          id = Uri(
-            // Without an ontology IRI, use the namespace. That is how others import such
-            // vocabularies (e.g. DC terms).
-            config.schemaId.orElse(ontology.iri).getOrElse(defaultNamespace.stripSuffix("#")),
-          ),
+          id = Uri(schemaId),
           name = name,
           prefixes = VectorMap.from(naming.declared.map((p, ns) => p -> Prefix(p, Uri(ns)))),
           defaultPrefix = Some(naming.defaultPrefix),
@@ -1373,8 +1379,16 @@ object OwlImporter {
       // The id and the namespaces are of type `uri`, so they are written in full.
       val used = prefixesIn(schema.copy(id = Uri(""), prefixes = VectorMap.empty)).toSet ++
         config.prefixMap.keySet + naming.defaultPrefix
+      val prefixes = schema.prefixes.filter((p, _) => used(p))
+      prefixes.values.foreach { p =>
+        val ns = p.prefixReference.original
+        if (!UriCurieValidator.isValidUri(ns))
+          throw new IllegalArgumentException(
+            s"The namespace <$ns> of the prefix '${p.prefixPrefix}' isn't a valid URI",
+          )
+      }
       Result(
-        schema.copy(prefixes = schema.prefixes.filter((p, _) => used(p))),
+        schema.copy(prefixes = prefixes),
         warnings.toSeq.map { (kind, details) =>
           val shown = details.distinct.take(5).mkString("; ")
           val more =
