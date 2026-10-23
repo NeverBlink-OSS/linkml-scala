@@ -386,9 +386,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
           case StringType => Some(scalaStringLiteral(owner.cls.name))
           // A `uriorcurie` value is a URI once it is read, so it is a `Uri` too
           case UriType | UriOrCurieType => Some(s"Uri(${scalaStringLiteral(owner.uriStr)})")
-          case CurieType =>
-            val curie = UriOrCurie.compacted(owner.uriOrCurie, owner.definingPrefixes)
-            Some(s"Curie(${scalaStringLiteral(curie)})")
+          case CurieType => Some(s"Curie(${scalaStringLiteral(owner.compactUri)})")
           case _ => None
         }
       case _ => None

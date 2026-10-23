@@ -284,7 +284,7 @@ object Metadata {
   private def refs(values: Seq[String | LocalizedText | UriOrCurie]): Seq[UriOrCurie] =
     values.map {
       case u: UriOrCurie => u
-      case other => UriOrCurie(strings(Seq(other)).head)
+      case other => Uri(strings(Seq(other)).head)
     }
 
   private def textField(
@@ -476,9 +476,7 @@ object Metadata {
   }
 
   private def isAbsoluteIri(v: String): Boolean =
-    (v.contains("://") || v.startsWith("urn:")) && !v.exists(c =>
-      c.isWhitespace || "<>\"{}|\\^`".contains(c),
-    )
+    (v.contains("://") || v.startsWith("urn:")) && UriCurieValidator.isValidUri(v)
 
   /** Metaslots with text for people to read. These get the language tag. */
   val humanText: Set[String] =

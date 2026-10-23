@@ -291,7 +291,7 @@ object OwlGenerator {
     }
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
-      * goes in the default namespace.
+      * is put in the default namespace of its schema when the schema is read.
       *
       * @param prefixes
       *   The prefixes of the schema that defines `el`, to expand CURIEs in values
@@ -300,8 +300,7 @@ object OwlGenerator {
       val b = Seq.newBuilder[Annotation]
       val language = sv.root.inLanguage
       el.annotations.values.foreach { a =>
-        val tag = a.extensionTag.original
-        val property = if (tag.contains(':')) tag else sv.getDefaultPrefix(sv.root).concat(tag)
+        val property = a.extensionTag.original
         def add(v: String): Unit =
           b.addOne(
             Annotation(property, Metadata.inLanguage(annotationValue(v, prefixes), language)),
@@ -327,17 +326,11 @@ object OwlGenerator {
       * importer writes IRIs that way. Anything else is text.
       */
     private def annotationValue(v: String, prefixes: PrefixMap): Value =
-      if v.contains("://") || v.startsWith("urn:") || v.startsWith("mailto:") then
+      if (v.contains("://") || v.startsWith("urn:") || v.startsWith("mailto:"))
         if (UriCurieValidator.isValidUri(v)) Iri(v) else Literal(v)
       else {
-        val colon = v.indexOf(':')
-        val prefix = if colon > 0 then v.substring(0, colon) else ""
-        val uri =
-          if prefix.nonEmpty && prefix.forall(c => Case.isStandard(c) || c == '-') &&
-            !v.exists(_.isWhitespace)
-          then prefixes.expandOrNull(v)
-          else null
-        if uri ne null then Iri(uri) else Literal(v)
+        val uri = if (UriOrCurie.isCurie(v)) prefixes.expandOrNull(v) else null
+        if ((uri ne null) && UriCurieValidator.isValidUri(uri)) Iri(uri) else Literal(v)
       }
 
     // Classes
