@@ -33,7 +33,6 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 These features work differently in LinkML-Scala than in the LinkML specification and LinkML-Python:
 
 - [Inherited boolean expressions](#inherited-boolean-expressions): a subclass accepts only values that its parent classes and mixins accept
-- [The documentation generator](docs.md#differences-from-linkml-python): pages are in a folder per kind of element, keep the element names as written, and can also be one document
 
 These features follow the LinkML specification, while LinkML-Python works differently:
 
