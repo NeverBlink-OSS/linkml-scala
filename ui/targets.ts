@@ -6,6 +6,7 @@
 // `SchemaView` handles it hands out (those are live Scala.js objects and cannot cross a
 // postMessage boundary). Keeping both halves in one file means ids and option keys have a
 // single definition that both sides are type-checked against.
+import type { Format as OhiFormat } from "@neverblink/ohi";
 import type { LinkMLApi, SchemaValidationReport, SchemaView } from "./linkml";
 import type { OutputLang } from "./editor.js";
 import { EXAMPLE_OSSIE, EXAMPLE_OWL } from "./examples.js";
@@ -74,8 +75,11 @@ export interface Target extends Step {
 export interface Importer extends Step {
   /** What the input pane calls the document it wants. */
   inputLabel: string;
-  /** Starting point for the Load example button. */
+  /** Starting point for the example in the load dialog. */
   example: string;
+  /** Which files on ohi.dev this importer can read. When there is more than one, the load dialog
+   * offers a choice between them, and the first is the default. */
+  ohiFormats: OhiChoice[];
   /** Ids of the generators this undoes, if any. Both directions of each pair get the reverse
    * button in the output pane. Going back from the importer picks the first one, unless the
    * generator last used is also on the list. */
@@ -83,6 +87,14 @@ export interface Importer extends Step {
   /** How to highlight the input pane. Defaults to YAML. */
   inputLang?: OutputLang;
   call: (api: LinkMLApi, input: string, o: OptionValues) => string;
+}
+
+/** A file format on ohi.dev that an input pane can read. `label` names it on the format toggle,
+ * `name` in the note on an ontology that has no such file. */
+export interface OhiChoice {
+  format: OhiFormat;
+  label: string;
+  name: string;
 }
 
 /** The generator the playground opens with. Shared links leave it out, so it must stay the same for
@@ -300,6 +312,7 @@ export const IMPORTERS: Importer[] = [
     reverses: ["ossie"],
     lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     example: EXAMPLE_OSSIE,
+    ohiFormats: [{ format: "ossie-yaml", label: "Ossie", name: "Ossie" }],
     options: [
       { key: "schemaId", type: "text", label: "Schema id", placeholder: "https://… (optional)" },
       { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
@@ -316,6 +329,11 @@ export const IMPORTERS: Importer[] = [
     inputLang: "turtle",
     lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     example: EXAMPLE_OWL,
+    // The importer reads Turtle only, so the RDF/XML files on ohi.dev are not on offer.
+    ohiFormats: [
+      { format: "owl-turtle", label: "OWL", name: "OWL (Turtle)" },
+      { format: "rdfs-turtle", label: "RDFS", name: "RDFS (Turtle)" },
+    ],
     options: [
       {
         key: "listNotImported",

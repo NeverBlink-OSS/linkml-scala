@@ -17,6 +17,7 @@
     "@codemirror/state": "^6.5.1",
     "@codemirror/view": "^6.36.2",
     "@lezer/highlight": "^1.2.1",
+    "@neverblink/ohi": "^0.17.1",
     "mermaid": "^11.16.1"
   },
   "devDependencies": {
