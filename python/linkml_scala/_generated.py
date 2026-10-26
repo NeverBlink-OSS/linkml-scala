@@ -298,6 +298,7 @@ class Generators:
         pruning_mode: str = "schema",
         tree_root: str | None = None,
         metadata_language: str = "en",
+        single_file: bool = False,
     ) -> dict[str, str]:
         """Generate Markdown documentation, as a filename to content mapping.
 
@@ -307,11 +308,14 @@ class Generators:
         :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
             valid with `pruning_mode="treeRoot"`.
         :param metadata_language: Which language to use for titles and descriptions.
+        :param single_file: Whether to write all pages as sections of one document, `docs.md`,
+            instead of a file for each page.
         """
         return self._json(
             "linkml_docs",
             pruningMode=_pruning(pruning_mode, tree_root),
             metadataLanguage=metadata_language,
+            singleFile=single_file,
         )
 
     def ossie(

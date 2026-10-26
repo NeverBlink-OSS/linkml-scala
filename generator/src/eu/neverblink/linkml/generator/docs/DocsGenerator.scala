@@ -65,12 +65,16 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
   protected def elementSections(md: Markdown, el: ElementView[?, ?], site: DocsSite): Unit = ()
 
   /** The documentation as `index.md` plus one file for each documented element, as pairs of file
-    * path and content. Paths are relative to the output folder and use `/`.
+    * path and content. Paths are relative to the output folder and use `/`. With
+    * [[DocsGenerator.Options.singleFile]], it is only `docs.md`, with what [[serialize]] gives.
     *
     * @param options
     *   What to document. See [[DocsGenerator.Options]].
     */
-  def generateFiles(options: Options = Options()): Seq[(String, String)] = {
+  def generateFiles(options: Options = Options()): Seq[(String, String)] =
+    if (options.singleFile) Seq(("docs.md", serialize(options))) else pageFiles(options)
+
+  private def pageFiles(options: Options): Seq[(String, String)] = {
     val site = new DocsSite(options.pruningMode, singleFile = false)
     val writer = new PageWriter(site, options)
     val files = Seq.newBuilder[(String, String)]
@@ -659,10 +663,14 @@ object DocsGenerator {
     *   in the root schema). The enums, types and slots these classes use are documented with them.
     * @param metadataLanguage
     *   Which language to use for titles and descriptions.
+    * @param singleFile
+    *   Whether to write all pages as sections of one document, `docs.md`, instead of a file for
+    *   each page.
     */
   final case class Options(
       pruningMode: PruningMode = PruningMode.schemaRoot,
       metadataLanguage: String = "en",
+      singleFile: Boolean = false,
   ) extends HasMetadataLanguage
 
   /** The code generators whose names element pages show, by the language they write. */

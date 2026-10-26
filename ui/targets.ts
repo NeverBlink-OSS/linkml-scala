@@ -141,11 +141,12 @@ export const TARGETS: Target[] = [
       // Defaults to `schema`, like the ER diagram: documentation is for the whole model.
       { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
       TREE_ROOT,
+      { key: "metadataLanguage", type: "text", label: "Language", placeholder: "en", title: "Language of titles and descriptions given in more than one language" },
     ],
     // Always one document: the page view links its sections with anchors, and a file tab per class
     // would be too many for a real schema.
     call: (api, v, o) =>
-      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), true)["docs.md"] ?? "",
+      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), true, String(o.metadataLanguage || "en"))["docs.md"] ?? "",
   },
   {
     id: "erDiagram",

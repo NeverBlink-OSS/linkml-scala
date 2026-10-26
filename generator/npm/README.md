@@ -100,7 +100,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `typeScript(view, pruningMode?, treeRoot?, includeNull?, open?)`             | `string`                 | TypeScript types for the JSON data (no runtime code)                           |
 | `pydantic(view, pruningMode?, treeRoot?, includeNull?, open?)`               | `string`                 | Python classes (pydantic) that load and dump the JSON data                     |
 | `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`                  | `string`                 | Mermaid entity relationship diagram                                            |
-| `docs(view, pruningMode?, treeRoot?, singleFile?)`                           | `Record<string, string>` | filename → Markdown documentation (`index.md` and a page per element)          |
+| `docs(view, pruningMode?, treeRoot?, singleFile?, metadataLanguage?)`        | `Record<string, string>` | filename → Markdown documentation (`index.md` and a page per element)          |
 | `ossie(view, pruningMode?, treeRoot?, outFormat?)`                           | `string`                 | Apache Ossie ontology, `yaml` (default) or `json`                              |
 | `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |

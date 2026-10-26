@@ -627,6 +627,8 @@ object LinkMlJsApi {
     *   tree root pruning mode.
     * @param singleFile
     *   Whether to write all pages as sections of one `docs.md` document. Default: false
+    * @param metadataLanguage
+    *   Which language to use for titles and descriptions. Default: en
     * @return
     *   JS dictionary (object) containing a mapping from filename to file content: `index.md` plus
     *   `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md` and `types/<name>.md`, or only
@@ -637,11 +639,14 @@ object LinkMlJsApi {
       pruningMode: String = "schema",
       treeRoot: js.UndefOr[String] = js.undefined,
       singleFile: Boolean = false,
+      metadataLanguage: String = "en",
   ): js.Dictionary[String] = {
-    val generator = DocsGenerator(using schema.underlying)
-    val options = DocsGenerator.Options(pruningMode = PruningMode(pruningMode, treeRoot.toOption))
-    if (singleFile) js.Dictionary("docs.md" -> generator.serialize(options))
-    else generator.generateFiles(options).toMap.toJSDictionary
+    val options = DocsGenerator.Options(
+      pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+      metadataLanguage = metadataLanguage,
+      singleFile = singleFile,
+    )
+    DocsGenerator(using schema.underlying).generateFiles(options).toMap.toJSDictionary
   }
 
   /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
