@@ -80,14 +80,28 @@ object UriOrCurie {
       }
       valid && {
         val next = if (index + 1 < s.length) s.charAt(index + 1) else ' '
-        next != '/' && next != '\\' &&
-        !nonHierarchicalSchemes.contains(s.substring(0, index).toLowerCase)
+        next != '/' && next != '\\' && !isNonHierarchicalScheme(s, index)
       }
     }
   }
 
+  /** Check that the first [[length]] chars of [[s]] are one of [[nonHierarchicalSchemes]], in any
+    * case. Unlike `toLowerCase`, `regionMatches` doesn't depend on the default locale. In Turkish,
+    * `toLowerCase` turns `INFO` into `ınfo`.
+    */
+  private def isNonHierarchicalScheme(s: String, length: Int): Boolean = {
+    val schemes = nonHierarchicalSchemes
+    var i = 0
+    while (i < schemes.length) {
+      val scheme = schemes(i)
+      if (scheme.length == length && s.regionMatches(true, 0, scheme, 0, length)) return true
+      i += 1
+    }
+    false
+  }
+
   /** URI schemes whose URIs don't have `/` after the colon, so they look like CURIEs. */
-  private val nonHierarchicalSchemes: Set[String] = Set(
+  private val nonHierarchicalSchemes: Array[String] = Array(
     "about",
     "cid",
     "data",
