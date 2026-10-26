@@ -50,7 +50,8 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Macro validator's result */
   private lazy val macroResult = sv.schemas.foldLeft(ValidatorResult.ok) { (acc, schema) =>
-    given ValidatorContext = ValidatorContext(isDefaultRangeAllowed, schema.id)
+    given ValidatorContext =
+      ValidatorContext(isDefaultRangeAllowed, schema.id, sv.getPrefixes(schema))
     acc + macroValidator.validate(schema).prependedPath("/")
   }
 
@@ -139,6 +140,16 @@ final class SchemaValidator(using sv: SchemaView) {
       new InvalidUriOrCurie(
         location = at(value.path, value.fromSchema),
         uriOrCurie = value.value,
+      ),
+    )
+
+  /** Any CURIE values with a declared prefix that weren't expanded, in a schema built in code. */
+  private lazy val unexpandedCuries: Seq[SchemaFatal] =
+    macroResult.unexpandedCuries.map(value =>
+      new UnexpandedCurie(
+        location = at(value.path, value.fromSchema),
+        uriOrCurie = value.value,
+        uri = value.uri,
       ),
     )
 
@@ -550,6 +561,7 @@ final class SchemaValidator(using sv: SchemaView) {
     val problems = unknownReferences ++
       invalidRangeTypes ++
       invalidUriOrCuries ++
+      unexpandedCuries ++
       usedUndefinedDefaultRange ++
       schemaIdClash
     // Looking for loops follows references, so it needs all of them to resolve.

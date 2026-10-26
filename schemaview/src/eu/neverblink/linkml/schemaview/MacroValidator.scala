@@ -24,6 +24,8 @@ import scala.quoted.*
   *   URI or CURIE values that are malformed
   * @param undeclaredPrefixes
   *   URI or CURIE values that look like CURIEs, but whose prefix isn't declared
+  * @param unexpandedCuries
+  *   CURIE values with a declared prefix that weren't expanded, in a schema built in code
   * @param isEmpty
   *   Set to true only if you are creating a ValidatorResult == ValidatorResult.ok
   */
@@ -33,6 +35,7 @@ final case class ValidatorResult private (
     invalidDefaultRanges: Seq[InvalidDefaultRange],
     invalidUriOrCuries: Seq[InvalidUriOrCurie],
     undeclaredPrefixes: Seq[UndeclaredPrefixValue],
+    unexpandedCuries: Seq[UnexpandedCurieValue],
     isEmpty: Boolean,
 ):
   /** Merge the [[ValidatorResult]]s */
@@ -45,6 +48,7 @@ final case class ValidatorResult private (
         invalidDefaultRanges ++ other.invalidDefaultRanges,
         invalidUriOrCuries ++ other.invalidUriOrCuries,
         undeclaredPrefixes ++ other.undeclaredPrefixes,
+        unexpandedCuries ++ other.unexpandedCuries,
       )
 
   /** Add a [[prefix]] to each result's source path */
@@ -57,11 +61,20 @@ final case class ValidatorResult private (
         invalidDefaultRanges.map(_.prependedPath(prefix)),
         invalidUriOrCuries.map(_.prependedPath(prefix)),
         undeclaredPrefixes.map(_.prependedPath(prefix)),
+        unexpandedCuries.map(_.prependedPath(prefix)),
       )
 
 object ValidatorResult {
   val ok: ValidatorResult =
-    ValidatorResult(Seq.empty, Seq.empty, Seq.empty, Seq.empty, Seq.empty, isEmpty = true)
+    ValidatorResult(
+      Seq.empty,
+      Seq.empty,
+      Seq.empty,
+      Seq.empty,
+      Seq.empty,
+      Seq.empty,
+      isEmpty = true,
+    )
 
   def apply(
       unknownReferences: Seq[UnknownReference] = Seq(),
@@ -69,6 +82,7 @@ object ValidatorResult {
       invalidDefaultRanges: Seq[InvalidDefaultRange] = Seq(),
       invalidUriOrCuries: Seq[InvalidUriOrCurie] = Seq(),
       undeclaredPrefixes: Seq[UndeclaredPrefixValue] = Seq(),
+      unexpandedCuries: Seq[UnexpandedCurieValue] = Seq(),
   ): ValidatorResult =
     new ValidatorResult(
       unknownReferences,
@@ -76,6 +90,7 @@ object ValidatorResult {
       invalidDefaultRanges,
       invalidUriOrCuries,
       undeclaredPrefixes,
+      unexpandedCuries,
       isEmpty = false,
     )
 }
@@ -138,6 +153,20 @@ final case class UndeclaredPrefixValue(path: String, value: Uri, prefix: String,
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): UndeclaredPrefixValue = copy(path = prefix.concat(path))
 
+/** A CURIE value with a declared prefix that wasn't expanded. CURIEs are expanded when a schema is
+  * read, so this happens only in a schema built in code.
+  *
+  * @param path
+  *   JSON path to the value
+  * @param value
+  *   The CURIE
+  * @param uri
+  *   The URI that the CURIE expands to
+  */
+final case class UnexpandedCurieValue(path: String, value: Curie, uri: Uri, fromSchema: Uri):
+  /** Add a [[prefix]] to this class' path */
+  def prependedPath(prefix: String): UnexpandedCurieValue = copy(path = prefix.concat(path))
+
 private trait MacroValidator[T] {
   def validate(t: T)(using SchemaView, ValidatorContext): ValidatorResult
 }
@@ -148,6 +177,10 @@ private trait MacroValidator[T] {
   *   Whether to treat omitted ranges as an error
   * @param isRange
   *   Whether this particular slot is a range and should be additionally checked
+  * @param fromSchema
+  *   The id of the schema that is validated
+  * @param prefixes
+  *   The prefixes of the schema that is validated
   * @param classScope
   *   Name of the class definition this slot is nested in, if any
   * @param slotsMayBeLocal
@@ -158,12 +191,20 @@ final class ValidatorContext private (
     val defaultRangeAllowed: Boolean,
     val isRange: Boolean,
     val fromSchema: Uri,
+    val prefixes: PrefixMap,
     val classScope: Option[String],
     val slotsMayBeLocal: Boolean,
 ):
   /** Mark continue validating this slot as a range. SHOULD NOT BE USED OUTSIDE THE MACRO */
   def asRange: ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, true, fromSchema, classScope, slotsMayBeLocal)
+    new ValidatorContext(
+      defaultRangeAllowed,
+      true,
+      fromSchema,
+      prefixes,
+      classScope,
+      slotsMayBeLocal,
+    )
 
   /** Enter the scope of a class definition. SHOULD NOT BE USED OUTSIDE THE MACRO */
   def withClassScope(className: String): ValidatorContext =
@@ -171,6 +212,7 @@ final class ValidatorContext private (
       defaultRangeAllowed,
       isRange,
       fromSchema,
+      prefixes,
       Some(className),
       slotsMayBeLocal,
     )
@@ -179,11 +221,11 @@ final class ValidatorContext private (
     * NOT BE USED OUTSIDE THE MACRO
     */
   def asLocalSlotRef: ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, isRange, fromSchema, classScope, true)
+    new ValidatorContext(defaultRangeAllowed, isRange, fromSchema, prefixes, classScope, true)
 
 object ValidatorContext:
-  def apply(defaultRangeAllowed: Boolean, fromSchema: Uri): ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, false, fromSchema, None, false)
+  def apply(defaultRangeAllowed: Boolean, fromSchema: Uri, prefixes: PrefixMap): ValidatorContext =
+    new ValidatorContext(defaultRangeAllowed, false, fromSchema, prefixes, None, false)
 
 private object MacroValidator {
   given MacroValidator[LinkmlAny] = new MacroValidator[LinkmlAny] {
@@ -208,8 +250,9 @@ private object MacroValidator {
     *
     * A [[Uri]] that still has the shape of a CURIE after that, such as `acme:Person`, has a prefix
     * that isn't declared. A [[Curie]] with a colon, such as `my_ns:Foo`, has a prefix that isn't
-    * declared and can't be a URI scheme, so it is invalid. A [[Curie]] without a colon is a
-    * relative reference, such as an import path.
+    * declared and can't be a URI scheme, so it is invalid. A [[Curie]] with a declared prefix, such
+    * as `ex:Person`, wasn't expanded, which happens only in a schema built in code. A [[Curie]]
+    * without a colon is a relative reference, such as an import path.
     */
   given uriOrCurieValidator: MacroValidator[UriOrCurie] =
     new MacroValidator[UriOrCurie] {
@@ -226,9 +269,19 @@ private object MacroValidator {
                 ),
               )
             else ValidatorResult.ok
-          case _ =>
-            if (t.isValid && t.original.indexOf(':') < 0) ValidatorResult.ok
-            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", t, vc.fromSchema)))
+          case c: Curie =>
+            val curie = c.original
+            val isValid = c.isValid
+            if (isValid && curie.indexOf(':') < 0) ValidatorResult.ok
+            else {
+              val uri = if (isValid) vc.prefixes.expandOrNull(curie) else null
+              if (uri ne null)
+                ValidatorResult(unexpandedCuries =
+                  Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
+                )
+              else
+                ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", c, vc.fromSchema)))
+            }
         }
     }
 

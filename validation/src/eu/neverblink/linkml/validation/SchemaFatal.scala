@@ -17,6 +17,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
   typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
   typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),
+  typeDesignator.Member(classOf[UnexpandedCurie], "UnexpandedCurie"),
   typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
   typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
   typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),

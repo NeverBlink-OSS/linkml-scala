@@ -151,6 +151,28 @@ classes:
           IRI. A CURIE must be of the form 'prefix:localname', where the prefix is declared in the
           schema and 'localname' is a valid relative IRI reference.
 
+  UnexpandedCurie:
+    is_a: SchemaFatal
+    description: >-
+      A CURIE value has a declared prefix, but wasn't expanded to a URI. CURIEs are expanded when a
+      schema is read, so this happens only in a schema built in code.
+    attributes:
+      uri_or_curie:
+        range: uriorcurie
+        required: true
+        title: URI or CURIE
+      uri:
+        range: uri
+        required: true
+        title: URI
+    slot_usage:
+      message:
+        equals_expression: "CURIE '{uri_or_curie}' at {location.json_pointer} isn't expanded"
+      details:
+        equals_expression: >-
+          CURIE '{uri_or_curie}' at {location.json_pointer} isn't expanded. CURIEs are expanded
+          when a schema is read, but not in a schema built in code. Use the URI '{uri}' instead.
+
   SchemaParseError:
     is_a: SchemaFatal
     description: >-

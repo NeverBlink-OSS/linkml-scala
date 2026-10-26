@@ -41,6 +41,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UndeclaredCuriePrefix], "UndeclaredCuriePrefix"),
   typeDesignator.Member(classOf[UndefinedDefaultRange], "UndefinedDefaultRange"),
   typeDesignator.Member(classOf[UndefinedPrefix], "UndefinedPrefix"),
+  typeDesignator.Member(classOf[UnexpandedCurie], "UnexpandedCurie"),
   typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
   typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
   typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),

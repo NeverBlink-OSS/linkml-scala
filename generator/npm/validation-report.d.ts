@@ -300,6 +300,7 @@ export type SchemaFatal =
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
+  | UnexpandedCurie
   | UnexpectedError
   | UnknownReference
   | UnknownStringReference;
@@ -359,6 +360,7 @@ export type SchemaIssue =
   | UndeclaredCuriePrefix
   | UndefinedDefaultRange
   | UndefinedPrefix
+  | UnexpandedCurie
   | UnexpectedError
   | UnknownReference
   | UnknownStringReference;
@@ -444,6 +446,24 @@ export interface UndefinedPrefix {
   prefix: string;
   /** severity: The severity of the issue. */
   severity: IssueSeverity;
+}
+
+/** A CURIE value has a declared prefix, but wasn't expanded to a URI. CURIEs are expanded when a schema is read, so this happens only in a schema built in code. */
+export interface UnexpandedCurie {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UnexpandedCurie";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** URI */
+  uri: string;
+  /** URI or CURIE */
+  uri_or_curie: string;
 }
 
 /** Something unexpected went wrong that during schema loading or validation. Consider filing  a bug report with the schema and the error message: {reason} */

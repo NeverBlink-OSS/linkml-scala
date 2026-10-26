@@ -1,9 +1,12 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.linkml.metamodel.{ClassDefinition, Prefix, SchemaDefinition}
+import eu.neverblink.linkml.runtime.{Curie, Uri}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal, UndeclaredCuriePrefix}
+
+import scala.collection.immutable.VectorMap
 
 class SchemaValidatorSpec extends AnyWordSpec, Matchers {
   def load(schemaYaml: String): SchemaView =
@@ -875,6 +878,21 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "Undeclared prefix 'acme' in 'acme:Person' at /classes/SomeClass/class_uri/",
         "Undeclared prefix 'acme' in 'acme:foo' at /classes/SomeClass/annotations/acme:foo/tag/",
       )
+    }
+
+    "fail on a CURIE with a declared prefix in a schema built in code" in {
+      // CURIEs are expanded when a schema is read, so only a schema built in code can have one
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        prefixes = VectorMap("ex" -> Prefix("ex", Uri("https://example.org/"))),
+        classes = Map("Person" -> ClassDefinition("Person", classUri = Some(Curie("ex:Person")))),
+      )
+      val msg =
+        the[SchemaIssues.FatalSchemaException].thrownBy(SchemaView.single(schema)).getMessage
+
+      msg should include("CURIE 'ex:Person' at /classes/Person/class_uri/ isn't expanded")
+      msg should include("Use the URI 'https://example.org/Person' instead")
     }
 
     "catch an invalid reference in an imported file" in {
