@@ -893,6 +893,21 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       ).asExpr.asInstanceOf[Expr[Unit]]
     }
 
+    // Runs 'clear' when a field other than the id and the value doesn't hold its default. The
+    // checks are separate statements, not one '&&' chain, so that classes with many fields don't
+    // overflow the compiler's stack.
+    def genCheckDefaults(holds: Expr[Boolean], clear: Expr[Unit])(using Quotes): Expr[Unit] = {
+      val checks = new mutable.ListBuffer[Statement]
+      fields.foreach { fieldInfo =>
+        if (fieldInfo.kind != FieldKind.Id && fieldInfo.kind != FieldKind.Value) {
+          val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
+          val d = fieldInfo.defaultValue.get.asExpr
+          checks.addOne('{ if ($holds && $getter != $d) $clear }.asTerm)
+        }
+      }
+      Block(checks.toList, '{}.asTerm).asExpr.asInstanceOf[Expr[Unit]]
+    }
+
     if (classInfo.isFlattened) {
       val fieldInfo = fields.head
       val fTpe = fieldInfo.resolvedTpe
@@ -925,16 +940,6 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       fTpe.asType match {
         case '[ft] =>
           val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
-          // The compact form leaves out the other fields, so it is used only when each of them
-          // still holds its default value.
-          val othersHoldDefaults = fields.foldLeft('{ true }) { (acc, f) =>
-            if (f.kind == FieldKind.Id || f.kind == FieldKind.Value) acc
-            else {
-              val g = Select(x.asTerm, f.getterOrField).asExpr
-              val d = f.defaultValue.get.asExpr
-              '{ $acc && $g == $d }
-            }
-          }
           '{
             def fullForm: Node = {
               val kvs = ListMap.newBuilder[
@@ -944,7 +949,11 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
               ${ genEncodeFields('kvs) }
               Node.MappingNode(kvs.result())
             }
-            if ($skipId && $othersHoldDefaults) {
+            // The compact form leaves out the other fields, so it is used only when each of them
+            // still holds its default value.
+            var holdsDefaults = $skipId
+            ${ genCheckDefaults('holdsDefaults, '{ holdsDefaults = false }) }
+            if (holdsDefaults) {
               val collapsed = $encodeVal
               // A map in the collapsed position cannot be distinguished from the full form when
               // decoding (both are an object). So, for this case we always keep the full form.
