@@ -322,6 +322,16 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "link the license when it is a web address" in {
+      def index(license: String): String =
+        files(schemaOf(s"license: $license\nclasses:\n  A: {}"))("index.md")
+      index("https://creativecommons.org/licenses/by/4.0/") should include(
+        "- **License:** [https://creativecommons.org/licenses/by/4.0/]" +
+          "(https://creativecommons.org/licenses/by/4.0/)\n",
+      )
+      index("CC-BY-4.0") should include("- **License:** CC-BY-4.0\n")
+    }
+
     "show cardinalities" in {
       val page = files(ModelCatalogue.cardinality.model).collectFirst {
         case (path, page) if path.startsWith("classes/") => page

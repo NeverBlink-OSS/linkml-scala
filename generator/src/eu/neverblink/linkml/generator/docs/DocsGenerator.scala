@@ -163,7 +163,14 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       }
       schema.license.foreachFast { l =>
         md.startItem("License")
-        md.text(l)
+        // Often the address of the license, which is then linked
+        if (isLinkable(l)) {
+          md.append('[')
+          md.text(l)
+          md.append("](")
+          md.append(l)
+          md.append(')')
+        } else md.text(l)
         md.endItem()
       }
       treeRoot.foreachFast { cv =>
