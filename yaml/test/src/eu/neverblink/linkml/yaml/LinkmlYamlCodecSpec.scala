@@ -552,6 +552,42 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
         MyClass(Map("a" -> DictEntry("a", 1))),
       )
     }
+    "use the compact form only when the other fields hold their defaults" in {
+      case class DictEntry(
+          @id k: String,
+          @value v: Int,
+          p: Option[String] = None,
+          @simpleDict c: Map[String, DictEntry] = Map.empty,
+      )
+
+      case class MyClass(@simpleDict d: Map[String, DictEntry], x: Option[Int] = None)
+          derives LinkmlYamlCodec
+
+      roundTrip(
+        MyClass(Map("a" -> DictEntry("a", 1))),
+        """d:
+          |  a: 1
+          |""".stripMargin,
+      )
+      roundTrip(
+        MyClass(
+          Map(
+            "a" -> DictEntry("a", 1, Some("r"), Map("a1" -> DictEntry("a1", 2))),
+            "b" -> DictEntry("b", 3, Some("r")),
+          ),
+        ),
+        """d:
+          |  a:
+          |    v: 1
+          |    p: r
+          |    c:
+          |      a1: 2
+          |  b:
+          |    v: 3
+          |    p: r
+          |""".stripMargin,
+      )
+    }
     "decode and encode recursive case classes" in {
       case class MyClass(v: Int, n: Option[MyClass] = None) derives LinkmlYamlCodec
 
