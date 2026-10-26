@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.docs
 
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.{ElementView, SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
@@ -291,6 +292,34 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
       // All the names are the same, so there is nothing more to show.
       pages("enums/Gender.md") should include("# Enum: Gender\n\n- **URI:**")
+    }
+
+    "show only the names that the code generators give" in {
+      val sv = schemaOf(
+        """classes:
+          |  Container:
+          |    tree_root: true
+          |    slots: [ContainerDocument]
+          |slots:
+          |  ContainerDocument:
+          |    range: status_kind
+          |enums:
+          |  status_kind: {}
+          |""".stripMargin,
+      )
+      val pages = files(sv)
+      // The Python generator names the document type of the tree root `ContainerDocument`, so it
+      // renames the field
+      pages("slots/ContainerDocument.md") should include(
+        "- **Names in code:** `containerDocument` (Scala), `ContainerDocument` (TypeScript), " +
+          "`ContainerDocument_` (Python), `container_document` (GraphQL)\n",
+      )
+      PydanticGenerator(using sv).serialize() should include("    ContainerDocument_: ")
+      // An enum without values is a string in Scala and Python, so only TypeScript and GraphQL
+      // have a type with its name
+      pages("enums/status_kind.md") should include(
+        "- **Names in code:** `StatusKind` (TypeScript, GraphQL)\n",
+      )
     }
 
     "escape names and keep descriptions on one line in tables" in {

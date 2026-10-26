@@ -2,8 +2,8 @@ package eu.neverblink.linkml.generator.docs
 
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
-import eu.neverblink.linkml.generator.pydantic.PydanticRenamer
-import eu.neverblink.linkml.generator.scala.ScalaRenamer
+import eu.neverblink.linkml.generator.pydantic.{PydanticGenerator, PydanticRenamer}
+import eu.neverblink.linkml.generator.scala.{ScalaGenerator, ScalaRenamer}
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode, Renamer}
 import eu.neverblink.linkml.metamodel.{CommonMetadata, Element, SlotDefinition}
@@ -492,26 +492,28 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     }
 
     /** The names that the code generators give [[el]], as pairs of target language and name. Types
-      * are left out, as the generated code mostly uses built-in types for them.
+      * are left out, as the generated code mostly uses built-in types for them. So is an enum in a
+      * language that has no type for it.
       */
     private def codeNames(el: ElementView[?, ?]): Seq[(String, String)] = el match {
-      case cv: ClassView => codeTargets.map((target, r) => (target, r.className(cv)))
-      case ev: EnumView => codeTargets.map((target, r) => (target, r.enumName(ev)))
+      case cv: ClassView => codeTargets.map(t => (t.language, t.renamer.className(cv)))
+      case ev: EnumView =>
+        codeTargets.filter(_.definesEnum(ev)).map(t => (t.language, t.renamer.enumName(ev)))
       case s: SlotView =>
-        codeTargets.map { (target, r) =>
+        codeTargets.map { t =>
           // Python fields are named after the slot's name in data, made a valid identifier.
-          if (r eq PydanticRenamer) (target, PydanticRenamer.attribute(s.aliasedName, pythonNames))
-          else (target, r.slotName(s))
+          if (t.renamer eq PydanticRenamer)
+            (t.language, PydanticRenamer.attribute(s.aliasedName, pythonNames))
+          else (t.language, t.renamer.slotName(s))
         }
       case _ => Nil
     }
 
-    /** The names of the documented classes and enums in Python, which fields do not take. The
-      * Python generator also keeps a few more names, such as those of class unions, so a field that
-      * takes one of them is named differently there.
+    /** The names that the Python generator gives its classes, class unions, enums and document
+      * type, which fields do not take. It prunes as the documentation does.
       */
     private lazy val pythonNames: Set[String] =
-      site.classes.map(PydanticRenamer.className).toSet ++ site.enums.map(PydanticRenamer.enumName)
+      PydanticGenerator().moduleNames(PydanticGenerator.Options(pruningMode = options.pruningMode))
 
     /** List items for the metadata that every element can have. */
     private def metadataItems(md: Markdown, el: ElementView[?, ?]): Unit = {
@@ -673,12 +675,26 @@ object DocsGenerator {
       singleFile: Boolean = false,
   ) extends HasMetadataLanguage
 
-  /** The code generators whose names element pages show, by the language they write. */
-  private val codeTargets: Seq[(String, Renamer)] = Seq(
-    ("Scala", ScalaRenamer),
-    ("TypeScript", TypeScriptRenamer),
-    ("Python", PydanticRenamer),
-    ("GraphQL", GraphQlRenamer),
+  /** A code generator whose names element pages show.
+    *
+    * @param language
+    *   The language it writes
+    * @param renamer
+    *   How it names classes, slots and enums
+    * @param definesEnum
+    *   Whether it has a type for an enum
+    */
+  private final case class CodeTarget(
+      language: String,
+      renamer: Renamer,
+      definesEnum: EnumView => Boolean,
+  )
+
+  private val codeTargets: Seq[CodeTarget] = Seq(
+    CodeTarget("Scala", ScalaRenamer, ScalaGenerator.definesEnum),
+    CodeTarget("TypeScript", TypeScriptRenamer, _ => true),
+    CodeTarget("Python", PydanticRenamer, PydanticGenerator.definesEnum),
+    CodeTarget("GraphQL", GraphQlRenamer, _ => true),
   )
 
   /** The metadata of [[el]], which every kind of element has. */

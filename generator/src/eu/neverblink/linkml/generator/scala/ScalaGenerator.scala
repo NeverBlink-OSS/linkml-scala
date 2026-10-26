@@ -142,7 +142,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   private def generateEnums(options: Options): Iterable[(String, String)] =
     sv.enums.values.flatMap { ev =>
       val en = ev._enum
-      if (en.permissibleValues.isEmpty) None
+      if (!ScalaGenerator.definesEnum(ev)) None
       else {
         val name = enumName(ev)
         val enumCases = ev.derivedValues.map(v =>
@@ -299,8 +299,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         }
         (scalaType, default)
       case EnumAttributeView(slotView, _, enumView) =>
-        val enumDef = enumView._enum
-        if (enumDef.permissibleValues.isEmpty)
+        if (!ScalaGenerator.definesEnum(enumView))
           ("String", None) // fallback to String for dynamic enums
         else {
           val name = enumName(enumView)
@@ -612,6 +611,11 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 }
 
 object ScalaGenerator {
+
+  /** Whether the generated code has an enum for [[ev]]. An enum without permissible values is a
+    * `String` instead.
+    */
+  def definesEnum(ev: EnumView): Boolean = ev._enum.permissibleValues.nonEmpty
 
   /** Options for [[ScalaGenerator]].
     *
