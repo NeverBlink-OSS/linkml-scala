@@ -123,11 +123,14 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
 
   /** Start an item of a bullet list, indented by [[depth]] levels. Write its text with the inline
     * methods, then call [[endItem]].
+    *
+    * Each level is indented by 4 spaces. MkDocs needs 4 spaces for a nested list, and GitHub and
+    * other CommonMark tools read them the same way as 2.
     */
   def startNestedItem(depth: Int): Unit = {
     var i = depth
     while (i > 0) {
-      sink.append("  ")
+      sink.append("    ")
       i -= 1
     }
     sink.append("- ")

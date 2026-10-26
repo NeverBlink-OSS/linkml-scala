@@ -76,17 +76,19 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "show the inheritance of a class as a nested list" in {
+      // Each level is indented by 4 spaces, as MkDocs needs. GitHub and other CommonMark tools
+      // read it the same way as 2 spaces.
       val pages = files(ModelCatalogue.inheritance.model)
       pages("classes/ChildClass.md") should include(
         """## Inheritance
           |
           |- [BaseClass](BaseClass.md)
-          |  - **ChildClass**
+          |    - **ChildClass**
           |""".stripMargin,
       )
       pages("classes/BaseClass.md") should include(
         """- **BaseClass**
-          |  - [ChildClass](ChildClass.md)
+          |    - [ChildClass](ChildClass.md)
           |""".stripMargin,
       )
     }
