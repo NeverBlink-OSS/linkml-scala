@@ -228,7 +228,7 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
       var n = 2
       // Compare without case, so that `Person` and `person` do not overwrite each other on macOS
       // and Windows.
-      while (!taken.add(stem.toLowerCase)) {
+      while (!taken.add(DocsSite.lowerCase(stem))) {
         stem = base + "_" + n
         n += 1
       }
@@ -256,8 +256,21 @@ private[docs] object DocsSite {
       i += 1
     }
     val stem = sb.toString
-    if (stem.isEmpty || stem.charAt(0) == '.' || reserved.contains(stem.toLowerCase))
+    if (stem.isEmpty || stem.charAt(0) == '.' || reserved.contains(lowerCase(stem)))
       "_".concat(stem)
     else stem
+  }
+
+  /** [[s]] in lower case. Unlike `toLowerCase`, this doesn't depend on the default locale. In
+    * Turkish, `toLowerCase` turns `Item` into `ıtem`, which wouldn't clash with `item`.
+    */
+  def lowerCase(s: String): String = {
+    val sb = new java.lang.StringBuilder(s.length)
+    var i = 0
+    while (i < s.length) {
+      sb.append(Character.toLowerCase(s.charAt(i)))
+      i += 1
+    }
+    sb.toString
   }
 }
