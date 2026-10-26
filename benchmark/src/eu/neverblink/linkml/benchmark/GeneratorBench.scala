@@ -2,6 +2,7 @@ package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.DocumentGenerator
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
@@ -212,6 +213,18 @@ class GeneratorBench extends CommonParams {
   @Benchmark
   def frictionlessFromSchemaView(bh: Blackhole): Unit =
     write(bh, FrictionlessGenerator(using schemaView))
+
+  @Benchmark
+  def docsFromYaml(bh: Blackhole): Unit =
+    write(bh, DocsGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))))
+
+  @Benchmark
+  def docsFromSchemas(bh: Blackhole): Unit =
+    write(bh, DocsGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def docsFromSchemaView(bh: Blackhole): Unit =
+    write(bh, DocsGenerator(using schemaView))
 
   /** Writes the document with default options to the blackhole, as the CLI writes it to a file. */
   private def write(bh: Blackhole, generator: DocumentGenerator[?]): Unit =
