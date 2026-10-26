@@ -12,7 +12,7 @@ they work as they are:
 From the command line, to a folder:
 
 ```shell
-linkml-scala generate docs --pruning-mode schema --to docs/schema schema.yaml
+linkml-scala generate docs --to docs/schema schema.yaml
 ```
 
 This writes:
@@ -34,7 +34,7 @@ To get one document instead, with the pages as sections that link to each other 
 `.md` file in `--to`, or leave `--to` out to write to stdout:
 
 ```shell
-linkml-scala generate docs --pruning-mode schema --to schema.md schema.yaml
+linkml-scala generate docs --to schema.md schema.yaml
 ```
 
 Options:
@@ -42,10 +42,10 @@ Options:
 - `--pruning-mode <treeRoot|schema|skip>`: which classes to document. The enums, types and slots
   that these classes use are documented with them.
   - `schema`: the classes defined in the schema, and the classes they use from imported schemas.
-    This is usually what you want.
+    This is the default, unlike for the other generators.
   - `treeRoot`: only the classes that the tree root class reaches.
-  - `skip`: everything, including all the types from `linkml:types`. This is the default on the
-    command line, as for the other generators.
+  - `skip`: everything, including all the types from `linkml:types`, whether the schema uses them
+    or not.
 - `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
 - `--metadata-language <tag>`: which language to use for titles and descriptions that are given
   in more than one language. Default: `en`.

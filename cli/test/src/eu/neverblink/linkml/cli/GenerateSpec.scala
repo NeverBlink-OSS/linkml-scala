@@ -334,6 +334,25 @@ class GenerateSpec extends AnyWordSpec, Matchers {
         } finally os.remove.all(dir)
       }
 
+      "document only the elements that the schema uses by default" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val (_, err, code) = withSchemas(1, prunableSchema) { paths =>
+            Docs.runTestCommandWithExitCode(
+              List("generate", "docs", "--to", (dir / "site").toString) ++ paths,
+            )
+          }
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          // Not the other types of `linkml:types`, which the schema doesn't use
+          snapshot(dir / "site").keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/Root.md",
+            "classes/Other.md",
+            "types/string.md",
+          )
+        } finally os.remove.all(dir)
+      }
+
       "remove the pages of an earlier run, but not the user's own files" in {
         val dir = os.temp.dir(prefix = "linkml-generate-docs")
         try {

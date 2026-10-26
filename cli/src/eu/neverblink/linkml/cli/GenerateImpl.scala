@@ -569,7 +569,7 @@ final case class DocsOptions(
     @Recurse
     common: GenerateOptions,
     @Recurse
-    pruning: PruningOptions = PruningOptions(),
+    pruning: DocsPruningOptions = DocsPruningOptions(),
     @HelpMessage("Which language to use for titles and descriptions. Default: en")
     metadataLanguage: String = "en",
 ) extends HasGenerateOptions
