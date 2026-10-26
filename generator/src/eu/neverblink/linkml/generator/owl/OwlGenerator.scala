@@ -540,7 +540,7 @@ object OwlGenerator {
 
     /** The value that `equals_string` means for the slot's range.
       *
-      * @throws IllegalArgumentException
+      * @throws SchemaConversionException
       *   if the value should be an IRI but isn't a URI
       */
     private def valueOf(s: SlotView, text: String): Option[Value] = {
@@ -548,7 +548,7 @@ object OwlGenerator {
         val uri = UriOrCurie.expanded(text, s.definingPrefixes).original
         if (UriCurieValidator.isValidUri(uri)) Iri(uri)
         else
-          throw IllegalArgumentException(
+          throw SchemaConversionException(
             s"The equals_string value '$text' of slot '${s.name}' isn't a valid URI or CURIE",
           )
       }

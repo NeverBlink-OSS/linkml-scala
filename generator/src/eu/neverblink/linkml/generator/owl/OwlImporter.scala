@@ -1342,7 +1342,7 @@ object OwlImporter {
       val schemaId =
         config.schemaId.orElse(ontology.iri).getOrElse(defaultNamespace.stripSuffix("#"))
       if (!UriCurieValidator.isValidUri(schemaId))
-        throw new IllegalArgumentException(
+        throw new SchemaConversionException(
           s"The schema id <$schemaId> isn't a valid URI. Set another one with `--schema-id`, or " +
             "with `schema_id` in the config",
         )
@@ -1383,7 +1383,7 @@ object OwlImporter {
       prefixes.values.foreach { p =>
         val ns = p.prefixReference.original
         if (!UriCurieValidator.isValidUri(ns))
-          throw new IllegalArgumentException(
+          throw new SchemaConversionException(
             s"The namespace <$ns> of the prefix '${p.prefixPrefix}' isn't a valid URI",
           )
       }

@@ -12,7 +12,12 @@ import eu.neverblink.linkml.generator.ossie.expression.{
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
 import eu.neverblink.linkml.metamodel.{Extensible, Prefixes, SlotDefinition}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, PrefixMap, UriOrCurie}
+import eu.neverblink.linkml.runtime.{
+  HasMetadataLanguage,
+  PrefixMap,
+  SchemaConversionException,
+  UriOrCurie,
+}
 import eu.neverblink.linkml.schemaview.*
 import org.virtuslab.yaml.{Node, parseYaml}
 
@@ -68,7 +73,7 @@ class OssieGenerator(using sv: SchemaView)
         types.map(tv => typeConcept(tv, conceptOf(tv.name)))
 
     if components.isEmpty then
-      throw RuntimeException(
+      throw SchemaConversionException(
         "No concepts to put in the ontology – an Ossie ontology needs at least one. " +
           "Check the pruning mode, and whether the schema defines any classes, enums or types.",
       )
@@ -311,7 +316,7 @@ object OssieGenerator {
 
     /** `iri` as a QName if a declared prefix covers it, else unchanged.
       *
-      * @throws IllegalArgumentException
+      * @throws SchemaConversionException
       *   if `iri` can't be shortened, but would be read back as a QName, such as the IRI
       *   `ex:Person` when `ex` is a declared prefix
       */

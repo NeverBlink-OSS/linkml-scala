@@ -4,7 +4,7 @@ import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{prefixMap, re
 import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig}
 import eu.neverblink.linkml.rdf.{Iri, Literal}
 import eu.neverblink.linkml.metamodel.{Prefixes, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{Uri, UriCurieValidator, UriOrCurie}
+import eu.neverblink.linkml.runtime.{SchemaConversionException, Uri, UriCurieValidator, UriOrCurie}
 import eu.neverblink.linkml.schemaview.{Case, FileSystemImporter, SchemaView}
 
 import java.net.URLDecoder
@@ -161,16 +161,16 @@ private[owl] final class OwlImportNames(
   /** The IRI as a URI. Its prefix is marked as used, if it has one (see [[curie]]), so the schema
     * declares the prefix, and the URI is written as a CURIE.
     *
-    * @throws IllegalArgumentException
+    * @throws SchemaConversionException
     *   if the IRI can't be a URI in the schema (see [[isWritable]])
     */
   def uri(iri: String): Uri = {
     if (!UriCurieValidator.isValidUri(iri))
-      throw new IllegalArgumentException(
+      throw new SchemaConversionException(
         s"The IRI <$iri> can't be imported, as it isn't a valid URI",
       )
     if (isReadBackAsCurie(iri))
-      throw new IllegalArgumentException(
+      throw new SchemaConversionException(
         s"The IRI <$iri> can't be imported, as '${iri.substring(0, iri.indexOf(':'))}' is a " +
           "prefix in the schema, so the IRI would be read back as a CURIE with another meaning",
       )

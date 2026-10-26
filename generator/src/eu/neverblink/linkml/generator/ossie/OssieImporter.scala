@@ -10,6 +10,7 @@ import eu.neverblink.linkml.runtime.{
   PlainText,
   PrefixMap,
   Reference,
+  SchemaConversionException,
   Uri,
   UriCurieValidator,
   UriOrCurie,
@@ -35,7 +36,8 @@ class OssieImporter extends SchemaImporter[OssieImporter.Options] {
   private def decode(input: String): OssieOntology =
     parseYaml(input) match {
       case Right(node) => OssieOntology.codec.decode(node)
-      case Left(error) => throw RuntimeException(s"Not a readable Ossie ontology: ${error.msg}")
+      case Left(error) =>
+        throw SchemaConversionException(s"Not a readable Ossie ontology: ${error.msg}")
     }
 }
 
@@ -88,7 +90,7 @@ object OssieImporter {
       val pairs = ontology.ontology.map(c => c.concept -> Case.baseToPascal(Case.base(c.concept)))
       val clashes = pairs.groupBy(_._2).filter(_._2.sizeIs > 1)
       if clashes.nonEmpty then
-        throw RuntimeException(
+        throw SchemaConversionException(
           "Concepts that differ only in naming style cannot both be imported: " +
             clashes.toSeq.sortBy(_._1).map { (element, from) =>
               s"${from.map(_._1).mkString(" and ")} would both become '$element'"
@@ -115,7 +117,9 @@ object OssieImporter {
         val p = e._1
         val ns = e._2
         if (!UriCurieValidator.isValidUri(ns))
-          throw RuntimeException(s"The namespace '$ns' of the prefix '$p' isn't a valid IRI")
+          throw SchemaConversionException(
+            s"The namespace '$ns' of the prefix '$p' isn't a valid IRI",
+          )
         if (p != "linkml" || ns == linkmlNamespace) b.addOne(e)
       }
       b.result()
@@ -130,14 +134,14 @@ object OssieImporter {
       * metamodel, such as `skos`. Anything else must be a full IRI, such as `acme:Thing` when
       * `acme` isn't a prefix. A URI that a kept prefix covers is written as a CURIE.
       *
-      * @throws RuntimeException
+      * @throws SchemaConversionException
       *   if the `iri` is neither a full IRI nor a QName with a known prefix, such as `Person`
       */
     private def uriOf(iri: String): Uri = {
       val expanded = reading.expandOrNull(iri)
       val uri = if (expanded ne null) expanded else iri
       if (!UriCurieValidator.isValidUri(uri))
-        throw RuntimeException(
+        throw SchemaConversionException(
           s"The iri '$iri' is neither a full IRI nor a QName with a declared prefix",
         )
       Uri(uri)
@@ -149,7 +153,7 @@ object OssieImporter {
         "https://example.org/" + (if slug.isEmpty then "ontology" else slug)
       }
       if (!UriCurieValidator.isValidUri(id))
-        throw RuntimeException(s"The schema id '$id' isn't a valid URI")
+        throw SchemaConversionException(s"The schema id '$id' isn't a valid URI")
       id
     }
 

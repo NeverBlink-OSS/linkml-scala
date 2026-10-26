@@ -31,7 +31,7 @@ object UriOrCurie {
   /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,
     * or else the original text.
     *
-    * @throws IllegalArgumentException
+    * @throws SchemaConversionException
     *   if [[x]] is a [[Uri]] that can't be compacted, but whose text [[prefixes]] would expand when
     *   it is read back, such as the URI `ex:Person` when `ex` is a declared prefix
     */
@@ -51,9 +51,9 @@ object UriOrCurie {
   /** The error for a URI that can't be written, as its text would be read back as a CURIE with a
     * declared prefix, such as the URI `ex:Person` when `ex` is a declared prefix.
     */
-  def readBackAsCurieError(uri: String): IllegalArgumentException = {
+  def readBackAsCurieError(uri: String): SchemaConversionException = {
     val prefix = uri.substring(0, uri.indexOf(':'))
-    new IllegalArgumentException(
+    new SchemaConversionException(
       s"The URI '$uri' can't be written, as '$prefix' is a declared prefix, so it would be " +
         "read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
         s"prefix '$prefix' where it is used. Otherwise, use a URI whose scheme isn't a " +

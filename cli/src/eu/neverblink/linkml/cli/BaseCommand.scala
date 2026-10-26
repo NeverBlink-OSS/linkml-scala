@@ -9,7 +9,9 @@ import eu.neverblink.linkml.schemaview.{
   SchemaIssues,
   SchemaView,
 }
+import eu.neverblink.linkml.rdf.RdfParseException
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.SchemaConversionException
 
 import java.io.{ByteArrayOutputStream, OutputStream, PrintStream}
 import scala.util.control.NonFatal
@@ -45,14 +47,14 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     printLine(message, toStderr = true)
     exit(1)
 
-  /** Prints `message` with the reason for `e`, without a stack trace, and exits with 1. An
-    * [[ExitException]] is thrown again, as the command has already printed why it stopped.
+  /** Prints `message` with the reason for `e`, without a stack trace, and exits with 1, if `e` is a
+    * problem with the input that the user can fix: a [[SchemaConversionException]] or an
+    * [[RdfParseException]]. Any other exception, such as a bug, is thrown again, so its stack trace
+    * is printed. So is an [[ExitException]], as the command has already printed why it stopped.
     */
   protected final def err(message: String, e: Throwable): Nothing = e match {
-    case _: ExitException => throw e
-    case _ =>
-      val reason = e.getMessage
-      err(s"$message: ${if (reason ne null) reason else e.toString}")
+    case _: SchemaConversionException | _: RdfParseException => err(s"$message: ${e.getMessage}")
+    case _ => throw e
   }
 
   /** The importer for the JSON file of the `--import-map` option, if there is one. */
