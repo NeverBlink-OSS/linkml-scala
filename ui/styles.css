@@ -199,8 +199,84 @@ body { background: var(--bg); }
 .modal-close { width: 32px; height: 32px; color: var(--text-secondary); }
 .modal-close:hover { background: var(--accent-soft); color: var(--text); }
 
-/* ── Load from URL dialog ── */
-.url-dialog { width: min(520px, calc(100vw - 32px)); }
+/* ── Load dialog ── */
+/* The URL section's input, hint, error and label styles are shared by the other dialogs. */
+.load-dialog {
+  width: min(600px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+}
+.load-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px 20px;
+}
+.load-section + .load-section { border-top: 1px solid var(--border-subtle); }
+.load-section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ohi-link { display: inline-flex; color: var(--text); border-radius: var(--radius-sm); }
+.ohi-link:hover { opacity: 0.8; }
+.ohi-logo { display: block; height: 24px; width: auto; }
+/* Same reason as `.ic[hidden]`: `.dir-toggle` beats the UA `[hidden] { display: none }`. */
+.load-section-head .dir-toggle[hidden] { display: none; }
+.load-row { display: flex; align-items: center; gap: 12px; }
+.load-row .url-input { flex: 1; min-width: 0; }
+.load-row-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.load-row .btn { flex-shrink: 0; }
+.ohi-results {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: min(40vh, 320px);
+  overflow-y: auto;
+}
+.ohi-results:empty { display: none; }
+.ohi-hit {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  /* The right side is kept clear for the View on ohi.dev link. */
+  padding: 7px 40px 7px 10px;
+  text-align: left;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.ohi-hit:hover, .ohi-hit:focus-visible { background: var(--accent-soft); border-color: var(--accent-border); }
+.ohi-item { position: relative; }
+/* Pinned to the card's top-right corner, over the room the card leaves for it. It stays at full
+   strength on a greyed-out card: that ontology can still be looked at on ohi.dev. */
+.ohi-view {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 28px;
+  height: 28px;
+}
+.ohi-view:focus-visible { background: var(--accent-soft); color: var(--text); }
+.ohi-view .ic { width: 15px; height: 15px; }
+.ohi-hit-title { font-size: 13px; font-weight: 600; }
+.ohi-hit-meta { font-family: var(--code-font); font-size: 11.5px; color: var(--text-muted); }
+.ohi-hit-desc {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ohi-hit-note { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+.ohi-hit--missing { opacity: 0.5; cursor: not-allowed; }
+.ohi-hit--missing:hover { background: var(--surface-2); border-color: var(--border-subtle); }
+/* While one ontology downloads the rest wait, and the one loading stays lit. */
+.ohi-results--busy .ohi-hit { cursor: progress; }
+.ohi-hit--loading { border-color: var(--brand); }
 .url-body { display: flex; flex-direction: column; gap: 8px; padding: 16px 20px; }
 .url-label { font-size: 13px; font-weight: 600; }
 .url-input {
@@ -242,6 +318,9 @@ body { background: var(--bg); }
 .share-size { font-size: 12px; color: var(--text-muted); }
 .share-size--warn { color: var(--orange); }
 .url-hint code { font-family: var(--code-font); font-size: 12px; }
+/* Same as the links in the help dialog. */
+.url-hint a { color: var(--accent-strong); text-decoration: none; }
+.url-hint a:hover { text-decoration: underline; }
 
 /* ── Help / FAQ dialog ── */
 .faq-dialog {
@@ -745,13 +824,13 @@ body { background: var(--bg); }
      to run anything. */
   .toolbar-right:has(#autoGenerate:checked) #generateBtn { display: none; }
 
-  /* Clear is the one of the four that the editor itself can do, so it goes first when the row
+  /* Clear is the one of the three that the editor itself can do, so it goes first when the row
      runs out of width. Dropping the format sub-label buys the rest: it is what pushes the
      remaining buttons onto a second line, and the direction toggle above says the same thing. */
   #clearInput { display: none; }
   .panel-title-sub { display: none; }
 
-  /* Share keeps its icon but loses its label; the other two buttons have no icon to fall back
+  /* Share keeps its icon but loses its label; the load button has no icon to fall back
      on. The button carries an aria-label, so what it does is still announced. */
   #share .btn-label { display: none; }
   /* `.ic` is 1em, so with the label gone the button would come out shorter than the ones beside

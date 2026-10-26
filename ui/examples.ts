@@ -1,4 +1,4 @@
-// Starting points for the Load example button - one per input format. The Ossie one is what the
+// Starting points for the load dialog's example - one per input format. The Ossie one is what the
 // Ossie generator makes of the LinkML one, so the two examples round-trip into each other.
 
 export const EXAMPLE_SCHEMA = `id: https://example.org/library

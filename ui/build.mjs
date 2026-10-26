@@ -11,9 +11,10 @@ import { existsSync, rmSync } from "node:fs";
 const SCALA_BUNDLE = "../out/generator/js/fullLinkJS.dest/main.js";
 
 // app.ts is the page; worker.ts is the generation worker it spawns as a sibling
-// dist/worker.js. Both are emitted into dist/ by outdir.
+// dist/worker.js. The ohi.dev SDK goes into its own dist/ohi.js.
+// All three are emitted into dist/ by outdir.
 const appOptions = {
-  entryPoints: ["app.ts", "worker.ts"],
+  entryPoints: { app: "app.ts", worker: "worker.ts", ohi: "@neverblink/ohi" },
   bundle: true,
   format: "esm",
   target: "es2020",
@@ -21,9 +22,9 @@ const appOptions = {
   sourcemap: true,
   minify: true,
   logLevel: "info",
-  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle) and dist/mermaid/mermaid.js (see
-  // mermaidOptions); keep esbuild from inlining either.
-  external: ["./linkml.js", "./mermaid/mermaid.js"],
+  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle), dist/mermaid/mermaid.js (see
+  // mermaidOptions) and dist/ohi.js (above); keep esbuild from inlining any of them.
+  external: ["./linkml.js", "./mermaid/mermaid.js", "./ohi.js"],
 };
 
 // Mermaid, for rendering the ER diagram, bundled into dist/mermaid/.
