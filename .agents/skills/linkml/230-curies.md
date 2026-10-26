@@ -81,9 +81,12 @@ classes:
 In the same way, the `exact_mappings` of `string` from `linkml:types` is written as `http://schema.org/Text` when the root schema doesn't declare `schema`.
 
 An unknown prefix breaks this.
-If `other.yaml` didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`, and `validate` would warn about it.
-Reading `ex:Imported` with the root's `ex` prefix gives `https://root.org/Imported`, so no output with this prefix can hold the URI `ex:Imported`.
-`generate linkml` fails with an error about `ex:Imported`, also with `--full-uris`.
+If `other.yaml` doesn't declare `ex`, then `ex:Imported` is not a CURIE there.
+It is kept as it is, as a URI that starts with `ex:`, and `validate` warns about it.
+`generate linkml` can't write this URI.
+The output declares `ex` as `https://root.org/`, so `ex:Imported` would be read back as `https://root.org/Imported`, which is a different URI.
+Writing it in full doesn't help, because `ex:Imported` already is the full URI.
+So `generate linkml` fails with an error, also with `--full-uris`.
 To fix it, declare `ex` in `other.yaml`.
 
 ## Data in Scala

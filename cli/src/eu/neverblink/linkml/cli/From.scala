@@ -49,7 +49,7 @@ abstract class From[T <: HasFromOptions: {Parser, Help}] extends BaseCommand[T] 
     val path = os.Path(input, os.pwd)
     if !os.exists(path) then err(s"No such file: $input")
     // The schema is made in memory first, so a document that can't be imported prints only the
-    // reason, and leaves no empty or partly written file behind.
+    // reason, and leaves no empty or partially written file behind.
     val schema = new ByteArrayOutputStream()
     val in = os.read.inputStream(path)
     try convert(options, in, schema)

@@ -85,7 +85,7 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     }
 
   /** Write to `file`, or to the command's stdout when there is none. If `write` fails, `file` is
-    * removed, so no partly written file is left behind.
+    * removed, so no partially written file is left behind.
     */
   protected final def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
     file.foldFast {
