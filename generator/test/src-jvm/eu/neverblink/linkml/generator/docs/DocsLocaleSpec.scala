@@ -24,7 +24,9 @@ class DocsLocaleSpec extends AnyWordSpec, Matchers {
       // In Turkish, the lower case of `I` is a dotless `ı`, so `Item` would not clash with `item`
       Locale.setDefault(Locale.forLanguageTag("tr"))
       try
-        DocsGenerator(using sv).generateFiles().map(_._1).filter(_.startsWith("classes/")) shouldBe
+        DocsGenerator(using sv).generateFiles().map(_.path).filter(
+          _.startsWith("classes/"),
+        ) shouldBe
           Seq("classes/Item.md", "classes/item_2.md")
       finally Locale.setDefault(default)
     }

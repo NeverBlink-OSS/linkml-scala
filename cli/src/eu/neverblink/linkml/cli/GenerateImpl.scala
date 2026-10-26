@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
-import eu.neverblink.linkml.generator.docs.{DocsGenerator, PageKind}
+import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -583,7 +583,7 @@ object Docs extends SplitGenerate[DocsOptions] {
     * the pages of elements no longer in the schema do not linger. Other files are kept.
     */
   override protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] =
-    PageKind.values.toSeq.flatMap { kind =>
+    DocsSite.PageKind.values.toSeq.flatMap { kind =>
       val folder = dir / kind.dir
       if (os.isDir(folder))
         os.list(folder).filter { file =>
@@ -607,5 +607,5 @@ object Docs extends SplitGenerate[DocsOptions] {
   override protected[cli] def generateFiles(options: DocsOptions)(using
       SchemaView,
   ): Iterable[(String, String)] =
-    DocsGenerator().generateFiles(generator(options))
+    DocsGenerator().generateFiles(generator(options)).map(_.toTuple)
 }

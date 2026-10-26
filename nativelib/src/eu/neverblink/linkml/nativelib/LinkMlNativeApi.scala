@@ -230,7 +230,7 @@ object LinkMlNativeApi {
     */
   def docsFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    writeFiles(DocsGenerator().generateFiles(Options.docs(optionsJson)), out)
+    writeFiles(DocsGenerator().generateFiles(Options.docs(optionsJson)).map(_.toTuple), out)
   }
 
   /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the

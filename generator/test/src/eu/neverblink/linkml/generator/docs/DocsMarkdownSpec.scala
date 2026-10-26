@@ -154,7 +154,9 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
 
   "awkward names" should {
     "come out as written" in {
-      val pages = DocsGenerator(using awkward).generateFiles().toMap.map((k, v) => (k, parse(v)))
+      val pages = DocsGenerator(using awkward).generateFiles().map(_.toTuple).toMap.map((k, v) =>
+        (k, parse(v)),
+      )
       pages.keySet should contain allOf (
         "classes/Person.md",
         "classes/person_2.md",
@@ -175,7 +177,8 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
   private def forEachSite(check: (Map[String, String], Map[String, Document]) => Unit): Unit =
     for (name, sv) <- schemas; mode <- modes do {
       withClue(s"$name, $mode: ") {
-        val files = DocsGenerator(using sv).generateFiles(DocsGenerator.Options(mode)).toMap
+        val files =
+          DocsGenerator(using sv).generateFiles(DocsGenerator.Options(mode)).map(_.toTuple).toMap
         check(files, files.map((path, text) => (path, parse(text))))
       }
     }

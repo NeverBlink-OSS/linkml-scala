@@ -40,6 +40,7 @@ import scala.collection.mutable
   */
 class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGenerator.Options] {
   import DocsGenerator.*
+  import DocsSite.Page
 
   override protected def defaultOptions: Options = Options()
 
@@ -71,18 +72,19 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     * @param options
     *   What to document. See [[DocsGenerator.Options]].
     */
-  def generateFiles(options: Options = Options()): Seq[(String, String)] =
-    if (options.singleFile) Seq(("docs.md", serialize(options))) else pageFiles(options)
+  def generateFiles(options: Options = Options()): Seq[(path: String, content: String)] =
+    if (options.singleFile) Seq((path = "docs.md", content = serialize(options)))
+    else pageFiles(options)
 
-  private def pageFiles(options: Options): Seq[(String, String)] = {
+  private def pageFiles(options: Options): Seq[(path: String, content: String)] = {
     val site = new DocsSite(options.pruningMode, singleFile = false)
     val writer = new PageWriter(site, options)
-    val files = Seq.newBuilder[(String, String)]
-    files.addOne(("index.md", render(md => writer.index(md))))
+    val files = Seq.newBuilder[(path: String, content: String)]
+    files.addOne((path = "index.md", content = render(md => writer.index(md))))
     def addPages(elements: Seq[ElementView[?, ?]]): Unit =
       elements.foreach { el =>
         val page = site.pageOf(el).get
-        files.addOne((page.path, render(md => writer.element(md, el, page))))
+        files.addOne((path = page.path, content = render(md => writer.element(md, el, page))))
       }
     addPages(site.classes)
     addPages(site.slots)

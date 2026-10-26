@@ -9,58 +9,6 @@ import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
 
-/** The kinds of element that get a page, with the folder their pages go in, the label of their
-  * headings, and the start of their anchors.
-  */
-enum PageKind(val dir: String, val label: String, val anchorPrefix: String):
-  case classes extends PageKind("classes", "Class", "class-")
-  case slots extends PageKind("slots", "Slot", "slot-")
-  case enums extends PageKind("enums", "Enum", "enum-")
-  case types extends PageKind("types", "Type", "type-")
-
-/** The page about one element.
-  *
-  * @param kind
-  *   What kind of element the page is about
-  * @param stem
-  *   The file name without `.md`, unique within [[kind]] even on file systems that ignore case
-  */
-final case class Page(kind: PageKind, stem: String):
-  /** The page's file, relative to the folder that holds `index.md`. */
-  def path: String = kind.dir + "/" + stem + ".md"
-
-  /** Write the page's file, relative to the folder that holds `index.md`. */
-  def appendPath(out: CharSink): Unit = {
-    out.append(kind.dir)
-    out.append('/')
-    appendFileName(out)
-  }
-
-  /** Write the page's file name, without its folder. */
-  def appendFileName(out: CharSink): Unit = {
-    out.append(stem)
-    out.append(".md")
-  }
-
-  /** Write the page's HTML anchor, for when all pages are sections of one document. */
-  def appendAnchor(out: CharSink): Unit = {
-    out.append(kind.anchorPrefix)
-    var i = 0
-    while (i < stem.length) {
-      out.append(Character.toLowerCase(stem.charAt(i)))
-      i += 1
-    }
-  }
-
-/** A class that declares a slot or changes it with `slot_usage`.
-  *
-  * @param classView
-  *   The class
-  * @param attribute
-  *   The slot as it is in [[classView]], with the class' `slot_usage` applied
-  */
-final case class Usage(classView: ClassView, attribute: AttributeView)
-
 /** Which elements the documentation covers, what their pages are called, and how they are used.
   *
   * @param pruningMode
@@ -72,6 +20,8 @@ final case class Usage(classView: ClassView, attribute: AttributeView)
 final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolean)(using
     sv: SchemaView,
 ) {
+  import DocsSite.*
+
   private val query = pruningMode.derivedQuery(false, true)
 
   /** The documented classes, in the common order. `linkml:Any` is left out, as it is not a class
@@ -135,7 +85,7 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
   }
 
   /** The page about the top-level slot named [[name]], if it is documented. */
-  def slotPage(name: String): Option[Page] = slotPages.get(name)
+  private[docs] def slotPage(name: String): Option[Page] = slotPages.get(name)
 
   /** Write the link from the page [[from]] to [[to]]. `None` stands for the index page. */
   private[docs] def appendHref(out: CharSink, from: Option[Page], to: Page): Unit =
@@ -183,7 +133,7 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
     else cv.ancestorsWithSelf.find(anc => (anc ne cv) && declaresInSlots(anc, name))
 
   /** Whether the slot [[name]] of [[cv]] is a top-level slot, rather than an attribute. */
-  def isTopLevelSlot(cv: ClassView, name: String): Boolean =
+  private[docs] def isTopLevelSlot(cv: ClassView, name: String): Boolean =
     sv.slotDefinitions.contains(name) && !cv.isSlotFromAttributes(
       new Reference[SlotDefinition](name),
     )
@@ -238,7 +188,59 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
   }
 }
 
-private[docs] object DocsSite {
+object DocsSite {
+
+  /** The kinds of element that get a page, with the folder their pages go in, the label of their
+    * headings, and the start of their anchors.
+    */
+  enum PageKind(val dir: String, val label: String, val anchorPrefix: String):
+    case classes extends PageKind("classes", "Class", "class-")
+    case slots extends PageKind("slots", "Slot", "slot-")
+    case enums extends PageKind("enums", "Enum", "enum-")
+    case types extends PageKind("types", "Type", "type-")
+
+  /** The page about one element.
+    *
+    * @param kind
+    *   What kind of element the page is about
+    * @param stem
+    *   The file name without `.md`, unique within [[kind]] even on file systems that ignore case
+    */
+  final case class Page(kind: PageKind, stem: String):
+    /** The page's file, relative to the folder that holds `index.md`. */
+    def path: String = kind.dir + "/" + stem + ".md"
+
+    /** Write the page's file, relative to the folder that holds `index.md`. */
+    private[docs] def appendPath(out: CharSink): Unit = {
+      out.append(kind.dir)
+      out.append('/')
+      appendFileName(out)
+    }
+
+    /** Write the page's file name, without its folder. */
+    private[docs] def appendFileName(out: CharSink): Unit = {
+      out.append(stem)
+      out.append(".md")
+    }
+
+    /** Write the page's HTML anchor, for when all pages are sections of one document. */
+    private[docs] def appendAnchor(out: CharSink): Unit = {
+      out.append(kind.anchorPrefix)
+      var i = 0
+      while (i < stem.length) {
+        out.append(Character.toLowerCase(stem.charAt(i)))
+        i += 1
+      }
+    }
+
+  /** A class that declares a slot or changes it with `slot_usage`.
+    *
+    * @param classView
+    *   The class
+    * @param attribute
+    *   The slot as it is in [[classView]], with the class' `slot_usage` applied
+    */
+  final case class Usage(classView: ClassView, attribute: AttributeView)
 
   /** File names that Windows does not allow, whatever the extension. */
   private val reserved = Set("con", "prn", "aux", "nul") ++
@@ -247,7 +249,7 @@ private[docs] object DocsSite {
   /** [[name]] as a file name without the extension. Letters, digits, `_`, `-` and `.` are kept, and
     * anything else becomes `_`, so that the name works in a link without encoding.
     */
-  def fileStem(name: String): String = {
+  private[docs] def fileStem(name: String): String = {
     val sb = new java.lang.StringBuilder(name.length + 1)
     var i = 0
     while (i < name.length) {
@@ -264,7 +266,7 @@ private[docs] object DocsSite {
   /** [[s]] in lower case. Unlike `toLowerCase`, this doesn't depend on the default locale. In
     * Turkish, `toLowerCase` turns `Item` into `ıtem`, which wouldn't clash with `item`.
     */
-  def lowerCase(s: String): String = {
+  private[docs] def lowerCase(s: String): String = {
     val sb = new java.lang.StringBuilder(s.length)
     var i = 0
     while (i < s.length) {

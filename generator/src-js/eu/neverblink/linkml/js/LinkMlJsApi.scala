@@ -646,7 +646,11 @@ object LinkMlJsApi {
       metadataLanguage = metadataLanguage,
       singleFile = singleFile,
     )
-    DocsGenerator(using schema.underlying).generateFiles(options).toMap.toJSDictionary
+    val files = js.Dictionary.empty[String]
+    DocsGenerator(using schema.underlying).generateFiles(options).foreach(f =>
+      files(f.path) = f.content,
+    )
+    files
   }
 
   /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
