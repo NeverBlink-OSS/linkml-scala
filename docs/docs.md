@@ -97,6 +97,7 @@ A **class page** has:
   description, and the class they are inherited from. Ranges with `slot_usage` applied are
   shown as they are in this class. A class range that is a reference rather than inlined is
   marked `(reference)`.
+- its unique keys, with their slots,
 - the slots of other classes that have this class as their range.
 
 A **slot page** has the slot URI, range, cardinality and constraints, and a table of the classes

@@ -228,6 +228,32 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       pages("classes/Dog.md") should include("| [Owner](Owner.md) | [buddy](../slots/buddy.md) |")
     }
 
+    "list the unique keys of a class" in {
+      val sv = schemaOf(
+        """classes:
+          |  Person:
+          |    slots: [email]
+          |    attributes:
+          |      name:
+          |    unique_keys:
+          |      contact:
+          |        unique_key_slots: [name, email]
+          |        description: No two people share a name and an email.
+          |        consider_nulls_inequal: true
+          |slots:
+          |  email:
+          |""".stripMargin,
+      )
+      files(sv)("classes/Person.md") should include(
+        """## Unique keys
+          |
+          || Name | Slots | Description |
+          || --- | --- | --- |
+          || contact | name, [email](../slots/email.md) | No two people share a name and an email. Missing values never match. |
+          |""".stripMargin,
+      )
+    }
+
     "show cardinalities" in {
       val page = files(ModelCatalogue.cardinality.model).collectFirst {
         case (path, page) if path.startsWith("classes/") => page

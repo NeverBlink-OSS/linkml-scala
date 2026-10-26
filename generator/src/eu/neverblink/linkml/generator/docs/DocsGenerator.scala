@@ -278,8 +278,34 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         md.endList()
       }
 
+      uniqueKeys(md, cv, from)
       usages(md, cv, from)
     }
+
+    /** A table of the `unique_keys` of [[cv]], with the slots of each. */
+    private def uniqueKeys(md: Markdown, cv: ClassView, from: Option[Page]): Unit =
+      if (cv.cls.uniqueKeys.nonEmpty) {
+        md.heading(2, "Unique keys")
+        md.tableHeader("Name", "Slots", "Description")
+        cv.cls.uniqueKeys.foreach { (name, key) =>
+          md.startRow()
+          md.text(name)
+          md.nextCell()
+          joined(md, key.uniqueKeySlots) { slot =>
+            val page = if (site.isTopLevelSlot(cv, slot.value)) site.slotPage(slot.value) else None
+            page.foldFast(md.text(slot.value))(p => pageLink(md, slot.value, from, p))
+          }
+          md.nextCell()
+          val description = key.description.localized
+          description.foreachFast(md.oneLine)
+          if (key.considerNullsInequal) {
+            if (description.isDefined) md.append(' ')
+            md.append("Missing values never match.")
+          }
+          md.endRow()
+        }
+        md.endList()
+      }
 
     /** The `is_a` ancestors of [[cv]] and its direct children, as a nested list. Left out if [[cv]]
       * has neither.
