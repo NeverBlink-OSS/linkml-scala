@@ -164,6 +164,21 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
     "drop carriage returns" in {
       written(_.paragraph("a\r\nb")) shouldBe "a\nb\n\n"
     }
+
+    "close a code block that the text opens but doesn't close" in {
+      // Otherwise the rest of the page would be part of the code block
+      written(_.paragraph("a\n```scala\nval x = 1")) shouldBe "a\n```scala\nval x = 1\n```\n\n"
+      written(_.paragraph("~~~~\ncode\n~~~")) shouldBe "~~~~\ncode\n~~~\n~~~~\n\n"
+      written(_.paragraph("  ```\ncode")) shouldBe "```\ncode\n```\n\n"
+    }
+
+    "leave a closed code block alone" in {
+      written(_.paragraph("```\ncode\n```\nb")) shouldBe "```\ncode\n```\nb\n\n"
+      written(_.paragraph("````\n```\n````")) shouldBe "````\n```\n````\n\n"
+      // Not a fence: a backtick in the info string, or fewer than 3 backticks
+      written(_.paragraph("``` a`b\nc")) shouldBe "``` a`b\nc\n\n"
+      written(_.paragraph("``code``")) shouldBe "``code``\n\n"
+    }
   }
 
   "DocsSite.fileStem" should {

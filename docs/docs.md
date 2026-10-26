@@ -61,7 +61,9 @@ the documentation as one page, as GitHub would show it. The Code tab shows the M
 
 Every page starts with a comment saying that it is generated, then a heading with the element's
 name, a deprecation notice if the element is deprecated, and its description. The description is
-Markdown, and is copied as it is. In a table that links to an element's page, only the first
+Markdown, and is copied as it is, so a mistake in it, such as an unclosed `<pre>`, can hide the
+rest of the page. Only a code block that the description opens with a fence (```` ``` ```` or
+`~~~`) but doesn't close is closed after it. In a table that links to an element's page, only the first
 paragraph of its description is shown. The descriptions of permissible values and examples, which
 have no page of their own, are shown in full, with `<br><br>` between paragraphs.
 

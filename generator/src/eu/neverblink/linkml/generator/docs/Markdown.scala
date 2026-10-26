@@ -62,9 +62,18 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
   /** End a heading, a paragraph or a note. */
   def endBlock(): Unit = sink.append("\n\n")
 
-  /** A paragraph of Markdown, written as it is, without the whitespace around it. */
+  /** A paragraph of Markdown, written as it is, without the whitespace around it.
+    *
+    * If the text opens a fenced code block but doesn't close it, it is closed after the text.
+    * Otherwise the rest of the page, or of the whole document, would be part of the code block.
+    */
   def paragraph(text: String): Unit = {
     lines(text, "")
+    val fence = Markdown.openFence(text)
+    if (fence ne null) {
+      sink.append('\n')
+      sink.append(fence)
+    }
     endBlock()
   }
 
@@ -324,5 +333,51 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
       append('`')
       i -= 1
     }
+  }
+}
+
+private object Markdown {
+
+  /** The fence that closes the fenced code block that [[text]] opens but doesn't close, or `null`
+    * if there is none.
+    *
+    * As in CommonMark, a fence is a line of at least 3 backticks or tildes, after at most 3 spaces.
+    * A backtick fence can't have a backtick after it. A closing fence has the same character, at
+    * least as many of it, and only whitespace after it.
+    */
+  private def openFence(text: String): String = {
+    var fenceChar = ' '
+    var fenceLength = 0
+    // From the first character that isn't whitespace, as `lines` leaves out the whitespace before it
+    var start = 0
+    while (start < text.length && Character.isWhitespace(text.charAt(start))) start += 1
+    while (start < text.length) {
+      var end = text.indexOf('\n', start)
+      if (end < 0) end = text.length
+      var i = start
+      while (i < end && i - start < 3 && text.charAt(i) == ' ') i += 1
+      val c = if (i < end) text.charAt(i) else ' '
+      var j = i
+      while (j < end && text.charAt(j) == c) j += 1
+      val length = j - i
+      if ((c == '`' || c == '~') && length >= 3) {
+        if (fenceLength == 0) {
+          val info = text.indexOf('`', j)
+          if (c == '~' || info < 0 || info >= end) {
+            fenceChar = c
+            fenceLength = length
+          }
+        } else if (c == fenceChar && length >= fenceLength && isBlank(text, j, end))
+          fenceLength = 0
+      }
+      start = end + 1
+    }
+    if (fenceLength == 0) null else fenceChar.toString * fenceLength
+  }
+
+  private def isBlank(text: String, from: Int, to: Int): Boolean = {
+    var i = from
+    while (i < to && Character.isWhitespace(text.charAt(i))) i += 1
+    i == to
   }
 }
