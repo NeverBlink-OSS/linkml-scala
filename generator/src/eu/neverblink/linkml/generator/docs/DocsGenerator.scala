@@ -229,6 +229,13 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         md.item("Abstract", "yes, so data can only have instances of its subclasses")
       if (cls.mixin) md.item("Mixin", "yes, so other classes can add its slots with `mixins`")
       if (treeRoot.exists(_ eq cv)) md.item("Tree root", "yes")
+      // Rules are conditions on several slots at once, which need more than a line each
+      if (cls.rules.nonEmpty) {
+        md.startItem("Rules")
+        md.number(cls.rules.size)
+        md.append(", not shown here. See the schema.")
+        md.endItem()
+      }
       cls.isA.foreachFast { parent =>
         md.startItem("Parent")
         classLinkByName(md, parent.value, from)

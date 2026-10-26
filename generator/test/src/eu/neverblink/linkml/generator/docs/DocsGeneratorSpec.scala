@@ -254,6 +254,28 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "say that a class has rules, which the page doesn't show" in {
+      val sv = schemaOf(
+        """classes:
+          |  Person:
+          |    attributes:
+          |      age:
+          |    rules:
+          |      - preconditions:
+          |          slot_conditions:
+          |            age:
+          |              equals_string: "0"
+          |        postconditions:
+          |          slot_conditions:
+          |            age:
+          |              required: true
+          |""".stripMargin,
+      )
+      files(sv)("classes/Person.md") should include(
+        "- **Rules:** 1, not shown here. See the schema.\n",
+      )
+    }
+
     "show cardinalities" in {
       val page = files(ModelCatalogue.cardinality.model).collectFirst {
         case (path, page) if path.startsWith("classes/") => page
