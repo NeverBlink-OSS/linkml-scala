@@ -126,8 +126,7 @@ interface InputDoc {
 interface OhiRef {
   /** `namespace/name`. */
   pkg: string;
-  /** Absent means the latest one. Only an incoming link can leave it out. */
-  version?: string;
+  version: string;
   format: OhiFormat;
 }
 
@@ -1239,14 +1238,12 @@ function incomingLink(): string | null {
   return new URL(location.href).searchParams.get(URL_PARAM);
 }
 
-/** The ohi.dev package the page was opened with, if any. The format is checked against the input
- * pane later, once that is known. */
-function incomingOhi(): { pkg: string; version?: string; format: string | null } | null {
+/** The `?ohi=` the page was opened with, as given, and the format next to it. Both are checked
+ * once the input pane is known. */
+function incomingOhi(): { value: string; format: string | null } | null {
   const params = new URL(location.href).searchParams;
   const value = params.get(OHI_PARAM);
-  const m = value?.match(/^([^/@\s]+\/[^/@\s]+)(?:@(\S+))?$/);
-  if (!m) return null;
-  return { pkg: m[1]!, ...(m[2] ? { version: m[2] } : {}), format: params.get(FORMAT_PARAM) };
+  return value === null ? null : { value, format: params.get(FORMAT_PARAM) };
 }
 
 /** The importer named next to the link the page was opened with, if this build has it. */
@@ -1308,10 +1305,34 @@ function rawFileUrl(u: URL): URL {
 }
 
 type LoadResult = { ok: true } | { ok: false; error: string };
+/** What a download returns when something newer got there first: nothing landed, and there is
+ * nothing to report either. */
+const SUPERSEDED = { ok: false, error: null } as const;
+type DownloadResult = LoadResult | typeof SUPERSEDED;
+
+/** Counts downloads, so that one finishing late can tell a newer one has started. */
+let downloads = 0;
+
+/** Note what a download is about to replace, before it starts. The editor stays usable while it
+ * runs, so by the time it lands the user may have started another, switched to another pane or
+ * typed something - and any of those beats a file they may have forgotten they asked for. */
+function startDownload(): () => boolean {
+  const id = ++downloads;
+  const key = inputKey();
+  const text = inputDoc().text;
+  return () => id === downloads && inputKey() === key && inputDoc().text === text;
+}
 
 /** Downloads a schema and puts it in the input pane. The link, as pasted, goes into the address
- * bar rather than the schema itself: it stays short enough to paste anywhere. */
-async function loadFromUrl(link: string, ohi: OhiRef | null = null): Promise<LoadResult> {
+ * bar rather than the schema itself: it stays short enough to paste anywhere.
+ *
+ * `current` is for callers with lookups of their own to do first, which count as part of the
+ * download. */
+async function loadFromUrl(
+  link: string,
+  ohi: OhiRef | null = null,
+  current: () => boolean = startDownload(),
+): Promise<DownloadResult> {
   let target: URL;
   try {
     target = rawFileUrl(new URL(link));
@@ -1342,6 +1363,7 @@ async function loadFromUrl(link: string, ohi: OhiRef | null = null): Promise<Loa
   if (/^\s*<(!doctype|html)/i.test(text)) {
     return { ok: false, error: "That link returned a web page, not a schema. Link straight to the raw file." };
   }
+  if (!current()) return SUPERSEDED;
 
   // Set before the change lands, so the listener sees an unedited document either way.
   const doc = inputDoc();
@@ -1363,7 +1385,7 @@ function showUrlError(message: string): void {
  * would explain why the editor stayed empty. */
 async function loadOrPrompt(link: string): Promise<void> {
   const res = await loadFromUrl(link);
-  if (res.ok) return;
+  if (res.ok || res.error === null) return;
   openLoadDialog();
   $urlInput.value = link;
   showUrlError(res.error);
@@ -1398,7 +1420,7 @@ $urlForm.addEventListener("submit", async (e) => {
   $urlSubmit.disabled = false;
   $urlSubmit.textContent = "Load";
   if (res.ok) $loadDialog.close();
-  else showUrlError(res.error);
+  else if (res.error !== null) showUrlError(res.error);
 });
 
 wireDialog($loadDialog);
@@ -1585,7 +1607,12 @@ function ohiHitItem(hit: SearchHit, choice: OhiChoice): HTMLLIElement {
 }
 
 /** Download one format of an ohi.dev publication into the input pane. */
-async function loadOhiFile(baseUrl: string, ref: OhiRef, title: string): Promise<LoadResult> {
+async function loadOhiFile(
+  baseUrl: string,
+  ref: OhiRef,
+  title: string,
+  current: () => boolean = startDownload(),
+): Promise<DownloadResult> {
   try {
     const publication = await (await ohiClient()).inspect(baseUrl);
     const files = publication.artifacts.filter((a) => a.format === ref.format);
@@ -1593,30 +1620,31 @@ async function loadOhiFile(baseUrl: string, ref: OhiRef, title: string): Promise
     const file = files.find((a) => a.origin === "UPSTREAM") ?? files[0];
     const name = ohiChoices().find((c) => c.format === ref.format)?.name ?? ref.format;
     if (!file) return { ok: false, error: `${title} has no ${name} file on ohi.dev.` };
-    return await loadFromUrl(file.url, { ...ref, version: publication.version });
+    return await loadFromUrl(file.url, ref, current);
   } catch (e) {
     return { ok: false, error: `Could not load ${title}. ${ohiErrorText(e)}` };
   }
 }
 
 /** Load a package named in an incoming `?ohi=` link. The catalog is asked for its publication
- * rather than its address being made up from the name, which ohi.dev does not promise to keep. */
-async function loadOhiPackage(ref: OhiRef): Promise<LoadResult> {
-  const [namespace, name] = ref.pkg.split("/") as [string, string];
-  const label = ref.version ? `${ref.pkg}@${ref.version}` : ref.pkg;
-  // Backticks keep the values literal in the filter expression; they cannot appear in one.
-  if ([namespace, name, ref.version ?? ""].some((v) => v.includes("`"))) {
-    return { ok: false, error: `${label} is not a package name.` };
+ * rather than its address being made up from the name, which ohi.dev does not promise to keep.
+ *
+ * The version is required. Without one, "the latest" would have to mean the one ohi.dev
+ * published last, which is not always the newest release - older ones can be indexed later. */
+async function loadOhiPackage(value: string, format: OhiFormat): Promise<DownloadResult> {
+  const current = startDownload();
+  // Backticks are left out of the names because they would end the value in the filter below.
+  const m = value.match(/^([^/@`\s]+)\/([^/@`\s]+)@([^`\s]+)$/);
+  if (!m) {
+    return { ok: false, error: `“${value}” does not name an ohi.dev package. It should look like w3c/prov-o@2013.` };
   }
+  const [, namespace = "", name = "", version = ""] = m;
+  const label = `${namespace}/${name}@${version}`;
   let hit: SearchHit | undefined;
   try {
-    const filter = [`namespace:=\`${namespace}\``, `name:=\`${name}\``];
-    if (ref.version) filter.push(`version:=\`${ref.version}\``);
     const page = await (await ohiClient()).search({
       q: "*",
-      filter_by: filter.join(" && "),
-      // Without a version, the newest release.
-      sort_by: "published_at:desc",
+      filter_by: `namespace:=\`${namespace}\` && name:=\`${name}\` && version:=\`${version}\``,
       per_page: 1,
     });
     hit = page.hits[0];
@@ -1624,13 +1652,13 @@ async function loadOhiPackage(ref: OhiRef): Promise<LoadResult> {
     return { ok: false, error: `Could not look up ${label} on ohi.dev. ${ohiErrorText(e)}` };
   }
   if (!hit) return { ok: false, error: `There is no ${label} on ohi.dev.` };
-  return loadOhiFile(hit.base_url, ref, hit.title);
+  return loadOhiFile(hit.base_url, { pkg: `${namespace}/${name}`, version, format }, hit.title, current);
 }
 
 /** Like [[loadOrPrompt]], for a package named in the address. */
-async function loadOhiOrPrompt(ref: OhiRef): Promise<void> {
-  const res = await loadOhiPackage(ref);
-  if (res.ok) return;
+async function loadOhiOrPrompt(value: string, format: OhiFormat): Promise<void> {
+  const res = await loadOhiPackage(value, format);
+  if (res.ok || res.error === null) return;
   openLoadDialog();
   showOhiError(res.error);
   scheduleGenerate(0);
@@ -1649,7 +1677,7 @@ async function pickOhi(hit: SearchHit, choice: OhiChoice, btn: HTMLButtonElement
     const ref = { pkg: `${hit.namespace}/${hit.name}`, version: hit.version, format: choice.format };
     const res = await loadOhiFile(hit.base_url, ref, hit.title);
     if (res.ok) $loadDialog.close();
-    else showOhiError(res.error);
+    else if (res.error !== null) showOhiError(res.error);
   } finally {
     ohiLoading = false;
     $ohiResults.classList.remove("ohi-results--busy");
@@ -2061,7 +2089,7 @@ if (initialShare !== null) {
     // A format this pane cannot read falls back to the one it reads by default.
     const choice = ohiChoices().find((c) => c.format === initialOhi.format) ?? ohiChoices()[0]!;
     ohiPicked[inputKey()] = choice.format;
-    void loadOhiOrPrompt({ ...initialOhi, format: choice.format });
+    void loadOhiOrPrompt(initialOhi.value, choice.format);
   } else {
     void loadOrPrompt(initialLink!);
   }
