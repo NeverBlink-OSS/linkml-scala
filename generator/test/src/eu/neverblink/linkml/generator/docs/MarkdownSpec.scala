@@ -90,6 +90,12 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
       written(_.code("a`b")) shouldBe "``a`b``"
       written(_.code("`a`")) shouldBe "`` `a` ``"
     }
+
+    "keep the text on one line, whatever its line breaks" in {
+      written(_.code("a\nb")) shouldBe "`a b`"
+      written(_.code("a\r\nb")) shouldBe "`a b`"
+      written(_.code("a\rb")) shouldBe "`a b`"
+    }
   }
 
   "Markdown.codeBlock" should {

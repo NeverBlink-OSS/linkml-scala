@@ -276,7 +276,11 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     var i = 0
     while (i < text.length) {
       val c = text.charAt(i)
-      append(if (c == '\n') ' ' else c)
+      // Markdown ends a line at `\n`, `\r` or `\r\n`, so each of them becomes one space.
+      if (c == '\r') {
+        if (i + 1 < text.length && text.charAt(i + 1) == '\n') i += 1
+        append(' ')
+      } else append(if (c == '\n') ' ' else c)
       i += 1
     }
     if (pad) append(' ')
