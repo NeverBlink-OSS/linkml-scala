@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
-import eu.neverblink.linkml.generator.docs.DocsGenerator
+import eu.neverblink.linkml.generator.docs.{DocsGenerator, PageKind}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -578,6 +578,20 @@ object Docs extends SplitGenerate[DocsOptions] {
   override protected def generatorName: String = "docs"
 
   override protected def singleFileExtension: String = ".md"
+
+  /** The pages in the folders of each kind of element that start with the generated header, so that
+    * the pages of elements no longer in the schema do not linger. Other files are kept.
+    */
+  override protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] =
+    PageKind.values.toSeq.flatMap { kind =>
+      val folder = dir / kind.dir
+      if (os.isDir(folder))
+        os.list(folder).filter { file =>
+          os.isFile(file) && file.ext == "md" &&
+          os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "<!--"))
+        }
+      else Nil
+    }
 
   private def generator(options: DocsOptions): DocsGenerator.Options =
     DocsGenerator.Options(

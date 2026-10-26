@@ -334,6 +334,27 @@ class GenerateSpec extends AnyWordSpec, Matchers {
         } finally os.remove.all(dir)
       }
 
+      "remove the pages of an earlier run, but not the user's own files" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val site = dir / "site"
+          docs(site)._3 shouldBe 0
+          // A page of a class that is no longer in the schema, and a file of the user's own.
+          val header = os.read.lines(site / "classes" / "Root.md").head
+          os.write(site / "classes" / "Removed.md", header + "\n# Class: Removed\n")
+          os.write(site / "classes" / "notes.md", "# Notes\n")
+          val (_, err, code) = docs(site)
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          snapshot(site).keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/Root.md",
+            "classes/Other.md",
+            "classes/notes.md",
+            "types/string.md",
+          )
+        } finally os.remove.all(dir)
+      }
+
       "write a single document when --to names a .md file" in {
         val dir = os.temp.dir(prefix = "linkml-generate-docs")
         try {

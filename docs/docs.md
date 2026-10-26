@@ -26,6 +26,10 @@ docs/schema/
   types/<name>.md
 ```
 
+Before writing, it deletes the pages that an earlier run wrote in these four folders, so that the
+pages of removed elements don't linger. It knows them by the comment they start with. Other files
+are kept.
+
 To get one document instead, with the pages as sections that link to each other with anchors, name a
 `.md` file in `--to`, or leave `--to` out to write to stdout:
 
