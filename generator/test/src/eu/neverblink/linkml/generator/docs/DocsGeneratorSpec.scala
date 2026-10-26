@@ -213,6 +213,34 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "show the constraints of a slot" in {
+      val sv = schemaOf(
+        """classes:
+          |  Person:
+          |    slots: [code, friends]
+          |slots:
+          |  code:
+          |    equals_string: X|Y
+          |    minimum_length: 2
+          |    maximum_length: 8
+          |    recommended: true
+          |  friends:
+          |    range: Person
+          |    multivalued: true
+          |    inlined_as_list: true
+          |""".stripMargin,
+      )
+      val pages = files(sv)
+      pages("slots/code.md") should include(
+        """- **Recommended:** yes
+          |- **Equals:** `X|Y`
+          |- **Minimum length:** 2
+          |- **Maximum length:** 8
+          |""".stripMargin,
+      )
+      pages("slots/friends.md") should include("- **Inlined:** yes, as a list\n")
+    }
+
     "show the parent and the constraints of a type" in {
       val page = files(ModelCatalogue.typeDerivation.model)("types/Code.md")
       page should include("- **Parent:** [string](string.md)\n")

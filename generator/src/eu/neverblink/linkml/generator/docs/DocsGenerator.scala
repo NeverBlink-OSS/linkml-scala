@@ -443,9 +443,15 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       if (slot.identifier) md.item("Identifier", "yes")
       if (slot.key) md.item("Key", "yes")
       if (slot.designatesType) md.item("Type designator", "yes")
+      if (slot.recommended) md.item("Recommended", "yes")
+      if (slot.inlinedAsList) md.item("Inlined", "yes, as a list")
+      else if (slot.inlined) md.item("Inlined", "yes")
+      slot.equalsString.foreachFast(v => codeItem(md, "Equals", v))
       slot.pattern.foreachFast(p => codeItem(md, "Pattern", p))
       slot.minimumValue.foreachFast(v => codeItem(md, "Minimum value", v.value))
       slot.maximumValue.foreachFast(v => codeItem(md, "Maximum value", v.value))
+      slot.minimumLength.foreachFast(n => numberItem(md, "Minimum length", n))
+      slot.maximumLength.foreachFast(n => numberItem(md, "Maximum length", n))
       slot.ifabsent.foreachFast(v => codeItem(md, "Default", v))
     }
 
