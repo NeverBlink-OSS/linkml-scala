@@ -13,13 +13,13 @@ import eu.neverblink.linkml.runtime.LocalizedText.*
 import eu.neverblink.linkml.runtime.{
   HasMetadataLanguage,
   MetadataLanguage,
-  PrefixResolver,
+  PrefixMap,
+  Uri,
   UriOrCurie,
 }
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
-import scala.util.control.NonFatal
 
 /** Generator for Markdown documentation of a LinkML schema.
   *
@@ -136,7 +136,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       deprecation(md, schema)
       schema.description.localized.foreachFast(md.paragraph)
       md.startItem("ID")
-      uri(md, schema.id, sv.rootPrefixResolver)
+      uri(md, schema.id, sv.rootPrefixes)
       md.endItem()
       if (schema.title.isDefined) {
         md.startItem("Name")
@@ -372,7 +372,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
             md.append(" in data)")
           }
           md.nextCell()
-          pv.meaning.foreachFast(m => uri(md, m, ev.definingPrefixResolver))
+          pv.meaning.foreachFast(m => uri(md, m, ev.definingPrefixes))
           md.nextCell()
           pv.title.localized.foreachFast { t =>
             md.append("**")
@@ -512,7 +512,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     /** List items for the metadata that every element can have. */
     private def metadataItems(md: Markdown, el: ElementView[?, ?]): Unit = {
       val m = meta(el)
-      given PrefixResolver = el.definingPrefixResolver
+      given PrefixMap = el.definingPrefixes
       urisItem(md, "Exact mappings", m.exactMappings)
       urisItem(md, "Close mappings", m.closeMappings)
       urisItem(md, "Related mappings", m.relatedMappings)
@@ -525,12 +525,12 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     /** The list item with the URI of [[el]]. */
     private def uriItem(md: Markdown, el: ElementView[?, ?]): Unit = {
       md.startItem("URI")
-      uri(md, el.uriOrCurie, el.definingPrefixResolver)
+      uri(md, el.uriOrCurie, el.definingPrefixes)
       md.endItem()
     }
 
     private def urisItem(md: Markdown, label: String, uris: Seq[UriOrCurie])(using
-        r: PrefixResolver,
+        r: PrefixMap,
     ): Unit =
       if (uris.nonEmpty) {
         md.startItem(label)
@@ -717,13 +717,12 @@ object DocsGenerator {
   /** A URI or CURIE as code, shown as a CURIE when it has a known prefix, and linked to the full
     * URI when that is a web address.
     */
-  private def uri(md: Markdown, u: UriOrCurie, resolver: PrefixResolver): Unit = {
-    val uri =
-      try u.uri(using resolver)
-      catch { case NonFatal(_) => null }
-    val curie =
-      try u.curie(using resolver)
-      catch { case NonFatal(_) => u.original }
+  private def uri(md: Markdown, u: UriOrCurie, prefixes: PrefixMap): Unit = {
+    val uri = u match {
+      case x: Uri => x.original
+      case _ => null
+    }
+    val curie = UriOrCurie.compacted(u, prefixes)
     if ((uri ne null) && isLinkable(uri)) {
       md.append('[')
       md.code(curie)

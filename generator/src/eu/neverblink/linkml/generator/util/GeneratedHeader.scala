@@ -14,7 +14,7 @@ object GeneratedHeader {
 
   /** The header as one HTML comment, for Markdown, ending with a newline. */
   def html(using sv: SchemaView): String = {
-    val id = sv.root.id.uri(using sv.rootPrefixResolver)
+    val id = sv.root.id.original
     s"<!--$lead$id. DO NOT EDIT. -->\n"
   }
 
