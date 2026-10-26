@@ -912,8 +912,6 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       ) &&
       // A '@serializeDefault' field must always be written, so the class cannot collapse to the
       // compact (bare value) form. Decoding of that form stays supported either way.
-      // This checks that the other fields have a default, not that they still hold it, so the
-      // compact form drops their values (LNK-233).
       fields.forall(x =>
         x.kind == FieldKind.Id || x.kind == FieldKind.Value ||
           (x.defaultValue.isDefined && !x.serializeDefault),
@@ -927,6 +925,16 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       fTpe.asType match {
         case '[ft] =>
           val encodeVal = genEncode[ft](fTpe, getter.asInstanceOf[Expr[ft]], fSkipId, prefixes)
+          // The compact form leaves out the other fields, so it is used only when each of them
+          // still holds its default value.
+          val othersHoldDefaults = fields.foldLeft('{ true }) { (acc, f) =>
+            if (f.kind == FieldKind.Id || f.kind == FieldKind.Value) acc
+            else {
+              val g = Select(x.asTerm, f.getterOrField).asExpr
+              val d = f.defaultValue.get.asExpr
+              '{ $acc && $g == $d }
+            }
+          }
           '{
             def fullForm: Node = {
               val kvs = ListMap.newBuilder[
@@ -936,7 +944,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
               ${ genEncodeFields('kvs) }
               Node.MappingNode(kvs.result())
             }
-            if ($skipId) {
+            if ($skipId && $othersHoldDefaults) {
               val collapsed = $encodeVal
               // A map in the collapsed position cannot be distinguished from the full form when
               // decoding (both are an object). So, for this case we always keep the full form.
