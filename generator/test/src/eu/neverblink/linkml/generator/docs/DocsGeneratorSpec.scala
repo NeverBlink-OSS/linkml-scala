@@ -180,6 +180,52 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       }.foreach(_ should include("This enum has no fixed list of values."))
     }
 
+    "say where the values of an enum come from" in {
+      val sv = schemaOf(
+        """prefixes:
+          |  NCBITaxon: http://purl.obolibrary.org/obo/NCBITaxon_
+          |enums:
+          |  Base:
+          |    permissible_values:
+          |      a:
+          |  Derived:
+          |    inherits: [Base]
+          |    include:
+          |      - permissible_values:
+          |          b:
+          |    minus:
+          |      - permissible_values:
+          |          a:
+          |  Species:
+          |    reachable_from:
+          |      source_nodes: [NCBITaxon:9606]
+          |      is_direct: true
+          |      include_self: true
+          |""".stripMargin,
+      )
+      val pages = files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip))
+      pages("enums/Derived.md") should include(
+        """## Values from
+          |
+          |- **Inherits:** [Base](Base.md)
+          |- **Includes:** values `b`
+          |- **Excludes:** values `a`
+          |
+          |## Permissible values
+          |
+          |The values come from the sources above, so they aren't listed here.
+          |""".stripMargin,
+      )
+      pages("enums/Species.md") should include(
+        """## Values from
+          |
+          |- **Source nodes:** [`NCBITaxon:9606`](http://purl.obolibrary.org/obo/NCBITaxon_9606)
+          |- **Direct only:** yes
+          |- **Includes the source nodes:** yes
+          |""".stripMargin,
+      )
+    }
+
     "link mixins in both directions" in {
       val pages = files(ModelCatalogue.mixin.model)
       pages("classes/SomeClass.md") should include(

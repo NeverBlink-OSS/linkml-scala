@@ -7,9 +7,11 @@ import eu.neverblink.linkml.generator.scala.{ScalaGenerator, ScalaRenamer}
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode, Renamer}
 import eu.neverblink.linkml.metamodel.{
+  AnonymousEnumExpression,
   AnonymousSlotExpression,
   CommonMetadata,
   Element,
+  ReachabilityQuery,
   SlotDefinition,
 }
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
@@ -400,11 +402,16 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       metadataItems(md, ev)
       md.endList()
 
+      val hasSources = valueSources(md, ev, from)
       md.heading(2, "Permissible values")
       // Values with a rank come first. The others keep the order they were written in.
       val values =
         ev._enum.permissibleValues.values.toVector.sortBy(_.rank.getOrElseFast(Int.MaxValue))
-      if (values.isEmpty) md.paragraph("This enum has no fixed list of values.")
+      if (values.isEmpty)
+        md.paragraph(
+          if (hasSources) "The values come from the sources above, so they aren't listed here."
+          else "This enum has no fixed list of values.",
+        )
       else {
         md.tableHeader("Value", "Meaning", "Description")
         values.foreach { pv =>
@@ -430,6 +437,91 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         md.endList()
       }
       usages(md, ev, from)
+    }
+
+    /** A "Values from" section with where the values of [[ev]] come from, other than its own
+      * permissible values: the enums it inherits from, the value sets it includes or excludes, its
+      * concepts, its code set, and the query that finds its values in an ontology. Left out if it
+      * has none of them.
+      *
+      * @return
+      *   Whether the section was written
+      */
+    private def valueSources(md: Markdown, ev: EnumView, from: Option[Page]): Boolean = {
+      val e = ev._enum
+      val hasSources = e.inherits.nonEmpty || e.include.nonEmpty || e.minus.nonEmpty ||
+        e.concepts.nonEmpty || e.codeSet.isDefined || e.reachableFrom.isDefined
+      if (hasSources) {
+        given PrefixMap = ev.definingPrefixes
+        md.heading(2, "Values from")
+        if (e.inherits.nonEmpty) {
+          md.startItem("Inherits")
+          joined(md, e.inherits)(i => enumLinkByName(md, i.value, from))
+          md.endItem()
+        }
+        e.include.foreach { x =>
+          md.startItem("Includes")
+          enumExpression(md, x, from)
+          md.endItem()
+        }
+        e.minus.foreach { x =>
+          md.startItem("Excludes")
+          enumExpression(md, x, from)
+          md.endItem()
+        }
+        urisItem(md, "Concepts", e.concepts)
+        e.codeSet.foreachFast { c =>
+          md.startItem("Code set")
+          uri(md, c, ev.definingPrefixes)
+          md.endItem()
+        }
+        e.reachableFrom.foreachFast(reachability(md, _))
+        md.endList()
+      }
+      hasSources
+    }
+
+    /** A short summary of a value set in the `include` or `minus` of an enum, such as "values `a`,
+      * `b`", with its parts separated by "; ".
+      */
+    private def enumExpression(md: Markdown, x: AnonymousEnumExpression, from: Option[Page])(using
+        prefixes: PrefixMap,
+    ): Unit = {
+      var first = true
+      def part(label: String)(write: => Unit): Unit = {
+        if (!first) md.append("; ")
+        md.append(label)
+        write
+        first = false
+      }
+      if (x.permissibleValues.nonEmpty)
+        part("values ")(joined(md, x.permissibleValues.keys)(md.code))
+      if (x.inherits.nonEmpty)
+        part("values of ")(joined(md, x.inherits)(i => enumLinkByName(md, i.value, from)))
+      if (x.concepts.nonEmpty)
+        part("concepts ")(joined(md, x.concepts)(c => uri(md, c, prefixes)))
+      x.codeSet.foreachFast(c => part("code set ")(uri(md, c, prefixes)))
+      x.reachableFrom.foreachFast { q =>
+        part("terms reachable from ")(joined(md, q.sourceNodes)(n => uri(md, n, prefixes)))
+      }
+      if (first) md.append("a value set that this page doesn't show")
+    }
+
+    /** List items for a query that finds the values of an enum in an ontology. */
+    private def reachability(
+        md: Markdown,
+        q: ReachabilityQuery,
+    )(using prefixes: PrefixMap): Unit = {
+      q.sourceOntology.foreachFast { o =>
+        md.startItem("Source ontology")
+        uri(md, o, prefixes)
+        md.endItem()
+      }
+      urisItem(md, "Source nodes", q.sourceNodes)
+      urisItem(md, "Relationship types", q.relationshipTypes)
+      if (q.isDirect) md.item("Direct only", "yes")
+      if (q.includeSelf) md.item("Includes the source nodes", "yes")
+      if (q.traverseUp) md.item("Upwards", "yes, to the ancestors of the source nodes")
     }
 
     private def typePage(md: Markdown, tv: TypeView, from: Option[Page]): Unit = {
@@ -703,6 +795,9 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
     private def slotLinkByName(md: Markdown, name: String, from: Option[Page]): Unit =
       sv.slotDefinitions.get(name).foldFast(md.code(name))(s => link(md, s, from))
+
+    private def enumLinkByName(md: Markdown, name: String, from: Option[Page]): Unit =
+      sv.enums.get(name).foldFast(md.code(name))(ev => link(md, ev, from))
 
     private def typeLinkByName(md: Markdown, name: String, from: Option[Page]): Unit =
       sv.types.get(name).foldFast(md.code(name))(tv => link(md, tv, from))

@@ -105,7 +105,9 @@ that declare the slot or change it with `slot_usage`, with the range and cardina
 each.
 
 An **enum page** has a table of the permissible values with their meanings and descriptions, and
-the slots that use the enum.
+the slots that use the enum. If the values also come from elsewhere, a "Values from" section says
+where: the enums it `inherits`, the value sets it includes or excludes (`include`, `minus`), its
+`concepts`, its `code_set`, or the ontology query in `reachable_from`.
 
 A **type page** has the type URI, its parent type, base, and constraints like `pattern`, and the
 slots that use the type.
