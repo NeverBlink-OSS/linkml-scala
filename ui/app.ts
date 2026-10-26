@@ -895,13 +895,9 @@ async function renderPage(text: string, scrollTop: number): Promise<void> {
   try {
     const { renderMarkdown } = await loadMarkdown();
     if (token !== pageToken || $pageView.hidden) return;
+    // Links that don't go to a section of the page already open in a new tab (see markdown.ts).
     $pageView.innerHTML = renderMarkdown(text);
     $pageView.scrollTop = scrollTop;
-    // Links out of the schema open in a new tab, so the playground keeps its state.
-    for (const a of $pageView.querySelectorAll<HTMLAnchorElement>('a[href^="http"]')) {
-      a.target = "_blank";
-      a.rel = "noopener";
-    }
   } catch (err) {
     if (token !== pageToken || $pageView.hidden) return;
     $pageView.replaceChildren(
