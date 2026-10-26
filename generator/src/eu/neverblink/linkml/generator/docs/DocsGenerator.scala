@@ -6,7 +6,12 @@ import eu.neverblink.linkml.generator.pydantic.{PydanticGenerator, PydanticRenam
 import eu.neverblink.linkml.generator.scala.{ScalaGenerator, ScalaRenamer}
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode, Renamer}
-import eu.neverblink.linkml.metamodel.{CommonMetadata, Element, SlotDefinition}
+import eu.neverblink.linkml.metamodel.{
+  AnonymousSlotExpression,
+  CommonMetadata,
+  Element,
+  SlotDefinition,
+}
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.LocalizedText.*
@@ -572,10 +577,10 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       el.deprecated.localized.foreachFast(text => md.note("Deprecated", text))
 
     /** The range of a slot as it is in a class: links to the range, or to each range in its
-      * `any_of`.
+      * `any_of`, `exactly_one_of` or `all_of`.
       */
     private def range(md: Markdown, av: AttributeView, from: Option[Page]): Unit =
-      if (hasAnyOfRanges(av.slotView.slot)) anyOfRanges(md, av.slotView.slot, from)
+      if (hasExpressionRanges(av.slotView.slot)) expressionRanges(md, av.slotView.slot, from)
       else {
         av match {
           case _: AnyView => md.append("Any")
@@ -590,22 +595,35 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
     /** The range of a top-level slot, which might not resolve until a class uses the slot. */
     private def slotRange(md: Markdown, s: SlotView, from: Option[Page]): Unit =
-      if (hasAnyOfRanges(s.slot)) anyOfRanges(md, s.slot, from)
+      if (hasExpressionRanges(s.slot)) expressionRanges(md, s.slot, from)
       else linkByAnyName(md, s.derivedRange.value, from)
 
-    private def hasAnyOfRanges(slot: SlotDefinition): Boolean =
-      slot.anyOf.exists(_.range.isDefined)
+    private def hasExpressionRanges(slot: SlotDefinition): Boolean =
+      hasRanges(slot.anyOf) || hasRanges(slot.exactlyOneOf) || hasRanges(slot.allOf)
 
-    /** Links to the ranges in the `any_of` of [[slot]], joined with "or". */
-    private def anyOfRanges(md: Markdown, slot: SlotDefinition, from: Option[Page]): Unit = {
+    /** Links to the ranges in the `any_of` of [[slot]], joined with "or", and to those in its
+      * `exactly_one_of` and `all_of`, after "exactly one of" and "all of". Each list that has
+      * ranges is written, separated by "; ".
+      */
+    private def expressionRanges(md: Markdown, slot: SlotDefinition, from: Option[Page]): Unit = {
       var first = true
-      slot.anyOf.foreach { expr =>
-        expr.range.foreachFast { r =>
-          if (!first) md.append(" or ")
-          linkByAnyName(md, r.value, from)
+      def group(prefix: String, exprs: Seq[AnonymousSlotExpression], separator: String): Unit =
+        if (hasRanges(exprs)) {
+          if (!first) md.append("; ")
+          md.append(prefix)
+          var firstRange = true
+          exprs.foreach { expr =>
+            expr.range.foreachFast { r =>
+              if (!firstRange) md.append(separator)
+              linkByAnyName(md, r.value, from)
+              firstRange = false
+            }
+          }
           first = false
         }
-      }
+      group("", slot.anyOf, " or ")
+      group("exactly one of ", slot.exactlyOneOf, ", ")
+      group("all of ", slot.allOf, ", ")
     }
 
     /** The name of a slot of [[cv]], linked to the slot's page if it is a documented top-level
@@ -707,6 +725,10 @@ object DocsGenerator {
 
   /** The metadata of [[el]], which every kind of element has. */
   private def meta(el: ElementView[?, ?]): CommonMetadata = el.inner.asInstanceOf[Element]
+
+  /** Whether one of [[exprs]] has a range. */
+  private def hasRanges(exprs: Seq[AnonymousSlotExpression]): Boolean =
+    exprs.exists(_.range.isDefined)
 
   /** The first paragraph of the description of [[el]], on one line, to fit in a table cell. */
   private def summary(md: Markdown, el: CommonMetadata)(using MetadataLanguage): Unit =

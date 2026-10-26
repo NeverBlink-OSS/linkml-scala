@@ -146,7 +146,9 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
   private def declares(cv: ClassView, name: String): Boolean =
     declaresInSlots(cv, name) || cv.cls.slotUsage.contains(name)
 
-  /** Record [[usage]] for the range of [[slot]], and for each range in its `any_of`. */
+  /** Record [[usage]] for the range of [[slot]], and for each range in its `any_of`,
+    * `exactly_one_of` and `all_of`.
+    */
   private def addRangeUsage(slot: SlotView, usage: Usage): Unit = {
     val seen = mutable.HashSet.empty[String]
     def addRange(name: String): Unit =
@@ -160,6 +162,8 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
       }
     addRange(slot.derivedRange.value)
     slot.slot.anyOf.foreach(expr => expr.range.foreachFast(r => addRange(r.value)))
+    slot.slot.exactlyOneOf.foreach(expr => expr.range.foreachFast(r => addRange(r.value)))
+    slot.slot.allOf.foreach(expr => expr.range.foreachFast(r => addRange(r.value)))
   }
 
   private def add[V](map: mutable.HashMap[String, mutable.ListBuffer[V]], key: String, v: V): Unit =

@@ -196,6 +196,38 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       page should include("[integer](../types/integer.md) or [string](../types/string.md)")
     }
 
+    "show each range of an exactly_one_of or all_of" in {
+      val sv = schemaOf(
+        """classes:
+          |  Cat: {}
+          |  Dog: {}
+          |  Owner:
+          |    slots: [pet, buddy]
+          |slots:
+          |  pet:
+          |    exactly_one_of:
+          |      - range: Cat
+          |      - range: Dog
+          |  buddy:
+          |    all_of:
+          |      - range: Cat
+          |      - range: Dog
+          |""".stripMargin,
+      )
+      val pages = files(sv)
+      pages("slots/pet.md") should include(
+        "- **Range:** exactly one of [Cat](../classes/Cat.md), [Dog](../classes/Dog.md)\n",
+      )
+      pages("slots/buddy.md") should include(
+        "- **Range:** all of [Cat](../classes/Cat.md), [Dog](../classes/Dog.md)\n",
+      )
+      pages("classes/Owner.md") should include(
+        "| [pet](../slots/pet.md) | exactly one of [Cat](Cat.md), [Dog](Dog.md) |",
+      )
+      pages("classes/Dog.md") should include("| [Owner](Owner.md) | [pet](../slots/pet.md) |")
+      pages("classes/Dog.md") should include("| [Owner](Owner.md) | [buddy](../slots/buddy.md) |")
+    }
+
     "show cardinalities" in {
       val page = files(ModelCatalogue.cardinality.model).collectFirst {
         case (path, page) if path.startsWith("classes/") => page
