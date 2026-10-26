@@ -120,6 +120,8 @@ and `.` replaced by `_`. So the links need no encoding.
 
 When two names would give the same file name, ignoring case (like `Person` and `person`), the
 second one gets `_2`. This keeps both pages on macOS and Windows, whose file systems ignore case.
+Which one is second depends on their order in the schema, so adding or moving such an element can
+change the file names of the others, and links to them from outside the documentation.
 Names that Windows does not allow for files, like `CON`, get a `_` in front.
 
 ## Adding sections
