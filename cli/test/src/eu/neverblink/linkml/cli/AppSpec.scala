@@ -80,5 +80,17 @@ class AppSpec extends AnyWordSpec, Matchers {
         code shouldBe 0
       }
     }
+
+    "listing its commands" should {
+      "give each command a short one-line summary" in {
+        for command <- new App().commands do
+          val summary = command.finalHelp.helpMessage.fold("")(_.message.takeWhile(_ != '\n'))
+          withClue(s"for ${command.names.head.mkString(" ")}: ") {
+            summary should not be empty
+            summary.length should be <= 50
+            summary should not endWith "."
+          }
+      }
+    }
   }
 }

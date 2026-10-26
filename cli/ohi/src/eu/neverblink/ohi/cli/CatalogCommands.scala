@@ -70,7 +70,7 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Ba
   }
 }
 
-@HelpMessage("Search ontology publications.")
+@HelpMessage("Search ontology publications")
 @ArgsName("<query>")
 final case class SearchOptions(
     @Recurse
@@ -126,7 +126,7 @@ object Search extends CatalogCommand[SearchOptions] {
   )
 }
 
-@HelpMessage("Inspect an exact ontology publication URL.")
+@HelpMessage("Inspect an exact ontology publication URL")
 @ArgsName("<base-url>")
 final case class InspectOptions(
     @Recurse
@@ -144,7 +144,10 @@ object Inspect extends CatalogCommand[InspectOptions] {
   ): String = CatalogOutput.publication(client.inspect(input), options.common.json)
 }
 
-@HelpMessage("Save an exact file URL into a directory without overwriting existing entries.")
+@HelpMessage(
+  "Download an exact file URL into a directory\n" +
+    "Existing entries in the directory are never overwritten.",
+)
 @ArgsName("<file-url>")
 final case class GetOptions(
     @Recurse
