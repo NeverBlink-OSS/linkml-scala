@@ -23,7 +23,7 @@ trait OssieRenamer extends Renamer {
     el.derivedAttributes(attr.name),
   )
 
-  override def slotName(el: SlotView): String = el.baseName
+  override def slotName(el: SlotView): String = el.aliasedName
 
   /** The convention for types in Ossie is PascalCase.
     */

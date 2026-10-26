@@ -9,6 +9,76 @@ object OssieCases {
 
   private def of(label: String)(body: String): Case = Case(label, body)
 
+  /** Ontology created in Ossie, with non-LinkML names, for testing `Ossie -> LinkML -> Ossie`, as
+    * opposed to other cases which actually test `LinkML -> Ossie -> LinkML -> Ossie`.
+    */
+  val nonStandardLibrary: String =
+    """version: 0.2.0.dev0
+      |name: Books
+      |description: A tiny ontology of books and the people who wrote them.
+      |prefixes:
+      |  ex: https://example.org/books/
+      |  xsd: http://www.w3.org/2001/XMLSchema#
+      |ontology:
+      |  - concept: Author
+      |    type: EntityType
+      |    iri: ex:Author
+      |    description: A person who wrote a book.
+      |    identify_by:
+      |      - name
+      |    requires:
+      |      - Author.name
+      |    relationships:
+      |      - name: name
+      |        iri: ex:name
+      |        roles:
+      |          - concept: String
+      |        multiplicity: OneToOne
+      |        verbalizes:
+      |          - "{Author} is identified by {String}"
+      |  - concept: Book
+      |    type: EntityType
+      |    iri: ex:Book
+      |    identify_by:
+      |      - isbn
+      |    requires:
+      |      - Book.isbn
+      |    relationships:
+      |      - name: isbn
+      |        iri: ex:isbn
+      |        roles:
+      |          - concept: Isbn
+      |        multiplicity: OneToOne
+      |        verbalizes:
+      |          - "{Book} is identified by {Isbn}"
+      |      - name: pages
+      |        iri: ex:pages
+      |        roles:
+      |          - concept: NrPages
+      |        multiplicity: ManyToOne
+      |        verbalizes:
+      |          - "{Book} has pages- {NrPages}"
+      |      - name: writtenBy
+      |        iri: ex:written_by
+      |        roles:
+      |          - concept: Author
+      |        verbalizes:
+      |          - "{Book} is written by {Author}"
+      |  - concept: Isbn
+      |    type: ValueType
+      |    iri: xsd:string
+      |    description: The identifier of a book.
+      |    extends:
+      |      - String
+      |  - concept: NrPages
+      |    type: ValueType
+      |    iri: xsd:integer
+      |    extends:
+      |      - Integer
+      |    requires:
+      |      - NrPages >= 1
+      |""".stripMargin
+
   val classWithDescription: Case = of("a described class")("""
     |classes:
     |  Book:
