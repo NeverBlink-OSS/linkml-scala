@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
+import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.validation.{SchemaImportError, SchemaParseError, UnexpectedError}
 import org.scalatest.Inside
 import org.scalatest.matchers.should.Matchers
@@ -316,26 +317,20 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
     }
 
     "report an error the validator does not model as an UnexpectedError" in {
-      val schema =
-        """id: https://neverblink.eu/linkml/importer/test/
-          |name: test
-          |prefixes:
-          |  bad: "https://example.org/ has a space"
-          |default_prefix: bad
-          |classes:
-          |  SomeClass:
-          |""".stripMargin
-      inside(SchemaView.loadSchemaViewFromString(schema)) { case Left(problems) =>
+      val importer = new Importer {
+        def readSchema(path: String): Either[ImportFailure, SchemaDefinition] =
+          throw IllegalStateException(s"The importer is broken for $path")
+      }
+      inside(SchemaView.loadSchemaViewFromUri("main.yaml", importer)) { case Left(problems) =>
         problems should have size 1
         problems.head shouldBe a[UnexpectedError]
         SchemaIssues.description(problems.head.infer()) should include("Unexpected error")
-        SchemaIssues.description(problems.head.infer()) should include("has a space")
+        SchemaIssues.description(problems.head.infer()) should include("is broken for main.yaml")
       }
     }
 
-    "report a bad prefix as an UnexpectedError even when the schema has imports" in {
-      // With imports, the prefix map is built while resolving them - before a view exists - so the
-      // guard has to cover the whole load, not just view construction.
+    "say which namespace isn't a valid URI when an import uses its prefix" in {
+      // Imports are resolved before the validator can report the namespace
       val schema =
         """id: https://neverblink.eu/linkml/importer/test/
           |name: test
@@ -347,8 +342,11 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
           |  SomeClass:
           |""".stripMargin
       inside(SchemaView.loadSchemaViewFromString(schema)) { case Left(problems) =>
-        problems.head shouldBe a[UnexpectedError]
-        SchemaIssues.description(problems.head.infer()) should include("has a space")
+        problems.head shouldBe a[SchemaImportError]
+        SchemaIssues.verbose(problems.head.infer()) should include(
+          "The namespace 'https://w3id.org/linkml/ has a space' of the prefix 'linkml' in schema " +
+            "'https://neverblink.eu/linkml/importer/test/' isn't a valid URI",
+        )
       }
     }
 

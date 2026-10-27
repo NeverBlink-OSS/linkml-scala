@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.{Codec, Prefix, Prefixes, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{PrefixMap, UriCurieValidator, UriOrCurie, named, simpleDict}
+import eu.neverblink.linkml.runtime.{PrefixMap, UriOrCurie, named, simpleDict}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
@@ -58,24 +58,15 @@ object SchemaCodec {
 
   /** Get the prefixes of a schema, in the order of precedence given above.
     *
-    * @throws IllegalArgumentException
-    *   If a namespace in the schema's `prefixes` is not a valid URI. A namespace that is only a
-    *   scheme, such as `doi:`, is valid.
+    * Namespaces aren't checked here. When a schema is loaded, the validator reports a namespace
+    * that isn't a valid URI as `InvalidUriOrCurie`.
     */
-  def prefixMap(schema: SchemaDefinition): PrefixMap = {
-    schema.prefixes.values.foreach { p =>
-      val ns = p.prefixReference.original
-      if (!UriCurieValidator.isValidUri(ns))
-        throw new IllegalArgumentException(
-          s"The namespace '$ns' of the prefix '${p.prefixPrefix}' isn't a valid URI",
-        )
-    }
+  def prefixMap(schema: SchemaDefinition): PrefixMap =
     prefixMap(
       schema.prefixes,
       schema.defaultCuriMaps,
       new Some(defaultNamespace(schema.id.original, schema.defaultPrefix, schema.prefixes)),
     )
-  }
 
   /** Get the namespace of a schema's `default_prefix`. Without a `default_prefix`, or if it isn't
     * in the schema's `prefixes`, it is the schema's `id`, with a `/` added if the `id` doesn't end

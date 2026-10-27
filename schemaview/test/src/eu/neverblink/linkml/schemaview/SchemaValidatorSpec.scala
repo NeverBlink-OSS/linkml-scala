@@ -923,6 +923,23 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
     }
 
+    "fail on a namespace that isn't a valid URI" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |prefixes:
+           |  bad: "https://example.org/ has a space"
+           |default_prefix: bad
+           |classes:
+           |  SomeClass:
+           |""".stripMargin
+      val msg = loadFailure(schemaYaml)
+
+      msg should include(
+        "Invalid URI or CURIE 'https://example.org/ has a space' at /prefixes/bad/prefix_reference",
+      )
+      msg should not include "Unexpected error"
+    }
+
     "fail on a CURIE with a declared prefix in a schema built in code" in {
       // CURIEs are expanded when a schema is read, so only a schema built in code can have one
       val schema = SchemaDefinition(
