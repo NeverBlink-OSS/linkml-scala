@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -553,4 +554,58 @@ object Translation extends StreamGenerate[TranslationOptions] {
       TranslationGenerator.Options(options.target, derivedAttributes = options.derivedAttributes),
     )
   }
+}
+
+// Documentation
+
+@HelpMessage(
+  "Generate Markdown documentation\n" +
+    "If --to is a directory, the documentation is written as index.md plus one page per class, " +
+    "slot, enum and type, in the classes/, slots/, enums/ and types/ folders. If --to is a .md " +
+    "file, or with no --to at all, it is written as a single document.",
+)
+@ArgsName("<input-file>")
+final case class DocsOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: DocsPruningOptions = DocsPruningOptions(),
+    @HelpMessage("Which language to use for titles and descriptions. Default: en")
+    metadataLanguage: String = "en",
+) extends HasGenerateOptions
+
+object Docs extends SplitGenerate[DocsOptions] {
+  override protected def generatorName: String = "docs"
+
+  override protected def singleFileExtension: String = ".md"
+
+  /** The pages in the folders of each kind of element that start with the generated header, so that
+    * the pages of elements no longer in the schema do not linger. Other files are kept.
+    */
+  override protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] =
+    DocsSite.PageKind.values.toSeq.flatMap { kind =>
+      val folder = dir / kind.dir
+      if (os.isDir(folder))
+        os.list(folder).filter { file =>
+          os.isFile(file) && file.ext == "md" &&
+          os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "<!--"))
+        }
+      else Nil
+    }
+
+  private def generator(options: DocsOptions): DocsGenerator.Options =
+    DocsGenerator.Options(
+      pruningMode = options.pruning.resolvedPruningMode,
+      metadataLanguage = options.metadataLanguage,
+    )
+
+  override protected[cli] def generateSingle(options: DocsOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    DocsGenerator().writeTo(out, generator(options))
+
+  override protected[cli] def generateFiles(options: DocsOptions)(using
+      SchemaView,
+  ): Iterable[(String, String)] =
+    DocsGenerator().generateFiles(generator(options)).map(_.toTuple)
 }

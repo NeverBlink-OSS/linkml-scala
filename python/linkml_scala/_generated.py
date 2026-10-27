@@ -35,6 +35,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_typescript",
     "linkml_pydantic",
     "linkml_er_diagram",
+    "linkml_docs",
     "linkml_ossie",
     "linkml_owl",
     "linkml_scala",
@@ -291,6 +292,32 @@ class Generators:
             optionalMarker=optional_marker,
         )
 
+    def docs(
+        self,
+        *,
+        pruning_mode: str = "schema",
+        tree_root: str | None = None,
+        metadata_language: str = "en",
+        single_file: bool = False,
+    ) -> dict[str, str]:
+        """Generate Markdown documentation, as a filename to content mapping.
+
+        :param pruning_mode: Which classes to document, schemaRoot by default (classes reachable
+            from any class defined in the root schema). The enums, types and slots these classes
+            use are documented with them.
+        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
+            valid with `pruning_mode="treeRoot"`.
+        :param metadata_language: Which language to use for titles and descriptions.
+        :param single_file: Whether to write all pages as sections of one document, `docs.md`,
+            instead of a file for each page.
+        """
+        return self._json(
+            "linkml_docs",
+            pruningMode=_pruning(pruning_mode, tree_root),
+            metadataLanguage=metadata_language,
+            singleFile=single_file,
+        )
+
     def ossie(
         self,
         *,
@@ -381,7 +408,7 @@ class Generators:
 
         :param to: The framework whose names the dictionaries translate to. One of "base",
             "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json",
-            "typescript" or "pydantic".
+            "typescript", "pydantic" or "docs".
         :param indentation_step: Indentation of the JSON output.
         :param derived_attributes: Also list inherited slots, mixin slots and slots from the
             class's `slots` list in `classAttributes`. If false (the default), `classAttributes`

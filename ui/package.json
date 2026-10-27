@@ -18,6 +18,8 @@
     "@codemirror/view": "^6.36.2",
     "@lezer/highlight": "^1.2.1",
     "@neverblink/ohi": "^0.17.1",
+    "dompurify": "^3.4.16",
+    "marked": "^18.1.0",
     "mermaid": "^11.16.1"
   },
   "devDependencies": {

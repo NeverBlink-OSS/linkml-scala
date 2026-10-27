@@ -9,30 +9,57 @@ import eu.neverblink.linkml.generator.util.PruningMode
   * elements (classes, types, enums) from the schema.
   */
 final case class PruningOptions(
-    @HelpMessage(
-      "Which unused elements (classes, types, enums) to remove.\n" +
-        "treeRoot - remove all elements unreachable from the tree_root class.\n" +
-        "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
-        "skip - do not remove unused elements.\n" +
-        "Default: skip.",
-    )
+    @HelpMessage(PruningOptions.modeHelp + "Default: skip.")
     pruningMode: PruningMode = PruningMode.skip,
-    @HelpMessage(
-      "Tree root class name to use instead of the schema-defined tree_root.",
-    )
+    @HelpMessage(PruningOptions.treeRootHelp)
     treeRoot: Option[String] = None,
 ) {
 
   /** The pruning mode to hand to a generator, including the tree root override if one was provided.
     */
-  def resolvedPruningMode: PruningMode = pruningMode match {
-    case PruningMode.treeRoot(_) => PruningMode.treeRoot(treeRoot)
-    case mode => mode
-  }
+  def resolvedPruningMode: PruningMode = PruningOptions.resolved(pruningMode, treeRoot)
+}
+
+/** The same as [[PruningOptions]], but `schema` by default, for `generate docs`. The documentation
+  * of a schema is about the elements it uses, not every type of `linkml:types`.
+  */
+final case class DocsPruningOptions(
+    @HelpMessage(PruningOptions.modeHelp + "Default: schema.")
+    pruningMode: PruningMode = PruningMode.schemaRoot,
+    @HelpMessage(PruningOptions.treeRootHelp)
+    treeRoot: Option[String] = None,
+) {
+
+  /** The pruning mode to hand to a generator, including the tree root override if one was provided.
+    */
+  def resolvedPruningMode: PruningMode = PruningOptions.resolved(pruningMode, treeRoot)
+}
+
+object DocsPruningOptions {
+  import PruningOptions.parser
+
+  given Parser[DocsPruningOptions] = Parser.derive
+  given Help[DocsPruningOptions] = Help.derive
 }
 
 object PruningOptions {
   private val names = Seq("treeRoot", "schema", "skip")
+
+  /** The help text of `--pruning-mode`, without its default. */
+  final val modeHelp =
+    "Which unused elements (classes, types, enums) to remove.\n" +
+      "treeRoot - remove all elements unreachable from the tree_root class.\n" +
+      "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
+      "skip - do not remove unused elements.\n"
+
+  /** The help text of `--tree-root`. */
+  final val treeRootHelp = "Tree root class name to use instead of the schema-defined tree_root."
+
+  /** [[mode]] with the tree root override [[treeRoot]], if it is the tree root mode. */
+  def resolved(mode: PruningMode, treeRoot: Option[String]): PruningMode = mode match {
+    case PruningMode.treeRoot(_) => PruningMode.treeRoot(treeRoot)
+    case _ => mode
+  }
 
   /** Parses `--pruning-mode`, accepting camel, kebab and snake case alike (`treeRoot`, `tree-root`,
     * `tree_root`).

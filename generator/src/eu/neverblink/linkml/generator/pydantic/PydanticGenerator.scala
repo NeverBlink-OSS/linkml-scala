@@ -187,7 +187,7 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   private def enumType(ev: EnumView): String =
-    if ev._enum.permissibleValues.isEmpty then "str" else enumName(ev)
+    if (definesEnum(ev)) enumName(ev) else "str"
 
   /** In a concrete class, the values the type designator can take there. */
   private def designatorValues(tav: TypeAttributeView, owner: ClassView): Seq[String] =
@@ -420,12 +420,12 @@ final class PydanticGenerator(using sv: SchemaView)
     )
   }
 
-  override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    given Options = options
+  /** The classes, enums and document type that the module defines with [[options]]. */
+  private def definitions(options: Options): Definitions = {
     val query =
       sv.withTypeDesignatorMembers(options.pruningMode.derivedQuery(true, true), true, true)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
-    val enums = sv.enums.values.filter(ev => query.reachable(ev) && enumType(ev) != "str")
+    val enums = sv.enums.values.filter(ev => query.reachable(ev) && definesEnum(ev))
       .toVector.sortBy(ev => sv.elementOrder(ev._enum))
     val treeRootOverride = options.pruningMode match {
       case PruningMode.treeRoot(o) => o
@@ -433,11 +433,27 @@ final class PydanticGenerator(using sv: SchemaView)
     }
     val root = sv.treeRootWithOverride(treeRootOverride).get
       .filter(r => classes.exists(_.name == r.name))
-    val documentName = root.map(r => (r, className(r).concat("Document")))
-    val names = classes.flatMap(c => className(c) +: unionName(c).toSeq) ++
-      enums.map(enumName) ++ documentName.map(_._2)
-    val ctx = Context(options, names.toSet)
-    checkNames(classes, enums, documentName)
+    Definitions(classes, enums, root.map(r => (r, className(r).concat("Document"))))
+  }
+
+  /** The names of the classes, class unions, enums and document type that the module defines with
+    * [[options]]. A field whose name is one of them gets `_` at the end, as in
+    * [[PydanticRenamer.attribute]].
+    */
+  def moduleNames(options: Options): Set[String] = namesOf(definitions(options))
+
+  private def namesOf(defs: Definitions): Set[String] =
+    (defs.classes.flatMap(c => className(c) +: unionName(c).toSeq) ++
+      defs.enums.map(enumName) ++ defs.document.map(_._2)).toSet
+
+  override protected def writeChars(sink: CharSink, options: Options): Unit = {
+    given Options = options
+    val defs = definitions(options)
+    val classes = defs.classes
+    val enums = defs.enums
+    val root = defs.document.map(_._1)
+    val ctx = Context(options, namesOf(defs))
+    checkNames(classes, enums, defs.document)
 
     val body = new StringSink
     enums.foreach { ev =>
@@ -575,6 +591,11 @@ final class PydanticGenerator(using sv: SchemaView)
 
 object PydanticGenerator {
 
+  /** Whether the module defines a class for [[ev]]. An enum without permissible values is a `str`
+    * instead.
+    */
+  def definesEnum(ev: EnumView): Boolean = ev._enum.permissibleValues.nonEmpty
+
   /** Options for [[PydanticGenerator]].
     *
     * @param pruningMode
@@ -595,6 +616,13 @@ object PydanticGenerator {
       open: Boolean = false,
       metadataLanguage: String = "en",
   ) extends HasMetadataLanguage
+
+  /** The classes, enums and document type, with its name, that the module defines. */
+  private final case class Definitions(
+      classes: Seq[ClassView],
+      enums: Seq[EnumView],
+      document: Option[(ClassView, String)],
+  )
 
   /** Mutable state of one generator run. */
   private final case class Context(options: Options, moduleNames: Set[String]) {
