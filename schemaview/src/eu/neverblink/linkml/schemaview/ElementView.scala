@@ -787,6 +787,19 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def isIri: Boolean = subjectType.isIri
 
+  /** Whether values of this type are text, so that `minimum_length` and `maximum_length` apply to
+    * them. A `union_of` type has text values only if all its members have.
+    */
+  def hasTextValues: Boolean =
+    if (isUnion) unionAlternatives.forall(_.hasTextValues)
+    else
+      runtimeType match {
+        case _: StringType.type | _: NcNameType.type | _: LocalizedTextType.type | _: UriType.type |
+            _: CurieType.type | _: UriOrCurieType.type =>
+          true
+        case _ => false
+      }
+
   /** The [[RuntimeType]] representation of this type. Translates Python-ese and LinkML-py runtime
     * names into the enum. Falls back to [[UnknownType]].
     */

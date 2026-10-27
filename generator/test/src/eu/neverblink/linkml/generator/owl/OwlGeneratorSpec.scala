@@ -207,6 +207,27 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       )
     }
 
+    "write no length facets for values that are not text" in {
+      val axioms = ontologyOf("""
+        |classes:
+        |  Item:
+        |    slots:
+        |      - count
+        |slots:
+        |  count:
+        |    range: integer
+        |    maximum_length: 3
+        |types:
+        |  Size:
+        |    typeof: integer
+        |    uri: ex:Size
+        |    minimum_length: 1
+        |""").axioms
+      // XSD has no length facets for numbers
+      axioms should contain(Range(ns + "count", DataRange.Datatype(xsd + "integer")))
+      axioms.collect { case d: DatatypeDefinition => d } shouldBe empty
+    }
+
     "use the title as the label, and write no label without a title" in {
       val axioms = ontologyOf(personinfo).axioms
       val label = "http://www.w3.org/2000/01/rdf-schema#label"

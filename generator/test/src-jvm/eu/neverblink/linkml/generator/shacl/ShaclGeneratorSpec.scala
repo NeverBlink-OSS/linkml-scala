@@ -1358,6 +1358,30 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
+    "write no lengths for values that are not text" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Container:
+           |    slots:
+           |    - count
+           |    - code
+           |slots:
+           |  count:
+           |    range: integer
+           |    minimum_length: 2
+           |  code:
+           |    range: string
+           |    any_of:
+           |    - range: integer
+           |      maximum_length: 2
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      // SHACL would check the length of the text of a number
+      turtle should not include "sh:minLength"
+      turtle should not include "sh:maxLength"
+    }
+
     "type nested value bounds with the nearest enclosing range" in {
       val input =
         s"""$schemaShared

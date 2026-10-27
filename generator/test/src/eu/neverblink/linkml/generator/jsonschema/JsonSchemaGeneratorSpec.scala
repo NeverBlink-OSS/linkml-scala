@@ -108,6 +108,30 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       choice.map(_.maxLength) shouldBe List(Some(4), None)
     }
 
+    "write no minLength and maxLength for values that are not text" in {
+      // Adds to the `types` of the shared part.
+      given SchemaView = load(s"""$schemaShared
+           |  StringOrInteger:
+           |    union_of: [string, integer]
+           |    maximum_length: 3
+           |classes:
+           |  C:
+           |    attributes:
+           |      count:
+           |        range: integer
+           |        minimum_length: 2
+           |      choice:
+           |        range: StringOrInteger
+           |""".stripMargin)
+
+      val c = JsonSchemaGenerator().generate().$defs.get("C").asInstanceOf[Schema]
+      def property(name: String) = c.properties(name).asInstanceOf[Schema]
+      property("count").minLength shouldBe None
+      // A union with a member that isn't text gets no lengths, as in the other generators
+      property("choice").maxLength shouldBe None
+      property("choice").anyOf.map(_.asInstanceOf[Schema].maxLength) shouldBe List(None, None)
+    }
+
     "keep the declared order of union members, with nested unions in place" in {
       // Adds to the `types` of the shared part.
       given SchemaView = load(s"""$schemaShared

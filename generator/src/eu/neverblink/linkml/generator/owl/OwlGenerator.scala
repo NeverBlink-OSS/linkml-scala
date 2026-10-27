@@ -628,7 +628,7 @@ object OwlGenerator {
           Some(
             if (
               constraints.minimumValue.isEmpty && constraints.maximumValue.isEmpty &&
-              constraints.minimumLength.isEmpty && constraints.maximumLength.isEmpty &&
+              !hasLengths(constraints.minimumLength, constraints.maximumLength, tv) &&
               constraints.pattern.isEmpty
             ) datatypeOf(tv)
             else {
@@ -681,8 +681,8 @@ object OwlGenerator {
 
     private def hasFacets(tv: TypeView): Boolean = {
       val d = tv.derivedType
-      d.minimumValue.isDefined || d.maximumValue.isDefined || d.minimumLength.isDefined ||
-      d.maximumLength.isDefined || d.pattern.isDefined
+      d.minimumValue.isDefined || d.maximumValue.isDefined ||
+      hasLengths(d.minimumLength, d.maximumLength, tv) || d.pattern.isDefined
     }
 
     /** The XSD datatype that a type's values have in RDF. */
@@ -710,6 +710,10 @@ object OwlGenerator {
       facets(d.minimumValue, d.maximumValue, d.minimumLength, d.maximumLength, tv.pattern, tv)
     }
 
+    /** Whether there is a length that applies to the type. XSD has length facets only for text. */
+    private def hasLengths(min: Option[Int], max: Option[Int], tv: TypeView): Boolean =
+      (min.isDefined || max.isDefined) && tv.hasTextValues
+
     private def facets(
         min: Option[LinkmlAny],
         max: Option[LinkmlAny],
@@ -726,12 +730,14 @@ object OwlGenerator {
       max.foreachFast(v =>
         b.addOne(XmlSchema.maxInclusive.value -> Literal(v.value.strip, datatype)),
       )
-      minLength.foreachFast(n =>
-        b.addOne(XmlSchema.minLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
-      )
-      maxLength.foreachFast(n =>
-        b.addOne(XmlSchema.maxLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
-      )
+      if (tv.hasTextValues) {
+        minLength.foreachFast(n =>
+          b.addOne(XmlSchema.minLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
+        )
+        maxLength.foreachFast(n =>
+          b.addOne(XmlSchema.maxLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
+        )
+      }
       pattern.foreachFast(p => b.addOne(XmlSchema.pattern.value -> Literal(p.xsd)))
       b.result()
     }

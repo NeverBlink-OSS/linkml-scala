@@ -264,7 +264,13 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
             member.pattern.foreachFast { p =>
               sink.triple(target, Shacl.pattern, Literal(p))
             }
-            emitLengths(sink, member.minimumLength, member.maximumLength, target)
+            if (member.minimumLength.isDefined || member.maximumLength.isDefined) {
+              memberRange.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
+                case typeView: TypeView if typeView.hasTextValues =>
+                  emitLengths(sink, member.minimumLength, member.maximumLength, target)
+                case _ =>
+              }
+            }
             if (
               (member.minimumValue.isDefined || member.maximumValue.isDefined) &&
               member.implicitPrefix.isEmpty

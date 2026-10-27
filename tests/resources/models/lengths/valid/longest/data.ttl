@@ -2,4 +2,5 @@
 
 _:b a :Lengths;
     :code "ABC";
-    :name "Ann Smith" .
+    :name "Ann Smith";
+    :count 5 .

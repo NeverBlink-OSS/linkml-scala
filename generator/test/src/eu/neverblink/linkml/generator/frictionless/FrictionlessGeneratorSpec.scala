@@ -189,6 +189,9 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
           |      code:
           |        range: Code
           |        maximum_length: 3
+          |      count:
+          |        range: integer
+          |        minimum_length: 2
           |""".stripMargin,
         ),
       )
@@ -199,6 +202,8 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       val code = fieldMap("code").constraints.get
       code.minLength shouldBe Some(2)
       code.maxLength shouldBe Some(3)
+      // The spec has no length constraint for integer fields
+      fieldMap("count").constraints.get.minLength shouldBe None
     }
 
     "date, time and datetime columns use the ISO 8601 format" in {

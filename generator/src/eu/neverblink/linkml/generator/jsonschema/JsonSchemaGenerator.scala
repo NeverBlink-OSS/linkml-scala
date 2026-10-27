@@ -310,8 +310,8 @@ object JsonSchemaGenerator {
         nonUnionTypeToRuntime(member).copy(
           minimum = toBigDecimalOpt(derived.minimumValue),
           maximum = toBigDecimalOpt(derived.maximumValue),
-          minLength = derived.minimumLength,
-          maxLength = derived.maximumLength,
+          minLength = if (member.hasTextValues) derived.minimumLength else None,
+          maxLength = if (member.hasTextValues) derived.maximumLength else None,
           pattern = member.pattern.mapFast(p => new Pattern(p.linkml)),
         )
       }.toList)

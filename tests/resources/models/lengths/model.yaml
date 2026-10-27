@@ -9,6 +9,7 @@ classes:
     slots:
       - code
       - name
+      - count
 
 slots:
   code:
@@ -20,6 +21,11 @@ slots:
     rank: 2
     range: string
     minimum_length: 1
+  count:
+    rank: 3
+    range: integer
+    # Lengths only apply to text, so this checks nothing
+    minimum_length: 2
 
 types:
   short_code:
