@@ -202,7 +202,7 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
         // The slot's own length has precedence over the type's.
         Range(
           ns + "code",
-          DataRange.Restriction(xsd + "string", Seq(maxLength(3), minLength)),
+          DataRange.Restriction(xsd + "string", Seq(minLength, maxLength(3))),
         ),
       )
     }

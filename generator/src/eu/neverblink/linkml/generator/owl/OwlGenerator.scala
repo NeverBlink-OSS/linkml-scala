@@ -625,23 +625,28 @@ object OwlGenerator {
         // Values with an implicit prefix are IRIs in RDF, as in the SHACL generator.
         case tv: TypeView if tv.isIri || constraints.implicitPrefix.isDefined => None
         case tv: TypeView =>
-          val own =
-            facets(
-              constraints.minimumValue,
-              constraints.maximumValue,
-              constraints.minimumLength,
-              constraints.maximumLength,
-              LinkmlPattern.option(constraints.pattern),
-              tv,
-            )
           Some(
-            if (own.isEmpty) datatypeOf(tv)
+            if (
+              constraints.minimumValue.isEmpty && constraints.maximumValue.isEmpty &&
+              constraints.minimumLength.isEmpty && constraints.maximumLength.isEmpty &&
+              constraints.pattern.isEmpty
+            ) datatypeOf(tv)
             else {
               // OWL only allows facets on built-in datatypes, so repeat the type's own constraints
-              // next to the slot's.
-              val all = Seq.newBuilder[(String, Literal)].addAll(own)
-              typeFacets(tv).foreach(f => if (!own.exists(_._1 == f._1)) all.addOne(f))
-              DataRange.Restriction(baseDatatype(tv), all.result())
+              // next to the slot's. Each facet comes from the slot, or else from the type, so the
+              // facets are always in the same order.
+              val d = tv.derivedType
+              DataRange.Restriction(
+                baseDatatype(tv),
+                facets(
+                  constraints.minimumValue.orElseFast(d.minimumValue),
+                  constraints.maximumValue.orElseFast(d.maximumValue),
+                  constraints.minimumLength.orElseFast(d.minimumLength),
+                  constraints.maximumLength.orElseFast(d.maximumLength),
+                  LinkmlPattern.option(constraints.pattern).orElseFast(tv.pattern),
+                  tv,
+                ),
+              )
             },
           )
         case _ => None
