@@ -2,6 +2,8 @@
 
 The Ohi SDK lets Scala/JVM, Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
 
+The documentation is at [ohi.dev/docs](https://ohi.dev/docs/).
+
 ## Search, inspect and retrieve
 
 Install the Python SDK on Python 3.10 or later:

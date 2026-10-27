@@ -1,0 +1,70 @@
+---
+title: Ohi SDK
+description: Search ohi.dev, inspect publications and download their files from Scala, Python and TypeScript.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+The Ohi SDK lets Scala/JVM, Python and TypeScript applications search publications on
+[ohi.dev](https://ohi.dev), inspect their metadata, download selected files and save file selections.
+
+## Installation
+
+<Tabs syncKey="language">
+  <TabItem label="Python">
+    Python 3.10 or later:
+
+    ```sh
+    python -m pip install ohi-sdk
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    Node 22 or later, or a browser with Fetch. Browsers need CORS access to the catalog,
+    publication and artifact endpoints.
+
+    ```sh
+    npm install @neverblink/ohi
+    ```
+  </TabItem>
+  <TabItem label="Scala">
+    The Scala modules are built from source and included in the
+    [LinkML-Scala CLI](https://github.com/NeverBlink-OSS/linkml-scala). They are not published
+    separately to Maven Central.
+  </TabItem>
+</Tabs>
+
+The CLI, the Python package and the TypeScript package share the LinkML-Scala release version.
+
+## Quick start
+
+<Tabs syncKey="language">
+  <TabItem label="Python">
+    ```python
+    from ohi import CatalogClient, SearchRequest
+
+    client = CatalogClient()
+    page = client.search(SearchRequest(q="sensors", page=1, per_page=10))
+    if page.hits:
+        publication = client.inspect(page.hits[0].base_url)
+        artifact = publication.artifacts[0]
+        content = client.get(artifact.url)
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```typescript
+    import { CatalogClient } from "@neverblink/ohi";
+
+    const page = await new CatalogClient().search({ q: "sensors" });
+    ```
+  </TabItem>
+</Tabs>
+
+See [Search, inspect and retrieve](/docs/search/) for what each step does.
+
+## Language bindings
+
+| Language | Client | Operation results |
+| --- | --- | --- |
+| Scala/JVM | `eu.neverblink.ohi.catalog.CatalogClient` in `ohi.catalog.jvm` | Synchronous `SearchResult`, `Publication`, `Array[Byte]` |
+| Python | `ohi.CatalogClient` | Synchronous `SearchResult`, `Publication`, `bytes` |
+| TypeScript | `CatalogClient` from the package entry point | Promises of `SearchResult`, `Publication`, `Uint8Array` |

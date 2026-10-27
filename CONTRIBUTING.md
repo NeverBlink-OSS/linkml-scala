@@ -120,6 +120,8 @@ The guides in [`docs/`](docs/) are published at <https://linkml.neverblink.eu/do
 
 A new guide has to be added to the sidebar in `website/astro.config.mjs`, and to the list in `docs/README.md`, which is the landing page. The build fails if it is missing from the sidebar.
 
+The Ohi SDK has its own site in [`ohi/docs/`](ohi/docs/), published at <https://ohi.dev/docs/>. Its pages are written directly in `ohi/docs/src/content/docs/`, and new ones are added to the sidebar in `ohi/docs/astro.config.mjs`. The commands are the same, under `ohi.docs`: `./mill ohi.docs.serve`, `./mill ohi.docs.build` (also run by CI) and `./mill ohi.docs.preview`.
+
 ## Benchmarks
 
 Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://github.com/openjdk/jmh) via the mill JMH plugin. The module is JVM-only and is never published.
