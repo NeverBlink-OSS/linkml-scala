@@ -1,0 +1,33 @@
+package build.website
+
+import mill.*
+import mill.Module
+
+object `package` extends Module {
+  /** Run an npm script of the docs site (website/package.json). Installs npm deps on first run.
+   * Requires Node.js and npm on the PATH.
+   */
+  def runNpm(script: String): Unit = {
+    val websiteDir = mill.api.BuildCtx.workspaceRoot / "website"
+    if (!os.exists(websiteDir / "node_modules"))
+      os.call(("npm", "ci"), cwd = websiteDir, stdout = os.Inherit, stderr = os.Inherit)
+    os.call(("npm", "run", script), cwd = websiteDir, stdout = os.Inherit, stderr = os.Inherit)
+  }
+
+  /** Build the docs site from docs/ into website/dist, to be served under /docs/.
+   */
+  def build(args: String*) = Task.Command(exclusive = true) {
+    runNpm("build")
+  }
+
+  /** Serve the docs site at http://localhost:4321/docs/, reloading on every change in docs/. */
+  def serve(args: String*) = Task.Command() {
+    runNpm("dev")
+  }
+
+  /** Build the docs site and serve the result at http://localhost:4321/docs/. */
+  def preview(args: String*) = Task.Command() {
+    runNpm("build")
+    runNpm("preview")
+  }
+}
