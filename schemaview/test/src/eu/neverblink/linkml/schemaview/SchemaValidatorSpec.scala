@@ -965,6 +965,40 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "report an equals_string that should be a URI, but isn't" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |prefixes:
+           |  linkml: https://w3id.org/linkml/
+           |imports:
+           |  - linkml:types
+           |classes:
+           |  Thing:
+           |    tree_root: true
+           |    attributes:
+           |      link:
+           |        range: uriorcurie
+           |        equals_string: not a URI
+           |      other:
+           |        range: Thing
+           |        equals_string: Thing 2
+           |      name:
+           |        range: string
+           |        equals_string: any text
+           |      fine:
+           |        range: uri
+           |        equals_string: https://example.org/a
+           |""".stripMargin
+
+      load(schemaYaml).validationProblems.map(
+        _.infer().message.get,
+      ) should contain theSameElementsAs
+        Seq(
+          "equals_string 'not a URI' of slot 'link' in class 'Thing' isn't a valid URI or CURIE",
+          "equals_string 'Thing 2' of slot 'other' in class 'Thing' isn't a valid URI or CURIE",
+        )
+    }
+
     "fail on a namespace that isn't a valid URI" in {
       val schemaYaml =
         s"""$schemaShared

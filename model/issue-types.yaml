@@ -316,6 +316,33 @@ classes:
       message:
         equals_expression: "Undefined prefix {prefix} at {location.json_pointer}"
 
+  InvalidEqualsString:
+    is_a: SchemaError
+    description: >-
+      The `equals_string` of a slot whose range is a URI type or a class isn't a valid URI or
+      CURIE. The OWL generator writes such a value as an IRI, so `generate owl` fails for it.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      value:
+        range: string
+        required: true
+        title: value
+    slot_usage:
+      message:
+        equals_expression: >-
+          equals_string '{value}' of slot '{slot_name}' in class '{class_name}' isn't a valid URI
+          or CURIE
+      details:
+        equals_expression: >-
+          equals_string '{value}' of slot '{slot_name}' in class '{class_name}' isn't a valid URI
+          or CURIE. The range of the slot is a URI type or a class, so the value is an IRI, and
+          `generate owl` fails for it. Use a URI, or a CURIE with a declared prefix.
+
   # ---- Warning ----------------------------------------------------------------------------------
 
   UndefinedDefaultRange:

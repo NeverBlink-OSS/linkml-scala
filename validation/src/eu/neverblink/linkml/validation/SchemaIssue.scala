@@ -24,6 +24,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[EmptyName], "EmptyName"),
   typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
   typeDesignator.Member(classOf[InvalidDefaultRange], "InvalidDefaultRange"),
+  typeDesignator.Member(classOf[InvalidEqualsString], "InvalidEqualsString"),
   typeDesignator.Member(classOf[InvalidKeyOrIdSlotType], "InvalidKeyOrIdSlotType"),
   typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
   typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),

@@ -1,7 +1,14 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri}
+import eu.neverblink.linkml.runtime.{
+  NcName,
+  PrefixMap,
+  Reference,
+  Uri,
+  UriCurieValidator,
+  UriOrCurie,
+}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
@@ -233,6 +240,39 @@ final class SchemaValidator(using sv: SchemaView) {
                 elementName = elem.name,
               ),
             )
+        }
+      }
+    }
+    errors.result()
+  }
+
+  /** Errors for an `equals_string` of a slot in a class that isn't a valid URI or CURIE, when the
+    * range of the slot is a URI type or a class. The OWL generator writes such a value as an IRI,
+    * expanded with the prefixes of the schema that defines the slot.
+    */
+  private lazy val invalidEqualsStrings: Seq[SchemaError] = {
+    val errors = Seq.newBuilder[SchemaError]
+    sv.classes.values.foreach { cv =>
+      cv.derivedAttributes.values.foreach { s =>
+        s.slot.equalsString.foreachFast { text =>
+          val isIri = s.derivedRange.resolve.orNullFast match {
+            case tv: TypeView => tv.isIri
+            case _: ClassView => true
+            case _ => false
+          }
+          if (
+            isIri &&
+            !UriCurieValidator.isValidUri(UriOrCurie.expanded(text, s.definingPrefixes).original)
+          ) {
+            errors.addOne(
+              new InvalidEqualsString(
+                location = locationOf(cv),
+                className = cv.cls.name,
+                slotName = s.slot.name,
+                value = text,
+              ),
+            )
+          }
         }
       }
     }
@@ -584,6 +624,7 @@ final class SchemaValidator(using sv: SchemaView) {
       multipleTreeRoots ++
       nonUniqueNames ++
       unknownPrefixes ++
+      invalidEqualsStrings ++
       namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */

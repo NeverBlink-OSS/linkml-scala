@@ -85,6 +85,26 @@ export interface InvalidDefaultRange {
   severity: IssueSeverity;
 }
 
+/** The `equals_string` of a slot whose range is a URI type or a class isn't a valid URI or CURIE. The OWL generator writes such a value as an IRI, so `generate owl` fails for it. */
+export interface InvalidEqualsString {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "InvalidEqualsString";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** slot name */
+  slot_name: string;
+  /** value */
+  value: string;
+}
+
 /** A `key` or `identifier` slot has a range that is not a scalar type. */
 export interface InvalidKeyOrIdSlotType {
   /** class name: Name of the class the issue was found in. */
@@ -285,6 +305,7 @@ export interface RepeatedSeparator {
 
 export type SchemaError =
   | EmptyName
+  | InvalidEqualsString
   | InvalidKeyOrIdSlotType
   | MultipleKeyOrIdSlots
   | MultipleTreeRoots
@@ -343,6 +364,7 @@ export type SchemaIssue =
   | EmptyName
   | FlankingSeparator
   | InvalidDefaultRange
+  | InvalidEqualsString
   | InvalidKeyOrIdSlotType
   | InvalidRange
   | InvalidSlotUsage
