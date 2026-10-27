@@ -131,15 +131,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
             case InlineType.dict(form) => dictSchema(classView, form)
           }
         case ClassReferenceAttributeView(slotView, _, classView, identifierView) =>
-          typeToRuntime(identifierView.typeView)
-            .copy(
-              $comment = Some(s"Reference to ${classView.name} class"),
-              minimum = toBigDecimalOpt(identifierView.minimumValue),
-              maximum = toBigDecimalOpt(identifierView.maximumValue),
-              minLength = identifierView.minimumLength,
-              maxLength = identifierView.maximumLength,
-              pattern = identifierView.pattern.mapFast(p => new Pattern(p.linkml)),
-            )
+          alternativesToRuntime(identifierView.alternatives)
+            .copy($comment = Some(s"Reference to ${classView.name} class"))
             .arrayOfIf(slotView.slot.multivalued)
         case typeAttribute: TypeAttributeView =>
           // In a concrete class, the type designator can only name that class
@@ -147,13 +140,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
             if (typeAttribute.slotView.slot.designatesType && owner.isConcrete)
               owner.typeDesignatorValues
             else Nil
-          typeToRuntime(typeAttribute.typeView)
+          alternativesToRuntime(typeAttribute.alternatives)
             .copy(
-              minimum = toBigDecimalOpt(typeAttribute.minimumValue),
-              maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-              minLength = typeAttribute.minimumLength,
-              maxLength = typeAttribute.maximumLength,
-              pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
               `enum` =
                 if (designatorValues.isEmpty) None
                 else Some(designatorValues.map(ExampleSingleValue(_)).toList),
@@ -299,23 +287,25 @@ object JsonSchemaGenerator {
       includeNull: Boolean = false,
   ) extends HasMetadataLanguage
 
-  /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
-    * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members.
+  /** The JSON Schema for values that can take any of the alternatives: the schema of the only
+    * alternative, or else `anyOf` of the schemas of all of them. Each schema has the constraints of
+    * its own alternative, as they only apply to values of that alternative.
     */
-  def typeToRuntime(tv: TypeView): Schema =
-    if (tv.isUnion) {
-      // Each member keeps its own constraints, as they only apply to values of that member.
-      new Schema(anyOf = tv.unionAlternatives.map { member =>
-        val derived = member.derivedType
-        nonUnionTypeToRuntime(member).copy(
-          minimum = toBigDecimalOpt(derived.minimumValue),
-          maximum = toBigDecimalOpt(derived.maximumValue),
-          minLength = if (member.hasTextValues) derived.minimumLength else None,
-          maxLength = if (member.hasTextValues) derived.maximumLength else None,
-          pattern = member.pattern.mapFast(p => new Pattern(p.linkml)),
-        )
-      }.toList)
-    } else nonUnionTypeToRuntime(tv)
+  def alternativesToRuntime(alternatives: Seq[ValueAlternative]): Schema =
+    if (alternatives.sizeIs == 1) alternativeToRuntime(alternatives.head)
+    else new Schema(anyOf = alternatives.map(alternativeToRuntime).toList)
+
+  /** Translate the [[RuntimeType]] of the alternative's type into the appropriate JSON Schema, with
+    * the alternative's constraints. Provides formats for date-times and URI/CURIE.
+    */
+  private def alternativeToRuntime(alternative: ValueAlternative): Schema =
+    nonUnionTypeToRuntime(alternative.typeView).copy(
+      minimum = toBigDecimalOpt(alternative.minimumValue),
+      maximum = toBigDecimalOpt(alternative.maximumValue),
+      minLength = alternative.minimumLength,
+      maxLength = alternative.maximumLength,
+      pattern = alternative.pattern.mapFast(p => new Pattern(p.linkml)),
+    )
 
   private def nonUnionTypeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
     case _: StringType.type => stringSchema
