@@ -118,11 +118,11 @@ with the explicit numbers from `exact_cardinality`, `minimum_cardinality` and
 
 ### File names
 
-A page's file name is the element's name, with each character other than letters, digits, `_`, `-`
-and `.` replaced by `_`. So the links need no encoding.
+A page's file name is the element's base name, the same one that `generate translation --target
+base` gives: lower case ASCII letters and digits, with words separated by `_`. So `PersonName` is in
+`classes/person_name.md`. The links need no encoding, and the names work on any file system.
 
-When two names would give the same file name, ignoring case (like `Person` and `person`), the
-second one gets `_2`. This keeps both pages on macOS and Windows, whose file systems ignore case.
+When two names give the same base name (like `Person` and `person`), the second one gets `_2`.
 Which one is second depends on their order in the schema, so adding or moving such an element can
 change the file names of the others, and links to them from outside the documentation.
 

@@ -27,7 +27,7 @@ class DocsLocaleSpec extends AnyWordSpec, Matchers {
         DocsGenerator(using sv).generateFiles().map(_.path).filter(
           _.startsWith("classes/"),
         ) shouldBe
-          Seq("classes/Item.md", "classes/item_2.md")
+          Seq("classes/item.md", "classes/item_2.md")
       finally Locale.setDefault(default)
     }
   }

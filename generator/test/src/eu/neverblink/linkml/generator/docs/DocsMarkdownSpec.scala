@@ -48,6 +48,7 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
         |  "Größe":
         |  "name with spaces":
         |  ".dot":
+        |  "?":
         |slots:
         |  "{curly}":
         |    range: "`tick`"
@@ -157,16 +158,17 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
         (k, parse(v)),
       )
       pages.keySet should contain allOf (
-        "classes/Person.md",
+        "classes/person.md",
         "classes/person_2.md",
-        "classes/Größe.md",
+        "classes/gr_e.md",
         "classes/name_with_spaces.md",
-        "classes/_.dot.md",
+        "classes/dot.md",
+        "classes/_.md",
       )
       Seq("*star*", "a|pipe", "friend").foreach { name =>
-        plainCells(pages("classes/Person.md")) should contain(name)
+        plainCells(pages("classes/person.md")) should contain(name)
       }
-      plainCells(pages("enums/_html_.md")) should contain allOf ("a|b", "`c`", "x | y")
+      plainCells(pages("enums/html.md")) should contain allOf ("a|b", "`c`", "x | y")
       headingsOf(pages("index.md")).head shouldBe "*Awkward* | names"
     }
   }

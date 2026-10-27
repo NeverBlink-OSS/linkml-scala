@@ -326,11 +326,11 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           withClue(s"stderr was: $err\n")(code shouldBe 0)
           snapshot(dir / "site").keys.map(_.toString) should contain theSameElementsAs Seq(
             "index.md",
-            "classes/Root.md",
-            "classes/Other.md",
+            "classes/root.md",
+            "classes/other.md",
             "types/string.md",
           )
-          os.read(dir / "site" / "index.md") should include("[Root](classes/Root.md)")
+          os.read(dir / "site" / "index.md") should include("[Root](classes/root.md)")
         } finally os.remove.all(dir)
       }
 
@@ -346,8 +346,8 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           // Not the other types of `linkml:types`, which the schema doesn't use
           snapshot(dir / "site").keys.map(_.toString) should contain theSameElementsAs Seq(
             "index.md",
-            "classes/Root.md",
-            "classes/Other.md",
+            "classes/root.md",
+            "classes/other.md",
             "types/string.md",
           )
         } finally os.remove.all(dir)
@@ -366,8 +366,8 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           withClue(s"stderr was: $err\n")(code shouldBe 0)
           snapshot(site).keys.map(_.toString) should contain theSameElementsAs Seq(
             "index.md",
-            "classes/Root.md",
-            "classes/Other.md",
+            "classes/root.md",
+            "classes/other.md",
             "classes/notes.md",
             "types/string.md",
           )

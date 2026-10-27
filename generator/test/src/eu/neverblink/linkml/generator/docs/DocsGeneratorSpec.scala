@@ -37,8 +37,8 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       val result = files(ModelCatalogue.`enum`.model)
       result.keySet shouldBe Set(
         "index.md",
-        "classes/SomeClass.md",
-        "enums/SomeEnum.md",
+        "classes/some_class.md",
+        "enums/some_enum.md",
         "types/string.md",
       )
     }
@@ -62,23 +62,23 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
     "describe the schema and list its elements on the index page" in {
       val index = files(ModelCatalogue.inheritance.model)("index.md")
       index should include("# inheritance\n")
-      index should include("- **Tree root:** [ChildClass](classes/ChildClass.md)\n")
-      index should include("| [BaseClass](classes/BaseClass.md) |  |\n")
+      index should include("- **Tree root:** [ChildClass](classes/child_class.md)\n")
+      index should include("| [BaseClass](classes/base_class.md) |  |\n")
       index should include("| [some_slot](slots/some_slot.md) |  |\n")
       index should include("| [string](types/string.md) | A character string |\n")
     }
 
     "list the slots of a class, with their ranges, cardinalities and where they come from" in {
-      val page = files(ModelCatalogue.inheritance.model)("classes/ChildClass.md")
+      val page = files(ModelCatalogue.inheritance.model)("classes/child_class.md")
       page should include("# Class: ChildClass\n")
-      page should include("- **Parent:** [BaseClass](BaseClass.md)\n")
+      page should include("- **Parent:** [BaseClass](base_class.md)\n")
       page should include("- **Tree root:** yes\n")
       page should include(
         """| Name | Range | Cardinality | Description | Inherited from |
           || --- | --- | --- | --- | --- |
           || [some_slot](../slots/some_slot.md) | [string](../types/string.md) | 0..1 |  |  |
-          || [some_other_slot](../slots/some_other_slot.md) | [integer](../types/integer.md) | 1 |  | [BaseClass](BaseClass.md) |
-          || [yet_another_slot](../slots/yet_another_slot.md) | [BaseRefClass](BaseRefClass.md) (reference) | 1 |  |  |
+          || [some_other_slot](../slots/some_other_slot.md) | [integer](../types/integer.md) | 1 |  | [BaseClass](base_class.md) |
+          || [yet_another_slot](../slots/yet_another_slot.md) | [BaseRefClass](base_ref_class.md) (reference) | 1 |  |  |
           |""".stripMargin,
       )
     }
@@ -87,33 +87,33 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       // Each level is indented by 4 spaces, as MkDocs needs. GitHub and other CommonMark tools
       // read it the same way as 2 spaces.
       val pages = files(ModelCatalogue.inheritance.model)
-      pages("classes/ChildClass.md") should include(
+      pages("classes/child_class.md") should include(
         """## Inheritance
           |
-          |- [BaseClass](BaseClass.md)
+          |- [BaseClass](base_class.md)
           |    - **ChildClass**
           |""".stripMargin,
       )
-      pages("classes/BaseClass.md") should include(
+      pages("classes/base_class.md") should include(
         """- **BaseClass**
-          |    - [ChildClass](ChildClass.md)
+          |    - [ChildClass](child_class.md)
           |""".stripMargin,
       )
     }
 
     "mark identifiers and keep attributes without a slot page unlinked" in {
-      val page = files(ModelCatalogue.inheritance.model)("classes/BaseRefClass.md")
+      val page = files(ModelCatalogue.inheritance.model)("classes/base_ref_class.md")
       page should include("| id (identifier) | [string](../types/string.md) | 1 |  |  |\n")
     }
 
     "list the slots that use a class as their range" in {
-      val page = files(ModelCatalogue.inheritance.model)("classes/BaseRefClass.md")
+      val page = files(ModelCatalogue.inheritance.model)("classes/base_ref_class.md")
       page should include(
         """## Usages
           |
           || Used by | Slot | Cardinality |
           || --- | --- | --- |
-          || [ChildClass](ChildClass.md) | [yet_another_slot](../slots/yet_another_slot.md) | 1 |
+          || [ChildClass](child_class.md) | [yet_another_slot](../slots/yet_another_slot.md) | 1 |
           |""".stripMargin,
       )
     }
@@ -142,7 +142,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       val pages = generator.generateFiles().map(_.toTuple).toMap
       pages("index.md") should include("## Diagram\n\n```mermaid\n")
       pages("index.md") should include("erDiagram\n")
-      pages("classes/ChildClass.md") should endWith("## Notes on ChildClass\n\n")
+      pages("classes/child_class.md") should endWith("## Notes on ChildClass\n\n")
       // In one document, the pages are sections, so their headings are one level lower.
       val document = generator.serialize()
       document should include("## Diagram\n\n```mermaid\n")
@@ -155,14 +155,14 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       page should include("- **Range:** [integer](../types/integer.md)\n")
       page should include("- **Cardinality:** 1\n")
       page should include(
-        "| [BaseClass](../classes/BaseClass.md) | [integer](../types/integer.md) | 1 |\n",
+        "| [BaseClass](../classes/base_class.md) | [integer](../types/integer.md) | 1 |\n",
       )
       // ChildClass inherits the slot unchanged, so it is not listed again.
       page should not include "ChildClass"
     }
 
     "list the permissible values of an enum with their meanings" in {
-      val page = files(ModelCatalogue.`enum`.model)("enums/SomeEnum.md")
+      val page = files(ModelCatalogue.`enum`.model)("enums/some_enum.md")
       page should include(
         """| Value | Meaning | Description |
           || --- | --- | --- |
@@ -171,7 +171,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           || `YET_ANOTHER_OPTION` |  |  |
           |""".stripMargin,
       )
-      page should include("| [SomeClass](../classes/SomeClass.md) | some_slot | 0..1 |\n")
+      page should include("| [SomeClass](../classes/some_class.md) | some_slot | 0..1 |\n")
     }
 
     "say when an enum has no fixed list of values" in {
@@ -204,10 +204,10 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin,
       )
       val pages = files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip))
-      pages("enums/Derived.md") should include(
+      pages("enums/derived.md") should include(
         """## Values from
           |
-          |- **Inherits:** [Base](Base.md)
+          |- **Inherits:** [Base](base.md)
           |- **Includes:** values `b`
           |- **Excludes:** values `a`
           |
@@ -216,7 +216,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |The values come from the sources above, so they aren't listed here.
           |""".stripMargin,
       )
-      pages("enums/Species.md") should include(
+      pages("enums/species.md") should include(
         """## Values from
           |
           |- **Source nodes:** [`NCBITaxon:9606`](http://purl.obolibrary.org/obo/NCBITaxon_9606)
@@ -228,17 +228,17 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
 
     "link mixins in both directions" in {
       val pages = files(ModelCatalogue.mixin.model)
-      pages("classes/SomeClass.md") should include(
-        "- **Mixins:** [SomeOtherClass](SomeOtherClass.md)\n",
+      pages("classes/some_class.md") should include(
+        "- **Mixins:** [SomeOtherClass](some_other_class.md)\n",
       )
-      pages("classes/SomeOtherClass.md") should include(
-        "- **Mixed into:** [SomeClass](SomeClass.md)\n",
+      pages("classes/some_other_class.md") should include(
+        "- **Mixed into:** [SomeClass](some_class.md)\n",
       )
-      pages("classes/SomeOtherClass.md") should include("- **Mixin:** yes")
+      pages("classes/some_other_class.md") should include("- **Mixin:** yes")
     }
 
     "show each range of an any_of" in {
-      val page = files(ModelCatalogue.unionRange.model)("classes/Union.md")
+      val page = files(ModelCatalogue.unionRange.model)("classes/union.md")
       page should include("[integer](../types/integer.md) or [string](../types/string.md)")
     }
 
@@ -262,16 +262,16 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
       val pages = files(sv)
       pages("slots/pet.md") should include(
-        "- **Range:** exactly one of [Cat](../classes/Cat.md), [Dog](../classes/Dog.md)\n",
+        "- **Range:** exactly one of [Cat](../classes/cat.md), [Dog](../classes/dog.md)\n",
       )
       pages("slots/buddy.md") should include(
-        "- **Range:** all of [Cat](../classes/Cat.md), [Dog](../classes/Dog.md)\n",
+        "- **Range:** all of [Cat](../classes/cat.md), [Dog](../classes/dog.md)\n",
       )
-      pages("classes/Owner.md") should include(
-        "| [pet](../slots/pet.md) | exactly one of [Cat](Cat.md), [Dog](Dog.md) |",
+      pages("classes/owner.md") should include(
+        "| [pet](../slots/pet.md) | exactly one of [Cat](cat.md), [Dog](dog.md) |",
       )
-      pages("classes/Dog.md") should include("| [Owner](Owner.md) | [pet](../slots/pet.md) |")
-      pages("classes/Dog.md") should include("| [Owner](Owner.md) | [buddy](../slots/buddy.md) |")
+      pages("classes/dog.md") should include("| [Owner](owner.md) | [pet](../slots/pet.md) |")
+      pages("classes/dog.md") should include("| [Owner](owner.md) | [buddy](../slots/buddy.md) |")
     }
 
     "list the unique keys of a class" in {
@@ -290,7 +290,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |  email:
           |""".stripMargin,
       )
-      files(sv)("classes/Person.md") should include(
+      files(sv)("classes/person.md") should include(
         """## Unique keys
           |
           || Name | Slots | Description |
@@ -317,7 +317,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |              required: true
           |""".stripMargin,
       )
-      files(sv)("classes/Person.md") should include(
+      files(sv)("classes/person.md") should include(
         "- **Rules:** 1, not shown here. See the schema.\n",
       )
     }
@@ -340,7 +340,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "show explicit cardinalities" in {
-      val page = files(ModelCatalogue.cardinalityExplicit.model)("classes/Cardinal.md")
+      val page = files(ModelCatalogue.cardinalityExplicit.model)("classes/cardinal.md")
       page should include(
         "| [exactly_two](../slots/exactly_two.md) | [string](../types/string.md) | 2 |",
       )
@@ -378,7 +378,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "show the parent and the constraints of a type" in {
-      val page = files(ModelCatalogue.typeDerivation.model)("types/Code.md")
+      val page = files(ModelCatalogue.typeDerivation.model)("types/code.md")
       page should include("- **Parent:** [string](string.md)\n")
       page should include("- **Pattern:** `^[A-Z]{3}$`\n")
     }
@@ -396,9 +396,9 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin,
       )
       files(sv, DocsGenerator.Options(pruningMode = PruningMode.treeRoot(None))).keySet
-        .filter(_.startsWith("classes/")) shouldBe Set("classes/Root.md", "classes/Child.md")
+        .filter(_.startsWith("classes/")) shouldBe Set("classes/root.md", "classes/child.md")
       files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip)).keySet should contain(
-        "classes/Unused.md",
+        "classes/unused.md",
       )
     }
 
@@ -410,7 +410,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin,
       )
       val pages = files(sv)
-      pages.keySet should contain allOf ("classes/Person.md", "classes/person_2.md")
+      pages.keySet should contain allOf ("classes/person.md", "classes/person_2.md")
       pages("index.md") should include("[person](classes/person_2.md)")
       pages("classes/person_2.md") should include("- **Canonical name:** `Person`\n")
     }
@@ -458,11 +458,11 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |- **Names in code:** `birthDate` (Scala, TypeScript, Python), `birth_date` (GraphQL)
           |""".stripMargin,
       )
-      pages("enums/Gender.md") should include(
+      pages("enums/gender.md") should include(
         "| `female` (`F` in data) |  | **Female**: A woman or a girl. |\n",
       )
       // All the names are the same, so there is nothing more to show.
-      pages("enums/Gender.md") should include("# Enum: Gender\n\n- **URI:**")
+      pages("enums/gender.md") should include("# Enum: Gender\n\n- **URI:**")
     }
 
     "show only the names that the code generators give" in {
@@ -481,7 +481,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       val pages = files(sv)
       // The Python generator names the document type of the tree root `ContainerDocument`, so it
       // renames the field
-      pages("slots/ContainerDocument.md") should include(
+      pages("slots/container_document.md") should include(
         "- **Names in code:** `containerDocument` (Scala), `ContainerDocument` (TypeScript), " +
           "`ContainerDocument_` (Python), `container_document` (GraphQL)\n",
       )
@@ -508,13 +508,13 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
       val pages = files(sv)
       pages("index.md") should include(
-        "| [Root](classes/Root.md) | Holds *things* \\| stuff. More on the next line. |\n",
+        "| [Root](classes/root.md) | Holds *things* \\| stuff. More on the next line. |\n",
       )
       // The page itself keeps the whole description.
-      pages("classes/Root.md") should include(
+      pages("classes/root.md") should include(
         "Holds *things* | stuff.\nMore on the next line.\n\nA second paragraph.\n",
       )
-      pages("classes/Root.md") should include("| \\_private\\_ |")
+      pages("classes/root.md") should include("| \\_private\\_ |")
     }
 
     "show deprecation notices" in {
@@ -524,7 +524,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |    deprecated: Use New instead.
           |""".stripMargin,
       )
-      files(sv)("classes/Old.md") should include("> **Deprecated:** Use New instead.\n")
+      files(sv)("classes/old.md") should include("> **Deprecated:** Use New instead.\n")
     }
 
     "write descriptions in the requested language" in {
@@ -536,10 +536,10 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |      de: Ein Ding.
           |""".stripMargin,
       )
-      files(sv, DocsGenerator.Options(metadataLanguage = "de"))("classes/Thing.md") should include(
+      files(sv, DocsGenerator.Options(metadataLanguage = "de"))("classes/thing.md") should include(
         "Ein Ding.",
       )
-      files(sv)("classes/Thing.md") should include("A thing.")
+      files(sv)("classes/thing.md") should include("A thing.")
     }
   }
 
@@ -549,15 +549,15 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       val result = DocsGenerator().serialize()
       result should startWith("<!-- Generated by LinkML-Scala from ")
       result should include("# inheritance\n")
-      result should include("- **Tree root:** [ChildClass](#class-childclass)\n")
+      result should include("- **Tree root:** [ChildClass](#class-child_class)\n")
       result should include(
-        """<a id="class-childclass"></a>
+        """<a id="class-child_class"></a>
           |
           |## Class: ChildClass
           |""".stripMargin,
       )
       result should include("### Slots\n")
-      result should include("- **Parent:** [BaseClass](#class-baseclass)\n")
+      result should include("- **Parent:** [BaseClass](#class-base_class)\n")
       result should include("[some_other_slot](#slot-some_other_slot)")
       // Only the first line is the header: the sections do not repeat it.
       "Generated by LinkML-Scala".r.findAllMatchIn(result).size shouldBe 1

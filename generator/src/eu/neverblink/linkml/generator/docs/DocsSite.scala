@@ -70,10 +70,10 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
     sv.slotDefinitions.values.filter(s => pruningMode == PruningMode.skip || usedSlots(s.name)),
   )
 
-  private val classPages = pagesOf(PageKind.classes, classes)
-  private val slotPages = pagesOf(PageKind.slots, slots)
-  private val enumPages = pagesOf(PageKind.enums, enums)
-  private val typePages = pagesOf(PageKind.types, types)
+  private val classPages = pagesOf(PageKind.classes, classes, DocsRenamer.className)
+  private val slotPages = pagesOf(PageKind.slots, slots, DocsRenamer.slotName)
+  private val enumPages = pagesOf(PageKind.enums, enums, DocsRenamer.enumName)
+  private val typePages = pagesOf(PageKind.types, types, DocsRenamer.typeName)
 
   /** The page about [[el]], if it is documented. */
   def pageOf(el: ElementView[?, ?]): Option[Page] = el match {
@@ -172,17 +172,24 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
   private def sorted[V <: ElementView[?, ?]](elements: Iterable[V]): Seq[V] =
     elements.toVector.sortBy(el => sv.elementOrder(el.inner.asInstanceOf[Element]))
 
-  /** Pick a file name for each element, keyed by the element's name. */
-  private def pagesOf(kind: PageKind, elements: Seq[ElementView[?, ?]]): Map[String, Page] = {
+  /** Pick a file name for each element, keyed by the element's name.
+    *
+    * @param stemOf
+    *   The file name of an element, without `.md`, from [[DocsRenamer]]
+    */
+  private def pagesOf[V <: ElementView[?, ?]](
+      kind: PageKind,
+      elements: Seq[V],
+      stemOf: V => String,
+  ): Map[String, Page] = {
     val taken = mutable.HashSet.empty[String]
     val pages = Map.newBuilder[String, Page]
     elements.foreach { el =>
-      val base = DocsSite.fileStem(el.name)
+      val base = stemOf(el)
       var stem = base
       var n = 2
-      // Compare without case, so that `Person` and `person` do not overwrite each other on macOS
-      // and Windows.
-      while (!taken.add(DocsSite.lowerCase(stem))) {
+      // Different names can give the same base name, like `Person` and `person`
+      while (!taken.add(stem)) {
         stem = base + "_" + n
         n += 1
       }
@@ -208,7 +215,8 @@ object DocsSite {
     * @param kind
     *   What kind of element the page is about
     * @param stem
-    *   The file name without `.md`, unique within [[kind]] even on file systems that ignore case
+    *   The file name without `.md`, unique within [[kind]]. It is in lower case, so it is unique
+    *   even on file systems that ignore case
     */
   final case class Page(kind: PageKind, stem: String):
     /** The page's file, relative to the folder that holds `index.md`. */
@@ -230,11 +238,7 @@ object DocsSite {
     /** Write the page's HTML anchor, for when all pages are sections of one document. */
     private[docs] def appendAnchor(out: CharSink): Unit = {
       out.append(kind.anchorPrefix)
-      var i = 0
-      while (i < stem.length) {
-        out.append(Character.toLowerCase(stem.charAt(i)))
-        i += 1
-      }
+      out.append(stem)
     }
 
   /** A class that declares a slot or changes it with `slot_usage`.
@@ -245,33 +249,4 @@ object DocsSite {
     *   The slot as it is in [[classView]], with the class' `slot_usage` applied
     */
   final case class Usage(classView: ClassView, attribute: AttributeView)
-
-  /** [[name]] as a file name without the extension. Letters, digits, `_`, `-` and `.` are kept, and
-    * anything else becomes `_`, so that the name works in a link without encoding.
-    */
-  private[docs] def fileStem(name: String): String = {
-    val sb = new java.lang.StringBuilder(name.length + 1)
-    var i = 0
-    while (i < name.length) {
-      val c = name.charAt(i)
-      sb.append(if (Character.isLetterOrDigit(c) || c == '_' || c == '-' || c == '.') c else '_')
-      i += 1
-    }
-    val stem = sb.toString
-    if (stem.isEmpty || stem.charAt(0) == '.') "_".concat(stem)
-    else stem
-  }
-
-  /** [[s]] in lower case. Unlike `toLowerCase`, this doesn't depend on the default locale. In
-    * Turkish, `toLowerCase` turns `Item` into `ıtem`, which wouldn't clash with `item`.
-    */
-  private[docs] def lowerCase(s: String): String = {
-    val sb = new java.lang.StringBuilder(s.length)
-    var i = 0
-    while (i < s.length) {
-      sb.append(Character.toLowerCase(s.charAt(i)))
-      i += 1
-    }
-    sb.toString
-  }
 }

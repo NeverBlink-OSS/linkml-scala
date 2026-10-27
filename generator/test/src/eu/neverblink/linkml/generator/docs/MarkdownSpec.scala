@@ -180,21 +180,4 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
       written(_.paragraph("``code``")) shouldBe "``code``\n\n"
     }
   }
-
-  "DocsSite.fileStem" should {
-    "keep letters, digits, underscores, hyphens and dots" in {
-      DocsSite.fileStem("Person") shouldBe "Person"
-      DocsSite.fileStem("has_part-2.0") shouldBe "has_part-2.0"
-      DocsSite.fileStem("Größe") shouldBe "Größe"
-    }
-
-    "replace anything else with an underscore" in {
-      DocsSite.fileStem("a name/with:stuff") shouldBe "a_name_with_stuff"
-    }
-
-    "avoid names that are hidden" in {
-      DocsSite.fileStem(".hidden") shouldBe "_.hidden"
-      DocsSite.fileStem("") shouldBe "_"
-    }
-  }
 }
