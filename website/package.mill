@@ -25,7 +25,9 @@ object `package` extends Module {
     runNpm("dev")
   }
 
-  /** Build the docs site and serve the result at http://localhost:4321/docs/. */
+  /** Production preview: Build the docs site and serve the result at http://localhost:4321/docs/.
+   *  This is required for some funcationality, like search.
+   */
   def preview(args: String*) = Task.Command() {
     runNpm("build")
     runNpm("preview")
