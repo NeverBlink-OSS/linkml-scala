@@ -623,34 +623,34 @@ object OwlGenerator {
           else Some(ClassExpr.Named(cv.uriStr))
         case ev: EnumView => Some(ClassExpr.Named(ev.uriStr))
         // Values with an implicit prefix are IRIs in RDF, as in the SHACL generator.
-        case tv: TypeView if tv.isIri || constraints.implicitPrefix.isDefined => None
+        case _: TypeView if constraints.implicitPrefix.isDefined => None
         case tv: TypeView =>
-          Some(
-            if (
-              constraints.minimumValue.isEmpty && constraints.maximumValue.isEmpty &&
-              !hasLengths(constraints.minimumLength, constraints.maximumLength, tv) &&
-              constraints.pattern.isEmpty
-            ) datatypeOf(tv)
+          // A `union_of` type is the union of its members, each with the facets that apply to it
+          val ranges = Seq.newBuilder[Filler]
+          val seen = mutable.HashSet.empty[DataRange]
+          var hasIri = false
+          tv.alternatives.foreach { alternative =>
+            if (alternative.typeView.isIri) hasIri = true
             else {
-              // OWL only allows facets on built-in datatypes, so repeat the type's own constraints
-              // next to the slot's. Each facet comes from the slot, or else from the type, so the
-              // facets are always in the same order.
-              val d = tv.derivedType
-              DataRange.Restriction(
-                baseDatatype(tv),
-                facets(
-                  constraints.minimumValue.orElseFast(d.minimumValue),
-                  constraints.maximumValue.orElseFast(d.maximumValue),
-                  constraints.minimumLength.orElseFast(d.minimumLength),
-                  constraints.maximumLength.orElseFast(d.maximumLength),
-                  LinkmlPattern.option(constraints.pattern).orElseFast(tv.pattern),
-                  tv,
-                ),
-              )
-            },
-          )
+              val range = dataRangeOf(alternative.withConstraintsOf(constraints))
+              if (seen.add(range)) ranges.addOne(range)
+            }
+          }
+          // A property can't take both literals and IRIs
+          if (hasIri) None
+          else union(ranges.result())
         case _ => None
       }
+
+    /** The data range of a value alternative: the datatype of its type, or a restriction of it if
+      * the slot or a union adds constraints to the type's own. OWL only allows facets on built-in
+      * datatypes, so the restriction repeats the type's own constraints next to the added ones.
+      */
+    private def dataRangeOf(alternative: ValueAlternative): DataRange = {
+      val tv = alternative.typeView
+      if (alternative == tv.alternatives.head) datatypeOf(tv)
+      else DataRange.Restriction(baseDatatype(tv), facets(alternative))
+    }
 
     private def datatypeOf(tv: TypeView): DataRange =
       if (tv.isPrimitive) {
@@ -679,11 +679,7 @@ object OwlGenerator {
     private def isLinkmlOwn(tv: TypeView): Boolean =
       tv.definingSchema.id.original.startsWith("https://w3id.org/linkml/")
 
-    private def hasFacets(tv: TypeView): Boolean = {
-      val d = tv.derivedType
-      d.minimumValue.isDefined || d.maximumValue.isDefined ||
-      hasLengths(d.minimumLength, d.maximumLength, tv) || d.pattern.isDefined
-    }
+    private def hasFacets(tv: TypeView): Boolean = tv.alternatives.head.hasConstraints
 
     /** The XSD datatype that a type's values have in RDF. */
     private def baseDatatype(tv: TypeView): String = {
@@ -705,40 +701,25 @@ object OwlGenerator {
     }
 
     /** The facets from the type's own constraints and those it inherits. */
-    private def typeFacets(tv: TypeView): Seq[(String, Literal)] = {
-      val d = tv.derivedType
-      facets(d.minimumValue, d.maximumValue, d.minimumLength, d.maximumLength, tv.pattern, tv)
-    }
+    private def typeFacets(tv: TypeView): Seq[(String, Literal)] = facets(tv.alternatives.head)
 
-    /** Whether there is a length that applies to the type. XSD has length facets only for text. */
-    private def hasLengths(min: Option[Int], max: Option[Int], tv: TypeView): Boolean =
-      (min.isDefined || max.isDefined) && tv.hasTextValues
-
-    private def facets(
-        min: Option[LinkmlAny],
-        max: Option[LinkmlAny],
-        minLength: Option[Int],
-        maxLength: Option[Int],
-        pattern: Option[LinkmlPattern],
-        tv: TypeView,
-    ): Seq[(String, Literal)] = {
-      val datatype = Iri(baseDatatype(tv))
+    /** The facets of a value alternative, always in the same order. */
+    private def facets(alternative: ValueAlternative): Seq[(String, Literal)] = {
+      val datatype = Iri(baseDatatype(alternative.typeView))
       val b = Seq.newBuilder[(String, Literal)]
-      min.foreachFast(v =>
+      alternative.minimumValue.foreachFast(v =>
         b.addOne(XmlSchema.minInclusive.value -> Literal(v.value.strip, datatype)),
       )
-      max.foreachFast(v =>
+      alternative.maximumValue.foreachFast(v =>
         b.addOne(XmlSchema.maxInclusive.value -> Literal(v.value.strip, datatype)),
       )
-      if (tv.hasTextValues) {
-        minLength.foreachFast(n =>
-          b.addOne(XmlSchema.minLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
-        )
-        maxLength.foreachFast(n =>
-          b.addOne(XmlSchema.maxLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
-        )
-      }
-      pattern.foreachFast(p => b.addOne(XmlSchema.pattern.value -> Literal(p.xsd)))
+      alternative.minimumLength.foreachFast(n =>
+        b.addOne(XmlSchema.minLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
+      )
+      alternative.maximumLength.foreachFast(n =>
+        b.addOne(XmlSchema.maxLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
+      )
+      alternative.pattern.foreachFast(p => b.addOne(XmlSchema.pattern.value -> Literal(p.xsd)))
       b.result()
     }
 
@@ -944,10 +925,11 @@ object OwlGenerator {
     // Types
 
     /** Declares a type whose `uri` OWL doesn't know, defined by its constraints if it has any. A
-      * type over a built-in datatype needs no declaration.
+      * type over a built-in datatype needs no declaration. Neither does a `union_of` type, as the
+      * ranges that use it are the union of its members.
       */
     private def addType(tv: TypeView): Unit =
-      datatypeOf(tv) match {
+      if (!tv.isUnion) datatypeOf(tv) match {
         case DataRange.Datatype(iri) if !OwlRdfReader.isBuiltInDatatype(iri) =>
           add(Declaration(EntityKind.Datatype, iri))
           annotate(iri, tv)

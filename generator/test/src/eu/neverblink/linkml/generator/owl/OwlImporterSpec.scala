@@ -155,6 +155,22 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       result.warnings.mkString should include("Code: xsd:maxLength")
     }
 
+    "read a union of restricted datatypes as any_of members with their own constraints" in {
+      val result = importing(
+        """:amount a owl:DatatypeProperty ;
+          |    rdfs:range [ a rdfs:Datatype ; owl:unionOf (
+          |        [ a rdfs:Datatype ; owl:onDatatype xsd:integer ;
+          |            owl:withRestrictions ( [ xsd:minInclusive 0 ] ) ]
+          |        [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
+          |            owl:withRestrictions ( [ xsd:maxLength 3 ] ) ] ) ] .""",
+      )
+      val anyOf = result.schema.slotDefinitions("amount").anyOf
+      anyOf.map(_.range.map(_.value)) shouldBe Seq(Some("integer"), Some("string"))
+      anyOf.map(_.minimumValue.map(_.value)) shouldBe Seq(Some("0"), None)
+      anyOf.map(_.maximumLength) shouldBe Seq(None, Some(3))
+      result.warnings shouldBe empty
+    }
+
     "keep lengths through a round trip" in {
       val (sv, warnings) = reimport(schemaOf("""
         |classes:

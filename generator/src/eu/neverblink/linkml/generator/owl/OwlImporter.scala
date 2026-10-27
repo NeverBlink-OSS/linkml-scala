@@ -243,7 +243,7 @@ object OwlImporter {
   /** The slot fields that an OWL range maps to. */
   private final case class SlotRange(
       range: Option[String] = None,
-      anyOf: Seq[String] = Nil,
+      anyOf: Seq[SlotRange] = Nil,
       minimumValue: Option[String] = None,
       maximumValue: Option[String] = None,
       minimumLength: Option[Int] = None,
@@ -256,6 +256,20 @@ object OwlImporter {
     def isOneElement: Boolean =
       range.isDefined && anyOf.isEmpty && minimumValue.isEmpty && maximumValue.isEmpty &&
         minimumLength.isEmpty && maximumLength.isEmpty && pattern.isEmpty
+
+    /** True if this is a type with or without constraints, so it can go in an `any_of` of types. */
+    def isOneType: Boolean = range.isDefined && anyOf.isEmpty && data
+
+    /** This range as a member of an `any_of`. */
+    def toExpression: AnonymousSlotExpression =
+      AnonymousSlotExpression(
+        range = range.map(Reference(_)),
+        minimumValue = minimumValue.map(LinkmlAny(_)),
+        maximumValue = maximumValue.map(LinkmlAny(_)),
+        minimumLength = minimumLength,
+        maximumLength = maximumLength,
+        pattern = pattern,
+      )
   }
 
   private final class Conversion(
@@ -546,7 +560,7 @@ object OwlImporter {
               .foreach { e =>
                 importedRanges(s.uriStr) = SlotRange(
                   range = e.range.map(_.value),
-                  anyOf = e.anyOf.flatMap(_.range).map(_.value),
+                  anyOf = e.anyOf.flatMap(_.range).map(r => SlotRange(range = Some(r.value))),
                 )
               }
           }
@@ -674,12 +688,13 @@ object OwlImporter {
       case ClassExpr.UnionOf(ops) =>
         val alternatives = ops.map(slotRange)
         Option.when(alternatives.forall(_.exists(_.isOneElement)))(
-          SlotRange(anyOf = alternatives.flatMap(_.flatMap(_.range))),
+          SlotRange(anyOf = alternatives.flatten),
         )
+      // Each type in the union keeps its own facets, as they only apply to values of that type
       case DataRange.UnionOf(ops) =>
         val alternatives = ops.map(slotRange)
-        Option.when(alternatives.forall(_.exists(_.isOneElement)))(
-          SlotRange(anyOf = alternatives.flatMap(_.flatMap(_.range)), data = true),
+        Option.when(alternatives.forall(_.exists(_.isOneType)))(
+          SlotRange(anyOf = alternatives.flatten, data = true),
         )
       case _ => None
     }
@@ -808,7 +823,7 @@ object OwlImporter {
                 ranges.get(p).flatMap(_.headOption).flatMap(r => slotRange(r._2))
                   .flatMap(_.range).filter(_ != anyClass).map(Reference(_))
               else range.range.map(Reference(_)),
-            anyOf = range.anyOf.map(r => AnonymousSlotExpression(range = Some(Reference(r)))),
+            anyOf = range.anyOf.map(_.toExpression),
             multivalued = kind != EntityKind.AnnotationProperty &&
               (inheritsMultivalued || config.multivalued && !characteristics.contains(
                 PropertyCharacteristic.Functional,
@@ -1027,7 +1042,7 @@ object OwlImporter {
                   s =>
                     s.copy(
                       range = r.range.map(Reference(_)),
-                      anyOf = r.anyOf.map(x => AnonymousSlotExpression(range = Some(Reference(x)))),
+                      anyOf = r.anyOf.map(_.toExpression),
                       minimumValue = r.minimumValue.map(LinkmlAny(_)),
                       maximumValue = r.maximumValue.map(LinkmlAny(_)),
                       minimumLength = r.minimumLength,

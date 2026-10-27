@@ -228,6 +228,42 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms.collect { case d: DatatypeDefinition => d } shouldBe empty
     }
 
+    "write a union_of range as the union of its members, each with the facets that fit it" in {
+      def min(v: String, datatype: Iri) = xsd + "minInclusive" -> Literal(v, datatype)
+      val axioms = ontologyOf("""
+        |classes:
+        |  Item:
+        |    slots:
+        |      - amount
+        |slots:
+        |  amount:
+        |    range: Amount
+        |types:
+        |  Amount:
+        |    union_of: [integer, decimal, string]
+        |    minimum_value: 0
+        |    maximum_length: 3
+        |""").axioms
+      axioms should contain(
+        Range(
+          ns + "amount",
+          DataRange.UnionOf(
+            Seq(
+              DataRange.Restriction(xsd + "integer", Seq(min("0", XmlSchema.integer))),
+              DataRange.Restriction(xsd + "decimal", Seq(min("0", XmlSchema.decimal))),
+              DataRange.Restriction(
+                xsd + "string",
+                Seq(xsd + "maxLength" -> Literal("3", XmlSchema.nonNegativeInteger)),
+              ),
+            ),
+          ),
+        ),
+      )
+      // The union isn't a datatype of its own, so it can't share the IRI of the `amount` slot
+      axioms.collect { case d @ Declaration(EntityKind.Datatype, _, _) => d } shouldBe empty
+      axioms.collect { case d: DatatypeDefinition => d } shouldBe empty
+    }
+
     "use the title as the label, and write no label without a title" in {
       val axioms = ontologyOf(personinfo).axioms
       val label = "http://www.w3.org/2000/01/rdf-schema#label"
