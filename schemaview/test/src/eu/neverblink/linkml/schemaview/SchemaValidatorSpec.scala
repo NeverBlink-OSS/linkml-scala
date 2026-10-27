@@ -887,6 +887,24 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "not warn on a value expanded from a declared prefix to a URI with the shape of a CURIE" in {
+      val schemaYaml =
+        """id: https://example.org/test
+           |name: test
+           |prefixes:
+           |  web: "did:web:"
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    see_also:
+           |    - web:example.com
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      sv.root.classes("SomeClass").seeAlso shouldBe Seq(Uri("did:web:example.com"))
+      sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
+    }
+
     "fail on a CURIE with a declared prefix in a schema built in code" in {
       // CURIEs are expanded when a schema is read, so only a schema built in code can have one
       val schema = SchemaDefinition(

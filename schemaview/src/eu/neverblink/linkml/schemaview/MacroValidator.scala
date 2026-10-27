@@ -277,10 +277,14 @@ private object MacroValidator {
         }
     }
 
-  /** Check a valid [[Uri]]: one with the shape of a CURIE has a prefix that isn't declared. */
+  /** Check a valid [[Uri]]: one with the shape of a CURIE has a prefix that isn't declared, unless
+    * it starts with the namespace of a declared prefix. Then it was most likely expanded from that
+    * prefix, such as `did:web:example.com` from `web:example.com` with `web: did:web:`, and is
+    * written back as that CURIE.
+    */
   private def validUri(u: Uri)(using vc: ValidatorContext): ValidatorResult = {
     val uri = u.original
-    if (UriOrCurie.isCurie(uri))
+    if (UriOrCurie.isCurie(uri) && (vc.prefixes.compactOrNull(uri) eq null))
       ValidatorResult(undeclaredPrefixes =
         Seq(UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema)),
       )
