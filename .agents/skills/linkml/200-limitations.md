@@ -30,8 +30,17 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - A `range_expression` allows any extra data, which is not checked against it (see below)
   - Extra data is only validated, not kept: decoding drops it, so it is lost on a round trip (see below)
 - Support for `union_of`
-  - JSON Schema, Scala, TypeScript, and Pydantic generators support type unions.
-  - Some constraints on unioned types may be lost, depending on the expressiveness of the target language.
+  - JSON Schema, Pydantic, SHACL, OWL, Scala and TypeScript generators support type unions.
+  - The constraints of a union and of the slot that uses it apply to each member they fit:
+    `pattern` to anything but numbers and booleans, `minimum_value` and `maximum_value` to numbers,
+    dates and times, and lengths to text. The nearest one has precedence: the slot, then each union
+    on the way to the member, then the member type.
+  - Some constraints may still be lost, depending on the expressiveness of the target language:
+    - Frictionless has one type per column. A union is written as that type only if all its
+      members give the same column, such as `string` for `string | ncname`. Otherwise it is an
+      `any` column without value constraints.
+    - TypeScript types can't express patterns and value bounds.
+    - Ossie writes a union range as `Any`, without the slot's constraints.
 - Support for [language strings](#language-strings)
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once

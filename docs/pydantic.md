@@ -193,7 +193,7 @@ Each field keeps its JSON key as its pydantic `alias`, and dumping to JSON alway
 | `boolean`                                                  | `StrictBool`                   |
 | `date`, `datetime`, `time`                                 | `JsonDate`, `JsonDateTime`, `JsonTime`: `date`, `datetime` and `time`, read from ISO 8601 text only |
 | `linkml:Any`                                               | `Any`                          |
-| a type with `union_of`                                     | a union of its members' types, e.g. `str \| StrictInt`, each with its own constraints |
+| a type with `union_of`                                     | a union of its members' types, e.g. `str \| StrictInt`, each with the constraints that apply to it |
 | an enum                                                    | the enum's class               |
 | a class, not inlined                                       | the type of the class's identifier, with a "Reference to X" docstring |
 | a class, inlined                                           | the class                      |

@@ -48,6 +48,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | enum                                                       | `owl:Class` equivalent to `owl:oneOf` its permissible values                                           |
 | permissible value                                          | `owl:NamedIndividual` with the `meaning` as its IRI, and `skos:notation` for its text when that is not the IRI's local name |
 | type                                                       | its `uri`; with constraints, a datatype restriction on it (`xsd:integer[>= 0]`)                        |
+| a type with `union_of`                                     | no datatype of its own; a range of it is the union of its members, each restricted by the constraints that apply to it |
 | `pattern`, `minimum_value`, `maximum_value`, `minimum_length`, `maximum_length` | `xsd:pattern`, `xsd:minInclusive`, `xsd:maxInclusive`, `xsd:minLength`, `xsd:maxLength`. An XSD pattern matches the whole value, so `^abc$` is written `abc`, and `abc` is written `.*abc.*` |
 | `title`                                                    | `rdfs:label`, tagged with `in_language` when the schema has one |
 | `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`)                                  |
@@ -130,7 +131,7 @@ The importer also reads vocabularies written in plain RDFS, such as DC terms or 
 | `owl:hasKey`                                                | `unique_keys`                                                                                                       |
 | object or data property                                     | slot, snake_cased, with `slot_uri`                                                                                  |
 | annotation property of the ontology's own that it describes | slot with `implements: [owl:AnnotationProperty]`                                                                    |
-| `rdfs:range`                                                | `range`, `any_of` for a union, `Any` (from `linkml:extended_types`) when there is none or when it mixes classes and datatypes |
+| `rdfs:range`                                                | `range`, `any_of` for a union, each member with the constraints of its own datatype restriction, `Any` (from `linkml:extended_types`) when there is none or when it mixes classes and datatypes |
 | `rdfs:domain`                                               | `domain` and the class's `slots`; for a union, `domain_of` and each class's `slots`                                 |
 | `owl:FunctionalProperty`                                    | single-valued. Other slots are multivalued, as OWL allows any number of values                                      |
 | `rdfs:subPropertyOf`                                        | `is_a` and `mixins`. A parent from another ontology becomes a slot that stands for it, of the same kind as the child |

@@ -84,7 +84,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `pruningDefaultRange` | 0 | 0 |  |
 | `realistic/library` | 6 | 0 | A library, in the shape a real model tends to have: identif… |
 | `reference` | 9 | 6 |  |
-| `referenceInteger` | 6 | 3 |  |
+| `referenceInteger` | 6 | 6 |  |
 | `slotUsage/importedOverride` | 8 | 9 | A class changes the slots of an imported parent class with… |
 | `slotUsage/mixinFacets` | 8 | 14 | Each mixin changes a different part of the same slot with `… |
 | `slotUsage/multivaluedOverride` | 6 | 3 | A child class makes an inherited single-valued slot multiva… |
@@ -101,7 +101,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `typeDesignator` | 10 | 12 |  |
 | `typeDesignator2` | 9 | 7 | Type designators on classes with different attributes. This… |
 | `typed` | 8 | 19 |  |
-| `unionOf` | 4 | 6 |  |
+| `unionOf` | 12 | 24 |  |
 | `unionRange` | 6 | 3 |  |
 | `unionRangeReference` | 8 | 3 |  |
 | `uri` | 14 | 0 |  |
