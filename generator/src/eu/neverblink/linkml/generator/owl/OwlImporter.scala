@@ -147,17 +147,13 @@ object OwlImporter {
   private val rangeIncludes =
     Set("http://schema.org/rangeIncludes", "https://schema.org/rangeIncludes")
 
-  /** The datatype facets LinkML can express, on a type or in a range. */
+  /** The datatype facets LinkML can express, on a type or in a range, other than the lengths that
+    * [[isTypeFacet]] checks.
+    */
   private val typeFacets: Set[String] =
-    Set(
-      XmlSchema.minInclusive.value,
-      XmlSchema.maxInclusive.value,
-      XmlSchema.minLength.value,
-      XmlSchema.maxLength.value,
-      XmlSchema.pattern.value,
-    )
+    Set(XmlSchema.minInclusive.value, XmlSchema.maxInclusive.value, XmlSchema.pattern.value)
 
-  /** Whether LinkML can express the facet. A length must also be a non-negative `Int`. */
+  /** Whether LinkML can express the facet. A length must be a non-negative `Int`. */
   private def isTypeFacet(facet: (String, Literal)): Boolean = facet._1 match {
     case f if f == XmlSchema.minLength.value || f == XmlSchema.maxLength.value =>
       lengthOf(facet._2).isDefined
@@ -655,24 +651,26 @@ object OwlImporter {
       case DataRange.Datatype(iri) if isDeclared(iri, EntityKind.Class) => None
       case DataRange.Datatype(iri) => Some(SlotRange(range = Some(typeNameFor(iri)), data = true))
       case DataRange.Restriction(base, facets) =>
-        Option.when(facets.forall(isTypeFacet))(
-          SlotRange(
-            range = Some(typeNameFor(base)),
-            minimumValue = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.minInclusive.value => v
-            },
-            maximumValue = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.maxInclusive.value => v
-            },
-            minimumLength = lengthFacet(facets, XmlSchema.minLength),
-            maximumLength = lengthFacet(facets, XmlSchema.maxLength),
-            pattern = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
-                LinkmlPattern.fromXsd(v).linkml
-            },
-            data = true,
-          ),
-        )
+        if (facets.forall(isTypeFacet))
+          Some(
+            SlotRange(
+              range = Some(typeNameFor(base)),
+              minimumValue = facets.collectFirst {
+                case (f, Literal(v, _)) if f == XmlSchema.minInclusive.value => v
+              },
+              maximumValue = facets.collectFirst {
+                case (f, Literal(v, _)) if f == XmlSchema.maxInclusive.value => v
+              },
+              minimumLength = lengthFacet(facets, XmlSchema.minLength),
+              maximumLength = lengthFacet(facets, XmlSchema.maxLength),
+              pattern = facets.collectFirst {
+                case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
+                  LinkmlPattern.fromXsd(v).linkml
+              },
+              data = true,
+            ),
+          )
+        else None
       case ClassExpr.UnionOf(ops) =>
         val alternatives = ops.map(slotRange)
         Option.when(alternatives.forall(_.exists(_.isOneElement)))(
