@@ -831,7 +831,7 @@ object SchemaViewSpec:
 
   val class2: ClassDefinition = ClassDefinition(
     name = "class2",
-    classUri = Some(UriOrCurie("https://neverblink.eu/example#classNumberTwo")),
+    classUri = Some(Uri("https://neverblink.eu/example#classNumberTwo")),
     description = Some(PlainText("This is a second class")),
     slots = Seq(
       Reference("slot1"),
@@ -842,7 +842,7 @@ object SchemaViewSpec:
 
   val class3: ClassDefinition = ClassDefinition(
     name = "class3",
-    classUri = Some(UriOrCurie("https://neverblink.eu/example#classNumber3")),
+    classUri = Some(Uri("https://neverblink.eu/example#classNumber3")),
     description = Some(PlainText("This is a third class")),
     slots = Seq(
       Reference("slot3"),
@@ -926,7 +926,7 @@ object SchemaViewSpec:
 
   val slot2: SlotDefinition = SlotDefinition(
     name = "slot2",
-    slotUri = Some(UriOrCurie("https://neverblink.eu/example#slotNumberTwo")),
+    slotUri = Some(Uri("https://neverblink.eu/example#slotNumberTwo")),
     description = Some(PlainText("This is a slot pointing to class 2")),
     range = Some(Reference("class2")),
   )
@@ -996,7 +996,7 @@ object SchemaViewSpec:
 
   val enum2: EnumDefinition = EnumDefinition(
     name = "enum2",
-    enumUri = Some(UriOrCurie("https://neverblink.eu/example#enumNumberTwo")),
+    enumUri = Some(Uri("https://neverblink.eu/example#enumNumberTwo")),
     description = Some(PlainText("Enum 2")),
   )
 

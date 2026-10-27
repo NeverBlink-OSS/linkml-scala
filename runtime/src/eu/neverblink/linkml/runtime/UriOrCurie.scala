@@ -12,20 +12,22 @@ sealed trait UriOrCurie {
 }
 
 object UriOrCurie {
-  def apply(s: String): UriOrCurie =
-    if (s.startsWith("urn:") || s.contains("://")) new Uri(s)
-    else new Curie(s)
 
   /** Create a [[Uri]] with the expansion of [[s]], if [[prefixes]] can expand it.
     *
     * Otherwise, [[s]] is a [[Uri]] if it is a valid absolute URI, such as `xsd:string` when `xsd`
-    * isn't a known prefix, or else the same value as [[apply]].
+    * isn't a known prefix, or if it starts with `urn:` or has `://`. Anything else is a [[Curie]].
     */
   def expanded(s: String, prefixes: PrefixMap): UriOrCurie = {
     var uri = prefixes.expandOrNull(s)
-    if ((uri eq null) && UriCurieValidator.isValidUri(s)) uri = s
+    if (
+      (uri eq null) && (UriCurieValidator.isValidUri(s) || s.startsWith("urn:") || s.contains(
+        "://",
+      ))
+    )
+      uri = s
     if (uri ne null) new Uri(uri)
-    else apply(s)
+    else new Curie(s)
   }
 
   /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,

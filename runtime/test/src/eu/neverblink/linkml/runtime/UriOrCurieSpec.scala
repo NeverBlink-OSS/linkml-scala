@@ -4,30 +4,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class UriOrCurieSpec extends AnyWordSpec, Matchers {
-  "UriOrCurie" should {
-    "return valid Uri" in {
-      UriOrCurie("http://www.w3.org/2004/02/skos/core#exactMatch") shouldBe Uri(
-        "http://www.w3.org/2004/02/skos/core#exactMatch",
-      )
-    }
-    "return valid URN URI" in {
-      UriOrCurie("urn:isbn:0451450523") shouldBe Uri("urn:isbn:0451450523")
-    }
-    "return valid Curie" in {
-      UriOrCurie("skos:exactMatch") shouldBe Curie("skos:exactMatch")
-    }
-    "dispatch to Uri or Curie based on the string shape" in {
-      UriOrCurie("http://example.org/thing") shouldBe a[Uri]
-      UriOrCurie("urn:isbn:0451450523") shouldBe a[Uri]
-      UriOrCurie("skos:exactMatch") shouldBe a[Curie]
-      UriOrCurie("just-a-local-name") shouldBe a[Curie]
-    }
-    "not validate on construction" in {
-      // Construction never inspects the value; only validate() does.
-      noException should be thrownBy UriOrCurie("<>")
-      noException should be thrownBy UriOrCurie("http://<>")
-    }
-  }
   "UriOrCurie.isCurie" should {
     "accept values with the shape of a CURIE" in {
       Seq("acme:Person", "NCIT:C41185", "ex:a/b", "_x:y", "a-b.c:d", "ex:").foreach(s =>

@@ -276,9 +276,9 @@ private object MacroValidator {
     * as `ex:Person`, or without a colon, such as `docs`, wasn't expanded, which happens only in a
     * schema built in code. Generators would write it as it is, as a relative IRI.
     *
-    * In a schema built in code, `UriOrCurie.apply` gives a [[Curie]] for any value without `//`,
-    * such as `acme:Person` or `mailto:a@b.org`. If its prefix isn't declared and it is a valid URI,
-    * it is checked as the [[Uri]] that reading the schema gives.
+    * In a schema built in code, a [[Curie]] such as `acme:Person` or `mailto:a@b.org`, whose prefix
+    * isn't declared and that is a valid URI, is checked as the [[Uri]] that reading the schema
+    * gives.
     */
   given uriOrCurieValidator: MacroValidator[UriOrCurie] =
     new MacroValidator[UriOrCurie] {

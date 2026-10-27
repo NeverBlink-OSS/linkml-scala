@@ -163,7 +163,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
       val result = sv.classes("base")
-      result.uriOrCurie shouldBe UriOrCurie("https://neverblink.eu/test/Base")
+      result.uriOrCurie shouldBe Uri("https://neverblink.eu/test/Base")
     }
   }
 }

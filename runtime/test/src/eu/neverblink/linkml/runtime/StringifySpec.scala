@@ -30,7 +30,7 @@ class StringifySpec extends AnyWordSpec, Matchers {
     }
 
     "render a UriOrCurie through the sealed trait" in {
-      val either: UriOrCurie = UriOrCurie("ex:thing")
+      val either: UriOrCurie = Curie("ex:thing")
       stringify(either) shouldBe "ex:thing"
     }
 

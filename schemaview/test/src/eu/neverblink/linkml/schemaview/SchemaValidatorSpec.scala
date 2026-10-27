@@ -1032,15 +1032,15 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
     }
 
     "treat a URI with an undeclared prefix in a schema built in code as when it is read" in {
-      // `UriOrCurie.apply` gives a `Curie` for these values, but reading YAML gives a `Uri`
+      // Reading YAML gives a `Uri` for these values, not a `Curie`
       val schema = SchemaDefinition(
         id = Uri("https://example.org/test"),
         name = "test",
         classes = Map(
           "Person" -> ClassDefinition(
             "Person",
-            classUri = Some(UriOrCurie("acme:Person")),
-            seeAlso = Seq(UriOrCurie("mailto:someone@example.org")),
+            classUri = Some(Curie("acme:Person")),
+            seeAlso = Seq(Curie("mailto:someone@example.org")),
             treeRoot = true,
           ),
         ),
@@ -1064,10 +1064,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         classes = Map(
           "Person" -> ClassDefinition(
             "Person",
-            seeAlso = Seq(UriOrCurie("docs")),
+            seeAlso = Seq(Curie("docs")),
             annotations = Map(
               "mytag" -> Annotation(
-                extensionTag = UriOrCurie("mytag"),
+                extensionTag = Curie("mytag"),
                 extensionValue = LinkmlAny("value"),
               ),
             ),
@@ -1077,7 +1077,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           "Some" -> EnumDefinition(
             "Some",
             permissibleValues =
-              Map("SOME" -> PermissibleValue(text = "SOME", meaning = Some(UriOrCurie("SOME")))),
+              Map("SOME" -> PermissibleValue(text = "SOME", meaning = Some(Curie("SOME")))),
           ),
         ),
       )
@@ -1098,7 +1098,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val schema = SchemaDefinition(
         id = Uri("https://example.org/test"),
         name = "test",
-        classes = Map("Foo" -> ClassDefinition("Foo", classUri = Some(UriOrCurie("my_ns:Foo")))),
+        classes = Map("Foo" -> ClassDefinition("Foo", classUri = Some(Curie("my_ns:Foo")))),
       )
       val msg =
         the[SchemaIssues.FatalSchemaException].thrownBy(SchemaView.single(schema)).getMessage

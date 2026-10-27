@@ -6,6 +6,7 @@ import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.{
+  Curie,
   LinkmlAny,
   PlainText,
   PrefixMap,
@@ -13,7 +14,6 @@ import eu.neverblink.linkml.runtime.{
   SchemaConversionException,
   Uri,
   UriCurieValidator,
-  UriOrCurie,
 }
 import eu.neverblink.linkml.schemaview.Case
 import eu.neverblink.linkml.yaml.DecodeError
@@ -194,7 +194,7 @@ object OssieImporter {
     /** The ontology's `ai_context`, as the `extensions` metaslot in LinkML. */
     private def aiContext: Map[String, ExtensionImpl] =
       ontology.aiContext.map { node =>
-        val tag = UriOrCurie("ai_context")
+        val tag = Curie("ai_context")
         tag.original -> ExtensionImpl(extensionTag = tag, extensionValue = LinkmlAny(node.asYaml))
       }.toMap
 
