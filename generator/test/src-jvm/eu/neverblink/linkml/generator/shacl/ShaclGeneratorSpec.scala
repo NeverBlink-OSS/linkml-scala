@@ -307,6 +307,46 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should not include "sh:maxInclusive"
     }
 
+    "generate sh:or with the datatype and constraints of each union_of member" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      value:
+           |        range: CodeOrNumber
+           |        maximum_value: 5
+           |types:
+           |  CodeOrNumber:
+           |    union_of: [string, integer]
+           |    pattern: "^[A-Z]+$$"
+           |    maximum_value: 9
+           |""".stripMargin
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      ttlIsomorphic(
+        turtle,
+        """@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:maxCount 1;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/value>;
+          |      sh:or (
+          |          [ sh:datatype xsd:string; sh:nodeKind sh:Literal; sh:pattern "^[A-Z]+$" ]
+          |          [ sh:datatype xsd:integer; sh:nodeKind sh:Literal; sh:maxInclusive 5 ]
+          |        );
+          |      sh:order 0
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |""".stripMargin,
+      )
+    }
+
     "generate sh:name, sh:group and rank-based sh:order" in {
       val input =
         s"""$schemaShared

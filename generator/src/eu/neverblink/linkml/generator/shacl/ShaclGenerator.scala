@@ -16,10 +16,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
 
   override protected def defaultOptions: ShaclGenerator.Options = ShaclGenerator.Options()
 
-  /** Emit the slot's range on its PropertyShape. A slot without `range` gets the schema's
-    * `default_range`.
+  /** Emit the slot's range on its PropertyShape, with the constraints of the slot and its range
+    * type. A slot without `range` gets the schema's `default_range`.
     *
-    * Nothing is emitted if an `any_of` or `exactly_one_of` member sets a range, because the member
+    * No range is emitted if an `any_of` or `exactly_one_of` member sets a range, because the member
     * NodeShapes already list the allowed ranges. LinkML-Python does the same for `any_of`.
     *
     * For example, a slot without `range` would otherwise get both `sh:datatype xsd:string` (from
@@ -27,45 +27,55 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     *
     * The `default_range` is also not emitted if an `all_of` member sets a range.
     *
-    * @param slotView
-    *   The defining slot's view, used to find the `default_range`
+    * Without a range, only the constraints are emitted, see [[processConstraints]].
     */
   private def processMainRange(
       sink: RdfSink,
-      slotView: SlotView,
-      slot: SlotExpression,
+      attributeView: AttributeView,
       subject: Resource,
-  ): Unit =
+  ): Unit = {
+    val slotView = attributeView.slotView
+    val slot = slotView.slot
     if (!slot.anyOf.exists(_.range.isDefined) && !slot.exactlyOneOf.exists(_.range.isDefined))
       slot.range match {
-        case Some(r) => processRange(sink, r, slot.implicitPrefix.isDefined, subject)
+        case Some(r) => processRange(sink, r, slot, subject)
         case _ =>
           if (!slot.allOf.exists(_.range.isDefined))
-            processRange(
-              sink,
-              sv.getDefaultRange(slotView.definingSchema),
-              slot.implicitPrefix.isDefined,
-              subject,
-            )
+            processRange(sink, sv.getDefaultRange(slotView.definingSchema), slot, subject)
+          else processConstraints(sink, attributeView, subject)
       }
+    else processConstraints(sink, attributeView, subject)
+  }
 
-  /** Emit `sh:datatype`, `sh:class` or `sh:in` for a range.
+  /** Emit `sh:datatype`, `sh:class` or `sh:in` for a range. A type range also gets the constraints
+    * of `constraints` and the type: as one shape if the type has one value alternative, or as
+    * `sh:or` with one shape per alternative for a `union_of` type.
     *
-    * @param isIri
-    *   Whether values are IRIs even for a literal type (e.g. with `implicit_prefix`)
+    * @param constraints
+    *   The slot or the member of a boolean slot whose range this is
     */
   private def processRange(
       sink: RdfSink,
       range: Reference[?],
-      isIri: Boolean,
+      constraints: SlotExpression,
       subject: Resource,
   ): Unit =
     range.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
       case typeView: TypeView =>
-        if (!typeView.isIri && !isIri) {
-          sink.triple(subject, Shacl.datatype, Iri(typeView.uriStr))
-          sink.triple(subject, Shacl.nodeKind, Shacl.Literal)
-        } else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
+        // Values with an implicit prefix are IRIs, even for a literal type
+        val isIri = constraints.implicitPrefix.isDefined
+        val alternatives = typeView.alternatives
+        if (alternatives.sizeIs == 1)
+          emitAlternative(sink, alternatives.head.withConstraintsOf(constraints), isIri, subject)
+        else {
+          sink.beginList(subject, Shacl.or)
+          alternatives.foreach { alternative =>
+            val shape = inlineBlankNode()
+            sink.listMember(shape)
+            emitAlternative(sink, alternative.withConstraintsOf(constraints), isIri, shape)
+          }
+          sink.endList()
+        }
       case classView: ClassView =>
         if (!classView.isAny) {
           sink.triple(subject, Shacl.`class`, Iri(classView.uriStr))
@@ -75,6 +85,61 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
         sink.list(subject, Shacl.in, enumView.derivedValues.map(value => Iri(value.uriStr)))
       case _ => throw RuntimeException(s"Couldn't map range $range")
     }
+
+  /** Emit `sh:datatype` and `sh:nodeKind` for a value alternative, then its constraints.
+    *
+    * @param isIri
+    *   Whether values are IRIs even for a literal type (e.g. with `implicit_prefix`)
+    */
+  private def emitAlternative(
+      sink: RdfSink,
+      alternative: ValueAlternative,
+      isIri: Boolean,
+      subject: Resource,
+  ): Unit = {
+    val typeView = alternative.typeView
+    if (!typeView.isIri && !isIri) {
+      sink.triple(subject, Shacl.datatype, Iri(typeView.uriStr))
+      sink.triple(subject, Shacl.nodeKind, Shacl.Literal)
+    } else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
+    emitConstraints(sink, alternative, isIri, subject)
+  }
+
+  /** Emit `sh:pattern`, `sh:minLength`, `sh:maxLength`, `sh:minInclusive` and `sh:maxInclusive` for
+    * a value alternative.
+    *
+    * Lengths and value bounds are only emitted for literals. An IRI's length would be the length of
+    * the full IRI, not of the text in the data. This is also why a URI or CURIE gets no lengths.
+    *
+    * @param isIri
+    *   Whether values are IRIs even for a literal type (e.g. with `implicit_prefix`)
+    */
+  private def emitConstraints(
+      sink: RdfSink,
+      alternative: ValueAlternative,
+      isIri: Boolean,
+      subject: Resource,
+  ): Unit = {
+    alternative.pattern.foreachFast { p =>
+      sink.triple(subject, Shacl.pattern, Literal(p.linkml))
+    }
+    if (!isIri && !alternative.typeView.isIri) {
+      alternative.minimumLength.foreachFast { n =>
+        sink.triple(subject, Shacl.minLength, Literal(n.toString, XmlSchema.integer))
+      }
+      alternative.maximumLength.foreachFast { n =>
+        sink.triple(subject, Shacl.maxLength, Literal(n.toString, XmlSchema.integer))
+      }
+      datatypeForValueBound(alternative.typeView).foreachFast { datatype =>
+        alternative.minimumValue.foreachFast { v =>
+          sink.triple(subject, Shacl.minInclusive, Literal(v.value.strip, datatype))
+        }
+        alternative.maximumValue.foreachFast { v =>
+          sink.triple(subject, Shacl.maxInclusive, Literal(v.value.strip, datatype))
+        }
+      }
+    }
+  }
 
   /** Emit `sh:minCount` and `sh:maxCount`. Cardinality metaslots have precedence over `required`.
     *
@@ -249,52 +314,34 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
           val shape = inlineBlankNode()
           val memberRange = member.range.getOrElseFast(range)
 
-          /** Emit the range, `pattern`, `minimum_value`, `maximum_value`, `minimum_length` and
-            * `maximum_length` of the member. A member without a range gets no `default_range`. The
-            * value bounds are typed by the member's range, or the nearest enclosing one if it has
-            * none.
+          /** Emit the range of the member and its value constraints, see [[processRange]]. A member
+            * without a range gets no `default_range`, but its constraints still apply to the
+            * nearest enclosing range: in one shape, or in `sh:or` for a `union_of` type.
             *
             * @param target
             *   The shape to put the value constraints on
             */
-          def emitValueConstraints(target: Resource): Unit = {
-            member.range.foreachFast { r =>
-              processRange(sink, r, member.implicitPrefix.isDefined, target)
-            }
-            member.pattern.foreachFast { p =>
-              sink.triple(target, Shacl.pattern, Literal(p))
-            }
-            if (
-              (member.minimumLength.isDefined || member.maximumLength.isDefined) &&
-              member.implicitPrefix.isEmpty
-            ) {
-              memberRange.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
-                case typeView: TypeView if hasTextLiterals(typeView) =>
-                  emitLengths(sink, member.minimumLength, member.maximumLength, target)
-                case _ =>
-              }
-            }
-            if (
-              (member.minimumValue.isDefined || member.maximumValue.isDefined) &&
-              member.implicitPrefix.isEmpty
-            ) {
-              memberRange
-                .asInstanceOf[Reference[ElementView[?, ?]]]
-                .resolve
-                .flatMapFast {
-                  case typeView: TypeView => datatypeForValueBound(typeView)
-                  case _ => None
-                }
-                .foreachFast { datatype =>
-                  member.minimumValue.foreachFast { v =>
-                    sink.triple(target, Shacl.minInclusive, Literal(v.value.strip, datatype))
+          def emitValueConstraints(target: Resource): Unit =
+            member.range match {
+              case Some(r) => processRange(sink, r, member, target)
+              case _ =>
+                if (hasValueConstraints(member))
+                  range.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
+                    case typeView: TypeView =>
+                      if (typeView.isUnion) processRange(sink, range, member, target)
+                      else
+                        emitConstraints(
+                          sink,
+                          typeView.alternatives.head.withConstraintsOf(member),
+                          member.implicitPrefix.isDefined,
+                          target,
+                        )
+                    case _ =>
+                      member.pattern.foreachFast { p =>
+                        sink.triple(target, Shacl.pattern, Literal(p))
+                      }
                   }
-                  member.maximumValue.foreachFast { v =>
-                    sink.triple(target, Shacl.maxInclusive, Literal(v.value.strip, datatype))
-                  }
-                }
             }
-          }
 
           /** Emit a per-value member: a NodeShape that values of the slot are checked against, with
             * the member's value constraints and its nested boolean slots.
@@ -353,8 +400,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     emitBooleanSlots(slot, range, subject, check)
   }
 
-  /** Emit the value constraints of an attribute: `pattern`, `minimum_value`, `maximum_value`,
-    * `minimum_length` and `maximum_length`.
+  /** Emit the value constraints of an attribute whose range isn't emitted, see
+    * [[processMainRange]]. These are the constraints of the slot and its range type, see
+    * [[emitConstraints]]. A `union_of` range gets none, as only its alternatives can have them.
     *
     * @param attributeView
     *   The attribute to generate triples for
@@ -367,43 +415,15 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       subject: Resource,
   ): Unit = attributeView match {
     case typeAttribute: TypeAttributeView =>
-      typeAttribute.pattern.foreachFast { p =>
-        sink.triple(subject, Shacl.pattern, Literal(p.linkml))
-      }
-      if (typeAttribute.implicitPrefix.isEmpty && hasTextLiterals(typeAttribute.typeView))
-        emitLengths(sink, typeAttribute.minimumLength, typeAttribute.maximumLength, subject)
-      // Bounds (min / max values) only make sense for ordered literal ranges.
-      if (typeAttribute.implicitPrefix.isEmpty)
-        datatypeForValueBound(typeAttribute.typeView).foreachFast { datatype =>
-          typeAttribute.minimumValue.foreachFast { v =>
-            sink.triple(subject, Shacl.minInclusive, Literal(v.value.strip, datatype))
-          }
-          typeAttribute.maximumValue.foreachFast { v =>
-            sink.triple(subject, Shacl.maxInclusive, Literal(v.value.strip, datatype))
-          }
-        }
+      val alternatives = typeAttribute.alternatives
+      if (alternatives.sizeIs == 1)
+        emitConstraints(
+          sink,
+          alternatives.head,
+          typeAttribute.slotView.slot.implicitPrefix.isDefined,
+          subject,
+        )
     case _ => ()
-  }
-
-  /** Whether the values of the type are text literals in RDF, so that SHACL can check their length.
-    * A URI is an IRI in RDF, and SHACL would measure the full IRI instead of the text in the data.
-    */
-  private def hasTextLiterals(typeView: TypeView): Boolean =
-    typeView.hasTextValues && !typeView.isIri
-
-  /** Emit `sh:minLength` and `sh:maxLength`. */
-  private def emitLengths(
-      sink: RdfSink,
-      minimumLength: Option[Int],
-      maximumLength: Option[Int],
-      subject: Resource,
-  ): Unit = {
-    minimumLength.foreachFast { n =>
-      sink.triple(subject, Shacl.minLength, Literal(n.toString, XmlSchema.integer))
-    }
-    maximumLength.foreachFast { n =>
-      sink.triple(subject, Shacl.maxLength, Literal(n.toString, XmlSchema.integer))
-    }
   }
 
   /** The datatype to tag `minimum_value` / `maximum_value` bounds with.
@@ -423,7 +443,6 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     case DateType => new Some(XmlSchema.date)
     case DateTimeType => new Some(XmlSchema.dateTime)
     case TimeType => new Some(XmlSchema.time)
-    case StringType => new Some(XmlSchema.string)
     case _ => None
   }
 
@@ -475,10 +494,9 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     )
     val path = new Iri(s.uriStr)
     sink.triple(property, Shacl.path, path)
-    processMainRange(sink, s, slot, property)
+    processMainRange(sink, attributeView, property)
     val range = slot.range.getOrElseFast(sv.getDefaultRange(s.definingSchema))
     processBooleanSlots(sink, path, range, slot, property, Check.PerValue)
-    processConstraints(sink, attributeView, property)
     // Use rank if possible. Other slots are put at the end.
     val rank = slot.rank.getOrElseFast(order)
     sink.triple(property, Shacl.order, Literal(rank.toString, XmlSchema.integer))
