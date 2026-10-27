@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.{ClassDefinition, Prefix, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{Curie, Uri}
+import eu.neverblink.linkml.runtime.{Curie, Uri, UriOrCurie}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal, UndeclaredCuriePrefix}
@@ -893,6 +893,41 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       msg should include("CURIE 'ex:Person' at /classes/Person/class_uri/ isn't expanded")
       msg should include("Use the URI 'https://example.org/Person' instead")
+    }
+
+    "treat a URI with an undeclared prefix in a schema built in code as when it is read" in {
+      // `UriOrCurie.apply` gives a `Curie` for these values, but reading YAML gives a `Uri`
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        classes = Map(
+          "Person" -> ClassDefinition(
+            "Person",
+            classUri = Some(UriOrCurie("acme:Person")),
+            seeAlso = Seq(UriOrCurie("mailto:someone@example.org")),
+            treeRoot = true,
+          ),
+        ),
+      )
+      val problems = SchemaView.single(schema).lintProblems.collect {
+        case p: UndeclaredCuriePrefix => p.infer().message.get
+      }
+
+      problems shouldBe Seq(
+        "Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/",
+      )
+    }
+
+    "fail on a CURIE that can't be a URI in a schema built in code" in {
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        classes = Map("Foo" -> ClassDefinition("Foo", classUri = Some(UriOrCurie("my_ns:Foo")))),
+      )
+      val msg =
+        the[SchemaIssues.FatalSchemaException].thrownBy(SchemaView.single(schema)).getMessage
+
+      msg should include("Invalid URI or CURIE 'my_ns:Foo' at /classes/Foo/class_uri/")
     }
 
     "catch an invalid reference in an imported file" in {

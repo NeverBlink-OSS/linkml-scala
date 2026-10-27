@@ -253,22 +253,18 @@ private object MacroValidator {
     * declared and can't be a URI scheme, so it is invalid. A [[Curie]] with a declared prefix, such
     * as `ex:Person`, wasn't expanded, which happens only in a schema built in code. A [[Curie]]
     * without a colon is a relative reference, such as an import path.
+    *
+    * In a schema built in code, `UriOrCurie.apply` gives a [[Curie]] for any value without `//`,
+    * such as `acme:Person` or `mailto:a@b.org`. If its prefix isn't declared and it is a valid URI,
+    * it is checked as the [[Uri]] that reading the schema gives.
     */
   given uriOrCurieValidator: MacroValidator[UriOrCurie] =
     new MacroValidator[UriOrCurie] {
       def validate(t: UriOrCurie)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult =
         t match {
           case u: Uri =>
-            val uri = u.original
-            if (!u.isValid)
-              ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
-            else if (UriOrCurie.isCurie(uri))
-              ValidatorResult(undeclaredPrefixes =
-                Seq(
-                  UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema),
-                ),
-              )
-            else ValidatorResult.ok
+            if (u.isValid) validUri(u)
+            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
           case c: Curie =>
             val curie = c.original
             val isValid = c.isValid
@@ -279,11 +275,22 @@ private object MacroValidator {
                 ValidatorResult(unexpandedCuries =
                   Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
                 )
+              else if (UriCurieValidator.isValidUri(curie)) validUri(Uri(curie))
               else
                 ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", c, vc.fromSchema)))
             }
         }
     }
+
+  /** Check a valid [[Uri]]: one with the shape of a CURIE has a prefix that isn't declared. */
+  private def validUri(u: Uri)(using vc: ValidatorContext): ValidatorResult = {
+    val uri = u.original
+    if (UriOrCurie.isCurie(uri))
+      ValidatorResult(undeclaredPrefixes =
+        Seq(UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema)),
+      )
+    else ValidatorResult.ok
+  }
 
   private def formatRangeType(el: Element): String = {
     el match {
