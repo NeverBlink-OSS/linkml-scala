@@ -123,10 +123,60 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       val result = importing(
         """:ShortString a rdfs:Datatype ;
           |    owl:equivalentClass [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
-          |        owl:withRestrictions ( [ xsd:maxLength 5 ] ) ] .""",
+          |        owl:withRestrictions ( [ xsd:length 5 ] ) ] .""",
       )
       result.schema.types("ShortString").typeof.map(_.value) shouldBe Some("string")
-      result.warnings.mkString should include("ShortString: xsd:maxLength")
+      result.warnings.mkString should include("ShortString: xsd:length")
+    }
+
+    "read xsd:minLength and xsd:maxLength as lengths" in {
+      val result = importing(
+        """:Code a rdfs:Datatype ;
+          |    owl:equivalentClass [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
+          |        owl:withRestrictions ( [ xsd:minLength 2 ] [ xsd:maxLength 4 ] ) ] .
+          |:code a owl:DatatypeProperty ;
+          |    rdfs:range [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
+          |        owl:withRestrictions ( [ xsd:maxLength "3"^^xsd:nonNegativeInteger ] ) ] .""",
+      )
+      val code = result.schema.types("Code")
+      code.minimumLength shouldBe Some(2)
+      code.maximumLength shouldBe Some(4)
+      result.schema.slotDefinitions("code").maximumLength shouldBe Some(3)
+      result.warnings shouldBe empty
+    }
+
+    "report a length that isn't a non-negative number" in {
+      val result = importing(
+        """:Code a rdfs:Datatype ;
+          |    owl:equivalentClass [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
+          |        owl:withRestrictions ( [ xsd:maxLength -1 ] ) ] .""",
+      )
+      result.schema.types("Code").maximumLength shouldBe None
+      result.warnings.mkString should include("Code: xsd:maxLength")
+    }
+
+    "keep lengths through a round trip" in {
+      val (sv, warnings) = reimport(schemaOf("""
+        |classes:
+        |  Item:
+        |    slots:
+        |      - code
+        |slots:
+        |  code:
+        |    range: Code
+        |    maximum_length: 3
+        |types:
+        |  Code:
+        |    typeof: string
+        |    uri: ex:Code
+        |    minimum_length: 2
+        |    maximum_length: 4
+        |"""))
+      warnings shouldBe empty
+      val code = sv.types("Code").inner
+      code.minimumLength shouldBe Some(2)
+      code.maximumLength shouldBe Some(4)
+      sv.slotDefinitions("code").slot.maximumLength shouldBe Some(3)
     }
   }
 

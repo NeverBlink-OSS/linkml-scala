@@ -149,7 +149,27 @@ object OwlImporter {
 
   /** The datatype facets LinkML can express, on a type or in a range. */
   private val typeFacets: Set[String] =
-    Set(XmlSchema.minInclusive.value, XmlSchema.maxInclusive.value, XmlSchema.pattern.value)
+    Set(
+      XmlSchema.minInclusive.value,
+      XmlSchema.maxInclusive.value,
+      XmlSchema.minLength.value,
+      XmlSchema.maxLength.value,
+      XmlSchema.pattern.value,
+    )
+
+  /** Whether LinkML can express the facet. A length must also be a non-negative `Int`. */
+  private def isTypeFacet(facet: (String, Literal)): Boolean = facet._1 match {
+    case f if f == XmlSchema.minLength.value || f == XmlSchema.maxLength.value =>
+      lengthOf(facet._2).isDefined
+    case f => typeFacets(f)
+  }
+
+  /** The value of a length facet, or None if it has none that LinkML can express. */
+  private def lengthFacet(facets: Seq[(String, Literal)], which: Iri): Option[Int] =
+    facets.collectFirst { case (f, v) if f == which.value => v }.flatMapFast(lengthOf)
+
+  private def lengthOf(literal: Literal): Option[Int] =
+    literal.value.strip.toIntOption.flatMapFast(n => if (n >= 0) Some(n) else None)
 
   private val regexMeta: Set[Char] = "\\^$.|?*+()[]{}".toSet
 
@@ -230,6 +250,8 @@ object OwlImporter {
       anyOf: Seq[String] = Nil,
       minimumValue: Option[String] = None,
       maximumValue: Option[String] = None,
+      minimumLength: Option[Int] = None,
+      maximumLength: Option[Int] = None,
       pattern: Option[String] = None,
       data: Boolean = false,
   ) {
@@ -237,7 +259,7 @@ object OwlImporter {
     /** True if this is a plain class, enum or type, so it can go in an `any_of`. */
     def isOneElement: Boolean =
       range.isDefined && anyOf.isEmpty && minimumValue.isEmpty && maximumValue.isEmpty &&
-        pattern.isEmpty
+        minimumLength.isEmpty && maximumLength.isEmpty && pattern.isEmpty
   }
 
   private final class Conversion(
@@ -575,8 +597,12 @@ object OwlImporter {
             ("string", Nil, None)
           case None => (derivedTypes.getOrElse(iri, "string"), Nil, None)
         }
-        facets.map(_._1).distinct.filterNot(typeFacets).foreach { f =>
-          warn("Datatype facet that LinkML cannot express", s"$name: ${short(f)}")
+        val reported = mutable.HashSet.empty[String]
+        facets.foreach { facet =>
+          val f = facet._1
+          if (!isTypeFacet(facet) && reported.add(f)) {
+            warn("Datatype facet that LinkML cannot express", s"$name: ${short(f)}")
+          }
         }
         metadata.applyTo(
           TypeDefinition(
@@ -587,6 +613,8 @@ object OwlImporter {
           ).copy(
             minimumValue = facet(facets, XmlSchema.minInclusive),
             maximumValue = facet(facets, XmlSchema.maxInclusive),
+            minimumLength = lengthFacet(facets, XmlSchema.minLength),
+            maximumLength = lengthFacet(facets, XmlSchema.maxLength),
             pattern = facets.collectFirst {
               case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
                 LinkmlPattern.fromXsd(v).linkml
@@ -627,7 +655,7 @@ object OwlImporter {
       case DataRange.Datatype(iri) if isDeclared(iri, EntityKind.Class) => None
       case DataRange.Datatype(iri) => Some(SlotRange(range = Some(typeNameFor(iri)), data = true))
       case DataRange.Restriction(base, facets) =>
-        Option.when(facets.forall(f => typeFacets(f._1)))(
+        Option.when(facets.forall(isTypeFacet))(
           SlotRange(
             range = Some(typeNameFor(base)),
             minimumValue = facets.collectFirst {
@@ -636,6 +664,8 @@ object OwlImporter {
             maximumValue = facets.collectFirst {
               case (f, Literal(v, _)) if f == XmlSchema.maxInclusive.value => v
             },
+            minimumLength = lengthFacet(facets, XmlSchema.minLength),
+            maximumLength = lengthFacet(facets, XmlSchema.maxLength),
             pattern = facets.collectFirst {
               case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
                 LinkmlPattern.fromXsd(v).linkml
@@ -800,6 +830,8 @@ object OwlImporter {
           ).copy(
             minimumValue = range.minimumValue.map(LinkmlAny(_)),
             maximumValue = range.maximumValue.map(LinkmlAny(_)),
+            minimumLength = range.minimumLength,
+            maximumLength = range.maximumLength,
             pattern = range.pattern,
           ),
         ).copy(exactMappings = sorted(metadata.exactMappings ++ equivalent.map(e => {
@@ -966,7 +998,13 @@ object OwlImporter {
         case DataRange.Datatype(iri) if iri == Rdfs.Literal.value => true
         case other =>
           val own = effectiveRange(p).copy(data = false)
-          val widened = own.copy(minimumValue = None, maximumValue = None, pattern = None)
+          val widened = own.copy(
+            minimumValue = None,
+            maximumValue = None,
+            minimumLength = None,
+            maximumLength = None,
+            pattern = None,
+          )
           slotRange(other).map(_.copy(data = false)).exists(r => r == own || r == widened)
       }
 
@@ -994,6 +1032,8 @@ object OwlImporter {
                       anyOf = r.anyOf.map(x => AnonymousSlotExpression(range = Some(Reference(x)))),
                       minimumValue = r.minimumValue.map(LinkmlAny(_)),
                       maximumValue = r.maximumValue.map(LinkmlAny(_)),
+                      minimumLength = r.minimumLength,
+                      maximumLength = r.maximumLength,
                       pattern = r.pattern,
                     ),
                 )
