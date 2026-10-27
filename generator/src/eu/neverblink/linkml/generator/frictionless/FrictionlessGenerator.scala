@@ -151,23 +151,7 @@ class FrictionlessGenerator(using sv: SchemaView)
           case tv: TypeAttributeView =>
             if slotView.slot.multivalued then
               base.copy(`type` = types.array, rdfType = new Some(tv.typeView.uriStr))
-            else {
-              val (type_, format) = remapType(tv.typeView.runtimeType)
-              base.copy(
-                `type` = type_,
-                rdfType = new Some(tv.typeView.uriStr),
-                format = format,
-                constraints = base.constraints.mapFast(
-                  _.copy(
-                    pattern = tv.pattern.mapFast(_.linkml),
-                    maximum = tv.maximumValue.mapFast(_.value.strip()),
-                    minimum = tv.minimumValue.mapFast(_.value.strip()),
-                    maxLength = tv.maximumLength,
-                    minLength = tv.minimumLength,
-                  ),
-                ),
-              )
-            }
+            else typedField(base, tv)
 
           case ev: EnumAttributeView =>
             if slotView.slot.multivalued then
@@ -188,6 +172,50 @@ class FrictionlessGenerator(using sv: SchemaView)
       fields = fields,
       primaryKey = cv.identifier.map(slotName),
       foreignKeys = if foreignKeys.isEmpty then None else new Some(foreignKeys.toSeq),
+    )
+  }
+
+  /** A column for a type range, from its value alternatives.
+    *
+    * A column has one type, so a `union_of` range is written in full only if all its alternatives
+    * have the same type, format and value constraints, such as `string` for `string | ncname`.
+    * Otherwise it is an `any` column without value constraints, as the spec doesn't define them for
+    * `any`. A union column has an `rdfType` only if all its alternatives have the same one.
+    *
+    * @param base
+    *   The column without its type and value constraints
+    */
+  private def typedField(base: FieldDescriptor, tav: TypeAttributeView): FieldDescriptor = {
+    val alternatives = tav.alternatives
+    val first = typedField(base, alternatives.head)
+    var sameColumn = true
+    var sameRdfType = true
+    alternatives.iterator.drop(1).foreach { alternative =>
+      val field = typedField(base, alternative)
+      if (field.rdfType != first.rdfType) sameRdfType = false
+      if (field.copy(rdfType = first.rdfType) != first) sameColumn = false
+    }
+    if (!sameColumn) base.copy(`type` = types.any)
+    else if (sameRdfType) first
+    else first.copy(rdfType = None)
+  }
+
+  /** A column for one value alternative, with its type, format and value constraints. */
+  private def typedField(base: FieldDescriptor, alternative: ValueAlternative): FieldDescriptor = {
+    val (type_, format) = remapType(alternative.typeView.runtimeType)
+    base.copy(
+      `type` = type_,
+      rdfType = new Some(alternative.typeView.uriStr),
+      format = format,
+      constraints = base.constraints.mapFast(
+        _.copy(
+          pattern = alternative.pattern.mapFast(_.linkml),
+          maximum = alternative.maximumValue.mapFast(_.value.strip()),
+          minimum = alternative.minimumValue.mapFast(_.value.strip()),
+          maxLength = alternative.maximumLength,
+          minLength = alternative.minimumLength,
+        ),
+      ),
     )
   }
 

@@ -206,6 +206,46 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       fieldMap("count").constraints.get.minLength shouldBe None
     }
 
+    "write a union_of column in full only if its members give the same column" in {
+      val td = rootTable(
+        load(
+          """id: https://neverblink.eu/test/
+          |name: test
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |imports:
+          |  - linkml:types
+          |types:
+          |  Text:
+          |    union_of: [string, ncname]
+          |    pattern: "^[a-z]+$"
+          |  CodeOrNumber:
+          |    union_of: [string, integer]
+          |    pattern: "^[A-Z]+$"
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    attributes:
+          |      text:
+          |        range: Text
+          |      value:
+          |        range: CodeOrNumber
+          |        required: true
+          |""".stripMargin,
+        ),
+      )
+      val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
+      val text = fieldMap("text")
+      text.`type` shouldBe "string"
+      text.rdfType shouldBe Some(xsd + "string")
+      text.constraints.get.pattern shouldBe Some("^[a-z]+$")
+      // The spec defines no value constraints for `any`, and the pattern doesn't apply to numbers
+      val value = fieldMap("value")
+      value.`type` shouldBe "any"
+      value.rdfType shouldBe None
+      value.constraints shouldBe Some(Constraints(required = Some(true)))
+    }
+
     "date, time and datetime columns use the ISO 8601 format" in {
       // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
       val td = rootTable(
