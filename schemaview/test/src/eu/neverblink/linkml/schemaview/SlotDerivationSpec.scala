@@ -789,7 +789,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
       sv.classes("child").derivedAttributes("slot1")
-        .uriOrCurie shouldBe Uri("https://neverblink.eu/test/slot_1")
+        .uri shouldBe Uri("https://neverblink.eu/test/slot_1")
     }
   }
 }

@@ -1052,6 +1052,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       problems shouldBe Seq(
         "Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/",
       )
+      SchemaView.single(schema).classes("Person").uri shouldBe Uri("acme:Person")
     }
 
     "fail on a value without a colon in a schema built in code" in {

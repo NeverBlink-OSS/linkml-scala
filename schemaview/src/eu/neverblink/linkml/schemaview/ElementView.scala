@@ -87,20 +87,30 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
   /** Get the URI of this element, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
     */
-  def uriOrCurie: UriOrCurie
+  def uri: Uri
 
   /** Get the URI of this element in string form, using the default prefix of the implicit
     * [[SchemaView]] if not explicitly defined.
     *
     * This MUST be used when serializing to RDF formats.
     */
-  lazy val uriStr: String = uriOrCurie.original
+  lazy val uriStr: String = uri.original
 
   /** Get the default URI prefix (prefix map value) for the defining schema, with a fallback to the
     * schema ID (this fallback mirrors the python implementation).
     */
   final private[schemaview] def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
 }
+
+private object ElementView:
+
+  /** [[u]] as a [[Uri]] with the same text. In a schema that passes validation, a [[Curie]] here is
+    * a URI whose prefix isn't declared, such as `mailto:a@b.org`.
+    */
+  def asUri(u: UriOrCurie): Uri = u match {
+    case uri: Uri => uri
+    case _ => new Uri(u.original)
+  }
 
 private object ClassView:
   // Used to avoid as many allocations as possible when deriving slots.
@@ -113,8 +123,8 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
 
   def canonicalName: String = Case.baseToPascal(baseName)
 
-  def uriOrCurie: UriOrCurie =
-    cls.classUri.getOrElseFast(modelUri)
+  def uri: Uri =
+    cls.classUri.foldFast(modelUri)(ElementView.asUri)
 
   def aliasedName: String =
     cls.alias.getOrElseFast(name)
@@ -461,7 +471,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     */
   def materialize: ClassDefinition =
     inner.copy(
-      classUri = new Some(uriOrCurie),
+      classUri = new Some(uri),
       isA = None,
       mixins = Nil,
       attributes = derivedAttributes.map((slotKey, slot) =>
@@ -566,18 +576,15 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
     * explicitly defined.
     */
-  def uriOrCurie: UriOrCurie = SlotView.uri(slot.slotUri, slot.name, this)
+  def uri: Uri = SlotView.uri(slot.slotUri, slot.name, this)
 }
 
 private object SlotView:
   // Exposed for slot derivation in ClassView.
-  def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): UriOrCurie =
-    slotUri.getOrElseFast {
-      Uri.synthetic(
-        context.defaultPrefixUri,
-        Case.base(slotName),
-      )
-    }
+  def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): Uri =
+    slotUri.foldFast(Uri.synthetic(context.defaultPrefixUri, Case.base(slotName)))(
+      ElementView.asUri,
+    )
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
@@ -597,8 +604,10 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
   override private[schemaview] def evaluateConstructor(expr: String): Option[PermissibleValue] =
     new Some(ConstructorExpression.evaluateEnum(expr, this))
 
-  def uriOrCurie: UriOrCurie =
-    _enum.enumUri.getOrElseFast(Uri.synthetic(defaultPrefixUri, Case.baseToPascal(canonicalName)))
+  def uri: Uri =
+    _enum.enumUri.foldFast(Uri.synthetic(defaultPrefixUri, Case.baseToPascal(canonicalName)))(
+      ElementView.asUri,
+    )
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
   lazy val derivedValues: Seq[PermissibleValueView] =
@@ -823,7 +832,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uriOrCurie: UriOrCurie = derivedType.typeUri.getOrElseFast(modelUri)
+  def uri: Uri = derivedType.typeUri.foldFast(modelUri)(ElementView.asUri)
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using
@@ -833,7 +842,7 @@ final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefi
 
   override def aliasedName: String = baseName
 
-  def uriOrCurie: UriOrCurie =
+  def uri: Uri =
     // there is no subset_uri in the metamodel
     Uri.synthetic(defaultPrefixUri, baseName)
 

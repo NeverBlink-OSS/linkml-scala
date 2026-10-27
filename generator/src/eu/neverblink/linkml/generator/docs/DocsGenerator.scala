@@ -676,7 +676,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     /** The list item with the URI of [[el]]. */
     private def uriItem(md: Markdown, el: ElementView[?, ?]): Unit = {
       md.startItem("URI")
-      uri(md, el.uriOrCurie, el.definingPrefixes)
+      uri(md, el.uri, el.definingPrefixes)
       md.endItem()
     }
 

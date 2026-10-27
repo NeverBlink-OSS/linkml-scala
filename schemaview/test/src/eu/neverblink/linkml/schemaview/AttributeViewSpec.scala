@@ -73,40 +73,40 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
     "provide AnyViews for classes with linkml:Any uri" in {
       c1.attributeViews("any")
         .shouldBeA[AnyView]
-        .slotView.uriOrCurie shouldBe Uri("urn:any")
+        .slotView.uri shouldBe Uri("urn:any")
     }
 
     "provide ClassInlineAttributeView for inlined classes" in {
       val inline = c1.attributeViews("inline")
         .shouldBeA[ClassInlineAttributeView]
-      inline.slotView.uriOrCurie shouldBe Uri("urn:inline")
-      inline.classView.uriOrCurie shouldBe Uri("urn:C2")
+      inline.slotView.uri shouldBe Uri("urn:inline")
+      inline.classView.uri shouldBe Uri("urn:C2")
       inline.inlineType shouldBe plain
     }
 
     "provide ClassReferenceAttributeView for referenced classes" in {
       val ref = c1.attributeViews("ref")
         .shouldBeA[ClassReferenceAttributeView]
-      ref.slotView.uriOrCurie shouldBe Uri("urn:ref")
-      ref.classView.uriOrCurie shouldBe Uri("urn:C2")
-      ref.identifierView.slotView.uriOrCurie shouldBe Uri("urn:id")
-      ref.identifierView.typeView.uriOrCurie shouldBe Uri("http://www.w3.org/2001/XMLSchema#string")
+      ref.slotView.uri shouldBe Uri("urn:ref")
+      ref.classView.uri shouldBe Uri("urn:C2")
+      ref.identifierView.slotView.uri shouldBe Uri("urn:id")
+      ref.identifierView.typeView.uri shouldBe Uri("http://www.w3.org/2001/XMLSchema#string")
       ref.identifierView.subjectType shouldBe base
     }
 
     "provide TypeAttributeView for types" in {
       val t = c1.attributeViews("type")
         .shouldBeA[TypeAttributeView]
-      t.slotView.uriOrCurie shouldBe Uri("urn:type")
-      t.typeView.uriOrCurie shouldBe Uri("http://www.w3.org/2001/XMLSchema#string")
+      t.slotView.uri shouldBe Uri("urn:type")
+      t.typeView.uri shouldBe Uri("http://www.w3.org/2001/XMLSchema#string")
       t.subjectType shouldBe base
     }
 
     "provide EnumAttributeViews for enums" in {
       val t = c1.attributeViews("enum")
         .shouldBeA[EnumAttributeView]
-      t.slotView.uriOrCurie shouldBe Uri("urn:enum")
-      t.enumView.uriOrCurie shouldBe Uri("urn:E1")
+      t.slotView.uri shouldBe Uri("urn:enum")
+      t.enumView.uri shouldBe Uri("urn:E1")
     }
 
     val upgradeSubjectTypeSchema =
