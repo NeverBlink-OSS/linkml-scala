@@ -152,7 +152,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
-    "generate sh:pattern and inclusive bounds from slots" in {
+    "generate sh:pattern, lengths and inclusive bounds from slots" in {
       val input =
         s"""$schemaShared
            |classes:
@@ -168,6 +168,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |  string_slot:
            |    range: string
            |    pattern: "^[0-9]{3}-[0-9]{4}$$"
+           |    minimum_length: 8
+           |    maximum_length: 8
            |""".stripMargin
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
@@ -190,6 +192,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ], [
           |      sh:datatype xsd:string;
           |      sh:maxCount 1;
+          |      sh:maxLength 8;
+          |      sh:minLength 8;
           |      sh:nodeKind sh:Literal;
           |      sh:order 1;
           |      sh:path <https://neverblink.eu/linkml/shacl/test/string_slot>;
@@ -200,7 +204,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
-    "take sh:pattern and inclusive bounds from the range type" in {
+    "take sh:pattern, lengths and inclusive bounds from the range type" in {
       val input =
         s"""$schemaShared
            |classes:
@@ -221,6 +225,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |  patterned_string:
            |    base: str
            |    pattern: "^[0-9]{3}-[0-9]{4}$$"
+           |    minimum_length: 8
+           |    maximum_length: 8
            |""".stripMargin
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
@@ -245,6 +251,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ], [
           |      sh:datatype <https://neverblink.eu/linkml/shacl/test/patterned_string>;
           |      sh:maxCount 1;
+          |      sh:maxLength 8;
+          |      sh:minLength 8;
           |      sh:nodeKind sh:Literal;
           |      sh:order 1;
           |      sh:path <https://neverblink.eu/linkml/shacl/test/string_slot>;
@@ -1304,6 +1312,46 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |        [ sh:minInclusive 0; sh:maxInclusive 10 ]
           |        [ sh:minInclusive 5; sh:maxInclusive 20 ]
           |      )
+          |    ];
+          |  sh:targetClass t:Container .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
+    "put the lengths of any_of members in sh:or" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Container:
+           |    slots:
+           |    - code
+           |slots:
+           |  code:
+           |    range: string
+           |    any_of:
+           |    - maximum_length: 2
+           |    - minimum_length: 5
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+          |
+          |t:Container a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:or (
+          |        [ sh:maxLength 2 ]
+          |        [ sh:minLength 5 ]
+          |      );
+          |      sh:order 0;
+          |      sh:path t:code
           |    ];
           |  sh:targetClass t:Container .
           |""".stripMargin

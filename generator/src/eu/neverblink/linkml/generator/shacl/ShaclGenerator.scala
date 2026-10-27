@@ -122,14 +122,16 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     expression.required || expression.minimumCardinality.isDefined ||
       expression.maximumCardinality.isDefined || expression.exactCardinality.isDefined
 
-  /** Whether the expression sets a range, `pattern`, `minimum_value` or `maximum_value`.
+  /** Whether the expression sets a range, `pattern`, `minimum_value`, `maximum_value`,
+    * `minimum_length` or `maximum_length`.
     *
     * @param expression
     *   A member of a boolean slot
     */
   private def hasValueConstraints(expression: SlotExpression): Boolean =
     expression.range.isDefined || expression.pattern.isDefined ||
-      expression.minimumValue.isDefined || expression.maximumValue.isDefined
+      expression.minimumValue.isDefined || expression.maximumValue.isDefined ||
+      expression.minimumLength.isDefined || expression.maximumLength.isDefined
 
   /** How a boolean slot with these members is checked: per instance if a member limits the number
     * of values, otherwise per value. See [[processBooleanSlots]].
@@ -247,9 +249,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
           val shape = inlineBlankNode()
           val memberRange = member.range.getOrElseFast(range)
 
-          /** Emit the range, `pattern`, `minimum_value` and `maximum_value` of the member. A member
-            * without a range gets no `default_range`. The value bounds are typed by the member's
-            * range, or the nearest enclosing one if it has none.
+          /** Emit the range, `pattern`, `minimum_value`, `maximum_value`, `minimum_length` and
+            * `maximum_length` of the member. A member without a range gets no `default_range`. The
+            * value bounds are typed by the member's range, or the nearest enclosing one if it has
+            * none.
             *
             * @param target
             *   The shape to put the value constraints on
@@ -261,6 +264,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
             member.pattern.foreachFast { p =>
               sink.triple(target, Shacl.pattern, Literal(p))
             }
+            emitLengths(sink, member.minimumLength, member.maximumLength, target)
             if (
               (member.minimumValue.isDefined || member.maximumValue.isDefined) &&
               member.implicitPrefix.isEmpty
@@ -340,7 +344,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     emitBooleanSlots(slot, range, subject, check)
   }
 
-  /** Emit the value constraints of an attribute: `pattern`, `minimum_value` and `maximum_value`.
+  /** Emit the value constraints of an attribute: `pattern`, `minimum_value`, `maximum_value`,
+    * `minimum_length` and `maximum_length`.
     *
     * @param attributeView
     *   The attribute to generate triples for
@@ -356,6 +361,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       typeAttribute.pattern.foreachFast { p =>
         sink.triple(subject, Shacl.pattern, Literal(p.linkml))
       }
+      emitLengths(sink, typeAttribute.minimumLength, typeAttribute.maximumLength, subject)
       // Bounds (min / max values) only make sense for ordered literal ranges.
       if (typeAttribute.implicitPrefix.isEmpty)
         datatypeForValueBound(typeAttribute.typeView).foreachFast { datatype =>
@@ -367,6 +373,21 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
           }
         }
     case _ => ()
+  }
+
+  /** Emit `sh:minLength` and `sh:maxLength`. */
+  private def emitLengths(
+      sink: RdfSink,
+      minimumLength: Option[Int],
+      maximumLength: Option[Int],
+      subject: Resource,
+  ): Unit = {
+    minimumLength.foreachFast { n =>
+      sink.triple(subject, Shacl.minLength, Literal(n.toString, XmlSchema.integer))
+    }
+    maximumLength.foreachFast { n =>
+      sink.triple(subject, Shacl.maxLength, Literal(n.toString, XmlSchema.integer))
+    }
   }
 
   /** The datatype to tag `minimum_value` / `maximum_value` bounds with.
