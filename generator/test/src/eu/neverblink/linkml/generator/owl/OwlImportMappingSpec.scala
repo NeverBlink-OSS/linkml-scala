@@ -455,6 +455,12 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
         .classes("A").annotations("ex:note").extensionValue.yamlAs[String] shouldBe Right("hi")
     }
 
+    "write an IRI value of another annotation as a full IRI" in {
+      schema(cls("A"), AnnotationAssertion(ns + "A", Annotation(ns + "related", Iri(ns + "B"))))
+        .classes("A").annotations("ex:related").extensionValue.yamlAs[String] shouldBe
+        Right(ns + "B")
+    }
+
     "read the description from the properties the config names" in {
       val config = OwlImportConfigs.parse("metadata:\n  description: [ex:definition]\n")
       schema(
