@@ -118,8 +118,8 @@ with the explicit numbers from `exact_cardinality`, `minimum_cardinality` and
 
 ### File names
 
-A page's file name is the element's base name, the same one that `generate translation --target
-base` gives: lower case ASCII letters and digits, with words separated by `_`. So `PersonName` is in
+A page's file name is the element's base name, as `generate translation --target docs` gives
+it: lower case ASCII letters and digits, with words separated by `_`. So `PersonName` is in
 `classes/person_name.md`. The links need no encoding, and the names work on any file system.
 
 When two names give the same base name (like `Person` and `person`), the second one gets `_2`.

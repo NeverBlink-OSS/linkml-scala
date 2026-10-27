@@ -213,7 +213,7 @@ export const TARGETS: Target[] = [
     label: "Key translations",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", "docs"], default: "base" },
       {
         key: "derivedAttributes",
         type: "checkbox",

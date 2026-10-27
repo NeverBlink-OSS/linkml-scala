@@ -408,7 +408,7 @@ class Generators:
 
         :param to: The framework whose names the dictionaries translate to. One of "base",
             "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json",
-            "typescript" or "pydantic".
+            "typescript", "pydantic" or "docs".
         :param indentation_step: Indentation of the JSON output.
         :param derived_attributes: Also list inherited slots, mixin slots and slots from the
             class's `slots` list in `classAttributes`. If false (the default), `classAttributes`

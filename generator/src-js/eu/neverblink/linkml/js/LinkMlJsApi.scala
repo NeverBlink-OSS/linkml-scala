@@ -661,7 +661,7 @@ object LinkMlJsApi {
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param target
     *   Target framework to generate translations for. One of "base", "uri", "scala", "graphql",
-    *   "frictionless", "ossie", "erdiagram", "json", "typescript", or "pydantic".
+    *   "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", or "docs".
     * @param derivedAttributes
     *   Also list inherited slots, mixin slots and slots from the class's `slots` list in
     *   classAttributes. Without it, classAttributes lists only the class's own attributes. Default:
