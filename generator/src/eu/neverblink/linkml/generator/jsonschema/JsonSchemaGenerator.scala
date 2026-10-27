@@ -136,6 +136,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
               $comment = Some(s"Reference to ${classView.name} class"),
               minimum = toBigDecimalOpt(identifierView.minimumValue),
               maximum = toBigDecimalOpt(identifierView.maximumValue),
+              minLength = identifierView.minimumLength,
+              maxLength = identifierView.maximumLength,
               pattern = identifierView.pattern.mapFast(p => new Pattern(p.linkml)),
             )
             .arrayOfIf(slotView.slot.multivalued)
@@ -149,6 +151,8 @@ class JsonSchemaGenerator(using sv: SchemaView)
             .copy(
               minimum = toBigDecimalOpt(typeAttribute.minimumValue),
               maximum = toBigDecimalOpt(typeAttribute.maximumValue),
+              minLength = typeAttribute.minimumLength,
+              maxLength = typeAttribute.maximumLength,
               pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
               `enum` =
                 if (designatorValues.isEmpty) None
@@ -306,6 +310,8 @@ object JsonSchemaGenerator {
         nonUnionTypeToRuntime(member).copy(
           minimum = toBigDecimalOpt(derived.minimumValue),
           maximum = toBigDecimalOpt(derived.maximumValue),
+          minLength = derived.minimumLength,
+          maxLength = derived.maximumLength,
           pattern = member.pattern.mapFast(p => new Pattern(p.linkml)),
         )
       }.toList)
