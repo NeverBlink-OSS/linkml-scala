@@ -274,15 +274,15 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
 
   "search color policy" should {
     "enable auto color for an attached terminal unless TERM is dumb" in {
-      SearchColor.Auto.enabled(true, Some("xterm-256color")) shouldBe true
-      SearchColor.Auto.enabled(true, None) shouldBe true
+      CliColor.Auto.enabled(true, Some("xterm-256color")) shouldBe true
+      CliColor.Auto.enabled(true, None) shouldBe true
     }
 
     "disable color for never, detached output or a dumb terminal" in {
       val cases = Seq(
-        ("never", SearchColor.Never, true, None),
-        ("detached", SearchColor.Auto, false, None),
-        ("dumb", SearchColor.Auto, true, Some("dumb")),
+        ("never", CliColor.Never, true, None),
+        ("detached", CliColor.Auto, false, None),
+        ("dumb", CliColor.Auto, true, Some("dumb")),
       )
       cases.foreach { case (label, mode, terminal, term) =>
         withClue(label) { mode.enabled(terminal, term) shouldBe false }

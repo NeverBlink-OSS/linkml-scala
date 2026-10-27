@@ -76,7 +76,7 @@ final case class SearchOptions(
     @Recurse
     common: CatalogOptions,
     @HelpMessage("Color output: auto or never. Default: auto.")
-    color: SearchColor = SearchColor.Auto,
+    color: CliColor = CliColor.Auto,
     @HelpMessage("Complete HTTP search endpoint. Supply with --query-by, or omit both for ohi.dev.")
     searchUrl: Option[String] = None,
     @HelpMessage(
@@ -115,7 +115,7 @@ object Search extends CatalogCommand[SearchOptions] {
   ): String = {
     val environment = sys.env
     val colored = !options.common.json && options.color.enabled(
-      terminal = (outStream eq System.out) && SearchColor.terminalAttached,
+      terminal = (outStream eq System.out) && CliColor.terminalAttached,
       term = environment.get("TERM"),
     )
     CatalogOutput.search(

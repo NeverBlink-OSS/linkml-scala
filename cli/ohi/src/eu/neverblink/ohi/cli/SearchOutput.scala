@@ -5,6 +5,8 @@ import eu.neverblink.ohi.model.generated.search.SearchResult
 
 import scala.collection.mutable.ArrayBuffer
 
+import CliFormatting.styled
+
 private[cli] object SearchOutput {
   private val csi = "(?:\u001b\\[|\u009b)[0-?]*[ -/]*[@-~]".r
 
@@ -16,16 +18,14 @@ private[cli] object SearchOutput {
   def render(result: SearchResult, width: Int, colored: Boolean): String = {
     val output = ArrayBuffer.empty[String]
 
-    def styled(text: String, code: String): String =
-      if colored && text.nonEmpty then s"\u001b[${code}m$text\u001b[0m" else text
-
     def text(value: String, code: String, first: String = "", next: String = ""): Unit =
-      output ++= wrap(value, width, first, next).map(styled(_, code))
+      output ++= wrap(value, width, first, next).map(styled(_, code, colored))
 
     def field(label: String, value: String, code: String): Unit =
       wrap(value, width, s"  $label: ", "    ").zipWithIndex.foreach { (row, index) =>
         val prefixLength = if index == 0 then label.length + 4 else 4
-        output += styled(row.take(prefixLength), "2") + styled(row.drop(prefixLength), code)
+        output += styled(row.take(prefixLength), "2", colored) +
+          styled(row.drop(prefixLength), code, colored)
       }
 
     val count = result.hits.size
@@ -48,8 +48,8 @@ private[cli] object SearchOutput {
       val version = clean(hit.version)
       val heading = s"  Ontology: $identity | Version: $version"
       if length(heading) <= width then
-        output += styled("  Ontology: ", "2") + styled(identity, "36") +
-          styled(s" | Version: $version", "2")
+        output += styled("  Ontology: ", "2", colored) + styled(identity, "36", colored) +
+          styled(s" | Version: $version", "2", colored)
       else {
         field("Ontology", identity, "36")
         field("Version", version, "2")
