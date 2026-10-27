@@ -898,11 +898,14 @@ object DocsGenerator {
   }
 
   /** A URI or CURIE as code, shown as a CURIE when it has a known prefix, and linked to the full
-    * URI when that is a web address.
+    * URI when that is a web address. Any other value is shown as it is, even a URI such as
+    * `ex:Person` that a schema with the prefix `ex` would read as a CURIE, as the documentation is
+    * not read back.
     */
   private def uri(md: Markdown, u: UriOrCurie, prefixes: PrefixMap): Unit = {
     val uri = u.original
-    val curie = UriOrCurie.compacted(u, prefixes)
+    val compacted = prefixes.compactOrNull(uri)
+    val curie = if (compacted ne null) compacted else uri
     if (isLinkable(uri)) {
       md.append('[')
       md.code(curie)
