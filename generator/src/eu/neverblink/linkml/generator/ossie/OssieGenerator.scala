@@ -255,14 +255,22 @@ class OssieGenerator(using sv: SchemaView)
     * Slot-level only, deliberately: whatever the range type declares is already stated on its value
     * type concept, and [[TypeAttributeView]] merges the two, so reading the merged view here would
     * say the same thing twice.
+    *
+    * A `union_of` range gets none. It is played by `Any`, and a constraint on `Any` would apply to
+    * every member, not only to those it fits.
     */
-  private def slotConstraints(av: AttributeView, ref: String): Seq[String] = av match {
-    case _: TypeAttributeView | _: EnumAttributeView =>
+  private def slotConstraints(av: AttributeView, ref: String): Seq[String] = {
+    val hasConstraints = av match {
+      case tv: TypeAttributeView => !tv.typeView.isUnion
+      case _: EnumAttributeView => true
+      case _ => false
+    }
+    if (hasConstraints) {
       val slot = av.slotView.slot
       Constraints(slot.minimumValue, slot.maximumValue, slot.pattern)
         .render(Ref(ref))
         .map(_.render)
-    case _ => Nil
+    } else Nil
   }
 
   /** The concept that plays the role in the range of a slot.

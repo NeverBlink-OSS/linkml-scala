@@ -199,6 +199,22 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       relationship(o, "Thing", "n").requires shouldBe Seq("Integer >= 5")
     }
 
+    "write no constraints of a slot whose range is a union_of type, as Any plays it" in {
+      val o = ontologyOf("""
+        |types:
+        |  CodeOrNumber:
+        |    union_of: [string, integer]
+        |classes:
+        |  Thing:
+        |    attributes:
+        |      value:
+        |        range: CodeOrNumber
+        |        pattern: '^[A-Z]+$'
+        |        maximum_value: 5
+        |""")
+      relationship(o, "Thing", "value").requires shouldBe empty
+    }
+
     "see through the quotes in the original YAML, so a quoted number still goes in bare" in {
       relationship(ontologyOf(quotedNumberBound), "Thing", "n").requires shouldBe
         Seq("Integer >= 5")

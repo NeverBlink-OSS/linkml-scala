@@ -107,5 +107,8 @@ Ossie does not support arbitrary extensions, so the following LinkML features ar
 - `unit`, `default` / `ifabsent`, `recommended`
 - Cardinality counts (`minimum_cardinality`, `maximum_cardinality`)
 - String lengths (`minimum_length`, `maximum_length`), as Ossie's expressions have no length check
+- `pattern`, `minimum_value` and `maximum_value` of a slot whose range is a `union_of` type. The
+  range is `Any`, and a constraint on `Any` would apply to every member of the union, not only to
+  those it fits
 - `rules`, `any_of` / `all_of` / `none_of` / `exactly_one_of`
 - Type designators, arrays
