@@ -115,8 +115,11 @@ final class PydanticGenerator(using sv: SchemaView)
   private def constrainedType(tav: TypeAttributeView, ctx: Context): String = {
     val base = runtimeType(tav.typeView, ctx)
     val constraints = mutable.ListBuffer.empty[String]
-    if base == "str" then
+    if (base == "str") {
       tav.pattern.foreachFast(p => constraints.addOne("pattern=".concat(pyPattern(p.linkml))))
+      tav.minimumLength.foreachFast(n => constraints.addOne("min_length=".concat(n.toString)))
+      tav.maximumLength.foreachFast(n => constraints.addOne("max_length=".concat(n.toString)))
+    }
     if numericTypes(base) then {
       number(tav.minimumValue).foreachFast(v => constraints.addOne("ge=".concat(v)))
       number(tav.maximumValue).foreachFast(v => constraints.addOne("le=".concat(v)))

@@ -99,6 +99,8 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |      quote: {range: string, pattern: 'say "hi"'}
           |      price: {range: decimal, minimum_value: 0.5}
           |      day: {range: date, pattern: "^2"}
+          |      name: {range: string, minimum_length: 1, maximum_length: 50}
+          |      count: {range: integer, minimum_length: 1}
           |""".stripMargin,
       )
       py should include("    age: Annotated[StrictInt, Field(ge=0, le=200)] | None = None\n")
@@ -110,6 +112,11 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py should include("    price: Annotated[JsonDecimal, Field(ge=0.5)] | None = None\n")
       // Pydantic has no patterns for dates
       py should include("    day: JsonDate | None = None\n")
+      py should include(
+        "    name: Annotated[str, Field(min_length=1, max_length=50)] | None = None\n",
+      )
+      // A length only applies to strings
+      py should include("    count: StrictInt | None = None\n")
     }
 
     "use the JSON keys, aliasing the ones that are not usable Python names" in {

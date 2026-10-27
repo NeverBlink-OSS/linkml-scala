@@ -7,7 +7,8 @@ generated JSON Schema, and they check the schema while loading. The output is a 
 - It needs Python 3.10 or later and pydantic 2.11 or later. Apart from pydantic, it imports only
   the standard library.
 - Loading checks the data the way the JSON Schema does: required slots, types, enums, patterns,
-  minimum and maximum values, and cardinality. Unknown keys are rejected.
+  minimum and maximum values, minimum and maximum lengths of strings, and cardinality. Unknown
+  keys are rejected.
 - Dumping gives back the JSON you loaded, with the exceptions listed under
   [Limitations](#limitations).
 
