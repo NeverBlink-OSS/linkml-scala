@@ -106,5 +106,6 @@ Ossie does not support arbitrary extensions, so the following LinkML features ar
 - `deprecated`, `annotations`, `extensions`, `subsets`, `see_also` and other metadata
 - `unit`, `default` / `ifabsent`, `recommended`
 - Cardinality counts (`minimum_cardinality`, `maximum_cardinality`)
+- String lengths (`minimum_length`, `maximum_length`), as Ossie's expressions have no length check
 - `rules`, `any_of` / `all_of` / `none_of` / `exactly_one_of`
 - Type designators, arrays
