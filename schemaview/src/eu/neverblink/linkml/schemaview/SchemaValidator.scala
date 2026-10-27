@@ -50,7 +50,8 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Macro validator's result */
   private lazy val macroResult = sv.schemas.foldLeft(ValidatorResult.ok) { (acc, schema) =>
-    given ValidatorContext = ValidatorContext(isDefaultRangeAllowed, schema.id)
+    given ValidatorContext =
+      ValidatorContext(isDefaultRangeAllowed, schema.id, sv.getPrefixes(schema))
     acc + macroValidator.validate(schema).prependedPath("/")
   }
 
@@ -134,11 +135,31 @@ final class SchemaValidator(using sv: SchemaView) {
     else new Some(new UndefinedDefaultRange(location = rootLocation))
 
   /** Any malformed URI or CURIE values in the schema. */
-  private lazy val invalidUriOrCuries: Seq[SchemaError] =
+  private lazy val invalidUriOrCuries: Seq[SchemaFatal] =
     macroResult.invalidUriOrCuries.map(value =>
       new InvalidUriOrCurie(
         location = at(value.path, value.fromSchema),
         uriOrCurie = value.value,
+      ),
+    )
+
+  /** Any CURIE values with a declared prefix that weren't expanded, in a schema built in code. */
+  private lazy val unexpandedCuries: Seq[SchemaFatal] =
+    macroResult.unexpandedCuries.map(value =>
+      new UnexpandedCurie(
+        location = at(value.path, value.fromSchema),
+        uriOrCurie = value.value,
+        uri = value.uri,
+      ),
+    )
+
+  /** Any URI or CURIE values that look like CURIEs, but whose prefix isn't declared. */
+  private lazy val undeclaredCuriePrefixes: Seq[SchemaWarning] =
+    macroResult.undeclaredPrefixes.map(value =>
+      new UndeclaredCuriePrefix(
+        location = at(value.path, value.fromSchema),
+        uriOrCurie = value.value,
+        prefix = value.prefix,
       ),
     )
 
@@ -539,6 +560,8 @@ final class SchemaValidator(using sv: SchemaView) {
   lazy val fatalProblems: Seq[SchemaFatal] = {
     val problems = unknownReferences ++
       invalidRangeTypes ++
+      invalidUriOrCuries ++
+      unexpandedCuries ++
       usedUndefinedDefaultRange ++
       schemaIdClash
     // Looking for loops follows references, so it needs all of them to resolve.
@@ -551,7 +574,6 @@ final class SchemaValidator(using sv: SchemaView) {
       multipleTreeRoots ++
       nonUniqueNames ++
       unknownPrefixes ++
-      invalidUriOrCuries ++
       namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */
@@ -559,6 +581,7 @@ final class SchemaValidator(using sv: SchemaView) {
     invalidSlotUsage ++
       undefinedDefaultRange ++
       noTreeRoot ++
+      undeclaredCuriePrefixes ++
       namingIssues.collect { case e: SchemaWarning => e }
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.

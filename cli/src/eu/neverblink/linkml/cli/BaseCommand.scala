@@ -9,7 +9,9 @@ import eu.neverblink.linkml.schemaview.{
   SchemaIssues,
   SchemaView,
 }
+import eu.neverblink.linkml.rdf.RdfParseException
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.runtime.SchemaConversionException
 
 import java.io.{ByteArrayOutputStream, OutputStream, PrintStream}
 import scala.util.control.NonFatal
@@ -45,6 +47,16 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
     printLine(message, toStderr = true)
     exit(1)
 
+  /** Prints `message` with the reason for `e`, without a stack trace, and exits with 1, if `e` is a
+    * problem with the input that the user can fix: a [[SchemaConversionException]] or an
+    * [[RdfParseException]]. Any other exception, such as a bug, is thrown again, so its stack trace
+    * is printed. So is an [[ExitException]], as the command has already printed why it stopped.
+    */
+  protected final def err(message: String, e: Throwable): Nothing = e match {
+    case _: SchemaConversionException | _: RdfParseException => err(s"$message: ${e.getMessage}")
+    case _ => throw e
+  }
+
   /** The importer for the JSON file of the `--import-map` option, if there is one. */
   protected final def importer(importMapFile: Option[String]): Importer =
     importMapFile.foldFast(FileSystemImporter: Importer) { file =>
@@ -74,17 +86,41 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
       }
     }
 
-  /** Write to `file`, or to the command's stdout when there is none. */
+  /** Write to `file`, or to the command's stdout when there is none.
+    *
+    * A regular file is written to a temporary file next to it first, which then replaces it. So if
+    * `write` fails, the previous `file` is kept, or none is made, and no partially written file is
+    * left behind. Anything else that exists at `file`, such as a link or `/dev/stdout`, is written
+    * to as it is.
+    */
   protected final def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
     file.foldFast {
       // `out` is the command's stdout (redirected in tests). Flush but never close it.
       write(outStream)
       outStream.flush()
     } { value =>
-      val stream = os.write.over.outputStream(os.Path(value, os.pwd))
-      try write(stream)
-      finally stream.close()
+      val path = os.Path(value, os.pwd)
+      if (os.exists(path, followLinks = false) && !os.isFile(path, followLinks = false))
+        writeTo(path, write)
+      else {
+        val temp = path / os.up / ("." + path.last + ".tmp")
+        try {
+          writeTo(temp, write)
+          os.move(temp, path, replaceExisting = true)
+        } catch {
+          case NonFatal(e) =>
+            try os.remove(temp)
+            catch { case NonFatal(removeError) => e.addSuppressed(removeError) }
+            throw e
+        }
+      }
     }
+
+  private def writeTo(path: os.Path, write: OutputStream => Unit): Unit = {
+    val stream = os.write.over.outputStream(path)
+    try write(stream)
+    finally stream.close()
+  }
 
   /** Runs the whole CLI (via [[App]]) with the given args, capturing stdout and stderr. For tests
     * only.

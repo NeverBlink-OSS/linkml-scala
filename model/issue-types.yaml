@@ -134,6 +134,45 @@ classes:
           Cyclic {relation} reference at {location.json_pointer}: {cycle}. An element cannot refer
           back to itself through {relation}.
 
+  InvalidUriOrCurie:
+    is_a: SchemaFatal
+    description: A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair.
+    attributes:
+      uri_or_curie:
+        range: uriorcurie
+        required: true
+        title: URI or CURIE
+    slot_usage:
+      message:
+        equals_expression: "Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}"
+      details:
+        equals_expression: >-
+          Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}. A URI must be a valid
+          IRI. A CURIE must be of the form 'prefix:localname', where the prefix is declared in the
+          schema and 'localname' is a valid relative IRI reference.
+
+  UnexpandedCurie:
+    is_a: SchemaFatal
+    description: >-
+      A CURIE value has a declared prefix, but wasn't expanded to a URI. CURIEs are expanded when a
+      schema is read, so this happens only in a schema built in code.
+    attributes:
+      uri_or_curie:
+        range: uriorcurie
+        required: true
+        title: URI or CURIE
+      uri:
+        range: uri
+        required: true
+        title: URI
+    slot_usage:
+      message:
+        equals_expression: "CURIE '{uri_or_curie}' at {location.json_pointer} isn't expanded"
+      details:
+        equals_expression: >-
+          CURIE '{uri_or_curie}' at {location.json_pointer} isn't expanded. CURIEs are expanded
+          when a schema is read, but not in a schema built in code. Use the URI '{uri}' instead.
+
   SchemaParseError:
     is_a: SchemaFatal
     description: >-
@@ -276,23 +315,6 @@ classes:
       message:
         equals_expression: "Undefined prefix {prefix} at {location.json_pointer}"
 
-  InvalidUriOrCurie:
-    is_a: SchemaError
-    description: A URI or CURIE value in the schema is not a valid URI or `prefix:localname` pair.
-    attributes:
-      uri_or_curie:
-        range: uriorcurie
-        required: true
-        title: URI or CURIE
-    slot_usage:
-      message:
-        equals_expression: "Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}"
-      details:
-        equals_expression: >-
-          Invalid URI or CURIE '{uri_or_curie}' at {location.json_pointer}. A valid URI must be a
-          valid IRI, and a valid CURIE must be of the form 'prefix:localname' where 'localname' is a
-          valid relative IRI reference.
-
   # ---- Warning ----------------------------------------------------------------------------------
 
   UndefinedDefaultRange:
@@ -313,6 +335,29 @@ classes:
     slot_usage:
       message:
         equals_expression: "No 'tree_root' class is defined in the schema"
+
+  UndeclaredCuriePrefix:
+    is_a: SchemaWarning
+    description: >-
+      A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has
+      it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python.
+    attributes:
+      uri_or_curie:
+        range: uriorcurie
+        required: true
+        title: URI or CURIE
+      prefix:
+        range: ncname
+        required: true
+        title: prefix
+    slot_usage:
+      message:
+        equals_expression: "Undeclared prefix '{prefix}' in '{uri_or_curie}' at {location.json_pointer}"
+      details:
+        equals_expression: >-
+          Undeclared prefix '{prefix}' in '{uri_or_curie}' at {location.json_pointer}. The value is
+          read as a URI with the prefix as its scheme. If it is meant as a CURIE, declare the prefix
+          in the schema's 'prefixes'.
 
   InvalidSlotUsage:
     is_a: SchemaWarning
