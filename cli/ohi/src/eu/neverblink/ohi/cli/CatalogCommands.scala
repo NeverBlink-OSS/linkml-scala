@@ -75,6 +75,8 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Ba
 final case class SearchOptions(
     @Recurse
     common: CatalogOptions,
+    @HelpMessage("Color output: auto or never. Default: auto.")
+    color: CliColor = CliColor.Auto,
     @HelpMessage("Complete HTTP search endpoint. Supply with --query-by, or omit both for ohi.dev.")
     searchUrl: Option[String] = None,
     @HelpMessage(
@@ -110,20 +112,29 @@ object Search extends CatalogCommand[SearchOptions] {
       options: SearchOptions,
       input: String,
       client: CatalogClient,
-  ): String = CatalogOutput.search(
-    client.search(
-      SearchRequest(
-        q = input,
-        page = options.page,
-        perPage = options.perPage,
-        filterBy = options.filterBy,
-        sortBy = options.sortBy,
-        facetBy = options.facetBy,
-        maxFacetValues = options.maxFacetValues,
+  ): String = {
+    val environment = sys.env
+    val colored = !options.common.json && options.color.enabled(
+      terminal = (outStream eq System.out) && CliColor.terminalAttached,
+      term = environment.get("TERM"),
+    )
+    CatalogOutput.search(
+      client.search(
+        SearchRequest(
+          q = input,
+          page = options.page,
+          perPage = options.perPage,
+          filterBy = options.filterBy,
+          sortBy = options.sortBy,
+          facetBy = options.facetBy,
+          maxFacetValues = options.maxFacetValues,
+        ),
       ),
-    ),
-    options.common.json,
-  )
+      options.common.json,
+      SearchOutput.width(environment.get("COLUMNS")),
+      colored,
+    )
+  }
 }
 
 @HelpMessage("Inspect an exact ontology publication URL")
