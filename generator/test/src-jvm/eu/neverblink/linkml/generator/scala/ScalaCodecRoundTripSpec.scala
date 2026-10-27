@@ -20,6 +20,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       "typed" -> noCodecForType("decimal", "date"),
       "constraints" -> noCodecForType("float"),
       "constraintsOnTypes" -> noCodecForType("float"),
+      "unionOf" -> noCodecForType("decimal"),
     ) ++ Seq("treeRootAsCompactDict", "treeRootAsList", "treeRootAsSimpleDict").map(
       _ -> noTreeRootAs,
     )

@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/unionOf/> .
+
+_:b a :Container;
+    :value 1;
+    :amount "xyz" .

@@ -1,4 +1,4 @@
-id: https://neverblink.eu/linkml/tests/unionOf
+id: https://neverblink.eu/linkml/tests/unionOf/
 name: unionOf
 imports:
   - linkml:types
@@ -14,6 +14,16 @@ types:
     minimum_value: 0
   CodeOrCount:
     union_of: [Code, Count]
+  # The union's own constraints apply only to the members they fit: the pattern to text, the
+  # bound to numbers
+  WordOrDigit:
+    union_of: [string, integer]
+    pattern: '^[a-z]+$'
+    maximum_value: 9
+  # A union with a union as a member. Its bound applies to `Count` and `decimal`, but not to `Code`
+  CodeCountOrDecimal:
+    union_of: [CodeOrCount, decimal]
+    maximum_value: 100
 
 classes:
   Container:
@@ -26,3 +36,11 @@ classes:
       choice:
         rank: 2
         range: CodeOrCount
+      word:
+        rank: 3
+        range: WordOrDigit
+        # Has precedence over the 9 of the type
+        maximum_value: 5
+      amount:
+        rank: 4
+        range: CodeCountOrDecimal

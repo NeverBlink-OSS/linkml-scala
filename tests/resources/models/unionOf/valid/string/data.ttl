@@ -1,0 +1,7 @@
+@prefix : <https://neverblink.eu/linkml/tests/unionOf/> .
+
+_:b a :Container;
+    :value "hello";
+    :choice "ABC";
+    :word "abc";
+    :amount "XYZ" .
