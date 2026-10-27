@@ -103,26 +103,28 @@ final class PydanticGenerator(using sv: SchemaView)
     s"Annotated[dict[str, $ref], _with_keys($args), _without_keys($dumpArgs)]"
   }
 
-  /** Python type of a type range, with the constraints of the slot and the type. */
+  /** Python type of a type range: the type of each alternative, joined with `|`. */
   private def scalarType(tav: TypeAttributeView, ctx: Context): String =
-    if tav.typeView.isUnion then
-      // Each member keeps its own constraints, as they only apply to values of that member
-      tav.typeView.unionAlternatives.map { member =>
-        constrainedType(TypeAttributeView(tav.slotView, tav.definingClassView, member), ctx)
-      }.distinct.mkString(" | ")
-    else constrainedType(tav, ctx)
+    tav.alternatives.map(constrainedType(_, ctx)).distinct.mkString(" | ")
 
-  private def constrainedType(tav: TypeAttributeView, ctx: Context): String = {
-    val base = runtimeType(tav.typeView, ctx)
+  /** Python type of one alternative, with its constraints. */
+  private def constrainedType(alternative: ValueAlternative, ctx: Context): String = {
+    val base = runtimeType(alternative.typeView, ctx)
     val constraints = mutable.ListBuffer.empty[String]
     if (base == "str") {
-      tav.pattern.foreachFast(p => constraints.addOne("pattern=".concat(pyPattern(p.linkml))))
-      tav.minimumLength.foreachFast(n => constraints.addOne("min_length=".concat(n.toString)))
-      tav.maximumLength.foreachFast(n => constraints.addOne("max_length=".concat(n.toString)))
+      alternative.pattern.foreachFast(p =>
+        constraints.addOne("pattern=".concat(pyPattern(p.linkml))),
+      )
+      alternative.minimumLength.foreachFast(n =>
+        constraints.addOne("min_length=".concat(n.toString)),
+      )
+      alternative.maximumLength.foreachFast(n =>
+        constraints.addOne("max_length=".concat(n.toString)),
+      )
     }
     if numericTypes(base) then {
-      number(tav.minimumValue).foreachFast(v => constraints.addOne("ge=".concat(v)))
-      number(tav.maximumValue).foreachFast(v => constraints.addOne("le=".concat(v)))
+      number(alternative.minimumValue).foreachFast(v => constraints.addOne("ge=".concat(v)))
+      number(alternative.maximumValue).foreachFast(v => constraints.addOne("le=".concat(v)))
     }
     if constraints.isEmpty then base
     else {

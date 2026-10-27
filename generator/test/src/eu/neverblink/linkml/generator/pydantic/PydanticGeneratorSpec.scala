@@ -627,6 +627,31 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py should include("    choice: StrictBool | str | StrictInt | None = None\n")
     }
 
+    "apply the constraints of a union_of type and its slot to the members they fit" in {
+      val py = generate(
+        """types:
+          |  CodeOrNumber:
+          |    union_of: [string, integer]
+          |    pattern: "^[A-Z]+$"
+          |    maximum_value: 9
+          |classes:
+          |  C:
+          |    attributes:
+          |      value: {range: CodeOrNumber}
+          |      small: {range: CodeOrNumber, maximum_value: 5, maximum_length: 2}
+          |""".stripMargin,
+      )
+      py should include(
+        """    value: Annotated[str, Field(pattern=r"^[A-Z]+$")] | """ +
+          "Annotated[StrictInt, Field(le=9)] | None = None\n",
+      )
+      // The slot's own constraints have precedence over the union's
+      py should include(
+        """    small: Annotated[str, Field(pattern=r"^[A-Z]+$", max_length=2)] | """ +
+          "Annotated[StrictInt, Field(le=5)] | None = None\n",
+      )
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.allOptIn do
         s"model '${entry.name}'" in {
