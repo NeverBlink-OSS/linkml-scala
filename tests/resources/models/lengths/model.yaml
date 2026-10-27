@@ -1,5 +1,7 @@
 id: https://neverblink.eu/linkml/tests/lengths/
 name: lengths
+prefixes:
+  ex: https://example.org/
 imports:
   - linkml:types
 
@@ -10,6 +12,7 @@ classes:
       - code
       - name
       - count
+      - ref
 
 slots:
   code:
@@ -26,6 +29,11 @@ slots:
     range: integer
     # Lengths only apply to text, so this checks nothing
     minimum_length: 2
+  ref:
+    rank: 4
+    range: uriorcurie
+    # Checks the text in the data, not the full IRI it stands for
+    maximum_length: 5
 
 types:
   short_code:

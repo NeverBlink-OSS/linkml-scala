@@ -264,9 +264,12 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
             member.pattern.foreachFast { p =>
               sink.triple(target, Shacl.pattern, Literal(p))
             }
-            if (member.minimumLength.isDefined || member.maximumLength.isDefined) {
+            if (
+              (member.minimumLength.isDefined || member.maximumLength.isDefined) &&
+              member.implicitPrefix.isEmpty
+            ) {
               memberRange.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
-                case typeView: TypeView if typeView.hasTextValues =>
+                case typeView: TypeView if hasTextLiterals(typeView) =>
                   emitLengths(sink, member.minimumLength, member.maximumLength, target)
                 case _ =>
               }
@@ -367,7 +370,8 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       typeAttribute.pattern.foreachFast { p =>
         sink.triple(subject, Shacl.pattern, Literal(p.linkml))
       }
-      emitLengths(sink, typeAttribute.minimumLength, typeAttribute.maximumLength, subject)
+      if (typeAttribute.implicitPrefix.isEmpty && hasTextLiterals(typeAttribute.typeView))
+        emitLengths(sink, typeAttribute.minimumLength, typeAttribute.maximumLength, subject)
       // Bounds (min / max values) only make sense for ordered literal ranges.
       if (typeAttribute.implicitPrefix.isEmpty)
         datatypeForValueBound(typeAttribute.typeView).foreachFast { datatype =>
@@ -380,6 +384,12 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
         }
     case _ => ()
   }
+
+  /** Whether the values of the type are text literals in RDF, so that SHACL can check their length.
+    * A URI is an IRI in RDF, and SHACL would measure the full IRI instead of the text in the data.
+    */
+  private def hasTextLiterals(typeView: TypeView): Boolean =
+    typeView.hasTextValues && !typeView.isIri
 
   /** Emit `sh:minLength` and `sh:maxLength`. */
   private def emitLengths(

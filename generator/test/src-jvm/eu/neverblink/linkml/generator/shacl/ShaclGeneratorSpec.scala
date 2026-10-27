@@ -1382,6 +1382,30 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should not include "sh:maxLength"
     }
 
+    "write no lengths for values that are IRIs in RDF" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  t: https://neverblink.eu/linkml/shacl/test/
+           |classes:
+           |  Container:
+           |    slots:
+           |    - ref
+           |    - tag
+           |slots:
+           |  ref:
+           |    range: uriorcurie
+           |    maximum_length: 10
+           |  tag:
+           |    range: string
+           |    implicit_prefix: t
+           |    maximum_length: 10
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      // SHACL would measure the full IRI instead of the text in the data
+      turtle should not include "sh:maxLength"
+    }
+
     "type nested value bounds with the nearest enclosing range" in {
       val input =
         s"""$schemaShared

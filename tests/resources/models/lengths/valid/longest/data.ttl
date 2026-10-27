@@ -3,4 +3,5 @@
 _:b a :Lengths;
     :code "ABC";
     :name "Ann Smith";
-    :count 5 .
+    :count 5;
+    :ref <https://example.org/a> .
