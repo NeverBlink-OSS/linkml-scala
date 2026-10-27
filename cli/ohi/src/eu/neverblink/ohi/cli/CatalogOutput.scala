@@ -14,31 +14,9 @@ private[cli] object CatalogOutput {
   private val deliveryCodec: LinkmlYamlCodec[DeliveryResult] = LinkmlYamlCodec.derived
   private val fileErrorCodec: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
-  def search(result: SearchResult, json: Boolean): String =
+  def search(result: SearchResult, json: Boolean, width: Int, colored: Boolean): String =
     if json then JsonUtil.yamlToJson(searchCodec.encode(result))
-    else {
-      val summary =
-        s"Total: ${result.total}, page: ${result.page}, page size: ${result.perPage}, cutoff: ${result.searchCutoff}"
-      val cutoff = Option.when(result.searchCutoff)("Hits or total may be incomplete.").toSeq
-      val hits = result.hits.map { hit =>
-        Seq(
-          s"${hit.namespace}/${hit.name} ${hit.version}",
-          s"Title: ${hit.title}",
-          s"Description: ${hit.description}",
-          s"URL: ${hit.baseUrl.original}",
-          s"Formats: ${hit.formats.map(stringify(_)).mkString(", ")}",
-          s"Licenses: ${reported(hit.licenses)}",
-          s"Published: ${stringify(hit.publishedAt)}",
-        ).mkString("\n")
-      }
-      val facets = result.facetCounts.map { facet =>
-        (s"Facet: ${facet.fieldName}" +: facet.counts.map(value =>
-          s"  ${value.value}: ${value.count}",
-        )).mkString("\n")
-      }
-      (Seq(summary) ++ cutoff ++
-        (if hits.isEmpty then Seq("No results on this page.") else hits) ++ facets).mkString("\n\n")
-    }
+    else SearchOutput.render(result, width, colored)
 
   def publication(result: Publication, json: Boolean): String =
     if json then JsonUtil.yamlToJson(publicationCodec.encode(result))
