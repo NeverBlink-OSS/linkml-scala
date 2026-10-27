@@ -159,30 +159,33 @@ object Inspect extends CatalogCommand[InspectOptions] {
 }
 
 @HelpMessage(
-  "Download a file or all files in a lock\n" +
+  "Download an ontology file or all files in a lock\n" +
     "Existing entries in the directory are never overwritten.",
 )
-@ArgsName("[file-url]")
+@ArgsName("[ontology-or-file-url]")
 final case class GetOptions(
     @Recurse
     common: CatalogOptions,
-    @HelpMessage("Destination directory.")
-    to: String,
+    @HelpMessage("Format to download. Required for an ontology reference.")
+    format: Option[String] = None,
+    @HelpMessage("Destination directory. Default: current directory.")
+    to: String = ".",
     @HelpMessage("Download every file in a version-2 lock.")
     lock: Option[String] = None,
 ) extends HasCatalogOptions
 
-object Get extends CatalogCommand[GetOptions] {
+private[cli] class GetCommand extends CatalogCommand[GetOptions] {
   override protected def commandName: String = "get"
-  override protected def argumentName: String = "file URL"
+  override protected def argumentName: String = "ontology reference or file URL"
 
   override def run(options: GetOptions, remainingArgs: RemainingArgs): Unit = options.lock match {
     case None => super.run(options, remainingArgs)
     case Some(suppliedPath) =>
       if remainingArgs.all.nonEmpty then
         err(
-          "Use either a file URL or --lock, without extra arguments. Run 'ohi get --help' for usage.",
+          "Use either an ontology reference, a file URL or --lock, without extra arguments. Run 'ohi get --help' for usage.",
         )
+      if options.format.nonEmpty then error(Error.Other("--format cannot be used with --lock."))
       val path = try Path.of(suppliedPath)
       catch {
         case cause: InvalidPathException =>
@@ -221,6 +224,15 @@ object Get extends CatalogCommand[GetOptions] {
       options: GetOptions,
       input: String,
       client: CatalogClient,
-  ): String =
-    CatalogOutput.delivery(FileDelivery.save(input, options.to, client.get), options.common.json)
+  ): String = {
+    val url = if OntologyReference.isUrl(input) then {
+      if options.format.nonEmpty then error(Error.Other("--format cannot be used with a file URL."))
+      input
+    } else
+      OntologyReference.resolve(input, options.format, client.search, client.inspect)
+        .fold(message => error(Error.Other(message)), _._2.url.original)
+    CatalogOutput.delivery(FileDelivery.save(url, options.to, client.get), options.common.json)
+  }
 }
+
+object Get extends GetCommand

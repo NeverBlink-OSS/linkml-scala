@@ -69,35 +69,63 @@ object Init extends ProjectCommand[InitOptions] {
 }
 
 @HelpMessage(
-  "Add a publication's artifact to the project\n" +
+  "Add an ontology file to the project\n" +
     "Adds it to ohi.yaml, updates ohi.lock.json and downloads the artifact.",
 )
-@ArgsName("<base-url>")
+@ArgsName("<ontology-or-base-url>")
 final case class AddOptions(
-    @HelpMessage("URL of the artifact to add, as listed by ohi inspect.")
-    artifact: String,
-    @HelpMessage("Directory to save the artifact in.")
-    to: String,
+    @HelpMessage("Artifact URL to add. Required with a publication URL.")
+    artifact: Option[String] = None,
+    @HelpMessage("Format to download. Required for an ontology reference.")
+    format: Option[String] = None,
+    @HelpMessage("Destination directory. Default: current directory.")
+    to: String = ".",
     @HelpMessage("Project directory containing ohi.yaml. Default: current directory.")
     project: String = ".",
     @HelpMessage("Emit one JSON result or error instead of human-readable output.")
     json: Boolean = false,
 ) extends ProjectOptions
 
-object Add extends ProjectCommand[AddOptions] {
+private[cli] class AddCommand extends ProjectCommand[AddOptions] {
   override protected def operation: ProjectOperation = ProjectOperation.Add
   override protected def inputCount: Range.Inclusive = 1 to 1
   override protected def directory(options: AddOptions, inputs: Seq[String]): String =
     options.project
+
+  protected def client(): CatalogClient = new CatalogClient()
+
   override protected def execute(
       options: AddOptions,
       inputs: Seq[String],
       project: Project,
   ): ProjectResult = {
-    val client = new CatalogClient()
-    project.add(inputs.head, options.artifact, options.to, client.inspect, client.get)
+    val catalog = client()
+    val input = inputs.head
+    if OntologyReference.isUrl(input) then {
+      if options.format.nonEmpty then
+        error(Error.Other("--format cannot be used with a publication URL."))
+      val artifact = options.artifact.getOrElse(
+        error(Error.Other("Required option --artifact not specified")),
+      )
+      project.add(input, artifact, options.to, catalog.inspect, catalog.get)
+    } else {
+      if options.artifact.nonEmpty then
+        error(Error.Other("--artifact cannot be used with an ontology reference."))
+      val (publication, artifact) =
+        OntologyReference.resolve(input, options.format, catalog.search, catalog.inspect)
+          .fold(message => error(Error.Other(message)), identity)
+      project.add(
+        publication.baseUrl.original,
+        artifact.url.original,
+        options.to,
+        url => if url == publication.baseUrl.original then publication else catalog.inspect(url),
+        catalog.get,
+      )
+    }
   }
 }
+
+object Add extends AddCommand
 
 @HelpMessage("Rebuild ohi.lock.json from ohi.yaml\nDownloads nothing.")
 final case class LockOptions(

@@ -36,6 +36,15 @@ These commands require no ohi project and do not read or write `ohi.yaml` or a l
 
 Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, check its `format`, then pass that entry's `url` to `get`.
 
+Download from ohi.dev using the namespace and name shown by `search`:
+
+```sh
+ohi get namespace/name --format owl-turtle
+ohi get namespace/name@version --format owl-turtle --to ./ontologies
+```
+
+`--format` is required. Omit `@version` for the most recently published release.
+
 ## Catalog commands
 
 `search` returns one page. Use `--page` to request another page and `--per-page` to set its size.
@@ -49,13 +58,13 @@ Supplying only one fails.
 
 `inspect` retrieves the exact publication URL supplied. It reports publication metadata, artifacts and dependency publication URLs.
 
-`get <file-url>` saves the file under its URL filename in the `--to` directory, creating the directory if
-needed. Existing files are not overwritten. Move the existing file or choose another directory
+`get` saves the file under its URL filename in the current directory. Use `--to` to choose another
+directory, which is created if needed. Existing files are not overwritten. Move the existing file or choose another directory
 before retrying. The result reports the saved path. If a failure leaves an incomplete file,
 the error tells you which file to remove.
 
 Use `--json` for scripts. Successful results go to stdout with exit status 0. Failures go to stderr
-with exit status 1. Argument errors can remain text even with `--json`. The result fields are
+with exit status 1. The result fields are
 defined in [SearchResult](../../ohi/model/schema/search.yaml), [Publication](../../ohi/model/schema/package.yaml)
 and [DeliveryResult](schema/cli-delivery.yaml).
 
@@ -68,6 +77,7 @@ A project is a directory with two files. You edit [`ohi.yaml`](schema/declaratio
 
 ```sh
 ohi init ./project
+ohi add namespace/name --format owl-turtle --project ./project
 ohi add https://hub.example/publications/prov-o-2013 --artifact https://hub.example/files/prov-o.ttl --to ./ontologies --project ./project
 ohi lock --project ./project
 ```
@@ -75,10 +85,16 @@ ohi lock --project ./project
 | Command | Effect |
 | --- | --- |
 | `init [directory]` | Creates the directory if needed and an `ohi.yaml` with no selections. Keeps an existing `ohi.yaml`. |
-| `add <base-url> --artifact <url> --to <directory>` | Adds the publication and artifact to `ohi.yaml`, rebuilds `ohi.lock.json` and downloads the artifact into `--to`. |
+| `add <namespace/name[@version]> --format <format>` | Records the selected release and file URLs in `ohi.yaml`, rebuilds `ohi.lock.json` and downloads the file. |
+| `add <base-url> --artifact <url>` | Records and downloads the exact URL pair. |
 | `lock` | Rebuilds `ohi.lock.json` from `ohi.yaml`. Downloads nothing. |
 
-`add` and `lock` take `--project`, which defaults to the current directory.
+`add` accepts the same ontology references and formats as `get`. Use `--artifact` only with a
+publication URL, and omit `--format` for that form. Project records keep the resolved URLs, so
+`lock` does not select a newer release.
+
+`add` and `lock` take `--project`, which defaults to the current directory. Downloads default to
+the invocation directory even when `--project` points elsewhere. Use `--to` to change the download directory.
 
 To reorder, replace or remove selections, edit `ohi.yaml` and run `lock`:
 
@@ -93,7 +109,7 @@ Removing a selection does not delete its downloaded file. Adding a new selection
 
 For each selection, the lock also lists one artifact from each dependency of the selected publication, in the format of the selected artifact. `add` and `lock` fail when a dependency has no artifact or several artifacts in that format. These commands do not download dependency artifacts.
 
-`--json` prints a [ProjectResult](schema/project-result.yaml) on stdout or a [ProjectError](schema/project-error.yaml) on stderr. When a command fails after writing some files, its error message lists the commands that finish the work.
+`--json` prints a [ProjectResult](schema/project-result.yaml) on stdout and uses [ProjectError](schema/project-error.yaml) for project failures on stderr. When a command fails after writing some files, its error message lists the commands that finish the work.
 
 ## Download a lock
 

@@ -9,6 +9,7 @@ import eu.neverblink.ohi.cli.generated.lockdownload.{
   LockFileResult,
   LockFileStatus,
 }
+import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import tools.jackson.databind.JsonNode
@@ -63,19 +64,21 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
 
   private def withServerBytes(bytes: Array[Byte], status: Int = 200)(
       check: (String, ConcurrentLinkedQueue[String]) => Unit,
-  ): Unit = withServerResponses(_ => status -> bytes)(check)
+  ): Unit = withServerResponses(_ => _ => status -> bytes)(check)
 
-  private def withServerResponses(response: String => (Int, Array[Byte]))(
+  private def withServerResponses(responses: String => String => (Int, Array[Byte]))(
       check: (String, ConcurrentLinkedQueue[String]) => Unit,
   ): Unit = {
     val requests = new ConcurrentLinkedQueue[String]()
     val server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+    val base = s"http://127.0.0.1:${server.getAddress.getPort}"
+    val respond = responses(base)
     server.createContext(
       "/",
       (exchange: HttpExchange) => {
         val request = exchange.getRequestURI.toString
         requests.add(request)
-        val (status, bytes) = response(request)
+        val (status, bytes) = respond(request)
         exchange.getResponseHeaders.set("Cache-Control", "no-store")
         try {
           exchange.sendResponseHeaders(status, if bytes.isEmpty then -1L else bytes.length.toLong)
@@ -84,7 +87,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       },
     )
     server.start()
-    try check(s"http://127.0.0.1:${server.getAddress.getPort}", requests)
+    try check(base, requests)
     finally server.stop(0)
   }
 
@@ -396,6 +399,86 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "catalog file delivery" should {
+    "resolve a versioned reference and download its advertised URL without project records" in {
+      val directory = os.temp.dir(prefix = "ohi reference get ")
+      val bytes = Array[Byte](0, -1, 65, -128)
+      try
+        withServerResponses { base =>
+          val selectedHits = hits.replace("https://example.org/z?revision=2", base + "/publication")
+          val search = s"""{"hits":$selectedHits,"found":2,"page":1,
+            "request_params":{"per_page":250},"search_cutoff":false}"""
+          val metadata = publication
+            .replace("https://example.org/publications/z?revision=2", base + "/publication")
+            .replace("https://example.org/file.ttl?revision=2", base + "/file.ttl")
+          (request: String) =>
+            new URI(request).getPath match {
+              case "/search" => 200 -> search.getBytes(UTF_8)
+              case "/publication" => 200 -> metadata.getBytes(UTF_8)
+              case "/file.ttl" => 200 -> bytes
+              case _ => 404 -> Array.emptyByteArray
+            }
+        } { (base, requests) =>
+          val command = new GetCommand {
+            override protected def config(options: GetOptions): CatalogConfig =
+              CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
+          }
+          val (out, err, code) = command.runTestCommandWithExitCode(
+            List("example/z@2.0", "--format", "owl-turtle", "--to", directory.toString, "--json"),
+            args => command.main("ohi get", args),
+          )
+          code shouldBe 0
+          err shouldBe empty
+          json(out) shouldBe json(s"""{"url":"$base/file.ttl","path":"$directory/file.ttl"}""")
+          os.read.bytes(directory / "file.ttl").toSeq shouldBe bytes.toSeq
+          os.list(directory).map(_.last) shouldBe Seq("file.ttl")
+          val calls = requests.asScala.toSeq
+          calls.map(value => new URI(value).getPath) shouldBe
+            Seq("/search", "/publication", "/file.ttl")
+          query(calls.head)("filter_by") shouldBe "namespace:=example && name:=z && version:=2.0"
+        }
+      finally os.remove.all(directory)
+    }
+
+    for lockMode <- Seq(false, true) do
+      s"default a ${if lockMode then "lock" else "URL"} download to the invocation directory" in {
+        val directory = os.temp.dir(prefix = "ohi get cwd ")
+        try
+          withServer("abc") { (url, requests) =>
+            val arguments = if lockMode then {
+              val path = writeLock(
+                directory,
+                Seq(
+                  (url + "/file.ttl") ->
+                    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+                ),
+              )
+              Seq("--lock", path.toString)
+            } else Seq(url.replace("http://", "HTTP://") + "/file.ttl")
+            val result = os.proc(
+              os.Path(System.getProperty("java.home")) / "bin" / "java",
+              "-cp",
+              System.getProperty("java.class.path"),
+              "eu.neverblink.ohi.cli.Main",
+              "get",
+              arguments,
+              "--json",
+            ).call(cwd = directory, check = false, stderr = os.Pipe, timeout = 10000)
+            result.exitCode shouldBe 0
+            result.err.text() shouldBe empty
+            val output = json(result.out.text())
+            val receipt = if lockMode then {
+              output.get("files").size() shouldBe 1
+              output.get("files").get(0).get("status").stringValue() shouldBe "DOWNLOADED"
+              output.get("files").get(0)
+            } else output
+            receipt.get("path").stringValue() shouldBe
+              directory.toNIO.toRealPath().resolve("file.ttl").toString
+            os.read(directory / "file.ttl") shouldBe "abc"
+            requests.asScala.toSeq shouldBe Seq("/file.ttl")
+          }
+        finally os.remove.all(directory)
+      }
+
     "bind the directory flag, save exact bytes and emit a receipt without changing project records" in {
       val directory = os.temp.dir(prefix = "ohi cli get ")
       try {
@@ -455,23 +538,29 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "locked file delivery" should {
-    "reject mixed lock and URL modes before configuration" in {
-      val error = failed(
-        Get,
-        "get",
-        "https://example.org/file.ttl",
-        "--lock",
-        "missing.json",
-        "--to",
-        ".",
-        "--timeout-ms",
-        "0",
-        "--json",
+    for (mode, arguments, expected) <- Seq(
+        ("URL", Seq("https://example.org/file.ttl"), "a file URL or --lock"),
+        ("reference", Seq("test/example"), "an ontology reference"),
+        ("format", Seq("--format", "owl-turtle"), "--format cannot be used with --lock"),
       )
-      error should include("either a file URL or --lock")
-      error should include("ohi get --help")
-      error.trim should not startWith "{"
-    }
+    do
+      s"reject mixed lock and $mode modes before configuration" in {
+        val error = failed(
+          Get,
+          (Seq("get") ++ arguments ++ Seq(
+            "--lock",
+            "missing.json",
+            "--to",
+            ".",
+            "--timeout-ms",
+            "0",
+            "--json",
+          ))*,
+        )
+        error should include(expected)
+        error should include("ohi get --help")
+        error.trim should not startWith "{"
+      }
 
     "reject a provider-invalid lock argument before timeout configuration" in {
       // The harness accepts NUL arguments that an OS process launcher rejects.
@@ -609,13 +698,13 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         val zBytes = Array[Byte](0, -1, 65, -128)
         val unavailable = new java.util.concurrent.atomic.AtomicBoolean(true)
         val serverError = """{"error":{"reason":null,"retry":true},"attempt":2,"delay":1.25}"""
-        withServerResponses {
+        withServerResponses(_ => {
           case "/z.ttl?revision=2" => 200 -> zBytes
           case "/a.ttl" if unavailable.get() => 503 -> serverError.getBytes(UTF_8)
           case "/a.ttl" => 200 -> "abc".getBytes(UTF_8)
           case "/b.ttl" => 200 -> Array.emptyByteArray
           case _ => 404 -> "Unexpected request".getBytes(UTF_8)
-        } { (base, requests) =>
+        }) { (base, requests) =>
           val path = writeLock(
             directory,
             Seq(
@@ -797,8 +886,20 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           List("search", "*", "--search-url", "https://example.org/search"),
           "search_url and query_by must be supplied together",
         ),
-        ("missing destination", Get, List("get", "https://example.org/file.ttl", "--json"), "--to"),
-        ("missing file URL", Get, List("get", "--to", "."), "exactly one file URL"),
+        ("missing format", Get, List("get", "example/z", "--json"), "--format"),
+        (
+          "format on file URL",
+          Get,
+          List("get", "https://example.org/file.ttl", "--format", "owl-turtle"),
+          "--format cannot be used",
+        ),
+        (
+          "invalid format",
+          Get,
+          List("get", "example/z", "--format", "turtle"),
+          "format",
+        ),
+        ("missing file URL", Get, List("get", "--to", "."), "exactly one ontology reference"),
         (
           "search setting on inspect",
           Inspect,
