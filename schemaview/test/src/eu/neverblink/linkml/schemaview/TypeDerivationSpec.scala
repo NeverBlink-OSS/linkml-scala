@@ -333,6 +333,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
         |      syntax: '[A-Z]+'
         |    equals_string: ACTIVE
         |    equals_string_in: [ACTIVE, INACTIVE]
+        |    minimum_length: 6
+        |    maximum_length: 8
         |    implicit_prefix: ex
         |    description: Parent metadata
         |  TextChild:
@@ -345,6 +347,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
         |      syntax: NEW
         |    equals_string: NEW
         |    equals_string_in: [NEW]
+        |    minimum_length: 0
+        |    maximum_length: 3
         |  Number:
         |    typeof: integer
         |    equals_number: 7
@@ -376,6 +380,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       text.structuredPattern.flatMap(_.syntax) shouldBe Some("[A-Z]+")
       text.equalsString shouldBe Some("ACTIVE")
       text.equalsStringIn shouldBe Seq("ACTIVE", "INACTIVE")
+      text.minimumLength shouldBe Some(6)
+      text.maximumLength shouldBe Some(8)
       text.description shouldBe None
       text.implicitPrefix shouldBe None
       view.types("TextChild").inner.pattern shouldBe None
@@ -394,6 +400,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       text.structuredPattern.flatMap(_.syntax) shouldBe Some("NEW")
       text.equalsString shouldBe Some("NEW")
       text.equalsStringIn shouldBe Seq("NEW")
+      text.minimumLength shouldBe Some(0)
+      text.maximumLength shouldBe Some(3)
 
       val number = view.types("ZeroChild").derivedType
       number.equalsNumber shouldBe Some(0)
@@ -408,6 +416,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       text.structuredPattern.flatMap(_.syntax) shouldBe Some("[A-Z]+")
       text.equalsString shouldBe Some("ACTIVE")
       text.equalsStringIn shouldBe Seq("ACTIVE", "INACTIVE")
+      text.minimumLength shouldBe Some(6)
+      text.maximumLength shouldBe Some(8)
 
       val number = attributes("number").asInstanceOf[TypeAttributeView]
       number.equalsNumber shouldBe Some(7)

@@ -751,6 +751,10 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
           equalsNumber = combineOption(derived.equalsNumber, parent.equalsNumber, combineFallback),
           minimumValue = combineOption(derived.minimumValue, parent.minimumValue, combineMin),
           maximumValue = combineOption(derived.maximumValue, parent.maximumValue, combineMax),
+          minimumLength =
+            combineOption(derived.minimumLength, parent.minimumLength, combineFallback),
+          maximumLength =
+            combineOption(derived.maximumLength, parent.maximumLength, combineFallback),
         )
       }
 
