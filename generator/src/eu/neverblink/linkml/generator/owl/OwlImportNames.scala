@@ -143,7 +143,7 @@ private[owl] final class OwlImportNames(
 
   /** The IRI as a CURIE if a prefix covers it and the rest is a plain local name, else the IRI.
     *
-    * Use it for text, such as the value of `equals_string`. For a `uriorcurie` slot, use [[uri]].
+    * Use it for text, such as the key of an annotation. For a `uriorcurie` slot, use [[uri]].
     *
     * @param record
     *   Whether to mark the prefix as used, so the schema declares it. False for warning text.

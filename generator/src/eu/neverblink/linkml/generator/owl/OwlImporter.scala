@@ -1049,7 +1049,7 @@ object OwlImporter {
           else cardinality(p, bound, n, singleValuedSlot(p), restrict)
         case ClassExpr.HasValue(PropertyRef(p, false), value) if propertyKinds.contains(p) =>
           val text = value match {
-            case Iri(v) => enumValueText(p, v).getOrElseFast { ensurePrefix(v); curie(v) }
+            case Iri(v) => enumValueText(p, v).getOrElseFast(v)
             case Literal(v, _) => v
             case LanguageLiteral(v, _) => v
           }
@@ -1430,7 +1430,7 @@ object OwlImporter {
         val p = naming.prefixOrNull(u.original)
         if (p ne null) Iterator.single(p) else Iterator.empty
       case c: Curie => Iterator(c.original.takeWhile(_ != ':'))
-      // Text can be a CURIE too, such as the value of `equals_string`.
+      // Text can be a CURIE too, such as the key of an annotation.
       case t: String if t.indexOf(':') > 0 => Iterator(t.takeWhile(_ != ':'))
       case m: collection.Map[?, ?] => m.iterator.flatMap((k, v) => prefixesIn(k) ++ prefixesIn(v))
       case i: Iterable[?] => i.iterator.flatMap(prefixesIn)

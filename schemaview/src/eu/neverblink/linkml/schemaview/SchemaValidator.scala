@@ -1,14 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{
-  NcName,
-  PrefixMap,
-  Reference,
-  Uri,
-  UriCurieValidator,
-  UriOrCurie,
-}
+import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
@@ -248,7 +241,7 @@ final class SchemaValidator(using sv: SchemaView) {
 
   /** Errors for an `equals_string` of a slot in a class that isn't a valid URI or CURIE, when the
     * range of the slot is a URI type or a class. The OWL generator writes such a value as an IRI,
-    * expanded with the prefixes of the schema that defines the slot.
+    * with [[SlotView.uriValueOrNull]].
     */
   private lazy val invalidEqualsStrings: Seq[SchemaError] = {
     val errors = Seq.newBuilder[SchemaError]
@@ -260,10 +253,7 @@ final class SchemaValidator(using sv: SchemaView) {
             case _: ClassView => true
             case _ => false
           }
-          if (
-            isIri &&
-            !UriCurieValidator.isValidUri(UriOrCurie.expanded(text, s.definingPrefixes).original)
-          ) {
+          if (isIri && (s.uriValueOrNull(text) eq null)) {
             errors.addOne(
               new InvalidEqualsString(
                 location = locationOf(cv),

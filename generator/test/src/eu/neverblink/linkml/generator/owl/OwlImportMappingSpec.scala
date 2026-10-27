@@ -229,10 +229,10 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       exactlyOne.maximumCardinality shouldBe Some(1)
     }
 
-    "turn hasValue into equals_string" in {
+    "turn hasValue into equals_string, with an IRI in full" in {
       usage(HasValue(PropertyRef(ns + "p"), Iri(ns + "x"))).slotUsage(
         "p",
-      ).equalsString shouldBe Some("ex:x")
+      ).equalsString shouldBe Some(ns + "x")
     }
   }
 

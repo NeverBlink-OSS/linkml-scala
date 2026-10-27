@@ -499,6 +499,17 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   def implicitPrefixReference: Option[String] =
     slot.implicitPrefix.flatMapFast(p => Option(definingPrefixes.namespaceOrNull(p)))
 
+  /** Get [[text]], a value of this slot such as its `equals_string`, as a URI. A CURIE is expanded
+    * with the prefixes of the schema that defines this slot.
+    *
+    * @return
+    *   The URI, or null if [[text]] isn't a valid URI or CURIE
+    */
+  def uriValueOrNull(text: String): String = {
+    val uri = UriOrCurie.expanded(text, definingPrefixes).original
+    if (UriCurieValidator.isValidUri(uri)) uri else null
+  }
+
   /** Direct parents (mixins + inheritance) of this slot
     */
   lazy val parents: Iterable[SlotView] = {

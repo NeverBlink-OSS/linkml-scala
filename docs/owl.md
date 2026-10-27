@@ -119,7 +119,7 @@ The importer also reads vocabularies written in plain RDFS, such as DC terms or 
 | `owl:allValuesFrom` on a class                              | the slot in the class's `slots`, with `slot_usage` `range` when it narrows the property's range                   |
 | `owl:someValuesFrom`                                        | `required: true`; when it narrows the range, also `has_member: {range: …}` (another one goes under `all_of`)      |
 | cardinalities                                               | `required`, `minimum_cardinality`, `maximum_cardinality`, `exact_cardinality`                                      |
-| `owl:hasValue`                                              | `equals_string`                                                                                                     |
+| `owl:hasValue`                                              | `equals_string`, with an IRI in full                                                                                |
 | a union of a class's children as its superclass             | `abstract: true`                                                                                                    |
 | `owl:equivalentClass` to a named class                      | `exact_mappings`                                                                                                    |
 | `owl:equivalentClass` to an intersection                    | the conjuncted classes become `is_a` and `mixins`, the restrictions become slots and `slot_usage`. |

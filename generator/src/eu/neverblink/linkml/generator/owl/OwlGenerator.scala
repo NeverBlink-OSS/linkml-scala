@@ -533,8 +533,8 @@ object OwlGenerator {
       */
     private def valueOf(s: SlotView, text: String): Option[Value] = {
       def iri: Value = {
-        val uri = UriOrCurie.expanded(text, s.definingPrefixes).original
-        if (UriCurieValidator.isValidUri(uri)) Iri(uri)
+        val uri = s.uriValueOrNull(text)
+        if (uri ne null) Iri(uri)
         else
           throw SchemaConversionException(
             s"The equals_string value '$text' of slot '${s.name}' isn't a valid URI or CURIE",
