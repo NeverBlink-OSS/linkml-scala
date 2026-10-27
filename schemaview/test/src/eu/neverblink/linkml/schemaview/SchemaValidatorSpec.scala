@@ -905,6 +905,24 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
     }
 
+    "load a schema with a namespace that is only a URI scheme" in {
+      val schemaYaml =
+        """id: https://example.org/test
+           |name: test
+           |prefixes:
+           |  DOI: "doi:"
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    see_also:
+           |    - DOI:10.1000/182
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      sv.root.classes("SomeClass").seeAlso shouldBe Seq(Uri("doi:10.1000/182"))
+      sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
+    }
+
     "fail on a CURIE with a declared prefix in a schema built in code" in {
       // CURIEs are expanded when a schema is read, so only a schema built in code can have one
       val schema = SchemaDefinition(
