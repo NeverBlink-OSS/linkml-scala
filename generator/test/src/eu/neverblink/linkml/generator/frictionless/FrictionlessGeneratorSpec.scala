@@ -165,6 +165,42 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       stringConstraints.pattern shouldBe Some("^([0-9]{3})?[0-9]{3}-[0-9]{4}$")
     }
 
+    "generate length constraints" in {
+      val td = rootTable(
+        load(
+          """id: https://neverblink.eu/test/
+          |name: test
+          |default_range: string
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |imports:
+          |  - linkml:types
+          |types:
+          |  Code:
+          |    typeof: string
+          |    minimum_length: 2
+          |    maximum_length: 4
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    attributes:
+          |      name:
+          |        minimum_length: 1
+          |      code:
+          |        range: Code
+          |        maximum_length: 3
+          |""".stripMargin,
+        ),
+      )
+      val fieldMap = td.fields.map(fd => fd.name -> fd).toMap
+      val name = fieldMap("name").constraints.get
+      name.minLength shouldBe Some(1)
+      name.maxLength shouldBe None
+      val code = fieldMap("code").constraints.get
+      code.minLength shouldBe Some(2)
+      code.maxLength shouldBe Some(3)
+    }
+
     "date, time and datetime columns use the ISO 8601 format" in {
       // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
       val td = rootTable(
