@@ -11,7 +11,12 @@ import eu.neverblink.linkml.metamodel.{
 import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, Uri, UriOrCurie}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal, UndeclaredCuriePrefix}
+import eu.neverblink.linkml.validation.{
+  SchemaError,
+  SchemaFatal,
+  UndeclaredCuriePrefix,
+  UnwritableUri,
+}
 
 import scala.collection.immutable.VectorMap
 
@@ -921,6 +926,43 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       sv.root.classes("SomeClass").seeAlso shouldBe Seq(Uri("doi:10.1000/182"))
       sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
+    }
+
+    "report a URI that would be read back as a CURIE when the schema is written" in {
+      // `other` doesn't declare `ex`, so its class URI is the URI `ex:Imported`. The root declares
+      // `ex`, so `generate linkml` would write `ex:Imported`, which is read back as another URI.
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported:
+          |    class_uri: ex:Imported
+          |""".stripMargin
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  ex: https://example.org/
+          |imports:
+          |  - other
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    class_uri: ex:Root
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter("root.yaml" -> root, "other.yaml" -> other),
+        ),
+      )
+
+      // A warning, as LinkML-Python accepts such a schema, and only writing it fails
+      sv.validationProblems shouldBe empty
+      sv.lintProblems.collect { case p: UnwritableUri => p.infer().message.get } shouldBe Seq(
+        "URI 'ex:Imported' at /classes/Imported/class_uri/ can't be written, as 'ex' is a " +
+          "declared prefix of the root schema",
+      )
     }
 
     "fail on a namespace that isn't a valid URI" in {

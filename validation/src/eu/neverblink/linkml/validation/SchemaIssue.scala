@@ -45,6 +45,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
   typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
   typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),
+  typeDesignator.Member(classOf[UnwritableUri], "UnwritableUri"),
 )
 abstract class SchemaIssue {
 

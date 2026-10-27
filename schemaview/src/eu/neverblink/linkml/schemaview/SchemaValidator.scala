@@ -163,6 +163,16 @@ final class SchemaValidator(using sv: SchemaView) {
       ),
     )
 
+  /** Any URI values that writing the schema would read back as CURIEs with another meaning. */
+  private lazy val unwritableUris: Seq[SchemaWarning] =
+    macroResult.unwritableUris.map(value =>
+      new UnwritableUri(
+        location = at(value.path, value.fromSchema),
+        uri = value.value,
+        prefix = value.prefix,
+      ),
+    )
+
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
@@ -582,6 +592,7 @@ final class SchemaValidator(using sv: SchemaView) {
       undefinedDefaultRange ++
       noTreeRoot ++
       undeclaredCuriePrefixes ++
+      unwritableUris ++
       namingIssues.collect { case e: SchemaWarning => e }
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.

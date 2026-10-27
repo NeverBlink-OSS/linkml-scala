@@ -26,6 +26,8 @@ import scala.quoted.*
   *   URI or CURIE values that look like CURIEs, but whose prefix isn't declared
   * @param unexpandedCuries
   *   CURIE values with a declared prefix that weren't expanded, in a schema built in code
+  * @param unwritableUris
+  *   URI values that writing the schema would read back as CURIEs with another meaning
   * @param isEmpty
   *   Set to true only if you are creating a ValidatorResult == ValidatorResult.ok
   */
@@ -36,6 +38,7 @@ final case class ValidatorResult private (
     invalidUriOrCuries: Seq[InvalidUriOrCurie],
     undeclaredPrefixes: Seq[UndeclaredPrefixValue],
     unexpandedCuries: Seq[UnexpandedCurieValue],
+    unwritableUris: Seq[UnwritableUriValue],
     isEmpty: Boolean,
 ):
   /** Merge the [[ValidatorResult]]s */
@@ -49,6 +52,7 @@ final case class ValidatorResult private (
         invalidUriOrCuries ++ other.invalidUriOrCuries,
         undeclaredPrefixes ++ other.undeclaredPrefixes,
         unexpandedCuries ++ other.unexpandedCuries,
+        unwritableUris ++ other.unwritableUris,
       )
 
   /** Add a [[prefix]] to each result's source path */
@@ -62,11 +66,13 @@ final case class ValidatorResult private (
         invalidUriOrCuries.map(_.prependedPath(prefix)),
         undeclaredPrefixes.map(_.prependedPath(prefix)),
         unexpandedCuries.map(_.prependedPath(prefix)),
+        unwritableUris.map(_.prependedPath(prefix)),
       )
 
 object ValidatorResult {
   val ok: ValidatorResult =
     ValidatorResult(
+      Seq.empty,
       Seq.empty,
       Seq.empty,
       Seq.empty,
@@ -83,6 +89,7 @@ object ValidatorResult {
       invalidUriOrCuries: Seq[InvalidUriOrCurie] = Seq(),
       undeclaredPrefixes: Seq[UndeclaredPrefixValue] = Seq(),
       unexpandedCuries: Seq[UnexpandedCurieValue] = Seq(),
+      unwritableUris: Seq[UnwritableUriValue] = Seq(),
   ): ValidatorResult =
     new ValidatorResult(
       unknownReferences,
@@ -91,6 +98,7 @@ object ValidatorResult {
       invalidUriOrCuries,
       undeclaredPrefixes,
       unexpandedCuries,
+      unwritableUris,
       isEmpty = false,
     )
 }
@@ -166,6 +174,20 @@ final case class UndeclaredPrefixValue(path: String, value: Uri, prefix: String,
 final case class UnexpandedCurieValue(path: String, value: Curie, uri: Uri, fromSchema: Uri):
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): UnexpandedCurieValue = copy(path = prefix.concat(path))
+
+/** A URI value that has the shape of a CURIE whose prefix is declared in the root schema, so
+  * writing the schema would read it back as a CURIE with another meaning
+  *
+  * @param path
+  *   JSON path to the value
+  * @param value
+  *   The URI
+  * @param prefix
+  *   The declared prefix of the root schema
+  */
+final case class UnwritableUriValue(path: String, value: Uri, prefix: String, fromSchema: Uri):
+  /** Add a [[prefix]] to this class' path */
+  def prependedPath(prefix: String): UnwritableUriValue = copy(path = prefix.concat(path))
 
 private trait MacroValidator[T] {
   def validate(t: T)(using SchemaView, ValidatorContext): ValidatorResult
@@ -277,18 +299,33 @@ private object MacroValidator {
         }
     }
 
-  /** Check a valid [[Uri]]: one with the shape of a CURIE has a prefix that isn't declared, unless
-    * it starts with the namespace of a declared prefix. Then it was most likely expanded from that
-    * prefix, such as `did:web:example.com` from `web:example.com` with `web: did:web:`, and is
-    * written back as that CURIE.
+  /** Check a valid [[Uri]] with the shape of a CURIE, such as `acme:Person`.
+    *
+    * Its prefix isn't declared, unless it starts with the namespace of a declared prefix. Then it
+    * was most likely expanded from that prefix, such as `did:web:example.com` from
+    * `web:example.com` with `web: did:web:`, and is written back as that CURIE.
+    *
+    * It can't be written if the root schema declares its prefix and can't compact it, as writing
+    * the schema uses the prefixes of the root schema. This happens for a value from an imported
+    * schema that doesn't declare the prefix.
     */
-  private def validUri(u: Uri)(using vc: ValidatorContext): ValidatorResult = {
+  private def validUri(u: Uri)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult = {
     val uri = u.original
-    if (UriOrCurie.isCurie(uri) && (vc.prefixes.compactOrNull(uri) eq null))
-      ValidatorResult(undeclaredPrefixes =
-        Seq(UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema)),
-      )
-    else ValidatorResult.ok
+    if (!UriOrCurie.isCurie(uri)) ValidatorResult.ok
+    else {
+      val prefix = uri.substring(0, uri.indexOf(':'))
+      val root = sv.rootPrefixes
+      val undeclared =
+        if (vc.prefixes.compactOrNull(uri) eq null)
+          Seq(UndeclaredPrefixValue("", u, prefix, vc.fromSchema))
+        else Nil
+      val unwritable =
+        if ((root.namespaceOrNull(prefix) ne null) && (root.compactOrNull(uri) eq null))
+          Seq(UnwritableUriValue("", u, prefix, vc.fromSchema))
+        else Nil
+      if (undeclared.isEmpty && unwritable.isEmpty) ValidatorResult.ok
+      else ValidatorResult(undeclaredPrefixes = undeclared, unwritableUris = unwritable)
+    }
   }
 
   private def formatRangeType(el: Element): String = {

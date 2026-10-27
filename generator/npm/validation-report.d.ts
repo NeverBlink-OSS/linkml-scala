@@ -363,7 +363,8 @@ export type SchemaIssue =
   | UnexpandedCurie
   | UnexpectedError
   | UnknownReference
-  | UnknownStringReference;
+  | UnknownStringReference
+  | UnwritableUri;
 
 /** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel. Where the underlying parser reported a position, it is carried in `location.code_region`. */
 export interface SchemaParseError {
@@ -398,7 +399,8 @@ export type SchemaWarning =
   | NonStandardSeparator
   | RepeatedSeparator
   | UndeclaredCuriePrefix
-  | UndefinedDefaultRange;
+  | UndefinedDefaultRange
+  | UnwritableUri;
 
 /** A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python. */
 export interface UndeclaredCuriePrefix {
@@ -510,6 +512,24 @@ export interface UnknownStringReference {
   message?: string;
   /** severity: The severity of the issue. */
   severity: IssueSeverity;
+}
+
+/** A URI value has the shape of a CURIE whose prefix is declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */
+export interface UnwritableUri {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UnwritableUri";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** prefix */
+  prefix: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** URI */
+  uri: string;
 }
 
 /** Issue severity: The severity of an issue found during the validation of a LinkML schema. */

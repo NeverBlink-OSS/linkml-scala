@@ -274,8 +274,10 @@ classes:
 - Every prefix you reference must be declared. These are pre-declared: `linkml`, `rdf`,
   `rdfs`, `xsd`, `skos`, `dcterms`, `OIO`, `owl`, `pav`. A value with an undeclared prefix, such
   as `class_uri: schema:Person`, is read as a URI with `schema` as its scheme, and `validate` warns
-  with `UndeclaredCuriePrefix` (`--strict` fails). An undeclared prefix in `emit_prefixes` or
-  `implicit_prefix` is an `UndefinedPrefix` error.
+  with `UndeclaredCuriePrefix` (`--strict` fails). If such a value is in an imported schema, and
+  the root schema declares the prefix, `validate` also warns with `UnwritableUri`, as
+  `generate linkml` can't write it. An undeclared prefix in `emit_prefixes` or `implicit_prefix`
+  is an `UndefinedPrefix` error.
 - `class_uri`/`slot_uri` pin the identity of an element. Use them whenever the concept already
   exists in a published vocabulary — without them, generated RDF cannot be joined to anything.
 - `exact_mappings`, `close_mappings`, `related_mappings`, `narrow_mappings`, `broad_mappings`
