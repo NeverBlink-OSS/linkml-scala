@@ -4,6 +4,7 @@
 import {
   LinkML,
   type LoadResult,
+  type SchemaConversionError,
   type SchemaIssue,
   type SchemaValidationReport,
   type SchemaView,
@@ -65,6 +66,15 @@ for (const issue of lintIssues) {
   }
   // @ts-expect-error only an UnknownReference has a reference_value
   void issue.reference_value;
+}
+
+// A problem with the input is thrown as an Error with a `SchemaConversionError` issue.
+try {
+  LinkML.fromOssie("- not\n- an ontology\n");
+} catch (e) {
+  const issue: SchemaConversionError | undefined = (e as { issue?: SchemaConversionError }).issue;
+  const reason: string | undefined = issue?.reason;
+  void reason;
 }
 
 void [
