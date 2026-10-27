@@ -17,13 +17,7 @@ import eu.neverblink.linkml.metamodel.{
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.LocalizedText.*
-import eu.neverblink.linkml.runtime.{
-  HasMetadataLanguage,
-  MetadataLanguage,
-  PrefixMap,
-  Uri,
-  UriOrCurie,
-}
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, MetadataLanguage, PrefixMap, UriOrCurie}
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -907,12 +901,9 @@ object DocsGenerator {
     * URI when that is a web address.
     */
   private def uri(md: Markdown, u: UriOrCurie, prefixes: PrefixMap): Unit = {
-    val uri = u match {
-      case x: Uri => x.original
-      case _ => null
-    }
+    val uri = u.original
     val curie = UriOrCurie.compacted(u, prefixes)
-    if ((uri ne null) && isLinkable(uri)) {
+    if (isLinkable(uri)) {
       md.append('[')
       md.code(curie)
       md.append("](")
