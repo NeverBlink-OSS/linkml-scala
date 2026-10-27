@@ -46,6 +46,7 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "constraintsOnTypes" -> "floatAboveMaximum" -> bounds,
     "constraintsOnTypes" -> "intBelowMinimum" -> bounds,
     "constraintsOnTypes" -> "stringNotMatchingPattern" -> pattern,
+    "referenceInteger" -> "zero" -> bounds,
     "lengths" -> "codeTooShort" -> lengths,
     "lengths" -> "codeTooLongForSlot" -> lengths,
     "lengths" -> "nameEmpty" -> lengths,

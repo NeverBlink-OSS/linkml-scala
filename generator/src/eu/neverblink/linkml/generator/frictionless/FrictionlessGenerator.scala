@@ -131,7 +131,6 @@ class FrictionlessGenerator(using sv: SchemaView)
               // one, so this gets no foreign key.
               base.copy(`type` = types.array, rdfType = new Some(ref.classView.uriStr))
             else {
-              val (type_, format) = remapType(ref.identifierView.typeView.runtimeType)
               for
                 resource <- resources.get(ref.classView.name)
                 identifier <- ref.classView.identifier
@@ -145,7 +144,9 @@ class FrictionlessGenerator(using sv: SchemaView)
                     fields = slotName(identifier),
                   ),
                 )
-              base.copy(`type` = type_, rdfType = new Some(ref.classView.uriStr), format = format)
+              // Checked like the identifier column it refers to, also without the other table
+              typedField(base, ref.identifierView)
+                .copy(rdfType = new Some(ref.classView.uriStr))
             }
 
           case tv: TypeAttributeView =>

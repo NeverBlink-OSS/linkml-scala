@@ -246,6 +246,14 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       value.constraints shouldBe Some(Constraints(required = Some(true)))
     }
 
+    "check a reference column like the identifier column it refers to" in {
+      val td = rootTable(ModelCatalogue.referenceInteger.model)
+      val someSlot = td.fields.head
+      someSlot.`type` shouldBe "integer"
+      someSlot.rdfType shouldBe Some(ModelCatalogue.referenceInteger.id + "SomeOtherClass")
+      someSlot.constraints.get.minimum shouldBe Some("1")
+    }
+
     "date, time and datetime columns use the ISO 8601 format" in {
       // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
       val td = rootTable(

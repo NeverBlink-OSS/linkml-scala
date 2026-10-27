@@ -16,3 +16,4 @@ classes:
       id:
         identifier: true
         range: integer
+        minimum_value: 1

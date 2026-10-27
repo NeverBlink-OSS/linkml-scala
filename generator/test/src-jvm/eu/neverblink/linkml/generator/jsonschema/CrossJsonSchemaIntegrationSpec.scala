@@ -30,6 +30,7 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
 
   override val skipInstances: Map[(String, String), String] = Map(
     "treeRootAsOptional" -> "empty" -> noTreeRootAs,
+    "referenceInteger" -> "zero" -> "LinkML-py doesn't check the identifier's constraints in a reference",
     "memberCardinality" -> "oneInteger" -> "LinkML-py ignores cardinality in `any_of` members",
     "memberCardinality" -> "integerAndString" ->
       "LinkML-py ignores cardinality in `any_of` members",
