@@ -36,6 +36,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
   typeDesignator.Member(classOf[NonUniqueName], "NonUniqueName"),
   typeDesignator.Member(classOf[RepeatedSeparator], "RepeatedSeparator"),
+  typeDesignator.Member(classOf[SchemaConversionError], "SchemaConversionError"),
   typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
   typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
   typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),

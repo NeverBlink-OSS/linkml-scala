@@ -231,6 +231,23 @@ classes:
       message:
         equals_expression: "Unexpected error while loading the schema: {reason}"
 
+  SchemaConversionError:
+    is_a: SchemaFatal
+    description: >-
+      A schema can't be written, or an ontology can't be imported as a schema, for a reason the
+      user can fix. For example, `generate linkml` can't write a URI that would be read back as a
+      CURIE with another meaning, and `from owl` can't import an IRI that isn't a valid URI. It is
+      returned instead of the output, by the JavaScript and Python APIs.
+    attributes:
+      reason:
+        range: string
+        required: true
+        title: reason
+        description: Why the schema or ontology can't be converted.
+    slot_usage:
+      message:
+        equals_expression: "{reason}"
+
   # ---- Error ------------------------------------------------------------------------------------
 
   MultipleTreeRoots:

@@ -303,6 +303,22 @@ export interface RepeatedSeparator {
   severity: IssueSeverity;
 }
 
+/** A schema can't be written, or an ontology can't be imported as a schema, for a reason the user can fix. For example, `generate linkml` can't write a URI that would be read back as a CURIE with another meaning, and `from owl` can't import an IRI that isn't a valid URI. It is returned instead of the output, by the JavaScript and Python APIs. */
+export interface SchemaConversionError {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "SchemaConversionError";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** reason: Why the schema or ontology can't be converted. */
+  reason: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+}
+
 export type SchemaError =
   | EmptyName
   | InvalidEqualsString
@@ -318,6 +334,7 @@ export type SchemaFatal =
   | InvalidDefaultRange
   | InvalidRange
   | InvalidUriOrCurie
+  | SchemaConversionError
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
@@ -376,6 +393,7 @@ export type SchemaIssue =
   | NonStandardSeparator
   | NonUniqueName
   | RepeatedSeparator
+  | SchemaConversionError
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError

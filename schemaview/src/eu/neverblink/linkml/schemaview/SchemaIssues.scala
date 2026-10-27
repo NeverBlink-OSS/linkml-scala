@@ -1,7 +1,13 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.validation.{IssueSeverity, SchemaFatal, SchemaIssue}
+import eu.neverblink.linkml.validation.{
+  IssueLocation,
+  IssueSeverity,
+  SchemaConversionError,
+  SchemaFatal,
+  SchemaIssue,
+}
 
 /** Presentation helpers for the generated schema validation report model.
   */
@@ -23,6 +29,15 @@ object SchemaIssues {
     */
   def verbose(issue: SchemaIssue): String =
     issue.details.orElseFast(issue.message).getOrElseFast("")
+
+  /** The issue for a schema or ontology that can't be converted, for the APIs that return issues
+    * instead of throwing.
+    *
+    * @param reason
+    *   Why, such as the message of a [[eu.neverblink.linkml.runtime.SchemaConversionException]]
+    */
+  def conversionError(reason: String): SchemaConversionError =
+    new SchemaConversionError(location = new IssueLocation(), reason = reason)
 
   /** Human-readable severity label. */
   def level(issue: SchemaIssue): String = issue.severity match {

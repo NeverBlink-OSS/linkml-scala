@@ -14,6 +14,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[InvalidDefaultRange], "InvalidDefaultRange"),
   typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
   typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
+  typeDesignator.Member(classOf[SchemaConversionError], "SchemaConversionError"),
   typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
   typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
   typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),
