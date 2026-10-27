@@ -60,9 +60,7 @@ abstract class From[T <: HasFromOptions: {Parser, Help}] extends BaseCommand[T] 
 
 // Ossie
 
-@HelpMessage(
-  "Read an Apache Ossie ontology and produce a corresponding LinkML schema.",
-)
+@HelpMessage("Convert an Apache Ossie ontology\nThe result is a LinkML schema.")
 @ArgsName("<input-file>")
 final case class FromOssieOptions(
     @Recurse
@@ -101,7 +99,8 @@ object FromOssie extends From[FromOssieOptions] {
 // OWL
 
 @HelpMessage(
-  "Read an OWL ontology or RDFS vocabulary in Turtle or N-Triples and produce a corresponding LinkML schema.",
+  "Convert an OWL ontology or RDFS vocabulary\n" +
+    "The result is a LinkML schema. The input is read as Turtle or N-Triples.",
 )
 @ArgsName("<input-file>")
 final case class FromOwlOptions(

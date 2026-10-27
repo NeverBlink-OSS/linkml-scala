@@ -22,7 +22,7 @@ import java.io.OutputStream
 
 // Scala
 
-@HelpMessage("Generate Scala classes from a LinkML model")
+@HelpMessage("Generate Scala classes")
 @ArgsName("<input-file>")
 final case class ScalaOptions(
     @Recurse
@@ -73,7 +73,7 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
 
 // JSON Schema
 
-@HelpMessage("Generate JSON Schema from a LinkML model")
+@HelpMessage("Generate a JSON Schema")
 @ArgsName("<input-file>")
 final case class JsonSchemaOptions(
     @Recurse
@@ -116,7 +116,7 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
 
 // SHACL
 
-@HelpMessage("Generate SHACL shapes from a LinkML model")
+@HelpMessage("Generate SHACL shapes")
 @ArgsName("<input-file>")
 final case class ShaclOptions(
     @Recurse
@@ -155,7 +155,7 @@ object Shacl extends StreamGenerate[ShaclOptions] {
 
 // RDFS
 
-@HelpMessage("Generate RDF schema from a LinkML model")
+@HelpMessage("Generate an RDF Schema (RDFS) vocabulary")
 @ArgsName("<input-file>")
 final case class RdfsOptions(
     @Recurse
@@ -189,9 +189,9 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
 // OWL
 
 @HelpMessage(
-  "Generate an OWL 2 ontology from a LinkML model. Classes, slots, enums and types become OWL " +
-    "classes, properties, classes of individuals and datatypes, with the same IRIs as the SHACL " +
-    "and RDFS generators.",
+  "Generate an OWL 2 ontology\n" +
+    "Classes, slots, enums and types become OWL classes, properties, classes of individuals " +
+    "and datatypes, with the same IRIs as the SHACL and RDFS generators.",
 )
 @ArgsName("<input-file>")
 final case class OwlOptions(
@@ -276,9 +276,7 @@ private val fullUrisHelp: String =
 
 // LinkML -> LinkML
 
-@HelpMessage(
-  "Materialize a derived LinkML schema from a LinkML model.",
-)
+@HelpMessage("Generate the materialized, derived LinkML schema")
 @ArgsName("<input-file>")
 final case class LinkMlOptions(
     @Recurse
@@ -314,7 +312,7 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
 // Table Schema
 
 @HelpMessage(
-  "Generate a Frictionless Data Package from a LinkML model. " +
+  "Generate a Frictionless Data Package\n" +
     "If --to is a directory, the package is written as a datapackage.json file plus one " +
     "schemas/<table>.json per table. If --to is a .json file, or with no --to at all, it is " +
     "written as a single file with table schemas inlined.",
@@ -357,8 +355,8 @@ object Frictionless extends SplitGenerate[FrictionlessOptions] {
 // GraphQL
 
 @HelpMessage(
-  "Generate a GraphQL Schema from a LinkML model. " +
-    "Only generates types/interfaces/scalar/enums, queries must be added manually.",
+  "Generate a GraphQL schema\n" +
+    "Only types, interfaces, scalars and enums are generated. Add queries by hand.",
 )
 @ArgsName("<input-file>")
 final case class GraphQlOptions(
@@ -383,7 +381,7 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
 // TypeScript
 
 @HelpMessage(
-  "Generate TypeScript types from a LinkML model. " +
+  "Generate TypeScript types\n" +
     "The types describe the same JSON as the generated JSON Schema, with no runtime code: " +
     "load data with JSON.parse and a type cast, dump it with JSON.stringify.",
 )
@@ -421,7 +419,7 @@ object TypeScript extends StreamGenerate[TypeScriptOptions] {
 // Pydantic
 
 @HelpMessage(
-  "Generate Python classes based on pydantic from a LinkML model. " +
+  "Generate Python classes based on pydantic\n" +
     "The classes load and dump the same JSON as the generated JSON Schema describes: " +
     "load data with X.model_validate_json, dump it with x.model_dump_json.",
 )
@@ -460,9 +458,7 @@ object Pydantic extends StreamGenerate[PydanticOptions] {
 
 // Apache Ossie ontology
 
-@HelpMessage(
-  "Generate an Apache Ossie ontology from a LinkML model.",
-)
+@HelpMessage("Generate an Apache Ossie ontology")
 @ArgsName("<input-file>")
 final case class OssieOptions(
     @Recurse
@@ -492,7 +488,7 @@ object Ossie extends StreamGenerate[OssieOptions] {
 // ER diagram
 
 @HelpMessage(
-  "Generate a Mermaid entity relationship diagram from a LinkML model. " +
+  "Generate a Mermaid entity relationship diagram\n" +
     "Classes become entities, type- and enum-ranged slots become their attributes, and " +
     "class-ranged slots become relationship lines.",
 )
@@ -527,8 +523,8 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
 }
 
 @HelpMessage(
-  "Generate translation dictionaries (in JSON), " +
-    "from the original names used in the schema to the names used in generated outputs.",
+  "Generate translation dictionaries in JSON\n" +
+    "They map the original names used in the schema to the names used in generated outputs.",
 )
 @ArgsName("<input-file>")
 final case class TranslationOptions(

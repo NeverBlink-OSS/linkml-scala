@@ -49,7 +49,7 @@ abstract class ProjectCommand[T <: ProjectOptions: {Parser, Help}] extends BaseC
   }
 }
 
-@HelpMessage("Create ohi.yaml in a project directory.")
+@HelpMessage("Create ohi.yaml in a project directory")
 @ArgsName("[directory]")
 final case class InitOptions(
     @HelpMessage("Emit one JSON result or error instead of human-readable output.")
@@ -68,7 +68,10 @@ object Init extends ProjectCommand[InitOptions] {
   ): ProjectResult = project.init(createParents = inputs.nonEmpty)
 }
 
-@HelpMessage("Add a publication's artifact to ohi.yaml, update the lock and download the artifact.")
+@HelpMessage(
+  "Add a publication's artifact to the project\n" +
+    "Adds it to ohi.yaml, updates ohi.lock.json and downloads the artifact.",
+)
 @ArgsName("<base-url>")
 final case class AddOptions(
     @HelpMessage("URL of the artifact to add, as listed by ohi inspect.")
@@ -96,7 +99,7 @@ object Add extends ProjectCommand[AddOptions] {
   }
 }
 
-@HelpMessage("Rebuild ohi.lock.json from ohi.yaml. Downloads nothing.")
+@HelpMessage("Rebuild ohi.lock.json from ohi.yaml\nDownloads nothing.")
 final case class LockOptions(
     @HelpMessage("Project directory containing ohi.yaml. Default: current directory.")
     project: String = ".",
