@@ -7,6 +7,9 @@
  *     reason to *error; loading returns handle 0 instead. Both *error and *report are cleared
  *     first, so they can be reused across calls. A NULL return with no message is still a failure:
  *     it means even the message could not be allocated.
+ *   - A schema that can't be written, or an ontology that can't be imported, for a reason the
+ *     caller can fix, writes a validation report in JSON to *error instead of a message. It has
+ *     one SchemaConversionError issue, whose "message" says why. Such a report starts with '{'.
  *
  * Every string the library returns belongs to the caller and must go back through linkml_free().
  * Strings in and out are NUL-terminated UTF-8.
@@ -25,7 +28,7 @@ extern "C" {
 #endif
 
 /* Bumped whenever a change to the exported functions or to the options JSON breaks callers. */
-#define LINKML_ABI_VERSION 3
+#define LINKML_ABI_VERSION 4
 
 /* The ABI version this library was built with. Compare against LINKML_ABI_VERSION. */
 int linkml_abi_version(void);

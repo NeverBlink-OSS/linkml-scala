@@ -15,12 +15,14 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.rdf.RdfParseException
 import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.schemaview.{
   FileSystemImporter,
   ImportMapImporter,
   Importer,
+  SchemaIssues,
   SchemaValidator,
   SchemaView,
   StringImporter,
@@ -50,7 +52,7 @@ object LinkMlNativeApi {
     *     replaces `graal_create_isolate`. `platform` in `linkml_build_info` is now `SCALA_NATIVE`.
     *     Added `linkml_from_ossie`.
     */
-  final val abiVersion: Int = 3
+  final val abiVersion: Int = 4
 
   private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
 
@@ -268,14 +270,17 @@ object LinkMlNativeApi {
 
   /** Turn an exception into the message that goes into the C error out-param.
     *
-    * Lives here rather than in [[LinkMlCApi]] so it can recognize [[BadRequest]] by type. Caller
-    * mistakes, including a [[SchemaConversionException]] for a schema or ontology that can't be
-    * imported or written, come through as just their message, since those are already written for a
-    * human to read; anything else gets its type attached, because it means a bug in here.
+    * Lives here rather than in [[LinkMlCApi]] so it can recognize [[BadRequest]] by type. A schema
+    * or ontology that can't be imported or written, a [[SchemaConversionException]] or an
+    * [[RdfParseException]], comes through as a validation report in JSON, with one
+    * `SchemaConversionError` issue, so a caller can tell it from a bug. Other caller mistakes come
+    * through as just their message, since those are already written for a human to read; anything
+    * else gets its type attached, because it means a bug in here.
     */
   def describe(t: Throwable): String = t match {
     case BadRequest(reason) => reason
-    case _: SchemaConversionException => t.getMessage
+    case _: SchemaConversionException | _: RdfParseException =>
+      report(Seq(SchemaIssues.conversionError(t.getMessage)), None, inferMessages = true)
     case _ =>
       val msg = t.getMessage
       if msg eq null then t.getClass.getSimpleName

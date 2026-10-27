@@ -27,6 +27,7 @@ from ._runtime import (
     LinkMlError,
     NativeLibraryNotFound,
     Runtime,
+    SchemaConversionError,
     library_path,
     runtime,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "NativeLibraryNotFound",
     "Runtime",
     "Schema",
+    "SchemaConversionError",
     "SchemaLoadError",
     "build_info",
     "from_ossie",
@@ -319,7 +321,8 @@ def from_ossie(
     :param output_format: Output serialization format to use, ``yaml`` or ``json``.
     :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the schema's
         prefixes.
-    :raises LinkMlError: if the document could not be read.
+    :raises SchemaConversionError: if the document is not an ontology that can be imported.
+    :raises LinkMlError: if the options are wrong.
     """
     return runtime().import_document(
         "linkml_from_ossie",
@@ -360,7 +363,8 @@ def from_owl(
         reads N-Triples) or ``nt`` (N-Triples).
     :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the schema's
         prefixes.
-    :raises LinkMlError: if the document or the config could not be read.
+    :raises SchemaConversionError: if the document can't be parsed or imported as a schema.
+    :raises LinkMlError: if the config could not be read, or the options are wrong.
     """
     return runtime().import_document(
         "linkml_from_owl",
