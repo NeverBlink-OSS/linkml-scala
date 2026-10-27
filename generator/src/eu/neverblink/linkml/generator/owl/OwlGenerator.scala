@@ -629,6 +629,8 @@ object OwlGenerator {
             facets(
               constraints.minimumValue,
               constraints.maximumValue,
+              constraints.minimumLength,
+              constraints.maximumLength,
               LinkmlPattern.option(constraints.pattern),
               tv,
             )
@@ -637,10 +639,9 @@ object OwlGenerator {
             else {
               // OWL only allows facets on built-in datatypes, so repeat the type's own constraints
               // next to the slot's.
-              val d = tv.derivedType
-              val inherited = facets(d.minimumValue, d.maximumValue, tv.pattern, tv)
-                .filterNot(f => own.exists(_._1 == f._1))
-              DataRange.Restriction(baseDatatype(tv), own.concat(inherited))
+              val all = Seq.newBuilder[(String, Literal)].addAll(own)
+              typeFacets(tv).foreach(f => if (!own.exists(_._1 == f._1)) all.addOne(f))
+              DataRange.Restriction(baseDatatype(tv), all.result())
             },
           )
         case _ => None
@@ -664,8 +665,7 @@ object OwlGenerator {
         tv.ancestorsWithSelf.find(_._type.typeUri.isDefined) match {
           case Some(origin) if origin.isPrimitive && !hasFacets(tv) => datatypeOf(origin)
           case _ if hasFacets(tv) && OwlRdfReader.isBuiltInDatatype(tv.uriStr) =>
-            val d = tv.derivedType
-            DataRange.Restriction(tv.uriStr, facets(d.minimumValue, d.maximumValue, tv.pattern, tv))
+            DataRange.Restriction(tv.uriStr, typeFacets(tv))
           case _ => DataRange.Datatype(tv.uriStr)
         }
       }
@@ -676,7 +676,8 @@ object OwlGenerator {
 
     private def hasFacets(tv: TypeView): Boolean = {
       val d = tv.derivedType
-      d.minimumValue.isDefined || d.maximumValue.isDefined || d.pattern.isDefined
+      d.minimumValue.isDefined || d.maximumValue.isDefined || d.minimumLength.isDefined ||
+      d.maximumLength.isDefined || d.pattern.isDefined
     }
 
     /** The XSD datatype that a type's values have in RDF. */
@@ -698,9 +699,17 @@ object OwlGenerator {
         }
     }
 
+    /** The facets from the type's own constraints and those it inherits. */
+    private def typeFacets(tv: TypeView): Seq[(String, Literal)] = {
+      val d = tv.derivedType
+      facets(d.minimumValue, d.maximumValue, d.minimumLength, d.maximumLength, tv.pattern, tv)
+    }
+
     private def facets(
         min: Option[LinkmlAny],
         max: Option[LinkmlAny],
+        minLength: Option[Int],
+        maxLength: Option[Int],
         pattern: Option[LinkmlPattern],
         tv: TypeView,
     ): Seq[(String, Literal)] = {
@@ -711,6 +720,12 @@ object OwlGenerator {
       )
       max.foreachFast(v =>
         b.addOne(XmlSchema.maxInclusive.value -> Literal(v.value.strip, datatype)),
+      )
+      minLength.foreachFast(n =>
+        b.addOne(XmlSchema.minLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
+      )
+      maxLength.foreachFast(n =>
+        b.addOne(XmlSchema.maxLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
       )
       pattern.foreachFast(p => b.addOne(XmlSchema.pattern.value -> Literal(p.xsd)))
       b.result()
@@ -926,12 +941,7 @@ object OwlGenerator {
           add(Declaration(EntityKind.Datatype, iri))
           annotate(iri, tv)
           if (hasFacets(tv)) {
-            val d = tv.derivedType
-            val restriction = DataRange.Restriction(
-              baseDatatype(tv),
-              facets(d.minimumValue, d.maximumValue, tv.pattern, tv),
-            )
-            add(DatatypeDefinition(iri, restriction))
+            add(DatatypeDefinition(iri, DataRange.Restriction(baseDatatype(tv), typeFacets(tv))))
           }
         case DataRange.Datatype(iri)
             if !Metadata.of(tv._type).isEmpty &&

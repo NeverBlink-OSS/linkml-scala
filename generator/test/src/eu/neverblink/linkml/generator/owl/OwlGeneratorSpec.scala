@@ -176,6 +176,37 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       )
     }
 
+    "write lengths as xsd:minLength and xsd:maxLength facets" in {
+      val minLength = xsd + "minLength" -> Literal("2", XmlSchema.nonNegativeInteger)
+      def maxLength(n: Int) = xsd + "maxLength" -> Literal(n.toString, XmlSchema.nonNegativeInteger)
+      ontologyOf("""
+        |classes:
+        |  Item:
+        |    slots:
+        |      - code
+        |slots:
+        |  code:
+        |    range: Code
+        |    maximum_length: 3
+        |types:
+        |  Code:
+        |    typeof: string
+        |    uri: ex:Code
+        |    minimum_length: 2
+        |    maximum_length: 4
+        |""").axioms should contain allOf (
+        DatatypeDefinition(
+          ns + "Code",
+          DataRange.Restriction(xsd + "string", Seq(minLength, maxLength(4))),
+        ),
+        // The slot's own length has precedence over the type's.
+        Range(
+          ns + "code",
+          DataRange.Restriction(xsd + "string", Seq(maxLength(3), minLength)),
+        ),
+      )
+    }
+
     "use the title as the label, and write no label without a title" in {
       val axioms = ontologyOf(personinfo).axioms
       val label = "http://www.w3.org/2000/01/rdf-schema#label"
