@@ -75,6 +75,9 @@ final case class ClassReferenceAttributeView(
 
 /** Slot's range is a type. Provides shorthand methods for merging shared slot/type metaslots, such
   * as [[pattern]], [[unit]], and [[implicitPrefix]], as well as [[SubjectType]] computation.
+  *
+  * [[pattern]], the value bounds and the lengths are as the slot and its type set them, even if
+  * they don't apply to the values. To check values, use [[alternatives]].
   */
 final case class TypeAttributeView(
     slotView: SlotView,
@@ -141,21 +144,13 @@ final case class TypeAttributeView(
   def maximumValue: Option[LinkmlAny] =
     combineOption(slot.maximumValue, _type.maximumValue, combineMax)
 
-  /** @see
-    *   [[slot.minimumLength]]. None if the values aren't text, see [[TypeView.hasTextValues]].
-    */
+  /** @see [[slot.minimumLength]] */
   def minimumLength: Option[Int] =
-    if (typeView.hasTextValues)
-      combineOption(slot.minimumLength, _type.minimumLength, combineFallback)
-    else None
+    combineOption(slot.minimumLength, _type.minimumLength, combineFallback)
 
-  /** @see
-    *   [[slot.maximumLength]]. None if the values aren't text, see [[TypeView.hasTextValues]].
-    */
+  /** @see [[slot.maximumLength]] */
   def maximumLength: Option[Int] =
-    if (typeView.hasTextValues)
-      combineOption(slot.maximumLength, _type.maximumLength, combineFallback)
-    else None
+    combineOption(slot.maximumLength, _type.maximumLength, combineFallback)
 
   /** The types a value of the slot can take, each with the constraints that apply to it: from the
     * slot, then from [[TypeView.alternatives]] of the range. A range that is not a union has one
