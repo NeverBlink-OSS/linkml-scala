@@ -88,10 +88,14 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
 
   /** Write to `file`, or to the command's stdout when there is none.
     *
-    * A regular file is written to a temporary file next to it first, which then replaces it. So if
-    * `write` fails, the previous `file` is kept, or none is made, and no partially written file is
-    * left behind. Anything else that exists at `file`, such as a link or `/dev/stdout`, is written
-    * to as it is.
+    * A regular file is written to a new temporary file next to it first, which then replaces it,
+    * with the permissions of the previous `file`. So if `write` fails, the previous `file` is kept,
+    * or none is made, and no partially written file is left behind. A hard link to the previous
+    * `file` still has the previous content.
+    *
+    * Anything else that exists at `file`, such as a link or `/dev/stdout`, is written to as it is.
+    * So is `file` if no temporary file can be made next to it, such as in a folder that can't be
+    * written to.
     */
   protected final def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
     file.foldFast {
@@ -100,11 +104,26 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
       outStream.flush()
     } { value =>
       val path = os.Path(value, os.pwd)
-      if (os.exists(path, followLinks = false) && !os.isFile(path, followLinks = false))
-        writeTo(path, write)
+      val exists = os.exists(path, followLinks = false)
+      val temp =
+        if (exists && !os.isFile(path, followLinks = false)) null
+        else {
+          try
+            os.temp(
+              dir = path / os.up,
+              prefix = "." + path.last + ".",
+              suffix = ".tmp",
+              deleteOnExit = false,
+            )
+          catch { case NonFatal(_) => null }
+        }
+      if (temp eq null) writeTo(path, write)
       else {
-        val temp = path / os.up / ("." + path.last + ".tmp")
         try {
+          // A file system without POSIX permissions, as on Windows, can't copy them
+          if (exists)
+            try os.perms.set(temp, os.perms(path))
+            catch { case _: UnsupportedOperationException => }
           writeTo(temp, write)
           os.move(temp, path, replaceExisting = true)
         } catch {
