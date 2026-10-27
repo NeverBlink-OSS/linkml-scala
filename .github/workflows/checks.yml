@@ -139,6 +139,42 @@ jobs:
       - name: Type-check and bundle the UI
         run: ./mill --no-server ui.check
 
+  docs-check:
+    name: Docs site build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Relocate the coursier archive cache # see scalafmt-lint
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Build the docs site
+        # Fails on a broken link between pages or to a heading
+        run: ./mill --no-server website.build
+
   scalafix-lint:
     name: Scalafix lint
     runs-on: ubuntu-latest

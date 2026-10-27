@@ -138,7 +138,7 @@ linkml-scala generate owl <input-file>
 linkml-scala generate shacl <input-file>
 ```
 
-**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. Additional generator documentation is in the [docs/](docs) directory.
+**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.neverblink.eu/docs](https://linkml.neverblink.eu/docs/)**.
 
 #### LinkML schema derivation and pruning 
 
