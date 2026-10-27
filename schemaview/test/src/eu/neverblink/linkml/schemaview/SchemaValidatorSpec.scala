@@ -1,7 +1,14 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.metamodel.{ClassDefinition, Prefix, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{Curie, Uri, UriOrCurie}
+import eu.neverblink.linkml.metamodel.{
+  Annotation,
+  ClassDefinition,
+  EnumDefinition,
+  PermissibleValue,
+  Prefix,
+  SchemaDefinition,
+}
+import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, Uri, UriOrCurie}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal, UndeclaredCuriePrefix}
@@ -916,6 +923,46 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       problems shouldBe Seq(
         "Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/",
       )
+    }
+
+    "fail on a value without a colon in a schema built in code" in {
+      // Generators would write these as relative IRIs, such as `<docs>`
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        defaultPrefix = Some("ex"),
+        prefixes = VectorMap("ex" -> Prefix("ex", Uri("https://example.org/"))),
+        classes = Map(
+          "Person" -> ClassDefinition(
+            "Person",
+            seeAlso = Seq(UriOrCurie("docs")),
+            annotations = Map(
+              "mytag" -> Annotation(
+                extensionTag = UriOrCurie("mytag"),
+                extensionValue = LinkmlAny("value"),
+              ),
+            ),
+          ),
+        ),
+        enums = Map(
+          "Some" -> EnumDefinition(
+            "Some",
+            permissibleValues =
+              Map("SOME" -> PermissibleValue(text = "SOME", meaning = Some(UriOrCurie("SOME")))),
+          ),
+        ),
+      )
+      val msg =
+        the[SchemaIssues.FatalSchemaException].thrownBy(SchemaView.single(schema)).getMessage
+
+      Seq(
+        "CURIE 'docs' at /classes/Person/see_also/0/ isn't expanded",
+        "Use the URI 'https://example.org/docs' instead",
+        "CURIE 'mytag' at /classes/Person/annotations/mytag/tag/ isn't expanded",
+        "CURIE 'SOME' at /enums/Some/permissible_values/SOME/meaning/ isn't expanded",
+      ) foreach { part =>
+        msg should include(part)
+      }
     }
 
     "fail on a CURIE that can't be a URI in a schema built in code" in {

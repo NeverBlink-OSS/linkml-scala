@@ -448,7 +448,7 @@ export interface UndefinedPrefix {
   severity: IssueSeverity;
 }
 
-/** A CURIE value has a declared prefix, but wasn't expanded to a URI. CURIEs are expanded when a schema is read, so this happens only in a schema built in code. */
+/** A CURIE value has a declared prefix, or has no colon, but wasn't expanded to a URI. CURIEs are expanded, and values without a colon are put in the default namespace, when a schema is read, so this happens only in a schema built in code. */
 export interface UnexpandedCurie {
   /** details: Longer, human-readable message describing the issue in more detail. */
   details?: string;

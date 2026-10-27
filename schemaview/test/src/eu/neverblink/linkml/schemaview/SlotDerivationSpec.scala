@@ -418,12 +418,12 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "merge Map slots" in {
       val ann1 =
         Annotation(
-          extensionTag = UriOrCurie("ann1"),
+          extensionTag = UriOrCurie("https://neverblink.eu/test/ann1"),
           extensionValue = LinkmlAny("annotation 1"),
         )
       val ann2 =
         Annotation(
-          extensionTag = UriOrCurie("ann2"),
+          extensionTag = UriOrCurie("https://neverblink.eu/test/ann2"),
           extensionValue = LinkmlAny("annotation 2"),
         )
 
@@ -469,14 +469,14 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
         name = "slot1",
         annotations = Map(
           "ann1" -> Annotation(
-            extensionTag = UriOrCurie("ann1"),
+            extensionTag = UriOrCurie("https://neverblink.eu/test/ann1"),
             extensionValue = LinkmlAny("from slot"),
           ),
         ),
         range = Some(Reference("base")),
       )
       val fromUsage = Annotation(
-        extensionTag = UriOrCurie("ann1"),
+        extensionTag = UriOrCurie("https://neverblink.eu/test/ann1"),
         extensionValue = LinkmlAny("from slot_usage"),
       )
 
@@ -514,7 +514,7 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     "not duplicate Map slots if the contents are identical" in {
       val ann1 =
         Annotation(
-          extensionTag = UriOrCurie("ann1"),
+          extensionTag = UriOrCurie("https://neverblink.eu/test/ann1"),
           extensionValue = LinkmlAny("annotation 1"),
         )
 

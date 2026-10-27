@@ -251,8 +251,8 @@ private object MacroValidator {
     * A [[Uri]] that still has the shape of a CURIE after that, such as `acme:Person`, has a prefix
     * that isn't declared. A [[Curie]] with a colon, such as `my_ns:Foo`, has a prefix that isn't
     * declared and can't be a URI scheme, so it is invalid. A [[Curie]] with a declared prefix, such
-    * as `ex:Person`, wasn't expanded, which happens only in a schema built in code. A [[Curie]]
-    * without a colon is a relative reference, such as an import path.
+    * as `ex:Person`, or without a colon, such as `docs`, wasn't expanded, which happens only in a
+    * schema built in code. Generators would write it as it is, as a relative IRI.
     *
     * In a schema built in code, `UriOrCurie.apply` gives a [[Curie]] for any value without `//`,
     * such as `acme:Person` or `mailto:a@b.org`. If its prefix isn't declared and it is a valid URI,
@@ -267,18 +267,13 @@ private object MacroValidator {
             else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
           case c: Curie =>
             val curie = c.original
-            val isValid = c.isValid
-            if (isValid && curie.indexOf(':') < 0) ValidatorResult.ok
-            else {
-              val uri = if (isValid) vc.prefixes.expandOrNull(curie) else null
-              if (uri ne null)
-                ValidatorResult(unexpandedCuries =
-                  Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
-                )
-              else if (UriCurieValidator.isValidUri(curie)) validUri(Uri(curie))
-              else
-                ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", c, vc.fromSchema)))
-            }
+            val uri = if (c.isValid) vc.prefixes.expandOrNull(curie) else null
+            if (uri ne null)
+              ValidatorResult(unexpandedCuries =
+                Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
+              )
+            else if (UriCurieValidator.isValidUri(curie)) validUri(Uri(curie))
+            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", c, vc.fromSchema)))
         }
     }
 
