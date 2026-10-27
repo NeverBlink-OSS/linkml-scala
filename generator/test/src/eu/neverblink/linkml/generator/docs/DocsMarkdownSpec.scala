@@ -46,7 +46,6 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
         |      - "{curly}"
         |  "[brackets]":
         |  "Größe":
-        |  "CON":
         |  "name with spaces":
         |  ".dot":
         |slots:
@@ -160,7 +159,6 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
       pages.keySet should contain allOf (
         "classes/Person.md",
         "classes/person_2.md",
-        "classes/_CON.md",
         "classes/Größe.md",
         "classes/name_with_spaces.md",
         "classes/_.dot.md",

@@ -192,11 +192,9 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
       DocsSite.fileStem("a name/with:stuff") shouldBe "a_name_with_stuff"
     }
 
-    "avoid names that are hidden or not allowed on Windows" in {
+    "avoid names that are hidden" in {
       DocsSite.fileStem(".hidden") shouldBe "_.hidden"
       DocsSite.fileStem("") shouldBe "_"
-      DocsSite.fileStem("CON") shouldBe "_CON"
-      DocsSite.fileStem("com1") shouldBe "_com1"
     }
   }
 }

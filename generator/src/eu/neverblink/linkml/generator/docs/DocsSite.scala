@@ -246,10 +246,6 @@ object DocsSite {
     */
   final case class Usage(classView: ClassView, attribute: AttributeView)
 
-  /** File names that Windows does not allow, whatever the extension. */
-  private val reserved = Set("con", "prn", "aux", "nul") ++
-    (1 to 9).flatMap(i => Seq("com".concat(i.toString), "lpt".concat(i.toString)))
-
   /** [[name]] as a file name without the extension. Letters, digits, `_`, `-` and `.` are kept, and
     * anything else becomes `_`, so that the name works in a link without encoding.
     */
@@ -262,8 +258,7 @@ object DocsSite {
       i += 1
     }
     val stem = sb.toString
-    if (stem.isEmpty || stem.charAt(0) == '.' || reserved.contains(lowerCase(stem)))
-      "_".concat(stem)
+    if (stem.isEmpty || stem.charAt(0) == '.') "_".concat(stem)
     else stem
   }
 
