@@ -157,6 +157,13 @@ final case class TypeAttributeView(
       combineOption(slot.maximumLength, _type.maximumLength, combineFallback)
     else None
 
+  /** The types a value of the slot can take, each with the constraints that apply to it: from the
+    * slot, then from [[TypeView.alternatives]] of the range. A range that is not a union has one
+    * alternative.
+    */
+  lazy val alternatives: Seq[ValueAlternative] =
+    typeView.alternatives.map(_.withConstraintsOf(slot))
+
 /** Slot's range is an enum.
   */
 final case class EnumAttributeView(

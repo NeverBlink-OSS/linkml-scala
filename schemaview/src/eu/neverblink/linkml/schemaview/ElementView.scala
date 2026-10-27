@@ -8,6 +8,7 @@ import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Element views provide a rich interface for working with schema elements. They require an
@@ -713,6 +714,36 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
 
   /** Whether values of this type can take more than one type, through `union_of`. */
   def isUnion: Boolean = unionAlternatives.nonEmpty
+
+  /** The types a value of this type can take, each with the constraints that apply to it. See
+    * [[ValueAlternative]].
+    *
+    * A type that is not a union has one alternative: itself. A union has one alternative per
+    * member, in declaration order and without duplicates, with nested unions flattened. The union's
+    * own constraints have precedence over the ones of its members. A member that contains this
+    * union is skipped, as in [[unionAlternatives]].
+    */
+  lazy val alternatives: Seq[ValueAlternative] = alternativesAvoiding(Nil)
+
+  private def alternativesAvoiding(unions: List[String]): Seq[ValueAlternative] = {
+    val members = inheritedUnionMembers
+    if (members.isEmpty) ValueAlternative.of(this) :: Nil
+    else {
+      val path = name :: unions
+      val definition = derivedType
+      val b = Vector.newBuilder[ValueAlternative]
+      val seen = mutable.HashSet.empty[ValueAlternative]
+      members.foreach { member =>
+        if (!path.contains(member.name)) {
+          member.alternativesAvoiding(path).foreach { a =>
+            val alternative = a.withConstraintsOf(definition)
+            if (seen.add(alternative)) b.addOne(alternative)
+          }
+        }
+      }
+      b.result()
+    }
+  }
 
   /** This type followed by its `typeof` ancestors, nearest first. A `typeof` cycle is rejected by
     * [[SchemaValidator]]. Here each type is visited once, so that this always terminates.

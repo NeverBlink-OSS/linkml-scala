@@ -285,6 +285,77 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       view.types("Count").isUnion shouldBe false
     }
 
+    "give the alternatives of a value with the constraints that apply to each of them" in {
+      val view = load(
+        """id: https://example.org/alternatives
+          |name: alternatives
+          |imports: [linkml:types]
+          |types:
+          |  Code:
+          |    typeof: string
+          |    pattern: '^[A-Z]+$'
+          |    maximum_length: 4
+          |  Count:
+          |    typeof: integer
+          |    minimum_value: 0
+          |    maximum_value: 50
+          |  CodeOrCount:
+          |    union_of: [Code, Count]
+          |    maximum_length: 3
+          |  Choice:
+          |    union_of: [CodeOrCount, decimal, Code]
+          |    pattern: '^[A-Z]$'
+          |    maximum_value: 100
+          |  ChoiceChild:
+          |    typeof: Choice
+          |    minimum_value: 1
+          |classes:
+          |  Record:
+          |    attributes:
+          |      count:
+          |        range: Count
+          |        pattern: '^[0-9]+$'
+          |        minimum_length: 1
+          |        maximum_value: 9
+          |      choice:
+          |        range: ChoiceChild
+          |        maximum_length: 2
+          |""".stripMargin,
+      )
+      def describe(alternatives: Seq[ValueAlternative]) = alternatives.map { a =>
+        (
+          a.typeView.name,
+          a.pattern,
+          a.minimumValue.map(_.value.trim),
+          a.maximumValue.map(_.value.trim),
+          a.minimumLength,
+          a.maximumLength,
+        )
+      }
+      // Only the constraints that apply to a type are kept
+      describe(view.types("Count").alternatives) shouldBe
+        Seq(("Count", None, Some("0"), Some("50"), None, None))
+      // The nearest union has precedence over the member, and the outer union over both
+      describe(view.types("Choice").alternatives) shouldBe Seq(
+        ("Code", Some("^[A-Z]$"), None, None, None, Some(3)),
+        ("Count", None, Some("0"), Some("100"), None, None),
+        ("decimal", None, None, Some("100"), None, None),
+        // A member reached in another way has other constraints, so it is kept
+        ("Code", Some("^[A-Z]$"), None, None, None, Some(4)),
+      )
+      // A type inherits the union of its `typeof` parent, with its own constraints first
+      describe(view.types("ChoiceChild").alternatives).map(_._3) shouldBe
+        Seq(None, Some("1"), Some("1"), None)
+      // The slot has precedence over its range, and a range that is not a union has one
+      // alternative
+      val attributes = view.classes("Record").attributeViews
+      describe(attributes("count").asInstanceOf[TypeAttributeView].alternatives) shouldBe
+        Seq(("Count", None, Some("0"), Some("9"), None, None))
+      describe(attributes("choice").asInstanceOf[TypeAttributeView].alternatives)
+        .map(a => (a._1, a._6)) shouldBe
+        Seq(("Code", Some(2)), ("Count", None), ("decimal", None), ("Code", Some(2)))
+    }
+
     "reject a union that contains itself" in {
       val error = intercept[SchemaIssues.FatalSchemaException] {
         load(

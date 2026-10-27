@@ -16,6 +16,9 @@ object LinkmlPattern {
 
   def option(pattern: Option[String]): Option[LinkmlPattern] = pattern
 
+  /** The pattern as written in a schema, if there is one. */
+  def written(pattern: Option[LinkmlPattern]): Option[String] = pattern
+
   def fromXsd(pattern: String): LinkmlPattern = {
     val start = pattern.startsWith(".*")
     val end = pattern.length >= (if start then 4 else 2) && endsWith(pattern, ".*")
