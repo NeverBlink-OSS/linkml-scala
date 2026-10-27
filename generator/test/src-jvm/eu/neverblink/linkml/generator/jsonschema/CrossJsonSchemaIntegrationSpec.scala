@@ -20,6 +20,7 @@ class CrossJsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalog
     "typeDesignator" -> "Type designators seem to be very broken in LinkML-py",
     "unionRange" -> "Metamodel extended_types.yaml is not bundled in LinkML-py",
     "unionOf" -> "LinkML-py ignores constraints of union_of members",
+    "lengths" -> "LinkML-py's metamodel has no `minimum_length` and `maximum_length`",
   ) ++ Seq("treeRootAsCompactDict", "treeRootAsList", "treeRootAsSimpleDict").map(
     _ -> noTreeRootAs,
   )

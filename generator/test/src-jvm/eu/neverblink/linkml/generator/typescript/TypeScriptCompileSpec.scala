@@ -33,6 +33,7 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
 
   private val bounds = "TypeScript types cannot express minimum_value/maximum_value"
   private val pattern = "TypeScript types cannot express patterns"
+  private val lengths = "TypeScript types cannot express minimum_length/maximum_length"
   private val anyOfRanges =
     "Not yet implemented: the ranges of `any_of` members, the default range `string` is used instead"
   private val memberCardinality = "TypeScript types cannot express cardinality in `any_of` members"
@@ -45,6 +46,9 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "constraintsOnTypes" -> "floatAboveMaximum" -> bounds,
     "constraintsOnTypes" -> "intBelowMinimum" -> bounds,
     "constraintsOnTypes" -> "stringNotMatchingPattern" -> pattern,
+    "lengths" -> "codeTooShort" -> lengths,
+    "lengths" -> "codeTooLongForSlot" -> lengths,
+    "lengths" -> "nameEmpty" -> lengths,
     "typeDerivation" -> "excessiveCount" -> bounds,
     "mixinFacets" -> "tooLarge" -> bounds,
     "rangeOverride" -> "badPattern" -> pattern,

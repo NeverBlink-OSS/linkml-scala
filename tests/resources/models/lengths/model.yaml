@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/lengths/
+name: lengths
+imports:
+  - linkml:types
+
+classes:
+  Lengths:
+    tree_root: true
+    slots:
+      - code
+      - name
+
+slots:
+  code:
+    rank: 1
+    range: short_code
+    # Has precedence over the 4 of the type
+    maximum_length: 3
+  name:
+    rank: 2
+    range: string
+    minimum_length: 1
+
+types:
+  short_code:
+    typeof: string
+    minimum_length: 2
+    maximum_length: 4

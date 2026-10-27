@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/lengths/> .
+
+_:b a :Lengths;
+    :code "AB";
+    :name "X" .

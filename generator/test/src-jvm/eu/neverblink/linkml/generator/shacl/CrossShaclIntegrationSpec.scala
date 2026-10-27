@@ -24,6 +24,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "unionRange" -> "Metamodel extended_types.yaml is not bundled",
     "explicitInlineImplicitlyAsSimpleDict" -> "LinkML-py SHACL generator omits constraints on default-ranges",
     "curie" -> "LinkML-py treats CURIEs as literals instead of expanding them",
+    "lengths" -> "LinkML-py's metamodel has no `minimum_length` and `maximum_length`",
   )
   override val skipInstances: Map[(String, String), String] = Map(
     ("library", "full") -> "We went with a different approach to Linkml-py for enums",

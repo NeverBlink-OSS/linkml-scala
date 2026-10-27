@@ -14,6 +14,8 @@ skips = [
     "equalsExpression",
     # Python ignores constraints of union_of members in JSON Schema
     "unionOf",
+    # Python's metamodel has no minimum_length and maximum_length
+    "lengths",
 ]
 
 if __name__ == "__main__":
