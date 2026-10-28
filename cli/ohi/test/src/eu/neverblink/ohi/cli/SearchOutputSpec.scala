@@ -52,8 +52,7 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
                 |    rdfs-turtle
                 |  License: MIT
                 |  Tags: collections
-                |  URL: https://api.ohi.dev/files/packages/commons/collection
-                |    s/20221101/""".stripMargin,
+                |  URL: https://api.ohi.dev/files/packages/commons/collections/20221101/""".stripMargin,
         40 -> """1 matching ontology
                 |
                 |OMG Commons Collections
@@ -65,8 +64,7 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
                 |    owl-rdfxml, owl-turtle, rdfs-turtle
                 |  License: MIT
                 |  Tags: collections
-                |  URL: https://api.ohi.dev/files/package
-                |    s/commons/collections/20221101/""".stripMargin,
+                |  URL: https://api.ohi.dev/files/packages/commons/collections/20221101/""".stripMargin,
       )
     do
       s"match the selected Collections layout at $columns columns" in {
@@ -85,7 +83,10 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
         result.copy(hits = Seq(collections.copy(description = "abcdefghijklmnopqrst😀uv")))
       val out = SearchOutput.render(input, 20, colored = false)
       out should include("  Description: abcde\n    fghijklmnopqrst😀\n    uv\n")
-      out.linesIterator.foreach(line => line.codePointCount(0, line.length) should be <= 20)
+      out should include("  URL: https://api.ohi.dev/files/packages/commons/collections/20221101/")
+      out.linesIterator.filterNot(_.startsWith("  URL:")).foreach(line =>
+        line.codePointCount(0, line.length) should be <= 20,
+      )
     }
 
     "apply the selected ANSI roles without changing wrapping or leaking styles across lines" in {
@@ -99,7 +100,9 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
       out should include("\u001b[32mrdfs-turtle\u001b[0m")
       out should include("\u001b[2mMIT\u001b[0m")
       out should include("\u001b[2mcollections\u001b[0m")
-      out should include("\u001b[36mhttps://api.ohi.dev/files/packages/commons/collection\u001b[0m")
+      out should include(
+        "\u001b[36mhttps://api.ohi.dev/files/packages/commons/collections/20221101/\u001b[0m",
+      )
       out.linesIterator.filter(_.nonEmpty).foreach(_ should endWith("\u001b[0m"))
     }
 
@@ -127,9 +130,9 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
       val input = result.copy(hits = Seq.empty, total = 7, page = 2, searchCutoff = true)
       SearchOutput.render(input, 80, colored = false) shouldBe
         "No results on page 2. 7 matches in total.\n" +
-        "Search stopped early. Results and counts may be incomplete."
+        "Warning: Search stopped early. Results and counts may be incomplete."
       SearchOutput.render(input, 80, colored = true) should include(
-        "\u001b[33mSearch stopped early. Results and counts may be incomplete.\u001b[0m",
+        "\u001b[33mWarning: Search stopped early. Results and counts may be incomplete.\u001b[0m",
       )
     }
 

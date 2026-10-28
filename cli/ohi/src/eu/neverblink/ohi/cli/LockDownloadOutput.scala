@@ -39,17 +39,22 @@ private[cli] object LockDownloadOutput {
       )
   }
 
-  private def file(result: LockFileResult): String = result.status match {
-    case LockFileStatus.Downloaded => s"Saved ${result.path}"
-    case LockFileStatus.Verified => s"Verified ${result.path}"
+  private def file(result: LockFileResult, colored: Boolean): String = result.status match {
+    case LockFileStatus.Downloaded => CliFormatting.action("Saved", result.path, colored)
+    case LockFileStatus.Verified => CliFormatting.action("Verified", result.path, colored)
   }
 
-  def result(result: LockDownloadResult, json: Boolean): String =
+  def result(result: LockDownloadResult, json: Boolean, colored: Boolean = false): String =
     if json then JsonUtil.yamlToJson(resultCodec.encode(result))
     else if result.files.isEmpty then "No files in lock."
-    else result.files.map(file).mkString("\n")
+    else result.files.map(file(_, colored)).mkString("\n")
 
-  def error(error: LockDownloadError, json: Boolean): String =
+  def error(
+      error: LockDownloadError,
+      json: Boolean,
+      colored: Boolean = false,
+      retryCommand: Option[String] = None,
+  ): String =
     if json then {
       val withoutResponse =
         error.copy(catalogError = error.catalogError.map(_.copy(responseJson = None)))
@@ -58,14 +63,41 @@ private[cli] object LockDownloadOutput {
         error.catalogError.flatMap(_.responseJson),
       )
     } else {
-      val causes = error.lockError.toSeq.map(_.message) ++
-        error.catalogError.toSeq.map(cause =>
-          s"${stringify(cause.operation)} failed (${stringify(cause.code)}): ${cause.message}" +
-            cause.url.fold("")(url => s"\nURL: $url"),
-        ) ++ error.fileError.toSeq.map(cause =>
-          cause.message + cause.partialPath.fold("")(path => s"\nPartial file retained: $path"),
-        )
-      (error.files.map(file) ++ causes :+ "Correct the cause and repeat the same command.")
-        .mkString("\n")
+      val causes = error.lockError.toSeq.map(cause =>
+        ErrorOutput.lock(
+          stringify(cause.code),
+          stringify(cause.operation),
+          cause.message,
+          cause.path,
+          colored,
+        ),
+      ) ++ error.catalogError.toSeq.map(cause =>
+        ErrorOutput.catalog(
+          stringify(cause.code),
+          stringify(cause.operation),
+          cause.message,
+          cause.url,
+          cause.status,
+          cause.responseJson,
+          timeoutOption = true,
+          colored = colored,
+        ),
+      ) ++ error.fileError.toSeq.map(cause =>
+        ErrorOutput.file(
+          stringify(cause.code),
+          cause.message,
+          cause.url,
+          cause.directory,
+          cause.path,
+          cause.partialPath,
+          colored,
+        ),
+      )
+      val completed = error.files.map(file(_, colored)).mkString("\n")
+      val (diagnostic, recovery) = causes.head
+      val retained = if error.files.nonEmpty then "Completed files were kept. " else ""
+      val retry =
+        retryCommand.fold("")(command => s"\n  ${CliFormatting.styled(command, "36", colored)}")
+      Seq(completed, diagnostic, retained + recovery + retry).filter(_.nonEmpty).mkString("\n\n")
     }
 }

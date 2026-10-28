@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.stringify
-import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
+import eu.neverblink.ohi.model.generated.{Artifact, Publication}
 import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import scala.annotation.tailrec
@@ -9,13 +9,17 @@ import scala.annotation.tailrec
 private[cli] object OntologyReference {
   private val Reference = "(?U)([^/@\\s`]+)/([^/@\\s`]+)(?:@([^/@\\s+`]+))?".r
   private val bareFilterValue = "[A-Za-z0-9_.-]+".r
-  private val formats = Seq[Format](
-    Format.OwlTurtle,
-    Format.OwlRdfxml,
-    Format.RdfsTurtle,
-    Format.LinkmlYaml,
-    Format.OssieYaml,
-  ).map(value => stringify(value) -> value).toMap
+  private val formats = CliFormatting.formats.map((value, _) => stringify(value) -> value).toMap
+
+  enum Problem {
+    case MissingFormat(message: String)
+    case InvalidFormat(message: String)
+    case Invalid(message: String)
+    case Unavailable(message: String, publication: Publication)
+    case Ambiguous(message: String, publication: Publication, files: Seq[Artifact])
+
+    def message: String
+  }
 
   /** Classifies HTTP(S) prefixes without changing the input passed to SDK validation. */
   def isUrl(input: String): Boolean =
@@ -30,10 +34,14 @@ private[cli] object OntologyReference {
       format: Option[String],
       search: SearchRequest => SearchResult,
       inspect: String => Publication,
-  ): Either[String, (Publication, Artifact)] =
+  ): Either[Problem, (Publication, Artifact)] =
     for {
-      label <- format.toRight(s"--format is required for ontology reference '$input'.")
-      selectedFormat <- formats.get(label).toRight(s"Invalid format '$label'.")
+      label <- format.toRight(
+        Problem.MissingFormat(s"--format is required for ontology reference '$input'."),
+      )
+      selectedFormat <- formats.get(label).toRight(
+        Problem.InvalidFormat(s"Invalid format '$label'."),
+      )
       selection <- input match {
         case Reference(namespace, name, version) =>
           val requestedVersion = Option(version)
@@ -44,7 +52,7 @@ private[cli] object OntologyReference {
           }.mkString(" && ")
 
           @tailrec
-          def find(page: Int): Either[String, SearchHit] = {
+          def find(page: Int): Either[Problem, SearchHit] = {
             val result = search(
               SearchRequest(
                 q = "*",
@@ -55,7 +63,11 @@ private[cli] object OntologyReference {
               ),
             )
             if result.searchCutoff then
-              Left(s"Search stopped early for ontology reference '$input'.")
+              Left(
+                Problem.Invalid(
+                  s"Search stopped early for ontology reference '$input'. Try the same command again.",
+                ),
+              )
             else
               result.hits.find(hit =>
                 hit.namespace == namespace && hit.name == name &&
@@ -68,11 +80,18 @@ private[cli] object OntologyReference {
                     math.min(result.perPage.toLong, math.max(0L, result.total.toLong - offset))
                   if result.hits.size.toLong < expected then
                     Left(
-                      s"Incomplete search for ontology reference '$input' on page ${result.page}.",
+                      Problem.Invalid(
+                        s"Incomplete search for ontology reference '$input' on page ${result.page}. Try the same command again.",
+                      ),
                     )
                   else if offset + result.perPage.toLong < result.total.toLong then
                     find(result.page + 1)
-                  else Left(s"No matching release for ontology reference '$input'.")
+                  else
+                    Left(
+                      Problem.Invalid(
+                        s"No matching release for ontology reference '$input'. Check its namespace, name and version with 'ohi search'.",
+                      ),
+                    )
               }
           }
 
@@ -83,24 +102,35 @@ private[cli] object OntologyReference {
               publication.version != hit.version
             then
               Left(
-                s"Inspected publication does not match ontology reference '$input': ${hit.baseUrl.original}",
+                Problem.Invalid(
+                  s"Release metadata does not match ontology reference '$input': ${publication.baseUrl.original}. Report the inconsistent metadata to the catalog operator.",
+                ),
               )
             else
               publication.artifacts.filter(_.format == selectedFormat) match {
                 case Seq(artifact) => Right(publication -> artifact)
                 case Seq() =>
                   Left(
-                    s"Format '$label' is unavailable for ontology reference '$input': ${hit.baseUrl.original}",
+                    Problem.Unavailable(
+                      s"Format '$label' is unavailable for ontology reference '$input': ${hit.baseUrl.original}",
+                      publication,
+                    ),
                   )
-                case _ =>
+                case files =>
                   Left(
-                    s"Format '$label' is ambiguous for ontology reference '$input': ${hit.baseUrl.original}",
+                    Problem.Ambiguous(
+                      s"$input has more than one file in $label format.",
+                      publication,
+                      files,
+                    ),
                   )
               }
           }
         case _ =>
           Left(
-            s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
+            Problem.Invalid(
+              s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
+            ),
           )
       }
     } yield selection

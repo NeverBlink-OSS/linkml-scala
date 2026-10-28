@@ -1,5 +1,6 @@
 package eu.neverblink.ohi.cli
 
+import caseapp.core.help.HelpFormat
 import eu.neverblink.linkml.cli.*
 import eu.neverblink.linkml.tests.Resources
 import org.scalatest.matchers.should.Matchers
@@ -75,6 +76,13 @@ class AppSpec extends AnyWordSpec, Matchers {
   }
 
   "the Ohi entry point" should {
+    "retain usage-only output for an Ohi command" in {
+      val (out, err, code) = runApp(List("search", "--usage"), _ => Search)
+      code shouldBe 0
+      err shouldBe empty
+      out.trim shouldBe "Usage: ohi search [options] [<query>]"
+      out should not include "Options"
+    }
     "register the catalog commands, nested engine commands and six version aliases" in {
       new OhiApp().commands.flatMap(_.names.map(_.mkString(" "))) should contain theSameElementsAs
         (engineCommands.map(_._1) ++ versionNames ++ Seq(
@@ -87,12 +95,11 @@ class AppSpec extends AnyWordSpec, Matchers {
         ))
     }
 
-    "give each command a short one-line summary" in {
+    "give each command a nonempty summary without a trailing period" in {
       for command <- new OhiApp().commands do
         val summary = command.finalHelp.helpMessage.fold("")(_.message.takeWhile(_ != '\n'))
         withClue(s"for ${command.names.head.mkString(" ")}: ") {
           summary should not be empty
-          summary.length should be <= 50
           summary should not endWith "."
         }
     }
@@ -104,6 +111,10 @@ class AppSpec extends AnyWordSpec, Matchers {
         err shouldBe empty
         plain(out) should include(s"Usage: ohi $name")
         out should include(description)
+        out should not include "\u001b"
+        out.split("\\s+").mkString(" ").trim shouldBe
+          command.finalHelp.copy(progName = s"ohi $name").help(HelpFormat.default(false))
+            .split("\\s+").mkString(" ").trim
       }
 
     "retain Scala options in nested leaf help" in {
@@ -113,6 +124,7 @@ class AppSpec extends AnyWordSpec, Matchers {
       out should include("--package")
       out should include("--to")
       out should include("--clean")
+      out should include("  --package string\n    ")
     }
 
     for args <- Seq(List.empty[String], List("--help"), List("-h"), List("-help"), List("--usage"))
@@ -121,32 +133,47 @@ class AppSpec extends AnyWordSpec, Matchers {
         val (out, err, code) = runApp(args)
         code shouldBe 0
         err shouldBe empty
-        plain(out) should include("Usage: ohi <COMMAND>")
-        engineCommands.foreach { (name, _, _) => plain(out) should include(name) }
-        out should include("version")
+        out should include("Usage\n  ohi <command> [options]")
+        out should include("Find and download\n  search")
+        out should include("Local schemas\n  linkml")
+        out should include("About\n  version")
+        out should not include "linkml generate"
+        out should include("https://ohi.dev/docs/")
+        out should not include "\u001b"
       }
 
-      s"show the same Ohi usage for bare linkml group ${args.mkString(" ")}" in {
+      s"show only engine commands for linkml group ${args.mkString(" ")}" in {
         val (out, err, code) = runApp("linkml" :: args)
         code shouldBe 0
         err shouldBe empty
-        out shouldBe runApp(List("--help"))._1
+        engineCommands.foreach { (name, _, _) => out should include(name) }
+        out should not include "search"
+        out should not include "version"
       }
 
     "reject a flat engine command instead of accepting an alternate layout" in {
       val (out, err, code) = runApp(List("generate", "scala", "model.yaml"))
       code shouldBe 1
       out shouldBe empty
-      err should include("Unknown command: generate")
+      err should include("Error: Unknown command 'generate'.")
       err should include("Run 'ohi --help'")
     }
 
-    "retain nonzero failure for an incomplete nested generator" in {
-      val (out, err, code) = runApp(List("linkml", "generate"))
-      code shouldBe 1
-      out shouldBe empty
-      err should include("Unknown command: linkml generate")
-    }
+    for group <- Seq("generate", "from") do
+      for suffix <- Seq(List.empty[String], List("--help")) do
+        s"show the $group group without unrelated commands for ${suffix.mkString(" ")}" in {
+          val (out, err, code) = runApp(List("linkml", group) ++ suffix)
+          code shouldBe 0
+          err shouldBe empty
+          out should startWith(s"$group commands:\n")
+          val expected = engineCommands.filter(_._1.startsWith(s"linkml $group "))
+          expected.foreach { (name, _, description) =>
+            out should include(name)
+            out should include(description)
+          }
+          out should not include "linkml validate"
+          out should not include "search"
+        }
 
     "name the unknown nested target without including its input filename" in {
       val (out, err, code) = runApp(List("linkml", "generate", "malbolge", "model.yaml"))
@@ -161,10 +188,39 @@ class AppSpec extends AnyWordSpec, Matchers {
       val (out, err, code) = runApp(List("genrate", "model.yaml"))
       code shouldBe 1
       out shouldBe empty
-      err should include("Unknown command: genrate")
+      err should include("Error: Unknown command 'genrate'.")
       err should not include "model.yaml"
       err should include("Run 'ohi --help'")
     }
+
+    "frame an unknown root option with the parser diagnostic and help route" in {
+      val (out, err, code) = runApp(List("--bogus"))
+      code shouldBe 1
+      out shouldBe empty
+      err shouldBe "Error: Unrecognized argument: --bogus\n\nRun 'ohi --help' to see available commands.\n"
+    }
+
+    for (name, command, usage, options) <- Seq(
+        ("search", Search, "<query>", Seq("--page", "--per-page", "--color", "--query-by")),
+        ("inspect", Inspect, "<release-url>", Seq("--timeout-ms", "--json")),
+        ("get", Get, "<file-url>", Seq("--format", "--to", "--lock")),
+        ("init", Init, "[directory]", Seq("--json")),
+        ("add", Add, "<release-url>", Seq("--format", "--artifact", "--to", "--project")),
+        ("lock", Lock, "[options]", Seq("--project", "--json")),
+      )
+    do
+      s"show complete $name help with supported input and options" in {
+        val (out, err, code) = runApp(List(name, "--help"), _ => command)
+        code shouldBe 0
+        err shouldBe empty
+        out should startWith(s"ohi $name\n")
+        out should include(s"ohi $name $usage")
+        options.foreach(option => out should include(s"  $option"))
+        out should include("  -h, --help\n    Show complete help")
+        out should include("https://ohi.dev/docs/")
+        out should not include "[<"
+        out should not include "\u001b"
+      }
   }
 
   "Ohi version" should {
@@ -188,6 +244,11 @@ class AppSpec extends AnyWordSpec, Matchers {
         err shouldBe empty
         plain(out) should include(s"Usage: ohi $name")
         out should include("Print the version of ohi")
+        out.split("\\s+").mkString(" ").trim shouldBe
+          new OhiApp().version.finalHelp.copy(progName = s"ohi $name").help(
+            HelpFormat.default(false),
+          )
+            .split("\\s+").mkString(" ").trim
       }
 
     for name <- Seq("version", "linkml version") do

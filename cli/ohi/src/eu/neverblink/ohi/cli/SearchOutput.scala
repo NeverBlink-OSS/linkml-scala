@@ -5,10 +5,9 @@ import eu.neverblink.ohi.model.generated.search.SearchResult
 
 import scala.collection.mutable.ArrayBuffer
 
-import CliFormatting.styled
+import CliFormatting.{clean, styled}
 
 private[cli] object SearchOutput {
-  private val csi = "(?:\u001b\\[|\u009b)[0-?]*[ -/]*[@-~]".r
 
   /** Resolve exported COLUMNS, using 80 for invalid values and a minimum of 20. */
   def width(columns: Option[String]): Int =
@@ -39,7 +38,7 @@ private[cli] object SearchOutput {
       else s"${result.total} matches · Showing $start–${start + count - 1} · Page ${result.page}"
     text(summary, "1")
     if result.searchCutoff then
-      text("Search stopped early. Results and counts may be incomplete.", "33")
+      text("Warning: Search stopped early. Results and counts may be incomplete.", "33")
 
     result.hits.foreach { hit =>
       output += ""
@@ -58,7 +57,7 @@ private[cli] object SearchOutput {
       field("Formats", hit.formats.map(stringify(_)).mkString(", "), "32")
       if hit.licenses.nonEmpty then field("License", hit.licenses.mkString(", "), "2")
       if hit.keywords.nonEmpty then field("Tags", hit.keywords.mkString(", "), "2")
-      field("URL", hit.baseUrl.original, "36")
+      output += styled("  URL: ", "2", colored) + styled(clean(hit.baseUrl.original), "36", colored)
     }
 
     result.facetCounts.foreach { facet =>
@@ -73,15 +72,12 @@ private[cli] object SearchOutput {
     output.mkString("\n")
   }
 
-  private def clean(value: String): String =
-    csi.replaceAllIn(value, "")
-      .replaceAll("(?U)[\\p{Cc}\\p{Cf}&&[^\\s]]", "")
-      .replaceAll("(?U)\\s+", " ")
-      .trim
-
   private def length(value: String): Int = value.codePointCount(0, value.length)
 
-  private def wrap(value: String, width: Int, first: String, next: String): Seq[String] = {
+  /** Normalize text and wrap at Unicode code-point width, including the supplied line prefixes.
+    * `width` must exceed both prefix widths.
+    */
+  def wrap(value: String, width: Int, first: String, next: String): Seq[String] = {
     val rows = ArrayBuffer.empty[String]
     var remaining = clean(value)
     var prefix = first

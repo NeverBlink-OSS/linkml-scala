@@ -376,21 +376,22 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       withServer(publication) { (url, _) =>
         val out = successful(Inspect, "inspect", url)
         Seq(
-          "example/z 2.0",
+          "Ontology: example/z",
+          "Version: 2.0",
           "https://example.org/publications/z?revision=2",
           "Z sensors",
           "Sensor measurements",
           "2026-10-13T12:30:00Z",
           "Example publisher",
-          "Licenses: Not supplied",
-          "Keywords: Not supplied",
+          "License: Not supplied",
+          "Tags: Not supplied",
           "https://example.org/terms#",
           "Preferred prefix: ex",
           "https://example.org/file.ttl?revision=2",
           "owl-turtle",
-          "UPSTREAM",
-          "https://example.org/z.ttl, https://example.org/a.ttl",
-          "Bytes: 4",
+          "Source: Upstream",
+          "Entry points\n      https://example.org/z.ttl\n      https://example.org/a.ttl",
+          "Size: 4 bytes",
           "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
           "https://example.org/dependency/",
         ).foreach(out should include(_))
@@ -399,6 +400,72 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "catalog file delivery" should {
+    for name <- Seq("get", "add") do
+      s"offer actual file choices for $name without writes or selecting one implicitly" in {
+        withDirectory { directory =>
+          val destination = directory / "files here"
+          withServerResponses { base =>
+            val selectedHits =
+              hits.replace("https://example.org/z?revision=2", base + "/publication")
+            val search = s"""{"hits":$selectedHits,"found":2,"page":1,
+              "request_params":{"per_page":250},"search_cutoff":false}"""
+            val metadata = json(
+              publication.replace(
+                "https://example.org/publications/z?revision=2",
+                base + "/publication",
+              ),
+            )
+            val files =
+              metadata.get("artifacts").asInstanceOf[tools.jackson.databind.node.ArrayNode]
+            val first = files.get(0).asInstanceOf[tools.jackson.databind.node.ObjectNode]
+            first.put("url", base + "/first.ttl")
+            files.add(first.deepCopy().put("url", base + "/second.ttl"))
+            (request: String) =>
+              if new URI(request).getPath == "/search" then 200 -> search.getBytes(UTF_8)
+              else 200 -> metadata.toString.getBytes(UTF_8)
+          } { (base, requests) =>
+            val config =
+              CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
+            val command = if name == "get" then
+              new GetCommand {
+                override protected def config(options: GetOptions): CatalogConfig =
+                  CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
+              }
+            else
+              new AddCommand {
+                override protected def client() =
+                  new eu.neverblink.ohi.catalog.CatalogClient(config)
+              }
+            val extra = if name == "add" then List("--project", directory.toString) else Nil
+            val (out, err, code) = command.runTestCommandWithExitCode(
+              List(
+                "example/z@2.0",
+                "--format",
+                "owl-turtle",
+                "--to",
+                destination.toString,
+              ) ++ extra,
+              args => command.main(s"ohi $name", args),
+            )
+            code shouldBe 1
+            out shouldBe empty
+            err should startWith("example/z@2.0 has more than one file in owl-turtle format.")
+            err should include(s"Files\n  $base/first.ttl\n  $base/second.ttl")
+            val selection = if name == "get" then s"$base/first.ttl"
+            else s"$base/publication --artifact $base/first.ttl"
+            err should include(s"ohi $name $selection --to '$destination'")
+            if name == "add" then err should include(s"--project '$directory'")
+            err should not include "Error:"
+            requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
+              "/search",
+              "/publication",
+            )
+            os.exists(destination) shouldBe false
+            os.list(directory) shouldBe empty
+          }
+        }
+      }
+
     "resolve a versioned reference and download its advertised URL without project records" in {
       val directory = os.temp.dir(prefix = "ohi reference get ")
       val bytes = Array[Byte](0, -1, 65, -128)
@@ -798,9 +865,11 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         failure,
       )
       LockDownloadOutput.error(error, json = false) shouldBe
-        "Saved /out/z.ttl\n" +
-        "Cannot finish writing '/out/a.ttl'. Remove the incomplete file before retrying.\n" +
-        "Partial file retained: /out/a.ttl\nCorrect the cause and repeat the same command."
+        "Saved /out/z.ttl\n\n" +
+        "Error: Could not finish writing the downloaded file.\nPath: /out/a.ttl\n" +
+        "Details: Cannot finish writing '/out/a.ttl'. Remove the incomplete file before retrying.\n" +
+        "Incomplete file retained: /out/a.ttl\n\n" +
+        "Completed files were kept. Correct the storage problem and remove the incomplete file before retrying."
     }
   }
 
@@ -861,30 +930,30 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           List("inspect", "https://example.org/p", "--format", "json", "--json"),
           "--format",
         ),
-        ("missing inspect URL", Inspect, List("inspect", "--json"), "exactly one publication URL"),
+        ("missing inspect URL", Inspect, List("inspect", "--json"), "release URL"),
         (
           "extra inspect URL",
           Inspect,
           List("inspect", "https://example.org/a", "--", "https://example.org/b"),
-          "exactly one publication URL",
+          "release URL",
         ),
         (
           "missing search query",
           Search,
           List("search", "--search-url", "https://example.org/search", "--query-by", "title"),
-          "exactly one query",
+          "ohi search <query>",
         ),
         (
           "missing search endpoint",
           Search,
           List("search", "*", "--query-by", "title"),
-          "search_url and query_by must be supplied together",
+          "Supply --search-url with --query-by.",
         ),
         (
           "missing search fields",
           Search,
           List("search", "*", "--search-url", "https://example.org/search"),
-          "search_url and query_by must be supplied together",
+          "Supply --query-by with --search-url.",
         ),
         ("missing format", Get, List("get", "example/z", "--json"), "--format"),
         (
@@ -899,7 +968,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           List("get", "example/z", "--format", "turtle"),
           "format",
         ),
-        ("missing file URL", Get, List("get", "--to", "."), "exactly one ontology reference"),
+        ("missing file URL", Get, List("get", "--to", "."), "ohi get <namespace>/<name>"),
         (
           "search setting on inspect",
           Inspect,

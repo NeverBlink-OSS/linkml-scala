@@ -3,7 +3,7 @@ package eu.neverblink.ohi.cli
 import caseapp.core.Error
 import caseapp.core.argparser.{ArgParser, SimpleArgParser}
 
-import java.io.Console
+import eu.neverblink.linkml.cli.TerminalOutput
 
 private[cli] enum CliColor {
   case Auto, Never
@@ -19,14 +19,5 @@ private[cli] object CliColor {
     case value => Left(Error.MalformedValue("color", s"$value (expected auto or never)"))
   }
 
-  /** Returns false when the current console's terminal attachment cannot be established. */
-  def terminalAttached: Boolean = Option(System.console()).exists { console =>
-    // JDK 22–24 can supply a console for pipes. Reflection retains Java 17 compatibility.
-    try classOf[Console].getMethod("isTerminal").invoke(console).asInstanceOf[Boolean]
-    catch {
-      case _: NoSuchMethodException =>
-        Option(System.getProperty("jdk.console")).forall(_ == "java.base")
-      case _: ReflectiveOperationException | _: SecurityException => false
-    }
-  }
+  def terminalAttached: Boolean = TerminalOutput.terminalAttached
 }
