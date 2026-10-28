@@ -17,11 +17,13 @@
     } catch (e) {}
   </script>
   <style>
-    /* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt) */
-    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
-    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
-    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+    /* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt).
+       The ascent and descent overrides centre capitals in the line box, so text sits in the middle of
+       buttons and fields. With the font's own 80/20 split it sits about a pixel and a half high. */
+    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+    @font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; ascent-override: 85%; descent-override: 15%; }
     @font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
     @font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
 

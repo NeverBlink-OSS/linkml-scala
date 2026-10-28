@@ -1,10 +1,12 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt) */
-@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
-@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
-@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
-@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+/* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt).
+   The ascent and descent overrides centre capitals in the line box, so text sits in the middle of
+   buttons and fields. With the font's own 80/20 split it sits about a pixel and a half high. */
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; ascent-override: 85%; descent-override: 15%; }
 @font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
 @font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
 @font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
@@ -478,9 +480,10 @@ body { background: var(--bg); }
   border: none;
   background: none;
   cursor: pointer;
-  padding: 6px 9px;
+  /* With the track's padding and border, as tall as the target picker and Generate beside it */
+  padding: 5px 9px;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-secondary);
   border-radius: calc(var(--radius-sm) - 2px);
@@ -590,7 +593,7 @@ body { background: var(--bg); }
    its own last line, where the Auto toggle beside it cannot reach - so Auto dropped to a line of
    its own with half the row empty. Dissolving the box puts every control in one wrap context. */
 .options-row { display: contents; }
-.opt-field { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; }
+.opt-field { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-secondary); white-space: nowrap; }
 /* Same reason as `.ic[hidden]`: the `display: flex` above beats the UA `[hidden]` rule. */
 .opt-field[hidden] { display: none; }
 /* Divider after each option (incl. the last, to fence it off from the Auto
@@ -608,7 +611,7 @@ body { background: var(--bg); }
 .opt-field input[type="number"],
 .opt-field select {
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   padding: 5px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-strong);
@@ -625,7 +628,7 @@ body { background: var(--bg); }
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
   cursor: pointer;
   padding: 0 2px;
@@ -698,7 +701,7 @@ body { background: var(--bg); }
 }
 
 .panel-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: baseline; gap: 8px; }
-.panel-title-sub { font-size: 11px; font-weight: 400; color: var(--text-muted); }
+.panel-title-sub { font-size: 12px; font-weight: 400; color: var(--text-muted); }
 /* Wraps because the input panel's four buttons do not fit a narrow window on one line. */
 .panel-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
@@ -1018,7 +1021,7 @@ body { background: var(--bg); }
 .report-badge {
   flex-shrink: 0;
   font-family: var(--code-font);
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
   padding: 2px 6px;
