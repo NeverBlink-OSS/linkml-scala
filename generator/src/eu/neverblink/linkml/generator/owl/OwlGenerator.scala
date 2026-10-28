@@ -482,10 +482,15 @@ object OwlGenerator {
         val annotation = kind == EntityKind.AnnotationProperty
         val p = PropertyRef(s.uriStr)
         val stated = Seq.newBuilder[ClassExpr]
-        // With `slot_usage` on an inherited slot, state the range only if it is narrowed. For a
-        // slot from an imported schema, the importer can't tell a repeated range from a new one.
+        // With `slot_usage` on an inherited slot, state the range only if it is narrowed, by a new
+        // range or by a value constraint. For a slot from an imported schema, the importer can't
+        // tell a repeated range from a new one.
         val declares = cv.cls.slots.exists(_.value == name) || cv.cls.attributes.contains(name)
-        val narrows = usage.foldFast(false)(u => u.range.isDefined || u.anyOf.nonEmpty)
+        val narrows = usage.foldFast(false)(u =>
+          u.range.isDefined || u.anyOf.nonEmpty || u.pattern.isDefined ||
+            u.minimumValue.isDefined || u.maximumValue.isDefined || u.minimumLength.isDefined ||
+            u.maximumLength.isDefined,
+        )
         val range =
           if (annotation) {
             usage.flatMapFast(_.range).flatMapFast(r => sv.getElement(r.value))
