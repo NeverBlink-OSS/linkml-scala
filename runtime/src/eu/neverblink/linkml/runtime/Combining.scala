@@ -86,6 +86,13 @@ def combineMax(v1: LinkmlAny, v2: LinkmlAny): LinkmlAny =
 def combineMin(v1: LinkmlAny, v2: LinkmlAny): LinkmlAny =
   if (compareNumbers(v1, v2) < 0) v2 else v1
 
+/** Combine values for the `minimum_length` metaslot: the larger one, so that both lengths hold. */
+inline def combineMinLength(v1: Int, v2: Int): Int = math.max(v1, v2)
+
+/** Combine values for the `maximum_length` metaslot: the smaller one, so that both lengths hold.
+  */
+inline def combineMaxLength(v1: Int, v2: Int): Int = math.min(v1, v2)
+
 /** Compare two values as numbers. 0 if they are equal, or if one of them isn't a number. */
 private def compareNumbers(v1: LinkmlAny, v2: LinkmlAny): Int = {
   val n1 = toNumberOrNull(v1)

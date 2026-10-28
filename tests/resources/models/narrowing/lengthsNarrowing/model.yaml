@@ -1,0 +1,83 @@
+id: https://neverblink.eu/linkml/tests/lengthsNarrowing/
+name: lengthsNarrowing
+description: >-
+  A length can narrow the values that a type, a union or a parent allows, but not widen them. Each
+  slot gets `maximum_length: 10` from one place and `maximum_length: 3` from another, so `ABC` is
+  valid and `ABCD` is not.
+
+imports:
+  - linkml:types
+
+types:
+  Short:
+    typeof: string
+    maximum_length: 3
+  # A child type with a looser length than its parent
+  Longer:
+    typeof: Short
+    maximum_length: 10
+  # A union with a looser length than its member `Short`
+  ShortOrNumberUpTo10:
+    union_of: [Short, integer]
+    maximum_length: 10
+  ShortOrNumber:
+    union_of: [Short, integer]
+
+classes:
+  Base:
+    slots:
+      - subclass_usage
+      - mixin_usage
+    slot_usage:
+      subclass_usage:
+        maximum_length: 3
+      mixin_usage:
+        maximum_length: 3
+  Widening:
+    mixin: true
+    slots:
+      - mixin_usage
+    slot_usage:
+      mixin_usage:
+        maximum_length: 10
+  Record:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Widening
+    slots:
+      - child_slot
+    slot_usage:
+      subclass_usage:
+        maximum_length: 10
+    attributes:
+      child_type:
+        rank: 1
+        range: Longer
+      slot_over_type:
+        rank: 2
+        range: Short
+        maximum_length: 10
+      union_type:
+        rank: 3
+        range: ShortOrNumberUpTo10
+      slot_over_union:
+        rank: 4
+        range: ShortOrNumber
+        maximum_length: 10
+
+slots:
+  subclass_usage:
+    rank: 5
+    range: string
+  mixin_usage:
+    rank: 6
+    range: string
+  parent_slot:
+    range: string
+    maximum_length: 3
+  # A child slot with a looser length than its parent slot
+  child_slot:
+    rank: 7
+    is_a: parent_slot
+    maximum_length: 10

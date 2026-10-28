@@ -419,8 +419,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
         |      syntax: NEW
         |    equals_string: NEW
         |    equals_string_in: [NEW]
-        |    minimum_length: 0
-        |    maximum_length: 3
+        |    minimum_length: 7
+        |    maximum_length: 7
         |  Number:
         |    typeof: integer
         |    equals_number: 7
@@ -472,8 +472,9 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       text.structuredPattern.flatMap(_.syntax) shouldBe Some("NEW")
       text.equalsString shouldBe Some("NEW")
       text.equalsStringIn shouldBe Seq("NEW")
-      text.minimumLength shouldBe Some(0)
-      text.maximumLength shouldBe Some(3)
+      // Lengths can only narrow the parent's 6 to 8
+      text.minimumLength shouldBe Some(7)
+      text.maximumLength shouldBe Some(7)
 
       val number = view.types("ZeroChild").derivedType
       number.equalsNumber shouldBe Some(0)

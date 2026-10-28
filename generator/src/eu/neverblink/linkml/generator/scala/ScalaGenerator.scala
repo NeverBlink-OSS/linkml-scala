@@ -403,9 +403,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
   /** Remap the [[CombineFunction]] if necessary, handles special metamodel slots.
     *
-    * The boolean slots (`any_of`, `all_of`, `exactly_one_of`, `none_of`) are combined in a stricter
-    * way than in the LinkML specification and LinkML-Python, so that a subclass accepts only values
-    * that its parent classes accept. See the combining functions in the runtime `Combining.scala`.
+    * The boolean slots (`any_of`, `all_of`, `exactly_one_of`, `none_of`) and the lengths
+    * (`minimum_length`, `maximum_length`) are combined in a stricter way than in the LinkML
+    * specification and LinkML-Python, so that a subclass accepts only values that its parent
+    * classes accept. See the combining functions in the runtime `Combining.scala`.
     *
     * @param slot
     *   Slot to remap the combining function
@@ -426,6 +427,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     slot.uriStr match {
       case "https://w3id.org/linkml/maximum_value" => combineOption(combineMax)
       case "https://w3id.org/linkml/minimum_value" => combineOption(combineMin)
+      case "https://w3id.org/linkml/minimum_length" => combineOption(combineMinLength)
+      case "https://w3id.org/linkml/maximum_length" => combineOption(combineMaxLength)
       case "https://w3id.org/linkml/pattern" => combineOption(combinePattern)
       case "https://w3id.org/linkml/range" => combineOption(combineRange)
       case "https://w3id.org/linkml/any_of" | "https://w3id.org/linkml/exactly_one_of" =>
@@ -433,6 +436,17 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case "https://w3id.org/linkml/all_of" => combineAllOf(scalaType)
       case "https://w3id.org/linkml/none_of" => combineDistinct
       case _ => rangeCombineFunc
+    }
+
+  /** Whether the slot is the `minimum_length` or `maximum_length` metaslot. The metamodel doesn't
+    * mark them as inherited, unlike `pattern` and the value bounds. They are combined with the
+    * parent slots anyway, so that a child slot accepts only values that its parent slots accept.
+    */
+  private def isLength(slot: SlotView): Boolean =
+    slot.uriStr match {
+      case "https://w3id.org/linkml/minimum_length" | "https://w3id.org/linkml/maximum_length" =>
+        true
+      case _ => false
     }
 
   /** Test whether an attribute is a single-valued `string`. That is the only shape a slot can have
@@ -604,7 +618,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         typedDefault.combineFunc,
         baseRange(attribute, options).scalaType,
       ),
-      slot.inherited,
+      slot.inherited || isLength(view),
       ScalaDoc(slot, view.definingSchema.id, options),
     )
   }
@@ -1099,7 +1113,7 @@ object ScalaGenerator {
       */
     case combineAllOf(expressionType: String)
     case combineBoolean, combineSeq, combineNonEmpty, combineDistinct, combineMap, combineFallback,
-      combineMax, combineMin, combinePattern, combineRange
+      combineMax, combineMin, combineMinLength, combineMaxLength, combinePattern, combineRange
 
   /** Scala type-level information for a field, which has to be inferred together to work correctly.
     *

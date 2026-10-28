@@ -5,7 +5,7 @@
 # Inherited slots and `slot_usage`
 
 A class can get the metaslots of a slot from several places: its own `slot_usage`, the `slot_usage` of its parent classes and mixins, and the slot definition.
-This page shows how LinkML-Scala combines three kinds of them, where the LinkML specification, LinkML-Python 1.12.1 and LinkML-Scala do not all agree:
+This page shows how LinkML-Scala combines four kinds of them, where the LinkML specification, LinkML-Python 1.12.1 and LinkML-Scala do not all agree:
 
 - [Boolean metaslots](#boolean-metaslots), like `required` and `multivalued`, which are `true` or `false`.
   LinkML-Scala follows the specification here, and LinkML-Python works differently.
@@ -13,6 +13,8 @@ This page shows how LinkML-Scala combines three kinds of them, where the LinkML 
   LinkML-Scala works differently from both the specification and LinkML-Python here.
 - [Value bounds](#value-bounds): `minimum_value` and `maximum_value`.
   LinkML-Scala follows the specification here, and also uses it for types and unions. LinkML-Python follows it only for `slot_usage`.
+- [Lengths](#lengths): `minimum_length` and `maximum_length`.
+  LinkML-Scala works differently from the specification here. LinkML-Python 1.12.1 has no lengths.
 
 ## Boolean metaslots
 
@@ -165,3 +167,15 @@ So 50 is a valid `size` or `amount` for it, though it isn't a valid `Small`.
 
 Only numbers can be compared.
 For other bounds, such as dates, LinkML-Scala takes the nearest one.
+
+## Lengths
+
+LinkML-Scala combines `minimum_length` and `maximum_length` the same way as [value bounds](#value-bounds): the largest minimum and the smallest maximum, from each place a length can come from.
+So a length can narrow the values that a slot allows, but not widen them.
+
+The LinkML specification works differently in two ways:
+
+- Its rule for combining slots has no entry for lengths, so the nearest one is used, even if it is looser.
+- The metamodel doesn't mark lengths as inherited, unlike `pattern` and the value bounds. So a child slot doesn't get the lengths of its parent slot.
+
+LinkML-Scala does neither, so that a value of a child slot is also a valid value of its parent slot.

@@ -104,10 +104,8 @@ class ConstraintNarrowingSpec extends AnyWordSpec, Matchers {
     }
 
     "not let a child slot widen the bounds of its parent slot" in {
-      view.classes("Item").derivedAttributes("child_slot").slot.maximumValue.map(
-        _.value.trim,
-      ) shouldBe
-        Some("10")
+      val slot = view.classes("Item").derivedAttributes("child_slot").slot
+      slot.maximumValue.map(_.value.trim) shouldBe Some("10")
     }
 
     "keep a narrower bound from any place" in {
@@ -135,6 +133,124 @@ class ConstraintNarrowingSpec extends AnyWordSpec, Matchers {
         Seq(("Small", None, Some("3")))
       bounds(attribute(narrow, "Item", "union_type").alternatives) shouldBe
         Seq(("Small", None, Some("5")), ("string", None, None))
+    }
+  }
+
+  "Lengths" should {
+    val view = load(
+      """id: https://example.org/lengths
+        |name: lengths
+        |imports: [linkml:types]
+        |types:
+        |  Short:
+        |    typeof: string
+        |    minimum_length: 2
+        |    maximum_length: 3
+        |  Longer:
+        |    typeof: Short
+        |    minimum_length: 1
+        |    maximum_length: 10
+        |  ShortOrNumber:
+        |    union_of: [Short, integer]
+        |    maximum_length: 10
+        |  Pair:
+        |    union_of: [Short, integer]
+        |  OuterUnion:
+        |    union_of: [Pair]
+        |    maximum_length: 10
+        |slots:
+        |  parent_slot: {range: string, minimum_length: 2, maximum_length: 3}
+        |  child_slot: {is_a: parent_slot, maximum_length: 10}
+        |  plain_child_slot: {is_a: parent_slot}
+        |classes:
+        |  Item:
+        |    slots: [child_slot, plain_child_slot]
+        |    attributes:
+        |      child_type: {range: Longer}
+        |      slot_over_type: {range: Short, minimum_length: 1, maximum_length: 10}
+        |      union_type: {range: ShortOrNumber}
+        |      nested_union: {range: OuterUnion}
+        |      slot_over_union: {range: Pair, maximum_length: 10}
+        |      inherited: {range: string, minimum_length: 2, maximum_length: 3}
+        |  Widening:
+        |    mixin: true
+        |    slot_usage:
+        |      inherited: {maximum_length: 10}
+        |  SubItem:
+        |    is_a: Item
+        |    slot_usage:
+        |      inherited: {minimum_length: 1, maximum_length: 10}
+        |  MixedItem:
+        |    is_a: Item
+        |    mixins: [Widening]
+        |""".stripMargin,
+    )
+
+    def lengths(alternatives: Seq[ValueAlternative]): Seq[(String, Option[Int], Option[Int])] =
+      alternatives.map(a => (a.typeView.name, a.minimumLength, a.maximumLength))
+
+    "not let a child type widen the lengths of its parent" in {
+      val longer = view.types("Longer")
+      longer.derivedType.minimumLength shouldBe Some(2)
+      longer.derivedType.maximumLength shouldBe Some(3)
+      lengths(attribute(view, "Item", "child_type").alternatives) shouldBe
+        Seq(("Longer", Some(2), Some(3)))
+    }
+
+    "not let a slot widen the lengths of its range type" in {
+      val slot = attribute(view, "Item", "slot_over_type")
+      slot.minimumLength shouldBe Some(2)
+      slot.maximumLength shouldBe Some(3)
+      lengths(slot.alternatives) shouldBe Seq(("Short", Some(2), Some(3)))
+    }
+
+    "not let a union widen the lengths of its members" in {
+      lengths(attribute(view, "Item", "union_type").alternatives) shouldBe
+        Seq(("Short", Some(2), Some(3)), ("integer", None, None))
+      lengths(attribute(view, "Item", "nested_union").alternatives) shouldBe
+        Seq(("Short", Some(2), Some(3)), ("integer", None, None))
+    }
+
+    "not let a slot widen the lengths of the members of its union range" in {
+      lengths(attribute(view, "Item", "slot_over_union").alternatives) shouldBe
+        Seq(("Short", Some(2), Some(3)), ("integer", None, None))
+    }
+
+    "not let a slot_usage in a subclass or a mixin widen the lengths of the parent class" in {
+      for cls <- Seq("SubItem", "MixedItem") do {
+        val slot = view.classes(cls).derivedAttributes("inherited").slot
+        slot.minimumLength shouldBe Some(2)
+        slot.maximumLength shouldBe Some(3)
+      }
+    }
+
+    "not let a child slot widen or drop the lengths of its parent slot" in {
+      for name <- Seq("child_slot", "plain_child_slot") do {
+        val slot = view.classes("Item").derivedAttributes(name).slot
+        slot.minimumLength shouldBe Some(2)
+        slot.maximumLength shouldBe Some(3)
+      }
+    }
+
+    "keep a narrower length from any place" in {
+      val narrow = load(
+        """id: https://example.org/narrow
+          |name: narrow
+          |imports: [linkml:types]
+          |types:
+          |  Short: {typeof: string, maximum_length: 3}
+          |  Shorter: {typeof: Short, maximum_length: 2}
+          |classes:
+          |  Item:
+          |    attributes:
+          |      child_type: {range: Shorter}
+          |      slot_over_type: {range: Short, maximum_length: 1}
+          |""".stripMargin,
+      )
+      lengths(attribute(narrow, "Item", "child_type").alternatives) shouldBe
+        Seq(("Shorter", None, Some(2)))
+      lengths(attribute(narrow, "Item", "slot_over_type").alternatives) shouldBe
+        Seq(("Short", None, Some(1)))
     }
   }
 }

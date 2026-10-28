@@ -25,6 +25,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "explicitInlineImplicitlyAsSimpleDict" -> "LinkML-py SHACL generator omits constraints on default-ranges",
     "curie" -> "LinkML-py treats CURIEs as literals instead of expanding them",
     "lengths" -> "LinkML-Python's metamodel has no `minimum_length` and `maximum_length`",
+    "lengthsNarrowing" -> "LinkML-Python's metamodel has no `minimum_length` and `maximum_length`",
     "unionOf" ->
       "LinkML-Python writes no datatype for a `union_of` range and ignores the union's constraints",
     "boundsNarrowing" ->

@@ -80,6 +80,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `mixin` | 0 | 0 |  |
 | `multivaluedReference` | 11 | 3 |  |
 | `narrowing/boundsNarrowing` | 7 | 26 | A value bound can narrow the values that a type, a union or… |
+| `narrowing/lengthsNarrowing` | 7 | 26 | A length can narrow the values that a type, a union or a pa… |
 | `nonHermetic` | 0 | 0 |  |
 | `pruning` | 0 | 0 |  |
 | `pruningDefaultRange` | 0 | 0 |  |

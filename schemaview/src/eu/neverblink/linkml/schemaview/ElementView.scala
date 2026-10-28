@@ -762,8 +762,9 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   def pattern: Option[LinkmlPattern] = LinkmlPattern.option(derivedType.pattern)
 
   /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. Value
-    * bounds are combined so that all of them hold, see [[combineMin]] and [[combineMax]]. The
-    * original declaration remains available through [[inner]].
+    * bounds and lengths are combined so that all of them hold, see [[combineMin]], [[combineMax]],
+    * [[combineMinLength]] and [[combineMaxLength]]. The original declaration remains available
+    * through [[inner]].
     */
   lazy val derivedType: TypeDefinition =
     ancestorsWithSelf.iterator.drop(1)
@@ -784,9 +785,9 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
           minimumValue = combineOption(derived.minimumValue, parent.minimumValue, combineMin),
           maximumValue = combineOption(derived.maximumValue, parent.maximumValue, combineMax),
           minimumLength =
-            combineOption(derived.minimumLength, parent.minimumLength, combineFallback),
+            combineOption(derived.minimumLength, parent.minimumLength, combineMinLength),
           maximumLength =
-            combineOption(derived.maximumLength, parent.maximumLength, combineFallback),
+            combineOption(derived.maximumLength, parent.maximumLength, combineMaxLength),
         )
       }
 

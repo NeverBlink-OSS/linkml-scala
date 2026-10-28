@@ -12,6 +12,7 @@ import eu.neverblink.linkml.runtime.*
   * The constraints come from the slot, then each union on the way to the member, then the member
   * type:
   *   - all value bounds hold: the largest `minimum_value` and the smallest `maximum_value`;
+  *   - all lengths hold: the largest `minimum_length` and the smallest `maximum_length`;
   *   - other constraints come from the nearest place that sets them.
   *
   * A constraint is kept only if it applies to values of [[typeView]]:
@@ -73,8 +74,8 @@ final case class ValueAlternative private (
       ),
       combineOption(minimumValue, this.minimumValue, combineMin),
       combineOption(maximumValue, this.maximumValue, combineMax),
-      combineOption(minimumLength, this.minimumLength, combineFallback),
-      combineOption(maximumLength, this.maximumLength, combineFallback),
+      combineOption(minimumLength, this.minimumLength, combineMinLength),
+      combineOption(maximumLength, this.maximumLength, combineMaxLength),
     )
 }
 

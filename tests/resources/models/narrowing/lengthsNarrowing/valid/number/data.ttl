@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/lengthsNarrowing/> .
+
+_:b a :Record;
+    :union_type 12345;
+    :slot_over_union 12345 .

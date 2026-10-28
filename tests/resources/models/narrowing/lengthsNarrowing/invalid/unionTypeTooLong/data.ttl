@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/lengthsNarrowing/> .
+
+_:b a :Record;
+    :union_type "ABCD" .

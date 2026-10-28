@@ -146,11 +146,11 @@ final case class TypeAttributeView(
 
   /** @see [[slot.minimumLength]] */
   def minimumLength: Option[Int] =
-    combineOption(slot.minimumLength, _type.minimumLength, combineFallback)
+    combineOption(slot.minimumLength, _type.minimumLength, combineMinLength)
 
   /** @see [[slot.maximumLength]] */
   def maximumLength: Option[Int] =
-    combineOption(slot.maximumLength, _type.maximumLength, combineFallback)
+    combineOption(slot.maximumLength, _type.maximumLength, combineMaxLength)
 
   /** The types a value of the slot can take, each with the constraints that apply to it: from the
     * slot, then from [[TypeView.alternatives]] of the range. A range that is not a union has one

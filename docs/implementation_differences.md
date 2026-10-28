@@ -25,9 +25,9 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - JSON Schema, Pydantic, SHACL, OWL, Scala and TypeScript generators support type unions.
   - The constraints of a union and of the slot that uses it apply to each member they fit:
     `pattern` to anything but numbers and booleans, `minimum_value` and `maximum_value` to numbers,
-    dates and times, and lengths to text. All value bounds hold, see [Value bounds](#value-bounds).
-    For other constraints, the nearest one has precedence: the slot, then each union on the way to
-    the member, then the member type.
+    dates and times, and lengths to text. All value bounds and lengths hold, see
+    [Value bounds](#value-bounds) and [Lengths](#lengths). For a pattern, the nearest one has
+    precedence: the slot, then each union on the way to the member, then the member type.
   - Some constraints may still be lost, depending on the expressiveness of the target language:
     - Frictionless has one type per column. A union is written as that type only if all its
       members give the same column, such as `string` for `string | ncname`. Otherwise it is an
@@ -43,6 +43,7 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
 These features work differently in LinkML-Scala than in the LinkML specification and LinkML-Python:
 
 - [Inherited boolean expressions](#inherited-boolean-expressions): a subclass accepts only values that its parent classes and mixins accept
+- [Lengths](#lengths): a length can narrow the values of a type, a union or a parent, but not widen them, and a child slot keeps the lengths of its parent slot
 
 These features follow the LinkML specification, while LinkML-Python works differently:
 
@@ -79,6 +80,14 @@ LinkML-Python 1.12.1 does it only for `slot_usage`, and otherwise takes the near
 So a value of a slot is also a valid value of its range type and of each parent.
 
 See [Value bounds](slot_usage_inheritance.md#value-bounds) for details and examples.
+
+## Lengths
+
+LinkML-Scala combines `minimum_length` and `maximum_length` so that all of them hold, the same as value bounds.
+The LinkML specification keeps the nearest length, and doesn't pass lengths from a parent slot to a child slot.
+LinkML-Python 1.12.1 has no lengths.
+
+See [Lengths](slot_usage_inheritance.md#lengths) for details.
 
 ## Imports
 
