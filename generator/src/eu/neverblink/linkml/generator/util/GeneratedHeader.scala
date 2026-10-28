@@ -26,5 +26,5 @@ object GeneratedHeader {
   /** Whether [[line]] is the first line of a header written with [[commentPrefix]]. */
   def startsHeader(line: String, commentPrefix: String): Boolean =
     line.startsWith(commentPrefix) &&
-      (line.startsWith(lead, commentPrefix.length) || line.startsWith(oldLead, commentPrefix.length))
+      Seq(lead, oldLead).exists(line.startsWith(_, commentPrefix.length))
 }
