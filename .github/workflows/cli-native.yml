@@ -31,7 +31,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-15-intel, ubuntu-22.04, ubuntu-22.04-arm, windows-latest]
+        os: >-
+          ${{ fromJSON(github.event_name == 'pull_request'
+          && '["macos-15", "ubuntu-22.04", "windows-latest"]'
+          || '["macos-15", "macos-15-intel", "ubuntu-22.04", "ubuntu-22.04-arm", "windows-latest"]') }}
     steps:
       - uses: actions/checkout@v7
       - name: Relocate the coursier archive cache
