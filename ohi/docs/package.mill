@@ -1,0 +1,29 @@
+package build.ohi.docs
+
+import mill.*
+import mill.Module
+
+object `package` extends Module {
+  /** Requires Node.js and npm on PATH. Installs dependencies when node_modules is absent. */
+  def runNpm(script: String): Unit = {
+    if (!os.exists(moduleDir / "node_modules"))
+      os.call(("npm", "ci"), cwd = moduleDir, stdout = os.Inherit, stderr = os.Inherit)
+    os.call(("npm", "run", script), cwd = moduleDir, stdout = os.Inherit, stderr = os.Inherit)
+  }
+
+  /** Build the ohi docs and check internal links. */
+  def build(args: String*) = Task.Command(exclusive = true) {
+    runNpm("build")
+  }
+
+  /** Serve the ohi docs at http://localhost:4321/docs/ with live reload. */
+  def serve(args: String*) = Task.Command() {
+    runNpm("dev")
+  }
+
+  /** Build and preview the ohi docs locally, including search. */
+  def preview(args: String*) = Task.Command() {
+    runNpm("build")
+    runNpm("preview")
+  }
+}

@@ -1,0 +1,45 @@
+# Publish the docs at https://ohi.dev/docs/.
+name: Deploy docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-docs
+  cancel-in-progress: false
+
+env:
+  DOCS_DIR: ./ohi/docs/dist
+  DOCS_BUCKET: ohi-prod-docs
+  WORKLOAD_IDENTITY_PROVIDER: projects/714759206480/locations/global/workloadIdentityPools/github/providers/github
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build ohi.dev docs
+        run: >-
+          ./mill --no-server ohi.docs.build
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3.0.0
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+      - name: Set-up gcloud cli
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+      - name: Upload
+        run: >-
+          gcloud storage rsync "$DOCS_DIR" "gs://$DOCS_BUCKET"
+          --recursive
+          --delete-unmatched-destination-objects
+          --exclude='(.*/)?\.'
+          --cache-control='public, max-age=300'

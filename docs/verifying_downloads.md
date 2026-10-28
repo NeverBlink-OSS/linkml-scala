@@ -1,6 +1,6 @@
 # Verifying downloads
 
-LinkML and Ohi release downloads include checksums and build provenance:
+LinkML and ohi release downloads include checksums and build provenance:
 
 | Release channel                                                                                                  | Signature type                                                | How to check it           |
 |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|---------------------------|
@@ -43,7 +43,7 @@ gh attestation verify linkml-scala-linux-x86_64 --repo NeverBlink-OSS/linkml-sca
 gh attestation verify SHA256SUMS --repo NeverBlink-OSS/linkml-scala
 ```
 
-Use the downloaded Ohi filename in the same commands to verify an Ohi asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/linkml-scala`.
+Use the downloaded ohi filename in the same commands to verify an ohi asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/linkml-scala`.
 
 `install.sh` checks the checksum when a manifest exists and verifies provenance when `gh` is installed. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` and `LINKML_SCALA_REQUIRE_ATTESTATION=1` to require both checks and reject an installation when either cannot be completed.
 
@@ -56,7 +56,7 @@ npm audit signatures
 ```
 
 You can also see the provenance, including the source commit and the workflow that published it, on
-the [LinkML package page](https://www.npmjs.com/package/@neverblink/linkml) or [Ohi package page](https://www.npmjs.com/package/@neverblink/ohi).
+the [LinkML package page](https://www.npmjs.com/package/@neverblink/linkml) or [ohi package page](https://www.npmjs.com/package/@neverblink/ohi).
 
 ## Maven Central
 

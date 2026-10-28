@@ -175,6 +175,9 @@ jobs:
         # Fails on a broken link between pages or to a heading
         run: ./mill --no-server website.build
 
+      - name: Build the ohi docs site
+        run: ./mill --no-server ohi.docs.build
+
   scalafix-lint:
     name: Scalafix lint
     runs-on: ubuntu-latest

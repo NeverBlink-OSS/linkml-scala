@@ -1,6 +1,6 @@
-# Ohi CLI
+# ohi CLI
 
-Ohi lets command-line users find ontology publications, download files, track the publications a project depends on, and run LinkML engine commands.
+ohi lets command-line users find ontology publications, download files, track the publications a project depends on, and run LinkML engine commands.
 
 ## Install
 
@@ -22,7 +22,7 @@ On Windows, download `ohi-windows-x86_64.exe` and `SHA256SUMS` from the same rel
 `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` in PowerShell with that asset's
 entry in `SHA256SUMS`, then rename it to `ohi.exe` and place it on your `PATH`.
 The `ohi.jar` asset runs with Java 17 or later using `java -jar ohi.jar`.
-Ohi and LinkML use the same release version.
+ohi and LinkML use the same release version.
 See [download verification](../../docs/verifying_downloads.md) for checksums and build provenance.
 
 ```sh
@@ -32,7 +32,7 @@ ohi get https://hub.example/files/prov-o.ttl --to ./ontologies
 ```
 
 Search uses the ohi.dev catalog. The inspection and file addresses above are illustrative.
-These commands require no Ohi project and do not read or write `ohi.yaml` or a lockfile.
+These commands require no ohi project and do not read or write `ohi.yaml` or a lockfile.
 
 Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, check its `format`, then pass that entry's `url` to `get`.
 
@@ -64,7 +64,7 @@ with `get <file-url>` or [from a lock](#download-a-lock).
 
 ## Project commands
 
-A project is a directory with two files. You edit [`ohi.yaml`](schema/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. Ohi writes [`ohi.lock.json`](../../ohi/model/schema/lock.yaml), which lists the files those selections resolve to, including dependencies.
+A project is a directory with two files. You edit [`ohi.yaml`](schema/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. ohi writes [`ohi.lock.json`](../../ohi/model/schema/lock.yaml), which lists the files those selections resolve to, including dependencies.
 
 ```sh
 ohi init ./project
@@ -103,9 +103,9 @@ Download every file in a lock, including dependencies:
 ohi get --lock ./ohi.lock.json --to ./ontologies
 ```
 
-Files keep their URL filenames. Local files matching the lock's hashes are reused. Downloads are checked against
-the lock's hashes. The command stops on failure and keeps completed files. Correct the error and rerun.
-Move or remove a mismatching local file before retrying.
+Each file is saved under the filename from its download URL. The command verifies downloaded files using
+the SHA-256 checksums recorded in the lock. Files already in the destination are not downloaded again if
+their checksums match. The command stops on failure and keeps completed files.
 
 Rebuild older project locks with `ohi lock --project <directory>` first.
 Use `--json` for [structured results and errors](schema/cli-lock-download.yaml).

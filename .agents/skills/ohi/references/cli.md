@@ -2,7 +2,7 @@
 
 ## Search results
 
-Search defaults to ohi.dev. To use another catalog, supply both its search endpoint and indexed fields. Supplying only one is an error. Each search returns one page in backend order. Request further pages explicitly. `search_cutoff: true` means hits or the total may be incomplete. An empty successful page differs from a failed request. Ohi does not rerank results or traverse pages automatically.
+Search defaults to ohi.dev. To use another catalog, supply both its search endpoint and indexed fields. Supplying only one is an error. Each search returns one page in backend order. Request further pages explicitly. `search_cutoff: true` means hits or the total may be incomplete. An empty successful page differs from a failed request. ohi does not rerank results or traverse pages automatically.
 
 ## Publication metadata
 
@@ -19,19 +19,19 @@ Compare the saved byte length and SHA-256 with the inspected artifact's `size_by
 ## Download a lock
 
 `ohi get --lock <file> --to <directory>` downloads every recorded file, including dependencies.
-Files keep their URL filenames. Local files matching the lock's hashes are reused. Downloads are checked against
-the lock's hashes. The command stops on failure and keeps completed files. Correct the error and rerun.
-Move or remove a mismatching local file before retrying.
+Each file is saved under the filename from its download URL. The command verifies downloaded files using
+the SHA-256 checksums recorded in the lock. Files already in the destination are not downloaded again if
+their checksums match. The command stops on failure and keeps completed files.
 
 Rebuild older project locks with `ohi lock --project <directory>` first.
 
 ## Dependencies
 
-Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`, or [download the complete lock](#download-a-lock) when one exists. Ohi does not derive download URLs from namespace prefixes or configure an application's loader.
+Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`, or [download the complete lock](#download-a-lock) when one exists. ohi does not derive download URLs from namespace prefixes or configure an application's loader.
 
 ## Project records
 
-`--project` defaults to the invocation directory. Ohi does not search parent directories. Relative paths, including `--to`, resolve against the invocation directory even when another project directory is selected.
+`--project` defaults to the invocation directory. ohi does not search parent directories. Relative paths, including `--to`, resolve against the invocation directory even when another project directory is selected.
 
 `init` leaves an existing valid declaration unchanged and creates no lock. `add` requires an existing project directory and can create a missing declaration, so initialization is optional for that directory.
 
