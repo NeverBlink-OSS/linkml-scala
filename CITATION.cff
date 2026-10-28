@@ -18,7 +18,7 @@ identifiers:
     value: 10.48550/arXiv.2607.22335
     description: Preprint DOI
 repository-code: 'https://github.com/NeverBlink-OSS/linkml-scala'
-url: 'https://linkml.neverblink.eu'
+url: 'https://linkml.ohi.dev'
 abstract: >-
   LinkML-Scala is a fast, portable (JS/JVM/native), and
   robust implementation of LinkML for cross-language data

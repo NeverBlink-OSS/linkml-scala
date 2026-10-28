@@ -7,8 +7,9 @@ import mill.scalalib.*
 import millbuild.*
 import com.carlosedp.aliases.*
 
-import com.sun.net.httpserver.{Filter, HttpServer, SimpleFileServer}
+import com.sun.net.httpserver.{Filter, HttpHandler, HttpServer, SimpleFileServer}
 import java.net.InetSocketAddress
+import java.nio.charset.StandardCharsets
 
 
 object `package` extends Module {
@@ -50,28 +51,57 @@ object `package` extends Module {
     os.call(("npm", "run", "build"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
   }
 
+  /** Serve the whole site as it's deployed (see .github/workflows/deploy-playground.yml) at
+   * http://localhost:8000/: the landing page at /, the playground at /playground/ and the docs at
+   * /docs/. The landing page and the playground come straight from pages/ and ui/, so a reload
+   * shows your edits. The docs are built once at the start; use `website.serve` to work on them.
+   */
   def serve(args: String*) = Task.Command() {
     build.generator.js.fullLinkJS()
     buildUiBundle()
+    build.website.runNpm("build")
+
+    val root = mill.api.BuildCtx.workspaceRoot
+    // The landing page shows install lines for the latest release, like on the deployed site
+    val version =
+      try os.proc("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
+          .call(cwd = root, stderr = os.Pipe).out.trim().stripPrefix("v")
+      catch { case _: os.SubprocessException => "0.0.0-SNAPSHOT" }
+
+    val uiFiles = SimpleFileServer.createFileHandler((root / "ui").toNIO)
+    val landing: HttpHandler = exchange =>
+      exchange.getRequestURI.getPath match {
+        case "/" | "/index.html" =>
+          val page = os.read(root / "pages" / "index.html").replace("__VERSION__", version)
+          val body = page.getBytes(StandardCharsets.UTF_8)
+          exchange.getResponseHeaders.set("Content-Type", "text/html; charset=utf-8")
+          exchange.sendResponseHeaders(200, body.length)
+          exchange.getResponseBody.write(body)
+          exchange.close()
+        // The icons and fonts, which the deployed site keeps next to the landing page
+        case _ => uiFiles.handle(exchange)
+      }
+
     // `no-cache` makes the browser ask the server before it reuses a file, so a page reloaded after
     // a rebuild gets the new files. Without it, Safari can keep using an old styles.css for days.
     val noCache = Filter.beforeHandler(
       "Cache-Control: no-cache",
       exchange => exchange.getResponseHeaders.set("Cache-Control", "no-cache"),
     )
-    val server =
-      HttpServer.create(
-        new InetSocketAddress(8000),
-        0,
-        "/",
-        SimpleFileServer.createFileHandler(mill.api.BuildCtx.workspaceRoot.toNIO),
-        SimpleFileServer.createOutputFilter(System.out, SimpleFileServer.OutputLevel.INFO),
-        noCache,
-      )
+    val log = SimpleFileServer.createOutputFilter(System.out, SimpleFileServer.OutputLevel.INFO)
+
+    val server = HttpServer.create(new InetSocketAddress(8000), 0)
+    Seq(
+      "/" -> landing,
+      "/playground" -> uiFiles,
+      "/docs" -> SimpleFileServer.createFileHandler((root / "website" / "dist").toNIO),
+    ).foreach { (path, handler) =>
+      server.createContext(path, handler).getFilters.addAll(java.util.List.of(log, noCache))
+    }
 
     try {
       server.start()
-      println("\nBrowser UI up at http://localhost:8000/ui/\n")
+      println("\nSite up at http://localhost:8000/ (playground at /playground/, docs at /docs/)\n")
       Thread.sleep(Long.MaxValue)
     } finally {
       server.stop(0)

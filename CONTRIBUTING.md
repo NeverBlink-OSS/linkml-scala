@@ -13,7 +13,7 @@ LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap
 Common tasks with mill:
 
 - Run CLI directly: `./mill cli.jvm.run --help`
-- Start the browser UI: `./mill ui.serve`
+- Serve the whole site (landing page, playground and docs): `./mill ui.serve`
 - Preview the docs site: `./mill website.serve` (see [Docs site](#docs-site))
 - Scan the mill project structure: `./mill resolve _`
 - Compile all modules: `./mill __.compile`
@@ -93,7 +93,7 @@ The env var is set when starting the mill process, so if you have a daemon runni
 
 The browser playground lives in [`ui/`](ui/) – a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
 
-- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle **and** the UI bundle, then serves at <http://localhost:8000/ui/>
+- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle, the UI bundle and the docs, then serves the whole site as it's deployed: the landing page ([`pages/index.html`](pages/index.html)) at <http://localhost:8000/>, the playground at <http://localhost:8000/playground/> and the docs at <http://localhost:8000/docs/>. Reload to see edits to the landing page and the playground; the docs are built once, so use `./mill website.serve` to work on them.
 - Build the UI bundle only: `./mill ui.bundle` → `ui/dist/app.js`
 - Type-check and bundle (what CI runs): `./mill ui.check`
 - Regenerate the LinkML API types: `./mill ui.types` – run after changing `generator/src-js/.../LinkMlJsApi.scala`
@@ -112,7 +112,7 @@ npm run build     # one-off bundle
 
 ### Docs site
 
-The guides in [`docs/`](docs/) are published at <https://linkml.neverblink.eu/docs/> with [Starlight](https://starlight.astro.build/). The site lives in [`website/`](website/). Write and edit the guides in `docs/` only: `website/sync-docs.mjs` copies them into the site on every build, makes the first `# Title` line the page title, and rewrites links between the guides to page URLs, and links to other files in the repo to GitHub. **Node.js and npm must be on your `PATH`**, and the first run installs the npm dependencies.
+The guides in [`docs/`](docs/) are published at <https://linkml.ohi.dev/docs/> with [Starlight](https://starlight.astro.build/). The site lives in [`website/`](website/). Write and edit the guides in `docs/` only: `website/sync-docs.mjs` copies them into the site on every build, makes the first `# Title` line the page title, and rewrites links between the guides to page URLs, and links to other files in the repo to GitHub. **Node.js and npm must be on your `PATH`**, and the first run installs the npm dependencies.
 
 - Serve it locally: `./mill website.serve` – at <http://localhost:4321/docs/>, reloads on every change in `docs/`
 - Build it (what CI runs): `./mill website.build` → `website/dist/`. It fails on a broken link between pages or to a heading.

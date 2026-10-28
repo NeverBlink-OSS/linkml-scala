@@ -33,7 +33,7 @@ linkml-scala version     # 0.12.0 or newer is required
 
 `validate --format json` does not exist before 0.12.0. If the CLI is missing or too old, offer the
 options in [990-install.md](990-install.md). If the user cannot install it, the
-[playground](https://linkml.neverblink.eu/playground) runs the same engine in a browser.
+[playground](https://linkml.ohi.dev/playground) runs the same engine in a browser.
 
 ## The loop
 

@@ -74,7 +74,7 @@ object LinkMlJsApi {
     * Useful in bug reports, and for checking that the version you loaded is the one you meant to.
     *
     * @return
-    *   A `BuildInfo` object, as described by https://linkml.neverblink.eu/model/build-info
+    *   A `BuildInfo` object, as described by https://linkml.ohi.dev/model/build-info
     */
   def buildInfo(): BuildInfo =
     js.JSON.parse(JsonUtil.yamlToJson(CurrentBuild.node()))

@@ -1,4 +1,4 @@
-id: https://linkml.neverblink.eu/model/owl-import-config
+id: https://linkml.ohi.dev/model/owl-import-config
 name: owl-import-config
 title: OWL import config
 description: >-
@@ -7,7 +7,7 @@ description: >-
   or well-known ones such as `rdfs`.
 license: https://creativecommons.org/publicdomain/zero/1.0/
 prefixes:
-  owlconf: https://linkml.neverblink.eu/model/owl-import-config#
+  owlconf: https://linkml.ohi.dev/model/owl-import-config#
 default_prefix: owlconf
 imports:
   - linkml:types

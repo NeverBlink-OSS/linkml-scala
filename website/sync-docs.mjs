@@ -69,6 +69,11 @@ export function syncDocs() {
     path.join(publicDir, 'favicon.svg'),
     fs.readFileSync(path.join(repoDir, 'ui', 'favicon.svg')),
   );
+  // The playground's fonts, so the docs look the same (see src/styles/theme.css)
+  const fontsDir = path.join(repoDir, 'ui', 'fonts');
+  for (const file of listFiles(fontsDir)) {
+    writeIfChanged(path.join(publicDir, 'fonts', file), fs.readFileSync(path.join(fontsDir, file)));
+  }
 }
 
 function toPage(fileName, source) {

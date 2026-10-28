@@ -1,6 +1,6 @@
 <div align="center">
 
-[![Playground](https://img.shields.io/badge/playground-try_it_live-8A2BE2?style=flat-square&logo=scala&logoColor=white)](https://linkml.neverblink.eu/playground)
+[![Playground](https://img.shields.io/badge/playground-try_it_live-8A2BE2?style=flat-square&logo=scala&logoColor=white)](https://linkml.ohi.dev/playground)
 [![Discord](https://img.shields.io/badge/Discord-join_chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/HGksVAJ6ss)
 [![GitHub stars](https://img.shields.io/github/stars/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=stars&color=yellow)](https://github.com/NeverBlink-OSS/linkml-scala/stargazers)
 [![Maven Central](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3?style=flat-square&logo=apachemaven&logoColor=white&label=maven%20central)](https://central.sonatype.com/namespace/eu.neverblink.linkml)
@@ -20,7 +20,7 @@
 
 **[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple languages and formats, such as JSON Schema, CSV, RDFS/SHACL...
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.neverblink.eu/playground/) or [Node.js](#javascript--typescript-library), [Python](https://pypi.org/project/neverblink-linkml/), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.ohi.dev/playground/) or [Node.js](#javascript--typescript-library), [Python](https://pypi.org/project/neverblink-linkml/), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 > [!NOTE]
 > ⭐ If you like LinkML-Scala, consider giving it a star – it helps others find the project!
@@ -29,11 +29,11 @@
 
 ### 🌐 Works in the browser, Node.js, JVM, Python, and C/C++/Rust
 
-LinkML-Scala compiles to pure JavaScript (zero dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.neverblink.eu/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
+LinkML-Scala compiles to pure JavaScript (zero dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.ohi.dev/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
 
 For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **[Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)**.
 
-[![Web playground screenshot](./docs/img/playground.png)](https://linkml.neverblink.eu/playground)
+[![Web playground screenshot](./docs/img/playground.png)](https://linkml.ohi.dev/playground)
 
 We also have [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
 
@@ -138,7 +138,7 @@ linkml-scala generate owl <input-file>
 linkml-scala generate shacl <input-file>
 ```
 
-**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.neverblink.eu/docs](https://linkml.neverblink.eu/docs/)**.
+**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)**.
 
 #### LinkML schema derivation and pruning 
 

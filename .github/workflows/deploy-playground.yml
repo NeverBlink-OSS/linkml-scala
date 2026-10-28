@@ -62,12 +62,16 @@ jobs:
           mkdir -p site/playground/dist
           cp ui/index.html ui/styles.css ui/neverblink-logo.svg site/playground/
           cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/playground/
-          cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/
+          cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png ui/neverblink-logo.svg site/
+          cp -R ui/fonts site/playground/
           cp -R ui/dist/. site/playground/dist/
           mkdir -p site/docs
           cp -R website/dist/. site/docs/
           cp CNAME site/CNAME
-          cp pages/index.html site/index.html
+          # The landing page shows install lines for the latest release
+          version="$(git describe --tags --abbrev=0 --match 'v*')"
+          sed "s/__VERSION__/${version#v}/g" pages/index.html > site/index.html
+          cp -R ui/fonts site/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

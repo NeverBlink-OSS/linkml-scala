@@ -62,7 +62,7 @@ Full verification procedure, including checksums and the Maven and npm channels:
 
 ## Option 4 — no install at all
 
-- **[Web playground](https://linkml.neverblink.eu/playground)** — same engine, in the browser.
+- **[Web playground](https://linkml.ohi.dev/playground)** — same engine, in the browser.
   Good for a one-off question or when the user cannot install software.
 - **npm** — `npm install @neverblink/linkml` gives the same generators as a zero-dependency ES
   module. Published with SLSA provenance, verifiable via `npm audit signatures`. It is a
