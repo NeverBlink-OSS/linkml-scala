@@ -2,7 +2,7 @@
 
 ## Search results
 
-Search defaults to ohi.dev. To use another catalog, supply both its search endpoint and indexed fields. Supplying only one is an error. Each search returns one page in backend order. Request further pages explicitly. `search_cutoff: true` means hits or the total may be incomplete. An empty successful page differs from a failed request. ohi does not rerank results or traverse pages automatically.
+Search defaults to ohi.dev. To use another catalog, supply both its search endpoint and indexed fields. Supplying only one is an error. Each search returns one page in backend order. Request further pages explicitly. `search_cutoff: true` means hits or the total may be incomplete. An empty successful page differs from a failed request. `ohi search` does not rerank results or traverse pages automatically.
 
 ## Publication metadata
 
@@ -12,7 +12,17 @@ Retrieval supplies a prepared published file. To convert local edits, use suppor
 
 ## Retrieve a selected file
 
-`ohi get <file-url> --to <directory>` derives the filename from the artifact URL and returns the saved absolute `path`. Existing targets, including symlinks, are refused. Use separate destination directories for files sharing a basename.
+`get` and `add` resolve `namespace/name[@version]` through ohi.dev with a required `--format`.
+Use exact URLs for other catalogs. Use exact namespace, name and version values from search.
+Omitting the version selects the release most recently
+published to the Hub. The selected release must advertise exactly one artifact in that format.
+ohi does not choose an older release when the requested format is absent. Supported formats are
+`owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml` and `ossie-yaml`.
+
+Exact URL forms remain `get <file-url>` and `add <base-url> --artifact <file-url>`, without
+`--format`. `add` records the resolved publication and artifact URLs.
+
+ohi derives the filename from the artifact URL and returns the saved absolute `path`. Existing targets, including symlinks, are refused. Use separate destination directories for files sharing a basename.
 
 Compare the saved byte length and SHA-256 with the inspected artifact's `size_bytes` and `sha256` before loading it. Single-URL downloads do not perform this comparison. On mismatch, preserve the expected and observed values and investigate before using the file. A direct file URL can be retrieved without metadata, but its advertised integrity and dependency requirements remain unchecked.
 
@@ -31,7 +41,7 @@ Publication `dependencies` contain publication URLs in `base_url`. The list is c
 
 ## Project records
 
-`--project` defaults to the invocation directory. ohi does not search parent directories. Relative paths, including `--to`, resolve against the invocation directory even when another project directory is selected.
+`--project` and `--to` default to the invocation directory. ohi does not search parent directories. Relative paths, including `--to`, resolve against the invocation directory even when another project directory is selected.
 
 `init` leaves an existing valid declaration unchanged and creates no lock. `add` requires an existing project directory and can create a missing declaration, so initialization is optional for that directory.
 

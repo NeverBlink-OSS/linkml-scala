@@ -3,6 +3,9 @@ package eu.neverblink.ohi.cli
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
 import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.generator.util.JsonUtil
+import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.ohi.catalog.CatalogClient
+import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets.UTF_8
 import java.util.concurrent.ConcurrentLinkedQueue
@@ -39,7 +42,10 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       (exchange: HttpExchange) => {
         requests.add(s"${exchange.getRequestMethod} ${exchange.getRequestURI}")
         val (status, body) =
-          routes.getOrElse(exchange.getRequestURI.toString, 404 -> "Unexpected request")
+          routes.getOrElse(
+            exchange.getRequestURI.toString,
+            routes.getOrElse(exchange.getRequestURI.getPath, 404 -> "Unexpected request"),
+          )
         val bytes = body.getBytes(UTF_8)
         try {
           exchange.sendResponseHeaders(status, bytes.length.toLong)
@@ -167,6 +173,110 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "project command workflow" should {
+    "resolve a named ontology and record its exact URLs without inspecting it twice" in {
+      withDirectory { root =>
+        val project = root / "project"
+        val downloads = root / "downloads"
+        os.makeDir(project)
+        withServer(base =>
+          Map(
+            "/search" -> (200 -> s"""{
+            "found":1,"page":1,"request_params":{"per_page":250},"search_cutoff":false,"hits":[{"document":{
+              "base_url":"$base/publication","namespace":"test","name":"example","version":"1",
+              "title":"Example ontology","description":"Synthetic command metadata",
+              "published_at":"2026-10-15T00:00:00Z","licenses":[],"formats":["owl-turtle"]
+            }}]
+          }"""),
+            "/publication" -> (200 -> publication(base + "/publication", Seq(base + "/file.ttl"))),
+            "/file.ttl" -> (200 -> "one\n"),
+          ),
+        ) { (base, requests) =>
+          val command = new AddCommand {
+            override protected def client(): CatalogClient =
+              new CatalogClient(
+                CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name")),
+              )
+          }
+          val result = command.runTestCommandWithExitCode(
+            List(
+              "test/example",
+              "--format",
+              "owl-turtle",
+              "--project",
+              project.toString,
+              "--to",
+              downloads.toString,
+              "--json",
+            ),
+            args => command.main("ohi add", args),
+          )
+          assertResult(
+            successful(result),
+            "ADD",
+            project,
+            true,
+            true,
+            Some((base + "/file.ttl") -> (downloads / "file.ttl")),
+          )
+          declaration(project / "ohi.yaml") shouldBe json(s"""{
+            "format_version":1,"selections":[{"base_url":"$base/publication","url":"$base/file.ttl"}]
+          }""")
+          json(os.read(project / "ohi.lock.json")) shouldBe json(s"""{
+            "format_version":2,"selections":[{"base_url":"$base/publication","url":"$base/file.ttl"}],
+            "files":[{"base_url":"$base/publication","url":"$base/file.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]
+          }""")
+          os.read(downloads / "file.ttl") shouldBe "one\n"
+          requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe
+            Seq("GET /search", "GET /publication", "GET /file.ttl")
+        }
+      }
+    }
+
+    "leave project records and the destination untouched when a reference lookup fails" in {
+      withDirectory { project =>
+        val downloads = project / "downloads"
+        val lock = """{"format_version":1,"selections":[],"files":[]}"""
+        os.write(project / "ohi.yaml", emptyDeclaration)
+        os.write(project / "ohi.lock.json", lock)
+        withServer(_ =>
+          Map(
+            "/search" -> (200 ->
+              """{"found":0,"page":1,"request_params":{"per_page":250},"search_cutoff":false,"hits":[]}"""),
+          ),
+        ) { (base, requests) =>
+          val command = new AddCommand {
+            override protected def client(): CatalogClient =
+              new CatalogClient(
+                CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name")),
+              )
+          }
+          val error = failed(
+            command.runTestCommandWithExitCode(
+              List(
+                "test/missing",
+                "--format",
+                "owl-turtle",
+                "--project",
+                project.toString,
+                "--to",
+                downloads.toString,
+                "--json",
+              ),
+              args => command.main("ohi add", args),
+            ),
+          )
+          error should include("No matching release for ontology reference 'test/missing'")
+          error should include("ohi add --help")
+          error.trim should not startWith "{"
+          requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq("GET /search")
+          os.read(project / "ohi.yaml") shouldBe emptyDeclaration
+          os.read(project / "ohi.lock.json") shouldBe lock
+          os.exists(downloads) shouldBe false
+        }
+      }
+    }
+
     "resolve paths from cwd, download selected files and refresh a legacy lock from edited selections" in {
       withDirectory { root =>
         val cwd = root / "invocation"
@@ -202,7 +312,13 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           val firstAdd = successful(
             runProcess(
               cwd,
-              addArguments(base + "/z", base + "/z.ttl", "../project", "downloads")*,
+              "add",
+              base + "/z",
+              "--artifact",
+              base + "/z.ttl",
+              "--project",
+              "../project",
+              "--json",
             ),
           )
           assertResult(
@@ -211,10 +327,10 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             project,
             true,
             true,
-            Some((base + "/z.ttl") -> (cwd / "downloads" / "z.ttl")),
+            Some((base + "/z.ttl") -> (cwd / "z.ttl")),
           )
           requests.asScala.toSeq shouldBe Seq("GET /z", "GET /a", "GET /z.ttl")
-          os.read(cwd / "downloads" / "z.ttl") shouldBe "one\n"
+          os.read(cwd / "z.ttl") shouldBe "one\n"
           os.exists(project / "downloads") shouldBe false
           os.list(project).map(_.last).toSet shouldBe Set("ohi.yaml", "ohi.lock.json")
           os.read(project / "ohi.yaml") should not include "# removed by append"
@@ -329,8 +445,8 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
                      {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle",
                       "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]
           }""")
-          os.list(cwd / "downloads").map(_.last).toSet shouldBe Set("z.ttl", "b.ttl")
-          os.read(cwd / "downloads" / "z.ttl") shouldBe "one\n"
+          os.list(cwd / "downloads").map(_.last).toSet shouldBe Set("b.ttl")
+          os.read(cwd / "z.ttl") shouldBe "one\n"
           os.read(cwd / "downloads" / "b.ttl") shouldBe "two\n"
         }
       }
@@ -556,8 +672,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       err shouldBe empty
       val out = raw.replaceAll("\u001b\\[[0-9;]*m", "")
       out should include("Usage: ohi add")
-      Seq("--artifact", "--to", "--project", "--json").foreach(out should include(_))
-      out should not include "--format"
+      Seq("--artifact", "--format", "--to", "--project", "--json").foreach(out should include(_))
       out should not include "--timeout-ms"
     }
 
@@ -567,16 +682,23 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "reject add without --to and point to its help" in {
-      usageError(
-        Add,
-        "add",
-        "https://example.org/source",
-        "--artifact",
-        "https://example.org/file",
-        "--json",
-      ) should include("--to")
-    }
+    for (description, arguments, expected) <- Seq(
+        ("require --format for an ontology reference", Seq("test/example"), "--format is required"),
+        (
+          "reject --artifact with an ontology reference",
+          Seq("test/example", "--artifact", "https://example.org/file"),
+          "--artifact cannot be used",
+        ),
+        (
+          "reject --format with a publication URL",
+          Seq("https://example.org/source", "--format", "owl-turtle"),
+          "--format cannot be used",
+        ),
+      )
+    do
+      description in {
+        usageError(Add, (Seq("add") ++ arguments ++ Seq("--json"))*) should include(expected)
+      }
 
     "reject add without a publication URL and point to its help" in {
       usageError(

@@ -8,7 +8,7 @@ license: Apache-2.0
 
 ohi searches ontology publications, retrieves their metadata and files, and records exact selections for projects. A publication is one immutable ontology release. An artifact is one advertised file in a particular format.
 
-Use a CLI from the same checkout or release as this skill. Check `ohi <command> --help` for the installed command's options. Prefer `--json` for catalog and project results, and check the exit status before parsing output. Argument errors can remain text.
+Use a CLI from the same checkout or release as this skill. Check `ohi <command> --help` for the installed command's options. Prefer `--json` for catalog and project results, and check the exit status before parsing output.
 
 ## Choose the operation
 
@@ -16,10 +16,10 @@ Use a CLI from the same checkout or release as this skill. Check `ohi <command> 
 | --- | --- |
 | Find publications from search terms | `ohi search` defaults to ohi.dev when both search settings are omitted. Supply both `--search-url` and `--query-by` to use another catalog |
 | Examine a known publication | `ohi inspect` with its exact `base_url` |
-| Download a known artifact without project tracking | `ohi get` with its exact file URL and an explicit destination directory |
+| Download an ontology without project tracking | `ohi get namespace/name[@version] --format <format>` or `ohi get <file-url>`. Use `--to` to change the current-directory destination |
 | Download the files in a lock | [`ohi get --lock <file> --to <directory>`](references/cli.md#download-a-lock) |
 | Create an empty project declaration | `ohi init` with the intended project directory |
-| Record a selected publication/artifact pair and download its file | `ohi add` with both exact URLs, the project directory and download directory |
+| Record a selection and download its file | `ohi add namespace/name[@version] --format <format>` or `ohi add <base-url> --artifact <file-url>`. Use `--project` and `--to` to override the invocation directory |
 | Rebuild a project's lock after changing its selections | `ohi lock` with the project directory |
 
 Read the relevant section of [CLI behavior and recovery](references/cli.md) when interpreting search results, checking downloads or changing project records. Use only the operations the task needs. A supplied publication or artifact URL can skip search. Catalog commands require no project and leave project records unchanged.
