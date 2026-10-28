@@ -38,16 +38,17 @@ test("browser package integration", async (t) => {
   });
   await browserPage.goto(app.url);
 
-  await t.test("root lock codecs preserve records through browser host storage", async () => {
+  await t.test("root lock codecs preserve revision 2 hashes through browser host storage", async () => {
     const result = await browserPage.evaluate(async () => {
       const { decodeLock, encodeLock } = await import("/bundle.js");
-      const lock = decodeLock('{"format_version":1,"selections":[{"base_url":"urn:ohi:z:1","url":"https://Files.example/z%2F.ttl?x=1#file"}],"files":[{"base_url":"urn:ohi:z:1","url":"https://Files.example/z%2F.ttl?x=1#file","format":"owl-turtle"}]}');
+      const lock = decodeLock('{"format_version":2,"selections":[{"base_url":"urn:ohi:z:1","url":"https://Files.example/z%2F.ttl?x=1#file"}],"files":[{"base_url":"urn:ohi:z:1","url":"https://Files.example/z%2F.ttl?x=1#file","format":"owl-turtle","sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}');
       sessionStorage.setItem("ohi.lock", encodeLock(lock));
       return decodeLock(sessionStorage.getItem("ohi.lock"));
     });
-    assert.deepEqual(result, { format_version: 1,
+    assert.deepEqual(result, { format_version: 2,
       selections: [{ base_url: "urn:ohi:z:1", url: "https://Files.example/z%2F.ttl?x=1#file" }],
-      files: [{ base_url: "urn:ohi:z:1", url: "https://Files.example/z%2F.ttl?x=1#file", format: "owl-turtle" }],
+      files: [{ base_url: "urn:ohi:z:1", url: "https://Files.example/z%2F.ttl?x=1#file", format: "owl-turtle",
+        sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }],
     });
   });
 

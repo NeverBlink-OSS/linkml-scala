@@ -169,7 +169,7 @@
         },
         "sha256": {
           "title": "sha256",
-          "description": "SHA-256 of the final immutable file bytes, before HTTP content encoding, as exactly 64 lowercase hexadecimal characters.",
+          "description": "SHA-256 of the file bytes before HTTP content encoding.",
           "type": "string",
           "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
         },

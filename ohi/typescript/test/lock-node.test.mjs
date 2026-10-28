@@ -89,9 +89,9 @@ for (const [name, bytes] of [
 
 test("read retains unsupported-version classification and caller path", async (t) => {
   const { directory, path } = await fixture(t);
-  await fs.writeFile(path, '{"format_version":2.0}');
+  await fs.writeFile(path, '{"format_version":3.0}');
   await rejects(() => readLock(path), "UNSUPPORTED_VERSION", "READ", path);
-  assert.equal(await fs.readFile(path, "utf8"), '{"format_version":2.0}');
+  assert.equal(await fs.readFile(path, "utf8"), '{"format_version":3.0}');
   assert.deepEqual(await fs.readdir(directory), ["ohi.lock.json"]);
 });
 
@@ -110,8 +110,10 @@ test("write refuses an absent parent without creating directories", async (t) =>
 });
 
 for (const [name, lock, code] of [
-  ["invalid input", { format_version: 1, selections: [], files: null }, "INVALID_LOCK"],
-  ["unsupported revision", { format_version: 2 }, "UNSUPPORTED_VERSION"],
+  ["revision 2 file without a hash", { format_version: 2, selections: [], files: [
+    { base_url: "urn:ohi:z:1", url: "https://files.example/z.ttl", format: "owl-turtle" },
+  ] }, "INVALID_LOCK"],
+  ["unsupported revision", { format_version: 3 }, "UNSUPPORTED_VERSION"],
 ]) {
   test(`write rejects ${name} before opening any file`, async (t) => {
     const { directory, path } = await fixture(t);

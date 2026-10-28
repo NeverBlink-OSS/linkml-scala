@@ -1,14 +1,9 @@
 ---
 title: Save and reload file selections
-description: Record the files an application picked in a lock file, and read it back later.
-TODO: OHI-96 replace this with proper tutorials
+description: Save and reload file selections.
 ---
 
-A lock records exact publication and artifact URLs plus each file's format, so an application can
-reuse its selections without inspecting publication metadata again. The application supplies all
-direct and dependency files. These operations perform no HTTP requests or dependency lookup.
-
-For a publication with no dependencies, a complete record can contain one selected file:
+Supply all selected and dependency files with their hashes from publication metadata.
 
 ```python
 from ohi import ArtifactSelection, Lock, LockedFile, read_lock, write_lock
@@ -17,9 +12,10 @@ selected = LockedFile(
     base_url="https://hub.example/releases/energy/2/",
     url="https://files.example/energy.ttl",
     format="owl-turtle",
+    sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
 )
 lock = Lock(
-    format_version=1,
+    format_version=2,
     selections=[ArtifactSelection(base_url=selected.base_url, url=selected.url)],
     files=[selected],
 )
@@ -27,13 +23,10 @@ write_lock("ohi.lock.json", lock)
 saved = read_lock("ohi.lock.json")
 ```
 
-The URLs are illustrative. When dependencies exist, include their selected file records in `files`
-as well. The
-[two-file example](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/examples/selection.lock.json)
-shows this distinction. The
-[lock schema](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/model/schema/lock.yaml)
-defines the record. A lock stores file choices. It does not confirm that files were downloaded or
-that dependency selections are complete.
+The URLs and hash are illustrative.
+[Version-1 locks](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/examples/selection.lock.json)
+omit hashes and remain supported. See the
+[lock schema](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/model/schema/lock.yaml).
 
 ## In each language
 

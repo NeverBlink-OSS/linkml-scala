@@ -52,22 +52,22 @@ class ArtifactSelection(LinkMLModel):
 
 
 class Lock(LinkMLModel):
-    """Exact direct selections and the complete file set supplied by the application."""
+    """Direct selections and their artifact files."""
 
     files: list[LockedFile]
-    """Complete supplied artifact download records in supplied order. Each selection must match one file by exact base_url and url. Each pair occurs once."""
-    format_version: Annotated[StrictInt, Field(ge=1, le=1)]
-    """Lock record revision, independent of ontology and publication schema versions."""
+    """Each (base_url, url) pair is unique. Every selection matches a file by that pair."""
+    format_version: Annotated[StrictInt, Field(ge=1, le=2)]
+    """Version 1 omits file hashes. Version 2 requires sha256 for every file."""
     selections: list[ArtifactSelection]
     """Direct publication and artifact selections in supplied order."""
 
 
 class LockedFile(ArtifactSelection):
-    """One artifact download identity and format. Excludes entry roots and integrity metadata."""
-
     base_url: str
     """Permanent absolute URL identifying one exact immutable publication. GET this exact URL returns its publication JSON. Do not append a filename."""
     format: Format
     """Ontology language and syntax of the artifact."""
     url: str
     """Permanent absolute download URL of an immutable ontology file."""
+    sha256: Annotated[str, Field(pattern=r"^[0-9a-f]{64}(?![\s\S])")] | None = None
+    """SHA-256 of the file bytes before HTTP content encoding."""

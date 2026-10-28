@@ -52,24 +52,34 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
   }
 
   "ProjectLock.build" should {
-    "return an empty revision-one lock without inspection for no selections" in {
+    "return an empty revision-two lock without inspection for no selections" in {
       val result = ProjectLock.build(Seq.empty, url => fail(s"Unexpected inspection of $url"))
-      result.formatVersion shouldBe 1
+      result.formatVersion shouldBe 2
       result.selections shouldBe empty
       result.files shouldBe empty
     }
 
-    "inspect direct publications before flat dependencies and preserve first file-pair order" in {
+    "inspect direct publications before flat dependencies and preserve file-pair order and hashes" in {
       val metadata = Map(
-        "https://Hub.example/z/?v=%2F" -> publication(
-          "https://Hub.example/z/?v=%2F",
-          Seq(
-            "https://files.example/unselected.yaml" -> Format.LinkmlYaml,
-            "https://Files.example/z%2F.ttl#first" -> Format.OwlTurtle,
-            "https://files.example/z-second.ttl" -> Format.OwlTurtle,
-          ),
-          Seq("https://example.org/a", "https://example.org/b"),
-        ),
+        "https://Hub.example/z/?v=%2F" -> {
+          val direct = publication(
+            "https://Hub.example/z/?v=%2F",
+            Seq(
+              "https://files.example/unselected.yaml" -> Format.LinkmlYaml,
+              "https://Files.example/z%2F.ttl#first" -> Format.OwlTurtle,
+              "https://files.example/z-second.ttl" -> Format.OwlTurtle,
+            ),
+            Seq("https://example.org/a", "https://example.org/b"),
+          )
+          direct.copy(artifacts =
+            direct.artifacts.updated(
+              0,
+              direct.artifacts.head.copy(sha256 =
+                "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+              ),
+            ),
+          )
+        },
         "https://example.org/b" -> publication(
           "https://example.org/b",
           Seq("https://files.example/b.ttl" -> Format.OwlTurtle),
@@ -82,6 +92,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
             "https://files.example/a.ttl" -> Format.OwlTurtle,
           ),
           Seq("https://example.org/not-recursed"),
+          sha256 = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
         ),
         "https://example.org/c" -> publication(
           "https://example.org/c",
@@ -110,7 +121,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         "https://example.org/a",
         "https://example.org/c",
       )
-      result.formatVersion shouldBe 1
+      result.formatVersion shouldBe 2
       result.selections.map(s => (s.baseUrl.original, s.url.original)) shouldBe Seq(
         ("https://Hub.example/z/?v=%2F", "https://Files.example/z%2F.ttl#first"),
         ("https://example.org/b", "https://files.example/b.ttl"),
@@ -130,6 +141,13 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
           "https://files.example/z-second.ttl",
           lock.Format.OwlTurtle,
         ),
+      )
+      result.files.map(_.sha256) shouldBe Seq(
+        Some("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+        Some("fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210"),
+        Some("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+        Some("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+        Some("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
       )
     }
 

@@ -49,5 +49,5 @@ with TemporaryDirectory(prefix="ohi-check-") as directory:
     )
     assert json.loads(result.stdout)["lock_changed"] is True, result.stdout
     saved = json.loads((project / "ohi.lock.json").read_text(encoding="utf-8"))
-    assert saved == {"format_version": 1, "selections": [], "files": []}, saved
+    assert saved == {"format_version": 2, "selections": [], "files": []}, saved
     print("Ohi initialized a project and wrote its empty lock.")

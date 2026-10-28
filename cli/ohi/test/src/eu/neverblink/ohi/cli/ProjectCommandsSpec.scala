@@ -167,7 +167,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "project command workflow" should {
-    "resolve paths from cwd, download selected files and rebuild human-edited selections in order" in {
+    "resolve paths from cwd, download selected files and refresh a legacy lock from edited selections" in {
       withDirectory { root =>
         val cwd = root / "invocation"
         val project = root / "project"
@@ -222,9 +222,11 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             "format_version":1,"selections":[{"base_url":"$base/z","url":"$base/z.ttl"}]
           }""")
           json(os.read(project / "ohi.lock.json")) shouldBe json(s"""{
-            "format_version":1,"selections":[{"base_url":"$base/z","url":"$base/z.ttl"}],
-            "files":[{"base_url":"$base/z","url":"$base/z.ttl","format":"owl-turtle"},
-                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle"}]
+            "format_version":2,"selections":[{"base_url":"$base/z","url":"$base/z.ttl"}],
+            "files":[{"base_url":"$base/z","url":"$base/z.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]
           }""")
 
           requests.clear()
@@ -254,11 +256,14 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           requests.asScala.toSeq shouldBe Seq("GET /z", "GET /b", "GET /a", "GET /b.ttl")
           os.read(cwd / "downloads" / "b.ttl") shouldBe "two\n"
           json(os.read(project / "ohi.lock.json")) shouldBe json(s"""{
-            "format_version":1,"selections":[{"base_url":"$base/z","url":"$base/z.ttl"},
+            "format_version":2,"selections":[{"base_url":"$base/z","url":"$base/z.ttl"},
                                              {"base_url":"$base/b","url":"$base/b.ttl"}],
-            "files":[{"base_url":"$base/z","url":"$base/z.ttl","format":"owl-turtle"},
-                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle"},
-                     {"base_url":"$base/b","url":"$base/b.ttl","format":"owl-turtle"}]
+            "files":[{"base_url":"$base/z","url":"$base/z.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+                     {"base_url":"$base/b","url":"$base/b.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]
           }""")
 
           val repeated = "# preserved for repeated selection\n" + os.read(project / "ohi.yaml")
@@ -296,6 +301,14 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             |    url: $base/z-alt.ttl
             |""".stripMargin
           os.write.over(project / "ohi.yaml", edited)
+          os.write.over(
+            project / "ohi.lock.json",
+            s"""{
+            "format_version":1,"selections":[{"base_url":"$base/z","url":"$base/z.ttl"}],
+            "files":[{"base_url":"$base/z","url":"$base/z.ttl","format":"owl-turtle"},
+                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle"}]
+          }""",
+          )
           requests.clear()
           assertResult(
             successful(runProcess(cwd, "lock", "--project", "../project", "--json")),
@@ -307,11 +320,14 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           requests.asScala.toSeq shouldBe Seq("GET /b", "GET /z", "GET /a")
           os.read(project / "ohi.yaml") shouldBe edited
           json(os.read(project / "ohi.lock.json")) shouldBe json(s"""{
-            "format_version":1,"selections":[{"base_url":"$base/b","url":"$base/b.ttl"},
+            "format_version":2,"selections":[{"base_url":"$base/b","url":"$base/b.ttl"},
                                              {"base_url":"$base/z","url":"$base/z-alt.ttl"}],
-            "files":[{"base_url":"$base/b","url":"$base/b.ttl","format":"owl-turtle"},
-                     {"base_url":"$base/z","url":"$base/z-alt.ttl","format":"owl-turtle"},
-                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle"}]
+            "files":[{"base_url":"$base/b","url":"$base/b.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+                     {"base_url":"$base/z","url":"$base/z-alt.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+                     {"base_url":"$base/a","url":"$base/a.ttl","format":"owl-turtle",
+                      "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]
           }""")
           os.list(cwd / "downloads").map(_.last).toSet shouldBe Set("z.ttl", "b.ttl")
           os.read(cwd / "downloads" / "z.ttl") shouldBe "one\n"

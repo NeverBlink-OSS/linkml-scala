@@ -8,16 +8,9 @@ import scala.collection.mutable
 
 private[cli] object ProjectLock {
 
-  /** Resolves `selections` into a lock. Calls `inspect` once per distinct publication URL and lets
-    * its exceptions propagate unchanged.
-    *
-    * @return
-    *   a lock listing each selected artifact and, for each dependency of its publication, the
-    *   dependency's artifact in the same format. Each file appears once.
-    * @throws ProjectException
-    *   with `InvalidSelection` when a publication reports a different URL than the one requested, a
-    *   selected artifact is not advertised by its publication, or a dependency advertises zero or
-    *   several artifacts in the selected format
+  /** Builds a version-2 lock for selections and same-format dependencies. Calls `inspect` once per
+    * publication and propagates its failures. Throws [[ProjectException]] for invalid selections or
+    * missing or ambiguous dependency artifacts.
     */
   def build(
       selections: Seq[lock.ArtifactSelectionImpl],
@@ -64,9 +57,14 @@ private[cli] object ProjectLock {
     }.distinctBy { (result, artifact) =>
       (result.baseUrl.original, artifact.url.original)
     }.map { (result, artifact) =>
-      lock.LockedFile(result.baseUrl, lockFormat(artifact.format), artifact.url)
+      lock.LockedFile(
+        result.baseUrl,
+        lockFormat(artifact.format),
+        artifact.url,
+        Some(artifact.sha256),
+      )
     }
-    lock.Lock(files = files, formatVersion = 1, selections = selections)
+    lock.Lock(files = files, formatVersion = 2, selections = selections)
   }
 
   private def lockFormat(format: Format): lock.Format = format match {

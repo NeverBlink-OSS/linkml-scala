@@ -11,8 +11,8 @@ export default defineConfig({
   trailingSlash: 'always',
   integrations: [
     starlight({
-      title: 'Ohi SDK',
-      description: 'Documentation for the Ohi SDK, for searching ohi.dev and downloading ontologies from Scala, Python and TypeScript.',
+      title: 'ohi SDK',
+      description: 'Search ohi.dev and download ontologies from Scala, Python and TypeScript.',
       logo: { src: './src/assets/logo.svg' },
       favicon: '/favicon.svg',
       customCss: ['./src/styles/theme.css'],

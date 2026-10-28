@@ -1,8 +1,4 @@
-# Uploads the docs to the docs bucket, which is served at
-# https://ohi.dev/docs/.
-#
-# No keys: job logs in to GCP with the GitHub OIDC token.
-# GCP only accepts the token from the main branch of this repo.
+# Publish the docs at https://ohi.dev/docs/.
 name: Deploy docs
 
 on:
@@ -13,13 +9,11 @@ on:
 permissions:
   contents: read
 
-# One upload at a time; a newer push waits for the one before it.
 concurrency:
   group: deploy-docs
   cancel-in-progress: false
 
 env:
-  # The folder holding the HTML. Its index.html is https://ohi.dev/docs/.
   DOCS_DIR: ./ohi/docs/dist
   DOCS_BUCKET: ohi-prod-docs
   WORKLOAD_IDENTITY_PROVIDER: projects/714759206480/locations/global/workloadIdentityPools/github/providers/github

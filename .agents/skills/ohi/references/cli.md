@@ -12,13 +12,22 @@ Retrieval supplies a prepared published file. To convert local edits, use suppor
 
 ## Retrieve a selected file
 
-ohi derives the filename from the artifact URL and returns the saved absolute `path`. Existing targets, including symlinks, are refused. Use separate destination directories for files sharing a basename.
+`ohi get <file-url> --to <directory>` derives the filename from the artifact URL and returns the saved absolute `path`. Existing targets, including symlinks, are refused. Use separate destination directories for files sharing a basename.
 
-Compare the saved byte length and SHA-256 with the inspected artifact's `size_bytes` and `sha256` before loading it. The CLI does not perform this comparison. On mismatch, preserve the expected and observed values and investigate before using the file. A direct file URL can be retrieved without metadata, but its advertised integrity and dependency requirements remain unchecked.
+Compare the saved byte length and SHA-256 with the inspected artifact's `size_bytes` and `sha256` before loading it. Single-URL downloads do not perform this comparison. On mismatch, preserve the expected and observed values and investigate before using the file. A direct file URL can be retrieved without metadata, but its advertised integrity and dependency requirements remain unchecked.
+
+## Download a lock
+
+`ohi get --lock <file> --to <directory>` downloads every recorded file, including dependencies.
+Each file is saved under the filename from its download URL. The command verifies downloaded files using
+the SHA-256 checksums recorded in the lock. Files already in the destination are not downloaded again if
+their checksums match. The command stops on failure and keeps completed files.
+
+Rebuild older project locks with `ohi lock --project <directory>` first.
 
 ## Dependencies
 
-Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`. ohi does not derive download URLs from namespace prefixes or configure an application's loader.
+Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`, or [download the complete lock](#download-a-lock) when one exists. ohi does not derive download URLs from namespace prefixes or configure an application's loader.
 
 ## Project records
 
@@ -44,4 +53,4 @@ Project results and errors report `declaration_changed` and `lock_changed`. Writ
 | Lock replacement | Run `lock`, then use `get` if the original request included a download |
 | Download after records were written | Use `get` for the requested file |
 
-For an existing target, choose another destination or preserve the file elsewhere before retrying. If cleanup failed, handle the specific incomplete path reported by the error. Do not infer that a failed download rolled back project records.
+For a refused existing target, choose another destination or preserve the file elsewhere before retrying. If cleanup failed, handle the specific incomplete path reported by the error. Do not infer that a failed download rolled back project records.

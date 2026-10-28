@@ -1,30 +1,9 @@
 ---
 title: Search, inspect and retrieve
 description: Find publications in a catalog, read their metadata and download their files.
-TODO: OHI-96 replace this with proper tutorials
 ---
 
-Finding and downloading a file takes three calls: `search` finds publications, `inspect` reads a
-publication's metadata, and `get` downloads one of its files.
-
-```python
-from ohi import CatalogClient, SearchRequest
-
-client = CatalogClient()
-page = client.search(SearchRequest(q="sensors", page=1, per_page=10))
-if page.hits:
-    publication = client.inspect(page.hits[0].base_url)
-    artifact = publication.artifacts[0]
-    content = client.get(artifact.url)
-```
-
-In TypeScript, the same calls return promises:
-
-```typescript
-import { CatalogClient } from "@neverblink/ohi";
-
-const page = await new CatalogClient().search({ q: "sensors" });
-```
+[Start with the SDK examples](/docs/#quick-start).
 
 ## Search
 
@@ -38,8 +17,8 @@ When a search reports `search_cutoff: true`, its results or counts may be incomp
 ## Inspect and get
 
 Pass a hit's `base_url` to `inspect`, choose an artifact in the format you need, then pass its
-`url` to `get`. The example above retrieves the first artifact. `get` returns the file's bytes for
-your application to save or load. Dependency files must be selected and retrieved separately.
+`url` to `get`. `get` returns the file's bytes for your application to save or load.
+Dependency files must be selected and retrieved separately.
 
 A known publication or artifact URL can be passed directly to `inspect` or `get`, without
 searching first.

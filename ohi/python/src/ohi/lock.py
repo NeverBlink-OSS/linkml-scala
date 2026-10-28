@@ -32,11 +32,16 @@ def _failure(code, operation, message, path=None):
 
 def _validate(data, operation, path):
     version = data.get("format_version") if isinstance(data, dict) else None
-    if _validator.TYPE_CHECKER.is_type(version, "integer") and version != 1:
+    if _validator.TYPE_CHECKER.is_type(version, "integer") and version not in (1, 2):
         raise _failure("UNSUPPORTED_VERSION", operation,
-                       f"Lock revision {version} is unsupported. Supply revision 1.", path)
+                       f"Lock revision {version} is unsupported. Supply revision 1 or 2.", path)
     try:
         _validator.validate(data)
+        for item in data["files"]:
+            if version == 1 and "sha256" in item:
+                raise ValueError("revision 1 files must omit sha256")
+            if version == 2 and "sha256" not in item:
+                raise ValueError("revision 2 files must include sha256")
         selections = [(item["base_url"], item["url"]) for item in data["selections"]]
         file_pairs = [(item["base_url"], item["url"]) for item in data["files"]]
         if len(set(selections)) != len(selections):
