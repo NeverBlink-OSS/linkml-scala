@@ -20,7 +20,14 @@ from typing import Any, Callable, Mapping
 
 from ._generated import DOCUMENT_FUNCTIONS
 
-__all__ = ["Runtime", "LinkMlError", "NativeLibraryNotFound", "library_path", "runtime"]
+__all__ = [
+    "Runtime",
+    "LinkMlError",
+    "SchemaConversionError",
+    "NativeLibraryNotFound",
+    "library_path",
+    "runtime",
+]
 
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
 _EXPECTED_ABI_VERSION = 4

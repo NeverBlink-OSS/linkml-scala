@@ -82,6 +82,18 @@ BROKEN = schema(
 FIXED = BROKEN.replace("NoSuchThing", "string")
 
 
+class ExportsTest(unittest.TestCase):
+    def test_runtime_exports_every_public_name_it_defines(self):
+        from linkml_scala import _runtime
+
+        defined = {
+            name
+            for name, value in vars(_runtime).items()
+            if not name.startswith("_") and getattr(value, "__module__", None) == _runtime.__name__
+        }
+        self.assertEqual(defined - set(_runtime.__all__), set())
+
+
 class FromOwlTest(unittest.TestCase):
     ONTOLOGY = textwrap.dedent(
         """
