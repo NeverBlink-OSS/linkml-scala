@@ -56,6 +56,26 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "UriOrCurie.expanded" should {
+    val prefixes = PrefixMap(defaults = Seq("ex" -> "https://example.org/"))
+    "expand a CURIE with a declared prefix" in {
+      UriOrCurie.expanded("ex:a", prefixes) shouldBe Uri("https://example.org/a")
+    }
+    "keep a URI that isn't expanded as a Uri" in {
+      Seq(
+        "https://other.org/a",
+        "urn:isbn:0451450523",
+        "mailto:someone@example.org",
+        "acme:Person",
+      ).foreach(s => withClue(s)(UriOrCurie.expanded(s, prefixes) shouldBe Uri(s)))
+    }
+    "keep anything else as a Curie" in {
+      Seq("a b:c", "Person").foreach(s =>
+        withClue(s)(UriOrCurie.expanded(s, prefixes) shouldBe Curie(s)),
+      )
+    }
+  }
+
   "UriOrCurie.compacted" should {
     val prefixes = PrefixMap(defaults = Seq("ex" -> "https://example.org/"))
     "write a URI as a CURIE if it can" in {

@@ -19,14 +19,11 @@ object UriOrCurie {
     * isn't a known prefix, or if it starts with `urn:` or has `://`. Anything else is a [[Curie]].
     */
   def expanded(s: String, prefixes: PrefixMap): UriOrCurie = {
-    var uri = prefixes.expandOrNull(s)
-    if (
-      (uri eq null) && (UriCurieValidator.isValidUri(s) || s.startsWith("urn:") || s.contains(
-        "://",
-      ))
-    )
-      uri = s
+    val uri = prefixes.expandOrNull(s)
     if (uri ne null) new Uri(uri)
+    // The quick checks go first, as most values that aren't expanded have `://`
+    else if (s.contains("://") || s.startsWith("urn:") || UriCurieValidator.isValidUri(s))
+      new Uri(s)
     else new Curie(s)
   }
 
