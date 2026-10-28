@@ -367,10 +367,7 @@ object OwlGenerator {
       * else is text, even if it looks like a CURIE.
       */
     private def annotationValue(v: String): Value =
-      if (
-        (v.contains("://") || v.startsWith("urn:") || v.startsWith("mailto:")) &&
-        UriCurieValidator.isValidUri(v)
-      ) Iri(v)
+      if (UriOrCurie.isFullUri(v)) Iri(v)
       else Literal(v)
 
     // Classes

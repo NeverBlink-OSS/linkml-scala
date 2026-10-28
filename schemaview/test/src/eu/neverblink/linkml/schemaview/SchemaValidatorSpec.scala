@@ -892,7 +892,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "not warn on a value expanded from a declared prefix to a URI with the shape of a CURIE" in {
+    "not warn on a value expanded from a declared prefix to a URI with a scheme such as did" in {
       val schemaYaml =
         """id: https://example.org/test
            |name: test

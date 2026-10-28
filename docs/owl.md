@@ -52,7 +52,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | `title`                                                    | `rdfs:label`, tagged with `in_language` when the schema has one |
 | `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`)                                  |
 | other documentation (`aliases`, `comments`, `see_also`, mappings, …) | the property the LinkML metamodel gives it, such as `skos:altLabel`, `skos:note`, `rdfs:seeAlso` |
-| `annotations`                                              | annotations with the tag as the property. A value is an IRI if it is a full IRI, else text             |
+| `annotations`                                              | annotations with the tag as the property. A value is an IRI if it is a full IRI, with `://` or a scheme such as `urn`, `mailto`, `did`, `info` or `tag`, else text, even if it looks like a CURIE |
 | `deprecated`                                               | `owl:deprecated true`                                                                                  |
 
 The LinkML-to-OWL generator declares every annotation property that is used, which OWL 2 DL requires. The same goes for every datatype that is not in OWL 2's datatype map, such as `xsd:date`. RDF's, RDFS's, OWL's and XSD's own terms are never declared.

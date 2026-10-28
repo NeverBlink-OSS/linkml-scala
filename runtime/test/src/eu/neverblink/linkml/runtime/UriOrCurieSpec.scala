@@ -18,11 +18,30 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "urn:isbn:0451450523",
         "mailto:someone@example.org",
         "URN:isbn:0451450523",
+        "did:web:example.com",
         "Person",
         ":Person",
         "1ex:a",
         "a b:c",
       ).foreach(s => withClue(s)(UriOrCurie.isCurie(s) shouldBe false))
+    }
+  }
+
+  "UriOrCurie.isFullUri" should {
+    "accept URIs with :// or a scheme that isn't followed by /" in {
+      Seq(
+        "https://example.org/a",
+        "ftp://example.org/a",
+        "urn:isbn:0451450523",
+        "mailto:someone@example.org",
+        "did:web:example.com",
+        "info:doi/10.1000/182",
+        "tag:example.org,2020:a",
+      ).foreach(s => withClue(s)(UriOrCurie.isFullUri(s) shouldBe true))
+    }
+    "reject text that looks like a CURIE, and anything that isn't a valid URI" in {
+      Seq("ex:draft", "doi:10.1000/182", "Person", "draft", "https://example.org/a b", "")
+        .foreach(s => withClue(s)(UriOrCurie.isFullUri(s) shouldBe false))
     }
   }
 

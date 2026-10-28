@@ -303,8 +303,8 @@ private object MacroValidator {
     *
     * One with the shape of a CURIE, such as `acme:Person`, has a prefix that isn't declared, unless
     * it starts with the namespace of a declared prefix. Then it was most likely expanded from that
-    * prefix, such as `did:web:example.com` from `web:example.com` with `web: did:web:`, and is
-    * written back as that CURIE.
+    * prefix, such as `doi:10.1000/182` from `DOI:10.1000/182` with `DOI: doi:`, and is written back
+    * as that CURIE.
     *
     * Any URI can't be written if the root schema can't compact it and would read it back as a
     * CURIE, as writing the schema uses the prefixes of the root schema. This happens for a value

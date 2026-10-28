@@ -93,6 +93,17 @@ object UriOrCurie {
     }
   }
 
+  /** Check that [[s]] is a full URI, not text that looks like a CURIE, such as `ex:draft`.
+    *
+    * It is a valid URI that has `://`, as in `https://example.org/a`, or whose scheme is one of the
+    * URI schemes that are not followed by `/`, such as `urn`, `mailto`, `did`, `info` or `tag`.
+    */
+  def isFullUri(s: String): Boolean = {
+    val index = s.indexOf(':')
+    index > 0 && (s.contains("://") || isNonHierarchicalScheme(s, index)) &&
+    UriCurieValidator.isValidUri(s)
+  }
+
   /** Check that the first [[length]] chars of [[s]] are one of [[nonHierarchicalSchemes]], in any
     * case. Unlike `toLowerCase`, `regionMatches` doesn't depend on the default locale. In Turkish,
     * `toLowerCase` turns `INFO` into `ınfo`.
@@ -113,6 +124,7 @@ object UriOrCurie {
     "about",
     "cid",
     "data",
+    "did",
     "geo",
     "info",
     "mailto",
