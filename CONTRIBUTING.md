@@ -20,7 +20,7 @@ Common tasks with mill:
 - Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
 - Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
 - Lint the project: `./mill lint` (scalafix + scalafmt)
-- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, Ohi client models): `./mill regenerate` (see [Generated models](#generated-models))
+- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, ohi client models): `./mill regenerate` (see [Generated models](#generated-models))
 - Fetch the metamodel definitions from [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) `./mill metamodel.definitions`
 - Publish artifacts locally: `./mill __.publishLocal`
 - Assembly runnable .jar: `./mill cli.jvm.assembly`
@@ -46,7 +46,7 @@ The generated classes are committed, because generating them needs the CLI, whic
 
 Regenerate the classes after you change one of the schemas, the Scala or TypeScript generator, or the metamodel version:
 
-- All models: `./mill regenerate`. It runs `regenerate`, `fix` and `reformat` on every model module, and then regenerates the Ohi models (see [ohi/README.md](ohi/README.md)).
+- All models: `./mill regenerate`. It runs `regenerate`, `fix` and `reformat` on every model module, and then regenerates the ohi models (see [ohi/README.md](ohi/README.md)).
 - One model: run its `regenerate` command, and then format the result, as separate commands:
   ```shell
   ./mill validation.regenerate
@@ -120,7 +120,7 @@ The guides in [`docs/`](docs/) are published at <https://linkml.neverblink.eu/do
 
 A new guide has to be added to the sidebar in `website/astro.config.mjs`, and to the list in `docs/README.md`, which is the landing page. The build fails if it is missing from the sidebar.
 
-The Ohi SDK has its own site in [`ohi/docs/`](ohi/docs/), published at <https://ohi.dev/docs/>. Its pages are written directly in `ohi/docs/src/content/docs/`, and new ones are added to the sidebar in `ohi/docs/astro.config.mjs`. The commands are the same, under `ohi.docs`: `./mill ohi.docs.serve`, `./mill ohi.docs.build` (also run by CI) and `./mill ohi.docs.preview`.
+The ohi SDK has its own site in [`ohi/docs/`](ohi/docs/), published at <https://ohi.dev/docs/>. Its pages are written directly in `ohi/docs/src/content/docs/`, and new ones are added to the sidebar in `ohi/docs/astro.config.mjs`. The commands are the same, under `ohi.docs`: `./mill ohi.docs.serve`, `./mill ohi.docs.build` (also run by CI) and `./mill ohi.docs.preview`.
 
 ## Benchmarks
 

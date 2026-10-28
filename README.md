@@ -65,7 +65,7 @@ LinkML-Scala was built to work great with large schemas. In our benchmarks it's 
 
 ## CLI tool installation
 
-For ontology search, acquisition and project selections, install [the Ohi CLI](cli/ohi/README.md#install). It also exposes the LinkML commands through `ohi linkml`.
+For ontology search, acquisition and project selections, install [the ohi CLI](cli/ohi/README.md#install). It also exposes the LinkML commands through `ohi linkml`.
 
 ### Method 1: Install script (recommended for Unix/macOS)
 
@@ -210,7 +210,7 @@ See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and fo
 
 ## Scala library
 
-The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli). Ohi's Scala modules ship inside its CLI and are not published to Maven Central.
+The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli). ohi's Scala modules ship inside its CLI and are not published to Maven Central.
 
 ## GitHub Action (CI)
 
@@ -218,7 +218,7 @@ We have a pre-packaged GitHub Action that can do schema validation and generatio
 
 ## Agent skills (Claude Code, Codex, …)
 
-Choose **LinkML** for schema authoring and engine operations, or **Ohi + LinkML** for catalog acquisition, project selections and schema work. Both plugins contain instructions and references. The CLI is installed separately.
+Choose **LinkML** for schema authoring and engine operations, or **ohi + LinkML** for catalog acquisition, project selections and schema work. Both plugins contain instructions and references. The CLI is installed separately.
 
 **Claude Code**
 
@@ -227,7 +227,7 @@ Choose **LinkML** for schema authoring and engine operations, or **Ohi + LinkML*
 /plugin install linkml@linkml-scala
 ```
 
-Choose `/plugin install ohi@linkml-scala` instead for Ohi with LinkML.
+Choose `/plugin install ohi@linkml-scala` instead for ohi with LinkML.
 
 **Codex**
 

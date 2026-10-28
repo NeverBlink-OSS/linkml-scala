@@ -1,6 +1,6 @@
-# Ohi SDK
+# ohi SDK
 
-The Ohi SDK lets Scala/JVM, Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
+The ohi SDK lets Scala/JVM, Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
 
 The documentation is at [ohi.dev/docs](https://ohi.dev/docs/).
 
@@ -134,7 +134,7 @@ When a search reports `search_cutoff: true`, its results or counts may be incomp
 For SDK development, run from the repository root:
 
 ```sh
-./mill --no-server regenerateOhi
+./mill --no-server regenerateohi
 python -m pip install ./ohi/python
 npm --prefix ohi/typescript ci
 ./mill --no-server 'ohi.{model,catalog}.jvm.test.testForked'
