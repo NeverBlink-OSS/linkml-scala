@@ -30,7 +30,10 @@ const OHI_PARAM = "ohi";
 const FORMAT_PARAM = "format";
 // Next to either, the importer whose input pane the link belongs to. Absent means the LinkML pane.
 const INPUT_PARAM = "input";
-const LINK_PARAMS = [URL_PARAM, OHI_PARAM, FORMAT_PARAM, INPUT_PARAM];
+// And the generator whose output the link shows. Absent in the other direction, where `input`
+// names the importer instead.
+const TARGET_PARAM = "target";
+const LINK_PARAMS = [URL_PARAM, OHI_PARAM, FORMAT_PARAM, INPUT_PARAM, TARGET_PARAM];
 // Resolved against dist/app.js at runtime, so it lands on the sibling dist/worker.js. Built from a
 // variable rather than a literal to keep esbuild from trying to resolve it at bundle time.
 const WORKER_URL = "./worker.js";
@@ -172,11 +175,8 @@ function swapInput(): void {
   const key = inputKey();
   if (key === shownInput) return;
   shownInput = key;
-  const doc = inputDoc();
-  setDoc(inputView, doc.text);
-  // The address bar holds the link for whichever document is on screen, so it moves with it.
-  if (doc.link) setLinkParams(doc);
-  else clearLinkParams();
+  setDoc(inputView, inputDoc().text);
+  syncLinkParams();
 }
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
@@ -246,6 +246,8 @@ function renderStep(): void {
 function selectStep(): void {
   renderStep();
   swapInput();
+  // The address bar names the step as well, and `swapInput` does nothing when the document stays.
+  syncLinkParams();
   scheduleGenerate(0);
 }
 
@@ -1363,6 +1365,12 @@ function incomingImporter(): Importer | undefined {
   return id === null ? undefined : importerById(id);
 }
 
+/** The generator named next to it, if this build has it. */
+function incomingTarget(): Target | undefined {
+  const id = new URL(location.href).searchParams.get(TARGET_PARAM);
+  return id === null ? undefined : targetById(id);
+}
+
 /** The query parameters that point at what the document on screen was loaded from. Without the
  * pane it belongs to, a reload would load an Ossie or OWL file into the LinkML pane. */
 function linkParams(doc: InputDoc): [string, string][] {
@@ -1374,7 +1382,15 @@ function linkParams(doc: InputDoc): [string, string][] {
     params.push([URL_PARAM, doc.link!]);
   }
   if (direction === "toLinkml") params.push([INPUT_PARAM, activeImporterId]);
+  else params.push([TARGET_PARAM, activeTargetId]);
   return params;
+}
+
+/** Point the address bar at whichever document is on screen, and at the step showing it. */
+function syncLinkParams(): void {
+  const doc = inputDoc();
+  if (doc.link) setLinkParams(doc);
+  else clearLinkParams();
 }
 
 function setLinkParams(doc: InputDoc): void {
@@ -1825,7 +1841,7 @@ interface SharedState {
   s?: string;
   /** The link it came from instead, when the editor still holds exactly what that link serves. */
   u?: string;
-  /** Active target id, left out when it is the default one or when `i` is set. */
+  /** Active generator id. Present exactly when the link was made in the "from LinkML" direction. */
   t?: string;
   /** Active importer id. Present exactly when the link was made in the "to LinkML" direction. */
   i?: string;
@@ -1902,7 +1918,7 @@ function currentState(): SharedState {
   if (doc.link !== null && text === doc.remote) state.u = doc.link;
   else state.s = text;
   if (direction === "toLinkml") state.i = step.id;
-  else if (step.id !== DEFAULT_TARGET_ID) state.t = step.id;
+  else state.t = step.id;
   const options = changedOptions();
   if (options) state.o = options;
   return state;
@@ -1914,9 +1930,10 @@ async function shareUrl(): Promise<{ href: string; plain: boolean }> {
   const here = new URL(location.href);
   here.search = "";
   here.hash = "";
-  // With nothing but a link to pass on, `?url=` says the same thing in about the same space and a
-  // recipient can see where it points, so there is no reason to bury it in an opaque fragment.
-  if (state.u !== undefined && state.t === undefined && state.o === undefined) {
+  // With nothing but a link and a step to pass on, the query parameters say the same thing in about
+  // the same space and a recipient can see where it points, so there is no reason to bury it in an
+  // opaque fragment.
+  if (state.u !== undefined && state.o === undefined) {
     for (const [k, v] of linkParams(inputDoc())) here.searchParams.set(k, v);
     return { href: readable(here), plain: true };
   }
@@ -2163,6 +2180,11 @@ function renderRepoStats(stars: number, forks: number): void {
 })();
 
 // ── Init ─────────────────────────────────────────────────────────────────
+
+// A link may name the generator it was made from; an importer's own link is read further down,
+// together with the input pane it belongs to.
+const initialTarget = incomingTarget();
+if (initialTarget) activeTargetId = initialTarget.id;
 
 // The editor was built from this document, so record it rather than swapping it back in.
 shownInput = inputKey();

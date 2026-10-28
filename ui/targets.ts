@@ -98,9 +98,8 @@ export interface OhiChoice {
   name: string;
 }
 
-/** The generator the playground opens with. Shared links leave it out, so it must stay the same for
- * old links to keep working. */
-export const DEFAULT_TARGET_ID = "jsonSchema";
+/** The generator the playground opens with. */
+export const DEFAULT_TARGET_ID = "docs";
 
 /** Sorted by label. */
 export const TARGETS: Target[] = [
