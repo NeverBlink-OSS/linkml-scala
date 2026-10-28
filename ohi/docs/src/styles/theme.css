@@ -1,0 +1,15 @@
+/* The amber of the ohi.dev hand on Starlight's accent variables */
+
+/* Dark mode */
+:root {
+  --sl-color-accent-low: #4a3204;
+  --sl-color-accent: #faa700;
+  --sl-color-accent-high: #ffca28;
+}
+
+/* Light mode */
+:root[data-theme='light'] {
+  --sl-color-accent-low: #ffecbf;
+  --sl-color-accent: #b55e19;
+  --sl-color-accent-high: #7a3e0f;
+}

@@ -8,10 +8,9 @@ object `package` extends Module {
    * Requires Node.js and npm on the PATH.
    */
   def runNpm(script: String): Unit = {
-    val websiteDir = mill.api.BuildCtx.workspaceRoot / "website"
-    if (!os.exists(websiteDir / "node_modules"))
-      os.call(("npm", "ci"), cwd = websiteDir, stdout = os.Inherit, stderr = os.Inherit)
-    os.call(("npm", "run", script), cwd = websiteDir, stdout = os.Inherit, stderr = os.Inherit)
+    if (!os.exists(moduleDir / "node_modules"))
+      os.call(("npm", "ci"), cwd = moduleDir, stdout = os.Inherit, stderr = os.Inherit)
+    os.call(("npm", "run", script), cwd = moduleDir, stdout = os.Inherit, stderr = os.Inherit)
   }
 
   /** Build the docs site from docs/ into website/dist, to be served under /docs/.

@@ -1,18 +1,18 @@
 # Agent skills
 
-These skills help agents acquire ontologies and maintain project selections with Ohi, and author and validate schemas with LinkML-Scala.
+These skills help agents acquire ontologies and maintain project selections with ohi, and author and validate schemas with LinkML-Scala.
 
 ## Choose a plugin
 
-Install **Ohi** (`ohi`) for ontology acquisition, project selections and LinkML schema work.
-Choose **LinkML** (`linkml`) for schema work alone. Install one plugin, since Ohi already includes LinkML.
+Install **ohi** (`ohi`) for ontology acquisition, project selections and LinkML schema work.
+Choose **LinkML** (`linkml`) for schema work alone. Install one plugin, since ohi already includes LinkML.
 
-Plugins provide instructions. [Install the Ohi CLI](../cli/ohi/README.md#install) separately from
+Plugins provide instructions. [Install the ohi CLI](../cli/ohi/README.md#install) separately from
 the same release or checkout. The standalone LinkML skill requires `linkml-scala` 0.12.0 or newer.
 
 ## Install
 
-These commands install Ohi. For LinkML alone, replace `ohi@linkml-scala` with `linkml@linkml-scala`.
+These commands install ohi. For LinkML alone, replace `ohi@linkml-scala` with `linkml@linkml-scala`.
 To install from a local checkout, replace the repository argument with its absolute path.
 
 ### Codex
@@ -39,7 +39,7 @@ claude plugin install ohi@linkml-scala
 Start a new session after updating. For a local checkout marketplace, remove and reinstall the
 plugin after editing its files.
 
-When switching choices, remove the installed plugin first, then install the other choice. For example, to switch from LinkML to Ohi + LinkML:
+When switching choices, remove the installed plugin first, then install the other choice. For example, to switch from LinkML to ohi + LinkML:
 
 ```sh
 codex plugin remove linkml@linkml-scala
@@ -51,7 +51,7 @@ In Claude Code, use `claude plugin uninstall linkml@linkml-scala` followed by `c
 ### Manual installation
 
 Without a plugin, copy complete skill folders, including their references, to the host's skills directory.
-For Ohi, copy both `linkml` and `ohi`. For example, install both for all Codex projects:
+For ohi, copy both `linkml` and `ohi`. For example, install both for all Codex projects:
 
 ```sh
 git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala ~/src/linkml-scala
@@ -68,19 +68,19 @@ Use either manual installation or the plugin to avoid duplicate skills.
 For other applications supporting [Agent Skills](https://agentskills.io/specification), use their
 documented skills directory.
 
-## Ohi
+## ohi
 
 Give the agent search terms or a publication URL, the required format and a download destination.
 For example, ask it to find a provenance ontology and download its `owl-turtle` artifact.
 Search uses ohi.dev by default. For project changes, identify the project directory.
-The [Ohi skill](skills/ohi/SKILL.md) and its [CLI reference](skills/ohi/references/cli.md) cover
+The [ohi skill](skills/ohi/SKILL.md) and its [CLI reference](skills/ohi/references/cli.md) cover
 selection, downloads and recovery.
 
 ## LinkML
 
 The [LinkML skill](skills/linkml/SKILL.md) covers schema authoring, validation, importing and generation. Its topic files provide detailed guidance when needed. [Installation options](skills/linkml/990-install.md) cover the standalone `linkml-scala` CLI.
 
-When using the Ohi CLI, run the LinkML examples as `ohi linkml <command>` in place of `linkml-scala <command>`. Tell the agent to use this invocation. Ohi includes the engine commands, so this route does not need a second executable.
+When using the ohi CLI, run the LinkML examples as `ohi linkml <command>` in place of `linkml-scala <command>`. Tell the agent to use this invocation. ohi includes the engine commands, so this route does not need a second executable.
 
 ## Maintenance
 
@@ -102,4 +102,4 @@ python3 .agents/generate.py --check
 python3 .agents/check.py --require-cli
 ```
 
-The checks require `linkml-scala` on PATH. Review nested Ohi reference links separately.
+The checks require `linkml-scala` on PATH. Review nested ohi reference links separately.

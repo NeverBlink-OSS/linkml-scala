@@ -43,6 +43,8 @@ ui/dist/
 /website/public/favicon.svg
 /website/dist/
 /website/.astro/
+/ohi/docs/dist/
+/ohi/docs/.astro/
 /ohi/typescript/dist/
 
 # apache/ossie checkout for OssieIntegrationSpec, cloned by `./mill generator.jvm.test.ossieRepo`

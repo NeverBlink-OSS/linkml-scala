@@ -1,6 +1,6 @@
-# Ohi CLI
+# ohi CLI
 
-Ohi lets command-line users find ontology publications, download files, track the publications a project depends on, and run LinkML engine commands.
+ohi lets command-line users find ontology publications, download files, track the publications a project depends on, and run LinkML engine commands.
 
 ## Install
 
@@ -22,7 +22,7 @@ On Windows, download `ohi-windows-x86_64.exe` and `SHA256SUMS` from the same rel
 `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` in PowerShell with that asset's
 entry in `SHA256SUMS`, then rename it to `ohi.exe` and place it on your `PATH`.
 The `ohi.jar` asset runs with Java 17 or later using `java -jar ohi.jar`.
-Ohi and LinkML use the same release version.
+ohi and LinkML use the same release version.
 See [download verification](../../docs/verifying_downloads.md) for checksums and build provenance.
 
 ```sh
@@ -32,7 +32,7 @@ ohi get https://hub.example/files/prov-o.ttl --to ./ontologies
 ```
 
 Search uses the ohi.dev catalog. The inspection and file addresses above are illustrative.
-These commands require no Ohi project and do not read or write `ohi.yaml` or a lockfile.
+These commands require no ohi project and do not read or write `ohi.yaml` or a lockfile.
 
 Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, check its `format`, then pass that entry's `url` to `get`.
 
@@ -64,7 +64,7 @@ with `get`.
 
 ## Project commands
 
-A project is a directory with two files. You edit [`ohi.yaml`](schema/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. Ohi writes [`ohi.lock.json`](../../ohi/model/schema/lock.yaml), which lists the files those selections resolve to, including dependencies.
+A project is a directory with two files. You edit [`ohi.yaml`](schema/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. ohi writes [`ohi.lock.json`](../../ohi/model/schema/lock.yaml), which lists the files those selections resolve to, including dependencies.
 
 ```sh
 ohi init ./project
@@ -91,7 +91,7 @@ selections:
 
 Removing a selection does not delete its downloaded file. Adding a new selection rewrites `ohi.yaml` and drops its comments and formatting.
 
-For each selection, the lock also lists one artifact from each dependency of the selected publication, in the format of the selected artifact. `add` and `lock` fail when a dependency has no artifact or several artifacts in that format. Ohi does not download dependency artifacts.
+For each selection, the lock also lists one artifact from each dependency of the selected publication, in the format of the selected artifact. `add` and `lock` fail when a dependency has no artifact or several artifacts in that format. ohi does not download dependency artifacts.
 
 `--json` prints a [ProjectResult](schema/project-result.yaml) on stdout or a [ProjectError](schema/project-error.yaml) on stderr. When a command fails after writing some files, its error message lists the commands that finish the work.
 
