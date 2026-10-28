@@ -27,6 +27,8 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "lengths" -> "LinkML-Python's metamodel has no `minimum_length` and `maximum_length`",
     "unionOf" ->
       "LinkML-Python writes no datatype for a `union_of` range and ignores the union's constraints",
+    "boundsNarrowing" ->
+      "LinkML-Python writes no datatype for a `union_of` range, and lets a child type, a slot and a child slot widen bounds",
   )
   override val skipInstances: Map[(String, String), String] = Map(
     ("library", "full") -> "We went with a different approach to Linkml-py for enums",

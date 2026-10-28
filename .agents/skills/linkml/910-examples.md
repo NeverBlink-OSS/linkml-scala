@@ -79,6 +79,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `metadata/title` | 0 | 0 | This schema is used to test the title and description metad… |
 | `mixin` | 0 | 0 |  |
 | `multivaluedReference` | 11 | 3 |  |
+| `narrowing/boundsNarrowing` | 7 | 26 | A value bound can narrow the values that a type, a union or… |
 | `nonHermetic` | 0 | 0 |  |
 | `pruning` | 0 | 0 |  |
 | `pruningDefaultRange` | 0 | 0 |  |

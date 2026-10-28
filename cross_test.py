@@ -16,6 +16,9 @@ skips = [
     "unionOf",
     # Python's metamodel has no minimum_length and maximum_length
     "lengths",
+    # Python writes a union_of type as a string, and lets a child type, a slot and a child slot
+    # widen bounds
+    "boundsNarrowing",
 ]
 
 if __name__ == "__main__":

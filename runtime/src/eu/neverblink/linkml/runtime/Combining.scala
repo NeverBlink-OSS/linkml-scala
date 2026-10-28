@@ -70,15 +70,36 @@ def wrapIfDifferent[T](v1: Seq[T], v2: Seq[T], wrap: Seq[T] => T): Seq[T] =
 def combineMap[T](v1: Map[String, T], v2: Map[String, T]): Map[String, T] =
   if (v2.isEmpty || v1 == v2) v1 else v2.concat(v1)
 
-/** Combine values for the `maximum_value` metaslot
+/** Combine values for the `maximum_value` metaslot: the smaller one, so that both bounds hold, as
+  * the LinkML specification says.
+  *
+  * Only numbers can be compared. For other values, such as dates, `v1` is kept.
   */
-// TODO COMPAT
-inline def combineMax(v1: LinkmlAny, @unused v2: LinkmlAny): LinkmlAny = v1
+def combineMax(v1: LinkmlAny, v2: LinkmlAny): LinkmlAny =
+  if (compareNumbers(v1, v2) > 0) v2 else v1
 
-/** Combine values for the `minimum_value` metaslot
+/** Combine values for the `minimum_value` metaslot: the larger one, so that both bounds hold, as
+  * the LinkML specification says.
+  *
+  * Only numbers can be compared. For other values, such as dates, `v1` is kept.
   */
-// TODO COMPAT
-inline def combineMin(v1: LinkmlAny, @unused v2: LinkmlAny): LinkmlAny = v1
+def combineMin(v1: LinkmlAny, v2: LinkmlAny): LinkmlAny =
+  if (compareNumbers(v1, v2) < 0) v2 else v1
+
+/** Compare two values as numbers. 0 if they are equal, or if one of them isn't a number. */
+private def compareNumbers(v1: LinkmlAny, v2: LinkmlAny): Int = {
+  val n1 = toNumberOrNull(v1)
+  if (n1 eq null) 0
+  else {
+    val n2 = toNumberOrNull(v2)
+    if (n2 eq null) 0 else n1.compareTo(n2)
+  }
+}
+
+/** The value as a number, or null if it isn't one. */
+private def toNumberOrNull(v: LinkmlAny): java.math.BigDecimal =
+  try new java.math.BigDecimal(v.value.strip)
+  catch { case _: NumberFormatException => null }
 
 /** Combine values for the `pattern` metaslot
   */

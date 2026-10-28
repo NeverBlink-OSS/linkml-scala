@@ -720,8 +720,8 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     *
     * A type that is not a union has one alternative: itself. A union has one alternative per
     * member, in declaration order and without duplicates, with nested unions flattened. The union's
-    * own constraints have precedence over the ones of its members. A member that contains this
-    * union is skipped, as in [[unionAlternatives]].
+    * own constraints are combined with the ones of its members, as [[ValueAlternative]] says. A
+    * member that contains this union is skipped, as in [[unionAlternatives]].
     */
   lazy val alternatives: Seq[ValueAlternative] = alternativesAvoiding(Nil)
 
@@ -761,7 +761,8 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
   /** The pattern of this type or the nearest ancestor that has one. */
   def pattern: Option[LinkmlPattern] = LinkmlPattern.option(derivedType.pattern)
 
-  /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. The
+  /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. Value
+    * bounds are combined so that all of them hold, see [[combineMin]] and [[combineMax]]. The
     * original declaration remains available through [[inner]].
     */
   lazy val derivedType: TypeDefinition =

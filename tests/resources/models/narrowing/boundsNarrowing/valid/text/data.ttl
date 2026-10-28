@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/boundsNarrowing/> .
+
+_:b a :Record;
+    :union_type "abc";
+    :slot_over_union "abc" .

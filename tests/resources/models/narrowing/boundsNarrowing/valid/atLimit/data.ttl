@@ -1,0 +1,10 @@
+@prefix : <https://neverblink.eu/linkml/tests/boundsNarrowing/> .
+
+_:b a :Record;
+    :child_type 10;
+    :slot_over_type 10;
+    :union_type 10;
+    :slot_over_union 10;
+    :subclass_usage 10;
+    :mixin_usage 10;
+    :child_slot 10 .

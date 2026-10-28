@@ -25,8 +25,9 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - JSON Schema, Pydantic, SHACL, OWL, Scala and TypeScript generators support type unions.
   - The constraints of a union and of the slot that uses it apply to each member they fit:
     `pattern` to anything but numbers and booleans, `minimum_value` and `maximum_value` to numbers,
-    dates and times, and lengths to text. The nearest one has precedence: the slot, then each union
-    on the way to the member, then the member type.
+    dates and times, and lengths to text. All value bounds hold, see [Value bounds](#value-bounds).
+    For other constraints, the nearest one has precedence: the slot, then each union on the way to
+    the member, then the member type.
   - Some constraints may still be lost, depending on the expressiveness of the target language:
     - Frictionless has one type per column. A union is written as that type only if all its
       members give the same column, such as `string` for `string | ncname`. Otherwise it is an
@@ -46,6 +47,7 @@ These features work differently in LinkML-Scala than in the LinkML specification
 These features follow the LinkML specification, while LinkML-Python works differently:
 
 - [Boolean metaslots in `slot_usage`](#boolean-metaslots-in-slot_usage): a `slot_usage` can turn `required` or `multivalued` on, but not off
+- [Value bounds](#value-bounds): a bound can narrow the values of a type, a union or a parent, but not widen them
 
 ## Boolean expressions in SHACL
 
@@ -68,6 +70,15 @@ LinkML-Scala does the same. LinkML-Python 1.12.1 uses the value from the closest
 So a `slot_usage` can make a slot required or multivalued, but not optional or single-valued when the slot or a parent class already sets it.
 
 See [Boolean metaslots](slot_usage_inheritance.md#boolean-metaslots) for details and examples.
+
+## Value bounds
+
+The LinkML specification combines the `minimum_value` and `maximum_value` of slots so that all of them hold.
+LinkML-Scala does the same, also for a slot over its range type, a type over its `typeof` parents, and a union over its members.
+LinkML-Python 1.12.1 does it only for `slot_usage`, and otherwise takes the nearest bound.
+So a value of a slot is also a valid value of its range type and of each parent.
+
+See [Value bounds](slot_usage_inheritance.md#value-bounds) for details and examples.
 
 ## Imports
 

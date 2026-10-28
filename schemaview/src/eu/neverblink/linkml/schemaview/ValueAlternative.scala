@@ -9,8 +9,10 @@ import eu.neverblink.linkml.runtime.*
   * unions flattened. Any other slot or type has one alternative. See [[TypeView.alternatives]] and
   * [[TypeAttributeView.alternatives]].
   *
-  * Each constraint comes from the nearest place that sets it: the slot, then each union on the way
-  * to the member, then the member type.
+  * The constraints come from the slot, then each union on the way to the member, then the member
+  * type:
+  *   - all value bounds hold: the largest `minimum_value` and the smallest `maximum_value`;
+  *   - other constraints come from the nearest place that sets them.
   *
   * A constraint is kept only if it applies to values of [[typeView]]:
   *   - `pattern` applies to anything but numbers and booleans;
@@ -35,8 +37,8 @@ final case class ValueAlternative private (
     pattern.isDefined || minimumValue.isDefined || maximumValue.isDefined ||
       minimumLength.isDefined || maximumLength.isDefined
 
-  /** This alternative with the constraints of a slot or a slot expression, which have precedence
-    * over the ones it has.
+  /** This alternative with the constraints of a slot or a slot expression, which are nearer than
+    * the ones it has.
     */
   def withConstraintsOf(expression: SlotExpression): ValueAlternative =
     withConstraints(
@@ -47,8 +49,7 @@ final case class ValueAlternative private (
       expression.maximumLength,
     )
 
-  /** This alternative with the constraints of a type, which have precedence over the ones it has.
-    */
+  /** This alternative with the constraints of a type, which are nearer than the ones it has. */
   private[schemaview] def withConstraintsOf(definition: TypeDefinition): ValueAlternative =
     withConstraints(
       definition.pattern,

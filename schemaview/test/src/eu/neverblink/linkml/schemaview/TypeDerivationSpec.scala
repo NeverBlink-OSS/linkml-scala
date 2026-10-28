@@ -335,10 +335,11 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       // Only the constraints that apply to a type are kept
       describe(view.types("Count").alternatives) shouldBe
         Seq(("Count", None, Some("0"), Some("50"), None, None))
-      // The nearest union has precedence over the member, and the outer union over both
+      // The nearest union has precedence over the member, and the outer union over both. A
+      // looser bound doesn't widen a narrower one: `Count` stays at most 50.
       describe(view.types("Choice").alternatives) shouldBe Seq(
         ("Code", Some("^[A-Z]$"), None, None, None, Some(3)),
-        ("Count", None, Some("0"), Some("100"), None, None),
+        ("Count", None, Some("0"), Some("50"), None, None),
         ("decimal", None, None, Some("100"), None, None),
         // A member reached in another way has other constraints, so it is kept
         ("Code", Some("^[A-Z]$"), None, None, None, Some(4)),

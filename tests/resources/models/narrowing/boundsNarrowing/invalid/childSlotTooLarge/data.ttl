@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/boundsNarrowing/> .
+
+_:b a :Record;
+    :child_slot 11 .

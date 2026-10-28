@@ -1,0 +1,83 @@
+id: https://neverblink.eu/linkml/tests/boundsNarrowing/
+name: boundsNarrowing
+description: >-
+  A value bound can narrow the values that a type, a union or a parent allows, but not widen them.
+  Each slot gets `maximum_value: 100` from one place and `maximum_value: 10` from another, so 10 is
+  valid and 11 is not.
+
+imports:
+  - linkml:types
+
+types:
+  Small:
+    typeof: integer
+    maximum_value: 10
+  # A child type with a looser bound than its parent
+  Bigger:
+    typeof: Small
+    maximum_value: 100
+  # A union with a looser bound than its member `Small`
+  SmallOrTextUpTo100:
+    union_of: [Small, string]
+    maximum_value: 100
+  SmallOrText:
+    union_of: [Small, string]
+
+classes:
+  Base:
+    slots:
+      - subclass_usage
+      - mixin_usage
+    slot_usage:
+      subclass_usage:
+        maximum_value: 10
+      mixin_usage:
+        maximum_value: 10
+  Widening:
+    mixin: true
+    slots:
+      - mixin_usage
+    slot_usage:
+      mixin_usage:
+        maximum_value: 100
+  Record:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Widening
+    slots:
+      - child_slot
+    slot_usage:
+      subclass_usage:
+        maximum_value: 100
+    attributes:
+      child_type:
+        rank: 1
+        range: Bigger
+      slot_over_type:
+        rank: 2
+        range: Small
+        maximum_value: 100
+      union_type:
+        rank: 3
+        range: SmallOrTextUpTo100
+      slot_over_union:
+        rank: 4
+        range: SmallOrText
+        maximum_value: 100
+
+slots:
+  subclass_usage:
+    rank: 5
+    range: integer
+  mixin_usage:
+    rank: 6
+    range: integer
+  parent_slot:
+    range: integer
+    maximum_value: 10
+  # A child slot with a looser bound than its parent slot
+  child_slot:
+    rank: 7
+    is_a: parent_slot
+    maximum_value: 100
