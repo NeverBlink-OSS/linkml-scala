@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
 /** A schema can't be written, or an ontology can't be imported as a schema, for a reason the user
   * can fix. For example, `generate linkml` can't write a URI that would be read back as a CURIE
   * with another meaning, and `from owl` can't import an IRI that isn't a valid URI. It is returned
-  * instead of the output, by the JavaScript and Python APIs.
+  * instead of the output, by the JavaScript, C and Python APIs.
   *
   * @param details
   *   Longer, human-readable message describing the issue in more detail.
