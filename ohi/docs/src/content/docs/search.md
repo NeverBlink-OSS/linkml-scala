@@ -1,6 +1,7 @@
 ---
 title: Search, inspect and retrieve
 description: Find publications in a catalog, read their metadata and download their files.
+TODO: OHI-96 replace this with proper tutorials
 ---
 
 Finding and downloading a file takes three calls: `search` finds publications, `inspect` reads a

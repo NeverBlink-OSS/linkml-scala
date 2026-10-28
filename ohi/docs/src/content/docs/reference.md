@@ -1,6 +1,7 @@
 ---
 title: Metadata, failures and HTTP
 description: The publication metadata the SDK reads, the errors it raises and how it makes requests.
+TODO: OHI-96 replace this with proper tutorials
 ---
 
 ## Metadata
