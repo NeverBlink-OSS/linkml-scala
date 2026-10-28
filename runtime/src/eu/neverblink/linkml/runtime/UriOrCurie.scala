@@ -49,6 +49,15 @@ object UriOrCurie {
     case _ => x.original
   }
 
+  /** [[x]] as a [[Uri]] with the same text, which is [[x]] itself if it is a [[Uri]]. In a schema
+    * that passes validation, a [[Curie]] here is a URI whose prefix isn't declared, such as
+    * `mailto:a@b.org`.
+    */
+  def asUri(x: UriOrCurie): Uri = x match {
+    case u: Uri => u
+    case _ => new Uri(x.original)
+  }
+
   /** Check if [[uri]], written in full, would be read back as a CURIE that [[prefixes]] expand, as
     * the text before its first colon is a declared prefix. This is the URI `ex:Person` when `ex` is
     * a declared prefix, but also `http://example.org/a` when `http` is.

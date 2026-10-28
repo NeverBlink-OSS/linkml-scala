@@ -102,16 +102,6 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
   final private[schemaview] def defaultPrefixUri: String = sv.getDefaultPrefix(definingSchema)
 }
 
-private object ElementView:
-
-  /** [[u]] as a [[Uri]] with the same text. In a schema that passes validation, a [[Curie]] here is
-    * a URI whose prefix isn't declared, such as `mailto:a@b.org`.
-    */
-  def asUri(u: UriOrCurie): Uri = u match {
-    case uri: Uri => uri
-    case _ => new Uri(u.original)
-  }
-
 private object ClassView:
   // Used to avoid as many allocations as possible when deriving slots.
   val emptySlotDef: SlotDefinition = SlotDefinition(name = "!!! invalid, internal !!!")
@@ -124,7 +114,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def canonicalName: String = Case.baseToPascal(baseName)
 
   def uri: Uri =
-    cls.classUri.foldFast(modelUri)(ElementView.asUri)
+    cls.classUri.foldFast(modelUri)(UriOrCurie.asUri)
 
   def aliasedName: String =
     cls.alias.getOrElseFast(name)
@@ -583,7 +573,7 @@ private object SlotView:
   // Exposed for slot derivation in ClassView.
   def uri(slotUri: Option[UriOrCurie], slotName: String, context: ElementView[?, ?]): Uri =
     slotUri.foldFast(Uri.synthetic(context.defaultPrefixUri, Case.base(slotName)))(
-      ElementView.asUri,
+      UriOrCurie.asUri,
     )
 
 final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinition)(using
@@ -606,7 +596,7 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
 
   def uri: Uri =
     _enum.enumUri.foldFast(Uri.synthetic(defaultPrefixUri, Case.baseToPascal(canonicalName)))(
-      ElementView.asUri,
+      UriOrCurie.asUri,
     )
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
@@ -672,7 +662,7 @@ final case class PermissibleValueView(pv: PermissibleValue, enumView: EnumView) 
   /** @see
     *   [[PermissibleValue.meaning]]
     */
-  def meaning: Uri = pv.meaning.foldFast(modelUri)(x => Uri(x.original))
+  def meaning: Uri = pv.meaning.foldFast(modelUri)(UriOrCurie.asUri)
 
   /** @see
     *   [[ElementView.uriStr]]
@@ -832,7 +822,7 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     */
   def coreType: CoreType = runtimeType.repr
 
-  def uri: Uri = derivedType.typeUri.foldFast(modelUri)(ElementView.asUri)
+  def uri: Uri = derivedType.typeUri.foldFast(modelUri)(UriOrCurie.asUri)
 }
 
 final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefinition)(using

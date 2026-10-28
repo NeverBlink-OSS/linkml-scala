@@ -27,6 +27,17 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "UriOrCurie.asUri" should {
+    "keep a Uri as it is" in {
+      val uri = Uri("https://example.org/a")
+      UriOrCurie.asUri(uri) should be theSameInstanceAs uri
+    }
+    "make a Uri with the text of a Curie" in {
+      UriOrCurie.asUri(Curie("mailto:someone@example.org")) shouldBe
+        Uri("mailto:someone@example.org")
+    }
+  }
+
   "UriOrCurie.isFullUri" should {
     "accept URIs with :// or a scheme that isn't followed by /" in {
       Seq(
