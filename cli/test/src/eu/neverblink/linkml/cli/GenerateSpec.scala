@@ -289,6 +289,15 @@ class GenerateSpec extends AnyWordSpec, Matchers {
         }
       }
 
+      "give a new file at --to the permissions that any new file gets" in {
+        generateOver { dir =>
+          os.remove(dir / "out.yaml")
+          os.write(dir / "new.txt", "")
+        } { dir =>
+          os.perms(dir / "out.yaml") shouldBe os.perms(dir / "new.txt")
+        }
+      }
+
       "not touch a file with the name of the temporary file" in {
         generateOver(dir => os.write(dir / ".out.yaml.tmp", "another run")) { dir =>
           os.read(dir / ".out.yaml.tmp") shouldBe "another run"
