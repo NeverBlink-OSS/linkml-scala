@@ -14,6 +14,7 @@ Common tasks with mill:
 
 - Run CLI directly: `./mill cli.jvm.run --help`
 - Start the browser UI: `./mill ui.serve`
+- Preview the docs site: `./mill website.serve` (see [Docs site](#docs-site))
 - Scan the mill project structure: `./mill resolve _`
 - Compile all modules: `./mill __.compile`
 - Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
@@ -108,6 +109,16 @@ npm run watch     # esbuild, rebuilds on change
 npm run typecheck # tsc --noEmit
 npm run build     # one-off bundle
 ```
+
+### Docs site
+
+The guides in [`docs/`](docs/) are published at <https://linkml.neverblink.eu/docs/> with [Starlight](https://starlight.astro.build/). The site lives in [`website/`](website/). Write and edit the guides in `docs/` only: `website/sync-docs.mjs` copies them into the site on every build, makes the first `# Title` line the page title, and rewrites links between the guides to page URLs, and links to other files in the repo to GitHub. **Node.js and npm must be on your `PATH`**, and the first run installs the npm dependencies.
+
+- Serve it locally: `./mill website.serve` – at <http://localhost:4321/docs/>, reloads on every change in `docs/`
+- Build it (what CI runs): `./mill website.build` → `website/dist/`. It fails on a broken link between pages or to a heading.
+- Build and serve the result: `./mill website.preview`
+
+A new guide has to be added to the sidebar in `website/astro.config.mjs`, and to the list in `docs/README.md`, which is the landing page. The build fails if it is missing from the sidebar.
 
 ## Benchmarks
 

@@ -15,20 +15,21 @@ class AppSpec extends AnyWordSpec, Matchers {
     ("linkml validate", Validate, "Validate one or more LinkML schemas"),
     ("linkml lint", Validate, "Validate one or more LinkML schemas"),
     ("linkml generate scala", Scala, "Generate Scala classes"),
-    ("linkml generate json-schema", JsonSchema, "Generate JSON Schema"),
+    ("linkml generate json-schema", JsonSchema, "Generate a JSON Schema"),
     ("linkml generate shacl", Shacl, "Generate SHACL shapes"),
-    ("linkml generate rdfs", Rdfs, "Generate RDF schema"),
+    ("linkml generate rdfs", Rdfs, "Generate an RDF Schema (RDFS) vocabulary"),
     ("linkml generate owl", Owl, "Generate an OWL 2 ontology"),
-    ("linkml generate linkml", LinkMl, "Materialize a derived LinkML schema"),
+    ("linkml generate linkml", LinkMl, "Generate the materialized, derived LinkML schema"),
     ("linkml generate frictionless", Frictionless, "Generate a Frictionless Data Package"),
-    ("linkml generate graphql", GraphQl, "Generate a GraphQL Schema"),
+    ("linkml generate graphql", GraphQl, "Generate a GraphQL schema"),
     ("linkml generate typescript", TypeScript, "Generate TypeScript types"),
     ("linkml generate pydantic", Pydantic, "Generate Python classes based on pydantic"),
     ("linkml generate ossie", Ossie, "Generate an Apache Ossie ontology"),
     ("linkml generate er-diagram", ErDiagram, "Generate a Mermaid entity relationship diagram"),
+    ("linkml generate docs", Docs, "Generate Markdown documentation"),
     ("linkml generate translation", Translation, "Generate translation dictionaries"),
-    ("linkml from ossie", FromOssie, "Read an Apache Ossie ontology"),
-    ("linkml from owl", FromOwl, "Read an OWL ontology or RDFS vocabulary"),
+    ("linkml from ossie", FromOssie, "Convert an Apache Ossie ontology"),
+    ("linkml from owl", FromOwl, "Convert an OWL ontology or RDFS vocabulary"),
   )
   private val versionNames =
     Seq("version", "v", "--version", "linkml version", "linkml v", "linkml --version")
@@ -84,6 +85,16 @@ class AppSpec extends AnyWordSpec, Matchers {
           "add",
           "lock",
         ))
+    }
+
+    "give each command a short one-line summary" in {
+      for command <- new OhiApp().commands do
+        val summary = command.finalHelp.helpMessage.fold("")(_.message.takeWhile(_ != '\n'))
+        withClue(s"for ${command.names.head.mkString(" ")}: ") {
+          summary should not be empty
+          summary.length should be <= 50
+          summary should not endWith "."
+        }
     }
 
     for (name, command, description) <- engineCommands do
@@ -176,7 +187,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         code shouldBe 0
         err shouldBe empty
         plain(out) should include(s"Usage: ohi $name")
-        out should include("Print the version of ohi and its key components.")
+        out should include("Print the version of ohi")
       }
 
     for name <- Seq("version", "linkml version") do

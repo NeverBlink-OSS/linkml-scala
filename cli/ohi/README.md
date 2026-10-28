@@ -42,6 +42,8 @@ Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, c
 A cutoff warning means results or counts may be incomplete. Run `ohi search --help` for filters,
 sorting and facets.
 
+Search uses color in a terminal. Use `--color=never` to disable it.
+
 To select another catalog, supply both `--search-url` and `--query-by`. Omitting both uses ohi.dev.
 Supplying only one fails.
 

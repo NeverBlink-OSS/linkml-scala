@@ -5,7 +5,7 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{LocalizedText, Reference, UriCurieValidator}
+import eu.neverblink.linkml.runtime.{LocalizedText, Reference}
 import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
 
 import scala.collection.mutable
@@ -49,9 +49,7 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     definitions.foreach { d =>
       metadataOf(d).seeAlso.foreach { x =>
         val uri = x.original
-        // A value that isn't a URI can't be an IRI in RDF, so it is skipped
-        if (UriCurieValidator.isValidUri(uri) && links.add(uri))
-          sink.triple(subject, Rdfs.seeAlso, Iri(uri))
+        if (links.add(uri)) sink.triple(subject, Rdfs.seeAlso, Iri(uri))
       }
     }
   }
@@ -198,11 +196,8 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       e.derivedValues.foreach { pvv =>
         val pvIri = Iri(pvv.uriStr)
         val usages = valueUsages(pvIri.value)
-        // A meaning that isn't a URI can't be an IRI in RDF, so the value is skipped
-        if (
-          UriCurieValidator.isValidUri(pvIri.value) && (usages.head._1 eq e) &&
-          (usages.head._2 eq pvv.pv)
-        ) {
+        val first = usages.head
+        if ((first._1 eq e) && (first._2 eq pvv.pv)) {
           usages.map(u => Iri(u._1.uriStr)).distinct.foreach { enumClass =>
             sink.triple(pvIri, Rdf.`type`, enumClass)
           }

@@ -74,6 +74,16 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  /** Check the LinkML output of a schema with [[check]], or, for a schema in
+    * [[undeclaredPrefixUris]], that writing it fails with an error that names the URI.
+    */
+  private def assertLinkMl(name: String, generate: => String)(check: String => Unit): Unit =
+    undeclaredPrefixUris.get(name) match {
+      case Some(uri) =>
+        (the[IllegalArgumentException] thrownBy generate).getMessage should include(s"'$uri'")
+      case _ => check(generate)
+    }
+
   private def assertIsOssieOntology(s: String, format: InputFormat): Unit = {
     withClue("output is empty: ") { s.trim should not be empty }
     withClue("output is not a valid Ossie ontology:\n") {
@@ -127,21 +137,22 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
 
           "LinkML (YAML) output parses as YAML" in {
             assume(!skip.contains((name, "linkml-yaml")), skip.getOrElse((name, "linkml-yaml"), ""))
-            assertParsesAsYaml(
+            assertLinkMl(
+              name,
               LinkMlGenerator(using sv).serialize(
                 LinkMlGenerator.Options(outputFormat = JsonOutputFormat.yaml),
               ),
-            )
+            )(assertParsesAsYaml)
           }
 
           "LinkML (JSON) output parses as JSON" in {
             assume(!skip.contains((name, "linkml-json")), skip.getOrElse((name, "linkml-json"), ""))
-            assertParsesAsJson(
+            assertLinkMl(
               name,
               LinkMlGenerator(using sv).serialize(
                 LinkMlGenerator.Options(outputFormat = JsonOutputFormat.json),
               ),
-            )
+            )(assertParsesAsJson(name, _))
           }
 
           "GraphQL output is a well-formed GraphQL schema" in {
@@ -195,6 +206,10 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "validate" in {
             assume(!skip.contains((name, "validation")), skip.getOrElse((name, "validation"), ""))
             sv.validationProblems.map(_.infer().message) shouldBe empty
+            // The URI that the LinkML output can't hold gets a warning
+            undeclaredPrefixUris.get(name).foreach { uri =>
+              sv.lintProblems.flatMap(_.infer().message).exists(_.contains(s"'$uri'")) shouldBe true
+            }
           }
         }
       }
@@ -220,6 +235,16 @@ object BenchmarkSchemaSpec {
         .filter(dir => os.exists(dir / "main.yaml"))
         .sortBy(_.last)
     else Seq.empty
+
+  /** Map of dataset name -> a URI with an undeclared prefix that the LinkML output can't hold. An
+    * imported schema uses a prefix that it doesn't declare, but the merged output declares a prefix
+    * with that name, so the URI would be read back as a CURIE with another meaning.
+    */
+  private val undeclaredPrefixUris: Map[String, String] = Map(
+    "cdm" -> "icma:ISO20022#Val",
+    "chem-dcat-ap" -> "NCIT:C41185",
+    "nmdc_microbiome" -> "ORCID:0009-0001-1555-1601",
+  )
 
   /** Map of (dataset name, generator id) -> reason, for skipping known-failing combinations.
     */

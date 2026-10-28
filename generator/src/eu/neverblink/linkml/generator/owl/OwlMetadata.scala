@@ -284,7 +284,7 @@ object Metadata {
   private def refs(values: Seq[String | LocalizedText | UriOrCurie]): Seq[UriOrCurie] =
     values.map {
       case u: UriOrCurie => u
-      case other => UriOrCurie(strings(Seq(other)).head)
+      case other => Uri(strings(Seq(other)).head)
     }
 
   private def textField(
@@ -450,52 +450,66 @@ object Metadata {
       metadata: Metadata,
       description: String = skos + "definition",
       language: Option[String] = None,
-  ): Seq[Annotation] =
-    fields.flatMap { field =>
-      val property = if field.name == "description" then description else field.property
-      field.get(metadata).flatMap(v => values(field.kind, v))
-        .map(v => if humanText(field.name) then inLanguage(v, language) else v)
-        .map {
-          // Write a license that is an IRI as a link, as most ontologies do.
-          case Literal(v, XmlSchema.string) if field.name == "license" && isAbsoluteIri(v) => Iri(v)
-          case v => v
+  ): Seq[Annotation] = {
+    val annotations = Seq.newBuilder[Annotation]
+    fields.foreach { field =>
+      val name = field.name
+      val property = if (name == "description") description else field.property
+      val isHumanText = humanText(name)
+      field.get(metadata).foreach { value =>
+        foreachNode(field.kind, value) { node =>
+          annotations.addOne(
+            Annotation(
+              property,
+              (if (isHumanText) inLanguage(node, language) else node) match {
+                // Write a license that is an IRI as a link, as most ontologies do.
+                case Literal(v, XmlSchema.string) if name == "license" && isAbsoluteIri(v) =>
+                  Iri(v)
+                case n => n
+              },
+            ),
+          )
         }
-        .map(Annotation(property, _))
+      }
     }
+    annotations.result()
+  }
 
   private def isAbsoluteIri(v: String): Boolean =
-    (v.contains("://") || v.startsWith("urn:")) && !v.exists(c =>
-      c.isWhitespace || "<>\"{}|\\^`".contains(c),
-    )
+    (v.contains("://") || v.startsWith("urn:")) && UriCurieValidator.isValidUri(v)
 
   /** Metaslots with text for people to read. These get the language tag. */
   val humanText: Set[String] =
     Set("title", "description", "aliases", "comments", "notes", "examples", "keywords")
 
   /** Adds the language tag to a plain string literal, if a language is given. */
-  def inLanguage(node: Node, language: Option[String]): Node = (node, language) match {
-    case (Literal(v, XmlSchema.string), Some(l)) => LanguageLiteral(v, l)
+  def inLanguage(node: Node, language: Option[String]): Node = node match {
+    case Literal(v, XmlSchema.string) =>
+      language match {
+        case Some(l) => LanguageLiteral(v, l)
+        case _ => node
+      }
     case _ => node
   }
 
-  private def values(
+  /** Calls `f` with each RDF node for a value of a metaslot of the given kind. */
+  private def foreachNode(
       kind: Kind,
       value: String | LocalizedText | UriOrCurie,
-  ): Seq[Node] =
-    (kind, value) match {
-      case (_, PlainText(v)) => Seq(Literal(v))
-      case (_, MultilingualText(mapping)) =>
-        mapping.toSeq.sortBy(_._1).map((lang, v) => LanguageLiteral(v, lang))
-      case (Kind.Reference, v: String) => iri(v)
-      case (Kind.Reference, v: UriOrCurie) => iri(v.original)
-      case (_, v: UriOrCurie) => Seq(Literal(v.original))
-      case (Kind.DateTime, v: String) => Seq(Literal(v, XmlSchema.dateTime))
-      case (Kind.Flag, _) => Seq(Literal("true", XmlSchema.boolean))
-      case (_, v: String) => Seq(Literal(v))
+  )(f: Node => Unit): Unit =
+    value match {
+      case PlainText(v) => f(Literal(v))
+      case MultilingualText(mapping) =>
+        mapping.toSeq.sortBy(_._1).foreach(kv => f(LanguageLiteral(kv._2, kv._1)))
+      case v: UriOrCurie =>
+        val uri = v.original
+        f(if (kind == Kind.Reference) Iri(uri) else Literal(uri))
+      case v: String =>
+        f(kind match {
+          case Kind.Reference => Iri(v)
+          case Kind.DateTime => Literal(v, XmlSchema.dateTime)
+          case Kind.Flag => Literal("true", XmlSchema.boolean)
+          case _ => Literal(v)
+        })
     }
-
-  /** The value as an IRI, or nothing if it isn't a URI, as it can't be an IRI in RDF. */
-  private def iri(v: String): Seq[Node] =
-    if (UriCurieValidator.isValidUri(v)) Seq(Iri(v))
-    else Nil
 }

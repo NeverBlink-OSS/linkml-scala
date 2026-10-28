@@ -94,8 +94,8 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
           """"łączony (class)": "CzonyClass"
             |"łączony <typ>": "CzonyTyp"
             |"łączony 'enum'": "CzonyEnum"
-            |"łączony [slot]": "czony_slot"
-            |"inny łączony \"slot\"": "inny_czony_slot"
+            |"łączony [slot]": "łączony [slot]"
+            |"inny łączony \"slot\"": "inny łączony \"slot\""
             |"łączony {value}": "łączony {value}"
             |"inny łączony \\value//": "inny łączony \\value//"
             |""".stripMargin.strip()

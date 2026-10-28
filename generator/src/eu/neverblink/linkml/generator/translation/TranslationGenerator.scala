@@ -8,6 +8,7 @@ import com.github.plokhotnyuk.jsoniter_scala.core.{
 }
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
+import eu.neverblink.linkml.generator.docs.DocsRenamer
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramRenamer
 import eu.neverblink.linkml.generator.frictionless.FrictionlessRenamer
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
@@ -74,6 +75,7 @@ object TranslationGenerator {
     "json" -> JsonRenamer,
     "typescript" -> TypeScriptRenamer,
     "pydantic" -> PydanticRenamer,
+    "docs" -> DocsRenamer,
   )
 
   /** The names of the translation targets. */
@@ -95,7 +97,7 @@ object TranslationGenerator {
     *
     * @param to
     *   The framework whose names the dictionaries translate to. One of "base", "uri", "scala",
-    *   "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript" or "pydantic".
+    *   "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic" or "docs".
     *
     * @param indentationStep
     *   Indentation of the JSON output.

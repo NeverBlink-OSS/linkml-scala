@@ -6,7 +6,8 @@ import eu.neverblink.linkml.generator.owl.OwlImporter
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 
-import java.io.{InputStream, OutputStream}
+import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
+import scala.util.control.NonFatal
 
 final case class FromOptions(
     @HelpMessage(
@@ -47,16 +48,19 @@ abstract class From[T <: HasFromOptions: {Parser, Help}] extends BaseCommand[T] 
     val input = inputs.headOption.getOrElse(err("Input file is required."))
     val path = os.Path(input, os.pwd)
     if !os.exists(path) then err(s"No such file: $input")
+    // The schema is made in memory first, so a document that can't be imported prints only the
+    // reason, and leaves no empty or partially written file behind.
+    val schema = new ByteArrayOutputStream()
     val in = os.read.inputStream(path)
-    try writeToFileOrStdout(options.common.to, out => convert(options, in, out))
+    try convert(options, in, schema)
+    catch { case NonFatal(e) => err(s"Cannot import $input", e) }
     finally in.close()
+    writeToFileOrStdout(options.common.to, out => schema.writeTo(out))
 }
 
 // Ossie
 
-@HelpMessage(
-  "Read an Apache Ossie ontology and produce a corresponding LinkML schema.",
-)
+@HelpMessage("Convert an Apache Ossie ontology\nThe result is a LinkML schema.")
 @ArgsName("<input-file>")
 final case class FromOssieOptions(
     @Recurse
@@ -95,7 +99,8 @@ object FromOssie extends From[FromOssieOptions] {
 // OWL
 
 @HelpMessage(
-  "Read an OWL ontology or RDFS vocabulary in Turtle or N-Triples and produce a corresponding LinkML schema.",
+  "Convert an OWL ontology or RDFS vocabulary\n" +
+    "The result is a LinkML schema. The input is read as Turtle or N-Triples.",
 )
 @ArgsName("<input-file>")
 final case class FromOwlOptions(

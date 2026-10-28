@@ -7,7 +7,7 @@ import mill.scalalib.*
 import millbuild.*
 import com.carlosedp.aliases.*
 
-import com.sun.net.httpserver.SimpleFileServer
+import com.sun.net.httpserver.{Filter, HttpServer, SimpleFileServer}
 import java.net.InetSocketAddress
 
 
@@ -53,11 +53,20 @@ object `package` extends Module {
   def serve(args: String*) = Task.Command() {
     build.generator.js.fullLinkJS()
     buildUiBundle()
+    // `no-cache` makes the browser ask the server before it reuses a file, so a page reloaded after
+    // a rebuild gets the new files. Without it, Safari can keep using an old styles.css for days.
+    val noCache = Filter.beforeHandler(
+      "Cache-Control: no-cache",
+      exchange => exchange.getResponseHeaders.set("Cache-Control", "no-cache"),
+    )
     val server =
-      SimpleFileServer.createFileServer(
+      HttpServer.create(
         new InetSocketAddress(8000),
-        mill.api.BuildCtx.workspaceRoot.toNIO,
-        SimpleFileServer.OutputLevel.INFO,
+        0,
+        "/",
+        SimpleFileServer.createFileHandler(mill.api.BuildCtx.workspaceRoot.toNIO),
+        SimpleFileServer.createOutputFilter(System.out, SimpleFileServer.OutputLevel.INFO),
+        noCache,
       )
 
     try {

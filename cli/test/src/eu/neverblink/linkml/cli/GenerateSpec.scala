@@ -35,6 +35,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
     (TypeScript, "typescript", Seq("export interface Root {", "name?: string;")),
     (Pydantic, "pydantic", Seq("class Root(LinkMLModel):", "name: str | None = None")),
     (ErDiagram, "er-diagram", Seq("erDiagram", "Root {", "string? name")),
+    (Docs, "docs", Seq("Class: Root", "| name | [string](")),
     (Translation, "translation", Seq("\"Root\": \"root\"")),
     (Ossie, "ossie", Seq("concept: Root", "type: EntityType", "name: name")),
     (Owl, "owl", Seq("a owl:Class", "owl:onProperty")),
@@ -209,6 +210,55 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           full should include("class_uri: https://example.org/Root")
         }
       }
+
+      /** Run `generate linkml --to out.yaml` for a schema with a URI that can't be written, with
+        * `prepare` called first with the folder, and return the exit code, stderr, the root schema
+        * and the folder after the run, as names of its files with their contents.
+        */
+      def generateUnwritable(
+          prepare: os.Path => Unit,
+      ): (Int, String, String, Map[String, String]) = {
+        val dir = os.temp.dir(prefix = "linkml-generate")
+        try {
+          // `other` doesn't declare `ex`, so its class URI is the URI `ex:Imported`
+          os.write(
+            dir / "other.yaml",
+            """id: https://neverblink.eu/other
+              |name: other
+              |classes:
+              |  Imported:
+              |    class_uri: ex:Imported
+              |""".stripMargin,
+          )
+          os.write(dir / "root.yaml", schema + "imports:\n  - other\n")
+          prepare(dir)
+          val root = (dir / "root.yaml").toString
+          val to = dir / "out.yaml"
+          val (out, err, code) =
+            LinkMl.runTestCommandWithExitCode(List("generate", "linkml", "--to", to.toString, root))
+          out shouldBe empty
+          val files = os.list(dir).map(p => p.last -> os.read(p)).toMap
+          (code, err, root, files)
+        } finally os.remove.all(dir)
+      }
+
+      "say why a URI can't be written, and write no file" in {
+        val (code, err, root, files) = generateUnwritable(_ => ())
+        code shouldBe 1
+        err.trim shouldBe
+          s"Cannot generate linkml from $root: The URI 'ex:Imported' can't be written, as 'ex' " +
+          "is a declared prefix, so it would be read back as a CURIE with another meaning. If " +
+          "it is meant as a CURIE, declare the prefix 'ex' where it is used. Otherwise, use a " +
+          "URI whose scheme isn't a declared prefix"
+        files.keySet shouldBe Set("other.yaml", "root.yaml")
+      }
+
+      "keep the previous file at --to if a URI can't be written" in {
+        val (code, _, _, files) = generateUnwritable(dir => os.write(dir / "out.yaml", "previous"))
+        code shouldBe 1
+        files.keySet shouldBe Set("other.yaml", "root.yaml", "out.yaml")
+        files("out.yaml") shouldBe "previous"
+      }
     }
 
     "generating a data package" should {
@@ -258,6 +308,81 @@ class GenerateSpec extends AnyWordSpec, Matchers {
           out should include("\"fields\"")
           out should not include "schemas/"
         }
+      }
+    }
+
+    "generating documentation" should {
+      def docs(to: os.Path): (String, String, Int) =
+        withSchemas(1, prunableSchema) { paths =>
+          Docs.runTestCommandWithExitCode(
+            List("generate", "docs", "--pruning-mode", "schema", "--to", to.toString) ++ paths,
+          )
+        }
+
+      "write a page per element when --to does not name a .md file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val (_, err, code) = docs(dir / "site")
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          snapshot(dir / "site").keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/root.md",
+            "classes/other.md",
+            "types/string.md",
+          )
+          os.read(dir / "site" / "index.md") should include("[Root](classes/root.md)")
+        } finally os.remove.all(dir)
+      }
+
+      "document only the elements that the schema uses by default" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val (_, err, code) = withSchemas(1, prunableSchema) { paths =>
+            Docs.runTestCommandWithExitCode(
+              List("generate", "docs", "--to", (dir / "site").toString) ++ paths,
+            )
+          }
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          // Not the other types of `linkml:types`, which the schema doesn't use
+          snapshot(dir / "site").keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/root.md",
+            "classes/other.md",
+            "types/string.md",
+          )
+        } finally os.remove.all(dir)
+      }
+
+      "remove the pages of an earlier run, but not the user's own files" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val site = dir / "site"
+          docs(site)._3 shouldBe 0
+          // A page of a class that is no longer in the schema, and a file of the user's own.
+          val header = os.read.lines(site / "classes" / "root.md").head
+          os.write(site / "classes" / "removed.md", header + "\n# Class: Removed\n")
+          os.write(site / "classes" / "notes.md", "# Notes\n")
+          val (_, err, code) = docs(site)
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          snapshot(site).keys.map(_.toString) should contain theSameElementsAs Seq(
+            "index.md",
+            "classes/root.md",
+            "classes/other.md",
+            "classes/notes.md",
+            "types/string.md",
+          )
+        } finally os.remove.all(dir)
+      }
+
+      "write a single document when --to names a .md file" in {
+        val dir = os.temp.dir(prefix = "linkml-generate-docs")
+        try {
+          val (_, err, code) = docs(dir / "docs.md")
+          withClue(s"stderr was: $err\n")(code shouldBe 0)
+          val content = os.read(dir / "docs.md")
+          content should include("[Root](#class-root)")
+          content should not include "classes/"
+        } finally os.remove.all(dir)
       }
     }
 

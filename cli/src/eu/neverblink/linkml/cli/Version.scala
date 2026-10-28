@@ -6,7 +6,7 @@ import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 
 import java.time.Year
 
-@HelpMessage("Print the version of linkml-scala and its key components.")
+@HelpMessage("Print the version of linkml-scala\nAlso lists the versions of its key components.")
 final case class VersionOptions(
     @HelpMessage(
       "Output format. One of terminal|json. 'terminal' is human-friendly (default); " +
@@ -21,8 +21,11 @@ class VersionCommand(displayName: String)
     extends BaseCommand[VersionOptions](using
       Parser[VersionOptions],
       Help[VersionOptions].copy(
-        helpMessage =
-          Some(HelpMessage(s"Print the version of $displayName and its key components.")),
+        helpMessage = Some(
+          HelpMessage(
+            s"Print the version of $displayName\nAlso lists the versions of its key components.",
+          ),
+        ),
       ),
     ) {
   override def names: List[List[String]] = List(

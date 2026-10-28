@@ -125,18 +125,16 @@ private[owl] final class OwlAnnotationReader(
         }
       case Metadata.Kind.Reference =>
         value match {
-          case Iri(v) =>
-            // An IRI that is neither a URL nor a CURIE, like `mailto:`, would be read back as a
-            // CURIE with an unknown prefix, so leave it to the annotations.
-            if (v.contains("://") || v.startsWith("urn:") || (names.prefixOrNull(v) ne null)) {
-              Some(names.uri(v))
-            } else None
-          // Text is a reference only if it is an IRI or a CURIE with a known prefix.
-          case Literal(v, _) if v.nonEmpty && !v.exists(notInIri) =>
-            if (v.contains("://") || v.startsWith("urn:")) Some(v)
-            else {
+          // An IRI that can't be a URI in the schema is left to the annotations, as text
+          case Iri(v) => if (names.isWritable(v)) Some(names.uri(v)) else None
+          // Text is a reference only if it is a URL, a URN or a CURIE with a known prefix, and its
+          // expansion can be a URI in the schema.
+          case Literal(v, _) if v.nonEmpty =>
+            if (v.contains("://") || v.startsWith("urn:")) {
+              if (names.isWritable(v)) Some(names.uri(v)) else None
+            } else {
               val iri = names.expand(v)
-              if (iri != v) {
+              if (!iri.equals(v) && names.isWritable(iri)) {
                 names.ensurePrefix(iri)
                 Some(names.uri(iri))
               } else None
@@ -186,7 +184,7 @@ private[owl] final class OwlAnnotationReader(
           val value =
             if texts.sizeIs == 1 then yamlString(texts.head)
             else LinkmlAny(texts.map(t => "- " + yamlString(t).value).mkString)
-          key -> LinkmlAnnotation(extensionTag = Uri(property), extensionValue = value)
+          key -> LinkmlAnnotation(extensionTag = names.uri(property), extensionValue = value)
         }
       })
 }
@@ -207,9 +205,6 @@ private[owl] object OwlAnnotationReader {
     "license",
     "version",
   )
-
-  /** Characters that IRIs and CURIEs cannot have. */
-  private def notInIri(c: Char): Boolean = c.isWhitespace || "<>\"{}|\\^`".contains(c)
 
   private def textIn(node: Node): Option[String] = node match {
     case Literal(v, _) => Some(v)

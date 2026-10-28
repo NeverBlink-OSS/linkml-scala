@@ -37,30 +37,6 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
         |imports:
         |  - linkml:types"""
 
-    "skip enum meanings that aren't URIs in sh:in" in {
-      val input =
-        s"""$schemaShared
-           |classes:
-           |  SomeClass:
-           |    attributes:
-           |      kind:
-           |        range: SomeEnum
-           |enums:
-           |  SomeEnum:
-           |    permissible_values:
-           |      SOME_VALUE:
-           |        meaning: not a URI
-           |      SOME_OTHER_VALUE: {}
-           |""".stripMargin
-      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
-      turtle should include(
-        "sh:in ( <https://neverblink.eu/linkml/shacl/test/SomeEnum.SOME_OTHER_VALUE> )",
-      )
-      turtle should not include "not a URI"
-      // The output is valid RDF
-      Rio.parse(StringReader(turtle), RDFFormat.TURTLE) should not be empty
-    }
-
     "classes with basic types" in {
       val input =
         s"""$schemaShared

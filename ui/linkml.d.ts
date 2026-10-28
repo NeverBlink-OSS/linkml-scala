@@ -180,9 +180,20 @@ export interface LinkMLApi {
   erDiagram(schema: SchemaView, pruningMode?: string, treeRoot?: string, optionalMarker?: boolean): string;
 
   /**
+   * Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for each class, slot, enum and type, which link to each other.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Which classes to document. One of treeRoot|schema|skip. treeRoot - only classes reachable from the tree_root class. schema - only classes reachable from any of the classes defined in the root schema. skip - every class. The enums, types and slots these classes use are documented with them. Default: schema
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
+   * @param singleFile Whether to write all pages as sections of one `docs.md` document. Default: false
+   * @param metadataLanguage Which language to use for titles and descriptions. Default: en
+   * @returns JS dictionary (object) containing a mapping from filename to file content: `index.md` plus `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md` and `types/<name>.md`, or only `docs.md` if [[singleFile]] is true.
+   */
+  docs(schema: SchemaView, pruningMode?: string, treeRoot?: string, singleFile?: boolean, metadataLanguage?: string): Record<string, string>;
+
+  /**
    * Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is useful when the framework symbols are significant and must be known, like when constructing a query that is meant to be executed against a database conformant to a LinkML schema.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", or "pydantic".
+   * @param target Target framework to generate translations for. One of "base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", or "docs".
    * @param derivedAttributes Also list inherited slots, mixin slots and slots from the class's `slots` list in classAttributes. Without it, classAttributes lists only the class's own attributes. Default: false
    * @returns Translation dictionary for translating the linkml names to framework names.
    */

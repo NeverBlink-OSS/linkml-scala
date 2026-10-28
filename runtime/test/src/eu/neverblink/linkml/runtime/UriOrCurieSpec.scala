@@ -28,6 +28,46 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
       noException should be thrownBy UriOrCurie("http://<>")
     }
   }
+  "UriOrCurie.isCurie" should {
+    "accept values with the shape of a CURIE" in {
+      Seq("acme:Person", "NCIT:C41185", "ex:a/b", "_x:y", "a-b.c:d", "ex:").foreach(s =>
+        withClue(s)(UriOrCurie.isCurie(s) shouldBe true),
+      )
+    }
+    "reject URIs, file paths and values without a prefix" in {
+      Seq(
+        "http://example.org/a",
+        "file:/schemas/core",
+        "C:\\schemas\\core",
+        "urn:isbn:0451450523",
+        "mailto:someone@example.org",
+        "URN:isbn:0451450523",
+        "Person",
+        ":Person",
+        "1ex:a",
+        "a b:c",
+      ).foreach(s => withClue(s)(UriOrCurie.isCurie(s) shouldBe false))
+    }
+  }
+
+  "UriOrCurie.compacted" should {
+    val prefixes = PrefixMap(defaults = Seq("ex" -> "https://example.org/"))
+    "write a URI as a CURIE if it can" in {
+      UriOrCurie.compacted(Uri("https://example.org/a"), prefixes) shouldBe "ex:a"
+      UriOrCurie.compacted(Uri("acme:a"), prefixes) shouldBe "acme:a"
+      UriOrCurie.compacted(Curie("other:a"), prefixes) shouldBe "other:a"
+    }
+    "fail on a URI that would be read back as a CURIE" in {
+      Seq(prefixes, prefixes.withoutCompaction).foreach { p =>
+        (the[IllegalArgumentException] thrownBy UriOrCurie.compacted(Uri("ex:a"), p))
+          .getMessage shouldBe
+          "The URI 'ex:a' can't be written, as 'ex' is a declared prefix, so it would be read " +
+          "back as a CURIE with another meaning. If it is meant as a CURIE, declare the prefix " +
+          "'ex' where it is used. Otherwise, use a URI whose scheme isn't a declared prefix"
+      }
+    }
+  }
+
   "Uri.isValid" should {
     "be true for a valid value" in {
       Uri("http://example.org/thing").isValid shouldBe true

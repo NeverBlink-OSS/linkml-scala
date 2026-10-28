@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -22,7 +23,7 @@ import java.io.OutputStream
 
 // Scala
 
-@HelpMessage("Generate Scala classes from a LinkML model")
+@HelpMessage("Generate Scala classes")
 @ArgsName("<input-file>")
 final case class ScalaOptions(
     @Recurse
@@ -73,7 +74,7 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
 
 // JSON Schema
 
-@HelpMessage("Generate JSON Schema from a LinkML model")
+@HelpMessage("Generate a JSON Schema")
 @ArgsName("<input-file>")
 final case class JsonSchemaOptions(
     @Recurse
@@ -116,7 +117,7 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
 
 // SHACL
 
-@HelpMessage("Generate SHACL shapes from a LinkML model")
+@HelpMessage("Generate SHACL shapes")
 @ArgsName("<input-file>")
 final case class ShaclOptions(
     @Recurse
@@ -155,7 +156,7 @@ object Shacl extends StreamGenerate[ShaclOptions] {
 
 // RDFS
 
-@HelpMessage("Generate RDF schema from a LinkML model")
+@HelpMessage("Generate an RDF Schema (RDFS) vocabulary")
 @ArgsName("<input-file>")
 final case class RdfsOptions(
     @Recurse
@@ -189,9 +190,9 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
 // OWL
 
 @HelpMessage(
-  "Generate an OWL 2 ontology from a LinkML model. Classes, slots, enums and types become OWL " +
-    "classes, properties, classes of individuals and datatypes, with the same IRIs as the SHACL " +
-    "and RDFS generators.",
+  "Generate an OWL 2 ontology\n" +
+    "Classes, slots, enums and types become OWL classes, properties, classes of individuals " +
+    "and datatypes, with the same IRIs as the SHACL and RDFS generators.",
 )
 @ArgsName("<input-file>")
 final case class OwlOptions(
@@ -276,9 +277,7 @@ private val fullUrisHelp: String =
 
 // LinkML -> LinkML
 
-@HelpMessage(
-  "Materialize a derived LinkML schema from a LinkML model.",
-)
+@HelpMessage("Generate the materialized, derived LinkML schema")
 @ArgsName("<input-file>")
 final case class LinkMlOptions(
     @Recurse
@@ -314,7 +313,7 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
 // Table Schema
 
 @HelpMessage(
-  "Generate a Frictionless Data Package from a LinkML model. " +
+  "Generate a Frictionless Data Package\n" +
     "If --to is a directory, the package is written as a datapackage.json file plus one " +
     "schemas/<table>.json per table. If --to is a .json file, or with no --to at all, it is " +
     "written as a single file with table schemas inlined.",
@@ -357,8 +356,8 @@ object Frictionless extends SplitGenerate[FrictionlessOptions] {
 // GraphQL
 
 @HelpMessage(
-  "Generate a GraphQL Schema from a LinkML model. " +
-    "Only generates types/interfaces/scalar/enums, queries must be added manually.",
+  "Generate a GraphQL schema\n" +
+    "Only types, interfaces, scalars and enums are generated. Add queries by hand.",
 )
 @ArgsName("<input-file>")
 final case class GraphQlOptions(
@@ -383,7 +382,7 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
 // TypeScript
 
 @HelpMessage(
-  "Generate TypeScript types from a LinkML model. " +
+  "Generate TypeScript types\n" +
     "The types describe the same JSON as the generated JSON Schema, with no runtime code: " +
     "load data with JSON.parse and a type cast, dump it with JSON.stringify.",
 )
@@ -421,7 +420,7 @@ object TypeScript extends StreamGenerate[TypeScriptOptions] {
 // Pydantic
 
 @HelpMessage(
-  "Generate Python classes based on pydantic from a LinkML model. " +
+  "Generate Python classes based on pydantic\n" +
     "The classes load and dump the same JSON as the generated JSON Schema describes: " +
     "load data with X.model_validate_json, dump it with x.model_dump_json.",
 )
@@ -460,9 +459,7 @@ object Pydantic extends StreamGenerate[PydanticOptions] {
 
 // Apache Ossie ontology
 
-@HelpMessage(
-  "Generate an Apache Ossie ontology from a LinkML model.",
-)
+@HelpMessage("Generate an Apache Ossie ontology")
 @ArgsName("<input-file>")
 final case class OssieOptions(
     @Recurse
@@ -492,7 +489,7 @@ object Ossie extends StreamGenerate[OssieOptions] {
 // ER diagram
 
 @HelpMessage(
-  "Generate a Mermaid entity relationship diagram from a LinkML model. " +
+  "Generate a Mermaid entity relationship diagram\n" +
     "Classes become entities, type- and enum-ranged slots become their attributes, and " +
     "class-ranged slots become relationship lines.",
 )
@@ -527,8 +524,8 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
 }
 
 @HelpMessage(
-  "Generate translation dictionaries (in JSON), " +
-    "from the original names used in the schema to the names used in generated outputs.",
+  "Generate translation dictionaries in JSON\n" +
+    "They map the original names used in the schema to the names used in generated outputs.",
 )
 @ArgsName("<input-file>")
 final case class TranslationOptions(
@@ -557,4 +554,58 @@ object Translation extends StreamGenerate[TranslationOptions] {
       TranslationGenerator.Options(options.target, derivedAttributes = options.derivedAttributes),
     )
   }
+}
+
+// Documentation
+
+@HelpMessage(
+  "Generate Markdown documentation\n" +
+    "If --to is a directory, the documentation is written as index.md plus one page per class, " +
+    "slot, enum and type, in the classes/, slots/, enums/ and types/ folders. If --to is a .md " +
+    "file, or with no --to at all, it is written as a single document.",
+)
+@ArgsName("<input-file>")
+final case class DocsOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: DocsPruningOptions = DocsPruningOptions(),
+    @HelpMessage("Which language to use for titles and descriptions. Default: en")
+    metadataLanguage: String = "en",
+) extends HasGenerateOptions
+
+object Docs extends SplitGenerate[DocsOptions] {
+  override protected def generatorName: String = "docs"
+
+  override protected def singleFileExtension: String = ".md"
+
+  /** The pages in the folders of each kind of element that start with the generated header, so that
+    * the pages of elements no longer in the schema do not linger. Other files are kept.
+    */
+  override protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] =
+    DocsSite.PageKind.values.toSeq.flatMap { kind =>
+      val folder = dir / kind.dir
+      if (os.isDir(folder))
+        os.list(folder).filter { file =>
+          os.isFile(file) && file.ext == "md" &&
+          os.read.lines.stream(file).headOption.exists(GeneratedHeader.startsHeader(_, "<!--"))
+        }
+      else Nil
+    }
+
+  private def generator(options: DocsOptions): DocsGenerator.Options =
+    DocsGenerator.Options(
+      pruningMode = options.pruning.resolvedPruningMode,
+      metadataLanguage = options.metadataLanguage,
+    )
+
+  override protected[cli] def generateSingle(options: DocsOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    DocsGenerator().writeTo(out, generator(options))
+
+  override protected[cli] def generateFiles(options: DocsOptions)(using
+      SchemaView,
+  ): Iterable[(String, String)] =
+    DocsGenerator().generateFiles(generator(options)).map(_.toTuple)
 }

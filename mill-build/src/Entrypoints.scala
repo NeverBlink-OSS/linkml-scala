@@ -126,6 +126,15 @@ object Entrypoints {
       "Generate a Mermaid entity relationship diagram.",
     ),
     Entrypoint(
+      "docs",
+      "linkml_docs",
+      "docsFiles",
+      "DocsGenerator",
+      "dict[str, str]",
+      "Generate Markdown documentation, as a filename to content mapping.",
+      "Generate Markdown documentation, as a JSON object mapping filename to content.",
+    ),
+    Entrypoint(
       "ossie",
       "linkml_ossie",
       "ossie",

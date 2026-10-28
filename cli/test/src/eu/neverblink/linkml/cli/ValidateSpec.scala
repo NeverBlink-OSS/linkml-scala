@@ -36,9 +36,23 @@ class ValidateSpec extends AnyWordSpec, Matchers {
     }
   }
 
-  // Loads cleanly (no fatal problems) but has one error (invalid class_uri value) and one
+  // Loads cleanly (no fatal problems) but has one error (undefined prefix) and one
   // warning (no tree_root). default_range is set so there's no "default_range" warning.
   private val schemaWithIssues =
+    """id: https://neverblink.eu/test/
+      |name: test
+      |default_range: string
+      |types:
+      |  string:
+      |classes:
+      |  SomeClass:
+      |    attributes:
+      |      some_attr:
+      |        implicit_prefix: nope
+      |""".stripMargin
+
+  // Has an invalid class_uri value, which is a fatal problem
+  private val invalidUriSchema =
     """id: https://neverblink.eu/test/
       |name: test
       |default_range: string
@@ -73,7 +87,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           out should include("WARNING")
           out should include("✖")
           out should include("⚠")
-          out should include("Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri")
+          out should include(
+            "Undefined prefix nope at /classes/SomeClass/attributes/some_attr/implicit_prefix",
+          )
           out should include("No 'tree_root' class is defined in the schema")
           // per-severity summary
           out should include("1 error, 1 warning")
@@ -86,7 +102,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
 
           out should not include Esc.toString // no color codes
           out should include(
-            "ERROR: Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri",
+            "ERROR: Undefined prefix nope at /classes/SomeClass/attributes/some_attr/implicit_prefix",
           )
           out should include("WARNING: No 'tree_root' class is defined in the schema")
           out should include("1 error, 1 warning")
@@ -106,13 +122,17 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           out should include("\"severity\": \"WARNING\"")
           // The inferred messages are included, keyed by their LinkML slot names.
           out should include("\"message\"")
-          out should include("Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri")
+          out should include(
+            "Undefined prefix nope at /classes/SomeClass/attributes/some_attr/implicit_prefix",
+          )
           out should include("No 'tree_root' class is defined in the schema")
           // Structured fields, not just prose.
-          out should include("\"json_pointer\": \"/classes/SomeClass/class_uri/\"")
+          out should include(
+            "\"json_pointer\": \"/classes/SomeClass/attributes/some_attr/implicit_prefix\"",
+          )
           out should include("\"schema_id\": \"https://neverblink.eu/test/\"")
           // The type designator names the concrete issue type.
-          out should include("\"issue_type\": \"InvalidUriOrCurie\"")
+          out should include("\"issue_type\": \"UndefinedPrefix\"")
           out should include("\"issue_type\": \"NoTreeRootClass\"")
           // No display chrome
           out should not include "ERROR:"
@@ -153,7 +173,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       }
 
       "not print the ugly Uri(...) or Curie(...) wrappers for URI or CURIE values" in {
-        withSchema(schemaWithIssues) { path =>
+        withSchema(invalidUriSchema) { path =>
           val (out, _) = Validate.runTestCommand(List("validate", "--format", "plain", path))
           out should include("'not a curie!'")
           out should not include "Uri("
@@ -263,7 +283,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
 
           // The problems live in the *second* file: finding them proves it wasn't skipped.
           out should include(
-            "ERROR: Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri",
+            "ERROR: Undefined prefix nope at /classes/SomeClass/attributes/some_attr/implicit_prefix",
           )
           code shouldBe 1
         }
@@ -362,7 +382,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
     }
 
     "given a schema with imports" should {
-      // Both schemas have an invalid class_uri, and the root one also has no tree_root, so
+      // Both schemas have an undefined prefix, and the root one also has no tree_root, so
       // there is something to report against each of them.
       val mainWithIssues =
         """id: urn:main
@@ -374,7 +394,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           |  string:
           |classes:
           |  MainClass:
-          |    class_uri: "not a curie!"
+          |    attributes:
+          |      some_attr:
+          |        implicit_prefix: nope
           |""".stripMargin
 
       val importedWithIssues =
@@ -382,7 +404,9 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           |name: imported
           |classes:
           |  ImportedClass:
-          |    class_uri: "also not a curie!"
+          |    attributes:
+          |      other_attr:
+          |        implicit_prefix: also_nope
           |""".stripMargin
 
       "group the issues under the id of the schema each one came from" in {
@@ -398,12 +422,12 @@ class ValidateSpec extends AnyWordSpec, Matchers {
             out.split("## ").find(_.startsWith(schemaId)).getOrElse(fail(s"no $schemaId group"))
 
           group("urn:main") should include(
-            "ERROR: Invalid URI or CURIE 'not a curie!' at /classes/MainClass/class_uri",
+            "ERROR: Undefined prefix nope at /classes/MainClass/attributes/some_attr/implicit_prefix",
           )
           group("urn:main") should include("WARNING: No 'tree_root' class is defined")
           group("urn:main") should not include "ImportedClass"
           group("urn:imported") should include(
-            "ERROR: Invalid URI or CURIE 'also not a curie!' at /classes/ImportedClass/class_uri",
+            "ERROR: Undefined prefix also_nope at /classes/ImportedClass/attributes/other_attr/implicit_prefix",
           )
           group("urn:imported") should not include "MainClass"
 
@@ -473,6 +497,18 @@ class ValidateSpec extends AnyWordSpec, Matchers {
           out should include("FATAL:")
           out should include("nope")
           out should include("1 fatal error")
+        }
+      }
+
+      "report an invalid URI or CURIE as fatal" in {
+        withSchema(invalidUriSchema) { path =>
+          val (out, _, code) =
+            Validate.runTestCommandWithExitCode(List("validate", "--format", "plain", path))
+          out should include(
+            "FATAL: Invalid URI or CURIE 'not a curie!' at /classes/SomeClass/class_uri",
+          )
+          out should include("1 fatal error")
+          code shouldBe 1
         }
       }
     }

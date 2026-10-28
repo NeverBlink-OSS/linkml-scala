@@ -5,6 +5,7 @@ import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.runtime.FastUtils.*
 
 import java.io.OutputStream
+import scala.util.control.NonFatal
 
 final case class GenerateOptions(
     @HelpMessage(
@@ -43,23 +44,31 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
       )
     val sv = loadSchema(inputs.headOption, options.common.importMap)
     val to = options.common.to
-    this match {
-      case g: ManyFilesGenerate[T @unchecked] =>
-        writeManyFiles(to, g.generate(options)(using sv), g.staleFile(options))
-      case g: StreamGenerate[T @unchecked] =>
-        writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
-      case g: SplitGenerate[T @unchecked] =>
-        if g.writesDirectory(to) then writeManyFiles(to, g.generateFiles(options)(using sv), None)
-        else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
-    }
+    // A schema that can't be generated, such as one with a URI that can't be written, prints
+    // only the reason
+    try
+      this match {
+        case g: ManyFilesGenerate[T @unchecked] =>
+          val staleFiles = g
+            .staleFile(options)
+            .mapFast(stale => (dir: os.Path) => os.list(dir).filter(p => os.isFile(p) && stale(p)))
+          writeManyFiles(to, g.generate(options)(using sv), staleFiles)
+        case g: StreamGenerate[T @unchecked] =>
+          writeToFileOrStdout(to, out => g.generate(options, out)(using sv))
+        case g: SplitGenerate[T @unchecked] =>
+          if (g.writesDirectory(to))
+            writeManyFiles(to, g.generateFiles(options)(using sv), Some(g.staleFiles))
+          else writeToFileOrStdout(to, out => g.generateSingle(options, out)(using sv))
+      }
+    catch { case NonFatal(e) => err(s"Cannot generate $generatorName from ${inputs.head}", e) }
 
   private def writeManyFiles(
       to: Option[String],
       files: Iterable[(String, String)],
-      staleFile: Option[os.Path => Boolean],
+      staleFiles: Option[os.Path => Iterable[os.Path]],
   ): Unit =
     if files.isEmpty then err("No files generated.")
-    if to.isEmpty && staleFile.isDefined then err("--clean needs a --to directory to clean.")
+    if to.isEmpty && staleFiles.isDefined then err("--clean needs a --to directory to clean.")
     to.foldFast {
       files.foreach((k, v) => {
         printLine(s"//\n// FILE $k\n//")
@@ -68,9 +77,7 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     } { dir =>
       val path = os.Path(dir, os.pwd)
       os.makeDir.all(path)
-      staleFile.foreach(stale =>
-        os.list(path).filter(p => os.isFile(p) && stale(p)).foreach(os.remove),
-      )
+      staleFiles.foreach(stale => stale(path).foreach(os.remove))
       files.foreach((k, v) => os.write.over(path / os.SubPath(k), v, createFolders = true))
     }
 }
@@ -116,6 +123,11 @@ abstract class SplitGenerate[T <: HasGenerateOptions: {Parser, Help}] extends Ge
   /** The same content as several files, keyed by path relative to the destination directory.
     */
   protected[cli] def generateFiles(options: T)(using sv: SchemaView): Iterable[(String, String)]
+
+  /** The files in the destination directory [[dir]] that an earlier run wrote, to delete before the
+    * files are written. None by default.
+    */
+  protected[cli] def staleFiles(dir: os.Path): Iterable[os.Path] = Nil
 
   /** Whether `--to` corresponds to a directory.
     */

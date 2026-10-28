@@ -18,8 +18,8 @@ linkml-scala generate typescript --to model.ts schema.yaml
 
 Options:
 
-- `--pruning-mode <treeRoot|schema|skip>`: which classes and enums to generate (see
-  [Pruning](#pruning)). Default: `skip`, i.e. all of them.
+- `--pruning-mode <treeRoot|schema|skip>`: which classes and enums to generate. Default: `skip`,
+  i.e. all of them.
 - `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
 - `--include-null`: allow `null` for optional slots.
 - `--open`: allow extra properties on every object, not only on those of classes whose

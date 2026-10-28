@@ -11,9 +11,10 @@ import { existsSync, rmSync } from "node:fs";
 const SCALA_BUNDLE = "../out/generator/js/fullLinkJS.dest/main.js";
 
 // app.ts is the page; worker.ts is the generation worker it spawns as a sibling
-// dist/worker.js. Both are emitted into dist/ by outdir.
+// dist/worker.js. The ohi.dev SDK goes into its own dist/ohi.js.
+// All three are emitted into dist/ by outdir.
 const appOptions = {
-  entryPoints: ["app.ts", "worker.ts"],
+  entryPoints: { app: "app.ts", worker: "worker.ts", ohi: "@neverblink/ohi" },
   bundle: true,
   format: "esm",
   target: "es2020",
@@ -21,9 +22,22 @@ const appOptions = {
   sourcemap: true,
   minify: true,
   logLevel: "info",
-  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle) and dist/mermaid/mermaid.js (see
-  // mermaidOptions); keep esbuild from inlining either.
-  external: ["./linkml.js", "./mermaid/mermaid.js"],
+  // Loaded at runtime from dist/linkml.js (see minifyScalaBundle), dist/mermaid/mermaid.js (see
+  // mermaidOptions), dist/markdown/markdown.js (see markdownOptions) and dist/ohi.js (above); keep
+  // esbuild from inlining any of them.
+  external: ["./linkml.js", "./mermaid/mermaid.js", "./markdown/markdown.js", "./ohi.js"],
+};
+
+// The Markdown renderer for the documentation page view, bundled into dist/markdown/ so that it is
+// loaded only when someone opens that view.
+const markdownOptions = {
+  entryPoints: ["markdown.ts"],
+  bundle: true,
+  format: "esm",
+  target: "es2020",
+  outdir: "dist/markdown",
+  minify: true,
+  logLevel: "info",
 };
 
 // Mermaid, for rendering the ER diagram, bundled into dist/mermaid/.
@@ -79,7 +93,7 @@ async function minifyScalaBundle() {
 }
 
 if (process.argv.includes("--watch")) {
-  await Promise.all([minifyScalaBundle(), buildMermaid()]);
+  await Promise.all([minifyScalaBundle(), buildMermaid(), esbuild.build(markdownOptions)]);
   const ctx = await esbuild.context(appOptions);
   await ctx.watch();
   console.log("esbuild watching…");
@@ -87,6 +101,7 @@ if (process.argv.includes("--watch")) {
   await Promise.all([
     esbuild.build(appOptions),
     buildMermaid(),
+    esbuild.build(markdownOptions),
     minifyScalaBundle(),
   ]);
 }

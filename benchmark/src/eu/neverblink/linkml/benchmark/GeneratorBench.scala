@@ -1,9 +1,20 @@
 package eu.neverblink.linkml.benchmark
 
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
+import eu.neverblink.linkml.generator.DocumentGenerator
+import eu.neverblink.linkml.generator.docs.DocsGenerator
+import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
+import eu.neverblink.linkml.generator.ossie.OssieGenerator
+import eu.neverblink.linkml.generator.owl.OwlGenerator
+import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
+import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.translation.TranslationGenerator
+import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
@@ -13,12 +24,13 @@ import scala.compiletime.uninitialized
 import scala.io.Source
 import scala.util.Using
 
-/** Benchmarks the common code-generator outputs (JSON Schema, SHACL and LinkML) produced from a
-  * LinkML schema loaded from the classpath.
+/** Benchmarks the generators that write a single document, using a LinkML schema loaded from the
+  * classpath.
   *
-  * For each generator there are two variants:
+  * For each generator there are three variants:
   *   - `*FromYaml` parses the YAML source into a [[SchemaView]] on every invocation, measuring the
   *     end-to-end cost of a CLI call.
+  *   - `*FromSchemas` builds a new [[SchemaView]] from schemas parsed once in [[setup]].
   *   - `*FromSchemaView` reuses a [[SchemaView]] parsed once in [[setup]].
   */
 class GeneratorBench extends CommonParams {
@@ -76,6 +88,148 @@ class GeneratorBench extends CommonParams {
       ).serialize(),
     )
 
+  @Benchmark
+  def rdfsFromYaml(bh: Blackhole): Unit =
+    write(bh, RdfsGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))))
+
+  @Benchmark
+  def rdfsFromSchemas(bh: Blackhole): Unit =
+    write(bh, RdfsGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def rdfsFromSchemaView(bh: Blackhole): Unit =
+    write(bh, RdfsGenerator(using schemaView))
+
+  @Benchmark
+  def owlFromYaml(bh: Blackhole): Unit =
+    write(bh, OwlGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))))
+
+  @Benchmark
+  def owlFromSchemas(bh: Blackhole): Unit =
+    write(bh, OwlGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def owlFromSchemaView(bh: Blackhole): Unit =
+    write(bh, OwlGenerator(using schemaView))
+
+  @Benchmark
+  def graphQlFromYaml(bh: Blackhole): Unit =
+    write(
+      bh,
+      GraphQlGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))),
+    )
+
+  @Benchmark
+  def graphQlFromSchemas(bh: Blackhole): Unit =
+    write(bh, GraphQlGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def graphQlFromSchemaView(bh: Blackhole): Unit =
+    write(bh, GraphQlGenerator(using schemaView))
+
+  @Benchmark
+  def typeScriptFromYaml(bh: Blackhole): Unit =
+    write(
+      bh,
+      TypeScriptGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))),
+    )
+
+  @Benchmark
+  def typeScriptFromSchemas(bh: Blackhole): Unit =
+    write(bh, TypeScriptGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def typeScriptFromSchemaView(bh: Blackhole): Unit =
+    write(bh, TypeScriptGenerator(using schemaView))
+
+  @Benchmark
+  def pydanticFromYaml(bh: Blackhole): Unit =
+    write(
+      bh,
+      PydanticGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))),
+    )
+
+  @Benchmark
+  def pydanticFromSchemas(bh: Blackhole): Unit =
+    write(bh, PydanticGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def pydanticFromSchemaView(bh: Blackhole): Unit =
+    write(bh, PydanticGenerator(using schemaView))
+
+  @Benchmark
+  def ossieFromYaml(bh: Blackhole): Unit =
+    write(bh, OssieGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))))
+
+  @Benchmark
+  def ossieFromSchemas(bh: Blackhole): Unit =
+    write(bh, OssieGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def ossieFromSchemaView(bh: Blackhole): Unit =
+    write(bh, OssieGenerator(using schemaView))
+
+  @Benchmark
+  def erDiagramFromYaml(bh: Blackhole): Unit =
+    write(
+      bh,
+      ErDiagramGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))),
+    )
+
+  @Benchmark
+  def erDiagramFromSchemas(bh: Blackhole): Unit =
+    write(bh, ErDiagramGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def erDiagramFromSchemaView(bh: Blackhole): Unit =
+    write(bh, ErDiagramGenerator(using schemaView))
+
+  @Benchmark
+  def translationFromYaml(bh: Blackhole): Unit =
+    write(
+      bh,
+      TranslationGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))),
+    )
+
+  @Benchmark
+  def translationFromSchemas(bh: Blackhole): Unit =
+    write(bh, TranslationGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def translationFromSchemaView(bh: Blackhole): Unit =
+    write(bh, TranslationGenerator(using schemaView))
+
+  @Benchmark
+  def frictionlessFromYaml(bh: Blackhole): Unit =
+    write(
+      bh,
+      FrictionlessGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))),
+    )
+
+  @Benchmark
+  def frictionlessFromSchemas(bh: Blackhole): Unit =
+    write(bh, FrictionlessGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def frictionlessFromSchemaView(bh: Blackhole): Unit =
+    write(bh, FrictionlessGenerator(using schemaView))
+
+  @Benchmark
+  def docsFromYaml(bh: Blackhole): Unit =
+    write(bh, DocsGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))))
+
+  @Benchmark
+  def docsFromSchemas(bh: Blackhole): Unit =
+    write(bh, DocsGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def docsFromSchemaView(bh: Blackhole): Unit =
+    write(bh, DocsGenerator(using schemaView))
+
+  /** Writes the document with default options to the blackhole, as the CLI writes it to a file. */
+  private def write(bh: Blackhole, generator: DocumentGenerator[?]): Unit =
+    generator.writeTo(new BlackholeOutputStream(bh))
+
   /** Same setup for JSON schema sinks as in the CLI.
     */
   private def writeJsonSchema(bh: Blackhole)(using SchemaView): Unit =
@@ -83,7 +237,6 @@ class GeneratorBench extends CommonParams {
 
   /** Same setup for RDF sinks as in the CLI.
     */
-  private def writeShacl(bh: Blackhole)(using SchemaView): Unit = {
+  private def writeShacl(bh: Blackhole)(using SchemaView): Unit =
     ShaclGenerator().writeTo(new BlackholeOutputStream(bh))
-  }
 }

@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.nativelib
 
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
@@ -14,6 +15,7 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.schemaview.{
   FileSystemImporter,
@@ -223,6 +225,14 @@ object LinkMlNativeApi {
     writeFiles(FrictionlessGenerator().generateFiles(Options.frictionless(optionsJson)), out)
   }
 
+  /** Markdown documentation, as a filename-to-content JSON object: `index.md` plus a page for each
+    * class, slot, enum and type.
+    */
+  def docsFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    writeFiles(DocsGenerator().generateFiles(Options.docs(optionsJson)).map(_.toTuple), out)
+  }
+
   /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the
     * generators that produce more than one file.
     */
@@ -259,11 +269,13 @@ object LinkMlNativeApi {
   /** Turn an exception into the message that goes into the C error out-param.
     *
     * Lives here rather than in [[LinkMlCApi]] so it can recognize [[BadRequest]] by type. Caller
-    * mistakes come through as just their message, since those are already written for a human to
-    * read; anything else gets its type attached, because it means a bug in here.
+    * mistakes, including a [[SchemaConversionException]] for a schema or ontology that can't be
+    * imported or written, come through as just their message, since those are already written for a
+    * human to read; anything else gets its type attached, because it means a bug in here.
     */
   def describe(t: Throwable): String = t match {
     case BadRequest(reason) => reason
+    case _: SchemaConversionException => t.getMessage
     case _ =>
       val msg = t.getMessage
       if msg eq null then t.getClass.getSimpleName

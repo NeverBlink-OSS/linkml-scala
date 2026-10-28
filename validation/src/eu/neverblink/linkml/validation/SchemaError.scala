@@ -12,7 +12,6 @@ import eu.neverblink.linkml.runtime.*
   "issue_type",
   typeDesignator.Member(classOf[EmptyName], "EmptyName"),
   typeDesignator.Member(classOf[InvalidKeyOrIdSlotType], "InvalidKeyOrIdSlotType"),
-  typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
   typeDesignator.Member(classOf[MultipleKeyOrIdSlots], "MultipleKeyOrIdSlots"),
   typeDesignator.Member(classOf[MultipleTreeRoots], "MultipleTreeRoots"),
   typeDesignator.Member(classOf[NonAsciiName], "NonAsciiName"),

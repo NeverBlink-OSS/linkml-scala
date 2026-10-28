@@ -26,7 +26,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   // Synthetic metadata exercises output fields and ordering without claiming real catalog data.
   private val hits = """[
     {"document":{"base_url":"https://example.org/z?revision=2","namespace":"example","name":"z",
-      "version":"2.0","title":"Z sensors","description":"Sensor measurements","formats":["rdfs-turtle","owl-turtle"],
+      "version":"2.0","title":"Z sensors","description":"Sensor\nmeasurements","formats":["rdfs-turtle","owl-turtle"],
       "licenses":[],"published_at":"2026-10-13T12:30:00Z"}},
     {"document":{"base_url":"https://example.org/a/","namespace":"example","name":"a",
       "version":"1.0","title":"A devices","description":"Device descriptions","formats":["linkml-yaml"],
@@ -175,6 +175,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "--timeout-ms",
           "2000",
           "--json",
+          "--color=never",
         )
         requests should have size 1
         new URI(requests.peek()).getPath shouldBe "/exact/search"
@@ -192,7 +193,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "total":7,"page":2,"per_page":3,"search_cutoff":true,
           "hits":[
             {"base_url":"https://example.org/z?revision=2","namespace":"example","name":"z","version":"2.0",
-             "title":"Z sensors","description":"Sensor measurements","formats":["rdfs-turtle","owl-turtle"],
+             "title":"Z sensors","description":"Sensor\nmeasurements","formats":["rdfs-turtle","owl-turtle"],
              "licenses":[],"published_at":"2026-10-13T12:30:00Z"},
             {"base_url":"https://example.org/a/","namespace":"example","name":"a","version":"1.0",
              "title":"A devices","description":"Device descriptions","formats":["linkml-yaml"],
@@ -206,7 +207,16 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
 
     "use default paging and human output without dropping summaries, facets or cutoff" in {
       withServer(searchResponse()) { (url, requests) =>
-        val out = successful(Search, "search", "*", "--search-url", url, "--query-by", "title")
+        val out = successful(
+          Search,
+          "search",
+          "*",
+          "--search-url",
+          url,
+          "--query-by",
+          "title",
+          "--color=never",
+        )
         requests should have size 1
         query(requests.peek()) shouldBe Map(
           "q" -> "*",
@@ -214,35 +224,36 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "page" -> "1",
           "per_page" -> "10",
         )
+        val compact = out.filterNot(_.isWhitespace)
         Seq(
-          "Total: 7",
-          "page: 1",
-          "page size: 10",
-          "cutoff: true",
-          "Hits or total may be incomplete.",
-          "example/z 2.0",
+          "7 matches · Showing 1–2 · Page 1",
+          "Search stopped early. Results and counts may be incomplete.",
+          "Ontology: example/z",
+          "Version: 2.0",
           "Z sensors",
           "Sensor measurements",
           "https://example.org/z?revision=2",
           "rdfs-turtle, owl-turtle",
-          "Licenses: Not supplied",
-          "2026-10-13T12:30:00Z",
-          "example/a 1.0",
+          "Ontology: example/a",
+          "Version: 1.0",
           "A devices",
           "Device descriptions",
           "https://example.org/a/",
           "linkml-yaml",
-          "Licenses: MIT",
-          "2026-10-12T12:30:00Z",
+          "License: MIT",
           "Facet: namespace",
           "z: 2",
           "a: 5",
           "Facet: formats",
           "rdfs-turtle: 1",
-        ).foreach(out should include(_))
-        out.indexOf("example/z") should be < out.indexOf("example/a")
-        out.indexOf("Facet: namespace") should be < out.indexOf("Facet: formats")
-        out.indexOf("z: 2") should be < out.indexOf("a: 5")
+        ).foreach(value => compact should include(value.filterNot(_.isWhitespace)))
+        out.linesIterator.count(_.startsWith("  License:")) shouldBe 1
+        out should not include "Tags:"
+        out should not include "Published:"
+        out should not include "Not supplied"
+        compact.indexOf("example/z") should be < compact.indexOf("example/a")
+        compact.indexOf("Facet:namespace") should be < compact.indexOf("Facet:formats")
+        compact.indexOf("z:2") should be < compact.indexOf("a:5")
       }
     }
 
@@ -261,8 +272,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "--page",
           "2",
         )
-        out should include("Total: 7, page: 2, page size: 10, cutoff: false")
-        out should include("No results on this page.")
+        out.replaceAll("\\s+", " ").trim shouldBe "No results on page 2. 7 matches in total."
         out should not include "may be incomplete"
         requests should have size 1
       }
@@ -277,6 +287,42 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         json(out) shouldBe json(
           """{"hits":[],"total":0,"page":1,"per_page":10,"search_cutoff":false}""",
         )
+      }
+    }
+
+    "reject an unsupported color before making a request even with JSON output" in {
+      withServer(searchResponse()) { (url, requests) =>
+        val err = failed(
+          Search,
+          "search",
+          "*",
+          "--search-url",
+          url,
+          "--query-by",
+          "title",
+          "--color=always",
+          "--json",
+        )
+        err should include("expected auto or never")
+        requests shouldBe empty
+      }
+    }
+  }
+
+  "search color policy" should {
+    "enable auto color for an attached terminal unless TERM is dumb" in {
+      CliColor.Auto.enabled(true, Some("xterm-256color")) shouldBe true
+      CliColor.Auto.enabled(true, None) shouldBe true
+    }
+
+    "disable color for never, detached output or a dumb terminal" in {
+      val cases = Seq(
+        ("never", CliColor.Never, true, None),
+        ("detached", CliColor.Auto, false, None),
+        ("dumb", CliColor.Auto, true, Some("dumb")),
+      )
+      cases.foreach { case (label, mode, terminal, term) =>
+        withClue(label) { mode.enabled(terminal, term) shouldBe false }
       }
     }
   }

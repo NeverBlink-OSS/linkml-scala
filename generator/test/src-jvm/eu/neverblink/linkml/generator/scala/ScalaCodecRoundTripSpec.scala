@@ -31,10 +31,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
   ).map(model =>
     (model, "empty") ->
       "an instance with no slots set encodes to an empty document, which cannot be parsed back",
-  ).toMap + (
-    ("recursiveTree", "nested") ->
-      "LNK-233: Scala YAML codec drops slots when it writes a dict entry in the short form"
-  ) + (("treeRootAsOptional", "empty") -> noTreeRootAs)
+  ).toMap + (("treeRootAsOptional", "empty") -> noTreeRootAs)
 
   private def noTreeRootAs: String =
     "LNK-242: the Scala generator ignores `tree_root_as`, so the codec of the tree root reads " +

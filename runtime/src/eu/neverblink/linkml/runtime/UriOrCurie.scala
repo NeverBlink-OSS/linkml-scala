@@ -30,14 +30,92 @@ object UriOrCurie {
 
   /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,
     * or else the original text.
+    *
+    * @throws SchemaConversionException
+    *   if [[x]] is a [[Uri]] that can't be compacted, but whose text [[prefixes]] would expand when
+    *   it is read back, such as the URI `ex:Person` when `ex` is a declared prefix
     */
   def compacted(x: UriOrCurie, prefixes: PrefixMap): String = x match {
     case u: Uri =>
-      val curie = prefixes.compactOrNull(u.original)
+      val uri = u.original
+      val curie = prefixes.compactOrNull(uri)
       if (curie ne null) curie
-      else u.original
+      else {
+        if (uri.indexOf(':') > 0 && (prefixes.expandOrNull(uri) ne null))
+          throw readBackAsCurieError(uri)
+        uri
+      }
     case _ => x.original
   }
+
+  /** The error for a URI that can't be written, as its text would be read back as a CURIE with a
+    * declared prefix, such as the URI `ex:Person` when `ex` is a declared prefix.
+    */
+  def readBackAsCurieError(uri: String): SchemaConversionException = {
+    val prefix = uri.substring(0, uri.indexOf(':'))
+    new SchemaConversionException(
+      s"The URI '$uri' can't be written, as '$prefix' is a declared prefix, so it would be " +
+        "read back as a CURIE with another meaning. If it is meant as a CURIE, declare the " +
+        s"prefix '$prefix' where it is used. Otherwise, use a URI whose scheme isn't a " +
+        "declared prefix",
+    )
+  }
+
+  /** Check that [[s]] has the shape of a CURIE, not of a URI or a file path.
+    *
+    * It is a CURIE when the text before the first colon is a valid prefix name, the text after the
+    * colon doesn't start with `/` or `\`, as in `http://example.org` or `C:\schemas`, and the
+    * prefix is not one of the URI schemes that are not followed by `/`, such as `urn` or `mailto`.
+    */
+  def isCurie(s: String): Boolean = {
+    val index = s.indexOf(':')
+    index > 0 && {
+      var i = 0
+      var valid = true
+      while (valid && i < index) {
+        val c = s.charAt(i)
+        valid = c < 128 && (Character.isLetter(c) || c == '_' ||
+          (i > 0 && (Character.isDigit(c) || c == '-' || c == '.')))
+        i += 1
+      }
+      valid && {
+        val next = if (index + 1 < s.length) s.charAt(index + 1) else ' '
+        next != '/' && next != '\\' && !isNonHierarchicalScheme(s, index)
+      }
+    }
+  }
+
+  /** Check that the first [[length]] chars of [[s]] are one of [[nonHierarchicalSchemes]], in any
+    * case. Unlike `toLowerCase`, `regionMatches` doesn't depend on the default locale. In Turkish,
+    * `toLowerCase` turns `INFO` into `ınfo`.
+    */
+  private def isNonHierarchicalScheme(s: String, length: Int): Boolean = {
+    val schemes = nonHierarchicalSchemes
+    var i = 0
+    while (i < schemes.length) {
+      val scheme = schemes(i)
+      if (scheme.length == length && s.regionMatches(true, 0, scheme, 0, length)) return true
+      i += 1
+    }
+    false
+  }
+
+  /** URI schemes whose URIs don't have `/` after the colon, so they look like CURIEs. */
+  private val nonHierarchicalSchemes: Array[String] = Array(
+    "about",
+    "cid",
+    "data",
+    "geo",
+    "info",
+    "mailto",
+    "mid",
+    "news",
+    "sip",
+    "sips",
+    "tag",
+    "tel",
+    "urn",
+  )
 }
 
 @flatten final case class Uri(original: String) extends UriOrCurie {

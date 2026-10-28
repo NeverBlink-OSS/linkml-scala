@@ -12,13 +12,17 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 |---|---|
 | `xsd:string`, with an `xsd` prefix | `http://www.w3.org/2001/XMLSchema#string` |
 | `acme:Person`, with no `acme` prefix | The URI `acme:Person`, with `acme` as its scheme, as in LinkML-Python |
+| `my_ns:Foo`, with no `my_ns` prefix | The CURIE `my_ns:Foo`, as `my_ns` can't be a URI scheme |
 | `Person`, with no colon | `Person` after the default namespace, such as `https://example.org/schema/Person` |
 | `John Doe`, with no colon and not a valid CURIE | The text `John Doe` |
 
 - A namespace is used as it is written, as in LinkML-Python. With `GO: http://purl.obolibrary.org/obo/GO_`, `GO:0008150` is `http://purl.obolibrary.org/obo/GO_0008150`. So a namespace needs a separator at the end: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
 - A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
 - A value with an unknown prefix is a valid URI, but most likely a mistake, and its meaning can change when it is written (see [Schemas](#schemas)). Declare every prefix that a schema uses.
-- A value that is read as text isn't a URI, so the OWL, RDFS and SHACL generators skip it where they would write an IRI: in mappings and other metadata, `see_also`, annotation tags, enum `meaning`s and `equals_string`.
+- In a schema, `validate` warns about such a value with `UndeclaredCuriePrefix`, such as `Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/`. This is for a value that has the shape of a CURIE: the text before the colon is a valid prefix name, it isn't followed by `/` or `\`, and it isn't a scheme such as `urn` or `mailto`. With `--strict`, the warning makes `validate` fail.
+- In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. So is a CURIE whose prefix isn't declared and can't be a URI scheme, such as `my_ns:Foo` or `_:b1`, as a scheme can't have `_`. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`.
+- A schema built in code isn't read, so its CURIEs aren't expanded. In such a schema, a `Curie` with a declared prefix, such as `Curie("ex:Person")` or `UriOrCurie("ex:Person")`, is a fatal error (`UnexpandedCurie`), as generators would write it as it is. Use the URI instead, such as `Uri("https://example.org/Person")`.
+- `equals_string` is a plain string, so it is checked only when the OWL generator writes it as an IRI, for a slot whose range is a URI type or a class. The generator stops with an error if the value isn't a URI or CURIE.
 
 ## Writing
 
@@ -26,6 +30,7 @@ A URI is written as a CURIE with the prefix of the longest namespace it starts w
 That CURIE is only used if its local part is not empty, doesn't start with `//` (as `ex://host/a` would look like a URL), and reads back as the same URI.
 Otherwise, the next longest namespace is tried, and if none fits, the URI is written in full.
 If two prefixes have the same namespace, the one with the highest precedence is used, and then the one declared first.
+A URI written in full that would be read back as a CURIE, such as the URI `ex:Person` when `ex` is a declared prefix, can't be written, so writing fails with an error that names the URI and the prefix.
 
 To write every URI in full, use the `--full-uris` flag of `generate linkml`, `from owl` and `from ossie`.
 In the APIs, it is the `fullUris` option in Scala and JavaScript, and `full_uris` in Python.
@@ -73,8 +78,13 @@ classes:
 In the same way, the `exact_mappings` of `string` from `linkml:types` is written as `http://schema.org/Text` when the root schema doesn't declare `schema`.
 
 An unknown prefix breaks this.
-If `other.yaml` didn't declare `ex`, the class URI of `Imported` would be the URI `ex:Imported`.
-`generate linkml` would write it as `ex:Imported`, and reading the output with the root's `ex` prefix would give `https://root.org/Imported`.
+If `other.yaml` doesn't declare `ex`, then `ex:Imported` is not a CURIE there.
+It is kept as it is, as a URI that starts with `ex:`, and `validate` warns about it.
+`generate linkml` can't write this URI.
+The output declares `ex` as `https://root.org/`, so `ex:Imported` would be read back as `https://root.org/Imported`, which is a different URI.
+Writing it in full doesn't help, because `ex:Imported` already is the full URI.
+So `generate linkml` fails with an error, also with `--full-uris`.
+To fix it, declare `ex` in `other.yaml`.
 
 ## Data in Scala
 

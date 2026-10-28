@@ -6,6 +6,7 @@
 // `SchemaView` handles it hands out (those are live Scala.js objects and cannot cross a
 // postMessage boundary). Keeping both halves in one file means ids and option keys have a
 // single definition that both sides are type-checked against.
+import type { Format as OhiFormat } from "@neverblink/ohi";
 import type { LinkMLApi, SchemaValidationReport, SchemaView } from "./linkml";
 import type { OutputLang } from "./editor.js";
 import { EXAMPLE_OSSIE, EXAMPLE_OWL } from "./examples.js";
@@ -59,8 +60,9 @@ export interface Step {
 /** A generator: LinkML in, something else out. */
 export interface Target extends Step {
   /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`.
-   * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. */
-  view?: "report" | "diagram";
+   * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. `page` renders it
+   * as Markdown, behind a Page/Code tab pair. */
+  view?: "report" | "diagram" | "page";
   /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
    * the multi-MB Scala.js bundle, which the UI thread never loads. */
   call: (api: LinkMLApi, view: SchemaView, o: OptionValues) => TargetResult;
@@ -74,8 +76,11 @@ export interface Target extends Step {
 export interface Importer extends Step {
   /** What the input pane calls the document it wants. */
   inputLabel: string;
-  /** Starting point for the Load example button. */
+  /** Starting point for the example in the load dialog. */
   example: string;
+  /** Which files on ohi.dev this importer can read. When there is more than one, the load dialog
+   * offers a choice between them, and the first is the default. */
+  ohiFormats: OhiChoice[];
   /** Ids of the generators this undoes, if any. Both directions of each pair get the reverse
    * button in the output pane. Going back from the importer picks the first one, unless the
    * generator last used is also on the list. */
@@ -83,6 +88,14 @@ export interface Importer extends Step {
   /** How to highlight the input pane. Defaults to YAML. */
   inputLang?: OutputLang;
   call: (api: LinkMLApi, input: string, o: OptionValues) => string;
+}
+
+/** A file format on ohi.dev that an input pane can read. `label` names it on the format toggle,
+ * `name` in the note on an ontology that has no such file. */
+export interface OhiChoice {
+  format: OhiFormat;
+  label: string;
+  name: string;
 }
 
 /** The generator the playground opens with. Shared links leave it out, so it must stay the same for
@@ -118,6 +131,22 @@ export const TARGETS: Target[] = [
     ],
     call: (api, v, o) =>
       api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml"), !!o.fullUris),
+  },
+  {
+    id: "docs",
+    label: "Documentation",
+    lang: "text",
+    view: "page",
+    options: [
+      // Defaults to `schema`, like the ER diagram: documentation is for the whole model.
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      TREE_ROOT,
+      { key: "metadataLanguage", type: "text", label: "Language", placeholder: "en", title: "Language of titles and descriptions given in more than one language" },
+    ],
+    // Always one document: the page view links its sections with anchors, and a file tab per class
+    // would be too many for a real schema.
+    call: (api, v, o) =>
+      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), true, String(o.metadataLanguage || "en"))["docs.md"] ?? "",
   },
   {
     id: "erDiagram",
@@ -184,7 +213,7 @@ export const TARGETS: Target[] = [
     label: "Key translations",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", "docs"], default: "base" },
       {
         key: "derivedAttributes",
         type: "checkbox",
@@ -300,6 +329,7 @@ export const IMPORTERS: Importer[] = [
     reverses: ["ossie"],
     lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     example: EXAMPLE_OSSIE,
+    ohiFormats: [{ format: "ossie-yaml", label: "Ossie", name: "Ossie" }],
     options: [
       { key: "schemaId", type: "text", label: "Schema id", placeholder: "https://… (optional)" },
       { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
@@ -316,6 +346,11 @@ export const IMPORTERS: Importer[] = [
     inputLang: "turtle",
     lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
     example: EXAMPLE_OWL,
+    // The importer reads Turtle only, so the RDF/XML files on ohi.dev are not on offer.
+    ohiFormats: [
+      { format: "owl-turtle", label: "OWL", name: "OWL (Turtle)" },
+      { format: "rdfs-turtle", label: "RDFS", name: "RDFS (Turtle)" },
+    ],
     options: [
       {
         key: "listNotImported",

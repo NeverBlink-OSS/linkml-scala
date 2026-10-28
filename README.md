@@ -121,9 +121,9 @@ linkml-scala validate <input-file> ...
 ```
 
 The CLI outputs issues directly to your terminal, categorized into three severity levels:
-- Fatal: critical blockers (unknown references, invalid range types, used undefined default range)
+- Fatal: critical blockers (unknown references, invalid range types, used undefined default range, invalid URIs or CURIEs)
 - Errors: structural violations (multiple keys or ID slots, multiple tree roots, ID collisions)
-- Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root)
+- Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root, undeclared CURIE prefixes)
 
 All generators require that there are no *fatal* issues in the schema.
 
@@ -138,7 +138,7 @@ linkml-scala generate owl <input-file>
 linkml-scala generate shacl <input-file>
 ```
 
-**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. Additional generator documentation is in the [docs/](docs) directory.
+**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.neverblink.eu/docs](https://linkml.neverblink.eu/docs/)**.
 
 #### LinkML schema derivation and pruning 
 
@@ -186,7 +186,7 @@ const jsonSchema = LinkML.jsonSchema(view);
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
 map of schema texts, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
-`rdfs`, `owl`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `pydantic`, `erDiagram`, `ossie`, or `lint`
+`rdfs`, `owl`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `pydantic`, `erDiagram`, `docs`, `ossie`, or `lint`
 against the returned handle.
 See [generator/npm/README.md](generator/npm/README.md) for details.
 

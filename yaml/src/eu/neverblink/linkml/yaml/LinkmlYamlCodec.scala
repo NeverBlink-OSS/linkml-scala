@@ -131,7 +131,10 @@ object LinkmlYamlCodec {
 
     override def decode(node: Node, id: Option[Any], prefixes: PrefixMap): T = {
       val v = typeDesignatorValue(node, designatorField)
-      val codec = byValue.get(v.value)
+      // A URI or CURIE value is matched by its expansion first, then as it is written
+      val expanded = prefixes.expandOrNull(v.value)
+      var codec = if (expanded ne null) byValue.get(expanded) else null
+      if (codec eq null) codec = byValue.get(v.value)
       if (codec ne null) codec.decode(node, id, prefixes)
       else unknownTypeDesignatorError(v, designatorField)
     }
@@ -537,6 +540,11 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
   /** Decode a class with [[eu.neverblink.linkml.runtime.typeDesignator]]. The value of the
     * designator field selects the implementation.
     *
+    * The value is first expanded with `prefixes`, and the expansion is matched, so a URI written as
+    * a CURIE with any prefix for its namespace selects the implementation of that URI. If the value
+    * can't be expanded, or the expansion selects nothing, the value is matched as it is written,
+    * such as a class name or a CURIE.
+    *
     * The values are matched as string literals. This compiles to a switch on their hash codes, not
     * to a chain of comparisons.
     */
@@ -547,16 +555,37 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       prefixes: Expr[PrefixMap],
   )(using Quotes): Expr[T] = {
     val slot = Expr(td.slot)
+    // The index of the member that a value selects, or -1 if it selects none
+    def genIndexOf(s: Expr[String])(using Quotes): Expr[Int] = {
+      var i = -1
+      val cases = td.members.map { member =>
+        i += 1
+        val pattern = member._2.map(v => Literal(StringConstant(v))) match {
+          case p :: Nil => p
+          case ps => Alternatives(ps)
+        }
+        CaseDef(pattern, None, Literal(IntConstant(i)))
+      }
+      Match(s.asTerm, cases :+ CaseDef(Wildcard(), None, Literal(IntConstant(-1))))
+        .asExpr.asInstanceOf[Expr[Int]]
+    }
     '{
       val v = LinkmlYamlCodec.typeDesignatorValue($node, $slot)
+      val expanded = $prefixes.expandOrNull(v.value)
+      var index = if (expanded ne null) ${ genIndexOf('expanded) } else -1
+      if (index < 0) index = ${ genIndexOf('{ v.value }) }
       ${
-        val cases = td.members.map { (mTpe, values) =>
-          val pattern = values.map(v => Literal(StringConstant(v))) match {
-            case p :: Nil => p
-            case ps => Alternatives(ps)
-          }
+        var i = -1
+        val cases = td.members.map { member =>
+          i += 1
+          val mTpe = member._1
           mTpe.asType match {
-            case '[m] => CaseDef(pattern, None, genDecode[m](mTpe, node, id, prefixes).asTerm)
+            case '[m] =>
+              CaseDef(
+                Literal(IntConstant(i)),
+                None,
+                genDecode[m](mTpe, node, id, prefixes).asTerm,
+              )
           }
         }
         val unknown =
@@ -565,7 +594,7 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
             None,
             '{ LinkmlYamlCodec.unknownTypeDesignatorError(v, $slot) }.asTerm,
           )
-        Match('{ v.value }.asTerm, cases :+ unknown).asExpr.asInstanceOf[Expr[T]]
+        Match('index.asTerm, cases :+ unknown).asExpr.asInstanceOf[Expr[T]]
       }
     }
   }
@@ -893,6 +922,21 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       ).asExpr.asInstanceOf[Expr[Unit]]
     }
 
+    // Runs 'clear' when a field other than the id and the value doesn't hold its default. The
+    // checks are separate statements, not one '&&' chain, so that classes with many fields don't
+    // overflow the compiler's stack.
+    def genCheckDefaults(holds: Expr[Boolean], clear: Expr[Unit])(using Quotes): Expr[Unit] = {
+      val checks = new mutable.ListBuffer[Statement]
+      fields.foreach { fieldInfo =>
+        if (fieldInfo.kind != FieldKind.Id && fieldInfo.kind != FieldKind.Value) {
+          val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
+          val d = fieldInfo.defaultValue.get.asExpr
+          checks.addOne('{ if ($holds && $getter != $d) $clear }.asTerm)
+        }
+      }
+      Block(checks.toList, '{}.asTerm).asExpr.asInstanceOf[Expr[Unit]]
+    }
+
     if (classInfo.isFlattened) {
       val fieldInfo = fields.head
       val fTpe = fieldInfo.resolvedTpe
@@ -912,8 +956,6 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
       ) &&
       // A '@serializeDefault' field must always be written, so the class cannot collapse to the
       // compact (bare value) form. Decoding of that form stays supported either way.
-      // This checks that the other fields have a default, not that they still hold it, so the
-      // compact form drops their values (LNK-233).
       fields.forall(x =>
         x.kind == FieldKind.Id || x.kind == FieldKind.Value ||
           (x.defaultValue.isDefined && !x.serializeDefault),
@@ -936,7 +978,11 @@ private class LinkmlYamlCodecImpl(extraSlotsAllowed: Boolean)(using Quotes) exte
               ${ genEncodeFields('kvs) }
               Node.MappingNode(kvs.result())
             }
-            if ($skipId) {
+            // The compact form leaves out the other fields, so it is used only when each of them
+            // still holds its default value.
+            var holdsDefaults = $skipId
+            ${ genCheckDefaults('holdsDefaults, '{ holdsDefaults = false }) }
+            if (holdsDefaults) {
               val collapsed = $encodeVal
               // A map in the collapsed position cannot be distinguished from the full form when
               // decoding (both are an object). So, for this case we always keep the full form.

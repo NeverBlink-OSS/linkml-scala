@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.ossie
 
 import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.util.PruningMode
-import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
+import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues, SchemaView}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
@@ -141,8 +141,8 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
     }
 
     "use a slot's alias as the name but still space-case the verbalization" in {
-      val r = relationship(ontologyOf(aliasedSlot), "Person", "full_name")
-      r.name shouldBe "full_name"
+      val r = relationship(ontologyOf(aliasedSlot), "Person", "fullName")
+      r.name shouldBe "fullName"
       r.verbalizes shouldBe Seq("{Person} full name {String}")
     }
 
@@ -324,6 +324,38 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       val o = OssieGenerator(using sv).generate()
       concept(o, "Thing").iri shouldBe Some("exv:Thing")
       o.prefixes.keys.toSeq shouldBe Seq("exv")
+    }
+
+    "fail on an IRI that would be read back as a QName" in {
+      // `ex` isn't declared in `other`, so the class URI of `Imported` is the IRI `ex:Imported`
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported:
+          |    class_uri: ex:Imported
+          |""".stripMargin
+      def generate(root: String): OssieOntology =
+        OssieGenerator(using
+          SchemaIssues.orThrow(
+            SchemaView.loadSchemaViewFromString(root, MapImporter("other" -> other)),
+          ),
+        ).generate()
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  ex: https://root.org/
+          |imports:
+          |  - other
+          |classes:
+          |  Local:
+          |    class_uri: ex:Local
+          |    is_a: Imported
+          |""".stripMargin
+      (the[IllegalArgumentException] thrownBy generate(root)).getMessage should include(
+        "The URI 'ex:Imported' can't be written",
+      )
     }
   }
 

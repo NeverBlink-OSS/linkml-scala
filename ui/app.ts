@@ -9,6 +9,7 @@ import {
   type BuildInfo,
   type Importer,
   type IssueLocation,
+  type OhiChoice,
   type Option,
   type OptionValues,
   type SchemaIssue,
@@ -17,17 +18,31 @@ import {
   type SchemaValidationReport,
 } from "./targets.js";
 import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
+import type { CatalogClient, Format as OhiFormat, SearchHit } from "@neverblink/ohi";
 
 // The LinkML schema lives here; each importer's own input document gets this plus a suffix.
 const INPUT_STORAGE_KEY = "linkml-ui-input";
 // Query parameter holding the link the schema was loaded from, so the address bar is a share link.
 const URL_PARAM = "url";
+// Takes its place for a file from ohi.dev: `namespace/name@version`, which reads better than the
+// file's own address. `format` follows only when it is not the input pane's default one.
+const OHI_PARAM = "ohi";
+const FORMAT_PARAM = "format";
+// Next to either, the importer whose input pane the link belongs to. Absent means the LinkML pane.
+const INPUT_PARAM = "input";
+const LINK_PARAMS = [URL_PARAM, OHI_PARAM, FORMAT_PARAM, INPUT_PARAM];
 // Resolved against dist/app.js at runtime, so it lands on the sibling dist/worker.js. Built from a
 // variable rather than a literal to keep esbuild from trying to resolve it at bundle time.
 const WORKER_URL = "./worker.js";
 // Mermaid, bundled into dist/mermaid by build.mjs. Imported on first use only: it and its chunks
 // are ~210 KB gzipped, which nobody who never opens the ER diagram tab should pay for.
 const MERMAID_URL = "./mermaid/mermaid.js";
+// The ohi.dev SDK, bundled into dist/ohi.js by build.mjs. Imported the first time the load dialog
+// opens, for the same reason as Mermaid.
+const OHI_URL = "./ohi.js";
+// The Markdown renderer for the documentation page view, bundled into dist/markdown by build.mjs and
+// imported on first use only, like Mermaid.
+const MARKDOWN_URL = "./markdown/markdown.js";
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -86,6 +101,10 @@ let diagramTab: "diagram" | "code" = "diagram";
 // The Mermaid source currently on screen, kept so the tab buttons and the theme toggle can
 // re-render without waiting for another generation. Non-null exactly while the diagram view is up.
 let diagramSource: string | null = null;
+// Which half of the documentation target is showing, sticky like `diagramTab`.
+let pageTab: "page" | "code" = "page";
+// The Markdown currently on screen. Non-null exactly while the page view is up.
+let pageSource: string | null = null;
 let generateTimer: ReturnType<typeof setTimeout> | undefined;
 let diagramTimer: ReturnType<typeof setTimeout> | undefined;
 let busyTimer: ReturnType<typeof setTimeout> | undefined;
@@ -105,6 +124,17 @@ interface InputDoc {
    * has edited it since". */
   link: string | null;
   remote: string | null;
+  /** Set alongside `link` when that link is a file on ohi.dev, which the address bar then names
+   * by package instead. */
+  ohi: OhiRef | null;
+}
+
+/** A file on ohi.dev, by package rather than by address. */
+interface OhiRef {
+  /** `namespace/name`. */
+  pkg: string;
+  version: string;
+  format: OhiFormat;
 }
 
 const LINKML_INPUT = "linkml";
@@ -117,7 +147,7 @@ function storageKey(key: string): string {
   return key === LINKML_INPUT ? INPUT_STORAGE_KEY : `${INPUT_STORAGE_KEY}:${key}`;
 }
 
-/** What Load example puts in the pane, and what a first-time visitor starts with. */
+/** What the load dialog's example puts in the pane, and what a first-time visitor starts with. */
 function exampleInput(): string {
   return direction === "fromLinkml" ? EXAMPLE_SCHEMA : (activeStep() as Importer).example;
 }
@@ -130,6 +160,7 @@ function inputDoc(): InputDoc {
     text: localStorage.getItem(storageKey(key)) ?? exampleInput(),
     link: null,
     remote: null,
+    ohi: null,
   });
 }
 
@@ -144,8 +175,8 @@ function swapInput(): void {
   const doc = inputDoc();
   setDoc(inputView, doc.text);
   // The address bar holds the link for whichever document is on screen, so it moves with it.
-  if (doc.link) setUrlParam(doc.link);
-  else clearUrlParam();
+  if (doc.link) setLinkParams(doc);
+  else clearLinkParams();
 }
 
 // ── DOM refs ────────────────────────────────────────────────────────────────
@@ -156,6 +187,7 @@ const $fileTabs = $("fileTabs");
 const $outputPanel = $("outputPanel");
 const $reportView = $("reportView");
 const $diagramView = $("diagramView");
+const $pageView = $("pageView");
 const $outputEditorHost = $("outputEditor");
 const $targetCombo = $("targetCombo");
 const $targetButton = $<HTMLButtonElement>("targetButton");
@@ -172,8 +204,7 @@ const $statusPill = $("statusPill");
 const $autoGenerate = $<HTMLInputElement>("autoGenerate");
 const $copyOutput = $<HTMLButtonElement>("copyOutput");
 const $reverseOutput = $<HTMLButtonElement>("reverseOutput");
-const $loadExample = $<HTMLButtonElement>("loadExample");
-const $loadUrl = $<HTMLButtonElement>("loadUrl");
+const $loadFrom = $<HTMLButtonElement>("loadFrom");
 const $clearInput = $<HTMLButtonElement>("clearInput");
 const $themeToggle = $<HTMLButtonElement>("themeToggle");
 const $themeIconMoon = $("themeIconMoon");
@@ -189,7 +220,8 @@ const inputView = createInput($("inputEditor"), inputDoc().text, (value) => {
   // other person something other than what you are looking at, so drop the link.
   if (value !== doc.remote) {
     doc.link = null;
-    clearUrlParam();
+    doc.ohi = null;
+    clearLinkParams();
   }
   scheduleGenerate();
 });
@@ -230,6 +262,12 @@ function renderLabels(): void {
   $outputSub.textContent = importer ? "LinkML" : "";
   // Phrased without an article, so it reads right whatever an importer calls its input format.
   $("urlLabel").textContent = `${importer ? importer.inputLabel : "LinkML schema (YAML)"} to load`;
+  // Every importer reads some kind of ontology, while the LinkML side reads a schema.
+  const noun = importer ? "ontology" : "schema";
+  $loadFrom.textContent = `Load ${noun}…`;
+  $("loadTitle").textContent = `Load ${noun}`;
+  $("exampleHint").textContent =
+    `A small ${noun} for a library, with books, people and loans.`;
   for (const btn of $dirToggle.querySelectorAll<HTMLButtonElement>(".dir-btn")) {
     const on = btn.dataset.dir === direction;
     btn.classList.toggle("dir-btn--active", on);
@@ -459,6 +497,7 @@ function renderOptions(): void {
 function showOutputText(text: string, lang: OutputLang): void {
   hideReport();
   hideDiagram();
+  hidePage();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.remove("cm-output--error");
@@ -468,6 +507,7 @@ function showOutputText(text: string, lang: OutputLang): void {
 function showOutputError(text: string): void {
   hideReport();
   hideDiagram();
+  hidePage();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.add("cm-output--error");
@@ -659,6 +699,7 @@ $diagramView.addEventListener("dblclick", () => {
 /** Render the Mermaid source, behind a Diagram/Code tab pair sharing the file tab bar. */
 function showDiagram(text: string): void {
   hideReport();
+  hidePage();
   outputView.dom.classList.remove("cm-output--error");
   diagramSource = text;
   // Keep the editor's document in sync even while it is hidden, so switching to Code is instant and
@@ -735,14 +776,20 @@ function showDiagramNotice(notice: HTMLElement): void {
   $diagramView.appendChild(notice);
 }
 
-function showDiagramError(message: string): void {
+/** A notice with [[title]] and the error [[message]], for a diagram or a page that failed. */
+function errorNotice(title: string, message: string): HTMLElement {
   const notice = document.createElement("div");
   notice.className = "diagram-notice diagram-notice--error";
-  notice.innerHTML = "<strong>Could not draw this diagram</strong>";
+  const heading = document.createElement("strong");
+  heading.textContent = title;
   const detail = document.createElement("code");
   detail.textContent = message;
-  notice.appendChild(detail);
-  showDiagramNotice(notice);
+  notice.append(heading, detail);
+  return notice;
+}
+
+function showDiagramError(message: string): void {
+  showDiagramNotice(errorNotice("Could not draw this diagram", message));
 }
 
 async function renderDiagram(text: string): Promise<void> {
@@ -781,6 +828,96 @@ async function renderDiagram(text: string): Promise<void> {
     showDiagramError(err instanceof Error ? err.message : String(err));
   }
 }
+
+// ── Documentation page view ─────────────────────────────────────────────────
+
+/** The module built from markdown.ts. */
+interface MarkdownApi {
+  renderMarkdown(markdown: string): string;
+}
+
+let markdownPromise: Promise<MarkdownApi> | null = null;
+
+function loadMarkdown(): Promise<MarkdownApi> {
+  markdownPromise ??= import(MARKDOWN_URL) as Promise<MarkdownApi>;
+  return markdownPromise;
+}
+
+/** Only the newest page render may reach the DOM, as for diagrams. */
+let pageToken = 0;
+
+function hidePage(): void {
+  $pageView.hidden = true;
+  $pageView.innerHTML = "";
+  pageSource = null;
+  $outputEditorHost.hidden = false;
+}
+
+/** Show the Markdown as a page, behind a Page/Code tab pair sharing the file tab bar. */
+function showPage(text: string): void {
+  hideReport();
+  hideDiagram();
+  outputView.dom.classList.remove("cm-output--error");
+  // Keep the editor in sync while it is hidden, so Code is instant and Copy gives the Markdown.
+  setOutput(outputView, text, "text");
+
+  $fileTabs.hidden = false;
+  $fileTabs.innerHTML = "";
+  for (const [tab, label] of [["page", "Page"], ["code", "Code"]] as const) {
+    const btn = document.createElement("button");
+    btn.className = "file-tab" + (tab === pageTab ? " file-tab--active" : "");
+    btn.textContent = label;
+    btn.addEventListener("click", () => {
+      if (pageTab === tab) return;
+      pageTab = tab;
+      if (pageSource !== null) showPage(pageSource);
+    });
+    $fileTabs.appendChild(btn);
+  }
+
+  // A new schema starts at the top. The same schema regenerated, as while typing, keeps its place.
+  const sameDocument = pageSource !== null && !$pageView.hidden;
+  pageSource = text;
+
+  if (pageTab === "code") {
+    $pageView.hidden = true;
+    $outputEditorHost.hidden = false;
+    return;
+  }
+
+  $outputEditorHost.hidden = true;
+  $pageView.hidden = false;
+  void renderPage(text, sameDocument ? $pageView.scrollTop : 0);
+}
+
+async function renderPage(text: string, scrollTop: number): Promise<void> {
+  const token = ++pageToken;
+  try {
+    const { renderMarkdown } = await loadMarkdown();
+    if (token !== pageToken || $pageView.hidden) return;
+    // Links that don't go to a section of the page already open in a new tab (see markdown.ts).
+    $pageView.innerHTML = renderMarkdown(text);
+    $pageView.scrollTop = scrollTop;
+  } catch (err) {
+    if (token !== pageToken || $pageView.hidden) return;
+    $pageView.replaceChildren(
+      errorNotice("Could not show this page", err instanceof Error ? err.message : String(err)),
+    );
+  }
+}
+
+// Links between sections are anchors. Scroll the panel to them, rather than letting the browser
+// change the playground's own address.
+$pageView.addEventListener("click", (e) => {
+  const link = (e.target as Element).closest("a");
+  const href = link?.getAttribute("href");
+  if (!href?.startsWith("#")) return;
+  e.preventDefault();
+  const id = decodeURIComponent(href.slice(1));
+  const target = id ? $pageView.querySelector(`[id="${CSS.escape(id)}"]`) : null;
+  if (target) target.scrollIntoView({ block: "start" });
+  else $pageView.scrollTop = 0;
+});
 
 // ── Validation report ───────────────────────────────────────────────────────
 
@@ -828,6 +965,7 @@ function hideReport(): void {
 
 function showReport(report: SchemaValidationReport): void {
   hideDiagram();
+  hidePage();
   $fileTabs.hidden = true;
   $fileTabs.innerHTML = "";
   outputView.dom.classList.remove("cm-output--error");
@@ -938,6 +1076,7 @@ function rawSummary(issue: SchemaIssue): string {
 function showFiles(target: Target, dict: Record<string, string>): void {
   hideReport();
   hideDiagram();
+  hidePage();
   const names = Object.keys(dict);
   let active = activeFile[target.id] ?? null;
   if (!active || !names.includes(active)) active = names[0] ?? null;
@@ -1070,6 +1209,8 @@ function onResult(res: ConvertResponse): void {
     showFiles(step as Target, res.result as Record<string, string>);
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
+  } else if (res.kind === "page") {
+    showPage(res.result as string);
   } else {
     showOutputText((res.result as string) || "Schema is clean", stepLang(step, res.direction));
   }
@@ -1140,6 +1281,7 @@ $reverseOutput.addEventListener("click", () => {
   doc.text = text;
   doc.link = null;
   doc.remote = null;
+  doc.ohi = null;
   selectStep();
 });
 
@@ -1147,13 +1289,8 @@ $generateBtn.addEventListener("click", () => scheduleGenerate(0));
 
 // ── Toolbar actions ──────────────────────────────────────────────────────
 
-// Both let the change listener do the storing: it already writes to the key the active document
-// belongs to.
-$loadExample.addEventListener("click", () => {
-  setDoc(inputView, exampleInput());
-  scheduleGenerate(0);
-});
-
+// Lets the change listener do the storing: it already writes to the key the active document
+// belongs to. So does loading an example, further down.
 $clearInput.addEventListener("click", () => {
   setDoc(inputView, "");
   localStorage.removeItem(storageKey(inputKey()));
@@ -1198,9 +1335,9 @@ $copyOutput.addEventListener("click", async () => {
   }
 });
 
-// ── Load from URL ────────────────────────────────────────────────────────
+// ── Load dialog ───────────────────────────────────────────────────────────
 
-const $urlDialog = $<HTMLDialogElement>("urlDialog");
+const $loadDialog = $<HTMLDialogElement>("loadDialog");
 const $urlForm = $<HTMLFormElement>("urlForm");
 const $urlInput = $<HTMLInputElement>("urlInput");
 const $urlError = $("urlError");
@@ -1212,16 +1349,51 @@ function incomingLink(): string | null {
   return new URL(location.href).searchParams.get(URL_PARAM);
 }
 
-function setUrlParam(link: string): void {
-  const here = new URL(location.href);
-  here.searchParams.set(URL_PARAM, link);
-  history.replaceState(null, "", here);
+/** The `?ohi=` the page was opened with, as given, and the format next to it. Both are checked
+ * once the input pane is known. */
+function incomingOhi(): { value: string; format: string | null } | null {
+  const params = new URL(location.href).searchParams;
+  const value = params.get(OHI_PARAM);
+  return value === null ? null : { value, format: params.get(FORMAT_PARAM) };
 }
 
-function clearUrlParam(): void {
+/** The importer named next to the link the page was opened with, if this build has it. */
+function incomingImporter(): Importer | undefined {
+  const id = new URL(location.href).searchParams.get(INPUT_PARAM);
+  return id === null ? undefined : importerById(id);
+}
+
+/** The query parameters that point at what the document on screen was loaded from. Without the
+ * pane it belongs to, a reload would load an Ossie or OWL file into the LinkML pane. */
+function linkParams(doc: InputDoc): [string, string][] {
+  const params: [string, string][] = [];
+  if (doc.ohi) {
+    params.push([OHI_PARAM, `${doc.ohi.pkg}@${doc.ohi.version}`]);
+    if (doc.ohi.format !== ohiChoices()[0]!.format) params.push([FORMAT_PARAM, doc.ohi.format]);
+  } else {
+    params.push([URL_PARAM, doc.link!]);
+  }
+  if (direction === "toLinkml") params.push([INPUT_PARAM, activeImporterId]);
+  return params;
+}
+
+function setLinkParams(doc: InputDoc): void {
   const here = new URL(location.href);
-  if (!here.searchParams.has(URL_PARAM)) return;
-  here.searchParams.delete(URL_PARAM);
+  for (const p of LINK_PARAMS) here.searchParams.delete(p);
+  for (const [k, v] of linkParams(doc)) here.searchParams.set(k, v);
+  history.replaceState(null, "", readable(here));
+}
+
+/** `searchParams` escapes `/`, `:` and `@`, though a query may hold them as they are. Left
+ * escaped, `?ohi=w3c/prov-o@2013` would read `?ohi=w3c%2Fprov-o%402013`. */
+function readable(u: URL): string {
+  return u.href.replace(/%2F/gi, "/").replace(/%3A/gi, ":").replace(/%40/g, "@");
+}
+
+function clearLinkParams(): void {
+  const here = new URL(location.href);
+  if (!LINK_PARAMS.some((p) => here.searchParams.has(p))) return;
+  for (const p of LINK_PARAMS) here.searchParams.delete(p);
   history.replaceState(null, "", here);
 }
 
@@ -1244,10 +1416,34 @@ function rawFileUrl(u: URL): URL {
 }
 
 type LoadResult = { ok: true } | { ok: false; error: string };
+/** What a download returns when something newer got there first: nothing landed, and there is
+ * nothing to report either. */
+const SUPERSEDED = { ok: false, error: null } as const;
+type DownloadResult = LoadResult | typeof SUPERSEDED;
+
+/** Counts downloads, so that one finishing late can tell a newer one has started. */
+let downloads = 0;
+
+/** Note what a download is about to replace, before it starts. The editor stays usable while it
+ * runs, so by the time it lands the user may have started another, switched to another pane or
+ * typed something - and any of those beats a file they may have forgotten they asked for. */
+function startDownload(): () => boolean {
+  const id = ++downloads;
+  const key = inputKey();
+  const text = inputDoc().text;
+  return () => id === downloads && inputKey() === key && inputDoc().text === text;
+}
 
 /** Downloads a schema and puts it in the input pane. The link, as pasted, goes into the address
- * bar rather than the schema itself: it stays short enough to paste anywhere. */
-async function loadFromUrl(link: string): Promise<LoadResult> {
+ * bar rather than the schema itself: it stays short enough to paste anywhere.
+ *
+ * `current` is for callers with lookups of their own to do first, which count as part of the
+ * download. */
+async function loadFromUrl(
+  link: string,
+  ohi: OhiRef | null = null,
+  current: () => boolean = startDownload(),
+): Promise<DownloadResult> {
   let target: URL;
   try {
     target = rawFileUrl(new URL(link));
@@ -1278,13 +1474,15 @@ async function loadFromUrl(link: string): Promise<LoadResult> {
   if (/^\s*<(!doctype|html)/i.test(text)) {
     return { ok: false, error: "That link returned a web page, not a schema. Link straight to the raw file." };
   }
+  if (!current()) return SUPERSEDED;
 
   // Set before the change lands, so the listener sees an unedited document either way.
   const doc = inputDoc();
   doc.remote = text;
   doc.link = link;
+  doc.ohi = ohi;
   setDoc(inputView, text);
-  setUrlParam(link);
+  setLinkParams(doc);
   scheduleGenerate(0);
   return { ok: true };
 }
@@ -1298,18 +1496,28 @@ function showUrlError(message: string): void {
  * would explain why the editor stayed empty. */
 async function loadOrPrompt(link: string): Promise<void> {
   const res = await loadFromUrl(link);
-  if (res.ok) return;
+  if (res.ok || res.error === null) return;
+  openLoadDialog();
   $urlInput.value = link;
   showUrlError(res.error);
-  $urlDialog.showModal();
+  $urlInput.focus();
   scheduleGenerate(0);
 }
 
-$loadUrl.addEventListener("click", () => {
+function openLoadDialog(): void {
   $urlInput.value = inputDoc().link ?? "";
   $urlError.hidden = true;
-  $urlDialog.showModal();
-  $urlInput.select();
+  $ohiError.hidden = true;
+  $loadDialog.showModal();
+  openOhi();
+}
+
+$loadFrom.addEventListener("click", openLoadDialog);
+
+$("exampleSubmit").addEventListener("click", () => {
+  setDoc(inputView, exampleInput());
+  scheduleGenerate(0);
+  $loadDialog.close();
 });
 
 $urlForm.addEventListener("submit", async (e) => {
@@ -1322,11 +1530,272 @@ $urlForm.addEventListener("submit", async (e) => {
   const res = await loadFromUrl(link);
   $urlSubmit.disabled = false;
   $urlSubmit.textContent = "Load";
-  if (res.ok) $urlDialog.close();
-  else showUrlError(res.error);
+  if (res.ok) $loadDialog.close();
+  else if (res.error !== null) showUrlError(res.error);
 });
 
-wireDialog($urlDialog, ".url-cancel");
+wireDialog($loadDialog);
+
+// ── ohi.dev search ────────────────────────────────────────────────────────
+
+const $ohiSearch = $<HTMLInputElement>("ohiSearch");
+const $ohiFormats = $("ohiFormats");
+const $ohiStatus = $("ohiStatus");
+const $ohiResults = $("ohiResults");
+const $ohiError = $("ohiError");
+
+/** How many hits one search shows. There is no paging: past this, a narrower query is the answer. */
+const OHI_PAGE = 25;
+const LINKML_OHI: OhiChoice[] = [{ format: "linkml-yaml", label: "LinkML", name: "LinkML" }];
+
+let ohiClientPromise: Promise<CatalogClient> | null = null;
+
+function ohiClient(): Promise<CatalogClient> {
+  ohiClientPromise ??= import(OHI_URL).then(
+    (m: typeof import("@neverblink/ohi")) => new m.CatalogClient(),
+    (e: unknown) => {
+      // Let the next search try the download again, rather than fail for good.
+      ohiClientPromise = null;
+      throw e;
+    },
+  );
+  return ohiClientPromise;
+}
+
+/** The format picked on the toggle, per input document. Absent means the first one. */
+const ohiPicked: Record<string, OhiFormat> = {};
+
+function ohiChoices(): OhiChoice[] {
+  return direction === "fromLinkml" ? LINKML_OHI : (activeStep() as Importer).ohiFormats;
+}
+
+function ohiChoice(): OhiChoice {
+  const choices = ohiChoices();
+  return choices.find((c) => c.format === ohiPicked[inputKey()]) ?? choices[0]!;
+}
+
+/** The last search that came back. A hit lists every format it has, so switching format only
+ * redraws these instead of searching again. */
+let ohiResult: { query: string; hits: SearchHit[]; total: number } | null = null;
+let ohiSearchId = 0;
+let ohiTimer: ReturnType<typeof setTimeout> | undefined;
+/** Set while a picked ontology downloads, so a second click cannot race it into the editor. */
+let ohiLoading = false;
+
+function openOhi(): void {
+  renderOhiFormats();
+  // The first time round it lists what is there before anything is typed.
+  if (ohiResult) renderOhiResults();
+  else void searchOhi();
+  $ohiSearch.focus();
+}
+
+function renderOhiFormats(): void {
+  const choices = ohiChoices();
+  const picked = ohiChoice();
+  $ohiFormats.hidden = choices.length < 2;
+  $ohiFormats.replaceChildren(
+    ...choices.map((c) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "dir-btn";
+      btn.textContent = c.label;
+      btn.dataset.format = c.format;
+      btn.classList.toggle("dir-btn--active", c === picked);
+      btn.setAttribute("aria-pressed", String(c === picked));
+      return btn;
+    }),
+  );
+}
+
+$ohiFormats.addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>(".dir-btn");
+  if (!btn) return;
+  ohiPicked[inputKey()] = btn.dataset.format as OhiFormat;
+  renderOhiFormats();
+  renderOhiResults();
+});
+
+$ohiSearch.addEventListener("input", () => {
+  clearTimeout(ohiTimer);
+  ohiTimer = setTimeout(() => void searchOhi(), 250);
+});
+
+$ohiSearch.addEventListener("keydown", (e) => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  clearTimeout(ohiTimer);
+  void searchOhi();
+});
+
+async function searchOhi(): Promise<void> {
+  const query = $ohiSearch.value.trim();
+  const id = ++ohiSearchId;
+  $ohiStatus.textContent = "Searching…";
+  $ohiError.hidden = true;
+  try {
+    const client = await ohiClient();
+    // `*` lists everything, which is what an empty box should show.
+    const page = await client.search({ q: query || "*", per_page: OHI_PAGE });
+    if (id !== ohiSearchId) return;
+    ohiResult = { query, hits: page.hits, total: page.total };
+    renderOhiResults();
+  } catch (e) {
+    if (id !== ohiSearchId) return;
+    ohiResult = null;
+    $ohiResults.replaceChildren();
+    $ohiStatus.textContent = "";
+    showOhiError(`Could not search ohi.dev. ${ohiErrorText(e)}`);
+  }
+}
+
+function ohiErrorText(e: unknown): string {
+  // The SDK reports a blocked or failed transfer as CONNECTION_ERROR or TIMEOUT, and anything
+  // else (a script that would not download, say) is just as likely to mean being offline.
+  const code = (e as { error?: { code?: string } }).error?.code;
+  if (code === "HTTP_ERROR" || code === "INVALID_RESPONSE") return (e as Error).message;
+  return "You may be offline.";
+}
+
+function showOhiError(message: string): void {
+  $ohiError.textContent = message;
+  $ohiError.hidden = false;
+}
+
+function renderOhiResults(): void {
+  if (!ohiResult) return;
+  const { query, hits, total } = ohiResult;
+  const what = query ? (total === 1 ? "match" : "matches") : total === 1 ? "ontology" : "ontologies";
+  $ohiStatus.textContent =
+    total === 0 ? `Nothing on ohi.dev matches “${query}”.`
+    : hits.length < total ? `Showing ${hits.length} of ${total} ${what}.${query ? "" : " Type to search."}`
+    : `${total} ${what}.`;
+  const choice = ohiChoice();
+  $ohiResults.replaceChildren(...hits.map((hit) => ohiHitItem(hit, choice)));
+}
+
+const EXTERNAL_LINK_ICON =
+  '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+  'stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/>' +
+  '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
+
+function ohiHitItem(hit: SearchHit, choice: OhiChoice): HTMLLIElement {
+  const has = hit.formats.includes(choice.format);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "ohi-hit";
+  const line = (cls: string, text: string): void => {
+    const el = document.createElement("span");
+    el.className = cls;
+    el.textContent = text;
+    btn.append(el);
+  };
+  line("ohi-hit-title", hit.title);
+  line("ohi-hit-meta", `${hit.namespace}/${hit.name} · ${hit.version}`);
+  if (hit.description) line("ohi-hit-desc", hit.description);
+  if (has) {
+    btn.addEventListener("click", () => void pickOhi(hit, choice, btn));
+  } else {
+    // aria-disabled rather than disabled: the button stays focusable, so the note saying why it
+    // is greyed out can still be reached and read out.
+    btn.setAttribute("aria-disabled", "true");
+    btn.classList.add("ohi-hit--missing");
+    line("ohi-hit-note", `No ${choice.name} file on ohi.dev.`);
+  }
+  // Beside the button rather than in it: a link inside a button is not valid HTML.
+  const view = document.createElement("a");
+  view.className = "ohi-view icon-btn";
+  view.href = `https://ohi.dev/${encodeURIComponent(hit.namespace)}/${encodeURIComponent(hit.name)}`;
+  view.target = "_blank";
+  view.rel = "noopener";
+  view.title = "View on ohi.dev";
+  view.setAttribute("aria-label", `View ${hit.title} on ohi.dev (opens in a new tab)`);
+  view.innerHTML = EXTERNAL_LINK_ICON;
+  const li = document.createElement("li");
+  li.className = "ohi-item";
+  li.append(btn, view);
+  return li;
+}
+
+/** Download one format of an ohi.dev publication into the input pane. */
+async function loadOhiFile(
+  baseUrl: string,
+  ref: OhiRef,
+  title: string,
+  current: () => boolean = startDownload(),
+): Promise<DownloadResult> {
+  try {
+    const publication = await (await ohiClient()).inspect(baseUrl);
+    const files = publication.artifacts.filter((a) => a.format === ref.format);
+    // Prefer the file as its publisher wrote it over one ohi.dev generated from it.
+    const file = files.find((a) => a.origin === "UPSTREAM") ?? files[0];
+    const name = ohiChoices().find((c) => c.format === ref.format)?.name ?? ref.format;
+    if (!file) return { ok: false, error: `${title} has no ${name} file on ohi.dev.` };
+    return await loadFromUrl(file.url, ref, current);
+  } catch (e) {
+    return { ok: false, error: `Could not load ${title}. ${ohiErrorText(e)}` };
+  }
+}
+
+/** Load a package named in an incoming `?ohi=` link. The catalog is asked for its publication
+ * rather than its address being made up from the name, which ohi.dev does not promise to keep.
+ *
+ * The version is required. Without one, "the latest" would have to mean the one ohi.dev
+ * published last, which is not always the newest release - older ones can be indexed later. */
+async function loadOhiPackage(value: string, format: OhiFormat): Promise<DownloadResult> {
+  const current = startDownload();
+  // Backticks are left out of the names because they would end the value in the filter below.
+  const m = value.match(/^([^/@`\s]+)\/([^/@`\s]+)@([^`\s]+)$/);
+  if (!m) {
+    return { ok: false, error: `“${value}” does not name an ohi.dev package. It should look like w3c/prov-o@2013.` };
+  }
+  const [, namespace = "", name = "", version = ""] = m;
+  const label = `${namespace}/${name}@${version}`;
+  let hit: SearchHit | undefined;
+  try {
+    const page = await (await ohiClient()).search({
+      q: "*",
+      filter_by: `namespace:=\`${namespace}\` && name:=\`${name}\` && version:=\`${version}\``,
+      per_page: 1,
+    });
+    hit = page.hits[0];
+  } catch (e) {
+    return { ok: false, error: `Could not look up ${label} on ohi.dev. ${ohiErrorText(e)}` };
+  }
+  if (!hit) return { ok: false, error: `There is no ${label} on ohi.dev.` };
+  return loadOhiFile(hit.base_url, { pkg: `${namespace}/${name}`, version, format }, hit.title, current);
+}
+
+/** Like [[loadOrPrompt]], for a package named in the address. */
+async function loadOhiOrPrompt(value: string, format: OhiFormat): Promise<void> {
+  const res = await loadOhiPackage(value, format);
+  if (res.ok || res.error === null) return;
+  openLoadDialog();
+  showOhiError(res.error);
+  scheduleGenerate(0);
+}
+
+/** Download the picked ontology into the input pane. It goes through [[loadFromUrl]] like a pasted
+ * link, so the address bar and Share point at the file on ohi.dev afterwards. */
+async function pickOhi(hit: SearchHit, choice: OhiChoice, btn: HTMLButtonElement): Promise<void> {
+  if (ohiLoading) return;
+  ohiLoading = true;
+  $ohiResults.classList.add("ohi-results--busy");
+  btn.classList.add("ohi-hit--loading");
+  $ohiError.hidden = true;
+  $ohiStatus.textContent = `Loading ${hit.title}…`;
+  try {
+    const ref = { pkg: `${hit.namespace}/${hit.name}`, version: hit.version, format: choice.format };
+    const res = await loadOhiFile(hit.base_url, ref, hit.title);
+    if (res.ok) $loadDialog.close();
+    else if (res.error !== null) showOhiError(res.error);
+  } finally {
+    ohiLoading = false;
+    $ohiResults.classList.remove("ohi-results--busy");
+    btn.classList.remove("ohi-hit--loading");
+    renderOhiResults();
+  }
+}
 
 // ── Share link ─────────────────────────────────────────────────────────────
 
@@ -1447,9 +1916,9 @@ async function shareUrl(): Promise<{ href: string; plain: boolean }> {
   here.hash = "";
   // With nothing but a link to pass on, `?url=` says the same thing in about the same space and a
   // recipient can see where it points, so there is no reason to bury it in an opaque fragment.
-  if (state.u !== undefined && state.t === undefined && state.i === undefined && state.o === undefined) {
-    here.searchParams.set(URL_PARAM, state.u);
-    return { href: here.href, plain: true };
+  if (state.u !== undefined && state.t === undefined && state.o === undefined) {
+    for (const [k, v] of linkParams(inputDoc())) here.searchParams.set(k, v);
+    return { href: readable(here), plain: true };
   }
   here.hash = SHARE_PREFIX + (await pack(JSON.stringify(state)));
   return { href: here.href, plain: false };
@@ -1505,6 +1974,7 @@ async function applySharedState(encoded: string): Promise<LoadResult> {
     const doc = inputDoc();
     doc.link = null;
     doc.remote = null;
+    doc.ohi = null;
     setDoc(inputView, state.s ?? "");
     scheduleGenerate(0);
   }
@@ -1548,7 +2018,7 @@ function showShareSize(length: number): void {
   } else {
     $shareSize.textContent =
       `${count} – very long. Most places will cut a link this size. Consider putting the schema ` +
-      "online and sharing that with 'Load from URL' instead.";
+      "online, loading it from that URL and sharing again.";
   }
 }
 
@@ -1700,6 +2170,7 @@ renderStep();
 
 const initialShare = shareFragment();
 const initialLink = incomingLink();
+const initialOhi = incomingOhi();
 if (initialShare !== null) {
   // Read once, then dropped from the address bar: it keeps the URL legible, and stops an
   // edit-then-reload resurrecting the state the link came with. The schema itself survives a
@@ -1709,7 +2180,7 @@ if (initialShare !== null) {
   history.replaceState(null, "", clean);
   getWorker();
   void applyShareOrPrompt(initialShare);
-} else if (initialLink === null) {
+} else if (initialLink === null && initialOhi === null) {
   // Starts the worker, which begins loading the LinkML bundle immediately. The request waits on
   // that load inside the worker, so the page is interactive while the multi-MB bundle parses.
   scheduleGenerate(0);
@@ -1717,5 +2188,20 @@ if (initialShare !== null) {
   // Same warm-up, minus the request: the download generates once it lands, so asking for a
   // generation here as well would parse the previous session's schema for nothing.
   getWorker();
-  void loadOrPrompt(initialLink);
+  // The link may belong to an importer's pane, which has to be on screen before it loads.
+  const importer = incomingImporter();
+  if (importer) {
+    direction = "toLinkml";
+    activeImporterId = importer.id;
+    renderStep();
+    swapInput();
+  }
+  if (initialOhi) {
+    // A format this pane cannot read falls back to the one it reads by default.
+    const choice = ohiChoices().find((c) => c.format === initialOhi.format) ?? ohiChoices()[0]!;
+    ohiPicked[inputKey()] = choice.format;
+    void loadOhiOrPrompt(initialOhi.value, choice.format);
+  } else {
+    void loadOrPrompt(initialLink!);
+  }
 }
