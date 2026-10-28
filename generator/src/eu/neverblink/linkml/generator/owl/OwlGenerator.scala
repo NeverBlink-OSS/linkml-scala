@@ -724,7 +724,7 @@ object OwlGenerator {
       alternative.maximumLength.foreachFast(n =>
         b.addOne(XmlSchema.maxLength.value -> Literal(n.toString, XmlSchema.nonNegativeInteger)),
       )
-      alternative.pattern.foreachFast(p => b.addOne(XmlSchema.pattern.value -> Literal(p.xsd)))
+      alternative.patterns.foreach(p => b.addOne(XmlSchema.pattern.value -> Literal(p.xsd)))
       b.result()
     }
 

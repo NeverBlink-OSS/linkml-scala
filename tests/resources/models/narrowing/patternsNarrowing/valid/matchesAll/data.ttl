@@ -1,0 +1,10 @@
+@prefix : <https://neverblink.eu/linkml/tests/patternsNarrowing/> .
+
+_:b a :Record;
+    :child_type "ABC";
+    :slot_over_type "ABC";
+    :union_type "ABC";
+    :slot_over_union "ABC";
+    :subclass_usage "ABC";
+    :mixin_usage "ABC";
+    :child_slot "ABC" .

@@ -204,6 +204,47 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       ttlIsomorphic(turtle, expected)
     }
 
+    "write the nearest pattern as sh:pattern, and each other one in sh:and" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    slots:
+           |    - string_slot
+           |slots:
+           |  string_slot:
+           |    range: code
+           |    pattern: "^A"
+           |types:
+           |  code:
+           |    typeof: string
+           |    pattern: "^[A-Z]{3}$$"
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      // A shape can have only one sh:pattern in SHACL engines such as RDF4J
+      val expected =
+        """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+          |@prefix sh: <http://www.w3.org/ns/shacl#> .
+          |@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+          |
+          |<https://neverblink.eu/linkml/shacl/test/SomeClass> a sh:NodeShape;
+          |  sh:closed true;
+          |  sh:ignoredProperties (rdf:type);
+          |  sh:property [
+          |      sh:and ([ sh:pattern "^[A-Z]{3}$" ]);
+          |      sh:datatype xsd:string;
+          |      sh:maxCount 1;
+          |      sh:nodeKind sh:Literal;
+          |      sh:order 0;
+          |      sh:path <https://neverblink.eu/linkml/shacl/test/string_slot>;
+          |      sh:pattern "^A"
+          |    ];
+          |  sh:targetClass <https://neverblink.eu/linkml/shacl/test/SomeClass> .
+          |""".stripMargin
+      ttlIsomorphic(turtle, expected)
+    }
+
     "take sh:pattern, lengths and inclusive bounds from the range type" in {
       val input =
         s"""$schemaShared

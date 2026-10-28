@@ -241,6 +241,15 @@ object OwlImporter {
       iri.startsWith("http://www.w3.org/2000/01/rdf-schema#") || iri.startsWith(owlNs)
 
   /** The slot fields that an OWL range maps to. */
+  /** The patterns after the first one, each wrapped by `wrap`. LinkML has one `pattern`, so they go
+    * to `all_of`.
+    */
+  private def otherPatterns[T](patterns: Seq[String], wrap: String => T): Seq[T] = {
+    val b = Vector.newBuilder[T]
+    patterns.iterator.drop(1).foreach(p => b.addOne(wrap(p)))
+    b.result()
+  }
+
   private final case class SlotRange(
       range: Option[String] = None,
       anyOf: Seq[SlotRange] = Nil,
@@ -248,14 +257,14 @@ object OwlImporter {
       maximumValue: Option[String] = None,
       minimumLength: Option[Int] = None,
       maximumLength: Option[Int] = None,
-      pattern: Option[String] = None,
+      patterns: Seq[String] = Nil,
       data: Boolean = false,
   ) {
 
     /** True if this is a plain class, enum or type, so it can go in an `any_of`. */
     def isOneElement: Boolean =
       range.isDefined && anyOf.isEmpty && minimumValue.isEmpty && maximumValue.isEmpty &&
-        minimumLength.isEmpty && maximumLength.isEmpty && pattern.isEmpty
+        minimumLength.isEmpty && maximumLength.isEmpty && patterns.isEmpty
 
     /** True if this is a type with or without constraints, so it can go in an `any_of` of types. */
     def isOneType: Boolean = range.isDefined && anyOf.isEmpty && data
@@ -268,7 +277,8 @@ object OwlImporter {
         maximumValue = maximumValue.map(LinkmlAny(_)),
         minimumLength = minimumLength,
         maximumLength = maximumLength,
-        pattern = pattern,
+        pattern = patterns.headOption,
+        allOf = otherPatterns(patterns, p => AnonymousSlotExpression(pattern = Some(p))),
       )
   }
 
@@ -607,6 +617,7 @@ object OwlImporter {
             ("string", Nil, None)
           case None => (derivedTypes.getOrElse(iri, "string"), Nil, None)
         }
+        val patterns = patternFacets(facets)
         val reported = mutable.HashSet.empty[String]
         facets.foreach { facet =>
           val f = facet._1
@@ -625,12 +636,20 @@ object OwlImporter {
             maximumValue = facet(facets, XmlSchema.maxInclusive),
             minimumLength = lengthFacet(facets, XmlSchema.minLength),
             maximumLength = lengthFacet(facets, XmlSchema.maxLength),
-            pattern = facets.collectFirst {
-              case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
-                LinkmlPattern.fromXsd(v).linkml
-            }.orElse(valuePattern),
+            pattern = patterns.headOption.orElse(valuePattern),
+            allOf = otherPatterns(patterns, p => AnonymousTypeExpression(pattern = Some(p))),
           ),
         )
+    }
+
+    /** The `xsd:pattern` facets as LinkML patterns. A value must match each of them. */
+    private def patternFacets(facets: Seq[(String, Literal)]): Seq[String] = {
+      val b = Vector.newBuilder[String]
+      facets.foreach { facet =>
+        if (facet._1 == XmlSchema.pattern.value)
+          b.addOne(LinkmlPattern.fromXsd(facet._2.value).linkml)
+      }
+      b.result()
     }
 
     private def facet(facets: Seq[(String, Literal)], which: Iri): Option[LinkmlAny] =
@@ -677,10 +696,7 @@ object OwlImporter {
               },
               minimumLength = lengthFacet(facets, XmlSchema.minLength),
               maximumLength = lengthFacet(facets, XmlSchema.maxLength),
-              pattern = facets.collectFirst {
-                case (f, Literal(v, _)) if f == XmlSchema.pattern.value =>
-                  LinkmlPattern.fromXsd(v).linkml
-              },
+              patterns = patternFacets(facets),
               data = true,
             ),
           )
@@ -845,7 +861,8 @@ object OwlImporter {
             maximumValue = range.maximumValue.map(LinkmlAny(_)),
             minimumLength = range.minimumLength,
             maximumLength = range.maximumLength,
-            pattern = range.pattern,
+            pattern = range.patterns.headOption,
+            allOf = otherPatterns(range.patterns, p => AnonymousSlotExpression(pattern = Some(p))),
           ),
         ).copy(exactMappings = sorted(metadata.exactMappings ++ equivalent.map(e => {
           ensurePrefix(e); uri(e)
@@ -1016,7 +1033,7 @@ object OwlImporter {
             maximumValue = None,
             minimumLength = None,
             maximumLength = None,
-            pattern = None,
+            patterns = Nil,
           )
           slotRange(other).map(_.copy(data = false)).exists(r => r == own || r == widened)
       }
@@ -1047,7 +1064,11 @@ object OwlImporter {
                       maximumValue = r.maximumValue.map(LinkmlAny(_)),
                       minimumLength = r.minimumLength,
                       maximumLength = r.maximumLength,
-                      pattern = r.pattern,
+                      pattern = r.patterns.headOption,
+                      allOf = otherPatterns(
+                        r.patterns,
+                        p => AnonymousSlotExpression(pattern = Some(p)),
+                      ),
                     ),
                 )
               case None => unsupported("Restriction that LinkML cannot express", expr)

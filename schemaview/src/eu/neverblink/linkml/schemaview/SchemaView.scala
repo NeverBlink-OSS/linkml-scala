@@ -322,6 +322,8 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
   /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
     * priority.
     *
+    * @param patterns
+    *   Gets each pattern on the way, nearest first, as the combined slot keeps only the nearest one
     * @see
     *   `ApplySlotUsage` from
     *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
@@ -330,22 +332,25 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       slot: SlotDefinition,
       slotName: String,
       cls: ClassDefinition,
+      patterns: mutable.LinkedHashSet[String],
   ): SlotDefinition = {
     var currentSlot = slot
     cls.slotUsage.get(slotName).foreachFast { s =>
+      s.pattern.foreachFast(patterns.addOne)
       currentSlot = currentSlot.combineWith(s, combineRange)
     }
     cls.attributes.get(slotName).foreachFast { s =>
+      s.pattern.foreachFast(patterns.addOne)
       currentSlot = currentSlot.combineWith(s, combineRange)
     }
     cls.mixins.foreach { r =>
       resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c)
+        currentSlot = applySlotUsage(currentSlot, slotName, c, patterns)
       }
     }
     cls.isA.foreachFast { r =>
       resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c)
+        currentSlot = applySlotUsage(currentSlot, slotName, c, patterns)
       }
     }
     currentSlot

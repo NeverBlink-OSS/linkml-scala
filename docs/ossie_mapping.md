@@ -88,7 +88,7 @@ An **enum** becomes a `ValueType` extending `String`, with its permissible value
 | `required: true`                 | `Concept.relationship`  | Inverse.  |
 | `permissible_values`             | `Ref IN ('a', 'b')`     | Inverse.  |
 | `minimum_value`, `maximum_value` | `Ref >= v`, `Ref <= v`  | Inverse.  |
-| `pattern`                        | `REGEXP_LIKE(Ref, 'p')` | Inverse.  |
+| `pattern`                        | `REGEXP_LIKE(Ref, 'p')`, one for each pattern a value must match, such as the one of a parent type | Inverse. The first one is the `pattern`, and each other one an `all_of` member with only a `pattern`. |
 
 ## IRIs
 

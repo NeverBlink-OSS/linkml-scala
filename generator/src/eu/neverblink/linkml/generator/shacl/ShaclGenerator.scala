@@ -63,19 +63,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     range.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
       case typeView: TypeView =>
         // Values with an implicit prefix are IRIs, even for a literal type
-        val isIri = constraints.implicitPrefix.isDefined
-        val alternatives = typeView.alternatives
-        if (alternatives.sizeIs == 1)
-          emitAlternative(sink, alternatives.head.withConstraintsOf(constraints), isIri, subject)
-        else {
-          sink.beginList(subject, Shacl.or)
-          alternatives.foreach { alternative =>
-            val shape = inlineBlankNode()
-            sink.listMember(shape)
-            emitAlternative(sink, alternative.withConstraintsOf(constraints), isIri, shape)
-          }
-          sink.endList()
-        }
+        emitAlternatives(
+          sink,
+          typeView.alternatives,
+          // `all_of` is written as `sh:and`, so its patterns are not added here
+          _.withOwnConstraintsOf(constraints),
+          constraints.implicitPrefix.isDefined,
+          subject,
+        )
       case classView: ClassView =>
         if (!classView.isAny) {
           sink.triple(subject, Shacl.`class`, Iri(classView.uriStr))
@@ -84,6 +79,33 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       case enumView: EnumView =>
         sink.list(subject, Shacl.in, enumView.derivedValues.map(value => Iri(value.uriStr)))
       case _ => throw RuntimeException(s"Couldn't map range $range")
+    }
+
+  /** Emit the value alternatives of a type range: as one shape if there is one, or as `sh:or` with
+    * one shape per alternative for a `union_of` type.
+    *
+    * @param constrain
+    *   Adds the constraints of the slot or the boolean slot member to an alternative
+    * @param isIri
+    *   Whether values are IRIs even for a literal type (e.g. with `implicit_prefix`)
+    */
+  private def emitAlternatives(
+      sink: RdfSink,
+      alternatives: Seq[ValueAlternative],
+      constrain: ValueAlternative => ValueAlternative,
+      isIri: Boolean,
+      subject: Resource,
+  ): Unit =
+    if (alternatives.sizeIs == 1)
+      emitAlternative(sink, constrain(alternatives.head), isIri, subject)
+    else {
+      sink.beginList(subject, Shacl.or)
+      alternatives.foreach { alternative =>
+        val shape = inlineBlankNode()
+        sink.listMember(shape)
+        emitAlternative(sink, constrain(alternative), isIri, shape)
+      }
+      sink.endList()
     }
 
   /** Emit `sh:datatype` and `sh:nodeKind` for a value alternative, then its constraints.
@@ -120,8 +142,20 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       isIri: Boolean,
       subject: Resource,
   ): Unit = {
-    alternative.pattern.foreachFast { p =>
+    // A shape can have only one `sh:pattern` in SHACL engines such as RDF4J. So it gets the
+    // nearest one, and `sh:and` has a shape for each other one.
+    val patterns = alternative.patterns
+    patterns.headOption.foreachFast { p =>
       sink.triple(subject, Shacl.pattern, Literal(p.linkml))
+    }
+    if (patterns.sizeIs > 1) {
+      sink.beginList(subject, Shacl.and)
+      patterns.iterator.drop(1).foreach { p =>
+        val shape = inlineBlankNode()
+        sink.listMember(shape)
+        sink.triple(shape, Shacl.pattern, Literal(p.linkml))
+      }
+      sink.endList()
     }
     if (!isIri && !alternative.typeView.isIri) {
       alternative.minimumLength.foreachFast { n =>
@@ -332,7 +366,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
                       else
                         emitConstraints(
                           sink,
-                          typeView.alternatives.head.withConstraintsOf(member),
+                          typeView.alternatives.head.withOwnConstraintsOf(member),
                           member.implicitPrefix.isDefined,
                           target,
                         )
@@ -415,12 +449,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       subject: Resource,
   ): Unit = attributeView match {
     case typeAttribute: TypeAttributeView =>
-      val alternatives = typeAttribute.alternatives
+      val alternatives = typeAttribute.typeView.alternatives
+      val slot = typeAttribute.slotView.slot
       if (alternatives.sizeIs == 1)
         emitConstraints(
           sink,
-          alternatives.head,
-          typeAttribute.slotView.slot.implicitPrefix.isDefined,
+          // `all_of` is written as `sh:and`, so its patterns are not added here
+          alternatives.head.withOwnConstraintsOf(slot),
+          slot.implicitPrefix.isDefined,
           subject,
         )
     case _ => ()

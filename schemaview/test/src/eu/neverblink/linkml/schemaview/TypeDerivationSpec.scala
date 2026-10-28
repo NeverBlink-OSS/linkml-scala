@@ -325,7 +325,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       def describe(alternatives: Seq[ValueAlternative]) = alternatives.map { a =>
         (
           a.typeView.name,
-          a.pattern,
+          a.patterns.map(_.linkml),
           a.minimumValue.map(_.value.trim),
           a.maximumValue.map(_.value.trim),
           a.minimumLength,
@@ -334,15 +334,15 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       }
       // Only the constraints that apply to a type are kept
       describe(view.types("Count").alternatives) shouldBe
-        Seq(("Count", None, Some("0"), Some("50"), None, None))
-      // The nearest union has precedence over the member, and the outer union over both. A
-      // looser bound doesn't widen a narrower one: `Count` stays at most 50.
+        Seq(("Count", Nil, Some("0"), Some("50"), None, None))
+      // All constraints of the unions and the member hold. A looser bound doesn't widen a narrower
+      // one: `Count` stays at most 50. A value must match the patterns of the union and of `Code`.
       describe(view.types("Choice").alternatives) shouldBe Seq(
-        ("Code", Some("^[A-Z]$"), None, None, None, Some(3)),
-        ("Count", None, Some("0"), Some("50"), None, None),
-        ("decimal", None, None, Some("100"), None, None),
+        ("Code", Seq("^[A-Z]$", "^[A-Z]+$"), None, None, None, Some(3)),
+        ("Count", Nil, Some("0"), Some("50"), None, None),
+        ("decimal", Nil, None, Some("100"), None, None),
         // A member reached in another way has other constraints, so it is kept
-        ("Code", Some("^[A-Z]$"), None, None, None, Some(4)),
+        ("Code", Seq("^[A-Z]$", "^[A-Z]+$"), None, None, None, Some(4)),
       )
       // A type inherits the union of its `typeof` parent, with its own constraints first
       describe(view.types("ChoiceChild").alternatives).map(_._3) shouldBe
@@ -351,7 +351,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       // alternative
       val attributes = view.classes("Record").attributeViews
       describe(attributes("count").asInstanceOf[TypeAttributeView].alternatives) shouldBe
-        Seq(("Count", None, Some("0"), Some("9"), None, None))
+        Seq(("Count", Nil, Some("0"), Some("9"), None, None))
       describe(attributes("choice").asInstanceOf[TypeAttributeView].alternatives)
         .map(a => (a._1, a._6)) shouldBe
         Seq(("Code", Some(2)), ("Count", None), ("decimal", None), ("Code", Some(2)))
@@ -457,7 +457,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       text.description shouldBe None
       text.implicitPrefix shouldBe None
       view.types("TextChild").inner.pattern shouldBe None
-      view.types("TextChild").pattern.map(_.xsd) shouldBe Some("[A-Z]+")
+      view.types("TextChild").patterns.map(_.xsd) shouldBe Seq("[A-Z]+")
 
       val number = view.types("NumberChild").derivedType
       number.equalsNumber shouldBe Some(7)
@@ -469,6 +469,8 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
       val text = view.types("TextOverride").derivedType
       text.repr shouldBe Some("CustomText")
       text.pattern shouldBe Some("^NEW$")
+      // A value must still match the pattern of the parent
+      view.types("TextOverride").patterns.map(_.linkml) shouldBe Seq("^NEW$", "^[A-Z]+$")
       text.structuredPattern.flatMap(_.syntax) shouldBe Some("NEW")
       text.equalsString shouldBe Some("NEW")
       text.equalsStringIn shouldBe Seq("NEW")
@@ -485,7 +487,7 @@ class TypeDerivationSpec extends AnyWordSpec, Matchers {
     "expose inherited constraints to slots using a derived type" in {
       val attributes = view.classes("Record").attributeViews
       val text = attributes("text").asInstanceOf[TypeAttributeView]
-      text.pattern shouldBe Some("^[A-Z]+$")
+      text.patterns.map(_.linkml) shouldBe Seq("^[A-Z]+$")
       text.structuredPattern.flatMap(_.syntax) shouldBe Some("[A-Z]+")
       text.equalsString shouldBe Some("ACTIVE")
       text.equalsStringIn shouldBe Seq("ACTIVE", "INACTIVE")

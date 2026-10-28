@@ -1,0 +1,83 @@
+id: https://neverblink.eu/linkml/tests/patternsNarrowing/
+name: patternsNarrowing
+description: >-
+  A pattern can narrow the values that a type, a union or a parent allows, but not widen them. Each
+  slot gets the pattern `^[A-Z]+$` from one place and `^[A-Z]{3}$` from another, so `ABC` is valid
+  and `ABCD` is not.
+
+imports:
+  - linkml:types
+
+types:
+  Code:
+    typeof: string
+    pattern: '^[A-Z]{3}$'
+  # A child type with a looser pattern than its parent
+  LongCode:
+    typeof: Code
+    pattern: '^[A-Z]+$'
+  # A union with a looser pattern than its member `Code`
+  LongCodeOrNumber:
+    union_of: [Code, integer]
+    pattern: '^[A-Z]+$'
+  CodeOrNumber:
+    union_of: [Code, integer]
+
+classes:
+  Base:
+    slots:
+      - subclass_usage
+      - mixin_usage
+    slot_usage:
+      subclass_usage:
+        pattern: '^[A-Z]{3}$'
+      mixin_usage:
+        pattern: '^[A-Z]{3}$'
+  Widening:
+    mixin: true
+    slots:
+      - mixin_usage
+    slot_usage:
+      mixin_usage:
+        pattern: '^[A-Z]+$'
+  Record:
+    tree_root: true
+    is_a: Base
+    mixins:
+      - Widening
+    slots:
+      - child_slot
+    slot_usage:
+      subclass_usage:
+        pattern: '^[A-Z]+$'
+    attributes:
+      child_type:
+        rank: 1
+        range: LongCode
+      slot_over_type:
+        rank: 2
+        range: Code
+        pattern: '^[A-Z]+$'
+      union_type:
+        rank: 3
+        range: LongCodeOrNumber
+      slot_over_union:
+        rank: 4
+        range: CodeOrNumber
+        pattern: '^[A-Z]+$'
+
+slots:
+  subclass_usage:
+    rank: 5
+    range: string
+  mixin_usage:
+    rank: 6
+    range: string
+  parent_slot:
+    range: string
+    pattern: '^[A-Z]{3}$'
+  # A child slot with a looser pattern than its parent slot
+  child_slot:
+    rank: 7
+    is_a: parent_slot
+    pattern: '^[A-Z]+$'

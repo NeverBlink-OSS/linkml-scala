@@ -374,7 +374,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   ): SlotView = {
     // Use empty slot base here to avoid an extra allocation
     var currentSlot = ClassView.emptySlotDef
-    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls)
+    // Combining keeps only the nearest pattern, so all of them are collected here
+    val patterns = mutable.LinkedHashSet.empty[String]
+    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls, patterns)
     sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]).foreachFast { (resolved: SlotView) =>
       // Note this is a bit off-spec, but it's a pretty reasonable
       if (!isSlotFromAttributes(slotRef)) {
@@ -383,6 +385,7 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
           ancestorSlotView =>
             currentSlot =
               val slotDef = ancestorSlotView.slot
+              slotDef.pattern.foreachFast(patterns.addOne)
               if (i > 0) currentSlot.combineInherited(slotDef, sv.combineRange)
               else currentSlot.combineWith(slotDef, sv.combineRange)
             i += 1
@@ -404,8 +407,29 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     )
     // Apply the original schema as the defining schema, so that default prefix / default range
     // resolution still works as defined in the original schema file.
-    new SlotView(finalSlot, source.definingSchema)
+    new SlotView(withFartherPatterns(finalSlot, patterns), source.definingSchema)
   }
+
+  /** The slot with the patterns other than its own in `all_of`, as it has only one `pattern`. So a
+    * value must still match the patterns of the parent classes, mixins and parent slots.
+    *
+    * @param patterns
+    *   All patterns on the way to the slot, nearest first. The first one is the slot's own.
+    */
+  private def withFartherPatterns(
+      slot: SlotDefinition,
+      patterns: mutable.LinkedHashSet[String],
+  ): SlotDefinition =
+    if (patterns.sizeIs < 2) slot
+    else {
+      val b = Vector.newBuilder[AnonymousSlotExpression]
+      b.addAll(slot.allOf)
+      patterns.iterator.drop(1).foreach { p =>
+        val member = AnonymousSlotExpression(pattern = Some(p))
+        if (!slot.allOf.contains(member)) b.addOne(member)
+      }
+      slot.copy(allOf = b.result())
+    }
 
   /** Test whether this class definition has an identifier slot
     *
@@ -492,8 +516,10 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
   override def aliasedName: String =
     slot.alias.getOrElseFast(name)
 
-  /** @see [[slot.pattern]] */
-  def pattern: Option[LinkmlPattern] = LinkmlPattern.option(slot.pattern)
+  /** The patterns that a value must match, see [[ValueAlternative.patternsOf]]. A derived slot
+    * keeps the patterns of its parents in `all_of`.
+    */
+  def patterns: Seq[LinkmlPattern] = ValueAlternative.patternsOf(slot)
 
   /** Resolved URI string for the implicit_prefix metaslot for this slot, if defined
     */
@@ -730,13 +756,12 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
     if (members.isEmpty) ValueAlternative.of(this) :: Nil
     else {
       val path = name :: unions
-      val definition = derivedType
       val b = Vector.newBuilder[ValueAlternative]
       val seen = mutable.HashSet.empty[ValueAlternative]
       members.foreach { member =>
         if (!path.contains(member.name)) {
           member.alternativesAvoiding(path).foreach { a =>
-            val alternative = a.withConstraintsOf(definition)
+            val alternative = a.withConstraintsOfUnion(this)
             if (seen.add(alternative)) b.addOne(alternative)
           }
         }
@@ -758,13 +783,23 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
       toUniqueValue = _.name,
     )
 
-  /** The pattern of this type or the nearest ancestor that has one. */
-  def pattern: Option[LinkmlPattern] = LinkmlPattern.option(derivedType.pattern)
+  /** The patterns of this type and its `typeof` ancestors, each once, nearest first. A value of
+    * this type must match all of them, as a child type can only narrow the values of its parent.
+    * See [[ValueAlternative.patternsOf]] for the patterns of each type.
+    */
+  lazy val patterns: Seq[LinkmlPattern] = {
+    val b = Vector.newBuilder[LinkmlPattern]
+    val seen = mutable.HashSet.empty[String]
+    ancestorsWithSelf.foreach(ancestor =>
+      ValueAlternative.patternsOf(ancestor._type).foreach(p => if (seen.add(p.linkml)) b.addOne(p)),
+    )
+    b.result()
+  }
 
   /** Fill the metamodel's inheritable type properties, keeping the closest explicit value. Value
     * bounds and lengths are combined so that all of them hold, see [[combineMin]], [[combineMax]],
-    * [[combineMinLength]] and [[combineMaxLength]]. The original declaration remains available
-    * through [[inner]].
+    * [[combineMinLength]] and [[combineMaxLength]]. The `pattern` is the nearest one, see
+    * [[patterns]] for all of them. The original declaration remains available through [[inner]].
     */
   lazy val derivedType: TypeDefinition =
     ancestorsWithSelf.iterator.drop(1)

@@ -652,6 +652,26 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "join the patterns of a slot and its type into one with a lookahead for each" in {
+      val py = generate(
+        """types:
+          |  Code:
+          |    typeof: string
+          |    pattern: "^[A-Z]{3}$"
+          |classes:
+          |  C:
+          |    attributes:
+          |      one: {range: Code}
+          |      two: {range: Code, pattern: "^A"}
+          |""".stripMargin,
+      )
+      py should include("""    one: Annotated[str, Field(pattern=r"^[A-Z]{3}$")] | None = None""")
+      py should include(
+        """    two: Annotated[str, Field(pattern=r"^(?=[\s\S]*?(?:^A))""" +
+          """(?=[\s\S]*?(?:^[A-Z]{3}$))")] | None = None""",
+      )
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.allOptIn do
         s"model '${entry.name}'" in {

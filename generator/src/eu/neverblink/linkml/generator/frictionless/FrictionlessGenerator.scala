@@ -210,7 +210,8 @@ class FrictionlessGenerator(using sv: SchemaView)
       format = format,
       constraints = base.constraints.mapFast(
         _.copy(
-          pattern = alternative.pattern.mapFast(_.linkml),
+          // A column has one pattern, so only the nearest one is checked
+          pattern = alternative.patterns.headOption.mapFast(_.linkml),
           maximum = alternative.maximumValue.mapFast(_.value.strip()),
           minimum = alternative.minimumValue.mapFast(_.value.strip()),
           maxLength = alternative.maximumLength,

@@ -108,9 +108,11 @@ final case class TypeAttributeView(
       case st => st
     }
 
-  /** @see [[slot.pattern]] */
-  def pattern: Option[LinkmlPattern] =
-    LinkmlPattern.option(combineOption(slot.pattern, _type.pattern, combinePattern))
+  /** The patterns that a value must match: the ones of the slot, then the ones of its range type.
+    * See [[SlotView.patterns]] and [[TypeView.patterns]].
+    */
+  def patterns: Seq[LinkmlPattern] =
+    ValueAlternative.joinPatterns(slotView.patterns, typeView.patterns)
 
   /** @see [[slot.structuredPattern]] */
   def structuredPattern: Option[PatternExpression] =

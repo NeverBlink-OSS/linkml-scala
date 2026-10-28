@@ -245,7 +245,7 @@ class OssieGenerator(using sv: SchemaView)
       requires = Constraints(
         tv.derivedType.minimumValue,
         tv.derivedType.maximumValue,
-        tv.derivedType.pattern,
+        tv.patterns.map(_.linkml),
       ).render(Ref(name)).map(_.render),
     )
 
@@ -267,7 +267,7 @@ class OssieGenerator(using sv: SchemaView)
     }
     if (hasConstraints) {
       val slot = av.slotView.slot
-      Constraints(slot.minimumValue, slot.maximumValue, slot.pattern)
+      Constraints(slot.minimumValue, slot.maximumValue, av.slotView.patterns.map(_.linkml))
         .render(Ref(ref))
         .map(_.render)
     } else Nil

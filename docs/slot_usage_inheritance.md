@@ -1,7 +1,7 @@
 # Inherited slots and `slot_usage`
 
 A class can get the metaslots of a slot from several places: its own `slot_usage`, the `slot_usage` of its parent classes and mixins, and the slot definition.
-This page shows how LinkML-Scala combines four kinds of them, where the LinkML specification, LinkML-Python 1.12.1 and LinkML-Scala do not all agree:
+This page shows how LinkML-Scala combines five kinds of them, where the LinkML specification, LinkML-Python 1.12.1 and LinkML-Scala do not all agree:
 
 - [Boolean metaslots](#boolean-metaslots), like `required` and `multivalued`, which are `true` or `false`.
   LinkML-Scala follows the specification here, and LinkML-Python works differently.
@@ -11,6 +11,8 @@ This page shows how LinkML-Scala combines four kinds of them, where the LinkML s
   LinkML-Scala follows the specification here, and also uses it for types and unions. LinkML-Python follows it only for `slot_usage`.
 - [Lengths](#lengths): `minimum_length` and `maximum_length`.
   LinkML-Scala works differently from the specification here. LinkML-Python 1.12.1 has no lengths.
+- [Patterns](#patterns): `pattern`.
+  The specification leaves this open, and LinkML-Python works differently.
 
 ## Boolean metaslots
 
@@ -175,3 +177,48 @@ The LinkML specification works differently in two ways:
 - The metamodel doesn't mark lengths as inherited, unlike `pattern` and the value bounds. So a child slot doesn't get the lengths of its parent slot.
 
 LinkML-Scala does neither, so that a value of a child slot is also a valid value of its parent slot.
+
+## Patterns
+
+A pattern can narrow the values that a slot allows, but not widen them.
+So when a slot gets a `pattern` from more than one place, a value must match all of them.
+LinkML-Scala does this for each place a pattern can come from, the same as for [value bounds](#value-bounds).
+
+The LinkML specification combines patterns with `CombinePattern(v1, v2)`, but doesn't say what it does.
+LinkML-Python 1.12.1 takes the nearest pattern.
+
+Two patterns can't be joined into one value, and a slot has only one `pattern`.
+So the derived slot keeps the nearest one in `pattern`, and adds each other one to `all_of`:
+
+```yaml
+classes:
+  Base:
+    slots:
+      - code
+  Child:
+    is_a: Base
+    slot_usage:
+      code:
+        pattern: "^[A-Z]+$"
+slots:
+  code:
+    range: string
+    pattern: "^[A-Z]{3}$"
+```
+
+For `Child.code`, LinkML-Scala uses this derived slot:
+
+```yaml
+pattern: "^[A-Z]+$"
+all_of:
+  - pattern: "^[A-Z]{3}$"
+```
+
+| Value    | LinkML-Python 1.12.1 | LinkML-Scala |
+|----------|----------------------|--------------|
+| `"ABC"`  | Valid                | Valid        |
+| `"ABCD"` | Valid, but not valid for `Base` | Invalid |
+
+The generators write all of these patterns, also those of a type's `typeof` parents and of a union.
+An `all_of` member that sets nothing but a `pattern` counts as one more pattern, so the JSON Schema, Pydantic and OWL generators write it, though they don't support `all_of` otherwise.
+A Frictionless column can have only one pattern, so it gets the nearest one.

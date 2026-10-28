@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
+import eu.neverblink.linkml.metamodel.AnonymousSlotExpression
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -251,6 +252,104 @@ class ConstraintNarrowingSpec extends AnyWordSpec, Matchers {
         Seq(("Shorter", None, Some(2)))
       lengths(attribute(narrow, "Item", "slot_over_type").alternatives) shouldBe
         Seq(("Short", None, Some(1)))
+    }
+  }
+
+  "Patterns" should {
+    val view = load(
+      """id: https://example.org/patterns
+        |name: patterns
+        |imports: [linkml:types]
+        |slots:
+        |  parent_slot: {range: string, pattern: '^[A-Z]{3}$'}
+        |  child_slot: {is_a: parent_slot, pattern: '^[A-Z]+$'}
+        |classes:
+        |  Item:
+        |    slots: [child_slot]
+        |    attributes:
+        |      inherited: {range: string, pattern: '^[A-Z]{3}$'}
+        |  Widening:
+        |    mixin: true
+        |    slot_usage:
+        |      inherited: {pattern: '^[A-Z]+$'}
+        |  SubItem:
+        |    is_a: Item
+        |    slot_usage:
+        |      inherited: {pattern: '^[A-Z]+$'}
+        |  MixedItem:
+        |    is_a: Item
+        |    mixins: [Widening]
+        |""".stripMargin,
+    )
+
+    def patterns(alternatives: Seq[ValueAlternative]): Seq[(String, Seq[String])] =
+      alternatives.map(a => (a.typeView.name, a.patterns.map(_.linkml)))
+
+    val strict = "^[A-Z]{3}$"
+    val loose = "^[A-Z]+$"
+
+    "keep the patterns of a type and its parents" in {
+      val types = load(
+        """id: https://example.org/type-patterns
+          |name: type_patterns
+          |imports: [linkml:types]
+          |types:
+          |  Code: {typeof: string, pattern: '^[A-Z]{3}$'}
+          |  LongCode: {typeof: Code, pattern: '^[A-Z]+$'}
+          |  SameCode: {typeof: Code, pattern: '^[A-Z]{3}$'}
+          |  LongCodeOrNumber:
+          |    union_of: [Code, integer]
+          |    pattern: '^[A-Z]+$'
+          |  CodeOrNumber:
+          |    union_of: [Code, integer]
+          |  OuterUnion:
+          |    union_of: [CodeOrNumber]
+          |    pattern: '^[A-Z]+$'
+          |classes:
+          |  Item:
+          |    attributes:
+          |      child_type: {range: LongCode}
+          |      same_type: {range: SameCode}
+          |      slot_over_type: {range: Code, pattern: '^[A-Z]+$'}
+          |      union_type: {range: LongCodeOrNumber}
+          |      nested_union: {range: OuterUnion}
+          |      slot_over_union: {range: CodeOrNumber, pattern: '^[A-Z]+$'}
+          |""".stripMargin,
+      )
+      types.types("LongCode").patterns.map(_.linkml) shouldBe Seq(loose, strict)
+      // A pattern that is repeated is kept once
+      types.types("SameCode").patterns.map(_.linkml) shouldBe Seq(strict)
+      patterns(attribute(types, "Item", "child_type").alternatives) shouldBe
+        Seq(("LongCode", Seq(loose, strict)))
+      val slot = attribute(types, "Item", "slot_over_type")
+      slot.patterns.map(_.linkml) shouldBe Seq(loose, strict)
+      patterns(slot.alternatives) shouldBe Seq(("Code", Seq(loose, strict)))
+      // A pattern applies only to text, so the integer gets none
+      for name <- Seq("union_type", "nested_union", "slot_over_union") do
+        patterns(attribute(types, "Item", name).alternatives) shouldBe
+          Seq(("Code", Seq(loose, strict)), ("integer", Nil))
+    }
+
+    "keep the patterns of the parent classes, mixins and parent slots" in {
+      for cls <- Seq("SubItem", "MixedItem") do
+        view.classes(cls).attributeViews("inherited").asInstanceOf[TypeAttributeView]
+          .alternatives.map(_.patterns.map(_.linkml)) shouldBe Seq(Seq(loose, strict))
+      attribute(view, "Item", "child_slot").alternatives.map(_.patterns.map(_.linkml)) shouldBe
+        Seq(Seq(loose, strict))
+    }
+
+    "keep the farther patterns of a slot in all_of of the derived schema" in {
+      val farther = AnonymousSlotExpression(pattern = Some("^[A-Z]{3}$"))
+      for cls <- Seq("SubItem", "MixedItem") do {
+        val slot = view.classes(cls).materialize.attributes("inherited")
+        slot.pattern shouldBe Some("^[A-Z]+$")
+        slot.allOf shouldBe Seq(farther)
+      }
+      val child = view.classes("Item").materialize.attributes("child_slot")
+      child.pattern shouldBe Some("^[A-Z]+$")
+      child.allOf shouldBe Seq(farther)
+      // A slot with one pattern needs no `all_of`
+      view.classes("Item").materialize.attributes("inherited").allOf shouldBe empty
     }
   }
 }

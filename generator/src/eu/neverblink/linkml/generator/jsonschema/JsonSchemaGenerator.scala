@@ -297,15 +297,25 @@ object JsonSchemaGenerator {
 
   /** Translate the [[RuntimeType]] of the alternative's type into the appropriate JSON Schema, with
     * the alternative's constraints. Provides formats for date-times and URI/CURIE.
+    *
+    * A schema has one `pattern`, so it gets the nearest one, and `allOf` has a schema for each
+    * other one.
     */
-  private def alternativeToRuntime(alternative: ValueAlternative): Schema =
+  private def alternativeToRuntime(alternative: ValueAlternative): Schema = {
+    val patterns = alternative.patterns
+    val farther = List.newBuilder[SchemaLike]
+    patterns.iterator.drop(1).foreach(p =>
+      farther.addOne(new Schema(pattern = Some(new Pattern(p.linkml)))),
+    )
     nonUnionTypeToRuntime(alternative.typeView).copy(
       minimum = toBigDecimalOpt(alternative.minimumValue),
       maximum = toBigDecimalOpt(alternative.maximumValue),
       minLength = alternative.minimumLength,
       maxLength = alternative.maximumLength,
-      pattern = alternative.pattern.mapFast(p => new Pattern(p.linkml)),
+      pattern = patterns.headOption.mapFast(p => new Pattern(p.linkml)),
+      allOf = farther.result(),
     )
+  }
 
   private def nonUnionTypeToRuntime(tv: TypeView): Schema = tv.runtimeType match {
     case _: StringType.type => stringSchema

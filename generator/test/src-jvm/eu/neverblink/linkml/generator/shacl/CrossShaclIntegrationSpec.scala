@@ -26,6 +26,8 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     "curie" -> "LinkML-py treats CURIEs as literals instead of expanding them",
     "lengths" -> "LinkML-Python's metamodel has no `minimum_length` and `maximum_length`",
     "lengthsNarrowing" -> "LinkML-Python's metamodel has no `minimum_length` and `maximum_length`",
+    "patternsNarrowing" ->
+      "LinkML-Python writes no datatype for a `union_of` range, and lets a child type, a slot and a child slot widen patterns",
     "unionOf" ->
       "LinkML-Python writes no datatype for a `union_of` range and ignores the union's constraints",
     "boundsNarrowing" ->

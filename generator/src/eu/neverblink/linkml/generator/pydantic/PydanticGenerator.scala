@@ -112,9 +112,9 @@ final class PydanticGenerator(using sv: SchemaView)
     val base = runtimeType(alternative.typeView, ctx)
     val constraints = mutable.ListBuffer.empty[String]
     if (base == "str") {
-      alternative.pattern.foreachFast(p =>
-        constraints.addOne("pattern=".concat(pyPattern(p.linkml))),
-      )
+      val patterns = alternative.patterns
+      if (patterns.nonEmpty)
+        constraints.addOne("pattern=".concat(pyPattern(allOfPatterns(patterns))))
       alternative.minimumLength.foreachFast(n =>
         constraints.addOne("min_length=".concat(n.toString)),
       )
@@ -692,6 +692,19 @@ object PydanticGenerator {
 
   private def listIf(condition: Boolean, tpe: String): String =
     if condition then s"list[$tpe]" else tpe
+
+  /** One pattern that a value matches only if it matches each of `patterns`, as `Field` takes only
+    * one. Each pattern goes into a lookahead from the start of the value, which finds it anywhere,
+    * as a LinkML pattern does. This needs `regex_engine="python-re"`, as the default one has no
+    * lookaheads.
+    */
+  def allOfPatterns(patterns: Seq[LinkmlPattern]): String =
+    if (patterns.sizeIs == 1) patterns.head.linkml
+    else {
+      val sb = new java.lang.StringBuilder("^")
+      patterns.foreach(p => sb.append("(?=[\\s\\S]*?(?:").append(p.linkml).append("))"))
+      sb.toString
+    }
 
   /** A pattern as a Python string literal: raw if possible. */
   def pyPattern(pattern: String): String = {

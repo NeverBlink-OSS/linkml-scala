@@ -18,8 +18,9 @@ skips = [
     "lengths",
     "lengthsNarrowing",
     # Python writes a union_of type as a string, and lets a child type, a slot and a child slot
-    # widen bounds
+    # widen bounds and patterns
     "boundsNarrowing",
+    "patternsNarrowing",
 ]
 
 if __name__ == "__main__":

@@ -108,6 +108,30 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       choice.map(_.maxLength) shouldBe List(Some(4), None)
     }
 
+    "write the nearest pattern as pattern, and each other one in allOf" in {
+      // Adds to the `types` of the shared part.
+      given SchemaView = load(s"""$schemaShared
+           |  Code:
+           |    typeof: string
+           |    pattern: '^[A-Z]{3}$$'
+           |classes:
+           |  C:
+           |    attributes:
+           |      one:
+           |        range: Code
+           |      two:
+           |        range: Code
+           |        pattern: '^A'
+           |""".stripMargin)
+
+      val c = JsonSchemaGenerator().generate().$defs.get("C").asInstanceOf[Schema]
+      def property(name: String) = c.properties(name).asInstanceOf[Schema]
+      property("one").pattern shouldBe Some(Pattern("^[A-Z]{3}$"))
+      property("one").allOf shouldBe empty
+      property("two").pattern shouldBe Some(Pattern("^A"))
+      property("two").allOf shouldBe List(Schema(pattern = Some(Pattern("^[A-Z]{3}$"))))
+    }
+
     "write minLength and maxLength only for values that are text" in {
       // Adds to the `types` of the shared part.
       given SchemaView = load(s"""$schemaShared

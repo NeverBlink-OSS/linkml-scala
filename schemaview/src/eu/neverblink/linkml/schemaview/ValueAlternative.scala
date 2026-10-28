@@ -1,7 +1,15 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.metamodel.{SlotExpression, TypeDefinition}
+import eu.neverblink.linkml.metamodel.{
+  AnonymousSlotExpression,
+  AnonymousTypeExpression,
+  SlotExpression,
+  TypeExpression,
+}
 import eu.neverblink.linkml.runtime.*
+import eu.neverblink.linkml.runtime.FastUtils.*
+
+import scala.collection.mutable
 
 /** One type that a value can take, with the constraints that apply to values of that type.
   *
@@ -13,7 +21,7 @@ import eu.neverblink.linkml.runtime.*
   * type:
   *   - all value bounds hold: the largest `minimum_value` and the smallest `maximum_value`;
   *   - all lengths hold: the largest `minimum_length` and the smallest `maximum_length`;
-  *   - other constraints come from the nearest place that sets them.
+  *   - all patterns hold, so [[patterns]] lists each of them once, nearest first.
   *
   * A constraint is kept only if it applies to values of [[typeView]]:
   *   - `pattern` applies to anything but numbers and booleans;
@@ -23,10 +31,12 @@ import eu.neverblink.linkml.runtime.*
   *
   * @param typeView
   *   The type of the values, never a union
+  * @param patterns
+  *   The patterns that a value must match, nearest first
   */
 final case class ValueAlternative private (
     typeView: TypeView,
-    pattern: Option[LinkmlPattern],
+    patterns: Seq[LinkmlPattern],
     minimumValue: Option[LinkmlAny],
     maximumValue: Option[LinkmlAny],
     minimumLength: Option[Int],
@@ -35,33 +45,48 @@ final case class ValueAlternative private (
 
   /** Whether the alternative has any constraints. */
   def hasConstraints: Boolean =
-    pattern.isDefined || minimumValue.isDefined || maximumValue.isDefined ||
+    patterns.nonEmpty || minimumValue.isDefined || maximumValue.isDefined ||
       minimumLength.isDefined || maximumLength.isDefined
 
   /** This alternative with the constraints of a slot or a slot expression, which are nearer than
-    * the ones it has.
+    * the ones it has. The patterns also come from `all_of`, see [[ValueAlternative.patternsOf]].
     */
   def withConstraintsOf(expression: SlotExpression): ValueAlternative =
+    withConstraints(ValueAlternative.patternsOf(expression), expression)
+
+  /** Like [[withConstraintsOf]], but without the patterns of `all_of`. For a generator that writes
+    * `all_of` itself.
+    */
+  def withOwnConstraintsOf(expression: SlotExpression): ValueAlternative =
+    withConstraints(expression.pattern.foldFast(Nil)(p => LinkmlPattern(p) :: Nil), expression)
+
+  /** This alternative with the constraints of a union type, which are nearer than the ones it has.
+    */
+  private[schemaview] def withConstraintsOfUnion(union: TypeView): ValueAlternative = {
+    val d = union.derivedType
     withConstraints(
-      expression.pattern,
+      union.patterns,
+      d.minimumValue,
+      d.maximumValue,
+      d.minimumLength,
+      d.maximumLength,
+    )
+  }
+
+  private def withConstraints(
+      patterns: Seq[LinkmlPattern],
+      expression: SlotExpression,
+  ): ValueAlternative =
+    withConstraints(
+      patterns,
       expression.minimumValue,
       expression.maximumValue,
       expression.minimumLength,
       expression.maximumLength,
     )
 
-  /** This alternative with the constraints of a type, which are nearer than the ones it has. */
-  private[schemaview] def withConstraintsOf(definition: TypeDefinition): ValueAlternative =
-    withConstraints(
-      definition.pattern,
-      definition.minimumValue,
-      definition.maximumValue,
-      definition.minimumLength,
-      definition.maximumLength,
-    )
-
   private def withConstraints(
-      pattern: Option[String],
+      patterns: Seq[LinkmlPattern],
       minimumValue: Option[LinkmlAny],
       maximumValue: Option[LinkmlAny],
       minimumLength: Option[Int],
@@ -69,9 +94,7 @@ final case class ValueAlternative private (
   ): ValueAlternative =
     ValueAlternative(
       typeView,
-      LinkmlPattern.option(
-        combineOption(pattern, LinkmlPattern.written(this.pattern), combinePattern),
-      ),
+      ValueAlternative.joinPatterns(patterns, this.patterns),
       combineOption(minimumValue, this.minimumValue, combineMin),
       combineOption(maximumValue, this.maximumValue, combineMax),
       combineOption(minimumLength, this.minimumLength, combineMinLength),
@@ -88,7 +111,7 @@ object ValueAlternative {
     val d = typeView.derivedType
     ValueAlternative(
       typeView,
-      LinkmlPattern.option(d.pattern),
+      typeView.patterns,
       d.minimumValue,
       d.maximumValue,
       d.minimumLength,
@@ -96,10 +119,62 @@ object ValueAlternative {
     )
   }
 
+  /** The patterns of a slot or a slot expression: its own `pattern`, then the ones of the `all_of`
+    * members that set nothing but a `pattern`. A value must match all of them. A derived slot keeps
+    * the patterns of its parents this way, as it has only one `pattern`.
+    */
+  def patternsOf(expression: SlotExpression): Seq[LinkmlPattern] =
+    patternsOf(
+      expression.pattern,
+      expression.allOf,
+      m => if (m == AnonymousSlotExpression(pattern = m.pattern)) m.pattern else None,
+    )
+
+  /** The patterns of a type, the same way as for a slot. */
+  def patternsOf(expression: TypeExpression): Seq[LinkmlPattern] =
+    patternsOf(
+      expression.pattern,
+      expression.allOf,
+      m => if (m == AnonymousTypeExpression(pattern = m.pattern)) m.pattern else None,
+    )
+
+  /** @param onlyPattern
+    *   The pattern of an `all_of` member, if it sets nothing else
+    */
+  private def patternsOf[T](
+      pattern: Option[String],
+      allOf: Seq[T],
+      onlyPattern: T => Option[String],
+  ): Seq[LinkmlPattern] =
+    if (allOf.isEmpty) pattern.foldFast(Nil)(p => LinkmlPattern(p) :: Nil)
+    else {
+      val b = Vector.newBuilder[LinkmlPattern]
+      val seen = mutable.HashSet.empty[String]
+      pattern.foreachFast(p => if (seen.add(p)) b.addOne(LinkmlPattern(p)))
+      allOf.foreach(m =>
+        onlyPattern(m).foreachFast(p => if (seen.add(p)) b.addOne(LinkmlPattern(p))),
+      )
+      b.result()
+    }
+
+  /** The patterns of `nearer`, then the ones of `farther` that are not in `nearer`. */
+  private[schemaview] def joinPatterns(
+      nearer: Seq[LinkmlPattern],
+      farther: Seq[LinkmlPattern],
+  ): Seq[LinkmlPattern] =
+    if (farther.isEmpty) nearer
+    else if (nearer.isEmpty) farther
+    else {
+      val b = Vector.newBuilder[LinkmlPattern]
+      b.addAll(nearer)
+      farther.foreach(p => if (!nearer.contains(p)) b.addOne(p))
+      b.result()
+    }
+
   /** Keeps only the constraints that apply to values of `typeView`. */
   private def apply(
       typeView: TypeView,
-      pattern: Option[LinkmlPattern],
+      patterns: Seq[LinkmlPattern],
       minimumValue: Option[LinkmlAny],
       maximumValue: Option[LinkmlAny],
       minimumLength: Option[Int],
@@ -110,7 +185,7 @@ object ValueAlternative {
     val text = isText(runtimeType)
     new ValueAlternative(
       typeView,
-      if (isNumberOrBoolean(runtimeType)) None else pattern,
+      if (isNumberOrBoolean(runtimeType)) Nil else patterns,
       if (ordered) minimumValue else None,
       if (ordered) maximumValue else None,
       if (text) minimumLength else None,

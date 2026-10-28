@@ -271,8 +271,17 @@ object OssieImporter {
         identifier = identifier,
         minimumValue = constraints.minimumValue,
         maximumValue = constraints.maximumValue,
-        pattern = constraints.pattern,
+        // A slot has one `pattern`, so the others go to `all_of`
+        pattern = constraints.patterns.headOption,
+        allOf = otherPatterns(constraints, p => AnonymousSlotExpression(pattern = Some(p))),
       )
+    }
+
+    /** The patterns of `constraints` after the first one, each wrapped by `wrap`. */
+    private def otherPatterns[T](constraints: Constraints, wrap: String => T): Seq[T] = {
+      val b = Vector.newBuilder[T]
+      constraints.patterns.iterator.drop(1).foreach(p => b.addOne(wrap(p)))
+      b.result()
     }
 
     private def enumOf(concept: Concept): EnumDefinition =
@@ -296,7 +305,9 @@ object OssieImporter {
           Some(Reference(concept.extendsConcepts.headOption.map(baseOf).getOrElse("string"))),
         minimumValue = constraints.minimumValue,
         maximumValue = constraints.maximumValue,
-        pattern = constraints.pattern,
+        // A type has one `pattern`, so the others go to `all_of`
+        pattern = constraints.patterns.headOption,
+        allOf = otherPatterns(constraints, p => AnonymousTypeExpression(pattern = Some(p))),
       )
     }
 

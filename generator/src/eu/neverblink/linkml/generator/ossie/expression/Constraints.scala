@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.LinkmlAny
 private[ossie] final case class Constraints(
     minimumValue: Option[LinkmlAny] = None,
     maximumValue: Option[LinkmlAny] = None,
-    pattern: Option[String] = None,
+    patterns: Seq[String] = Nil,
 ) {
 
   /** As expressions over [[ref]]. A bound that cannot be written as an Ossie value is left out. */
@@ -19,7 +19,7 @@ private[ossie] final case class Constraints(
     val out = Seq.newBuilder[Expression]
     minimumValue.flatMap(Literal.fromLinkml).foreachFast(v => out += AtLeast(ref, v))
     maximumValue.flatMap(Literal.fromLinkml).foreachFast(v => out += AtMost(ref, v))
-    pattern.foreachFast(p => out += RegexpLike(ref, Literal.Text(p)))
+    patterns.foreach(p => out += RegexpLike(ref, Literal.Text(p)))
     out.result()
   }
 }
@@ -36,7 +36,7 @@ private[ossie] object Constraints {
       expression match {
         case AtLeast(_, v) => acc.copy(minimumValue = Some(v.toLinkml))
         case AtMost(_, v) => acc.copy(maximumValue = Some(v.toLinkml))
-        case RegexpLike(_, p) => acc.copy(pattern = Some(p.value))
+        case RegexpLike(_, p) => acc.copy(patterns = acc.patterns :+ p.value)
         case _ => acc
       }
     }

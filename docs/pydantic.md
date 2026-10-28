@@ -8,7 +8,8 @@ generated JSON Schema, and they check the schema while loading. The output is a 
   the standard library.
 - Loading checks the data the way the JSON Schema does: required slots, types, enums, patterns,
   minimum and maximum values, minimum and maximum lengths of strings, and cardinality. Unknown
-  keys are rejected.
+  keys are rejected. When a value must match several patterns, they are joined into one with a
+  lookahead for each, as `Field` takes only one.
 - Dumping gives back the JSON you loaded, with the exceptions listed under
   [Limitations](#limitations).
 

@@ -33,13 +33,13 @@ These features are supported in LinkML-Scala but not in LinkML-Python (or are su
   - JSON Schema, Pydantic, SHACL, OWL, Scala and TypeScript generators support type unions.
   - The constraints of a union and of the slot that uses it apply to each member they fit:
     `pattern` to anything but numbers and booleans, `minimum_value` and `maximum_value` to numbers,
-    dates and times, and lengths to text. All value bounds and lengths hold, see
-    [Value bounds](#value-bounds) and [Lengths](#lengths). For a pattern, the nearest one has
-    precedence: the slot, then each union on the way to the member, then the member type.
+    dates and times, and lengths to text. All of them hold, see [Value bounds](#value-bounds),
+    [Lengths](#lengths) and [Patterns](#patterns).
   - Some constraints may still be lost, depending on the expressiveness of the target language:
     - Frictionless has one type per column. A union is written as that type only if all its
       members give the same column, such as `string` for `string | ncname`. Otherwise it is an
       `any` column without value constraints.
+    - Frictionless has one pattern per column, so it gets only the nearest one.
     - TypeScript types can't express patterns and value bounds.
     - Ossie writes a union range as `Any`, without the slot's constraints.
 - Support for [language strings](#language-strings)
@@ -52,6 +52,7 @@ These features work differently in LinkML-Scala than in the LinkML specification
 
 - [Inherited boolean expressions](#inherited-boolean-expressions): a subclass accepts only values that its parent classes and mixins accept
 - [Lengths](#lengths): a length can narrow the values of a type, a union or a parent, but not widen them, and a child slot keeps the lengths of its parent slot
+- [Patterns](#patterns): a value must match the patterns of a type, a union and each parent, not only the nearest one
 
 These features follow the LinkML specification, while LinkML-Python works differently:
 
@@ -96,6 +97,14 @@ The LinkML specification keeps the nearest length, and doesn't pass lengths from
 LinkML-Python 1.12.1 has no lengths.
 
 See [Lengths](210-slot-usage-inheritance.md#lengths) for details.
+
+## Patterns
+
+When a slot gets a `pattern` from more than one place, LinkML-Scala requires all of them.
+The derived slot keeps the nearest one in `pattern` and the others in `all_of`.
+The LinkML specification doesn't say how to combine patterns, and LinkML-Python 1.12.1 takes the nearest one.
+
+See [Patterns](210-slot-usage-inheritance.md#patterns) for details and an example.
 
 ## Imports
 
