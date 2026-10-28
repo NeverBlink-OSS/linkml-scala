@@ -1,10 +1,10 @@
-id: https://linkml.neverblink.eu/model/issue-types
+id: https://linkml.ohi.dev/model/issue-types
 name: issue-types
 title: LinkML schema validation issue types
 license: https://creativecommons.org/publicdomain/zero/1.0/
 prefixes:
-  report: https://linkml.neverblink.eu/model/validation-report#
-  issue: https://linkml.neverblink.eu/model/issue-types#
+  report: https://linkml.ohi.dev/model/validation-report#
+  issue: https://linkml.ohi.dev/model/issue-types#
 default_prefix: issue
 imports:
   - validation-report

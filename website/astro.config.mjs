@@ -9,11 +9,11 @@ const repoUrl = 'https://github.com/NeverBlink-OSS/linkml-scala';
 
 const sidebar = [
   { label: 'Overview', link: '/' },
-  { label: 'Playground', link: 'https://linkml.neverblink.eu/playground/', attrs: { target: '_blank' } },
   { label: 'Generators and importers', items: ['owl', 'pydantic', 'typescript', 'ossie-mapping', 'docs'] },
   { label: 'Schemas', items: ['curies', 'import-maps', 'slot-usage-inheritance'] },
-  { label: 'Using LinkML-Scala', items: ['python-bindings', 'verifying-downloads'] },
+  { label: 'Using ohi LinkML', items: ['python-bindings', 'verifying-downloads'] },
   { label: 'Reference', items: ['implementation-differences', 'benchmarks'] },
+  { label: 'Playground', link: 'https://linkml.ohi.dev/playground/', attrs: { target: '_blank' } },
 ];
 
 // Every page in docs/ has to be in the sidebar, or it could only be found through search
@@ -45,17 +45,21 @@ const docsSync = {
 };
 
 export default defineConfig({
-  site: 'https://linkml.neverblink.eu',
+  site: 'https://linkml.ohi.dev',
   base: '/docs',
   trailingSlash: 'always',
   integrations: [
     docsSync,
     starlight({
-      title: 'LinkML-Scala',
-      description: 'Documentation for LinkML-Scala, a fast LinkML implementation for the JVM, browsers and native code.',
-      logo: { light: './src/assets/logo-light.svg', dark: './src/assets/logo-dark.svg' },
+      title: 'ohi LinkML',
+      description: 'Documentation for ohi LinkML, a LinkML implementation for the JVM, browsers, Python and native code.',
       favicon: '/favicon.svg',
       customCss: ['./src/styles/theme.css'],
+      components: {
+        SiteTitle: './src/components/SiteTitle.astro',
+        ThemeProvider: './src/components/ThemeProvider.astro',
+        ThemeSelect: './src/components/ThemeSelect.astro',
+      },
       social: [
         { icon: 'github', label: 'GitHub', href: repoUrl },
         { icon: 'discord', label: 'Discord', href: 'https://discord.gg/HGksVAJ6ss' },

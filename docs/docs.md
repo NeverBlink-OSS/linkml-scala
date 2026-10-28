@@ -54,7 +54,7 @@ The generator is also available from JavaScript (`docs()`), Python (`Schema.docs
 (`linkml_docs`). They return the pages as a map from file name to content. With the `singleFile`
 option (`single_file` in Python), the map has only `docs.md`, with all pages as one document.
 
-The [playground](https://linkml.neverblink.eu/playground/) has a Documentation target. It shows
+The [playground](https://linkml.ohi.dev/playground/) has a Documentation target. It shows
 the documentation as one page, as GitHub would show it. The Code tab shows the Markdown.
 
 ## What the pages show

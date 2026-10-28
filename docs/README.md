@@ -4,7 +4,7 @@
 It validates LinkML schemas and generates JSON Schema, SHACL, OWL, Pydantic, TypeScript and more from them.
 It runs as a native command-line tool, on the JVM, in Node.js and the browser, and from Python, C, C++ and Rust.
 
-To try it without installing anything, open the [playground](https://linkml.neverblink.eu/playground/).
+To try it without installing anything, open the [playground](https://linkml.ohi.dev/playground/).
 To install the CLI or the libraries, see the [README](../README.md#cli-tool-installation).
 
 ## Generators and importers

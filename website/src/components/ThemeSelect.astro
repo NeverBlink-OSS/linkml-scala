@@ -1,0 +1,50 @@
+---
+// Replaces Starlight's theme select with the playground's light/dark toggle (see ThemeProvider.astro)
+---
+
+<button class="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
+  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66 4.93 19.07M19.07 4.93l-1.41 1.41" /></svg>
+</button>
+
+<script>
+  // The header and the mobile menu each have a toggle
+  for (const button of document.querySelectorAll('.theme-toggle')) {
+    button.addEventListener('click', () => {
+      const next = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+      document.documentElement.dataset.theme = next;
+      try {
+        localStorage.setItem('linkml-ui-theme', next);
+      } catch (e) {}
+    });
+  }
+</script>
+
+<style>
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--sl-color-hairline-light);
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--sl-color-gray-3);
+    cursor: pointer;
+  }
+  .theme-toggle:hover {
+    border-color: var(--sl-color-gray-4);
+    color: var(--sl-color-white);
+  }
+  svg {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  /* The moon in dark mode and the sun in light mode, as in the playground */
+  :global(:root[data-theme='light']) .icon-moon,
+  :global(:root:not([data-theme='light'])) .icon-sun {
+    display: none;
+  }
+</style>

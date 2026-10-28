@@ -41,6 +41,7 @@ ui/dist/
 # Docs site: the pages are copied from docs/ by website/sync-docs.mjs
 /website/src/content/docs/
 /website/public/favicon.svg
+/website/public/fonts/
 /website/dist/
 /website/.astro/
 /ohi/docs/dist/

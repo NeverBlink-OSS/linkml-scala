@@ -1,4 +1,4 @@
-id: https://linkml.neverblink.eu/model/build-info
+id: https://linkml.ohi.dev/model/build-info
 name: build-info
 title: Schema for LinkML-Scala build metadata
 description: >-
@@ -7,7 +7,7 @@ description: >-
   Python API.
 license: https://creativecommons.org/publicdomain/zero/1.0/
 prefixes:
-  build: https://linkml.neverblink.eu/model/build-info#
+  build: https://linkml.ohi.dev/model/build-info#
 default_prefix: build
 imports:
   - linkml:types

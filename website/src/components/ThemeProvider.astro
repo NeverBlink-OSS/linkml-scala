@@ -1,0 +1,24 @@
+---
+// Replaces Starlight's theme provider so the docs, the landing page and the playground share one
+// theme. They all store it under `linkml-ui-theme`, and default to dark.
+---
+
+{/* Inlined so the page doesn't flash the wrong theme first */}
+<script is:inline>
+  window.StarlightThemeProvider = (() => {
+    let stored = null;
+    try {
+      stored = localStorage.getItem('linkml-ui-theme');
+    } catch (e) {}
+    document.documentElement.dataset.theme = stored === 'light' ? 'light' : 'dark';
+    // Called by Starlight's theme select, which ThemeSelect.astro replaces
+    return { updatePickers() {} };
+  })();
+</script>
+
+{/* The page color before the stylesheet applies, so moving between pages doesn't flash white.
+    Same colors as --sl-color-black in theme.css. */}
+<style is:inline>
+  html { background: #0a0b0e; color-scheme: dark; }
+  html[data-theme='light'] { background: #ffffff; color-scheme: light; }
+</style>

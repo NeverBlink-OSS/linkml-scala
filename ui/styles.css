@@ -1,23 +1,43 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt) */
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'LT Superior'; src: url('fonts/LTSuperior-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Red Hat Mono'; src: url('fonts/RedHatMono-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+
+/* Keep showing the old page until the next one is ready, so moving between pages doesn't flash.
+   Pages switch at once, with no animation. */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+
+/* Colors follow the ohi.dev tokens */
 :root {
   color-scheme: dark;
 
-  --bg: #17233f;
-  --surface: #1c2c4c;
-  --surface-2: #24365a;
-  --surface-3: #121d36;
+  /* ohi.dev's own surfaces are only a few percent apart, which is fine for its flat pages but not
+     for panels on a page, so the surfaces here are a few steps lighter */
+  --bg: #0a0b0e;
+  --surface: #15181e;
+  --surface-2: #1e222a;
+  --surface-3: #0e1014;
 
   --text: #e5e4e4;
-  --text-secondary: #a9b3cc;
-  --text-muted: #909bb8;
+  --text-secondary: #a6acb8;
+  --text-muted: #959cab;
   --text-on-accent: #13203a;
 
-  --border: #304368;
-  --border-subtle: #243254;
+  /* As on ohi.dev, controls get a stronger border than containers and dividers, but a softer one
+     than ohi.dev's, since the playground has many controls next to each other */
+  --border: #2c323e;
+  --border-subtle: #22262f;
+  --border-strong: #4c5363;
 
   --accent: #bfcdea;
-  --accent-strong: #9db3dd;
+  --accent-strong: #8ea8e8;
   --accent-soft: rgba(191, 205, 234, 0.14);
   --accent-border: rgba(191, 205, 234, 0.4);
 
@@ -35,15 +55,20 @@
   --brand-strong: #8aab2a;
   --brand-ink: #13203a;
 
-  --tag-bg: #28395e;
-  --tag-text: #c7cee0;
+  --tag-bg: #172036;
+  --tag-text: #bfcdea;
+
+  /* The waving hand in the header */
+  --hand-fill: #9fc131;
+  --hand-line: #13203a;
+  --hand-wave: #8ea8e8;
 
   --radius: 8px;
   --radius-sm: 5px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.4), 0 1px 2px rgba(0, 0, 0, 0.3);
-  --code-font: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, ui-monospace, monospace;
+  --code-font: 'Red Hat Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, ui-monospace, monospace;
 
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  font-family: 'LT Superior', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
@@ -52,18 +77,19 @@
 :root[data-theme='light'] {
   color-scheme: light;
 
-  --bg: #fafafa;
+  --bg: #f5f7fb;
   --surface: #ffffff;
-  --surface-2: #f0f0ef;
-  --surface-3: #f5f5f4;
+  --surface-2: #eff2fa;
+  --surface-3: #f5f7fb;
 
   --text: #13203a;
-  --text-secondary: #4f5872;
+  --text-secondary: #545e73;
   --text-muted: #666e83;
   --text-on-accent: #ffffff;
 
-  --border: #e1ded8;
-  --border-subtle: #ececea;
+  --border: #e1e5ee;
+  --border-subtle: #eceff5;
+  --border-strong: #bcc2cf;
 
   --accent: #3154a2;
   --accent-strong: #24407f;
@@ -80,12 +106,16 @@
   --orange: #a15319;
   --blue: #3367d6;
 
-  --brand: #b7e425;
-  --brand-strong: #a1c820;
+  --brand: #9fc131;
+  --brand-strong: #8aab2a;
   --brand-ink: #13203a;
 
-  --tag-bg: #e8e6e2;
-  --tag-text: #4f5872;
+  --tag-bg: #eff2fa;
+  --tag-text: #3154a2;
+
+  --hand-fill: #9fc131;
+  --hand-line: #13203a;
+  --hand-wave: #3154a2;
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
 }
@@ -113,10 +143,17 @@ body { background: var(--bg); }
 }
 
 .brand { display: flex; align-items: center; gap: 12px; }
-.brand-mark { width: 30px; height: 30px; flex-shrink: 0; }
+.brand-home { display: flex; flex-shrink: 0; }
+.brand-mark { width: 30px; height: 30px; }
+.brand-mark .hand-fill { fill: var(--hand-fill); }
+.brand-mark .hand-line { fill: var(--hand-line); }
+.brand-mark .hand-wave { fill: var(--hand-wave); }
 .brand-text { display: flex; flex-direction: column; line-height: 1.2; }
-.brand-title { font-size: 15px; font-weight: 700; letter-spacing: 0.01em; color: var(--text); }
-.brand-sub { font-size: 11.5px; color: var(--text-muted); }
+.brand-title { align-self: flex-start; font-size: 16px; font-weight: 500; letter-spacing: -0.01em; color: var(--text); text-decoration: none; }
+.brand-title b { font-weight: 700; }
+/* "LinkML" in the accent color, as on the landing page and in the docs */
+.brand-title span { color: var(--accent); }
+.brand-sub { font-size: 12.5px; color: var(--text-secondary); }
 
 .header-actions { display: flex; align-items: center; gap: 10px; }
 
@@ -129,7 +166,7 @@ body { background: var(--bg); }
   flex-shrink: 0;
   gap: 9px;
   padding: 5px 11px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text-secondary);
@@ -163,7 +200,7 @@ body { background: var(--bg); }
 .help-toggle {
   width: 40px;
   height: 40px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-2);
   color: var(--text);
 }
@@ -284,7 +321,7 @@ body { background: var(--bg); }
   font-size: 13px;
   padding: 8px 10px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-2);
   color: var(--text);
   outline: none;
@@ -430,7 +467,7 @@ body { background: var(--bg); }
   display: flex;
   gap: 2px;
   padding: 2px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
 }
@@ -469,7 +506,7 @@ body { background: var(--bg); }
   text-align: left;
   /* Room on the right for the caret, which sits over the button. */
   padding: 7px 30px 7px 11px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--text);
@@ -511,7 +548,7 @@ body { background: var(--bg); }
   font: inherit;
   font-size: 13px;
   padding: 6px 10px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: calc(var(--radius-sm) - 2px);
   background: var(--surface-2);
   color: var(--text);
@@ -574,7 +611,7 @@ body { background: var(--bg); }
   font-size: 12.5px;
   padding: 5px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface-2);
   color: var(--text);
   outline: none;
@@ -619,8 +656,9 @@ body { background: var(--bg); }
 .btn-primary { background: var(--brand); color: var(--brand-ink); }
 .btn-primary:hover:not(:disabled) { background: var(--brand-strong); }
 
-.btn-secondary { background: var(--tag-bg); color: var(--text); }
-.btn-secondary:hover:not(:disabled) { background: var(--surface-2); }
+/* The outline is a shadow, so it adds no size to the button */
+.btn-secondary { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--border-strong); }
+.btn-secondary:hover:not(:disabled) { background: var(--tag-bg); }
 
 /* Momentary confirmation (see flashDone). Takes over the background too, so it stays legible on
    btn-primary, whose brand green is close enough to --success to swallow it. Doubled class and an
@@ -886,7 +924,7 @@ body { background: var(--bg); }
   .split { gap: 8px; }
   .panel { border-radius: 0; }
 
-  .brand-mark { display: none; }
+  .brand-home { display: none; }
   .brand { gap: 8px; }
   .header-actions { gap: 8px; }
   /* The repo name and its star/fork counts say the same thing in less width. */

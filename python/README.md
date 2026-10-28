@@ -65,7 +65,7 @@ To build the package from source (sdist) you must have Java 17+ and Clang instal
   – all the options, and how the C ABI underneath works
 - [LinkML-Scala README](https://github.com/NeverBlink-OSS/linkml-scala) – the CLI, the JVM library
   and the JavaScript library
-- [Online playground](https://linkml.neverblink.eu/playground/)
+- [Online playground](https://linkml.ohi.dev/playground/)
 
 ## License
 

@@ -1,0 +1,50 @@
+---
+// Replaces Starlight's site title: the hand and the wordmark, as on the landing page, which they
+// link to, followed by a link to the docs home.
+import Hand from './Hand.astro';
+
+const { siteTitleHref } = Astro.locals.starlightRoute;
+---
+
+<span class="site-title sl-flex">
+  <a class="home sl-flex" href="/" translate="no">
+    <Hand size={28} />
+    <span><b>ohi</b> <span class="accent">LinkML</span></span>
+  </a>
+  <a class="docs" href={siteTitleHref}>Docs</a>
+</span>
+
+<style>
+  .site-title {
+    align-items: center;
+    gap: 0.875rem;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  a {
+    text-decoration: none;
+  }
+  .home {
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--sl-color-white);
+  }
+  .home b {
+    font-weight: 700;
+  }
+  .accent {
+    color: var(--sl-color-text-accent);
+  }
+  .docs {
+    padding-left: 0.875rem;
+    border-left: 1px solid var(--sl-color-hairline-light);
+    font-size: var(--sl-text-base);
+    color: var(--sl-color-gray-3);
+  }
+  .docs:hover {
+    color: var(--sl-color-white);
+  }
+</style>
