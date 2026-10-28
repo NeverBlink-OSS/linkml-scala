@@ -119,8 +119,9 @@ see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/m
 
 A generator or importer that can't convert a schema or ontology, for a reason you can fix, throws
 an `Error` with an `issue` property. It is a `SchemaConversionError` issue, in the same shape as the
-issues of a validation report, and its `message` says what is wrong. Any other error is a bug.
-`linkml`, `ossie`, `owl`, `fromOssie` and `fromOwl` can throw it.
+issues of a validation report, and its `message` says what is wrong. `linkml`, `ossie`, `owl`,
+`fromOssie` and `fromOwl` can throw it. Any other error is a wrong argument, such as an unknown
+format or metadata profile, or a bug.
 
 ```js
 import { LinkML } from "@neverblink/linkml";
@@ -129,7 +130,7 @@ try {
   LinkML.fromOssie("- not\n- an ontology\n");
   throw new Error("fromOssie should have failed");
 } catch (e) {
-  if (e.issue?.issue_type !== "SchemaConversionError") throw e; // a bug, not a problem with the input
+  if (e.issue?.issue_type !== "SchemaConversionError") throw e; // a wrong argument or a bug
   console.log(e.issue.message); // Not a readable Ossie ontology: ...
 }
 ```
