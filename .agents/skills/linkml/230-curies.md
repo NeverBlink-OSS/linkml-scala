@@ -34,7 +34,7 @@ A URI is written as a CURIE with the prefix of the longest namespace it starts w
 That CURIE is only used if its local part is not empty, doesn't start with `//` (as `ex://host/a` would look like a URL), and reads back as the same URI.
 Otherwise, the next longest namespace is tried, and if none fits, the URI is written in full.
 If two prefixes have the same namespace, the one with the highest precedence is used, and then the one declared first.
-A URI written in full that would be read back as a CURIE, such as the URI `ex:Person` when `ex` is a declared prefix, can't be written, so writing fails with an error that names the URI and the prefix.
+A URI written in full that would be read back as a CURIE, such as the URI `ex:Person` when `ex` is a declared prefix, or `http://example.org/a` when `http` is, can't be written, so writing fails with an error that names the URI and the prefix.
 Writing uses the prefixes of the root schema, so this happens for a value in an imported schema that doesn't declare the prefix.
 `validate` warns about such a value with `UnwritableUri`, such as `URI 'ex:Imported' at /classes/Imported/class_uri/ can't be written, as 'ex' is a declared prefix of the root schema`.
 

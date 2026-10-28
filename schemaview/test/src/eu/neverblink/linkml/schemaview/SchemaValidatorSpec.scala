@@ -965,6 +965,40 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "report a URI with a declared scheme that would be read back as a CURIE" in {
+      // The root declares `http`, so `generate linkml` would write `http://example.org/A` from
+      // `other`, which doesn't, and it would be read back as `urn:other://example.org/A`
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported:
+          |    class_uri: http://example.org/A
+          |""".stripMargin
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  http: "urn:other:"
+          |imports:
+          |  - other
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter("root.yaml" -> root, "other.yaml" -> other),
+        ),
+      )
+
+      sv.lintProblems.collect { case p: UnwritableUri => p.infer().message.get } shouldBe Seq(
+        "URI 'http://example.org/A' at /classes/Imported/class_uri/ can't be written, as 'http' " +
+          "is a declared prefix of the root schema",
+      )
+    }
+
     "report an equals_string that should be a URI, but isn't" in {
       val schemaYaml =
         s"""$schemaShared

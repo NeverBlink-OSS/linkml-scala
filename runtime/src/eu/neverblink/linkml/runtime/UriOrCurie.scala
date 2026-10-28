@@ -43,12 +43,18 @@ object UriOrCurie {
       val curie = prefixes.compactOrNull(uri)
       if (curie ne null) curie
       else {
-        if (uri.indexOf(':') > 0 && (prefixes.expandOrNull(uri) ne null))
-          throw readBackAsCurieError(uri)
+        if (readsBackAsCurie(uri, prefixes)) throw readBackAsCurieError(uri)
         uri
       }
     case _ => x.original
   }
+
+  /** Check if [[uri]], written in full, would be read back as a CURIE that [[prefixes]] expand, as
+    * the text before its first colon is a declared prefix. This is the URI `ex:Person` when `ex` is
+    * a declared prefix, but also `http://example.org/a` when `http` is.
+    */
+  def readsBackAsCurie(uri: String, prefixes: PrefixMap): Boolean =
+    uri.indexOf(':') > 0 && (prefixes.expandOrNull(uri) ne null)
 
   /** The error for a URI that can't be written, as its text would be read back as a CURIE with a
     * declared prefix, such as the URI `ex:Person` when `ex` is a declared prefix.

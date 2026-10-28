@@ -554,7 +554,7 @@ export interface UnknownStringReference {
   severity: IssueSeverity;
 }
 
-/** A URI value has the shape of a CURIE whose prefix is declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */
+/** The text before the first colon of a URI value is a prefix declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`, or `http://example.org/a` when the root schema declares `http`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */
 export interface UnwritableUri {
   /** details: Longer, human-readable message describing the issue in more detail. */
   details?: string;

@@ -299,33 +299,31 @@ private object MacroValidator {
         }
     }
 
-  /** Check a valid [[Uri]] with the shape of a CURIE, such as `acme:Person`.
+  /** Check a valid [[Uri]].
     *
-    * Its prefix isn't declared, unless it starts with the namespace of a declared prefix. Then it
-    * was most likely expanded from that prefix, such as `did:web:example.com` from
-    * `web:example.com` with `web: did:web:`, and is written back as that CURIE.
+    * One with the shape of a CURIE, such as `acme:Person`, has a prefix that isn't declared, unless
+    * it starts with the namespace of a declared prefix. Then it was most likely expanded from that
+    * prefix, such as `did:web:example.com` from `web:example.com` with `web: did:web:`, and is
+    * written back as that CURIE.
     *
-    * It can't be written if the root schema declares its prefix and can't compact it, as writing
-    * the schema uses the prefixes of the root schema. This happens for a value from an imported
-    * schema that doesn't declare the prefix.
+    * Any URI can't be written if the root schema can't compact it and would read it back as a
+    * CURIE, as writing the schema uses the prefixes of the root schema. This happens for a value
+    * from an imported schema that doesn't declare the prefix, such as `ex:Imported`, or
+    * `http://example.org/a` when the root schema declares `http`.
     */
   private def validUri(u: Uri)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult = {
     val uri = u.original
-    if (!UriOrCurie.isCurie(uri)) ValidatorResult.ok
-    else {
-      val prefix = uri.substring(0, uri.indexOf(':'))
-      val root = sv.rootPrefixes
-      val undeclared =
-        if (vc.prefixes.compactOrNull(uri) eq null)
-          Seq(UndeclaredPrefixValue("", u, prefix, vc.fromSchema))
-        else Nil
-      val unwritable =
-        if ((root.namespaceOrNull(prefix) ne null) && (root.compactOrNull(uri) eq null))
-          Seq(UnwritableUriValue("", u, prefix, vc.fromSchema))
-        else Nil
-      if (undeclared.isEmpty && unwritable.isEmpty) ValidatorResult.ok
-      else ValidatorResult(undeclaredPrefixes = undeclared, unwritableUris = unwritable)
-    }
+    val root = sv.rootPrefixes
+    val undeclared =
+      if (UriOrCurie.isCurie(uri) && (vc.prefixes.compactOrNull(uri) eq null))
+        Seq(UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema))
+      else Nil
+    val unwritable =
+      if (UriOrCurie.readsBackAsCurie(uri, root) && (root.compactOrNull(uri) eq null))
+        Seq(UnwritableUriValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema))
+      else Nil
+    if (undeclared.isEmpty && unwritable.isEmpty) ValidatorResult.ok
+    else ValidatorResult(undeclaredPrefixes = undeclared, unwritableUris = unwritable)
   }
 
   private def formatRangeType(el: Element): String = {
