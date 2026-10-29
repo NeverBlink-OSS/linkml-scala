@@ -18,12 +18,8 @@ Omitting the version selects the release most recently
 published to the Hub. Supported formats are
 `owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml` and `ossie-yaml`.
 
-An explicit `--format` requires that format. Without it, the commands inspect the exact artifacts
-selected in `ohi.yaml`. If all selections share a format, they prefer it for the requested release.
-If the declaration is absent, empty or mixes formats, they use `linkml-yaml`. If the preferred format
-is absent from the requested release, they try `linkml-yaml` in that release. The first available
-format must have exactly one artifact. Multiple matches require an exact file URL. If neither
-format is available, retrieval fails. ohi does not choose an older release.
+Without `--format`, ohi infers the common format from `ohi.yaml`, falling back to `linkml-yaml`.
+An explicit `--format` requires that format.
 
 `get` reads the declaration in the current directory. `add` uses its `--project` directory.
 `--to` does not affect format selection. A malformed declaration or failed inspection produces an
