@@ -145,7 +145,12 @@ function Install-LinkmlScalaCli {
                 $ErrorActionPreference = 'Continue'
                 & gh attestation verify $binary --repo $repo 2>&1 | Out-String
             }
-            if ($LASTEXITCODE -eq 0) {
+            $verified = $LASTEXITCODE -eq 0
+            # gh's exit code must not outlive this check. A caller that reads
+            # $LASTEXITCODE after a successful install - a GitHub Actions pwsh step does
+            # exactly that - would otherwise see the attestation failure as ours.
+            $global:LASTEXITCODE = 0
+            if ($verified) {
                 Write-Host 'Build provenance verified with gh attestation.'
             } else {
                 if ($attestation -match 'HTTP 404' -or $attestation -match 'no attestations found') {

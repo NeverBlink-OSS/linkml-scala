@@ -26,14 +26,16 @@ for name in linkml-scala ohi; do
   printf '#!/bin/sh\nprintf "fixture %s\\n"\n' "$name" |
     gzip > "$test_root/release/$name-$platform$ext.gz"
 done
+# Bare names, not ./*.gz: Git Bash's sha256sum marks binary mode with a leading *, which
+# leaves the ./ in place and produces entries the installer does not recognise.
 (
   cd "$test_root/release"
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum ./*.gz
+    sha256sum *.gz
   else
-    shasum -a 256 ./*.gz
+    shasum -a 256 *.gz
   fi
-) | sed 's| \./| |' > "$test_root/release/SHA256SUMS"
+) > "$test_root/release/SHA256SUMS"
 
 # Only the release URLs below are served. Every other request fails locally.
 cat > "$test_root/bin/curl" <<'SH'
