@@ -540,7 +540,12 @@ object OwlGenerator {
       s.derivedRange.resolve.orNullFast match {
         case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
         case tv: TypeView =>
-          new Some(if (tv.isIri) iri else Literal(text, Iri(baseDatatype(tv))))
+          // An `equals_string` of a `langstring` slot is a plain string, an `xsd:string` literal
+          new Some(
+            if (tv.isIri) iri
+            else if (tv.runtimeType eq LocalizedTextType) Literal(text)
+            else Literal(text, Iri(baseDatatype(tv))),
+          )
         case _: ClassView => new Some(iri)
         case _ => new Some(Literal(text))
       }
@@ -687,7 +692,9 @@ object OwlGenerator {
       d.maximumLength.isDefined || d.pattern.isDefined
     }
 
-    /** The XSD datatype that a type's values have in RDF. */
+    /** The datatype that a type's values have in RDF: an XSD datatype, or `rdf:PlainLiteral` for a
+      * `LocalizedText` type, such as `langstring`.
+      */
     private def baseDatatype(tv: TypeView): String = {
       val uri = tv.uriStr
       if OwlRdfReader.isBuiltInDatatype(uri) then uri
@@ -702,6 +709,7 @@ object OwlGenerator {
           case _: DateTimeType.type => XmlSchema.dateTime.value
           case _: TimeType.type => XmlSchema.time.value
           case _: UriType.type | _: UriOrCurieType.type => XmlSchema.anyURI.value
+          case _: LocalizedTextType.type => plainLiteral
           case _ => XmlSchema.string.value
         }
     }

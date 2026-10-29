@@ -98,7 +98,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       (name.minLength, name.maxLength) shouldBe (None, Some(10))
     }
 
-    "accept a plain string or a language mapping for langstring" in {
+    "accept a plain string or a language mapping for langstring, with constraints on both" in {
       // Adds to the `types` of the shared part.
       given SchemaView = load(s"""$schemaShared
            |  langstring:
@@ -108,16 +108,18 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
            |    attributes:
            |      title:
            |        range: langstring
+           |        maximum_length: 5
+           |        pattern: "^[A-Z]"
            |""".stripMargin)
 
       val c = JsonSchemaGenerator().generate().$defs.get("C").asInstanceOf[Schema]
       val List(plain, mapping) = c.properties("title").asInstanceOf[Schema].anyOf
         .map(_.asInstanceOf[Schema]): @unchecked
       plain.`type` shouldBe Some(List(SchemaType.String))
+      (plain.maxLength, plain.pattern) shouldBe (Some(5), Some(Pattern("^[A-Z]")))
       mapping.`type` shouldBe Some(List(SchemaType.Object))
       mapping.minProperties shouldBe Some(1)
-      mapping.additionalProperties.map(_.asInstanceOf[Schema].`type`) shouldBe
-        Some(Some(List(SchemaType.String)))
+      mapping.additionalProperties shouldBe Some(plain)
     }
 
     "keep the declared order of union members, with nested unions in place" in {

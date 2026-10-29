@@ -145,16 +145,25 @@ class JsonSchemaGenerator(using sv: SchemaView)
             if (typeAttribute.slotView.slot.designatesType && owner.isConcrete)
               owner.typeDesignatorValues
             else Nil
-          typeToRuntime(typeAttribute.typeView)
-            .copy(
-              minimum = toBigDecimalOpt(typeAttribute.minimumValue),
-              maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-              minLength = typeAttribute.minimumLength,
-              maxLength = typeAttribute.maximumLength,
-              pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
-              `enum` =
-                if (designatorValues.isEmpty) None
-                else Some(designatorValues.map(ExampleSingleValue(_)).toList),
+          def withText(schema: Schema): Schema = schema.copy(
+            minLength = typeAttribute.minimumLength,
+            maxLength = typeAttribute.maximumLength,
+            pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
+          )
+          val tv = typeAttribute.typeView
+          // The lengths and the pattern apply to a plain string and to the text in each language
+          val schema =
+            if (!tv.isUnion && (tv.runtimeType eq LocalizedTextType))
+              localizedTextOf(withText(stringSchema))
+            else
+              withText(typeToRuntime(tv)).copy(
+                minimum = toBigDecimalOpt(typeAttribute.minimumValue),
+                maximum = toBigDecimalOpt(typeAttribute.maximumValue),
+              )
+          schema
+            .copy(`enum` =
+              if (designatorValues.isEmpty) None
+              else Some(designatorValues.map(ExampleSingleValue(_)).toList),
             )
             .arrayOfIf(typeAttribute.slotView.slot.multivalued)
         case EnumAttributeView(slotView, _, enumView) =>
@@ -444,11 +453,14 @@ object JsonSchemaGenerator {
   private val curieSchema: Schema = stringSchema.copy(format = new Some("curie"))
   private val uriOrCurieSchema: Schema = new Schema(anyOf = List(uriSchema, curieSchema))
 
-  /** A plain string, or a non-empty object from language tag to text. */
-  private val localizedTextSchema: Schema = new Schema(anyOf =
-    List(
-      stringSchema,
-      objectSchema.copy(additionalProperties = Some(stringSchema), minProperties = Some(1)),
-    ),
+  private val localizedTextSchema: Schema = localizedTextOf(stringSchema)
+
+  /** A plain string, or a non-empty object from language tag to text.
+    *
+    * @param text
+    *   The schema of the plain string and of the text in each language
+    */
+  private def localizedTextOf(text: Schema): Schema = new Schema(anyOf =
+    List(text, objectSchema.copy(additionalProperties = Some(text), minProperties = Some(1))),
   )
 }

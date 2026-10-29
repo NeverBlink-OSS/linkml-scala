@@ -14,6 +14,7 @@ classes:
         rank: 1
         range: langstring
         required: true
+        maximum_length: 10
       many_slot:
         rank: 2
         range: langstring
