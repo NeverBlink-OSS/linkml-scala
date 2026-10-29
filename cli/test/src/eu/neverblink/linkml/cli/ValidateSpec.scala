@@ -41,13 +41,17 @@ class ValidateSpec extends AnyWordSpec, Matchers {
   private val schemaWithIssues =
     """id: https://neverblink.eu/test/
       |name: test
+      |description: A test schema
       |default_range: string
       |types:
       |  string:
+      |    description: A string
       |classes:
       |  SomeClass:
+      |    description: Some class
       |    attributes:
       |      some_attr:
+      |        description: Some attribute
       |        implicit_prefix: nope
       |""".stripMargin
 
@@ -55,9 +59,11 @@ class ValidateSpec extends AnyWordSpec, Matchers {
   private val invalidUriSchema =
     """id: https://neverblink.eu/test/
       |name: test
+      |description: A test schema
       |default_range: string
       |types:
       |  string:
+      |    description: A string
       |classes:
       |  SomeClass:
       |    class_uri: "not a curie!"
@@ -66,11 +72,14 @@ class ValidateSpec extends AnyWordSpec, Matchers {
   private val validSchema =
     """id: https://neverblink.eu/test/
       |name: test
+      |description: A test schema
       |default_range: string
       |types:
       |  string:
+      |    description: A string
       |classes:
       |  Root:
+      |    description: The root class
       |    tree_root: true
       |""".stripMargin
 
@@ -207,6 +216,7 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       val warningsOnly =
         """id: https://neverblink.eu/test/
           |name: test
+          |description: A test schema
           |""".stripMargin
 
       "succeed (exit 0) by default" in {
@@ -387,15 +397,19 @@ class ValidateSpec extends AnyWordSpec, Matchers {
       val mainWithIssues =
         """id: urn:main
           |name: main
+          |description: The main schema
           |default_range: string
           |imports:
           |  - imported
           |types:
           |  string:
+          |    description: A string
           |classes:
           |  MainClass:
+          |    description: The main class
           |    attributes:
           |      some_attr:
+          |        description: Some attribute
           |        implicit_prefix: nope
           |""".stripMargin
 

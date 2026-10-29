@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.tests
 
+import eu.neverblink.linkml.validation.MissingRecommendedSlot
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -16,7 +17,11 @@ class LintCatalogueSpec extends AnyWordSpec, Matchers {
   for entry <- ModelCatalogue.all do {
     s"Model '${entry.model.root.name}'" should {
       "lint" in {
-        entry.model.lint() shouldBe None
+        // Test models don't describe all their elements
+        entry.model.lintProblems.filter {
+          case _: MissingRecommendedSlot => false
+          case _ => true
+        }.map(_.infer()) shouldBe empty
       }
 
       "have ranks defined for tree_root" in {

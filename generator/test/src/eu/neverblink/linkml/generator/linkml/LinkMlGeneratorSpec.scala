@@ -2,10 +2,11 @@ package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.util.PruningMode.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
-import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
+import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.{lintProblemsExceptMissingRecommendedSlots, skipModels}
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
+import eu.neverblink.linkml.validation.{MissingRecommendedSlot, SchemaIssue}
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -103,7 +104,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         schema.types("Count").minimumValue.map(_.value.trim) shouldBe Some("0")
         schema.types("Count").maximumValue.map(_.value.trim) shouldBe Some("10")
       }
-      reloaded.lint() shouldBe empty
+      lintProblemsExceptMissingRecommendedSlots(reloaded) shouldBe empty
     }
 
     "inline imports into the schema" in {
@@ -332,15 +333,17 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
 
     "generate the metamodel without errors" in {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
-      SchemaView.single(
-        LinkMlGenerator(using sv).generate(),
-      ).lint() shouldBe empty
+      lintProblemsExceptMissingRecommendedSlots(
+        SchemaView.single(LinkMlGenerator(using sv).generate()),
+      ) shouldBe empty
 
-      SchemaView.single(
-        LinkMlGenerator(using sv).generate(
-          LinkMlGenerator.Options(skipClassDerivation = true),
+      lintProblemsExceptMissingRecommendedSlots(
+        SchemaView.single(
+          LinkMlGenerator(using sv).generate(
+            LinkMlGenerator.Options(skipClassDerivation = true),
+          ),
         ),
-      ).lint() shouldBe empty
+      ) shouldBe empty
     }
 
     "serialize yaml format without errors" in {
@@ -596,13 +599,16 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           LinkMlGenerator(using entry.model)
             .serialize(LinkMlGenerator.Options(skipClassDerivation = true)) should not be empty
 
-          SchemaView.single(LinkMlGenerator(using entry.model).generate())
-            .lint() shouldBe empty
-          SchemaView.single(
-            LinkMlGenerator(using entry.model).generate(
-              LinkMlGenerator.Options(skipClassDerivation = true),
+          lintProblemsExceptMissingRecommendedSlots(
+            SchemaView.single(LinkMlGenerator(using entry.model).generate()),
+          ) shouldBe empty
+          lintProblemsExceptMissingRecommendedSlots(
+            SchemaView.single(
+              LinkMlGenerator(using entry.model).generate(
+                LinkMlGenerator.Options(skipClassDerivation = true),
+              ),
             ),
-          ).lint() shouldBe empty
+          ) shouldBe empty
         }
     }
   }
@@ -612,4 +618,13 @@ object LinkMlGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "unionRange" -> "Not yet implemented: LNK-110",
   )
+
+  /** Lint problems of the schema, except missing recommended slots, as the test schemas don't
+    * describe all their elements.
+    */
+  def lintProblemsExceptMissingRecommendedSlots(sv: SchemaView): Seq[SchemaIssue] =
+    sv.lintProblems.filter {
+      case _: MissingRecommendedSlot => false
+      case _ => true
+    }.map(_.infer())
 }

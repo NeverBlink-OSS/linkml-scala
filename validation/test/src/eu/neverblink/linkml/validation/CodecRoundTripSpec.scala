@@ -22,6 +22,12 @@ class CodecRoundTripSpec extends AnyWordSpec, Matchers {
         location = location.copy(jsonPointer = Some("/classes/SomeClass/exact_mappings/0")),
         uriOrCurie = Curie("not a curie!"),
       ),
+      MissingRecommendedSlot(
+        location = location,
+        elementName = "SomeClass",
+        elementType = "class_definition",
+        slotName = "description",
+      ),
     ),
     validationRunId = Some("test-run"),
   )
@@ -32,6 +38,7 @@ class CodecRoundTripSpec extends AnyWordSpec, Matchers {
       yaml.should(include("issue_type: UnknownReference"))
       yaml.should(include("issue_type: NoTreeRootClass"))
       yaml.should(include("issue_type: InvalidUriOrCurie"))
+      yaml.should(include("issue_type: MissingRecommendedSlot"))
     }
 
     "recover the concrete issue types when reading a report back" in {
@@ -43,6 +50,7 @@ class CodecRoundTripSpec extends AnyWordSpec, Matchers {
           classOf[UnknownReference],
           classOf[NoTreeRootClass],
           classOf[InvalidUriOrCurie],
+          classOf[MissingRecommendedSlot],
         ),
       )
     }

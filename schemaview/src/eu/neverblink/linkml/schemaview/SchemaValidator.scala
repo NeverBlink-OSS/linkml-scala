@@ -4,6 +4,8 @@ import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
+import org.virtuslab.yaml.Node
 
 import java.{lang, util}
 import scala.collection.mutable
@@ -172,6 +174,96 @@ final class SchemaValidator(using sv: SchemaView) {
         prefix = value.prefix,
       ),
     )
+
+  /** Warnings for each element of the root schema, and for the root schema itself, without a value
+    * for a slot that the LinkML metamodel marks as `recommended`, such as `description`. As in
+    * LinkML-Python, imported schemas aren't checked.
+    */
+  private lazy val missingRecommendedSlots: Seq[SchemaWarning] = {
+    val warnings = Vector.newBuilder[SchemaWarning]
+    val schemaId = sv.root.id
+
+    def fieldsOf(node: Node): util.HashMap[String, Node] = node match {
+      case m: Node.MappingNode => LinkmlYamlCodec.getFields(m)
+      case _ => new util.HashMap[String, Node]
+    }
+
+    def check(
+        fields: util.HashMap[String, Node],
+        elementType: String,
+        elementName: String,
+        location: IssueLocation,
+    ): Unit = {
+      val slotNames = SchemaValidator.recommendedSlots.get(elementType)
+      if (slotNames ne null) {
+        slotNames.foreach { slotName =>
+          if (!fields.containsKey(slotName)) {
+            warnings.addOne(
+              new MissingRecommendedSlot(
+                location = location,
+                elementName = elementName,
+                elementType = elementType,
+                slotName = slotName,
+              ),
+            )
+          }
+        }
+      }
+    }
+
+    // Calls `f` with the name and the value of each entry of the mapping at `key`
+    def elements(fields: util.HashMap[String, Node], key: String)(f: (String, Node) => Unit): Unit =
+      fields.get(key) match {
+        case m: Node.MappingNode =>
+          m.mappings.foreachEntry { (k, v) =>
+            k match {
+              case s: Node.ScalarNode => f(s.value, v)
+              case _ =>
+            }
+          }
+        case _ =>
+      }
+
+    // Encoded without prefixes, so the URIs are kept as they are and encoding can't fail on them
+    val root = fieldsOf(eu.neverblink.linkml.metamodel.Codec.codec.encode(sv.root))
+    check(root, "schema_definition", sv.root.name, rootLocation)
+    elements(root, "classes") { (className, node) =>
+      val cls = fieldsOf(node)
+      val pointer = "/classes/" + className
+      check(cls, "class_definition", className, at(pointer, schemaId))
+      elements(cls, "attributes") { (slotName, node) =>
+        check(
+          fieldsOf(node),
+          "slot_definition",
+          className + "." + slotName,
+          at(pointer + "/attributes/" + slotName, schemaId),
+        )
+      }
+    }
+    elements(root, "slots") { (name, node) =>
+      check(fieldsOf(node), "slot_definition", name, at("/slots/" + name, schemaId))
+    }
+    elements(root, "enums") { (enumName, node) =>
+      val en = fieldsOf(node)
+      val pointer = "/enums/" + enumName
+      check(en, "enum_definition", enumName, at(pointer, schemaId))
+      elements(en, "permissible_values") { (text, node) =>
+        check(
+          fieldsOf(node),
+          "permissible_value",
+          enumName + "." + text,
+          at(pointer + "/permissible_values/" + text, schemaId),
+        )
+      }
+    }
+    elements(root, "types") { (name, node) =>
+      check(fieldsOf(node), "type_definition", name, at("/types/" + name, schemaId))
+    }
+    elements(root, "subsets") { (name, node) =>
+      check(fieldsOf(node), "subset_definition", name, at("/subsets/" + name, schemaId))
+    }
+    warnings.result()
+  }
 
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
@@ -624,7 +716,8 @@ final class SchemaValidator(using sv: SchemaView) {
       noTreeRoot ++
       undeclaredCuriePrefixes ++
       unwritableUris ++
-      namingIssues.collect { case e: SchemaWarning => e }
+      namingIssues.collect { case e: SchemaWarning => e } ++
+      missingRecommendedSlots
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.
     * Warnings are not included - see [[lintProblems]] for those.
@@ -665,6 +758,23 @@ final class SchemaValidator(using sv: SchemaView) {
 }
 
 object SchemaValidator {
+
+  /** Names of the slots that the LinkML metamodel marks as `recommended`, for each class of the
+    * metamodel that has any, such as `description` for `class_definition`.
+    */
+  private lazy val recommendedSlots: util.HashMap[String, Seq[String]] = {
+    val meta = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("linkml:meta"))
+    val slots = new util.HashMap[String, Seq[String]]
+    meta.classes.values.foreach { cv =>
+      val names = Vector.newBuilder[String]
+      cv.derivedAttributes.values.foreach { s =>
+        if (s.slot.recommended) names.addOne(s.slot.name)
+      }
+      val result = names.result()
+      if (result.nonEmpty) slots.put(cv.cls.name, result)
+    }
+    slots
+  }
 
   /** Find the loops in a relation between elements with a depth-first search, in O(V log V + E)
     * time for V elements and E references between them.

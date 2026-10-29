@@ -643,7 +643,21 @@ class GeneratorTest(unittest.TestCase):
 
 class LintTest(unittest.TestCase):
     def test_a_clean_schema_has_no_issues(self):
-        with linkml_scala.load_string(PERSON) as loaded:
+        # Each element has a description, as one without it gets a warning.
+        described = schema(
+            "described",
+            """
+            description: A schema with one class
+            classes:
+              Person:
+                description: A person
+                tree_root: true
+                attributes:
+                  name:
+                    description: The full name of the person
+            """,
+        )
+        with linkml_scala.load_string(described) as loaded:
             self.assertEqual([], loaded.lint()["issues"])
 
     def test_warnings_do_not_stop_a_schema_from_loading(self):
