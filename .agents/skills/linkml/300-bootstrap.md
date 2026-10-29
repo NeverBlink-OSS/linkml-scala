@@ -3,10 +3,10 @@
 Translating an existing model into LinkML. The output must validate cleanly and round-trip back
 to something equivalent to the input — this skill is only done when both are demonstrated.
 
-**Use an importer when there is one:** `linkml-scala from owl` for OWL ontologies and RDFS
-vocabularies, `linkml-scala from ossie` for Apache Ossie ontologies. They handle a wide range of
+**Use an importer when there is one:** `ohi linkml from owl` for OWL ontologies and RDFS
+vocabularies, `ohi linkml from ossie` for Apache Ossie ontologies. They handle a wide range of
 real ontologies, and a hand translation will not do better, so run the importer and then make the
-small manual fixes below. If `linkml-scala --help` has no `from` commands, offer an upgrade
+small manual fixes below. If `ohi linkml --help` has no `from` commands, offer an upgrade
 ([990-install.md](990-install.md)). SHACL, JSON Schema, XSD and sample data have no importer, so
 translate those by hand.
 
@@ -25,7 +25,7 @@ you dropped. A schema that silently loses constraints is worse than one that adm
    the identifiers are, and which single class is the `tree_root` — then write the schema,
    preserving source URIs via `class_uri`, `slot_uri` and `meaning` so the result maps back onto
    the original vocabulary.
-3. **Validate** — `linkml-scala validate --strict --format json schema.yaml` — and iterate until
+3. **Validate** — `ohi linkml validate --strict --format json schema.yaml` — and iterate until
    clean.
 4. **Finish** — for an imported schema, work through the fixes listed for its importer below.
 5. **Round-trip** — generate the source formalism back out and diff it against the input, where
@@ -65,8 +65,8 @@ you were modelling.
 ## Importing OWL, RDFS and Ossie
 
 ```shell
-linkml-scala from owl --list-not-imported --to schema.yaml ontology.ttl
-linkml-scala from ossie --schema-id https://example.org/my-schema --to schema.yaml ontology.json
+ohi linkml from owl --list-not-imported --to schema.yaml ontology.ttl
+ohi linkml from ossie --schema-id https://example.org/my-schema --to schema.yaml ontology.json
 ```
 
 `from owl` reads Turtle or N-Triples only. `--list-not-imported` prints what was dropped, which
@@ -137,7 +137,7 @@ Inference from examples, so state your confidence and get it confirmed.
 - A plausible unique key suggests `identifier: true`. Verify uniqueness across the whole sample
   before asserting it, and prefer no identifier over a wrong one — it changes inlining
   behaviour everywhere.
-- For CSV, `linkml-scala generate frictionless` round-trips back to Frictionless as a data
+- For CSV, `ohi linkml generate frictionless` round-trips back to Frictionless as a data
   package, so you can check your work.
 
 ## Round-tripping
@@ -146,13 +146,13 @@ The importers' round-trips are above. For hand translations:
 
 ```shell
 # SHACL in, SHACL out
-linkml-scala generate shacl --format ttl --to check.ttl schema.yaml
+ohi linkml generate shacl --format ttl --to check.ttl schema.yaml
 
 # JSON Schema in, JSON Schema out
-linkml-scala generate json-schema --to check.json schema.yaml
+ohi linkml generate json-schema --to check.json schema.yaml
 
 # Sample data in: generate JSON Schema and check the samples still validate
-linkml-scala generate json-schema --to check.json schema.yaml
+ohi linkml generate json-schema --to check.json schema.yaml
 # then validate the originals against check.json (see 500-validate-data.md)
 ```
 
@@ -173,7 +173,7 @@ identifiers. Keep source names discoverable in `aliases:` when the rename is not
 Source: <file> (<format>)
 Inventory:  N classes, M properties, K enums, J constraints
 Produced:   N classes, M attributes, K enums
-Method:     linkml-scala from owl --list-not-imported (or: by hand)
+Method:     ohi linkml from owl --list-not-imported (or: by hand)
 Dropped:
   - property chain hasParent o hasParent → hasGrandparent — LinkML cannot express it
   - sh:or on Baz.qux — linkml-scala supports any_of in SHACL output only, and its ranges in OWL

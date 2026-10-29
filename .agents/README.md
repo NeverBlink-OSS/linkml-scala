@@ -8,7 +8,7 @@ Install **ohi** (`ohi`) for ontology acquisition, project selections and LinkML 
 Choose **LinkML** (`linkml`) for schema work alone. Install one plugin, since ohi already includes LinkML.
 
 Plugins provide instructions. [Install the ohi CLI](../cli/ohi/README.md#install) separately from
-the same release or checkout. The standalone LinkML skill requires `linkml-scala` 0.12.0 or newer.
+the same release or checkout. The standalone LinkML skill requires `ohi` 0.17.1 or newer.
 
 ## Install
 
@@ -78,9 +78,7 @@ selection, downloads and recovery.
 
 ## LinkML
 
-The [LinkML skill](skills/linkml/SKILL.md) covers schema authoring, validation, importing and generation. Its topic files provide detailed guidance when needed. [Installation options](skills/linkml/990-install.md) cover the standalone `linkml-scala` CLI.
-
-When using the ohi CLI, run the LinkML examples as `ohi linkml <command>` in place of `linkml-scala <command>`. Tell the agent to use this invocation. ohi includes the engine commands, so this route does not need a second executable.
+The [LinkML skill](skills/linkml/SKILL.md) covers schema authoring, validation, importing and generation. Its topic files provide detailed guidance when needed. [Installation options](skills/linkml/990-install.md) cover the `ohi` CLI, which runs every LinkML command as `ohi linkml <command>`.
 
 ## Maintenance
 
@@ -102,4 +100,4 @@ python3 .agents/generate.py --check
 python3 .agents/check.py --require-cli
 ```
 
-The checks require `linkml-scala` on PATH. Review nested ohi reference links separately.
+The checks require `ohi` on PATH. Review nested ohi reference links separately.

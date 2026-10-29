@@ -12,7 +12,7 @@ Three independent passes:
    no install command names a version older than it. See `check_versions`.
 
 3. **Examples** - every ```yaml block in every SKILL.md and reference is fed to
-   `linkml-scala validate --strict`. A documented schema that does not validate teaches
+   `ohi linkml validate --strict`. A documented schema that does not validate teaches
    an agent to write broken schemas, so this is a hard failure.
 
    Blocks are usually fragments, so each is wrapped in a minimal envelope. Top-level
@@ -20,7 +20,7 @@ Three independent passes:
    refer back to them; `classes:` and `enums:` do not, because consecutive blocks are
    often alternative illustrations of the same thing rather than one growing schema.
 
-The example pass requires `linkml-scala` on PATH. Without it the pass is skipped with a
+The example pass requires `ohi` on PATH. Without it the pass is skipped with a
 warning, so CI - where a silently skipped pass is indistinguishable from a passing one -
 must run with `--require-cli`.
 
@@ -89,12 +89,12 @@ STUBS = {
 errors: list[str] = []
 stats = {"files": 0, "blocks": 0, "links": 0}
 
-# `Requirement: **0.12.0 or newer**` - the one authoritative declaration, restated in prose
-# elsewhere as `0.12.0 or newer`. The last pattern catches a hardcoded install pin, which the
+# `Requirement: **0.17.1 or newer**` - the one authoritative declaration, restated in prose
+# elsewhere as `0.17.1 or newer`. The last pattern catches a hardcoded install pin, which the
 # install docs deliberately no longer carry.
 REQUIREMENT_RE = re.compile(r"Requirement: \*\*(\d+\.\d+\.\d+) or newer\*\*")
 RESTATEMENT_RE = re.compile(r"(\d+\.\d+\.\d+) or newer")
-INSTALL_PIN_RE = re.compile(r"linkml-scala@v(\d+\.\d+\.\d+)")
+INSTALL_PIN_RE = re.compile(r"(?:ohi|linkml-scala)@v(\d+\.\d+\.\d+)")
 
 
 def fail(where: object, message: str) -> None:
@@ -211,7 +211,7 @@ def check_versions(texts: dict[Path, str]) -> None:
             if parse_version(pin) < parse_version(minimum):
                 fail(
                     path.relative_to(REPO),
-                    f"installs linkml-scala@v{pin}, below the required minimum {minimum}",
+                    f"installs v{pin}, below the required minimum {minimum}",
                 )
 
 
@@ -282,7 +282,7 @@ def check_examples(md: Path, tmp: Path) -> None:
         path = tmp / f"{md.stem}-{index:02d}.yaml"
         path.write_text(yaml.dump(doc, sort_keys=False))
         proc = subprocess.run(
-            ["linkml-scala", "validate", "--strict", "--format", "plain", str(path)],
+            ["ohi", "linkml", "validate", "--strict", "--format", "plain", str(path)],
             capture_output=True,
             text=True,
         )
@@ -306,7 +306,7 @@ def main() -> int:
     ap.add_argument(
         "--require-cli",
         action="store_true",
-        help="fail rather than skip when linkml-scala is not on PATH",
+        help="fail rather than skip when ohi is not on PATH",
     )
     args = ap.parse_args()
 
@@ -327,8 +327,8 @@ def main() -> int:
     docs.append(AGENTS / "README.md")
     check_versions({doc: doc.read_text() for doc in docs if doc.is_file()})
 
-    if shutil.which("linkml-scala") is None:
-        missing = "linkml-scala not on PATH - the schema example pass did not run"
+    if shutil.which("ohi") is None:
+        missing = "ohi not on PATH - the schema example pass did not run"
         if args.require_cli:
             fail("check.py", missing + " (--require-cli)")
         else:
@@ -336,10 +336,10 @@ def main() -> int:
     else:
         # One smoke test first: a CLI that cannot start would otherwise fail every block
         # identically, which reads like a skill full of broken schemas.
-        probe = subprocess.run(["linkml-scala", "version"], capture_output=True, text=True)
+        probe = subprocess.run(["ohi", "version"], capture_output=True, text=True)
         if probe.returncode != 0:
             output = " ".join((probe.stdout + probe.stderr).split())[:200]
-            fail("check.py", f"`linkml-scala version` failed: {output or probe.returncode}")
+            fail("check.py", f"`ohi version` failed: {output or probe.returncode}")
         else:
             with tempfile.TemporaryDirectory() as raw_tmp:
                 tmp = Path(raw_tmp)

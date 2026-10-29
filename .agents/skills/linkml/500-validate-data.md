@@ -1,6 +1,6 @@
 # Validating instance data against a LinkML schema
 
-**`linkml-scala validate` does not do this.** It lints the *schema*. Do not run it on a data file
+**`ohi linkml validate` does not do this.** It lints the *schema*. Do not run it on a data file
 and report the result — it will either fail confusingly or appear to pass while checking nothing.
 
 The route is two steps: generate a validation artifact from the schema, then run a validator for
@@ -22,15 +22,15 @@ A schema with fatal issues cannot generate anything, and a schema with warnings 
 something subtly wrong. Get it clean before blaming the data:
 
 ```shell
-linkml-scala validate --format json schema.yaml
+ohi linkml validate --format json schema.yaml
 ```
 
 ## Step 2 — generate
 
 ```shell
-linkml-scala generate json-schema  --to build/schema.json  schema.yaml
-linkml-scala generate shacl --format ttl --to build/shapes.ttl  schema.yaml
-linkml-scala generate frictionless --to build/package  schema.yaml
+ohi linkml generate json-schema  --to build/schema.json  schema.yaml
+ohi linkml generate shacl --format ttl --to build/shapes.ttl  schema.yaml
+ohi linkml generate frictionless --to build/package  schema.yaml
 ```
 
 `frictionless` emits a Frictionless **data package**, one CSV table per class. Where you send it
@@ -53,7 +53,7 @@ a perfectly good file fails on the root type. You can override it per generation
 the schema:
 
 ```shell
-linkml-scala generate json-schema --tree-root-inline-type-override list \
+ohi linkml generate json-schema --tree-root-inline-type-override list \
   --to build/schema.json schema.yaml
 ```
 
@@ -177,5 +177,5 @@ Generation belongs in CI via the action; the validation step is then whatever to
 - run: pipx run check-jsonschema --schemafile build/schema.json data/*.json
 ```
 
-See [600-ci.md](600-ci.md). `linkml-scala <command> --help` has the full generator flags;
+See [600-ci.md](600-ci.md). `ohi linkml <command> --help` has the full generator flags;
 [200-limitations.md](200-limitations.md) covers `tree_root_as` and inlining semantics.

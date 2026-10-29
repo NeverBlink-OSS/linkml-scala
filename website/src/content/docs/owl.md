@@ -12,7 +12,7 @@ The generator aims for OWL 2 DL. SAREF, SOSA, gist, PROV-O and D3FEND, after a t
 ## Generating OWL
 
 ```shell
-linkml-scala generate owl schema.yaml --to schema.owl.ttl
+ohi linkml generate owl schema.yaml --to schema.owl.ttl
 ```
 
 | Option                 | Meaning                                                                                                                 |
@@ -86,7 +86,7 @@ These differences are in place mostly to make the OWL describe the same RDF data
 The importer reads Turtle and N-Triples:
 
 ```shell
-linkml-scala from owl ontology.ttl --to schema.yaml
+ohi linkml from owl ontology.ttl --to schema.yaml
 ```
 
 Add the `--list-not-imported` option to list what could not be imported is listed on stderr:

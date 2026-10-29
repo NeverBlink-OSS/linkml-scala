@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 #
-# Installs the linkml-scala CLI, or the ohi CLI, from GitHub Releases.
+# Installs the ohi CLI, or the linkml-scala CLI, from GitHub Releases.
 #
 # Source it, so that the install directory lands on the PATH of the current shell:
 #
-#   . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/main/cli/install.sh)
+#   . <(curl -sSfL https://ohi.dev/install.sh)
 #
 # Or download it, read it, and run it - PATH changes then only apply to new shells:
 #
-#   curl -fsSLO https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/main/cli/install.sh
+#   curl -fsSLO https://ohi.dev/install.sh
 #   bash install.sh
 #
-# Select ohi through the environment in either form:
+# Select linkml-scala through the environment in either form:
 #
-#   LINKML_SCALA_TOOL=ohi . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/main/cli/install.sh)
+#   LINKML_SCALA_TOOL=linkml-scala . <(curl -sSfL https://ohi.dev/install.sh)
 #
 # Environment variables:
-#   LINKML_SCALA_TOOL              CLI to install: linkml-scala (default) or ohi.
+#   LINKML_SCALA_TOOL              CLI to install: ohi (default) or linkml-scala.
 #   LINKML_SCALA_VERSION           Release tag to install, e.g. v0.12.0 (default: latest).
 #   LINKML_SCALA_INSTALL_DIR       Where to put the binary (default: $HOME/.local/bin).
 #   LINKML_SCALA_REQUIRE_CHECKSUM  Set to 1 to abort if the release publishes no SHA256SUMS.
@@ -44,14 +44,14 @@ _linkml_scala_install() {
   local repo_base="NeverBlink-OSS/linkml-scala"
   local install_dir="${LINKML_SCALA_INSTALL_DIR:-$HOME/.local/bin}"
   local tag="${LINKML_SCALA_VERSION:-}"
-  local name="${LINKML_SCALA_TOOL:-linkml-scala}"
+  local name="${LINKML_SCALA_TOOL:-ohi}"
   local tool os arch arch_suffix binary_name asset release_url tmp_dir
   local latest_url expected actual attestation profile path_line answer
 
   case "$name" in
-    linkml-scala | ohi) ;;
+    ohi | linkml-scala) ;;
     *)
-      echo "Error: LINKML_SCALA_TOOL must be linkml-scala or ohi, not '$name'." >&2
+      echo "Error: LINKML_SCALA_TOOL must be ohi or linkml-scala, not '$name'." >&2
       return 1
       ;;
   esac

@@ -28,7 +28,7 @@ sha256sum --ignore-missing -c SHA256SUMS
 Expect one `OK` line per file you actually have:
 
 ```
-linkml-scala-linux-x86_64.gz: OK
+ohi-linux-x86_64.gz: OK
 ```
 
 ### Build provenance
@@ -37,7 +37,7 @@ Use the [GitHub CLI](https://cli.github.com/) to verify which repository commit 
 workflow produced the download:
 
 ```shell
-gh attestation verify linkml-scala-linux-x86_64 --repo NeverBlink-OSS/linkml-scala
+gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/linkml-scala
 ```
 
 `SHA256SUMS` is attested too:
@@ -46,7 +46,7 @@ gh attestation verify linkml-scala-linux-x86_64 --repo NeverBlink-OSS/linkml-sca
 gh attestation verify SHA256SUMS --repo NeverBlink-OSS/linkml-scala
 ```
 
-Use the downloaded ohi filename in the same commands to verify an ohi asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/linkml-scala`.
+Use the downloaded filename in the same commands to verify any other asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/linkml-scala`.
 
 `install.sh` checks the checksum when a manifest exists and verifies provenance when `gh` is installed. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` and `LINKML_SCALA_REQUIRE_ATTESTATION=1` to require both checks and reject an installation when either cannot be completed.
 

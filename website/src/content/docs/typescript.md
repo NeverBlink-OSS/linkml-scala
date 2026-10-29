@@ -16,7 +16,7 @@ describe exactly the JSON that the generated JSON Schema describes, so they work
 From the command line:
 
 ```shell
-linkml-scala generate typescript --to model.ts schema.yaml
+ohi linkml generate typescript --to model.ts schema.yaml
 ```
 
 Options:

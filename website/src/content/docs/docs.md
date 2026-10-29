@@ -15,7 +15,7 @@ they work as they are:
 From the command line, to a folder:
 
 ```shell
-linkml-scala generate docs --to docs/schema schema.yaml
+ohi linkml generate docs --to docs/schema schema.yaml
 ```
 
 This writes:
@@ -37,7 +37,7 @@ To get one document instead, with the pages as sections that link to each other 
 `.md` file in `--to`, or leave `--to` out to write to stdout:
 
 ```shell
-linkml-scala generate docs --to schema.md schema.yaml
+ohi linkml generate docs --to schema.md schema.yaml
 ```
 
 Options:
