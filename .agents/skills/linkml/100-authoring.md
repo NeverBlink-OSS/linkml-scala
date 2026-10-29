@@ -99,7 +99,7 @@ attributes:
 ```
 
 Available: `required`, `recommended`, `multivalued`, `pattern`, `minimum_value`,
-`maximum_value`, `equals_string`, `equals_number`, `unit`. 
+`maximum_value`, `minimum_length`, `maximum_length`, `equals_string`, `equals_number`, `unit`. 
 
 ### Built-in ranges
 

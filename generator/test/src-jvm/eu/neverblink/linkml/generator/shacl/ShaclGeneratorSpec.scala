@@ -168,6 +168,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |  string_slot:
            |    range: string
            |    pattern: "^[0-9]{3}-[0-9]{4}$$"
+           |    minimum_length: 8
+           |    maximum_length: 11
            |""".stripMargin
       val schemaView = loadWithImports(input)
       val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
@@ -190,6 +192,8 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |    ], [
           |      sh:datatype xsd:string;
           |      sh:maxCount 1;
+          |      sh:maxLength 11;
+          |      sh:minLength 8;
           |      sh:nodeKind sh:Literal;
           |      sh:order 1;
           |      sh:path <https://neverblink.eu/linkml/shacl/test/string_slot>;

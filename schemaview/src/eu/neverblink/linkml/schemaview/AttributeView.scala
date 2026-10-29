@@ -141,6 +141,14 @@ final case class TypeAttributeView(
   def maximumValue: Option[LinkmlAny] =
     combineOption(slot.maximumValue, _type.maximumValue, combineMax)
 
+  /** @see [[slot.minimumLength]] */
+  def minimumLength: Option[Int] =
+    combineOption(slot.minimumLength, _type.minimumLength, combineFallback)
+
+  /** @see [[slot.maximumLength]] */
+  def maximumLength: Option[Int] =
+    combineOption(slot.maximumLength, _type.maximumLength, combineFallback)
+
 /** Slot's range is an enum.
   */
 final case class EnumAttributeView(

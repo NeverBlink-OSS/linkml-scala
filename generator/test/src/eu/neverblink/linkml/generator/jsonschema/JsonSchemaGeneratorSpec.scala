@@ -74,6 +74,30 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       choice.map(_.minimum) shouldBe List(None, Some(BigDecimal(0)))
     }
 
+    "write minLength and maxLength of a slot or its range type" in {
+      // Adds to the `types` of the shared part.
+      given SchemaView = load(s"""$schemaShared
+           |  Code:
+           |    typeof: string
+           |    minimum_length: 2
+           |    maximum_length: 5
+           |classes:
+           |  C:
+           |    attributes:
+           |      code:
+           |        range: Code
+           |      name:
+           |        range: string
+           |        maximum_length: 10
+           |""".stripMargin)
+
+      val c = JsonSchemaGenerator().generate().$defs.get("C").asInstanceOf[Schema]
+      val code = c.properties("code").asInstanceOf[Schema]
+      (code.minLength, code.maxLength) shouldBe (Some(2), Some(5))
+      val name = c.properties("name").asInstanceOf[Schema]
+      (name.minLength, name.maxLength) shouldBe (None, Some(10))
+    }
+
     "keep the declared order of union members, with nested unions in place" in {
       // Adds to the `types` of the shared part.
       given SchemaView = load(s"""$schemaShared

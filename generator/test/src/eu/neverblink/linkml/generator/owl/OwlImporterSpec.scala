@@ -119,14 +119,25 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       result.schema.types("Code").pattern shouldBe Some("^(a\\.b|c\\+d)$")
     }
 
+    "read length facets" in {
+      val result = importing(
+        """:Code a rdfs:Datatype ;
+          |    owl:equivalentClass [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
+          |        owl:withRestrictions ( [ xsd:minLength 2 ] [ xsd:maxLength 5 ] ) ] .""",
+      )
+      val code = result.schema.types("Code")
+      (code.minimumLength, code.maximumLength) shouldBe (Some(2), Some(5))
+      result.warnings shouldBe empty
+    }
+
     "report a facet it cannot express" in {
       val result = importing(
         """:ShortString a rdfs:Datatype ;
           |    owl:equivalentClass [ a rdfs:Datatype ; owl:onDatatype xsd:string ;
-          |        owl:withRestrictions ( [ xsd:maxLength 5 ] ) ] .""",
+          |        owl:withRestrictions ( [ xsd:length 5 ] ) ] .""",
       )
       result.schema.types("ShortString").typeof.map(_.value) shouldBe Some("string")
-      result.warnings.mkString should include("ShortString: xsd:maxLength")
+      result.warnings.mkString should include("ShortString: xsd:length")
     }
   }
 

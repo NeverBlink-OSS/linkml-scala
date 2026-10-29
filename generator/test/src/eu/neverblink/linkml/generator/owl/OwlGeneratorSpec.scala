@@ -116,6 +116,28 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms should not contain Characteristic(ns + "friends", PropertyCharacteristic.Functional)
     }
 
+    "write lengths as xsd:minLength and xsd:maxLength facets" in {
+      val axioms = ontologyOf("""
+        |slots:
+        |  code:
+        |    range: string
+        |    minimum_length: 2
+        |    maximum_length: 5
+        |""").axioms
+      axioms should contain(
+        Range(
+          ns + "code",
+          DataRange.Restriction(
+            xsd + "string",
+            Seq(
+              xsd + "minLength" -> Literal("2", XmlSchema.nonNegativeInteger),
+              xsd + "maxLength" -> Literal("5", XmlSchema.nonNegativeInteger),
+            ),
+          ),
+        ),
+      )
+    }
+
     "use the only member of an any_of without a union, which needs two operands in OWL 2 DL" in {
       val axioms = ontologyOf("""
         |classes:

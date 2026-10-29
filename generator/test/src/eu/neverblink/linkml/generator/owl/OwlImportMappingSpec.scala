@@ -338,6 +338,24 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       s.slotDefinitions("age").range shouldBe Some(Reference("integer"))
       s.slotDefinitions("age").minimumValue.map(_.value) shouldBe Some("0")
     }
+
+    "turn length facets of a datatype restriction into the slot's lengths" in {
+      val s = schema(
+        data("code"),
+        Range(
+          ns + "code",
+          DataRange.Restriction(
+            XmlSchema.string.value,
+            Seq(
+              XmlSchema.minLength.value -> Literal("2", XmlSchema.integer),
+              XmlSchema.maxLength.value -> Literal("5", XmlSchema.integer),
+            ),
+          ),
+        ),
+      )
+      val code = s.slotDefinitions("code")
+      (code.minimumLength, code.maximumLength) shouldBe (Some(2), Some(5))
+    }
   }
 
   "documentation" should {
