@@ -1,8 +1,19 @@
-name: Deploy site
+# Publish the landing page, the playground and the docs at https://linkml.ohi.dev/.
+name: Deploy linkml.ohi.dev
 
 on:
   push:
     branches: [ "main" ]
+    # Folders that aren't used for building the site
+    paths-ignore:
+      - ".agents/**"
+      - ".claude-plugin/**"
+      - "benchmark/**"
+      - "cli/**"
+      - "nativelib/**"
+      - "ohi/**"
+      - "python/**"
+      - "tests/**"
   workflow_dispatch:
 
 concurrency:
@@ -21,8 +32,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          # Without tags the build version falls back to 0.0.0-SNAPSHOT and the
-          # playground shows that in its footer and build info dialog.
+          # The landing page's install lines need the latest release tag. Without
+          # tags the playground shows 0.0.0-SNAPSHOT in its footer and build info dialog.
           fetch-depth: 256
           fetch-tags: true
 
@@ -49,29 +60,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Build browser UI
-        run: |
-          ./mill --no-server generator.js.fullLinkJS
-          ./mill --no-server ui.bundle
-
-      - name: Build docs site
-        run: ./mill --no-server website.build
-
-      - name: Assemble site
-        run: |
-          mkdir -p site/playground/dist
-          cp ui/index.html ui/styles.css ui/neverblink-logo.svg site/playground/
-          cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png site/playground/
-          cp ui/favicon.svg ui/favicon.ico ui/apple-touch-icon.png ui/neverblink-logo.svg site/
-          cp -R ui/fonts site/playground/
-          cp -R ui/dist/. site/playground/dist/
-          mkdir -p site/docs
-          cp -R website/dist/. site/docs/
-          cp CNAME site/CNAME
-          # The landing page shows install lines for the latest release
-          version="$(git describe --tags --abbrev=0 --match 'v*')"
-          sed "s/__VERSION__/${version#v}/g" pages/index.html > site/index.html
-          cp -R ui/fonts site/
+      - name: Build site
+        run: ./mill --no-server ui.site
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
@@ -79,7 +69,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: site
+          path: out/ui/site.dest
 
   deploy:
     needs: build

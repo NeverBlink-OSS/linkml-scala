@@ -246,7 +246,7 @@ private final case class LoadOptions(
 
 /** @param config
   *   How to map the ontology: the YAML text of the config itself, not a path to a file (see
-  *   `docs/owl.md`).
+  *   https://linkml.ohi.dev/docs/owl/).
   * @param schemaId
   *   The `id` of the schema, instead of the ontology IRI.
   * @param fullUris

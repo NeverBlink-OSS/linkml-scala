@@ -23,7 +23,7 @@ On Windows, download `ohi-windows-x86_64.exe` and `SHA256SUMS` from the same rel
 entry in `SHA256SUMS`, then rename it to `ohi.exe` and place it on your `PATH`.
 The `ohi.jar` asset runs with Java 17 or later using `java -jar ohi.jar`.
 ohi and LinkML use the same release version.
-See [download verification](../../docs/verifying_downloads.md) for checksums and build provenance.
+See [download verification](https://linkml.ohi.dev/docs/verifying-downloads/) for checksums and build provenance.
 
 ```sh
 ohi search provenance

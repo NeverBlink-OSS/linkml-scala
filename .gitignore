@@ -38,8 +38,7 @@ target/
 # Node.js
 node_modules/
 ui/dist/
-# Docs site: the pages are copied from docs/ by website/sync-docs.mjs
-/website/src/content/docs/
+# Docs site: copied from ui/ by website/astro.config.mjs
 /website/public/favicon.svg
 /website/public/fonts/
 /website/dist/

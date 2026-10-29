@@ -58,7 +58,7 @@ chmod +x linkml-scala-linux-x86_64
 ```
 
 Full verification procedure, including checksums and the Maven and npm channels:
-[docs/verifying_downloads.md](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/verifying_downloads.md).
+[Verifying downloads](https://linkml.ohi.dev/docs/verifying-downloads/).
 
 ## Option 4 — no install at all
 

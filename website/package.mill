@@ -13,13 +13,12 @@ object `package` extends Module {
     os.call(("npm", "run", script), cwd = moduleDir, stdout = os.Inherit, stderr = os.Inherit)
   }
 
-  /** Build the docs site from docs/ into website/dist, to be served under /docs/.
-   */
+  /** Build the docs site into website/dist, to be served under /docs/. */
   def build(args: String*) = Task.Command(exclusive = true) {
     runNpm("build")
   }
 
-  /** Serve the docs site at http://localhost:4321/docs/, reloading on every change in docs/. */
+  /** Serve the docs site at http://localhost:4321/docs/, reloading on every change. */
   def serve(args: String*) = Task.Command() {
     runNpm("dev")
   }

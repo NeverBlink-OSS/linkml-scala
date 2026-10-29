@@ -7,7 +7,7 @@ import mill.scalalib.*
 import millbuild.*
 import com.carlosedp.aliases.*
 
-import com.sun.net.httpserver.{Filter, HttpHandler, HttpServer, SimpleFileServer}
+import com.sun.net.httpserver.{Filter, HttpExchange, HttpHandler, HttpServer, SimpleFileServer}
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 
@@ -51,10 +51,49 @@ object `package` extends Module {
     os.call(("npm", "run", "build"), cwd = uiDir, stdout = os.Inherit, stderr = os.Inherit)
   }
 
-  /** Serve the whole site as it's deployed (see .github/workflows/deploy-playground.yml) at
-   * http://localhost:8000/: the landing page at /, the playground at /playground/ and the docs at
-   * /docs/. The landing page and the playground come straight from pages/ and ui/, so a reload
-   * shows your edits. The docs are built once at the start; use `website.serve` to work on them.
+  /** The release the landing page shows install lines for: the latest `v*` tag, without the `v`. */
+  private def releaseVersion(root: os.Path): Option[String] =
+    try
+      Some(
+        os.proc("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
+          .call(cwd = root, stderr = os.Pipe).out.trim().stripPrefix("v"),
+      )
+    catch { case _: os.SubprocessException => None }
+
+  /** pages/index.html with the release version filled into its install lines. */
+  private def landingPage(root: os.Path, version: String): String =
+    os.read(root / "pages" / "index.html").replace("__VERSION__", version)
+
+  /** The deployed site apart from the landing page, as (path in the site, file or folder in the
+   * repo).
+   */
+  private def siteFiles(root: os.Path): Seq[(String, os.Path)] = {
+    val icons = Seq("favicon.svg", "favicon.ico", "apple-touch-icon.png", "neverblink-logo.svg")
+    val playground = Seq("index.html", "styles.css", "fonts", "dist") ++ icons
+    playground.map(f => s"playground/$f" -> root / "ui" / f) ++
+      // The landing page uses the icons and the fonts too
+      (icons :+ "fonts").map(f => f -> root / "ui" / f) :+
+      ("docs" -> root / "website" / "dist")
+  }
+
+  /** Build the whole site, as it's deployed to https://linkml.ohi.dev/, into out/ui/site.dest.
+   */
+  def site(args: String*) = Task.Command(exclusive = true) {
+    build.generator.js.fullLinkJS()
+    buildUiBundle()
+    build.website.runNpm("build")
+
+    val root = mill.api.BuildCtx.workspaceRoot
+    val version = releaseVersion(root).getOrElse(
+      Task.fail("No v* tag to take the release version from. Fetch them with `git fetch --tags`."),
+    )
+    for ((path, source) <- siteFiles(root))
+      os.copy(source, Task.dest / os.RelPath(path), createFolders = true)
+    os.write(Task.dest / "index.html", landingPage(root, version))
+    PathRef(Task.dest)
+  }
+
+  /** Serve the whole site as `site` builds it, at http://localhost:8000/.
    */
   def serve(args: String*) = Task.Command() {
     build.generator.js.fullLinkJS()
@@ -62,25 +101,44 @@ object `package` extends Module {
     build.website.runNpm("build")
 
     val root = mill.api.BuildCtx.workspaceRoot
-    // The landing page shows install lines for the latest release, like on the deployed site
-    val version =
-      try os.proc("git", "describe", "--tags", "--abbrev=0", "--match", "v*")
-          .call(cwd = root, stderr = os.Pipe).out.trim().stripPrefix("v")
-      catch { case _: os.SubprocessException => "0.0.0-SNAPSHOT" }
+    val version = releaseVersion(root).getOrElse("0.0.0-SNAPSHOT")
 
-    val uiFiles = SimpleFileServer.createFileHandler((root / "ui").toNIO)
-    val landing: HttpHandler = exchange =>
-      exchange.getRequestURI.getPath match {
-        case "/" | "/index.html" =>
-          val page = os.read(root / "pages" / "index.html").replace("__VERSION__", version)
-          val body = page.getBytes(StandardCharsets.UTF_8)
-          exchange.getResponseHeaders.set("Content-Type", "text/html; charset=utf-8")
-          exchange.sendResponseHeaders(200, body.length)
-          exchange.getResponseBody.write(body)
+    def respond(exchange: HttpExchange, contentType: String, body: Array[Byte]): Unit = {
+      exchange.getResponseHeaders.set("Content-Type", contentType)
+      exchange.sendResponseHeaders(200, body.length)
+      exchange.getResponseBody.write(body)
+      exchange.close()
+    }
+    val contentTypes = Map(
+      "html" -> "text/html; charset=utf-8",
+      "css" -> "text/css; charset=utf-8",
+      "svg" -> "image/svg+xml",
+      "png" -> "image/png",
+      "ico" -> "image/x-icon",
+    )
+
+    val (folders, files) = siteFiles(root).partition((_, source) => os.isDir(source))
+    val fileAt = files.map((path, source) => s"/$path" -> source).toMap
+    val singleFiles: HttpHandler = exchange => {
+      val path = exchange.getRequestURI.getPath
+      val wanted = if (path.endsWith("/")) path + "index.html" else path
+      if (wanted == "/index.html")
+        val page = landingPage(root, version).getBytes(StandardCharsets.UTF_8)
+        respond(exchange, contentTypes("html"), page)
+      else fileAt.get(wanted) match {
+        case Some(file) =>
+          val contentType = contentTypes.getOrElse(file.ext, "application/octet-stream")
+          respond(exchange, contentType, os.read.bytes(file))
+        // /playground, like GitHub Pages
+        case None if fileAt.contains(s"$path/index.html") =>
+          exchange.getResponseHeaders.set("Location", s"$path/")
+          exchange.sendResponseHeaders(301, -1)
           exchange.close()
-        // The icons and fonts, which the deployed site keeps next to the landing page
-        case _ => uiFiles.handle(exchange)
+        case None =>
+          exchange.sendResponseHeaders(404, -1)
+          exchange.close()
       }
+    }
 
     // `no-cache` makes the browser ask the server before it reuses a file, so a page reloaded after
     // a rebuild gets the new files. Without it, Safari can keep using an old styles.css for days.
@@ -91,11 +149,10 @@ object `package` extends Module {
     val log = SimpleFileServer.createOutputFilter(System.out, SimpleFileServer.OutputLevel.INFO)
 
     val server = HttpServer.create(new InetSocketAddress(8000), 0)
-    Seq(
-      "/" -> landing,
-      "/playground" -> uiFiles,
-      "/docs" -> SimpleFileServer.createFileHandler((root / "website" / "dist").toNIO),
-    ).foreach { (path, handler) =>
+    val handlers = ("/" -> singleFiles) +: folders.map((path, source) =>
+      s"/$path" -> SimpleFileServer.createFileHandler(source.toNIO),
+    )
+    handlers.foreach { (path, handler) =>
       server.createContext(path, handler).getFilters.addAll(java.util.List.of(log, noCache))
     }
 

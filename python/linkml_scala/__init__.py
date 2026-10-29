@@ -11,8 +11,8 @@ Load a schema once, then run as many generators over it as you like::
         print(schema.json_schema())
         print(schema.shacl())
 
-Install it with ``pip install neverblink-linkml``. See docs/python_bindings.md in the LinkML-Scala
-repository for more information, including how to build the library yourself.
+Install it with ``pip install neverblink-linkml``. See https://linkml.ohi.dev/docs/python-bindings/
+for more information, including how to build the library yourself.
 """
 
 from __future__ import annotations
@@ -351,7 +351,7 @@ def from_owl(
         example with rdflib.
     :param config: How to map the ontology: the text of the config itself, as YAML, not a path to
         a file. It sets names, prefixes, which annotation properties fill which metaslots, and
-        more. See ``docs/owl.md``.
+        more. See https://linkml.ohi.dev/docs/owl/.
     :param schema_id: The ``id`` of the schema to produce. By default, the ontology IRI.
     :param output_format: Output serialization format to use, ``yaml`` or ``json``.
     :param list_not_imported: Whether to list what could not be imported, in comments at the top

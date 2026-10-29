@@ -175,9 +175,10 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
     "be documented in the Python bindings guide" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val docs = os.read(root / "docs" / "python_bindings.md")
+      val guide = "website/src/content/docs/python-bindings.md"
+      val docs = os.read(root / os.RelPath(guide))
       val missing = pythonMethods(root).filterNot(name => docs.contains(s"schema.$name("))
-      withClue("add it to the Generating section of docs/python_bindings.md: ")(
+      withClue(s"add it to the Generating section of $guide: ")(
         missing shouldBe empty,
       )
     }

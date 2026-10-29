@@ -1,9 +1,12 @@
 # Publish the docs at https://ohi.dev/docs/.
-name: Deploy docs
+name: Deploy ohi.dev docs
 
 on:
   push:
     branches: [main]
+    paths:
+      - "ohi/docs/**"
+      - ".github/workflows/deploy-ohi-docs.yml"
   workflow_dispatch:
 
 permissions:
