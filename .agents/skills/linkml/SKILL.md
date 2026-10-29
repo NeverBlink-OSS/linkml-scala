@@ -1,10 +1,10 @@
 ---
 name: linkml
-description: Author, validate, review and release LinkML schemas using the linkml-scala CLI. Auto-load for any task involving a LinkML schema - writing or editing classes, slots, attributes, enums, ranges, identifiers, inheritance, inlining, imports or prefixes; debugging a schema that fails to validate; generating JSON Schema, SHACL, RDFS, OWL, a Frictionless data package or Scala; importing an OWL ontology, RDFS vocabulary or Apache Ossie ontology into LinkML; converting SHACL shapes, JSON Schema, XSD or sample data into LinkML; validating instance data against a schema; or setting up GitHub Actions for schema validation and releases.
+description: Author, validate, review and release LinkML schemas using the ohi CLI (`ohi linkml`). Auto-load for any task involving a LinkML schema - writing or editing classes, slots, attributes, enums, ranges, identifiers, inheritance, inlining, imports or prefixes; debugging a schema that fails to validate; generating JSON Schema, SHACL, RDFS, OWL, a Frictionless data package or Scala; importing an OWL ontology, RDFS vocabulary or Apache Ossie ontology into LinkML; converting SHACL shapes, JSON Schema, XSD or sample data into LinkML; validating instance data against a schema; or setting up GitHub Actions for schema validation and releases.
 license: Apache-2.0
 ---
 
-# LinkML schemas with linkml-scala
+# LinkML schemas with ohi
 
 [LinkML](https://linkml.io) is a YAML data-modelling language: write the model once, generate
 JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skill drives
@@ -20,7 +20,7 @@ JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skil
   This is the single most common way to produce a schema that looks right and does nothing.
 * NEVER claim a generator or importer exists without checking.
 * NEVER write a schema by hand from an OWL ontology, an RDFS vocabulary or an Apache Ossie
-  ontology. Run the importer (`linkml-scala from owl` / `from ossie`), then review and tweak.
+  ontology. Run the importer (`ohi linkml from owl` / `from ossie`), then review and tweak.
 * When unsure what a construct *means*, generate from it and read the output. `generate linkml`
   and `generate json-schema` are cheaper and more reliable than reasoning.
 * NEVER install anything without asking first, and never pipe a remote script into a shell.
@@ -28,19 +28,19 @@ JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skil
 ## Toolchain
 
 ```shell
-linkml-scala version     # 0.12.0 or newer is required
+ohi version     # 0.17.1 or newer is required
 ```
 
-`validate --format json` does not exist before 0.12.0. If the CLI is missing or too old, offer the
+If the CLI is missing or too old, offer the
 options in [990-install.md](990-install.md). If the user cannot install it, the
 [playground](https://linkml.ohi.dev/playground) runs the same engine in a browser.
 
 ## The loop
 
 ```shell
-linkml-scala validate --format json schema.yaml   # machine-readable, act on it precisely
+ohi linkml validate --format json schema.yaml   # machine-readable, act on it precisely
 # fix, repeat until clean, then:
-linkml-scala validate --strict schema.yaml        # warnings too
+ohi linkml validate --strict schema.yaml        # warnings too
 ```
 
 `--format json` emits one
@@ -110,7 +110,7 @@ it changes the shape of every generated artifact. The decision table is in
 ## Generating
 
 ```shell
-linkml-scala generate json-schema --to out/schema.json schema.yaml
+ohi linkml generate json-schema --to out/schema.json schema.yaml
 ```
 
 Generators: `json-schema`, `shacl`, `rdfs`, `owl`, `frictionless`, `scala`, `linkml`, `graphql`,
@@ -119,7 +119,7 @@ instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared proper
 `frictionless` write several files, so point their `--to` at a directory. `docs` writes Markdown
 documentation: a page per class, slot, enum and type when `--to` is a directory, or one document
 when it is a `.md` file or stdout. For flags run
-`linkml-scala generate <generator> --help` — do not guess.
+`ohi linkml generate <generator> --help` — do not guess.
 
 `generate er-diagram` draws the model as a
 [Mermaid ER diagram](https://mermaid.js.org/syntax/entityRelationshipDiagram.html) — classes become
@@ -136,7 +136,7 @@ somewhere that pins its own Mermaid (GitHub, GitLab, Notion, mkdocs), pass
 into attributes and prunes unused elements, showing what the schema *actually* says:
 
 ```shell
-linkml-scala generate linkml schema.yaml
+ohi linkml generate linkml schema.yaml
 ```
 
 Reach for it whenever inheritance, `slot_usage` or imports make the effective model unclear — and
@@ -147,7 +147,7 @@ it is the best artifact to hand downstream consumers, who then need no import re
 The reverse of `generate`: read a document in another format and write a LinkML schema.
 
 ```shell
-linkml-scala from owl --list-not-imported --to schema.yaml ontology.ttl
+ohi linkml from owl --list-not-imported --to schema.yaml ontology.ttl
 ```
 
 Importers: `owl`, `ossie`.

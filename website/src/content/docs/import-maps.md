@@ -26,7 +26,7 @@ imports:
 ```
 
 ```shell
-linkml-scala validate --import-map imports.json model.yaml
+ohi linkml validate --import-map imports.json model.yaml
 ```
 
 `units:core` is loaded from `deps/units.yaml`. The schema keeps `units:core` in its `imports`.
@@ -71,7 +71,7 @@ The relative imports of a schema loaded from a location are joined to that locat
 An import map also applies to:
 
 - The built-in schemas. `"https://w3id.org/linkml/types": "local/types.yaml"` loads the metamodel types from a local copy.
-- The schema you load. With `"https://example.org/model": "local/model.yaml"` in `imports.json`, `linkml-scala validate --import-map imports.json https://example.org/model` loads `local/model.yaml`.
+- The schema you load. With `"https://example.org/model": "local/model.yaml"` in `imports.json`, `ohi linkml validate --import-map imports.json https://example.org/model` loads `local/model.yaml`.
 
 ## Two files with the same schema id
 
@@ -93,7 +93,7 @@ Two files with the same content are loaded without an error.
 ```
 
 ```shell
-linkml-scala generate json-schema --import-map imports.json model.yaml
+ohi linkml generate json-schema --import-map imports.json model.yaml
 ```
 
 ### Python

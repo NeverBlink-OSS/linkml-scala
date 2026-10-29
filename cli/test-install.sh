@@ -108,17 +108,22 @@ passed() {
 
 new_case default_executed
 run_case 0 bash "$installer"
-assert_installed linkml-scala
+assert_installed ohi
 grep -Fq 'Checksum verified against SHA256SUMS.' "$case_dir/output" || fail "checksum not verified"
+passed
+
+new_case linkml_scala_executed
+run_case 0 env LINKML_SCALA_TOOL=linkml-scala bash "$installer"
+assert_installed linkml-scala
 passed
 
 for shell in bash zsh; do
   if ! command -v "$shell" >/dev/null 2>&1; then
-    echo "SKIP: ohi_sourced_$shell ($shell unavailable)"
+    echo "SKIP: default_sourced_$shell ($shell unavailable)"
     continue
   fi
-  new_case "ohi_sourced_$shell"
-  run_case 0 "$(command -v "$shell")" -c 'set -- linkml-scala ignored; LINKML_SCALA_TOOL=ohi . "$INSTALLER"; command -v ohi'
+  new_case "default_sourced_$shell"
+  run_case 0 "$(command -v "$shell")" -c 'set -- ohi ignored; . "$INSTALLER"; command -v ohi'
   assert_installed ohi
   grep -Fxq "$case_dir/install/ohi" "$case_dir/output" || fail "source did not update PATH"
   passed
@@ -126,7 +131,7 @@ done
 
 new_case invalid_selector_survives_source
 run_case 1 bash -c 'LINKML_SCALA_TOOL=ohi-cli . "$INSTALLER"; rc=$?; echo caller-alive; exit "$rc"'
-assert_refused "LINKML_SCALA_TOOL must be linkml-scala or ohi, not 'ohi-cli'."
+assert_refused "LINKML_SCALA_TOOL must be ohi or linkml-scala, not 'ohi-cli'."
 grep -Fxq caller-alive "$case_dir/output" || fail "source terminated caller"
 [ ! -s "$case_dir/requests" ] || fail "invalid selector requested a release"
 passed

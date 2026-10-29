@@ -45,14 +45,14 @@ jobs:
       - name: Install via install.sh
         run: |
           . ./cli/install.sh
-          command -v linkml-scala # sourcing must make it callable immediately
+          command -v ohi # sourcing must make it callable immediately
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # The other documented form. Must work without a TTY and without prompting.
       - name: Install via install.sh, executed rather than sourced
         run: |
-          LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/linkml-exec" bash ./cli/install.sh
-          "$RUNNER_TEMP/linkml-exec/linkml-scala" --version
+          LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/ohi-exec" bash ./cli/install.sh
+          "$RUNNER_TEMP/ohi-exec/ohi" version
 
       # Runners ship a current gh, so the strict path must actually verify. Guards both
       # halves: that our releases really carry provenance, and that install.sh reports a
@@ -61,14 +61,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }} # gh attestation verify calls the API
         run: |
-          OUTPUT=$(LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/linkml-attest" \
+          OUTPUT=$(LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/ohi-attest" \
             LINKML_SCALA_REQUIRE_ATTESTATION=1 bash ./cli/install.sh 2>&1)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -Fq "Build provenance verified"; then
             echo "Error: expected the provenance check to succeed."
             exit 1
           fi
-          "$RUNNER_TEMP/linkml-attest/linkml-scala" --version
+          "$RUNNER_TEMP/ohi-attest/ohi" version
 
       # A sourced install.sh must never terminate the caller's shell.
       # `set +e` mirrors an interactive shell, which is the case that matters. It also keeps
@@ -89,11 +89,11 @@ jobs:
 
       - name: Installed binary reports its version
         run: |
-          linkml-scala --version
+          ohi version
 
       - name: Installed binary can validate a schema
         run: |
-          OUTPUT=$(linkml-scala validate tests/resources/models/basic/model.yaml)
+          OUTPUT=$(ohi linkml validate tests/resources/models/basic/model.yaml)
           echo "$OUTPUT"
           if ! echo "$OUTPUT" | grep -Fq "Schema is valid."; then
             echo "Error: Expected success message not found."

@@ -45,7 +45,7 @@ modelling error, and `InvalidSlotUsage` is reported if you name a slot the class
 actually have. `required: false` or `multivalued: false` on a slot that is already `true` is
 ignored without a warning (see
 [210-slot-usage-inheritance.md](210-slot-usage-inheritance.md#boolean-metaslots)). To see the result of all this resolution, run
-`linkml-scala generate linkml`.
+`ohi linkml generate linkml`.
 
 ## Inheritance
 
@@ -244,7 +244,7 @@ schema will not load at all, so imports must be right before anything else works
 Flatten a multi-file schema into one self-contained file with:
 
 ```shell
-linkml-scala generate linkml --to derived.yaml schema.yaml
+ohi linkml generate linkml --to derived.yaml schema.yaml
 ```
 
 That is the artifact to hand to consumers who should not have to resolve your imports.

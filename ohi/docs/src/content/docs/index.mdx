@@ -10,6 +10,19 @@ The ohi SDK lets Scala/JVM, Python and TypeScript applications search publicatio
 
 ## Installation
 
+The `ohi` command-line tool installs with one line on Linux, macOS and WSL. It searches the
+catalog, tracks a project's selections and runs every LinkML command as `ohi linkml`:
+
+```sh
+. <(curl -sSfL https://ohi.dev/install.sh)
+ohi version
+```
+
+See the [CLI README](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/cli/ohi/README.md)
+for its commands, and for installing on Windows or with [mise](https://mise.jdx.dev/).
+
+The language bindings are packaged separately:
+
 <Tabs syncKey="language">
   <TabItem label="Python">
     Python 3.10 or later:

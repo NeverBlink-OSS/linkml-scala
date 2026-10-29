@@ -7,8 +7,8 @@ validate cleanly but will hurt later.
 has a fatal error, and its findings frame everything else:
 
 ```shell
-linkml-scala validate --strict --format json schema.yaml
-linkml-scala generate linkml schema.yaml   # the effective model
+ohi linkml validate --strict --format json schema.yaml
+ohi linkml generate linkml schema.yaml   # the effective model
 ```
 
 The second command is the one that makes a real review possible: it resolves imports and
@@ -117,8 +117,8 @@ Generate everything the project uses, and check the output is sane rather than m
 non-erroring:
 
 ```shell
-linkml-scala generate json-schema schema.yaml  >/dev/null
-linkml-scala generate shacl --format ttl schema.yaml >/dev/null
+ohi linkml generate json-schema schema.yaml  >/dev/null
+ohi linkml generate shacl --format ttl schema.yaml >/dev/null
 ```
 
 Then actually read one of them. A schema can generate valid-but-useless output — a JSON Schema

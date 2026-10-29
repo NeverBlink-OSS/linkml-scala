@@ -8,7 +8,7 @@
 [![PyPI](https://img.shields.io/pypi/v/neverblink-linkml?style=flat-square&logo=pypi&logoColor=white&label=pypi)](https://pypi.org/project/neverblink-linkml/)
 [![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=CLI%20release&color=blue)](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest)
 
-[![Platforms](https://img.shields.io/badge/platforms-JVM_·_JS_·_native-4B8BBE?style=flat-square)](#-quick-start-installation)
+[![Platforms](https://img.shields.io/badge/platforms-JVM_·_JS_·_native-4B8BBE?style=flat-square)](#cli-tool-installation)
 [![Scala 3](https://img.shields.io/badge/Scala-3.8-DC322F?style=flat-square&logo=scala&logoColor=white)](https://www.scala-lang.org)
 [![Scala.js](https://img.shields.io/badge/Scala.js-1.22-blue?style=flat-square&logo=scala&logoColor=white)](https://www.scala-js.org)
 [![JDK 17+](https://img.shields.io/badge/JDK-17+-f89820?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net)
@@ -39,7 +39,7 @@ We also have [Python and native bindings](https://linkml.ohi.dev/docs/python-bin
 
 ### ⚡ Natively compiled binaries for Linux, macOS, and Windows
 
-`linkml-scala` is a self-contained binary that runs natively on Linux, macOS, and Windows. You don't need Python, Java, or anything else installed.
+`ohi` is a self-contained binary that runs natively on Linux, macOS, and Windows. You don't need Python, Java, or anything else installed.
 
 It starts up immediately and runs fast, even on extra-large LinkML models. **[See the installation instructions.](#cli-tool-installation)**
 
@@ -47,7 +47,7 @@ It starts up immediately and runs fast, even on extra-large LinkML models. **[Se
 
 LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
-![linkml-scala validate CLI command](./website/src/assets/validate.gif)
+![LinkML schema validation in the CLI](./website/src/assets/validate.gif)
 
 The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
 
@@ -65,47 +65,49 @@ LinkML-Scala was built to work great with large schemas. In our benchmarks it's 
 
 ## CLI tool installation
 
-For ontology search, acquisition and project selections, install [the ohi CLI](cli/ohi/README.md#install). It also exposes the LinkML commands through `ohi linkml`.
+The CLI is called `ohi`. It runs every LinkML command under `ohi linkml`, and it also searches
+ontology publications, downloads their files and tracks the ones a project depends on. See
+[the ohi CLI README](cli/ohi/README.md) for the catalog and project commands.
 
 ### Method 1: Install script (recommended for Unix/macOS)
 
 If you are on Linux, macOS, or WSL on Windows, the easiest installation method is with our script:
 
 ```shell
-. <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/refs/heads/main/cli/install.sh)
-linkml-scala
+. <(curl -sSfL https://ohi.dev/install.sh)
+ohi version
 ```
 
 Read the script before running it: [install.sh](cli/install.sh).
 
 ### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (cross-platform)
 
-You can install `linkml-scala` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html) environment manager:
+You can install `ohi` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html) environment manager:
 
 ```shell
-mise use ubi:NeverBlink-OSS/linkml-scala
-linkml-scala
+mise use 'ubi:NeverBlink-OSS/linkml-scala[matching=ohi,exe=ohi]'
+ohi version
 ```
 
 ### Method 3: Manual download
 
-Head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest) and download the pre-compiled binary for your specific OS and architecture.
+Head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest) and download the `ohi` binary for your specific OS and architecture.
 
 *For macOS and Linux:*
 Rename the downloaded file, make it executable, and run it:
 
 ```shell
-mv linkml-scala-<os>-<arch> linkml-scala
-chmod +x linkml-scala
-./linkml-scala
+mv ohi-<os>-<arch> ohi
+chmod +x ohi
+./ohi
 ```
 
 *For Windows:*
 Simply rename the downloaded executable, and run it:
 
 ```shell
-ren linkml-scala-windows-x86_64.exe linkml-scala.exe
-linkml-scala.exe
+ren ohi-windows-x86_64.exe ohi.exe
+ohi.exe
 ```
 
 Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm a download came from our release workflow. **[See how to verify it.](https://linkml.ohi.dev/docs/verifying-downloads/)**
@@ -117,7 +119,7 @@ Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation,
 The `validate` command (also available as `lint`) inspects your LinkML schemas for structural and logical issues:
 
 ```shell
-linkml-scala validate <input-file> ...
+ohi linkml validate <input-file> ...
 ```
 
 The CLI outputs issues directly to your terminal, categorized into three severity levels:
@@ -132,13 +134,13 @@ All generators require that there are no *fatal* issues in the schema.
 Generate a standard JSON Schema, [Apache Ossie](https://github.com/apache/ossie) ontology, OWL ontology, or SHACL from your model:
 
 ```shell
-linkml-scala generate json-schema <input-file>
-linkml-scala generate ossie <input-file>
-linkml-scala generate owl <input-file>
-linkml-scala generate shacl <input-file>
+ohi linkml generate json-schema <input-file>
+ohi linkml generate ossie <input-file>
+ohi linkml generate owl <input-file>
+ohi linkml generate shacl <input-file>
 ```
 
-**There's more!** Run `linkml-scala --help` to see the full list of supported generators. You can also run `linkml-scala generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)**.
+**There's more!** Run `ohi linkml --help` to see the full list of supported generators. You can also run `ohi linkml generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)**.
 
 #### LinkML schema derivation and pruning 
 
@@ -148,7 +150,7 @@ Generate a LinkML model that:
 - Has all unused elements removed (controlled by `--pruning-mode`)
 
 ```shell
-./linkml-scala generate linkml --to <output-path> <input-file>
+ohi linkml generate linkml --to <output-path> <input-file>
 ```
 
 #### Loading imports from other locations
@@ -161,7 +163,7 @@ schema that is imported by URI or CURIE. Write an import map as a JSON file:
 ```
 
 ```shell
-./linkml-scala validate --import-map imports.json <input-file>
+ohi linkml validate --import-map imports.json <input-file>
 ```
 
 The option works with `generate` too. The Python, JavaScript and C libraries take the same map as

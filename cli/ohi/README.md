@@ -7,14 +7,16 @@ ohi lets command-line users find ontology publications, download files, track th
 On Linux or macOS, run this in Bash or Zsh:
 
 ```sh
-LINKML_SCALA_TOOL=ohi LINKML_SCALA_REQUIRE_CHECKSUM=1 . <(curl -sSfL https://raw.githubusercontent.com/NeverBlink-OSS/linkml-scala/main/cli/install.sh)
+. <(curl -sSfL https://ohi.dev/install.sh)
 ohi version
 ```
 
 The installer downloads the latest GitHub release, verifies its checksum and installs `ohi` in
 `~/.local/bin`. Source it again to update. Set `LINKML_SCALA_VERSION` to a release tag to select a
 version, or `LINKML_SCALA_INSTALL_DIR` to choose the directory. It adds that directory to the current
-shell's `PATH` and asks before changing your shell profile.
+shell's `PATH` and asks before changing your shell profile. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` to
+refuse releases that publish no checksum manifest, which is every release up to and including v0.12.0.
+Read the script before running it: [install.sh](../install.sh).
 
 Native releases support Linux and macOS 14 or later on x86_64 and arm64, plus Windows on x86_64.
 Download other release assets from [GitHub Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases).
