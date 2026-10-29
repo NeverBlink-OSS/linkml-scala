@@ -46,6 +46,7 @@ ui/dist/
 /ohi/docs/dist/
 /ohi/docs/.astro/
 /ohi/docs/public/install.sh
+/ohi/docs/public/install.ps1
 /ohi/typescript/dist/
 
 # apache/ossie checkout for OssieIntegrationSpec, cloned by `./mill generator.jvm.test.ossieRepo`

@@ -329,23 +329,18 @@ jobs:
           python-version: '3.10'
       - name: Select installation directory
         run: echo "LINKML_SCALA_INSTALL_DIR=$RUNNER_TEMP/ohi-installed" >> "$GITHUB_ENV"
+      # install.sh handles Windows under Git Bash
       - name: Install exact release with checksum and provenance required
-        if: runner.os != 'Windows'
         run: |
           bash cli/install.sh
-          python cli/check-ohi.py "$LINKML_SCALA_INSTALL_DIR/ohi" "${LINKML_SCALA_VERSION#v}"
-      - name: Download and verify Windows executable
+          exe=""
+          [ "$RUNNER_OS" != "Windows" ] || exe=".exe"
+          python cli/check-ohi.py "$LINKML_SCALA_INSTALL_DIR/ohi$exe" "${LINKML_SCALA_VERSION#v}"
+      - name: Install exact release with install.ps1
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          mkdir -p "$LINKML_SCALA_INSTALL_DIR"
-          cd "$LINKML_SCALA_INSTALL_DIR"
-          release="https://github.com/NeverBlink-OSS/linkml-scala/releases/download/$LINKML_SCALA_VERSION"
-          curl -fL "$release/ohi-windows-x86_64.exe" -o ohi.exe
-          curl -fL "$release/SHA256SUMS" -o SHA256SUMS
-          expected=$(awk '$2 == "ohi-windows-x86_64.exe" { print $1 }' SHA256SUMS)
-          actual=$(sha256sum ohi.exe | cut -d ' ' -f 1)
-          test "$actual" = "$expected"
-          gh attestation verify ohi.exe --repo NeverBlink-OSS/linkml-scala
-      - name: Check installed Windows executable
-        if: runner.os == 'Windows'
-        run: python cli/check-ohi.py "$LINKML_SCALA_INSTALL_DIR/ohi.exe" "${LINKML_SCALA_VERSION#v}"
+          $env:LINKML_SCALA_INSTALL_DIR = "$env:RUNNER_TEMP\ohi-ps"
+          ./cli/install.ps1
+          $version = $env:LINKML_SCALA_VERSION -replace '^v', ''
+          python cli/check-ohi.py "$env:LINKML_SCALA_INSTALL_DIR\ohi.exe" $version

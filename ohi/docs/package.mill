@@ -11,14 +11,16 @@ object `package` extends Module {
     os.call(("npm", "run", script), cwd = moduleDir, stdout = os.Inherit, stderr = os.Inherit)
   }
 
-  /** Puts the CLI installer where Astro will publish it, so that it is served from
-    * https://ohi.dev/install.sh. Copied on every build instead of being kept here, so that
-    * `cli/install.sh` stays the only copy in the repository.
+  /** Puts the CLI installers where Astro will publish them, so that they are served from
+    * https://ohi.dev/install.sh and https://ohi.dev/install.ps1. Copied on every build
+    * instead of being kept here, so that `cli/` stays the only copy in the repository.
     */
-  def copyInstaller(): Unit = os.copy.over(
-    mill.api.BuildCtx.workspaceRoot / "cli" / "install.sh",
-    moduleDir / "public" / "install.sh",
-    createFolders = true,
+  def copyInstaller(): Unit = Seq("install.sh", "install.ps1").foreach(name =>
+    os.copy.over(
+      mill.api.BuildCtx.workspaceRoot / "cli" / name,
+      moduleDir / "public" / name,
+      createFolders = true,
+    ),
   )
 
   /** Build the ohi docs and check internal links. */

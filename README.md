@@ -69,16 +69,23 @@ The CLI is called `ohi`. It runs every LinkML command under `ohi linkml`, and it
 ontology publications, downloads their files and tracks the ones a project depends on. See
 [the ohi CLI README](cli/ohi/README.md) for the catalog and project commands.
 
-### Method 1: Install script (recommended for Unix/macOS)
+### Method 1: Install script (recommended)
 
-If you are on Linux, macOS, or WSL on Windows, the easiest installation method is with our script:
+On Linux, macOS, or any bash on Windows - Git Bash, MSYS2, Cygwin, WSL:
 
 ```shell
 . <(curl -sSfL https://ohi.dev/install.sh)
 ohi version
 ```
 
-Read the script before running it: [install.sh](cli/install.sh).
+In PowerShell:
+
+```powershell
+irm https://ohi.dev/install.ps1 | iex
+ohi version
+```
+
+Read the script before running it: [install.sh](cli/install.sh), [install.ps1](cli/install.ps1).
 
 ### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (cross-platform)
 

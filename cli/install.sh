@@ -11,6 +11,9 @@
 #   curl -fsSLO https://ohi.dev/install.sh
 #   bash install.sh
 #
+# On Windows this needs a bash: Git Bash, MSYS2, Cygwin or WSL. For PowerShell, use
+# https://ohi.dev/install.ps1 instead.
+#
 # Select linkml-scala through the environment in either form:
 #
 #   LINKML_SCALA_TOOL=linkml-scala . <(curl -sSfL https://ohi.dev/install.sh)
@@ -45,7 +48,7 @@ _linkml_scala_install() {
   local install_dir="${LINKML_SCALA_INSTALL_DIR:-$HOME/.local/bin}"
   local tag="${LINKML_SCALA_VERSION:-}"
   local name="${LINKML_SCALA_TOOL:-ohi}"
-  local tool os arch arch_suffix binary_name asset release_url tmp_dir
+  local tool os arch arch_suffix ext binary_name asset release_url tmp_dir
   local latest_url expected actual attestation profile path_line answer
 
   case "$name" in
@@ -92,13 +95,18 @@ _linkml_scala_install() {
 
   os=$(uname -s | tr '[:upper:]' '[:lower:]')
   arch=$(uname -m)
+  ext=""
 
   case "$os" in
     linux) binary_name="$name-linux" ;;
     darwin) binary_name="$name-macos" ;;
+    # Git Bash, MSYS2 and Cygwin. WSL reports linux and takes the branch above.
+    mingw* | msys* | cygwin*)
+      binary_name="$name-windows"
+      ext=".exe"
+      ;;
     *)
       echo "Error: unsupported operating system '$os'." >&2
-      echo "On Windows, download $name-windows-x86_64.exe from https://github.com/$repo_base/releases instead." >&2
       return 1
       ;;
   esac
@@ -112,7 +120,13 @@ _linkml_scala_install() {
       ;;
   esac
 
-  asset="$binary_name$arch_suffix"
+  # Only windows-x86_64 is published. Windows on arm64 runs it under emulation.
+  if [ -n "$ext" ] && [ "$arch_suffix" = "-arm64" ]; then
+    echo "No arm64 build for Windows; installing the x86_64 one, which runs under emulation."
+    arch_suffix="-x86_64"
+  fi
+
+  asset="$binary_name$arch_suffix$ext"
   release_url="https://github.com/$repo_base/releases/download/$tag"
 
   tmp_dir=$(mktemp -d) || {
@@ -210,14 +224,19 @@ _linkml_scala_install() {
   fi
 
   chmod +x "$tmp_dir/$asset"
-  if ! mv -f "$tmp_dir/$asset" "$install_dir/$name"; then
+  if ! mv -f "$tmp_dir/$asset" "$install_dir/$name$ext"; then
     echo "Error: could not install into $install_dir." >&2
     rm -rf "$tmp_dir"
     return 1
   fi
   rm -rf "$tmp_dir"
 
-  echo "Installed $name $tag to $install_dir/$name"
+  echo "Installed $name $tag to $install_dir/$name$ext"
+
+  if [ -n "$ext" ]; then
+    echo "This only affects bash shells. For cmd or PowerShell, add $install_dir to the"
+    echo "PATH there, or install with https://ohi.dev/install.ps1."
+  fi
 
   case ":$PATH:" in
     *":$install_dir:"*)
@@ -268,7 +287,7 @@ _linkml_scala_install() {
       echo "  $path_line"
       echo
       echo "Or call the binary by its full path:"
-      echo "  $install_dir/$name --help"
+      echo "  $install_dir/$name$ext --help"
       ;;
   esac
 }
