@@ -208,6 +208,8 @@ private trait MacroValidator[T] {
   * @param slotsMayBeLocal
   *   Whether a slot reference here may reference a slot (attribute) of [[classScope]] rather than
   *   only a top-level one
+  * @param isImport
+  *   Whether this value is in `imports`, where a value without a colon is a relative URI
   */
 final class ValidatorContext private (
     val defaultRangeAllowed: Boolean,
@@ -216,6 +218,7 @@ final class ValidatorContext private (
     val prefixes: PrefixMap,
     val classScope: Option[String],
     val slotsMayBeLocal: Boolean,
+    val isImport: Boolean,
 ):
   /** Mark continue validating this slot as a range. SHOULD NOT BE USED OUTSIDE THE MACRO */
   def asRange: ValidatorContext =
@@ -226,6 +229,7 @@ final class ValidatorContext private (
       prefixes,
       classScope,
       slotsMayBeLocal,
+      isImport,
     )
 
   /** Enter the scope of a class definition. SHOULD NOT BE USED OUTSIDE THE MACRO */
@@ -237,17 +241,38 @@ final class ValidatorContext private (
       prefixes,
       Some(className),
       slotsMayBeLocal,
+      isImport,
     )
 
   /** Allow this slot reference to reference a slot (attribute) local to the enclosing class. SHOULD
     * NOT BE USED OUTSIDE THE MACRO
     */
   def asLocalSlotRef: ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, isRange, fromSchema, prefixes, classScope, true)
+    new ValidatorContext(
+      defaultRangeAllowed,
+      isRange,
+      fromSchema,
+      prefixes,
+      classScope,
+      true,
+      isImport,
+    )
+
+  /** Mark this value as one in `imports`. SHOULD NOT BE USED OUTSIDE THE MACRO */
+  def asImport: ValidatorContext =
+    new ValidatorContext(
+      defaultRangeAllowed,
+      isRange,
+      fromSchema,
+      prefixes,
+      classScope,
+      slotsMayBeLocal,
+      true,
+    )
 
 object ValidatorContext:
   def apply(defaultRangeAllowed: Boolean, fromSchema: Uri, prefixes: PrefixMap): ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, false, fromSchema, prefixes, None, false)
+    new ValidatorContext(defaultRangeAllowed, false, fromSchema, prefixes, None, false, false)
 
 private object MacroValidator {
   given MacroValidator[LinkmlAny] = new MacroValidator[LinkmlAny] {
@@ -276,6 +301,9 @@ private object MacroValidator {
     * as `ex:Person`, or without a colon, such as `docs`, wasn't expanded, which happens only in a
     * schema built in code. Generators would write it as it is, as a relative IRI.
     *
+    * In `imports`, a [[Curie]] without a colon, such as `core` or `../shared/core`, is a path
+    * relative to the importing schema, so it is a valid relative URI.
+    *
     * In a schema built in code, a [[Curie]] such as `acme:Person` or `mailto:a@b.org`, whose prefix
     * isn't declared and that is a valid URI, is checked as the [[Uri]] that reading the schema
     * gives.
@@ -290,7 +318,8 @@ private object MacroValidator {
           case c: Curie =>
             val curie = c.original
             val uri = if (c.isValid) vc.prefixes.expandOrNull(curie) else null
-            if (uri ne null)
+            if (vc.isImport && c.isValid && curie.indexOf(':') < 0) ValidatorResult.ok
+            else if (uri ne null)
               ValidatorResult(unexpandedCuries =
                 Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
               )
@@ -484,6 +513,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
                 sv,
                 fieldInfo.mappedName match {
                   case "range" => '{ $vc.asRange }
+                  case "imports" => '{ $vc.asImport }
                   // LinkML scopes these to the enclosing class, they may reference its attributes.
                   case "unique_key_slots" | "defining_slots" | "slot_group" =>
                     '{ $vc.asLocalSlotRef }

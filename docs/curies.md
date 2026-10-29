@@ -48,7 +48,7 @@ Each schema is read with its own prefixes, in this order of precedence:
 The prefixes of imported schemas are never used.
 
 The default namespace, for values without a colon, is the namespace of `default_prefix`, or the schema's `id` if there is no `default_prefix` (see [Default `default_prefix`](implementation_differences.md#default-default_prefix)).
-This is not used for `imports`, where a value without a colon is a path relative to the importing schema.
+This is not used for `imports`, where a value without a colon is a path relative to the importing schema. Such a path is a relative URI, so write it with `/`, also on Windows, such as `../shared/core`, not `..\shared\core`.
 
 So a CURIE in an imported schema keeps the meaning that the imported schema's prefixes give it, even if the importing schema uses the same prefix for another namespace:
 
