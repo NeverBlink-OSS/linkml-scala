@@ -93,7 +93,8 @@ The env var is set when starting the mill process, so if you have a daemon runni
 
 The browser playground lives in [`ui/`](ui/) – a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
 
-- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle, the UI bundle and the docs, then serves the whole site as it's deployed: the landing page ([`pages/index.html`](pages/index.html)) at <http://localhost:8000/>, the playground at <http://localhost:8000/playground/> and the docs at <http://localhost:8000/docs/>. Reload to see edits to the landing page and the playground; the docs are built once, so use `./mill website.serve` to work on them.
+- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle, the UI bundle and the docs, then serves the whole site as it's deployed: the landing page ([`pages/index.html`](pages/index.html)) at <http://localhost:8000/>, the playground at <http://localhost:8000/playground/> and the docs at <http://localhost:8000/docs/>. Reload to see edits to the landing page and the playground. The docs are built once, so use `./mill website.serve` to work on them.
+- Build the whole site, as it's deployed: `./mill ui.site` → `out/ui/site.dest/`. `ui.serve` serves the same files.
 - Build the UI bundle only: `./mill ui.bundle` → `ui/dist/app.js`
 - Type-check and bundle (what CI runs): `./mill ui.check`
 - Regenerate the LinkML API types: `./mill ui.types` – run after changing `generator/src-js/.../LinkMlJsApi.scala`
