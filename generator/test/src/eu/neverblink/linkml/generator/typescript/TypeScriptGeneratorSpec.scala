@@ -294,11 +294,11 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
         ts should not include "Circle"
       }
 
-      "schema: the root schema's classes and what they reach" in {
+      "schema: everything defined and used in the root schema" in {
         val ts = generateWith(PruningMode.schemaRoot)
         ts should include("export interface Unrelated")
         ts should include("export interface Circle")
-        ts should not include "Unused"
+        ts should include("export type Unused")
       }
     }
 
