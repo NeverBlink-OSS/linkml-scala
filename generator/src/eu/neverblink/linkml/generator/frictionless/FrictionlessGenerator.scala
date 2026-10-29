@@ -58,7 +58,9 @@ class FrictionlessGenerator(using sv: SchemaView)
     case _: UriType.type => (types.string, "uri")
     case _: CurieType.type => (types.string, "default")
     case _: NcNameType.type => (types.string, "default")
-    case _: LocalizedTextType.type => (types.string, "default") // TODO LNK-195
+    // Only `any` takes both a plain string and a mapping from language tag to text, and it has no
+    // constraints. A CSV cell has no agreed form for a text in several languages yet.
+    case _: LocalizedTextType.type => (types.string, "default")
     case _: UnknownType.type => (types.any, "default")
   }
 
