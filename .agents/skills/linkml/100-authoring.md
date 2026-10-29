@@ -45,7 +45,7 @@ modelling error, and `InvalidSlotUsage` is reported if you name a slot the class
 actually have. `required: false` or `multivalued: false` on a slot that is already `true` is
 ignored without a warning (see
 [210-slot-usage-inheritance.md](210-slot-usage-inheritance.md#boolean-metaslots)). To see the result of all this resolution, run
-`ohi linkml generate linkml`.
+`ohi linkml to linkml`.
 
 ## Inheritance
 
@@ -233,7 +233,7 @@ of the schema that contains it.
 
 To load an import from another place without editing the schema, write an import map as a JSON
 file (for example `{"https://example.org/units/": "deps/units/"}`) and pass
-`--import-map imports.json` to `validate` or `generate`. CURIEs are not allowed in an import map:
+`--import-map imports.json` to `ohi linkml validate` or `ohi linkml to`. CURIEs are not allowed in an import map:
 its keys and locations are full URIs or paths, because a map doesn't belong to any schema whose
 prefixes could expand them. A full URI key also matches CURIE imports that expand to it, so
 `https://example.org/units/core` matches `units:core`. See [Import maps](220-import-maps.md).
@@ -244,7 +244,7 @@ schema will not load at all, so imports must be right before anything else works
 Flatten a multi-file schema into one self-contained file with:
 
 ```shell
-ohi linkml generate linkml --to derived.yaml schema.yaml
+ohi linkml to linkml --to derived.yaml schema.yaml
 ```
 
 That is the artifact to hand to consumers who should not have to resolve your imports.
@@ -276,7 +276,7 @@ classes:
   as `class_uri: schema:Person`, is read as a URI with `schema` as its scheme, and `validate` warns
   with `UndeclaredCuriePrefix` (`--strict` fails). If such a value is in an imported schema, and
   the root schema declares the prefix, `validate` also warns with `UnwritableUri`, as
-  `generate linkml` can't write it. An undeclared prefix in `emit_prefixes` or `implicit_prefix`
+  `to linkml` can't write it. An undeclared prefix in `emit_prefixes` or `implicit_prefix`
   is an `UndefinedPrefix` error.
 - `class_uri`/`slot_uri` pin the identity of an element. Use them whenever the concept already
   exists in a published vocabulary — without them, generated RDF cannot be joined to anything.

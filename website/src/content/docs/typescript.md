@@ -16,7 +16,7 @@ describe exactly the JSON that the generated JSON Schema describes, so they work
 From the command line:
 
 ```shell
-ohi linkml generate typescript --to model.ts schema.yaml
+ohi linkml to typescript --to model.ts schema.yaml
 ```
 
 Options:
@@ -41,7 +41,7 @@ const text2 = JSON.stringify(zoo, null, 2);   // dump
 
 The cast is not checked at runtime. If the JSON doesn't fit the schema, you find out only when
 your code reads a field that isn't what the type says. If the data comes from somewhere you
-don't trust, validate it first with the JSON Schema from `generate json-schema`.
+don't trust, validate it first with the JSON Schema from `to json-schema`.
 
 ## Example
 

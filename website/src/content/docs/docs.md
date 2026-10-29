@@ -15,7 +15,7 @@ they work as they are:
 From the command line, to a folder:
 
 ```shell
-ohi linkml generate docs --to docs/schema schema.yaml
+ohi linkml to docs --to docs/schema schema.yaml
 ```
 
 This writes:
@@ -37,7 +37,7 @@ To get one document instead, with the pages as sections that link to each other 
 `.md` file in `--to`, or leave `--to` out to write to stdout:
 
 ```shell
-ohi linkml generate docs --to schema.md schema.yaml
+ohi linkml to docs --to schema.md schema.yaml
 ```
 
 Options:
@@ -121,7 +121,7 @@ with the explicit numbers from `exact_cardinality`, `minimum_cardinality` and
 
 ### File names
 
-A page's file name is the element's base name, as `generate translation --target docs` gives
+A page's file name is the element's base name, as `to translation --target docs` gives
 it: lower case ASCII letters and digits, with words separated by `_`. So `PersonName` is in
 `classes/person_name.md`. The links need no encoding, and the names work on any file system.
 

@@ -141,13 +141,13 @@ All generators require that there are no *fatal* issues in the schema.
 Generate a standard JSON Schema, [Apache Ossie](https://github.com/apache/ossie) ontology, OWL ontology, or SHACL from your model:
 
 ```shell
-ohi linkml generate json-schema <input-file>
-ohi linkml generate ossie <input-file>
-ohi linkml generate owl <input-file>
-ohi linkml generate shacl <input-file>
+ohi linkml to json-schema <input-file>
+ohi linkml to ossie <input-file>
+ohi linkml to owl <input-file>
+ohi linkml to shacl <input-file>
 ```
 
-**There's more!** Run `ohi linkml --help` to see the full list of supported generators. You can also run `ohi linkml generate shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)**.
+**There's more!** Run `ohi linkml --help` to see the full list of supported generators. You can also run `ohi linkml to shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)**.
 
 #### LinkML schema derivation and pruning 
 
@@ -157,7 +157,7 @@ Generate a LinkML model that:
 - Has all unused elements removed (controlled by `--pruning-mode`)
 
 ```shell
-ohi linkml generate linkml --to <output-path> <input-file>
+ohi linkml to linkml --to <output-path> <input-file>
 ```
 
 #### Loading imports from other locations
@@ -173,7 +173,7 @@ schema that is imported by URI or CURIE. Write an import map as a JSON file:
 ohi linkml validate --import-map imports.json <input-file>
 ```
 
-The option works with `generate` too. The Python, JavaScript and C libraries take the same map as
+The option works with `ohi linkml to` too. The Python, JavaScript and C libraries take the same map as
 `import_map` / `importMap`. See [Import maps](https://linkml.ohi.dev/docs/import-maps/).
 
 ## JavaScript / TypeScript library

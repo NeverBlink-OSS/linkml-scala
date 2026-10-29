@@ -84,7 +84,7 @@ Usual fixes afterwards — ask the user rather than guess:
 * Add an `identifier` slot if the data needs one. RDF uses the node IRI, so none is imported.
 * Rename what reads badly, and set a real `--schema-id` for Ossie (the default is a placeholder).
 
-Round-trip with `generate owl` or `generate ossie`.
+Round-trip with `to owl` or `to ossie`.
 
 ## Translating by hand
 
@@ -137,7 +137,7 @@ Inference from examples, so state your confidence and get it confirmed.
 - A plausible unique key suggests `identifier: true`. Verify uniqueness across the whole sample
   before asserting it, and prefer no identifier over a wrong one — it changes inlining
   behaviour everywhere.
-- For CSV, `ohi linkml generate frictionless` round-trips back to Frictionless as a data
+- For CSV, `ohi linkml to frictionless` round-trips back to Frictionless as a data
   package, so you can check your work.
 
 ## Round-tripping
@@ -146,13 +146,13 @@ The importers' round-trips are above. For hand translations:
 
 ```shell
 # SHACL in, SHACL out
-ohi linkml generate shacl --format ttl --to check.ttl schema.yaml
+ohi linkml to shacl --format ttl --to check.ttl schema.yaml
 
 # JSON Schema in, JSON Schema out
-ohi linkml generate json-schema --to check.json schema.yaml
+ohi linkml to json-schema --to check.json schema.yaml
 
 # Sample data in: generate JSON Schema and check the samples still validate
-ohi linkml generate json-schema --to check.json schema.yaml
+ohi linkml to json-schema --to check.json schema.yaml
 # then validate the originals against check.json (see 500-validate-data.md)
 ```
 

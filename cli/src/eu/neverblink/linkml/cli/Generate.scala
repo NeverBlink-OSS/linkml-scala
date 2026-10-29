@@ -38,7 +38,7 @@ sealed abstract class Generate[T <: HasGenerateOptions: {Parser, Help}] extends 
     val inputs = remainingArgs.remaining
     if inputs.sizeIs > 1 then
       err(
-        s"`generate $generatorName` takes a single input file, but ${inputs.size} were given: " +
+        s"The $generatorName generator takes a single input file, but ${inputs.size} were given: " +
           s"${inputs.mkString(", ")}.\n" +
           "Generate one schema at a time, or point at a schema that `imports` the others.",
       )

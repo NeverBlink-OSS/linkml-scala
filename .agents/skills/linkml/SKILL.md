@@ -21,8 +21,8 @@ JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skil
 * NEVER claim a generator or importer exists without checking.
 * NEVER write a schema by hand from an OWL ontology, an RDFS vocabulary or an Apache Ossie
   ontology. Run the importer (`ohi linkml from owl` / `from ossie`), then review and tweak.
-* When unsure what a construct *means*, generate from it and read the output. `generate linkml`
-  and `generate json-schema` are cheaper and more reliable than reasoning.
+* When unsure what a construct *means*, generate from it and read the output. `to linkml`
+  and `to json-schema` are cheaper and more reliable than reasoning.
 * NEVER install anything without asking first, and never pipe a remote script into a shell.
 
 ## Toolchain
@@ -110,7 +110,7 @@ it changes the shape of every generated artifact. The decision table is in
 ## Generating
 
 ```shell
-ohi linkml generate json-schema --to out/schema.json schema.yaml
+ohi linkml to json-schema --to out/schema.json schema.yaml
 ```
 
 Generators: `json-schema`, `shacl`, `rdfs`, `owl`, `frictionless`, `scala`, `linkml`, `graphql`,
@@ -119,9 +119,9 @@ instead of N-Triples; `--open` on `json-schema`/`shacl` allows undeclared proper
 `frictionless` write several files, so point their `--to` at a directory. `docs` writes Markdown
 documentation: a page per class, slot, enum and type when `--to` is a directory, or one document
 when it is a `.md` file or stdout. For flags run
-`ohi linkml generate <generator> --help` — do not guess.
+`ohi linkml to <generator> --help` — do not guess.
 
-`generate er-diagram` draws the model as a
+`to er-diagram` draws the model as a
 [Mermaid ER diagram](https://mermaid.js.org/syntax/entityRelationshipDiagram.html) — classes become
 entities, type- and enum-ranged slots their attributes, and class-ranged slots the lines between
 them. Reach for it to *show* someone a schema, and to eyeball whether the inlining came out the way
@@ -132,11 +132,11 @@ and an older renderer rejects the whole diagram, not just the marker. If the dia
 somewhere that pins its own Mermaid (GitHub, GitLab, Notion, mkdocs), pass
 `--optional-marker=false`.
 
-**`generate linkml` is the debugging tool.** It resolves imports, materialises inherited slots
+**`to linkml` is the debugging tool.** It resolves imports, materialises inherited slots
 into attributes and prunes unused elements, showing what the schema *actually* says:
 
 ```shell
-ohi linkml generate linkml schema.yaml
+ohi linkml to linkml schema.yaml
 ```
 
 Reach for it whenever inheritance, `slot_usage` or imports make the effective model unclear — and
@@ -144,7 +144,7 @@ it is the best artifact to hand downstream consumers, who then need no import re
 
 ## Importing
 
-The reverse of `generate`: read a document in another format and write a LinkML schema.
+The reverse of `to`: read a document in another format and write a LinkML schema.
 
 ```shell
 ohi linkml from owl --list-not-imported --to schema.yaml ontology.ttl

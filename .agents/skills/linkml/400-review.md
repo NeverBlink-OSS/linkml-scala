@@ -8,7 +8,7 @@ has a fatal error, and its findings frame everything else:
 
 ```shell
 ohi linkml validate --strict --format json schema.yaml
-ohi linkml generate linkml schema.yaml   # the effective model
+ohi linkml to linkml schema.yaml   # the effective model
 ```
 
 The second command is the one that makes a real review possible: it resolves imports and
@@ -68,7 +68,7 @@ become dicts keyed by identifier, which surprises nearly everyone the first time
 - Is `is_a` used where the subclass is not genuinely a kind of the parent? Prefer `mixins` for
   cross-cutting traits and keep `is_a` for real specialisation.
 - Is inheritance deeper than about three levels? It gets hard to reason about, and
-  `generate linkml` output gets hard to read.
+  `to linkml` output gets hard to read.
 - Does `slot_usage` narrow a slot in a way that contradicts the parent — widening a range, or
   making a required slot optional? Narrowing is fine; widening is a modelling error.
 
@@ -117,8 +117,8 @@ Generate everything the project uses, and check the output is sane rather than m
 non-erroring:
 
 ```shell
-ohi linkml generate json-schema schema.yaml  >/dev/null
-ohi linkml generate shacl --format ttl schema.yaml >/dev/null
+ohi linkml to json-schema schema.yaml  >/dev/null
+ohi linkml to shacl --format ttl schema.yaml >/dev/null
 ```
 
 Then actually read one of them. A schema can generate valid-but-useless output — a JSON Schema

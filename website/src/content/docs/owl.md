@@ -12,7 +12,7 @@ The generator aims for OWL 2 DL. SAREF, SOSA, gist, PROV-O and D3FEND, after a t
 ## Generating OWL
 
 ```shell
-ohi linkml generate owl schema.yaml --to schema.owl.ttl
+ohi linkml to owl schema.yaml --to schema.owl.ttl
 ```
 
 | Option                 | Meaning                                                                                                                 |
