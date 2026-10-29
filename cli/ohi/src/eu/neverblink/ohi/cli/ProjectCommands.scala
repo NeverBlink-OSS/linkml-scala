@@ -91,7 +91,9 @@ final case class AddOptions(
     @HelpMessage("Required with a release URL\nCannot be combined with an ontology reference")
     @ValueDescription("<file-url>")
     artifact: Option[String] = None,
-    @HelpMessage("Required for ontology references\nCannot be combined with a release URL")
+    @HelpMessage(
+      "Override the project format and LinkML fallback\nCannot be combined with a release URL",
+    )
     @ValueDescription("<format>")
     format: Option[String] = None,
     @HelpMessage(
@@ -147,12 +149,19 @@ private[cli] class AddCommand extends ProjectCommand[AddOptions] {
     } else {
       if options.artifact.nonEmpty then
         error(Error.Other("--artifact cannot be used with an ontology reference."))
-      val (publication, artifact) = reference(input, options.format, catalog)
+      val metadata = new ProjectLock.Inspection(catalog.inspect)
+      val (publication, artifact) = reference(
+        input,
+        options.format,
+        catalog,
+        metadata,
+        ProjectFormat.infer(project.directory, metadata),
+      )
       project.add(
         publication.baseUrl.original,
         artifact.url.original,
         options.to,
-        url => if url == publication.baseUrl.original then publication else catalog.inspect(url),
+        metadata,
         catalog.get,
       )
     }

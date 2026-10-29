@@ -106,6 +106,19 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
     (result.out.text(), result.err.text(), result.exitCode)
   }
 
+  // Fork to test actual cwd lookup while overriding only the catalog endpoint.
+  private def runReference(cwd: os.Path, base: String, args: String*): (String, String, Int) = {
+    val result = os.proc(
+      os.Path(System.getProperty("java.home")) / "bin" / "java",
+      "-cp",
+      System.getProperty("java.class.path"),
+      "eu.neverblink.ohi.cli.ConfiguredGet",
+      base + "/search",
+      args,
+    ).call(cwd = cwd, check = false, stderr = os.Pipe, timeout = 10000)
+    (result.out.text(), result.err.text(), result.exitCode)
+  }
+
   private def successful(command: BaseCommand[?], args: String*): String = {
     val (out, err, code) = run(command, args*)
     withClue(s"stderr was: $err\n") { code shouldBe 0 }
@@ -466,7 +479,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         }
       }
 
-    "resolve a versioned reference and download its advertised URL without project records" in {
+    "default a versioned reference to LinkML without project records" in {
       val directory = os.temp.dir(prefix = "ohi reference get ")
       val bytes = Array[Byte](0, -1, 65, -128)
       try
@@ -476,34 +489,120 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
             "request_params":{"per_page":250},"search_cutoff":false}"""
           val metadata = publication
             .replace("https://example.org/publications/z?revision=2", base + "/publication")
-            .replace("https://example.org/file.ttl?revision=2", base + "/file.ttl")
+            .replace("https://example.org/file.ttl?revision=2", base + "/file.yaml")
+            .replace("\"format\":\"owl-turtle\"", "\"format\":\"linkml-yaml\"")
           (request: String) =>
             new URI(request).getPath match {
               case "/search" => 200 -> search.getBytes(UTF_8)
               case "/publication" => 200 -> metadata.getBytes(UTF_8)
-              case "/file.ttl" => 200 -> bytes
+              case "/file.yaml" => 200 -> bytes
               case _ => 404 -> Array.emptyByteArray
             }
         } { (base, requests) =>
-          val command = new GetCommand {
-            override protected def config(options: GetOptions): CatalogConfig =
-              CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
-          }
-          val (out, err, code) = command.runTestCommandWithExitCode(
-            List("example/z@2.0", "--format", "owl-turtle", "--to", directory.toString, "--json"),
-            args => command.main("ohi get", args),
+          val (out, err, code) = runReference(
+            directory,
+            base,
+            "example/z@2.0",
+            "--to",
+            directory.toString,
+            "--json",
           )
           code shouldBe 0
           err shouldBe empty
-          json(out) shouldBe json(s"""{"url":"$base/file.ttl","path":"$directory/file.ttl"}""")
-          os.read.bytes(directory / "file.ttl").toSeq shouldBe bytes.toSeq
-          os.list(directory).map(_.last) shouldBe Seq("file.ttl")
+          json(out) shouldBe json(s"""{"url":"$base/file.yaml","path":"$directory/file.yaml"}""")
+          os.read.bytes(directory / "file.yaml").toSeq shouldBe bytes.toSeq
+          os.list(directory).map(_.last) shouldBe Seq("file.yaml")
           val calls = requests.asScala.toSeq
           calls.map(value => new URI(value).getPath) shouldBe
-            Seq("/search", "/publication", "/file.ttl")
+            Seq("/search", "/publication", "/file.yaml")
           query(calls.head)("filter_by") shouldBe "namespace:=example && name:=z && version:=2.0"
         }
       finally os.remove.all(directory)
+    }
+
+    for (explicit, behavior) <- Seq(
+        false -> "infer the current directory's format independently of the download directory",
+        true -> "bypass a malformed declaration when the format is explicit",
+      )
+    do
+      s"$behavior and preserve both project records" in {
+        withDirectory { directory =>
+          val destination = directory / "downloads"
+          os.makeDir(destination)
+          os.write(destination / "ohi.yaml", "unrelated declaration")
+          val staleLock = "stale lock bytes\n"
+          os.write(directory / "ohi.lock.json", staleLock)
+          withServerResponses { base =>
+            val selectedHits =
+              hits.replace("https://example.org/z?revision=2", base + "/publication")
+            val search = s"""{"hits":$selectedHits,"found":2,"page":1,
+              "request_params":{"per_page":250},"search_cutoff":false}"""
+            val selected = publication
+              .replace("https://example.org/publications/z?revision=2", base + "/publication")
+              .replace("https://example.org/file.ttl?revision=2", base + "/file.ttl")
+            val existing = publication
+              .replace("https://example.org/publications/z?revision=2", base + "/existing")
+              .replace("https://example.org/file.ttl?revision=2", base + "/selected.yaml")
+            (request: String) =>
+              new URI(request).getPath match {
+                case "/existing" => 200 -> existing.getBytes(UTF_8)
+                case "/search" => 200 -> search.getBytes(UTF_8)
+                case "/publication" => 200 -> selected.getBytes(UTF_8)
+                case "/file.ttl" => 200 -> "selected bytes\n".getBytes(UTF_8)
+                case _ => 404 -> Array.emptyByteArray
+              }
+          } { (base, requests) =>
+            val declaration = if explicit then "invalid declaration\n"
+            else s"""format_version: 1
+              |selections:
+              |  - base_url: $base/existing
+              |    url: $base/selected.yaml
+              |""".stripMargin
+            os.write(directory / "ohi.yaml", declaration)
+            val format = if explicit then Seq("--format", "owl-turtle") else Seq.empty
+            val (out, err, code) = runReference(
+              directory,
+              base,
+              (Seq("example/z", "--to", destination.toString, "--json") ++ format)*,
+            )
+            code shouldBe 0
+            err shouldBe empty
+            json(out) shouldBe json(s"""{"url":"$base/file.ttl","path":"$destination/file.ttl"}""")
+            os.read(destination / "file.ttl") shouldBe "selected bytes\n"
+            os.read(directory / "ohi.yaml") shouldBe declaration
+            os.read(directory / "ohi.lock.json") shouldBe staleLock
+            os.read(destination / "ohi.yaml") shouldBe "unrelated declaration"
+            requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe
+              (if explicit then Seq("/search", "/publication", "/file.ttl")
+               else Seq("/existing", "/search", "/publication", "/file.ttl"))
+          }
+        }
+      }
+
+    "report a malformed cwd declaration before any request even with JSON output" in {
+      withDirectory { directory =>
+        val invalid = "format_version: 99\nselections: []\n"
+        os.write(directory / "ohi.yaml", invalid)
+        val destination = directory / "downloads"
+        withServer("unexpected") { (base, requests) =>
+          val (out, err, code) = runReference(
+            directory,
+            base,
+            "example/z",
+            "--to",
+            destination.toString,
+            "--json",
+          )
+          code shouldBe 1
+          out shouldBe empty
+          err should startWith("Error: Invalid declaration '")
+          err should include("ohi.yaml")
+          err should include("ohi get --help")
+          requests shouldBe empty
+          os.read(directory / "ohi.yaml") shouldBe invalid
+          os.exists(destination) shouldBe false
+        }
+      }
     }
 
     for lockMode <- Seq(false, true) do
@@ -511,6 +610,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         val directory = os.temp.dir(prefix = "ohi get cwd ")
         try
           withServer("abc") { (url, requests) =>
+            os.write(directory / "ohi.yaml", "invalid declaration")
             val arguments = if lockMode then {
               val path = writeLock(
                 directory,
@@ -541,6 +641,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
             receipt.get("path").stringValue() shouldBe
               directory.toNIO.toRealPath().resolve("file.ttl").toString
             os.read(directory / "file.ttl") shouldBe "abc"
+            os.read(directory / "ohi.yaml") shouldBe "invalid declaration"
             requests.asScala.toSeq shouldBe Seq("/file.ttl")
           }
         finally os.remove.all(directory)
@@ -955,7 +1056,6 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           List("search", "*", "--search-url", "https://example.org/search"),
           "Supply --query-by with --search-url.",
         ),
-        ("missing format", Get, List("get", "example/z", "--json"), "--format"),
         (
           "format on file URL",
           Get,
@@ -983,5 +1083,16 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         err should include(s"ohi ${args.head} --help")
         err.trim should not startWith "{"
       }
+  }
+}
+
+// The child process retains the production get routing with a local test catalog endpoint.
+private[cli] object ConfiguredGet {
+  def main(args: Array[String]): Unit = {
+    val command = new GetCommand {
+      override protected def config(options: GetOptions): CatalogConfig =
+        CatalogConfig(searchUrl = Some(Uri(args.head)), queryBy = Some("name"))
+    }
+    command.main("ohi get", args.drop(1))
   }
 }

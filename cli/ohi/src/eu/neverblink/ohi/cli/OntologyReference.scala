@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.stringify
-import eu.neverblink.ohi.model.generated.{Artifact, Publication}
+import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
 import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import scala.annotation.tailrec
@@ -12,7 +12,6 @@ private[cli] object OntologyReference {
   private val formats = CliFormatting.formats.map((value, _) => stringify(value) -> value).toMap
 
   enum Problem {
-    case MissingFormat(message: String)
     case InvalidFormat(message: String)
     case Invalid(message: String)
     case Unavailable(message: String, publication: Publication)
@@ -26,22 +25,25 @@ private[cli] object OntologyReference {
     input.regionMatches(true, 0, "http://", 0, 7) ||
       input.regionMatches(true, 0, "https://", 0, 8)
 
-  /** Resolves namespace/name[@version] to one advertised artifact of the required format. Returns
-    * argument or lookup diagnostics before writes. Catalog failures propagate to the caller.
+  /** Resolves namespace/name[@version] to one advertised artifact. An explicit format is strict.
+    * Otherwise evaluates `preferredFormat` and falls back to LinkML only when that format is
+    * absent. Returns argument or lookup diagnostics before writes. Catalog failures propagate to
+    * the caller.
     */
   def resolve(
       input: String,
       format: Option[String],
       search: SearchRequest => SearchResult,
       inspect: String => Publication,
+      preferredFormat: => Option[Format] = None,
   ): Either[Problem, (Publication, Artifact)] =
     for {
-      label <- format.toRight(
-        Problem.MissingFormat(s"--format is required for ontology reference '$input'."),
-      )
-      selectedFormat <- formats.get(label).toRight(
-        Problem.InvalidFormat(s"Invalid format '$label'."),
-      )
+      preferences <- format match {
+        case Some(label) =>
+          formats.get(label).toRight(Problem.InvalidFormat(s"Invalid format '$label'."))
+            .map(Seq(_))
+        case None => Right((preferredFormat.toSeq :+ Format.LinkmlYaml).distinct)
+      }
       selection <- input match {
         case Reference(namespace, name, version) =>
           val requestedVersion = Option(version)
@@ -106,13 +108,20 @@ private[cli] object OntologyReference {
                   s"Release metadata does not match ontology reference '$input': ${publication.baseUrl.original}. Report the inconsistent metadata to the catalog operator.",
                 ),
               )
-            else
+            else {
+              val selectedFormat = preferences.find(value =>
+                publication.artifacts.exists(_.format == value),
+              ).getOrElse(preferences.head)
+              val label = stringify(selectedFormat)
               publication.artifacts.filter(_.format == selectedFormat) match {
                 case Seq(artifact) => Right(publication -> artifact)
                 case Seq() =>
+                  val unavailable = if preferences.size == 1 then s"Format '$label' is"
+                  else
+                    s"Formats ${preferences.map(value => s"'${stringify(value)}'").mkString(" or ")} are"
                   Left(
                     Problem.Unavailable(
-                      s"Format '$label' is unavailable for ontology reference '$input': ${hit.baseUrl.original}",
+                      s"$unavailable unavailable for ontology reference '$input': ${hit.baseUrl.original}",
                       publication,
                     ),
                   )
@@ -125,6 +134,7 @@ private[cli] object OntologyReference {
                     ),
                   )
               }
+            }
           }
         case _ =>
           Left(

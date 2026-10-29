@@ -278,7 +278,9 @@ object Inspect extends CatalogCommand[InspectOptions] {
 final case class GetOptions(
     @Recurse
     common: CatalogOptions,
-    @HelpMessage("Required for ontology references\nCannot be combined with a file URL or --lock")
+    @HelpMessage(
+      "Override the project format and LinkML fallback\nCannot be combined with a file URL or --lock",
+    )
     @ValueDescription("<format>")
     format: Option[String] = None,
     @HelpMessage(
@@ -371,7 +373,20 @@ private[cli] class GetCommand extends CatalogCommand[GetOptions] {
           "The URL already selects the file:\n  " + example(invocation(Seq("--format" -> None))),
         )
       input
-    } else reference(input, options.format, client)._2.url.original
+    } else {
+      val metadata = new ProjectLock.Inspection(client.inspect)
+      try
+        reference(
+          input,
+          options.format,
+          client,
+          metadata,
+          ProjectFormat.infer(Path.of("."), metadata),
+        )._2.url.original
+      catch {
+        case failure: ProjectException => correction(failure.getMessage)
+      }
+    }
     CatalogOutput.delivery(
       FileDelivery.save(url, options.to, client.get),
       options.common.json,

@@ -12,12 +12,22 @@ Retrieval supplies a prepared published file. To convert local edits, use suppor
 
 ## Retrieve a selected file
 
-`get` and `add` resolve `namespace/name[@version]` through ohi.dev with a required `--format`.
+`get` and `add` resolve `namespace/name[@version]` through ohi.dev with an optional `--format`.
 Use exact URLs for other catalogs. Use exact namespace, name and version values from search.
 Omitting the version selects the release most recently
-published to the Hub. The selected release must advertise exactly one artifact in that format.
-ohi does not choose an older release when the requested format is absent. Supported formats are
+published to the Hub. Supported formats are
 `owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml` and `ossie-yaml`.
+
+An explicit `--format` requires that format. Without it, the commands inspect the exact artifacts
+selected in `ohi.yaml`. If all selections share a format, they prefer it for the requested release.
+If the declaration is absent, empty or mixes formats, they use `linkml-yaml`. If the preferred format
+is absent from the requested release, they try `linkml-yaml` in that release. The first available
+format must have exactly one artifact. Multiple matches require an exact file URL. If neither
+format is available, retrieval fails. ohi does not choose an older release.
+
+`get` reads the declaration in the current directory. `add` uses its `--project` directory.
+`--to` does not affect format selection. A malformed declaration or failed inspection produces an
+error. Explicit `--format` skips default inference. `get` leaves project records unchanged.
 
 Exact URL forms remain `get <file-url>` and `add <base-url> --artifact <file-url>`, without
 `--format`. `add` records the resolved publication and artifact URLs.

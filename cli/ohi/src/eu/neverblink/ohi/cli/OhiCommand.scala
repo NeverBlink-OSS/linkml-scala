@@ -5,7 +5,7 @@ import caseapp.core.Error
 import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.ohi.catalog.CatalogClient
-import eu.neverblink.ohi.model.generated.{Artifact, Publication}
+import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
 
 /** Ohi help and focused corrections, without changing engine commands or their diagnostics. */
 abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
@@ -86,22 +86,20 @@ abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
       input: String,
       format: Option[String],
       client: CatalogClient,
+      inspect: String => Publication,
+      preferredFormat: => Option[Format],
   ): (Publication, Artifact) = {
     def formatCorrection(): Nothing = {
-      val message = format.fold("Choose a file format with --format.")(value =>
-        s"Unsupported format '${CliFormatting.clean(value)}'.",
-      )
+      val message = s"Unsupported format '${CliFormatting.clean(format.get)}'."
       correction(
         message,
         CliFormatting.formatsHelp(errorColored) + "\n\nExample with OWL (Turtle):\n  " +
           example(invocation(Seq("--format" -> Some("owl-turtle")))),
-        invalid = format.nonEmpty,
       )
     }
-    OntologyReference.resolve(input, format, client.search, client.inspect).fold(
+    OntologyReference.resolve(input, format, client.search, inspect, preferredFormat).fold(
       {
-        case _: OntologyReference.Problem.MissingFormat |
-            _: OntologyReference.Problem.InvalidFormat =>
+        case _: OntologyReference.Problem.InvalidFormat =>
           formatCorrection()
         case OntologyReference.Problem.Invalid(message) => correction(message)
         case OntologyReference.Problem.Unavailable(message, publication) =>
