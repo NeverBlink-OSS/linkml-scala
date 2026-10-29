@@ -1,8 +1,8 @@
 # VHS tape for the `validate` command demo GIF.
-# Regenerate with: docs/screenshots/generate.sh
+# Regenerate with: website/screenshots/generate.sh
 # (that script builds the CLI, puts a `linkml-scala` launcher on PATH, and runs vhs)
 
-Output docs/img/validate.gif
+Output website/src/assets/validate.gif
 
 Require linkml-scala
 
@@ -21,7 +21,7 @@ Set PlaybackSpeed 1.0
 # Use a clean prompt and run from the example folder so the typed path stays short.
 Hide
 Type "export PS1='$ '" Enter
-Type "cd docs/examples" Enter
+Type "cd website/examples" Enter
 Type "clear" Enter
 Show
 

@@ -114,7 +114,7 @@ Create an isolate with \`graal_create_isolate\` and attach any further threads w
 
 The options each generator accepts, and a worked example in Python, are documented at:
 
-  https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/python_bindings.md
+  https://linkml.ohi.dev/docs/python-bindings/
 
 Licensed under the Apache License 2.0. See LICENSE.
 EOF

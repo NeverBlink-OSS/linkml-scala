@@ -367,7 +367,7 @@ object LinkMlJsApi {
     *   The ontology, as Turtle (or N-Triples, which is Turtle too).
     * @param config
     *   How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a
-    *   file (see `docs/owl.md`). By default, settings that suit most ontologies.
+    *   file (see https://linkml.ohi.dev/docs/owl/). By default, settings that suit most ontologies.
     * @param outFormat
     *   Output serialization format to use. One of yaml|json. Default: yaml
     * @param listNotImported

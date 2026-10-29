@@ -1,8 +1,8 @@
 # VHS tape: side-by-side `generate shacl` race, native linkml-scala vs Python linkml.
-# Regenerate with: docs/screenshots/generate-comparison.sh
+# Regenerate with: website/screenshots/generate-comparison.sh
 # (builds the native image, sets up a Python 3.14 linkml venv, puts both on PATH)
 
-Output docs/img/generate-race.gif
+Output website/src/assets/generate-race.gif
 
 Require linkml-scala
 Require linkml
@@ -20,7 +20,7 @@ Set Theme "Catppuccin Mocha"
 
 # Build the two-pane session with both commands pre-typed (hidden setup).
 Hide
-Type "cd docs/examples" Enter
+Type "cd website/examples" Enter
 Type "source ../screenshots/race-setup.sh core.yaml" Enter
 Type "clear" Enter
 # Schedule the synchronized start, then attach so we record the panes.

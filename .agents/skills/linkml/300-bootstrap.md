@@ -72,8 +72,8 @@ linkml-scala from ossie --schema-id https://example.org/my-schema --to schema.ya
 `from owl` reads Turtle or N-Triples only. `--list-not-imported` prints what was dropped, which
 goes in your report. For the other flags, including the `--config` that controls naming and maps
 `owl:imports` to existing LinkML schemas, run `--help`. The mappings are in
-[docs/owl.md](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/owl.md) and
-[docs/ossie_mapping.md](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/ossie_mapping.md).
+the [OWL guide](https://linkml.ohi.dev/docs/owl/) and the
+[Ossie mapping](https://linkml.ohi.dev/docs/ossie-mapping/).
 
 Usual fixes afterwards — ask the user rather than guess:
 

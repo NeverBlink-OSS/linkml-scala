@@ -63,7 +63,7 @@ Both take an optional fourth argument, `importMap`, which maps an import to the 
 to load it from. Use it when a schema imports another one by URI or CURIE. Keys are full URIs or
 paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it. To use
 a JSON file, pass `JSON.parse` of its text. See
-[Import maps](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/import_maps.md).
+[Import maps](https://linkml.ohi.dev/docs/import-maps/).
 
 ```js no-test
 // loadFromPath: the root lives in `imports` under its own path.
@@ -111,9 +111,9 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind
 (e.g. `"UnknownReference"`), and checking it narrows the issue to that kind's fields. For how to use the generated TypeScript,
-see [the TypeScript guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/typescript.md), and for `pydantic`
-[the Pydantic guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/pydantic.md). For `owl` and `fromOwl`, see
-[the OWL guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/owl.md).
+see [the TypeScript guide](https://linkml.ohi.dev/docs/typescript/), and for `pydantic`
+[the Pydantic guide](https://linkml.ohi.dev/docs/pydantic/). For `owl` and `fromOwl`, see
+[the OWL guide](https://linkml.ohi.dev/docs/owl/).
 
 ### Errors
 

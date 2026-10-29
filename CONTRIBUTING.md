@@ -75,7 +75,7 @@ Things to know:
 
 ### Scala Native
 
-The library cross-compiles to Scala Native as well as the JVM and Scala.js, and all three are published to Maven Central. The shared library and the Python bindings are built with Scala Native too – see [docs/python_bindings.md](docs/python_bindings.md). The CLI executable is still a GraalVM native image.
+The library cross-compiles to Scala Native as well as the JVM and Scala.js, and all three are published to Maven Central. The shared library and the Python bindings are built with Scala Native too – see [Python bindings](https://linkml.ohi.dev/docs/python-bindings/). The CLI executable is still a GraalVM native image.
 
 The Scala Native submodules are **hidden from the build unless you enable them**, because the Scala Native toolchain rather heavy. To enable them, set `LINKML_NATIVE=1`:
 
@@ -93,7 +93,8 @@ The env var is set when starting the mill process, so if you have a daemon runni
 
 The browser playground lives in [`ui/`](ui/) – a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
 
-- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle, the UI bundle and the docs, then serves the whole site as it's deployed: the landing page ([`pages/index.html`](pages/index.html)) at <http://localhost:8000/>, the playground at <http://localhost:8000/playground/> and the docs at <http://localhost:8000/docs/>. Reload to see edits to the landing page and the playground; the docs are built once, so use `./mill website.serve` to work on them.
+- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle, the UI bundle and the docs, then serves the whole site as it's deployed: the landing page ([`pages/index.html`](pages/index.html)) at <http://localhost:8000/>, the playground at <http://localhost:8000/playground/> and the docs at <http://localhost:8000/docs/>. Reload to see edits to the landing page and the playground. The docs are built once, so use `./mill website.serve` to work on them.
+- Build the whole site, as it's deployed: `./mill ui.site` → `out/ui/site.dest/`. `ui.serve` serves the same files.
 - Build the UI bundle only: `./mill ui.bundle` → `ui/dist/app.js`
 - Type-check and bundle (what CI runs): `./mill ui.check`
 - Regenerate the LinkML API types: `./mill ui.types` – run after changing `generator/src-js/.../LinkMlJsApi.scala`
@@ -112,13 +113,13 @@ npm run build     # one-off bundle
 
 ### Docs site
 
-The guides in [`docs/`](docs/) are published at <https://linkml.ohi.dev/docs/> with [Starlight](https://starlight.astro.build/). The site lives in [`website/`](website/). Write and edit the guides in `docs/` only: `website/sync-docs.mjs` copies them into the site on every build, makes the first `# Title` line the page title, and rewrites links between the guides to page URLs, and links to other files in the repo to GitHub. **Node.js and npm must be on your `PATH`**, and the first run installs the npm dependencies.
+The guides are published at <https://linkml.ohi.dev/docs/> with [Starlight](https://starlight.astro.build/). The site's sources are in [`website/`](website/). Markdown pages are written in `website/src/content/docs/`. **Node.js and npm must be on your `PATH`**, and the first run installs the npm dependencies.
 
-- Serve it locally: `./mill website.serve` – at <http://localhost:4321/docs/>, reloads on every change in `docs/`
+- Serve it locally: `./mill website.serve` – at <http://localhost:4321/docs/>, reloads on every change
 - Build it (what CI runs): `./mill website.build` → `website/dist/`. It fails on a broken link between pages or to a heading.
 - Build and serve the result: `./mill website.preview`
 
-A new guide has to be added to the sidebar in `website/astro.config.mjs`, and to the list in `docs/README.md`, which is the landing page. The build fails if it is missing from the sidebar.
+A new guide has to be added to the sidebar in `website/astro.config.mjs`, and to the list in `index.md`, which is the landing page. The build fails if it is missing from the sidebar.
 
 The ohi SDK has its own site in [`ohi/docs/`](ohi/docs/), published at <https://ohi.dev/docs/>. Its pages are written directly in `ohi/docs/src/content/docs/`, and new ones are added to the sidebar in `ohi/docs/astro.config.mjs`. The commands are the same, under `ohi.docs`: `./mill ohi.docs.serve`, `./mill ohi.docs.build` (also run by CI) and `./mill ohi.docs.preview`.
 

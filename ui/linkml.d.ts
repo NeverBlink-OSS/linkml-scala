@@ -106,7 +106,7 @@ export interface LinkMLApi {
   /**
    * Read an OWL ontology and produce the LinkML schema it describes.  The opposite of [[owl]]. Feed the result to [[loadFromString]] if you want to run a generator over it.
    * @param ontology The ontology, as Turtle (or N-Triples, which is Turtle too).
-   * @param config How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a file (see `docs/owl.md`). By default, settings that suit most ontologies.
+   * @param config How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a file (see https://linkml.ohi.dev/docs/owl/). By default, settings that suit most ontologies.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
    * @param listNotImported Whether to list what could not be imported, in comments at the top of the YAML. Default: false
    * @param imports The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]]. The schema then uses their terms by name rather than copying them in.

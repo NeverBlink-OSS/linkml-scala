@@ -89,10 +89,10 @@ Edit skills in `.agents/skills/`. Regenerate these LinkML references from their 
 | File | Source |
 | --- | --- |
 | `900-metaslots.tsv` | LinkML metamodel YAML fetched by the build |
-| `200-limitations.md` | `docs/implementation_differences.md` |
-| `210-slot-usage-inheritance.md` | `docs/slot_usage_inheritance.md` |
-| `220-import-maps.md` | `docs/import_maps.md` |
-| `230-curies.md` | `docs/curies.md` |
+| `200-limitations.md` | `website/src/content/docs/implementation-differences.md` |
+| `210-slot-usage-inheritance.md` | `website/src/content/docs/slot-usage-inheritance.md` |
+| `220-import-maps.md` | `website/src/content/docs/import-maps.md` |
+| `230-curies.md` | `website/src/content/docs/curies.md` |
 | `910-examples.md` | `tests/resources/models/` |
 
 ```sh
