@@ -1,4 +1,4 @@
-/* LinkML-Scala: schema validation and multi-format code generation, as a C library.
+/* ohi LinkML: schema validation and multi-format code generation, as a C library.
  *
  * Two conventions run through the whole API:
  *

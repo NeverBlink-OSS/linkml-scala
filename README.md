@@ -16,26 +16,26 @@
 
 </div>
 
-# LinkML-Scala
+# ohi LinkML
 
 **[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple languages and formats, such as JSON Schema, CSV, RDFS/SHACL...
 
-**LinkML-Scala** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.ohi.dev/playground/) or [Node.js](#javascript--typescript-library), [Python](https://pypi.org/project/neverblink-linkml/), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+**ohi LinkML** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.ohi.dev/playground/) or [Node.js](#javascript--typescript-library), [Python](https://pypi.org/project/neverblink-linkml/), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
 
 > [!NOTE]
-> ⭐ If you like LinkML-Scala, consider giving it a star – it helps others find the project!
+> ⭐ If you like ohi LinkML, consider giving it a star – it helps others find the project!
 
-## Why LinkML-Scala?
+## Why ohi LinkML?
 
 ### 🌐 Works in the browser, Node.js, JVM, Python, and C/C++/Rust
 
-LinkML-Scala compiles to pure JavaScript (zero dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.ohi.dev/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
+ohi LinkML compiles to pure JavaScript (zero dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.ohi.dev/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
 
-For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **[Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)**.
+For Java, Scala, Kotlin and other JVM languages, ohi LinkML is available on **[Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)**.
 
 [![Web playground screenshot](./website/src/assets/playground.png)](https://linkml.ohi.dev/playground)
 
-We also have [Python and native bindings](https://linkml.ohi.dev/docs/python-bindings/), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
+We also have [Python and native bindings](https://linkml.ohi.dev/docs/python-bindings/), so you can use ohi LinkML from Python (`pip install neverblink-linkml`), C, C++, or Rust.
 
 ### ⚡ Natively compiled binaries for Linux, macOS, and Windows
 
@@ -45,21 +45,21 @@ It starts up immediately and runs fast, even on extra-large LinkML models. **[Se
 
 ### 🛡️ Consistent, reliable, and with great error reporting
 
-LinkML-Scala will tell you exactly what is wrong with your model, and where:
+ohi LinkML will tell you exactly what is wrong with your model, and where:
 
 ![LinkML schema validation in the CLI](./website/src/assets/validate.gif)
 
 The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
 
-We engineered LinkML-Scala to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
+We engineered ohi LinkML to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
 
-In some cases, LinkML-Scala diverges from the Python implementation. You can find the list of implementation differences [here](https://linkml.ohi.dev/docs/implementation-differences/).
+In some cases, ohi LinkML diverges from the Python implementation. You can find the list of implementation differences [here](https://linkml.ohi.dev/docs/implementation-differences/).
 
 ### 🚀 It's really fast!
 
-LinkML-Scala was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](https://linkml.ohi.dev/docs/benchmarks/) than the Python implementation**:
+ohi LinkML was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](https://linkml.ohi.dev/docs/benchmarks/) than the Python implementation**:
 
-![LinkML-Scala vs LinkML-Python: generating a SHACL file](./website/src/assets/generate-race.gif)
+![ohi LinkML vs LinkML-Python: generating a SHACL file](./website/src/assets/generate-race.gif)
 
 [**📊 See the benchmarks.**](https://linkml.ohi.dev/docs/benchmarks/)
 
@@ -258,7 +258,7 @@ Have a question, an idea, or just want to say hi? **[Join our Discord](https://d
 
 ## License and maintainers
 
-LinkML-Scala is licensed under the Apache License 2.0. See the LICENSE file for details.
+ohi LinkML is licensed under the Apache License 2.0. See the LICENSE file for details.
 
 This project is being developed and maintained by [NeverBlink](https://neverblink.eu). For any inquiries, please reach out to us via [email](mailto:contact@neverblink.eu).
 

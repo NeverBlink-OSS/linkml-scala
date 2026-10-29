@@ -3,7 +3,7 @@
 
 # Import maps
 
-An import map tells LinkML-Scala where to load an imported schema from, without changing the schema.
+An import map tells ohi LinkML where to load an imported schema from, without changing the schema.
 Use one when a schema imports another one by URI or CURIE, and you have that schema somewhere else: a local copy, a cache of downloaded dependencies, or a newer version.
 
 The map is a JSON object, in the same format as the `--importmap` file of LinkML-Python. Each key is an import, and each value is the location to load it from:

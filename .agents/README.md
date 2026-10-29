@@ -1,6 +1,6 @@
 # Agent skills
 
-These skills help agents acquire ontologies and maintain project selections with ohi, and author and validate schemas with LinkML-Scala.
+These skills help agents acquire ontologies and maintain project selections with ohi, and author and validate schemas with ohi LinkML.
 
 ## Choose a plugin
 

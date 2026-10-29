@@ -1,9 +1,9 @@
 id: https://linkml.ohi.dev/model/build-info
 name: build-info
-title: Schema for LinkML-Scala build metadata
+title: Schema for ohi LinkML build metadata
 description: >-
-  A schema describing the version and build metadata of a LinkML-Scala distribution. Reported by the
-  LinkML-Scala CLI (`linkml-scala version --format json`), the JavaScript API, the C ABI and the
+  A schema describing the version and build metadata of an ohi LinkML distribution. Reported by the
+  ohi LinkML CLI (`linkml-scala version --format json`), the JavaScript API, the C ABI and the
   Python API.
 license: https://creativecommons.org/publicdomain/zero/1.0/
 prefixes:
@@ -17,7 +17,7 @@ classes:
     title: Build info
     tree_root: true
     description: >-
-      Version and build metadata of the LinkML-Scala distribution that produced this report.
+      Version and build metadata of the ohi LinkML distribution that produced this report.
     notes:
       - >-
         Some slots are optional, because not every distribution contains
@@ -26,9 +26,9 @@ classes:
       linkml_scala_version:
         range: string
         required: true
-        title: LinkML-Scala version
+        title: ohi LinkML version
         description: >-
-          The SemVer version of LinkML-Scala itself. Releases are plain versions like `1.2.3`. Builds made
+          The SemVer version of ohi LinkML itself. Releases are plain versions like `1.2.3`. Builds made
           between releases include the commit they were built from, like `1.2.3-4-abcdef1-SNAPSHOT`.
 
       metamodel_version:
@@ -75,7 +75,7 @@ classes:
 enums:
   Platform:
     title: Platform
-    description: The kind of build a LinkML-Scala distribution is.
+    description: The kind of build an ohi LinkML distribution is.
     permissible_values:
       JVM:
         description: Running on a Java virtual machine.

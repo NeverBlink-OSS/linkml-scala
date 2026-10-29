@@ -1,6 +1,6 @@
 {
   "name": "linkml",
-  "description": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, importing OWL, RDFS and Apache Ossie ontologies, bootstrapping from SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
+  "description": "Author, validate, review and release LinkML schemas with the ohi LinkML CLI. Covers schema authoring, importing OWL, RDFS and Apache Ossie ontologies, bootstrapping from SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
   "author": {
     "name": "NeverBlink",
     "url": "https://neverblink.eu"
@@ -21,8 +21,8 @@
   "skills": "./linkml",
   "interface": {
     "displayName": "LinkML",
-    "shortDescription": "Author and validate LinkML schemas with linkml-scala.",
-    "longDescription": "Author, validate, review and release LinkML schemas with the linkml-scala CLI. Covers schema authoring, importing OWL ontologies, RDFS vocabularies and Apache Ossie ontologies, bootstrapping from SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
+    "shortDescription": "Author and validate LinkML schemas with ohi LinkML.",
+    "longDescription": "Author, validate, review and release LinkML schemas with the ohi LinkML CLI. Covers schema authoring, importing OWL ontologies, RDFS vocabularies and Apache Ossie ontologies, bootstrapping from SHACL/JSON Schema/XSD or sample data, modelling-quality review, instance-data validation, and GitHub Actions setup. Auto-load for any task involving a LinkML schema.",
     "developerName": "NeverBlink",
     "category": "Development",
     "capabilities": [

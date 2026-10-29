@@ -1,6 +1,6 @@
 # @neverblink/linkml
 
-JavaScript / TypeScript bindings for [LinkML-Scala](https://github.com/NeverBlink-OSS/linkml-scala) –
+JavaScript / TypeScript bindings for [ohi LinkML](https://github.com/NeverBlink-OSS/linkml-scala) –
 LinkML schema validation and multi-format code generation (JSON Schema, SHACL, RDFS, Scala).
 
 ## Installation

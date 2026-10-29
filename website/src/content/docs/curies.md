@@ -6,7 +6,7 @@ description: How prefixes and CURIEs are expanded into URIs, and URIs compacted 
 A value of type `uriorcurie` can be a full URI, such as `http://www.w3.org/2001/XMLSchema#string`, or a CURIE, such as `xsd:string`.
 In a CURIE, the text before the first colon is a prefix that stands for a namespace, so a CURIE only means something together with the prefixes declared where it is written.
 
-LinkML-Scala follows the approach discussed in [linkml/linkml#3906](https://github.com/linkml/linkml/issues/3906): CURIEs are expanded when data is read, code that works with the data only sees URIs, and URIs are compacted back to CURIEs when data is written.
+ohi LinkML follows the approach discussed in [linkml/linkml#3906](https://github.com/linkml/linkml/issues/3906): CURIEs are expanded when data is read, code that works with the data only sees URIs, and URIs are compacted back to CURIEs when data is written.
 This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` are kept as they are written.
 
 ## Reading

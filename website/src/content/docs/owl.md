@@ -67,7 +67,7 @@ These differences are in place mostly to make the OWL describe the same RDF data
 - **IRIs are the ones the data uses**: `class_uri`, `slot_uri`, `enum_uri` and the permissible value `meaning`, as in this project's RDF, RDFS and SHACL. `gen-owl` uses the schema's own namespace by default (`--use-native-uris`).
 - **Identifier slots are not properties.** In RDF, an identifier is the IRI of the node.
 - **Slots with a `uri` or `uriorcurie` range, or with an `implicit_prefix`, are object properties without a range**, since their values are IRIs in RDF, as in the SHACL generator.
-- **Permissible values are individuals** of a class defined by `owl:oneOf`. `gen-owl` makes them classes by default, which is still possible in LinkML-Scala with the `--permissible-values class` option.
+- **Permissible values are individuals** of a class defined by `owl:oneOf`. `gen-owl` makes them classes by default, which is still possible in ohi LinkML with the `--permissible-values class` option.
 - **Descriptions are `rdfs:comment`** by default, rather than the metamodel's `skos:definition`. If you select the `--metadata-profile linkml` option, descriptions will be written as `skos:definition`, as `gen-owl` does by default.
 - **`owl:allValuesFrom` restrictions that repeat a property's range are kept** for the slots a class lists itself. They record which classes use which slots, which the importer needs. A class that only refines an inherited slot in `slot_usage` gets one only when it narrows the range.
 - `type_designator` rules, `rules` and `classification_rules` are not written.

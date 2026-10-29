@@ -1,4 +1,4 @@
-"""Tests for the LinkML-Scala Python bindings.
+"""Tests for the ohi LinkML Python bindings.
 
 Run them with ``./mill nativelib.native.pythonTest``, which rebuilds the shared library first. To run them
 against a library you already have, ``python -m unittest discover -s python``.

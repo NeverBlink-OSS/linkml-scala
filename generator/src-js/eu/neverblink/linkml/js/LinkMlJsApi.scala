@@ -71,7 +71,7 @@ object LinkMlJsApi {
       lookup.getOrElse(path, sys.error(s"Could not read from the imports: $path"))
   }
 
-  /** Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML
+  /** Version and build metadata of this copy of ohi LinkML: which version it is, which LinkML
     * metamodel it was built against, and what it is running on.
     *
     * Useful in bug reports, and for checking that the version you loaded is the one you meant to.

@@ -1,6 +1,6 @@
-"""Python bindings for LinkML-Scala.
+"""Python bindings for ohi LinkML.
 
-LinkML-Scala compiled to a native shared library, called through ctypes. No JVM, no Python
+ohi LinkML compiled to a native shared library, called through ctypes. No JVM, no Python
 implementation of LinkML, no subprocess per schema.
 
 Load a schema once, then run as many generators over it as you like::

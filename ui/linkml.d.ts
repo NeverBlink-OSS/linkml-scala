@@ -31,7 +31,7 @@ export interface LoadResult {
 
 export interface LinkMLApi {
   /**
-   * Version and build metadata of this copy of LinkML-Scala: which version it is, which LinkML metamodel it was built against, and what it is running on.  Useful in bug reports, and for checking that the version you loaded is the one you meant to.
+   * Version and build metadata of this copy of ohi LinkML: which version it is, which LinkML metamodel it was built against, and what it is running on.  Useful in bug reports, and for checking that the version you loaded is the one you meant to.
    * @returns A `BuildInfo` object, as described by https://linkml.ohi.dev/model/build-info
    */
   buildInfo(): BuildInfo;

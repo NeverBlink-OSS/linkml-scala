@@ -70,7 +70,7 @@ const page = await new CatalogClient().search({ q: "sensors" });
 For another catalog, pass the fields directly: `new CatalogClient({ search_url, query_by })`.
 
 Scala modules are built from source and included in the CLI. They are not published separately to
-Maven Central. The CLI, Python package and TypeScript package share the linkml-scala release version.
+Maven Central. The CLI, Python package and TypeScript package share the ohi LinkML release version.
 
 ## Save and reload file selections
 

@@ -41,7 +41,7 @@ class AppSpec extends AnyWordSpec, Matchers {
       }
 
       "name the subcommand when the group is right but the generator isn't" in {
-        // The Malbolge language is NOT and will not be supported by linkml-scala :)
+        // The Malbolge language is NOT and will not be supported by ohi LinkML :)
         val (_, err, code) =
           runApp(List("generate", "malbolge", "model.yaml"))
         // The file name is not part of the guess.

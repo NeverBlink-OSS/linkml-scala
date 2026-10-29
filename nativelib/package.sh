@@ -94,7 +94,7 @@ Libs: -L\${libdir} -llinkml_scala
 EOF
 
 cat >"${prefix}/README.md" <<EOF
-# LinkML-Scala shared library ${version} (${platform})
+# ohi LinkML shared library ${version} (${platform})
 
 LinkML schema validation and code generation as a native shared library, with a C ABI.
 

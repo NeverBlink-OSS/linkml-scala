@@ -40,7 +40,7 @@ actually happen — usually "silently ignored by every generator except SHACL".
 - Does every class that is referenced from elsewhere have an `identifier` or `key`? Without one
   it gets inlined by value, which is usually not what was intended for an entity.
 - Is each identifier's range a **scalar type**? A class or enum range is an error in
-  linkml-scala.
+  ohi LinkML.
 - Is the identifier genuinely unique and stable? An identifier that can change breaks every
   reference to it.
 - Conversely, does a value object (an address, a measurement) have an identifier it does not
@@ -132,7 +132,7 @@ Group by severity and lead with consequence, not with the rule:
 ## Will break consumers
 1. `Measurement` has no identifier, so every reference to it is inlined by value.
    Generated JSON nests a full copy at each use site. Add `id` with `identifier: true`.
-2. `rules:` on `Order` (line 88) is ignored by every linkml-scala generator. The
+2. `rules:` on `Order` (line 88) is ignored by every ohi LinkML generator. The
    constraint is not enforced anywhere. Express it with `required` + `pattern`, or
    drop it and document the gap.
 

@@ -5,15 +5,14 @@ package eu.neverblink.linkml.schemaview.buildinfo
 
 import eu.neverblink.linkml.runtime.*
 
-/** Version and build metadata of the LinkML-Scala distribution that produced this report.
+/** Version and build metadata of the ohi LinkML distribution that produced this report.
   *
   * @param abiVersion
   *   The version of the C ABI exported by the shared library, matching what `linkml_abi_version`
   *   returns. Present in the native library and its Python bindings only.
   * @param linkmlScalaVersion
-  *   The SemVer version of LinkML-Scala itself. Releases are plain versions like `1.2.3`. Builds
-  *   made between releases include the commit they were built from, like
-  *   `1.2.3-4-abcdef1-SNAPSHOT`.
+  *   The SemVer version of ohi LinkML itself. Releases are plain versions like `1.2.3`. Builds made
+  *   between releases include the commit they were built from, like `1.2.3-4-abcdef1-SNAPSHOT`.
   * @param metamodelVersion
   *   The version of the LinkML metamodel this distribution was built against, taken from
   *   `metamodel_version` in the LinkML `meta` schema.

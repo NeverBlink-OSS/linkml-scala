@@ -12,7 +12,7 @@ translate those by hand.
 
 **Be honest about fidelity.** This is a translation between formalisms with genuinely different
 expressive power, not a mechanical transform. Some constructs have no LinkML equivalent, and
-some have no equivalent *in linkml-scala* even though LinkML defines them. Always report what
+some have no equivalent *in ohi LinkML* even though LinkML defines them. Always report what
 you dropped. A schema that silently loses constraints is worse than one that admits the gap.
 
 ## Process
@@ -97,7 +97,7 @@ The closest fit, since SHACL is also closed-world and shape-centric. `sh:NodeSha
 `minimum_value`/`maximum_value`.
 
 `sh:or`/`sh:and`/`sh:not`/`sh:xone` map to `any_of`/`all_of`/`none_of`/`exactly_one_of`, which
-**linkml-scala supports in SHACL output only** (OWL output: only the ranges of `any_of`). Flag
+**ohi LinkML supports in SHACL output only** (OWL output: only the ranges of `any_of`). Flag
 these rather than emitting them silently.
 Also unsupported: `sh:sparql` constraints, and `sh:node` indirection beyond a plain range.
 
@@ -107,7 +107,7 @@ Also unsupported: `sh:sparql` constraints, and `sh:node` indirection beyond a pl
 `type: array` → `multivalued: true`, `enum` → an enum, `$ref` → a class range, `format: date` →
 `range: date`, `pattern` → `pattern`. The root schema becomes the `tree_root` class.
 
-`additionalProperties: false` is the LinkML default in linkml-scala; if the source allows extras
+`additionalProperties: false` is the LinkML default in ohi LinkML; if the source allows extras
 there is no faithful equivalent, so note it (`--open` at generation time is the closest thing).
 `oneOf`/`anyOf`/`allOf` hit the same boolean-expression limitation as SHACL. `if`/`then`,
 `patternProperties`, `propertyNames` and tuple-form `items` have no LinkML equivalent.
@@ -176,7 +176,7 @@ Produced:   N classes, M attributes, K enums
 Method:     ohi linkml from owl --list-not-imported (or: by hand)
 Dropped:
   - property chain hasParent o hasParent → hasGrandparent — LinkML cannot express it
-  - sh:or on Baz.qux — linkml-scala supports any_of in SHACL output only, and its ranges in OWL
+  - sh:or on Baz.qux — ohi LinkML supports any_of in SHACL output only, and its ranges in OWL
 Fixed after import:
   - Animal as tree_root; has_parent range Any → Animal
 Inferred (needs confirmation):

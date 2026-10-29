@@ -3,7 +3,7 @@ name: validation-report
 title: Schema for LinkML validation reports
 description: >-
   A schema for validation reports of LinkML schemas. These reports are emitted by the
-  LinkML-Scala CLI (`linkml-scala validate --format json`) or via the JavaScript API.
+  ohi LinkML CLI (`linkml-scala validate --format json`) or via the JavaScript API.
 license: https://creativecommons.org/publicdomain/zero/1.0/
 prefixes:
   report: https://linkml.ohi.dev/model/validation-report#
