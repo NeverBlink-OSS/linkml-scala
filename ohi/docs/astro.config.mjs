@@ -9,10 +9,15 @@ export default defineConfig({
   site: 'https://ohi.dev',
   base: '/docs',
   trailingSlash: 'always',
+  redirects: {
+    '/search': '/docs/reference/sdks/#search',
+    '/locks': '/docs/reference/sdks/#save-and-reload-file-selections',
+    '/reference': '/docs/reference/sdks/#metadata',
+  },
   integrations: [
     starlight({
-      title: 'ohi SDK',
-      description: 'Search ohi.dev and download ontologies from Scala, Python and TypeScript.',
+      title: 'ohi',
+      description: 'Find, download and manage ontologies.',
       logo: { src: './src/assets/logo.svg' },
       favicon: '/favicon.svg',
       customCss: ['./src/styles/theme.css'],
@@ -22,10 +27,23 @@ export default defineConfig({
       ],
       editLink: { baseUrl: `${repoUrl}/edit/main/ohi/docs/` },
       sidebar: [
-        { label: 'Overview', link: '/' },
-        { label: 'ohi.dev', link: 'https://ohi.dev', attrs: { target: '_blank' } },
-        { label: 'Guides', items: ['search', 'locks'] },
-        { label: 'Reference', items: ['reference'] },
+        { label: 'Welcome', link: '/' },
+        {
+          label: 'Getting started',
+          items: ['getting-started/install', 'getting-started/first-ontology'],
+        },
+        {
+          label: 'Guides',
+          items: ['guides/search', 'guides/dependencies', 'guides/ai-assistants'],
+        },
+        {
+          label: 'Reference',
+          items: [
+            'reference/cli',
+            'reference/sdks',
+            'reference/project-files',
+          ],
+        },
       ],
       plugins: [starlightLinksValidator()],
     }),
