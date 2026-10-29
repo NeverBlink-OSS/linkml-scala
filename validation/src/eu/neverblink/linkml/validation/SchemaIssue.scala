@@ -24,6 +24,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[EmptyName], "EmptyName"),
   typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
   typeDesignator.Member(classOf[InvalidDefaultRange], "InvalidDefaultRange"),
+  typeDesignator.Member(classOf[InvalidEqualsString], "InvalidEqualsString"),
   typeDesignator.Member(classOf[InvalidKeyOrIdSlotType], "InvalidKeyOrIdSlotType"),
   typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
   typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
@@ -35,6 +36,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
   typeDesignator.Member(classOf[NonUniqueName], "NonUniqueName"),
   typeDesignator.Member(classOf[RepeatedSeparator], "RepeatedSeparator"),
+  typeDesignator.Member(classOf[SchemaConversionError], "SchemaConversionError"),
   typeDesignator.Member(classOf[SchemaIdClash], "SchemaIdClash"),
   typeDesignator.Member(classOf[SchemaImportError], "SchemaImportError"),
   typeDesignator.Member(classOf[SchemaParseError], "SchemaParseError"),
@@ -45,6 +47,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[UnexpectedError], "UnexpectedError"),
   typeDesignator.Member(classOf[UnknownReference], "UnknownReference"),
   typeDesignator.Member(classOf[UnknownStringReference], "UnknownStringReference"),
+  typeDesignator.Member(classOf[UnwritableUri], "UnwritableUri"),
 )
 abstract class SchemaIssue {
 

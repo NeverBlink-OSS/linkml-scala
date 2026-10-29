@@ -37,7 +37,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
               (
                 k,
                 v.cls.copy(
-                  classUri = new Some(v.uriOrCurie),
+                  classUri = new Some(v.uri),
                   fromSchema = new Some(v.definingSchema.id),
                 ),
               )
@@ -53,7 +53,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
           (
             k,
             v.derivedType.copy(
-              typeUri = new Some(v.uriOrCurie),
+              typeUri = new Some(v.uri),
               fromSchema = new Some(v.definingSchema.id),
             ),
           )
@@ -63,7 +63,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
           (
             k,
             v._enum.copy(
-              enumUri = new Some(v.uriOrCurie),
+              enumUri = new Some(v.uri),
               fromSchema = new Some(v.definingSchema.id),
             ),
           )
@@ -75,7 +75,7 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
               (
                 k,
                 v.slot.copy(
-                  slotUri = new Some(v.uriOrCurie),
+                  slotUri = new Some(v.uri),
                   fromSchema = new Some(v.definingSchema.id),
                 ),
               )

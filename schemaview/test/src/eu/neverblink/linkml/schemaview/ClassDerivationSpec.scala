@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{PlainText, Reference, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{PlainText, Reference, Uri}
 import eu.neverblink.linkml.schemaview.SchemaViewSpec.{compact, reference}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -163,7 +163,7 @@ class ClassDerivationSpec extends AnyWordSpec, Matchers {
         ),
       )
       val result = sv.classes("base")
-      result.uriOrCurie shouldBe UriOrCurie("https://neverblink.eu/test/Base")
+      result.uri shouldBe Uri("https://neverblink.eu/test/Base")
     }
   }
 }

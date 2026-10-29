@@ -114,8 +114,20 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         |    type: EntityType
         """))
       val extension = schema.extensions("ai_context")
-      extension.extensionTag.original shouldBe "ai_context"
+      extension.extensionTag shouldBe Uri("https://example.org/spec/ai_context")
       extension.extensionValue.value should include("instructions: Prefer the full name.")
+    }
+
+    "build a schema with ai_context that is valid without writing it first" in {
+      val schema = importOf(ossie("""
+        |ai_context:
+        |  instructions: Prefer the full name.
+        |ontology:
+        |  - concept: Thing
+        |    type: EntityType
+        """))
+      val imports = SchemaView.loadImports(schema).fold(e => fail(e.toString), identity)
+      SchemaView(imports.prepended(schema)).validationProblems shouldBe empty
     }
 
     "serialize as JSON when asked to" in {

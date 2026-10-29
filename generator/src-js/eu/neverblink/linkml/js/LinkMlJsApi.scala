@@ -20,11 +20,14 @@ import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.schemaview.{
   ImportMapImporter,
   Importer,
+  SchemaIssues,
   SchemaValidator,
   SchemaView,
   StringImporter,
 }
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
+import eu.neverblink.linkml.rdf.RdfParseException
+import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReport}
 
 import scala.scalajs.js
@@ -205,6 +208,21 @@ object LinkMlJsApi {
     js.JSON.parse(JsonUtil.yamlToJson(Codec.codec.encode(report)))
   }
 
+  /** Run a generator or importer. A problem with the input that the user can fix, a
+    * [[SchemaConversionException]] or an [[RdfParseException]], is thrown as a JS `Error` with a
+    * `SchemaConversionError` issue in its `issue` property, so callers can tell it from a bug.
+    */
+  private def converting[A](body: => A): A =
+    try body
+    catch {
+      case e @ (_: SchemaConversionException | _: RdfParseException) =>
+        val report = reportJson(Seq(SchemaIssues.conversionError(e.getMessage)), None, true)
+        val error = new js.Error(e.getMessage)
+        error.asInstanceOf[js.Dynamic].issue =
+          report.asInstanceOf[js.Dynamic].issues.asInstanceOf[js.Array[js.Any]](0)
+        throw js.JavaScriptException(error)
+    }
+
   /** Generate JSON Schema from a loaded LinkML schema.
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
@@ -326,19 +344,19 @@ object LinkMlJsApi {
       metadataProfile: String = "rdfs",
       permissibleValues: String = "individual",
       format: String = "ttl",
-  ): String =
-    OwlGenerator(using schema.underlying).serialize(
-      OwlGenerator.Options(
-        onlyRootSchema = onlyRootSchema,
-        metadataProfile = OwlGenerator.MetadataProfile.values.find(_.toString == metadataProfile)
-          .getOrElse(throw RuntimeException(s"Unknown metadata profile: $metadataProfile")),
-        permissibleValues = OwlGenerator.PermissibleValueKind.values.find(
-          _.toString == permissibleValues,
-        )
-          .getOrElse(throw RuntimeException(s"Unknown permissible value kind: $permissibleValues")),
-        format = rdfFormat(format),
-      ),
+  ): String = {
+    val options = OwlGenerator.Options(
+      onlyRootSchema = onlyRootSchema,
+      metadataProfile = OwlGenerator.MetadataProfile.values.find(_.toString == metadataProfile)
+        .getOrElse(throw RuntimeException(s"Unknown metadata profile: $metadataProfile")),
+      permissibleValues = OwlGenerator.PermissibleValueKind.values.find(
+        _.toString == permissibleValues,
+      )
+        .getOrElse(throw RuntimeException(s"Unknown permissible value kind: $permissibleValues")),
+      format = rdfFormat(format),
     )
+    converting(OwlGenerator(using schema.underlying).serialize(options))
+  }
 
   /** Read an OWL ontology and produce the LinkML schema it describes.
     *
@@ -377,15 +395,17 @@ object LinkMlJsApi {
   ): String = {
     val format = outputFormat(outFormat)
     val importer = OwlImporter()
-    val result = importer.importWithWarnings(
-      java.io.ByteArrayInputStream(ontology.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-      OwlImporter.Options(
-        config = config.toOption.fold(OwlImportConfig())(OwlImportConfigs.parse),
-        schemas = JsImporter(imports.getOrElse(js.Dictionary())),
-        inputFormat = rdfFormat(inputFormat),
+    val result = converting(
+      importer.importWithWarnings(
+        java.io.ByteArrayInputStream(ontology.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+        OwlImporter.Options(
+          config = config.toOption.fold(OwlImportConfig())(OwlImportConfigs.parse),
+          schemas = JsImporter(imports.getOrElse(js.Dictionary())),
+          inputFormat = rdfFormat(inputFormat),
+        ),
       ),
     )
-    val schema = importer.serializeSchema(result.schema, format, fullUris)
+    val schema = converting(importer.serializeSchema(result.schema, format, fullUris))
     if listNotImported && format == JsonOutputFormat.yaml then
       result.warnings.map(w => s"# Not imported: $w\n").mkString + schema
     else schema
@@ -438,14 +458,13 @@ object LinkMlJsApi {
     val mode = PruningMode(pruningMode, treeRoot.toOption)
 
     val format = outputFormat(outFormat)
-    LinkMlGenerator(using schema.underlying).serialize(
-      LinkMlGenerator.Options(
-        pruningMode = mode,
-        skipClassDerivation = skipDerivation,
-        outputFormat = format,
-        fullUris = fullUris,
-      ),
+    val options = LinkMlGenerator.Options(
+      pruningMode = mode,
+      skipClassDerivation = skipDerivation,
+      outputFormat = format,
+      fullUris = fullUris,
     )
+    converting(LinkMlGenerator(using schema.underlying).serialize(options))
   }
 
   /** Generate a Frictionless Data Package from a loaded LinkML schema. Every class becomes a CSV
@@ -706,13 +725,11 @@ object LinkMlJsApi {
       treeRoot: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
   ): String = {
-    val format = outputFormat(outFormat)
-    OssieGenerator(using schema.underlying).serialize(
-      OssieGenerator.Options(
-        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-        outputFormat = format,
-      ),
+    val options = OssieGenerator.Options(
+      pruningMode = PruningMode(pruningMode, treeRoot.toOption),
+      outputFormat = outputFormat(outFormat),
     )
+    converting(OssieGenerator(using schema.underlying).serialize(options))
   }
 
   /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
@@ -738,15 +755,14 @@ object LinkMlJsApi {
       schemaId: js.UndefOr[String] = js.undefined,
       outFormat: String = "yaml",
       fullUris: Boolean = false,
-  ): String =
-    OssieImporter().serializeFromString(
-      ontology,
-      OssieImporter.Options(
-        schemaId = schemaId.toOption,
-        outputFormat = outputFormat(outFormat),
-        fullUris = fullUris,
-      ),
+  ): String = {
+    val options = OssieImporter.Options(
+      schemaId = schemaId.toOption,
+      outputFormat = outputFormat(outFormat),
+      fullUris = fullUris,
     )
+    converting(OssieImporter().serializeFromString(ontology, options))
+  }
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This
     * method returns a structured JSON that follows the validation-report.yaml model.

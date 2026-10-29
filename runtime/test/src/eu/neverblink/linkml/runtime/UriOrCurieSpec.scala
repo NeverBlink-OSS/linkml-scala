@@ -4,30 +4,6 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class UriOrCurieSpec extends AnyWordSpec, Matchers {
-  "UriOrCurie" should {
-    "return valid Uri" in {
-      UriOrCurie("http://www.w3.org/2004/02/skos/core#exactMatch") shouldBe Uri(
-        "http://www.w3.org/2004/02/skos/core#exactMatch",
-      )
-    }
-    "return valid URN URI" in {
-      UriOrCurie("urn:isbn:0451450523") shouldBe Uri("urn:isbn:0451450523")
-    }
-    "return valid Curie" in {
-      UriOrCurie("skos:exactMatch") shouldBe Curie("skos:exactMatch")
-    }
-    "dispatch to Uri or Curie based on the string shape" in {
-      UriOrCurie("http://example.org/thing") shouldBe a[Uri]
-      UriOrCurie("urn:isbn:0451450523") shouldBe a[Uri]
-      UriOrCurie("skos:exactMatch") shouldBe a[Curie]
-      UriOrCurie("just-a-local-name") shouldBe a[Curie]
-    }
-    "not validate on construction" in {
-      // Construction never inspects the value; only validate() does.
-      noException should be thrownBy UriOrCurie("<>")
-      noException should be thrownBy UriOrCurie("http://<>")
-    }
-  }
   "UriOrCurie.isCurie" should {
     "accept values with the shape of a CURIE" in {
       Seq("acme:Person", "NCIT:C41185", "ex:a/b", "_x:y", "a-b.c:d", "ex:").foreach(s =>
@@ -42,11 +18,61 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "urn:isbn:0451450523",
         "mailto:someone@example.org",
         "URN:isbn:0451450523",
+        "did:web:example.com",
         "Person",
         ":Person",
         "1ex:a",
         "a b:c",
       ).foreach(s => withClue(s)(UriOrCurie.isCurie(s) shouldBe false))
+    }
+  }
+
+  "UriOrCurie.asUri" should {
+    "keep a Uri as it is" in {
+      val uri = Uri("https://example.org/a")
+      UriOrCurie.asUri(uri) should be theSameInstanceAs uri
+    }
+    "make a Uri with the text of a Curie" in {
+      UriOrCurie.asUri(Curie("mailto:someone@example.org")) shouldBe
+        Uri("mailto:someone@example.org")
+    }
+  }
+
+  "UriOrCurie.isFullUri" should {
+    "accept URIs with :// or a scheme that isn't followed by /" in {
+      Seq(
+        "https://example.org/a",
+        "ftp://example.org/a",
+        "urn:isbn:0451450523",
+        "mailto:someone@example.org",
+        "did:web:example.com",
+        "info:doi/10.1000/182",
+        "tag:example.org,2020:a",
+      ).foreach(s => withClue(s)(UriOrCurie.isFullUri(s) shouldBe true))
+    }
+    "reject text that looks like a CURIE, and anything that isn't a valid URI" in {
+      Seq("ex:draft", "doi:10.1000/182", "Person", "draft", "https://example.org/a b", "")
+        .foreach(s => withClue(s)(UriOrCurie.isFullUri(s) shouldBe false))
+    }
+  }
+
+  "UriOrCurie.expanded" should {
+    val prefixes = PrefixMap(defaults = Seq("ex" -> "https://example.org/"))
+    "expand a CURIE with a declared prefix" in {
+      UriOrCurie.expanded("ex:a", prefixes) shouldBe Uri("https://example.org/a")
+    }
+    "keep a URI that isn't expanded as a Uri" in {
+      Seq(
+        "https://other.org/a",
+        "urn:isbn:0451450523",
+        "mailto:someone@example.org",
+        "acme:Person",
+      ).foreach(s => withClue(s)(UriOrCurie.expanded(s, prefixes) shouldBe Uri(s)))
+    }
+    "keep anything else as a Curie" in {
+      Seq("a b:c", "Person").foreach(s =>
+        withClue(s)(UriOrCurie.expanded(s, prefixes) shouldBe Curie(s)),
+      )
     }
   }
 

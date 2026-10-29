@@ -25,7 +25,7 @@ import unittest
 from pathlib import Path
 
 import linkml_scala
-from linkml_scala import LinkMlError, SchemaLoadError
+from linkml_scala import LinkMlError, SchemaConversionError, SchemaLoadError
 
 REPO_ROOT = Path(os.environ.get("LINKML_SCALA_REPO") or Path(__file__).resolve().parents[1])
 
@@ -80,6 +80,18 @@ BROKEN = schema(
 )
 
 FIXED = BROKEN.replace("NoSuchThing", "string")
+
+
+class ExportsTest(unittest.TestCase):
+    def test_runtime_exports_every_public_name_it_defines(self):
+        from linkml_scala import _runtime
+
+        defined = {
+            name
+            for name, value in vars(_runtime).items()
+            if not name.startswith("_") and getattr(value, "__module__", None) == _runtime.__name__
+        }
+        self.assertEqual(defined - set(_runtime.__all__), set())
 
 
 class FromOwlTest(unittest.TestCase):
@@ -193,6 +205,17 @@ class FromOssieTest(unittest.TestCase):
         with self.assertRaises(LinkMlError) as raised:
             linkml_scala.from_ossie(self.ONTOLOGY, output_format="toml")
         self.assertIn("toml", str(raised.exception))
+
+    # A problem with the document is an issue, in the same shape as in a validation report.
+    def test_a_document_that_is_not_an_ontology_is_a_conversion_error(self):
+        with self.assertRaises(SchemaConversionError) as raised:
+            linkml_scala.from_ossie("- not\n- an ontology\n")
+        issue = raised.exception.issue
+        self.assertEqual("SchemaConversionError", issue["issue_type"])
+        self.assertEqual("FATAL", issue["severity"])
+        self.assertIn("Not a readable Ossie ontology", issue["reason"])
+        self.assertEqual(issue["message"], str(raised.exception))
+        self.assertIsInstance(raised.exception, LinkMlError)
 
 
 class BuildInfoTest(unittest.TestCase):
@@ -580,6 +603,35 @@ class GeneratorTest(unittest.TestCase):
         with self.assertRaises(LinkMlError) as caught:
             self.schema.linkml(pruning_mode="vigorously")
         self.assertIn("vigorously", str(caught.exception))
+
+    def test_a_uri_that_can_not_be_written_is_a_conversion_error(self):
+        # `other` doesn't declare `ex`, so its class URI is the URI `ex:Imported`. The root
+        # declares `ex`, so writing the schema would read it back as another URI.
+        root = schema(
+            "root",
+            """
+            prefixes:
+              ex: https://example.org/
+            imports:
+              - linkml:types
+              - other
+            classes:
+              Root:
+                class_uri: ex:Root
+            """,
+        )
+        other = schema(
+            "other",
+            """
+            classes:
+              Imported:
+                class_uri: ex:Imported
+            """,
+        )
+        with linkml_scala.load_string(root, {"other.yaml": other}) as loaded:
+            with self.assertRaises(SchemaConversionError) as raised:
+                loaded.linkml()
+        self.assertIn("'ex:Imported' can't be written", raised.exception.issue["reason"])
 
     def test_an_unknown_option_is_rejected_rather_than_ignored(self):
         with self.assertRaises(LinkMlError) as caught:

@@ -26,5 +26,9 @@ class EnumViewSpec extends AnyWordSpec, Matchers {
         Uri("https://w3id.org/linkml/PvFormulaOptions.CODE"),
       ) shouldBe "CODE"
     }
+    "give the meaning of a permissible value as it is read, without a copy" in {
+      val subject = sv.enums("relational_role_enum").derivedValues.find(_.pv.text == "SUBJECT").get
+      subject.meaning should be theSameInstanceAs subject.pv.meaning.get
+    }
   }
 }

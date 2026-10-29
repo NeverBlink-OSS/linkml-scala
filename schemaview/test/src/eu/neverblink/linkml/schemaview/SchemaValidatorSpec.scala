@@ -1,10 +1,22 @@
 package eu.neverblink.linkml.schemaview
 
-import eu.neverblink.linkml.metamodel.{ClassDefinition, Prefix, SchemaDefinition}
-import eu.neverblink.linkml.runtime.{Curie, Uri}
+import eu.neverblink.linkml.metamodel.{
+  Annotation,
+  ClassDefinition,
+  EnumDefinition,
+  PermissibleValue,
+  Prefix,
+  SchemaDefinition,
+}
+import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, Uri, UriOrCurie}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import eu.neverblink.linkml.validation.{SchemaError, SchemaFatal, UndeclaredCuriePrefix}
+import eu.neverblink.linkml.validation.{
+  SchemaError,
+  SchemaFatal,
+  UndeclaredCuriePrefix,
+  UnwritableUri,
+}
 
 import scala.collection.immutable.VectorMap
 
@@ -880,6 +892,164 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "not warn on a value expanded from a declared prefix to a URI with a scheme such as did" in {
+      val schemaYaml =
+        """id: https://example.org/test
+           |name: test
+           |prefixes:
+           |  web: "did:web:"
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    see_also:
+           |    - web:example.com
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      sv.root.classes("SomeClass").seeAlso shouldBe Seq(Uri("did:web:example.com"))
+      sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
+    }
+
+    "load a schema with a namespace that is only a URI scheme" in {
+      val schemaYaml =
+        """id: https://example.org/test
+           |name: test
+           |prefixes:
+           |  DOI: "doi:"
+           |classes:
+           |  SomeClass:
+           |    tree_root: true
+           |    see_also:
+           |    - DOI:10.1000/182
+           |""".stripMargin
+      val sv = load(schemaYaml)
+
+      sv.root.classes("SomeClass").seeAlso shouldBe Seq(Uri("doi:10.1000/182"))
+      sv.lintProblems.collect { case p: UndeclaredCuriePrefix => p } shouldBe empty
+    }
+
+    "report a URI that would be read back as a CURIE when the schema is written" in {
+      // `other` doesn't declare `ex`, so its class URI is the URI `ex:Imported`. The root declares
+      // `ex`, so `generate linkml` would write `ex:Imported`, which is read back as another URI.
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported:
+          |    class_uri: ex:Imported
+          |""".stripMargin
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  ex: https://example.org/
+          |imports:
+          |  - other
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    class_uri: ex:Root
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter("root.yaml" -> root, "other.yaml" -> other),
+        ),
+      )
+
+      // A warning, as LinkML-Python accepts such a schema, and only writing it fails
+      sv.validationProblems shouldBe empty
+      sv.lintProblems.collect { case p: UnwritableUri => p.infer().message.get } shouldBe Seq(
+        "URI 'ex:Imported' at /classes/Imported/class_uri/ can't be written, as 'ex' is a " +
+          "declared prefix of the root schema",
+      )
+    }
+
+    "report a URI with a declared scheme that would be read back as a CURIE" in {
+      // The root declares `http`, so `generate linkml` would write `http://example.org/A` from
+      // `other`, which doesn't, and it would be read back as `urn:other://example.org/A`
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported:
+          |    class_uri: http://example.org/A
+          |""".stripMargin
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  http: "urn:other:"
+          |imports:
+          |  - other
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter("root.yaml" -> root, "other.yaml" -> other),
+        ),
+      )
+
+      sv.lintProblems.collect { case p: UnwritableUri => p.infer().message.get } shouldBe Seq(
+        "URI 'http://example.org/A' at /classes/Imported/class_uri/ can't be written, as 'http' " +
+          "is a declared prefix of the root schema",
+      )
+    }
+
+    "report an equals_string that should be a URI, but isn't" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |prefixes:
+           |  linkml: https://w3id.org/linkml/
+           |imports:
+           |  - linkml:types
+           |classes:
+           |  Thing:
+           |    tree_root: true
+           |    attributes:
+           |      link:
+           |        range: uriorcurie
+           |        equals_string: not a URI
+           |      other:
+           |        range: Thing
+           |        equals_string: Thing 2
+           |      name:
+           |        range: string
+           |        equals_string: any text
+           |      fine:
+           |        range: uri
+           |        equals_string: https://example.org/a
+           |""".stripMargin
+
+      load(schemaYaml).validationProblems.map(
+        _.infer().message.get,
+      ) should contain theSameElementsAs
+        Seq(
+          "equals_string 'not a URI' of slot 'link' in class 'Thing' isn't a valid URI or CURIE",
+          "equals_string 'Thing 2' of slot 'other' in class 'Thing' isn't a valid URI or CURIE",
+        )
+    }
+
+    "fail on a namespace that isn't a valid URI" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |prefixes:
+           |  bad: "https://example.org/ has a space"
+           |default_prefix: bad
+           |classes:
+           |  SomeClass:
+           |""".stripMargin
+      val msg = loadFailure(schemaYaml)
+
+      msg should include(
+        "Invalid URI or CURIE 'https://example.org/ has a space' at /prefixes/bad/prefix_reference",
+      )
+      msg should not include "Unexpected error"
+    }
+
     "fail on a CURIE with a declared prefix in a schema built in code" in {
       // CURIEs are expanded when a schema is read, so only a schema built in code can have one
       val schema = SchemaDefinition(
@@ -893,6 +1063,82 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
 
       msg should include("CURIE 'ex:Person' at /classes/Person/class_uri/ isn't expanded")
       msg should include("Use the URI 'https://example.org/Person' instead")
+    }
+
+    "treat a URI with an undeclared prefix in a schema built in code as when it is read" in {
+      // Reading YAML gives a `Uri` for these values, not a `Curie`
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        classes = Map(
+          "Person" -> ClassDefinition(
+            "Person",
+            classUri = Some(Curie("acme:Person")),
+            seeAlso = Seq(Curie("mailto:someone@example.org")),
+            treeRoot = true,
+          ),
+        ),
+      )
+      val problems = SchemaView.single(schema).lintProblems.collect {
+        case p: UndeclaredCuriePrefix => p.infer().message.get
+      }
+
+      problems shouldBe Seq(
+        "Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/",
+      )
+      SchemaView.single(schema).classes("Person").uri shouldBe Uri("acme:Person")
+    }
+
+    "fail on a value without a colon in a schema built in code" in {
+      // Generators would write these as relative IRIs, such as `<docs>`
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        defaultPrefix = Some("ex"),
+        prefixes = VectorMap("ex" -> Prefix("ex", Uri("https://example.org/"))),
+        classes = Map(
+          "Person" -> ClassDefinition(
+            "Person",
+            seeAlso = Seq(Curie("docs")),
+            annotations = Map(
+              "mytag" -> Annotation(
+                extensionTag = Curie("mytag"),
+                extensionValue = LinkmlAny("value"),
+              ),
+            ),
+          ),
+        ),
+        enums = Map(
+          "Some" -> EnumDefinition(
+            "Some",
+            permissibleValues =
+              Map("SOME" -> PermissibleValue(text = "SOME", meaning = Some(Curie("SOME")))),
+          ),
+        ),
+      )
+      val msg =
+        the[SchemaIssues.FatalSchemaException].thrownBy(SchemaView.single(schema)).getMessage
+
+      Seq(
+        "CURIE 'docs' at /classes/Person/see_also/0/ isn't expanded",
+        "Use the URI 'https://example.org/docs' instead",
+        "CURIE 'mytag' at /classes/Person/annotations/mytag/tag/ isn't expanded",
+        "CURIE 'SOME' at /enums/Some/permissible_values/SOME/meaning/ isn't expanded",
+      ) foreach { part =>
+        msg should include(part)
+      }
+    }
+
+    "fail on a CURIE that can't be a URI in a schema built in code" in {
+      val schema = SchemaDefinition(
+        id = Uri("https://example.org/test"),
+        name = "test",
+        classes = Map("Foo" -> ClassDefinition("Foo", classUri = Some(Curie("my_ns:Foo")))),
+      )
+      val msg =
+        the[SchemaIssues.FatalSchemaException].thrownBy(SchemaView.single(schema)).getMessage
+
+      msg should include("Invalid URI or CURIE 'my_ns:Foo' at /classes/Foo/class_uri/")
     }
 
     "catch an invalid reference in an imported file" in {

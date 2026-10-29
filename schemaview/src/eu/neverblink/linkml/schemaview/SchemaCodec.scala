@@ -58,17 +58,15 @@ object SchemaCodec {
 
   /** Get the prefixes of a schema, in the order of precedence given above.
     *
-    * @throws java.net.URISyntaxException
-    *   If a namespace in the schema's `prefixes` is not a valid URI
+    * Namespaces aren't checked here. When a schema is loaded, the validator reports a namespace
+    * that isn't a valid URI as `InvalidUriOrCurie`.
     */
-  def prefixMap(schema: SchemaDefinition): PrefixMap = {
-    schema.prefixes.values.foreach(p => new java.net.URI(p.prefixReference.original))
+  def prefixMap(schema: SchemaDefinition): PrefixMap =
     prefixMap(
       schema.prefixes,
       schema.defaultCuriMaps,
       new Some(defaultNamespace(schema.id.original, schema.defaultPrefix, schema.prefixes)),
     )
-  }
 
   /** Get the namespace of a schema's `default_prefix`. Without a `default_prefix`, or if it isn't
     * in the schema's `prefixes`, it is the schema's `id`, with a `/` added if the `id` doesn't end

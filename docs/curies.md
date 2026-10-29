@@ -19,10 +19,10 @@ This applies only to slots of type `uriorcurie`. Slots of type `uri` or `curie` 
 - A namespace is used as it is written, as in LinkML-Python. With `GO: http://purl.obolibrary.org/obo/GO_`, `GO:0008150` is `http://purl.obolibrary.org/obo/GO_0008150`. So a namespace needs a separator at the end: with `ex: http://example.org`, `ex:Person` is `http://example.orgPerson`.
 - A value that looks like a URI is expanded too if its scheme is declared as a prefix. With `http: urn:other:`, `http://example.org/a` is `urn:other://example.org/a`.
 - A value with an unknown prefix is a valid URI, but most likely a mistake, and its meaning can change when it is written (see [Schemas](#schemas)). Declare every prefix that a schema uses.
-- In a schema, `validate` warns about such a value with `UndeclaredCuriePrefix`, such as `Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/`. This is for a value that has the shape of a CURIE: the text before the colon is a valid prefix name, it isn't followed by `/` or `\`, and it isn't a scheme such as `urn` or `mailto`. With `--strict`, the warning makes `validate` fail.
-- In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. So is a CURIE whose prefix isn't declared and can't be a URI scheme, such as `my_ns:Foo` or `_:b1`, as a scheme can't have `_`. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`.
-- A schema built in code isn't read, so its CURIEs aren't expanded. In such a schema, a `Curie` with a declared prefix, such as `Curie("ex:Person")` or `UriOrCurie("ex:Person")`, is a fatal error (`UnexpandedCurie`), as generators would write it as it is. Use the URI instead, such as `Uri("https://example.org/Person")`.
-- `equals_string` is a plain string, so it is checked only when the OWL generator writes it as an IRI, for a slot whose range is a URI type or a class. The generator stops with an error if the value isn't a URI or CURIE.
+- In a schema, `validate` warns about such a value with `UndeclaredCuriePrefix`, such as `Undeclared prefix 'acme' in 'acme:Person' at /classes/Person/class_uri/`. This is for a value that has the shape of a CURIE: the text before the colon is a valid prefix name, it isn't followed by `/` or `\`, it isn't a scheme such as `urn`, `mailto` or `did`, and the value doesn't start with the namespace of a declared prefix. So with `DOI: doi:`, `DOI:10.1000/182` is read as `doi:10.1000/182` without a warning. With `--strict`, the warning makes `validate` fail.
+- In a schema, a value that isn't a valid URI or CURIE, such as `John Doe`, is a fatal error (`InvalidUriOrCurie`), so the schema doesn't load. So is a CURIE whose prefix isn't declared and can't be a URI scheme, such as `my_ns:Foo` or `_:b1`, as a scheme can't have `_`. For example, `contributors: [John Doe]` fails with `Invalid URI or CURIE 'John Doe' at /contributors/0/`. A namespace in `prefixes` that isn't a valid URI is fatal too, such as `Invalid URI or CURIE 'https://example.org/ has a space' at /prefixes/ex/prefix_reference/`. If an import uses that prefix, loading stops at the import, with an error that names the namespace.
+- A schema built in code isn't read, so its CURIEs aren't expanded. In such a schema, a `Curie` with a declared prefix, such as `Curie("ex:Person")`, is a fatal error (`UnexpandedCurie`), as generators would write it as it is. So is a value without a colon, such as `Curie("docs")`, which isn't put in the default namespace, as generators would write it as the relative IRI `<docs>`. Use the URI instead, such as `Uri("https://example.org/Person")`. A `Curie` whose prefix isn't declared, but that is a valid URI, such as `Curie("mailto:someone@example.org")` or `Curie("acme:Person")`, is checked as the URI that reading the schema gives, so `acme:Person` gets the `UndeclaredCuriePrefix` warning.
+- `equals_string` is a plain string, but the OWL generator writes it as an IRI for a slot whose range is a URI type or a class. For such a slot, `validate` reports a value that isn't a URI or CURIE as the error `InvalidEqualsString`, such as `equals_string 'not a URI' of slot 'link' in class 'Thing' isn't a valid URI or CURIE`, and `generate owl` stops with an error.
 
 ## Writing
 
@@ -30,7 +30,9 @@ A URI is written as a CURIE with the prefix of the longest namespace it starts w
 That CURIE is only used if its local part is not empty, doesn't start with `//` (as `ex://host/a` would look like a URL), and reads back as the same URI.
 Otherwise, the next longest namespace is tried, and if none fits, the URI is written in full.
 If two prefixes have the same namespace, the one with the highest precedence is used, and then the one declared first.
-A URI written in full that would be read back as a CURIE, such as the URI `ex:Person` when `ex` is a declared prefix, can't be written, so writing fails with an error that names the URI and the prefix.
+A URI written in full that would be read back as a CURIE, such as the URI `ex:Person` when `ex` is a declared prefix, or `http://example.org/a` when `http` is, can't be written, so writing fails with an error that names the URI and the prefix.
+Writing uses the prefixes of the root schema, so this happens for a value in an imported schema that doesn't declare the prefix.
+`validate` warns about such a value with `UnwritableUri`, such as `URI 'ex:Imported' at /classes/Imported/class_uri/ can't be written, as 'ex' is a declared prefix of the root schema`.
 
 To write every URI in full, use the `--full-uris` flag of `generate linkml`, `from owl` and `from ossie`.
 In the APIs, it is the `fullUris` option in Scala and JavaScript, and `full_uris` in Python.
@@ -46,7 +48,7 @@ Each schema is read with its own prefixes, in this order of precedence:
 The prefixes of imported schemas are never used.
 
 The default namespace, for values without a colon, is the namespace of `default_prefix`, or the schema's `id` if there is no `default_prefix` (see [Default `default_prefix`](implementation_differences.md#default-default_prefix)).
-This is not used for `imports`, where a value without a colon is a path relative to the importing schema.
+This is not used for `imports`, where a value without a colon is a path relative to the importing schema. Such a path is a relative URI, so write it with `/`, also on Windows, such as `../shared/core`, not `..\shared\core`.
 
 So a CURIE in an imported schema keeps the meaning that the imported schema's prefixes give it, even if the importing schema uses the same prefix for another namespace:
 

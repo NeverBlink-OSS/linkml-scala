@@ -206,9 +206,11 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "validate" in {
             assume(!skip.contains((name, "validation")), skip.getOrElse((name, "validation"), ""))
             sv.validationProblems.map(_.infer().message) shouldBe empty
-            // The URI that the LinkML output can't hold gets a warning
+            // The URI that the LinkML output can't hold gets an `UnwritableUri` warning
             undeclaredPrefixUris.get(name).foreach { uri =>
-              sv.lintProblems.flatMap(_.infer().message).exists(_.contains(s"'$uri'")) shouldBe true
+              sv.lintProblems.flatMap(_.infer().message)
+                .exists(m => m.contains(s"URI '$uri'") && m.contains("can't be written")) shouldBe
+                true
             }
           }
         }

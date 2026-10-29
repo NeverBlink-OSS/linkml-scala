@@ -169,7 +169,7 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
       locally {
         implicit val codec: LinkmlYamlCodec[StringFirst] = LinkmlYamlCodec.derived
         roundTrip[StringFirst]("ex:abc", "ex:abc\n")
-        codec.encode(UriOrCurie("ex:abc")).asYaml shouldBe "ex:abc\n"
+        codec.encode(Curie("ex:abc")).asYaml shouldBe "ex:abc\n"
       }
       case class MyClass(a: UriFirst, b: StringFirst) derives LinkmlYamlCodec
 

@@ -26,6 +26,8 @@ import scala.quoted.*
   *   URI or CURIE values that look like CURIEs, but whose prefix isn't declared
   * @param unexpandedCuries
   *   CURIE values with a declared prefix that weren't expanded, in a schema built in code
+  * @param unwritableUris
+  *   URI values that writing the schema would read back as CURIEs with another meaning
   * @param isEmpty
   *   Set to true only if you are creating a ValidatorResult == ValidatorResult.ok
   */
@@ -36,6 +38,7 @@ final case class ValidatorResult private (
     invalidUriOrCuries: Seq[InvalidUriOrCurie],
     undeclaredPrefixes: Seq[UndeclaredPrefixValue],
     unexpandedCuries: Seq[UnexpandedCurieValue],
+    unwritableUris: Seq[UnwritableUriValue],
     isEmpty: Boolean,
 ):
   /** Merge the [[ValidatorResult]]s */
@@ -49,6 +52,7 @@ final case class ValidatorResult private (
         invalidUriOrCuries ++ other.invalidUriOrCuries,
         undeclaredPrefixes ++ other.undeclaredPrefixes,
         unexpandedCuries ++ other.unexpandedCuries,
+        unwritableUris ++ other.unwritableUris,
       )
 
   /** Add a [[prefix]] to each result's source path */
@@ -62,11 +66,13 @@ final case class ValidatorResult private (
         invalidUriOrCuries.map(_.prependedPath(prefix)),
         undeclaredPrefixes.map(_.prependedPath(prefix)),
         unexpandedCuries.map(_.prependedPath(prefix)),
+        unwritableUris.map(_.prependedPath(prefix)),
       )
 
 object ValidatorResult {
   val ok: ValidatorResult =
     ValidatorResult(
+      Seq.empty,
       Seq.empty,
       Seq.empty,
       Seq.empty,
@@ -83,6 +89,7 @@ object ValidatorResult {
       invalidUriOrCuries: Seq[InvalidUriOrCurie] = Seq(),
       undeclaredPrefixes: Seq[UndeclaredPrefixValue] = Seq(),
       unexpandedCuries: Seq[UnexpandedCurieValue] = Seq(),
+      unwritableUris: Seq[UnwritableUriValue] = Seq(),
   ): ValidatorResult =
     new ValidatorResult(
       unknownReferences,
@@ -91,6 +98,7 @@ object ValidatorResult {
       invalidUriOrCuries,
       undeclaredPrefixes,
       unexpandedCuries,
+      unwritableUris,
       isEmpty = false,
     )
 }
@@ -167,6 +175,20 @@ final case class UnexpandedCurieValue(path: String, value: Curie, uri: Uri, from
   /** Add a [[prefix]] to this class' path */
   def prependedPath(prefix: String): UnexpandedCurieValue = copy(path = prefix.concat(path))
 
+/** A URI value that has the shape of a CURIE whose prefix is declared in the root schema, so
+  * writing the schema would read it back as a CURIE with another meaning
+  *
+  * @param path
+  *   JSON path to the value
+  * @param value
+  *   The URI
+  * @param prefix
+  *   The declared prefix of the root schema
+  */
+final case class UnwritableUriValue(path: String, value: Uri, prefix: String, fromSchema: Uri):
+  /** Add a [[prefix]] to this class' path */
+  def prependedPath(prefix: String): UnwritableUriValue = copy(path = prefix.concat(path))
+
 private trait MacroValidator[T] {
   def validate(t: T)(using SchemaView, ValidatorContext): ValidatorResult
 }
@@ -186,6 +208,8 @@ private trait MacroValidator[T] {
   * @param slotsMayBeLocal
   *   Whether a slot reference here may reference a slot (attribute) of [[classScope]] rather than
   *   only a top-level one
+  * @param isImport
+  *   Whether this value is in `imports`, where a value without a colon is a relative URI
   */
 final class ValidatorContext private (
     val defaultRangeAllowed: Boolean,
@@ -194,6 +218,7 @@ final class ValidatorContext private (
     val prefixes: PrefixMap,
     val classScope: Option[String],
     val slotsMayBeLocal: Boolean,
+    val isImport: Boolean,
 ):
   /** Mark continue validating this slot as a range. SHOULD NOT BE USED OUTSIDE THE MACRO */
   def asRange: ValidatorContext =
@@ -204,6 +229,7 @@ final class ValidatorContext private (
       prefixes,
       classScope,
       slotsMayBeLocal,
+      isImport,
     )
 
   /** Enter the scope of a class definition. SHOULD NOT BE USED OUTSIDE THE MACRO */
@@ -215,17 +241,38 @@ final class ValidatorContext private (
       prefixes,
       Some(className),
       slotsMayBeLocal,
+      isImport,
     )
 
   /** Allow this slot reference to reference a slot (attribute) local to the enclosing class. SHOULD
     * NOT BE USED OUTSIDE THE MACRO
     */
   def asLocalSlotRef: ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, isRange, fromSchema, prefixes, classScope, true)
+    new ValidatorContext(
+      defaultRangeAllowed,
+      isRange,
+      fromSchema,
+      prefixes,
+      classScope,
+      true,
+      isImport,
+    )
+
+  /** Mark this value as one in `imports`. SHOULD NOT BE USED OUTSIDE THE MACRO */
+  def asImport: ValidatorContext =
+    new ValidatorContext(
+      defaultRangeAllowed,
+      isRange,
+      fromSchema,
+      prefixes,
+      classScope,
+      slotsMayBeLocal,
+      true,
+    )
 
 object ValidatorContext:
   def apply(defaultRangeAllowed: Boolean, fromSchema: Uri, prefixes: PrefixMap): ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, false, fromSchema, prefixes, None, false)
+    new ValidatorContext(defaultRangeAllowed, false, fromSchema, prefixes, None, false, false)
 
 private object MacroValidator {
   given MacroValidator[LinkmlAny] = new MacroValidator[LinkmlAny] {
@@ -251,39 +298,62 @@ private object MacroValidator {
     * A [[Uri]] that still has the shape of a CURIE after that, such as `acme:Person`, has a prefix
     * that isn't declared. A [[Curie]] with a colon, such as `my_ns:Foo`, has a prefix that isn't
     * declared and can't be a URI scheme, so it is invalid. A [[Curie]] with a declared prefix, such
-    * as `ex:Person`, wasn't expanded, which happens only in a schema built in code. A [[Curie]]
-    * without a colon is a relative reference, such as an import path.
+    * as `ex:Person`, or without a colon, such as `docs`, wasn't expanded, which happens only in a
+    * schema built in code. Generators would write it as it is, as a relative IRI.
+    *
+    * In `imports`, a [[Curie]] without a colon, such as `core` or `../shared/core`, is a path
+    * relative to the importing schema, so it is a valid relative URI.
+    *
+    * In a schema built in code, a [[Curie]] such as `acme:Person` or `mailto:a@b.org`, whose prefix
+    * isn't declared and that is a valid URI, is checked as the [[Uri]] that reading the schema
+    * gives.
     */
   given uriOrCurieValidator: MacroValidator[UriOrCurie] =
     new MacroValidator[UriOrCurie] {
       def validate(t: UriOrCurie)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult =
         t match {
           case u: Uri =>
-            val uri = u.original
-            if (!u.isValid)
-              ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
-            else if (UriOrCurie.isCurie(uri))
-              ValidatorResult(undeclaredPrefixes =
-                Seq(
-                  UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema),
-                ),
-              )
-            else ValidatorResult.ok
+            if (u.isValid) validUri(u)
+            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", u, vc.fromSchema)))
           case c: Curie =>
             val curie = c.original
-            val isValid = c.isValid
-            if (isValid && curie.indexOf(':') < 0) ValidatorResult.ok
-            else {
-              val uri = if (isValid) vc.prefixes.expandOrNull(curie) else null
-              if (uri ne null)
-                ValidatorResult(unexpandedCuries =
-                  Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
-                )
-              else
-                ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", c, vc.fromSchema)))
-            }
+            val uri = if (c.isValid) vc.prefixes.expandOrNull(curie) else null
+            if (vc.isImport && c.isValid && curie.indexOf(':') < 0) ValidatorResult.ok
+            else if (uri ne null)
+              ValidatorResult(unexpandedCuries =
+                Seq(UnexpandedCurieValue("", c, Uri(uri), vc.fromSchema)),
+              )
+            else if (UriCurieValidator.isValidUri(curie)) validUri(Uri(curie))
+            else ValidatorResult(invalidUriOrCuries = Seq(InvalidUriOrCurie("", c, vc.fromSchema)))
         }
     }
+
+  /** Check a valid [[Uri]].
+    *
+    * One with the shape of a CURIE, such as `acme:Person`, has a prefix that isn't declared, unless
+    * it starts with the namespace of a declared prefix. Then it was most likely expanded from that
+    * prefix, such as `doi:10.1000/182` from `DOI:10.1000/182` with `DOI: doi:`, and is written back
+    * as that CURIE.
+    *
+    * Any URI can't be written if the root schema can't compact it and would read it back as a
+    * CURIE, as writing the schema uses the prefixes of the root schema. This happens for a value
+    * from an imported schema that doesn't declare the prefix, such as `ex:Imported`, or
+    * `http://example.org/a` when the root schema declares `http`.
+    */
+  private def validUri(u: Uri)(using sv: SchemaView, vc: ValidatorContext): ValidatorResult = {
+    val uri = u.original
+    val root = sv.rootPrefixes
+    val undeclared =
+      if (UriOrCurie.isCurie(uri) && (vc.prefixes.compactOrNull(uri) eq null))
+        Seq(UndeclaredPrefixValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema))
+      else Nil
+    val unwritable =
+      if (UriOrCurie.readsBackAsCurie(uri, root) && (root.compactOrNull(uri) eq null))
+        Seq(UnwritableUriValue("", u, uri.substring(0, uri.indexOf(':')), vc.fromSchema))
+      else Nil
+    if (undeclared.isEmpty && unwritable.isEmpty) ValidatorResult.ok
+    else ValidatorResult(undeclaredPrefixes = undeclared, unwritableUris = unwritable)
+  }
 
   private def formatRangeType(el: Element): String = {
     el match {
@@ -443,6 +513,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
                 sv,
                 fieldInfo.mappedName match {
                   case "range" => '{ $vc.asRange }
+                  case "imports" => '{ $vc.asImport }
                   // LinkML scopes these to the enclosing class, they may reference its attributes.
                   case "unique_key_slots" | "defining_slots" | "slot_group" =>
                     '{ $vc.asLocalSlotRef }

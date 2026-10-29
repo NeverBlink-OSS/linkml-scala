@@ -60,6 +60,12 @@ For `load_file` a location is a path, and for `load_string` and `load_path` it i
 Fatal problems raise `SchemaLoadError`, which carries the report as `.report`. Errors and warnings do
 not: a schema can load and still have things to say about it.
 
+A generator or importer that can't convert a schema or ontology, for a reason you can fix, raises
+`SchemaConversionError`. Its `.issue` is a `SchemaConversionError` issue, in the same shape as the
+issues of a report, and its `message` says why. For example, `schema.linkml()` raises it for a URI
+that would be read back as a CURIE with another meaning, and `from_ossie` for a document that isn't
+an Ossie ontology. Both exceptions are a `LinkMlError`, as is any other failure.
+
 ### Generating from LinkML
 
 ```python
@@ -172,7 +178,7 @@ long long h = linkml_load_file("model.yaml",
     "{\"importMap\":{\"https://example.org/units/\":\"deps/units/\"}}", &report, &err);
 ```
 
-**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. All returned strings must be freed by the caller with `linkml_free`.
+**Failure is NULL plus a message.** A generator returns NULL and writes the reason to `*err`. Loading returns handle 0 and writes a validation report to `*report`. A schema that can't be written, or an ontology that can't be imported, writes a validation report to `*err` instead of a message, with one `SchemaConversionError` issue. All returned strings must be freed by the caller with `linkml_free`.
 
 A loaded schema is an integer handle.
 

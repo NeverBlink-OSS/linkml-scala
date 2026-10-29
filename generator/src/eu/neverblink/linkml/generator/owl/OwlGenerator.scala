@@ -176,7 +176,7 @@ object OwlGenerator {
           ids.toSeq
         } else Nil
       val header = metadataAnnotations(Metadata.of(root))
-        .concat(linkmlAnnotations(root, sv.rootPrefixes)).concat(preferredNamespace)
+        .concat(linkmlAnnotations(root)).concat(preferredNamespace)
       val prefixes = Seq.newBuilder[(String, String)]
       if (!root.prefixes.values.exists(_.prefixReference.original == defaultPrefix.namespace)) {
         prefixes.addOne(defaultPrefix.prefix -> defaultPrefix.namespace)
@@ -272,15 +272,11 @@ object OwlGenerator {
         el: ElementView[?, ?],
         equivalent: Set[String] = Set.empty,
     ): Unit =
-      annotate(iri, el.inner, el.definingPrefixes, equivalent)
+      annotate(iri, el.inner, equivalent)
 
-    /** @param prefixes
-      *   The prefixes of the schema that defines `metadata`, to expand CURIEs in annotation values
-      */
     private def annotate(
         iri: String,
         metadata: CommonMetadata & Annotatable,
-        prefixes: PrefixMap,
         equivalent: Set[String],
     ): Unit = {
       val m = Metadata.of(metadata)
@@ -288,14 +284,11 @@ object OwlGenerator {
         if (equivalent.isEmpty) m
         else m.copy(exactMappings = m.exactMappings.filterNot(e => equivalent(e.original)))
       metadataAnnotations(kept).foreach(a => add(AnnotationAssertion(iri, a)))
-      linkmlAnnotations(metadata, prefixes).foreach(a => add(AnnotationAssertion(iri, a)))
+      linkmlAnnotations(metadata).foreach(a => add(AnnotationAssertion(iri, a)))
     }
 
-    private def annotate(
-        iri: String,
-        metadata: CommonMetadata & Annotatable,
-        prefixes: PrefixMap,
-    ): Unit = annotate(iri, metadata, prefixes, Set.empty)
+    private def annotate(iri: String, metadata: CommonMetadata & Annotatable): Unit =
+      annotate(iri, metadata, Set.empty)
 
     private lazy val classIris: Set[String] = {
       val b = Set.newBuilder[String]
@@ -343,18 +336,15 @@ object OwlGenerator {
 
     /** LinkML `annotations` with plain values, with the tag as the property. A tag without a colon
       * is put in the default namespace of its schema when the schema is read.
-      *
-      * @param prefixes
-      *   The prefixes of the schema that defines `el`, to expand CURIEs in values
       */
-    private def linkmlAnnotations(el: Annotatable, prefixes: PrefixMap): Seq[Annotation] = {
+    private def linkmlAnnotations(el: Annotatable): Seq[Annotation] = {
       val b = Seq.newBuilder[Annotation]
       val language = sv.root.inLanguage
       el.annotations.values.foreach { a =>
         val property = a.extensionTag.original
         def add(v: String): Unit =
           b.addOne(
-            Annotation(property, Metadata.inLanguage(annotationValue(v, prefixes), language)),
+            Annotation(property, Metadata.inLanguage(annotationValue(v), language)),
           )
         a.extensionValue.yaml match {
           case Right(node) =>
@@ -373,17 +363,12 @@ object OwlGenerator {
       b.result()
     }
 
-    /** Reads a value as an IRI if it is a full IRI or a CURIE with a declared prefix, since the
-      * importer writes IRIs that way. Anything else is text.
+    /** Reads a value as an IRI if it is a full IRI, as the importer writes IRIs that way. Anything
+      * else is text, even if it looks like a CURIE.
       */
-    private def annotationValue(v: String, prefixes: PrefixMap): Value =
-      if (v.contains("://") || v.startsWith("urn:") || v.startsWith("mailto:")) {
-        if (UriCurieValidator.isValidUri(v)) Iri(v)
-        else Literal(v)
-      } else {
-        val uri = if (UriOrCurie.isCurie(v)) prefixes.expandOrNull(v) else null
-        if ((uri ne null) && UriCurieValidator.isValidUri(uri)) Iri(uri) else Literal(v)
-      }
+    private def annotationValue(v: String): Value =
+      if (UriOrCurie.isFullUri(v)) Iri(v)
+      else Literal(v)
 
     // Classes
 
@@ -545,8 +530,8 @@ object OwlGenerator {
       */
     private def valueOf(s: SlotView, text: String): Option[Value] = {
       def iri: Value = {
-        val uri = UriOrCurie.expanded(text, s.definingPrefixes).original
-        if (UriCurieValidator.isValidUri(uri)) Iri(uri)
+        val uri = s.uriValueOrNull(text)
+        if (uri ne null) Iri(uri)
         else
           throw SchemaConversionException(
             s"The equals_string value '$text' of slot '${s.name}' isn't a valid URI or CURIE",
@@ -889,7 +874,7 @@ object OwlGenerator {
         if (!derived.slot.identifier && !declared(iri)) {
           val kind = kindOf(derived)
           add(Declaration(kind, iri))
-          annotate(iri, attribute, cv.definingPrefixes)
+          annotate(iri, attribute)
           if (kind != EntityKind.AnnotationProperty) {
             // If every use of the property has the same range, that becomes its range.
             val uses = rangesByProperty.getOrElse(iri, Nil)
@@ -930,7 +915,7 @@ object OwlGenerator {
         if (OwlImportNames.localName(pvIri) != pv.text) {
           add(AnnotationAssertion(pvIri, Annotation.text(skosNotation, pv.text)))
         }
-        annotate(pvIri, pv, ev.definingPrefixes)
+        annotate(pvIri, pv)
         pvIri
       }
       if (values.nonEmpty)

@@ -12,20 +12,19 @@ sealed trait UriOrCurie {
 }
 
 object UriOrCurie {
-  def apply(s: String): UriOrCurie =
-    if (s.startsWith("urn:") || s.contains("://")) new Uri(s)
-    else new Curie(s)
 
   /** Create a [[Uri]] with the expansion of [[s]], if [[prefixes]] can expand it.
     *
     * Otherwise, [[s]] is a [[Uri]] if it is a valid absolute URI, such as `xsd:string` when `xsd`
-    * isn't a known prefix, or else the same value as [[apply]].
+    * isn't a known prefix, or if it starts with `urn:` or has `://`. Anything else is a [[Curie]].
     */
   def expanded(s: String, prefixes: PrefixMap): UriOrCurie = {
-    var uri = prefixes.expandOrNull(s)
-    if ((uri eq null) && UriCurieValidator.isValidUri(s)) uri = s
+    val uri = prefixes.expandOrNull(s)
     if (uri ne null) new Uri(uri)
-    else apply(s)
+    // The quick checks go first, as most values that aren't expanded have `://`
+    else if (s.contains("://") || s.startsWith("urn:") || UriCurieValidator.isValidUri(s))
+      new Uri(s)
+    else new Curie(s)
   }
 
   /** Get the text to write for [[x]]: a CURIE if [[x]] is a [[Uri]] that [[prefixes]] can compact,
@@ -41,12 +40,27 @@ object UriOrCurie {
       val curie = prefixes.compactOrNull(uri)
       if (curie ne null) curie
       else {
-        if (uri.indexOf(':') > 0 && (prefixes.expandOrNull(uri) ne null))
-          throw readBackAsCurieError(uri)
+        if (readsBackAsCurie(uri, prefixes)) throw readBackAsCurieError(uri)
         uri
       }
     case _ => x.original
   }
+
+  /** [[x]] as a [[Uri]] with the same text, which is [[x]] itself if it is a [[Uri]]. In a schema
+    * that passes validation, a [[Curie]] here is a URI whose prefix isn't declared, such as
+    * `mailto:a@b.org`.
+    */
+  def asUri(x: UriOrCurie): Uri = x match {
+    case u: Uri => u
+    case _ => new Uri(x.original)
+  }
+
+  /** Check if [[uri]], written in full, would be read back as a CURIE that [[prefixes]] expand, as
+    * the text before its first colon is a declared prefix. This is the URI `ex:Person` when `ex` is
+    * a declared prefix, but also `http://example.org/a` when `http` is.
+    */
+  def readsBackAsCurie(uri: String, prefixes: PrefixMap): Boolean =
+    uri.indexOf(':') > 0 && (prefixes.expandOrNull(uri) ne null)
 
   /** The error for a URI that can't be written, as its text would be read back as a CURIE with a
     * declared prefix, such as the URI `ex:Person` when `ex` is a declared prefix.
@@ -85,6 +99,17 @@ object UriOrCurie {
     }
   }
 
+  /** Check that [[s]] is a full URI, not text that looks like a CURIE, such as `ex:draft`.
+    *
+    * It is a valid URI that has `://`, as in `https://example.org/a`, or whose scheme is one of the
+    * URI schemes that are not followed by `/`, such as `urn`, `mailto`, `did`, `info` or `tag`.
+    */
+  def isFullUri(s: String): Boolean = {
+    val index = s.indexOf(':')
+    index > 0 && (s.contains("://") || isNonHierarchicalScheme(s, index)) &&
+    UriCurieValidator.isValidUri(s)
+  }
+
   /** Check that the first [[length]] chars of [[s]] are one of [[nonHierarchicalSchemes]], in any
     * case. Unlike `toLowerCase`, `regionMatches` doesn't depend on the default locale. In Turkish,
     * `toLowerCase` turns `INFO` into `ınfo`.
@@ -105,6 +130,7 @@ object UriOrCurie {
     "about",
     "cid",
     "data",
+    "did",
     "geo",
     "info",
     "mailto",

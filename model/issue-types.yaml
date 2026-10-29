@@ -154,8 +154,9 @@ classes:
   UnexpandedCurie:
     is_a: SchemaFatal
     description: >-
-      A CURIE value has a declared prefix, but wasn't expanded to a URI. CURIEs are expanded when a
-      schema is read, so this happens only in a schema built in code.
+      A CURIE value has a declared prefix, or has no colon, but wasn't expanded to a URI. CURIEs are
+      expanded, and values without a colon are put in the default namespace, when a schema is read,
+      so this happens only in a schema built in code.
     attributes:
       uri_or_curie:
         range: uriorcurie
@@ -229,6 +230,23 @@ classes:
     slot_usage:
       message:
         equals_expression: "Unexpected error while loading the schema: {reason}"
+
+  SchemaConversionError:
+    is_a: SchemaFatal
+    description: >-
+      A schema can't be written, or an ontology can't be imported as a schema, for a reason the
+      user can fix. For example, `generate linkml` can't write a URI that would be read back as a
+      CURIE with another meaning, and `from owl` can't import an IRI that isn't a valid URI. It is
+      returned instead of the output, by the JavaScript, C and Python APIs.
+    attributes:
+      reason:
+        range: string
+        required: true
+        title: reason
+        description: Why the schema or ontology can't be converted.
+    slot_usage:
+      message:
+        equals_expression: "{reason}"
 
   # ---- Error ------------------------------------------------------------------------------------
 
@@ -315,6 +333,33 @@ classes:
       message:
         equals_expression: "Undefined prefix {prefix} at {location.json_pointer}"
 
+  InvalidEqualsString:
+    is_a: SchemaError
+    description: >-
+      The `equals_string` of a slot whose range is a URI type or a class isn't a valid URI or
+      CURIE. The OWL generator writes such a value as an IRI, so `generate owl` fails for it.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      value:
+        range: string
+        required: true
+        title: value
+    slot_usage:
+      message:
+        equals_expression: >-
+          equals_string '{value}' of slot '{slot_name}' in class '{class_name}' isn't a valid URI
+          or CURIE
+      details:
+        equals_expression: >-
+          equals_string '{value}' of slot '{slot_name}' in class '{class_name}' isn't a valid URI
+          or CURIE. The range of the slot is a URI type or a class, so the value is an IRI, and
+          `generate owl` fails for it. Use a URI, or a CURIE with a declared prefix.
+
   # ---- Warning ----------------------------------------------------------------------------------
 
   UndefinedDefaultRange:
@@ -358,6 +403,37 @@ classes:
           Undeclared prefix '{prefix}' in '{uri_or_curie}' at {location.json_pointer}. The value is
           read as a URI with the prefix as its scheme. If it is meant as a CURIE, declare the prefix
           in the schema's 'prefixes'.
+
+  UnwritableUri:
+    is_a: SchemaWarning
+    description: >-
+      The text before the first colon of a URI value is a prefix declared in the root schema, such
+      as the URI `ex:Imported` from an imported schema that doesn't declare `ex`, or
+      `http://example.org/a` when the root schema declares `http`. Writing the schema, such as with
+      `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with
+      another meaning.
+    attributes:
+      uri:
+        range: uri
+        required: true
+        title: URI
+      prefix:
+        range: ncname
+        required: true
+        title: prefix
+    slot_usage:
+      message:
+        equals_expression: >-
+          URI '{uri}' at {location.json_pointer} can't be written, as '{prefix}' is a declared
+          prefix of the root schema
+      details:
+        equals_expression: >-
+          URI '{uri}' at {location.json_pointer} can't be written, as '{prefix}' is a declared
+          prefix of the root schema, so it would be read back as a CURIE with another meaning.
+          Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it. If
+          it is meant as a CURIE, declare the prefix '{prefix}' in the schema that uses it.
+          Otherwise, use a URI whose scheme isn't a declared prefix.
+
 
   InvalidSlotUsage:
     is_a: SchemaWarning

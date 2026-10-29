@@ -52,7 +52,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | `title`                                                    | `rdfs:label`, tagged with `in_language` when the schema has one |
 | `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`)                                  |
 | other documentation (`aliases`, `comments`, `see_also`, mappings, …) | the property the LinkML metamodel gives it, such as `skos:altLabel`, `skos:note`, `rdfs:seeAlso` |
-| `annotations`                                              | annotations with the tag as the property                                                               |
+| `annotations`                                              | annotations with the tag as the property. A value is an IRI if it is a full IRI, with `://` or a scheme such as `urn`, `mailto`, `did`, `info` or `tag`, else text, even if it looks like a CURIE |
 | `deprecated`                                               | `owl:deprecated true`                                                                                  |
 
 The LinkML-to-OWL generator declares every annotation property that is used, which OWL 2 DL requires. The same goes for every datatype that is not in OWL 2's datatype map, such as `xsd:date`. RDF's, RDFS's, OWL's and XSD's own terms are never declared.
@@ -119,7 +119,7 @@ The importer also reads vocabularies written in plain RDFS, such as DC terms or 
 | `owl:allValuesFrom` on a class                              | the slot in the class's `slots`, with `slot_usage` `range` when it narrows the property's range                   |
 | `owl:someValuesFrom`                                        | `required: true`; when it narrows the range, also `has_member: {range: …}` (another one goes under `all_of`)      |
 | cardinalities                                               | `required`, `minimum_cardinality`, `maximum_cardinality`, `exact_cardinality`                                      |
-| `owl:hasValue`                                              | `equals_string`                                                                                                     |
+| `owl:hasValue`                                              | `equals_string`, with an IRI in full                                                                                |
 | a union of a class's children as its superclass             | `abstract: true`                                                                                                    |
 | `owl:equivalentClass` to a named class                      | `exact_mappings`                                                                                                    |
 | `owl:equivalentClass` to an intersection                    | the conjuncted classes become `is_a` and `mixins`, the restrictions become slots and `slot_usage`. |
@@ -140,7 +140,7 @@ The importer also reads vocabularies written in plain RDFS, such as DC terms or 
 | XSD and RDF datatypes                                       | LinkML's types, plus a type for each other one that is declared or used (`int`, `gYear`, `anyURI`, …)                |
 | datatype restriction                                        | `minimum_value`, `maximum_value`, `minimum_length`, `maximum_length`, `pattern` on the slot or the type (`xsd:pattern` `abc` becomes `^abc$`). |
 | a datatype defined by a list of literal values (`owl:oneOf`) | a type with a `pattern` of the values, `^(Open\|Closed)$`. It stays a type, not an enum, so it is still a datatype after a round trip |
-| annotations                                                 | the metaslots in the config's `metadata` table, then LinkML `annotations` for the rest. The default table means the usual vocabularies, whatever prefixes the ontology declares |
+| annotations                                                 | the metaslots in the config's `metadata` table, then LinkML `annotations` for the rest, with IRI values written as full IRIs. The default table means the usual vocabularies, whatever prefixes the ontology declares |
 | language tags                                               | the schema's `in_language` when nearly all text written for people (titles, descriptions, comments and so on, not code examples or identifiers) is in one language. Text in another language, or in any language when the schema has none, keeps it, such as `title: {en: Minute}`. This holds for titles, descriptions, aliases, comments, notes and keywords. In a list (`comments` and so on), texts with a different language each are one entry; otherwise each text is an entry of its own. Annotations lose their tags |
 
 **Not imported:** individuals that are not part of an enum, property values of individuals, property chains, restrictions on inverse properties, general class axioms, inverse functional properties, disjoint properties, `owl:imports` that the config does not map, what the ontology says about terms of an imported schema, and subproperties of annotation properties and of RDF, RDFS and OWL's own. Restrictions that do not fit `slot_usage` are kept in the class's `notes`, like `OWL: inverse ssn:hasInput min 1`.

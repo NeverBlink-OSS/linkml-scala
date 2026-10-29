@@ -177,7 +177,7 @@ private[owl] final class OwlAnnotationReader(
         val key = names.curie(property)
         // Dropping language tags can make two values equal, so remove duplicates.
         val texts = values.map(_.value).flatMap {
-          case Iri(v) => Some(names.curie(v))
+          case Iri(v) => Some(v)
           case other => textIn(other)
         }.distinct
         Option.when(texts.nonEmpty) {

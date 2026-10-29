@@ -85,6 +85,26 @@ export interface InvalidDefaultRange {
   severity: IssueSeverity;
 }
 
+/** The `equals_string` of a slot whose range is a URI type or a class isn't a valid URI or CURIE. The OWL generator writes such a value as an IRI, so `generate owl` fails for it. */
+export interface InvalidEqualsString {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "InvalidEqualsString";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** slot name */
+  slot_name: string;
+  /** value */
+  value: string;
+}
+
 /** A `key` or `identifier` slot has a range that is not a scalar type. */
 export interface InvalidKeyOrIdSlotType {
   /** class name: Name of the class the issue was found in. */
@@ -283,8 +303,25 @@ export interface RepeatedSeparator {
   severity: IssueSeverity;
 }
 
+/** A schema can't be written, or an ontology can't be imported as a schema, for a reason the user can fix. For example, `generate linkml` can't write a URI that would be read back as a CURIE with another meaning, and `from owl` can't import an IRI that isn't a valid URI. It is returned instead of the output, by the JavaScript, C and Python APIs. */
+export interface SchemaConversionError {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "SchemaConversionError";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** reason: Why the schema or ontology can't be converted. */
+  reason: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+}
+
 export type SchemaError =
   | EmptyName
+  | InvalidEqualsString
   | InvalidKeyOrIdSlotType
   | MultipleKeyOrIdSlots
   | MultipleTreeRoots
@@ -297,6 +334,7 @@ export type SchemaFatal =
   | InvalidDefaultRange
   | InvalidRange
   | InvalidUriOrCurie
+  | SchemaConversionError
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
@@ -343,6 +381,7 @@ export type SchemaIssue =
   | EmptyName
   | FlankingSeparator
   | InvalidDefaultRange
+  | InvalidEqualsString
   | InvalidKeyOrIdSlotType
   | InvalidRange
   | InvalidSlotUsage
@@ -354,6 +393,7 @@ export type SchemaIssue =
   | NonStandardSeparator
   | NonUniqueName
   | RepeatedSeparator
+  | SchemaConversionError
   | SchemaIdClash
   | SchemaImportError
   | SchemaParseError
@@ -363,7 +403,8 @@ export type SchemaIssue =
   | UnexpandedCurie
   | UnexpectedError
   | UnknownReference
-  | UnknownStringReference;
+  | UnknownStringReference
+  | UnwritableUri;
 
 /** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel. Where the underlying parser reported a position, it is carried in `location.code_region`. */
 export interface SchemaParseError {
@@ -398,7 +439,8 @@ export type SchemaWarning =
   | NonStandardSeparator
   | RepeatedSeparator
   | UndeclaredCuriePrefix
-  | UndefinedDefaultRange;
+  | UndefinedDefaultRange
+  | UnwritableUri;
 
 /** A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python. */
 export interface UndeclaredCuriePrefix {
@@ -448,7 +490,7 @@ export interface UndefinedPrefix {
   severity: IssueSeverity;
 }
 
-/** A CURIE value has a declared prefix, but wasn't expanded to a URI. CURIEs are expanded when a schema is read, so this happens only in a schema built in code. */
+/** A CURIE value has a declared prefix, or has no colon, but wasn't expanded to a URI. CURIEs are expanded, and values without a colon are put in the default namespace, when a schema is read, so this happens only in a schema built in code. */
 export interface UnexpandedCurie {
   /** details: Longer, human-readable message describing the issue in more detail. */
   details?: string;
@@ -510,6 +552,24 @@ export interface UnknownStringReference {
   message?: string;
   /** severity: The severity of the issue. */
   severity: IssueSeverity;
+}
+
+/** The text before the first colon of a URI value is a prefix declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`, or `http://example.org/a` when the root schema declares `http`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */
+export interface UnwritableUri {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UnwritableUri";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** prefix */
+  prefix: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** URI */
+  uri: string;
 }
 
 /** Issue severity: The severity of an issue found during the validation of a LinkML schema. */

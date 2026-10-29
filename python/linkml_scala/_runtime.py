@@ -20,10 +20,17 @@ from typing import Any, Callable, Mapping
 
 from ._generated import DOCUMENT_FUNCTIONS
 
-__all__ = ["Runtime", "LinkMlError", "NativeLibraryNotFound", "library_path", "runtime"]
+__all__ = [
+    "Runtime",
+    "LinkMlError",
+    "SchemaConversionError",
+    "NativeLibraryNotFound",
+    "library_path",
+    "runtime",
+]
 
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
-_EXPECTED_ABI_VERSION = 3
+_EXPECTED_ABI_VERSION = 4
 
 _LIB_STEM = "liblinkml_scala"
 
@@ -35,6 +42,36 @@ _Chars = ctypes.POINTER(ctypes.c_char)
 
 class LinkMlError(Exception):
     """The library rejected a call, or failed while handling it."""
+
+
+class SchemaConversionError(LinkMlError):
+    """A schema could not be written, or an ontology could not be imported as a schema, for a
+    reason you can fix, such as a URI that would be read back as a CURIE with another meaning.
+
+    :attr:`issue` says why, as a ``SchemaConversionError`` issue in the same shape as the issues of
+    a validation report. Its ``message`` is the text of this exception.
+    """
+
+    def __init__(self, issue: dict[str, Any]) -> None:
+        super().__init__(issue.get("message") or issue.get("reason") or "The conversion failed")
+        self.issue = issue
+
+
+def _failure(message: str | None, default: str) -> LinkMlError:
+    """The exception for a failure that the library reported in ``*error``.
+
+    A schema or ontology that can't be converted comes as a validation report in JSON, with one
+    ``SchemaConversionError`` issue. Anything else comes as a plain message.
+    """
+    if message and message.startswith("{"):
+        try:
+            report = json.loads(message)
+        except ValueError:
+            report = None
+        issues = report.get("issues") if isinstance(report, dict) else None
+        if issues and issues[0].get("issue_type") == "SchemaConversionError":
+            return SchemaConversionError(issues[0])
+    return LinkMlError(message or default)
 
 
 class NativeLibraryNotFound(LinkMlError):
@@ -248,7 +285,8 @@ class Runtime:
         """Call a generator and return its document.
 
         :param function: the exported name, e.g. ``linkml_shacl``.
-        :raises LinkMlError: if the library reported a failure.
+        :raises SchemaConversionError: if the schema can't be written, such as by ``linkml_linkml``.
+        :raises LinkMlError: if the library reported another failure.
         """
         error = _Chars()
         result = self._call(
@@ -258,7 +296,7 @@ class Runtime:
         message = self._take(error)
         text = self._take(result)
         if text is None:
-            raise LinkMlError(message or f"{function} failed without saying why")
+            raise _failure(message, f"{function} failed without saying why")
         return text
 
     def json_document(
@@ -288,7 +326,8 @@ class Runtime:
 
         Unlike :meth:`document` there is no handle: an importer is what makes schemas.
 
-        :raises LinkMlError: if the library reported a failure.
+        :raises SchemaConversionError: if the document can't be imported as a schema.
+        :raises LinkMlError: if the library reported another failure.
         """
         error = _Chars()
         result = self._call(
@@ -301,7 +340,7 @@ class Runtime:
         message = self._take(error)
         text = self._take(result)
         if text is None:
-            raise LinkMlError(message or f"{function} failed without saying why")
+            raise _failure(message, f"{function} failed without saying why")
         return text
 
     # Internals

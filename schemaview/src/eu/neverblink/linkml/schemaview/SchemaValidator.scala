@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri}
+import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.validation.*
 
@@ -163,6 +163,16 @@ final class SchemaValidator(using sv: SchemaView) {
       ),
     )
 
+  /** Any URI values that writing the schema would read back as CURIEs with another meaning. */
+  private lazy val unwritableUris: Seq[SchemaWarning] =
+    macroResult.unwritableUris.map(value =>
+      new UnwritableUri(
+        location = at(value.path, value.fromSchema),
+        uri = value.value,
+        prefix = value.prefix,
+      ),
+    )
+
   /** Any `range` slots pointing at invalid elements in the schema. */
   lazy val invalidRangeTypes: Seq[SchemaFatal] =
     macroResult.invalidRanges.map(range =>
@@ -223,6 +233,36 @@ final class SchemaValidator(using sv: SchemaView) {
                 elementName = elem.name,
               ),
             )
+        }
+      }
+    }
+    errors.result()
+  }
+
+  /** Errors for an `equals_string` of a slot in a class that isn't a valid URI or CURIE, when the
+    * range of the slot is a URI type or a class. The OWL generator writes such a value as an IRI,
+    * with [[SlotView.uriValueOrNull]].
+    */
+  private lazy val invalidEqualsStrings: Seq[SchemaError] = {
+    val errors = Seq.newBuilder[SchemaError]
+    sv.classes.values.foreach { cv =>
+      cv.derivedAttributes.values.foreach { s =>
+        s.slot.equalsString.foreachFast { text =>
+          val isIri = s.derivedRange.resolve.orNullFast match {
+            case tv: TypeView => tv.isIri
+            case _: ClassView => true
+            case _ => false
+          }
+          if (isIri && (s.uriValueOrNull(text) eq null)) {
+            errors.addOne(
+              new InvalidEqualsString(
+                location = locationOf(cv),
+                className = cv.cls.name,
+                slotName = s.slot.name,
+                value = text,
+              ),
+            )
+          }
         }
       }
     }
@@ -574,6 +614,7 @@ final class SchemaValidator(using sv: SchemaView) {
       multipleTreeRoots ++
       nonUniqueNames ++
       unknownPrefixes ++
+      invalidEqualsStrings ++
       namingIssues.collect { case e: SchemaError => e }
 
   /** Any warnings found in the schema, if any. */
@@ -582,6 +623,7 @@ final class SchemaValidator(using sv: SchemaView) {
       undefinedDefaultRange ++
       noTreeRoot ++
       undeclaredCuriePrefixes ++
+      unwritableUris ++
       namingIssues.collect { case e: SchemaWarning => e }
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.

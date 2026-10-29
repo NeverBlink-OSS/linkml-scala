@@ -13,9 +13,9 @@ import eu.neverblink.linkml.runtime.{
   SchemaConversionException,
   Uri,
   UriCurieValidator,
-  UriOrCurie,
 }
-import eu.neverblink.linkml.schemaview.Case
+import eu.neverblink.linkml.schemaview.{Case, SchemaCodec}
+import eu.neverblink.linkml.yaml.DecodeError
 import org.virtuslab.yaml.{NodeOps, parseYaml}
 
 import java.io.InputStream
@@ -32,13 +32,21 @@ class OssieImporter extends SchemaImporter[OssieImporter.Options] {
   override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinition =
     Conversion(decode(readUtf8(in)), options).schema
 
-  /** Parse and decode an ontology document. Accepts JSON too, since JSON is YAML. */
+  /** Parse and decode an ontology document. Accepts JSON too, since JSON is YAML.
+    *
+    * @throws SchemaConversionException
+    *   if the document isn't YAML, or doesn't have the shape of an ontology
+    */
   private def decode(input: String): OssieOntology =
     parseYaml(input) match {
-      case Right(node) => OssieOntology.codec.decode(node)
-      case Left(error) =>
-        throw SchemaConversionException(s"Not a readable Ossie ontology: ${error.msg}")
+      case Right(node) =>
+        try OssieOntology.codec.decode(node)
+        catch { case e: DecodeError => throw notReadable(e.getMessage) }
+      case Left(error) => throw notReadable(error.msg)
     }
+
+  private def notReadable(reason: String): SchemaConversionException =
+    SchemaConversionException("Not a readable Ossie ontology: ".concat(reason))
 }
 
 object OssieImporter {
@@ -182,11 +190,14 @@ object OssieImporter {
       )
     }
 
-    /** The ontology's `ai_context`, as the `extensions` metaslot in LinkML. */
+    /** The ontology's `ai_context`, as the `extensions` metaslot in LinkML. Its tag is the URI in
+      * the schema's default namespace, which reading the written schema gives for `ai_context`.
+      */
     private def aiContext: Map[String, ExtensionImpl] =
       ontology.aiContext.map { node =>
-        val tag = UriOrCurie("ai_context")
-        tag.original -> ExtensionImpl(extensionTag = tag, extensionValue = LinkmlAny(node.asYaml))
+        val namespace = SchemaCodec.defaultNamespace(schemaId, None, Map.empty)
+        val tag = Uri(namespace.concat("ai_context"))
+        "ai_context" -> ExtensionImpl(extensionTag = tag, extensionValue = LinkmlAny(node.asYaml))
       }.toMap
 
     private def classOf(concept: Concept): ClassDefinition = {

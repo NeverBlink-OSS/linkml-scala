@@ -5,6 +5,11 @@ import scala.scalajs.js
 private[schemaview] object PlatformSpecificUtils {
   lazy val cwd: String = js.Dynamic.global.process.cwd().asInstanceOf[String]
 
+  /** Whether this runs in Node.js on Windows. */
+  lazy val isWindows: Boolean =
+    js.typeOf(js.Dynamic.global.process) != "undefined" &&
+      js.Dynamic.global.process.platform.asInstanceOf[Any] == "win32"
+
   def getEnv(name: String): Option[String] =
     if (
       js.typeOf(js.Dynamic.global.process) != "undefined" &&

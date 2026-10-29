@@ -17,13 +17,7 @@ import eu.neverblink.linkml.metamodel.{
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.LocalizedText.*
-import eu.neverblink.linkml.runtime.{
-  HasMetadataLanguage,
-  MetadataLanguage,
-  PrefixMap,
-  Uri,
-  UriOrCurie,
-}
+import eu.neverblink.linkml.runtime.{HasMetadataLanguage, MetadataLanguage, PrefixMap, UriOrCurie}
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -676,7 +670,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     /** The list item with the URI of [[el]]. */
     private def uriItem(md: Markdown, el: ElementView[?, ?]): Unit = {
       md.startItem("URI")
-      uri(md, el.uriOrCurie, el.definingPrefixes)
+      uri(md, el.uri, el.definingPrefixes)
       md.endItem()
     }
 
@@ -904,15 +898,15 @@ object DocsGenerator {
   }
 
   /** A URI or CURIE as code, shown as a CURIE when it has a known prefix, and linked to the full
-    * URI when that is a web address.
+    * URI when that is a web address. Any other value is shown as it is, even a URI such as
+    * `ex:Person` that a schema with the prefix `ex` would read as a CURIE, as the documentation is
+    * not read back.
     */
   private def uri(md: Markdown, u: UriOrCurie, prefixes: PrefixMap): Unit = {
-    val uri = u match {
-      case x: Uri => x.original
-      case _ => null
-    }
-    val curie = UriOrCurie.compacted(u, prefixes)
-    if ((uri ne null) && isLinkable(uri)) {
+    val uri = u.original
+    val compacted = prefixes.compactOrNull(uri)
+    val curie = if (compacted ne null) compacted else uri
+    if (isLinkable(uri)) {
       md.append('[')
       md.code(curie)
       md.append("](")

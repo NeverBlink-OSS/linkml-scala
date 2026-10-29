@@ -325,7 +325,7 @@ object OssieGenerator {
       if (qName ne null) {
         usedPrefixes += qName.substring(0, qName.indexOf(':'))
         qName
-      } else if (iri.indexOf(':') > 0 && (reading.expandOrNull(iri) ne null))
+      } else if (UriOrCurie.readsBackAsCurie(iri, reading))
         throw UriOrCurie.readBackAsCurieError(iri)
       else iri
     }

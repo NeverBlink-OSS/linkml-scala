@@ -117,6 +117,15 @@ class FromSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "say so when the document is YAML, but not an ontology" in {
+      withOntology("- not\n- an ontology\n") { path =>
+        val (out, err, code) = FromOssie.runTestCommandWithExitCode(List("from", "ossie", path))
+        code shouldBe 1
+        out shouldBe empty
+        err should startWith(s"Cannot import $path: Not a readable Ossie ontology")
+      }
+    }
+
     "say why an iri can't be imported, and write no file" in {
       val bad =
         ontology.replace("    type: EntityType\n", "    type: EntityType\n    iri: John Doe\n")

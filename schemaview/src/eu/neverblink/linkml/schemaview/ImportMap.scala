@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.SchemaDefinition
-import eu.neverblink.linkml.runtime.PrefixMap
+import eu.neverblink.linkml.runtime.{PrefixMap, UriCurieValidator}
 import eu.neverblink.linkml.validation.{SchemaImportError, SchemaParseError}
 import org.virtuslab.yaml.{Node, Tag, parseYaml}
 
@@ -206,15 +206,44 @@ object ImportMap {
       written: String,
       schema: SchemaDefinition,
       directory: String,
-  ): Either[SchemaImportError, String] =
-    expand(written, SchemaCodec.prefixMap(schema), schema.id.original) match {
-      case Right(expanded) =>
-        val joined =
-          if (directory.isEmpty || isUri(expanded) || isAbsolutePath(expanded)) expanded
-          else directory.concat(expanded)
-        new Right(Importer.normalizePath(Importer.normalizeUri(joined)))
-      case err => err
+  ): Either[SchemaImportError, String] = {
+    val badNamespace = invalidNamespaceError(written, schema)
+    if (badNamespace ne null) new Left(badNamespace)
+    else
+      expand(written, SchemaCodec.prefixMap(schema), schema.id.original) match {
+        case Right(expanded) =>
+          val joined =
+            if (directory.isEmpty || isUri(expanded) || isAbsolutePath(expanded)) expanded
+            else directory.concat(expanded)
+          new Right(Importer.normalizePath(Importer.normalizeUri(joined)))
+        case err => err
+      }
+  }
+
+  /** The error for an import that starts with a namespace of `schema` that isn't a valid URI, or
+    * null if there is none. An import is expanded when the schema is read, so `linkml:types` with
+    * `linkml: "https://w3id.org/linkml/ has a space"` is
+    * `https://w3id.org/linkml/ has a spacetypes` here. The validator reports such a namespace only
+    * after the imports are loaded, so without this the user would only learn that the import can't
+    * be found.
+    */
+  private def invalidNamespaceError(
+      written: String,
+      schema: SchemaDefinition,
+  ): SchemaImportError = {
+    val prefixes = schema.prefixes.valuesIterator
+    while (prefixes.hasNext) {
+      val p = prefixes.next()
+      val ns = p.prefixReference.original
+      if (written.startsWith(ns) && !UriCurieValidator.isValidUri(ns))
+        return Importer.importError(
+          written,
+          s"The namespace '$ns' of the prefix '${p.prefixPrefix}' in schema " +
+            s"'${schema.id.original}' isn't a valid URI",
+        )
     }
+    null
+  }
 
   /** Turn the URI passed to [[SchemaView.loadSchemaViewFromUri]] into its lookup key. It does not
     * belong to any schema, so it is not expanded as a CURIE, and a relative path is not joined to

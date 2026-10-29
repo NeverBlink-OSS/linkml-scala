@@ -229,10 +229,10 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
       exactlyOne.maximumCardinality shouldBe Some(1)
     }
 
-    "turn hasValue into equals_string" in {
+    "turn hasValue into equals_string, with an IRI in full" in {
       usage(HasValue(PropertyRef(ns + "p"), Iri(ns + "x"))).slotUsage(
         "p",
-      ).equalsString shouldBe Some("ex:x")
+      ).equalsString shouldBe Some(ns + "x")
     }
   }
 
@@ -453,6 +453,12 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
     "keep other annotations as LinkML annotations" in {
       schema(cls("A"), AnnotationAssertion(ns + "A", Annotation.text(ns + "note", "hi")))
         .classes("A").annotations("ex:note").extensionValue.yamlAs[String] shouldBe Right("hi")
+    }
+
+    "write an IRI value of another annotation as a full IRI" in {
+      schema(cls("A"), AnnotationAssertion(ns + "A", Annotation(ns + "related", Iri(ns + "B"))))
+        .classes("A").annotations("ex:related").extensionValue.yamlAs[String] shouldBe
+        Right(ns + "B")
     }
 
     "read the description from the properties the config names" in {

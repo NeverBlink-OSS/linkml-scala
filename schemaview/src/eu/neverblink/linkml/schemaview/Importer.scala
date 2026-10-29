@@ -101,6 +101,12 @@ object Importer {
 
   private def isSeparator(c: Char): Boolean = separators.indexOf(c.toInt) >= 0
 
+  /** The path of a file to read on Windows, with every `/` replaced by `\`. Imports are relative
+    * URIs written with `/`, such as `../shared/core`, so a schema in `C:\a\` that imports it is
+    * looked up as `C:/shared/core.yaml`, and read from `C:\shared\core.yaml`.
+    */
+  def windowsFilePath(path: String): String = path.replace('/', '\\')
+
   /** The index of the last path separator in `path`, or -1 if it has none. */
   def lastSeparator(path: String): Int = path.lastIndexOf('/').max(path.lastIndexOf('\\'))
 

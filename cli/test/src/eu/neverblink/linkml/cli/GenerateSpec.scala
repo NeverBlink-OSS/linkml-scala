@@ -259,6 +259,56 @@ class GenerateSpec extends AnyWordSpec, Matchers {
         files.keySet shouldBe Set("other.yaml", "root.yaml", "out.yaml")
         files("out.yaml") shouldBe "previous"
       }
+
+      /** Run `generate linkml --to out.yaml` for a valid schema, with `prepare` called first with
+        * the folder, and `check` called with the folder after the run.
+        */
+      def generateOver(prepare: os.Path => Unit)(check: os.Path => Unit): Unit = {
+        val dir = os.temp.dir(prefix = "linkml-generate")
+        try {
+          os.write(dir / "root.yaml", schema)
+          os.write(dir / "out.yaml", "previous")
+          prepare(dir)
+          val to = dir / "out.yaml"
+          val (_, err, code) = LinkMl.runTestCommandWithExitCode(
+            List("generate", "linkml", "--to", to.toString, (dir / "root.yaml").toString),
+          )
+          err shouldBe empty
+          code shouldBe 0
+          os.read(to) should include("class_uri: ex:Root")
+          check(dir)
+        } finally {
+          os.perms.set(dir, "rwx------")
+          os.remove.all(dir)
+        }
+      }
+
+      "keep the permissions of the previous file at --to" in {
+        generateOver(dir => os.perms.set(dir / "out.yaml", "rwxr-x---")) { dir =>
+          os.perms(dir / "out.yaml").toString shouldBe "rwxr-x---"
+        }
+      }
+
+      "give a new file at --to the permissions that any new file gets" in {
+        generateOver { dir =>
+          os.remove(dir / "out.yaml")
+          os.write(dir / "new.txt", "")
+        } { dir =>
+          os.perms(dir / "out.yaml") shouldBe os.perms(dir / "new.txt")
+        }
+      }
+
+      "not touch a file with the name of the temporary file" in {
+        generateOver(dir => os.write(dir / ".out.yaml.tmp", "another run")) { dir =>
+          os.read(dir / ".out.yaml.tmp") shouldBe "another run"
+        }
+      }
+
+      "write over a file at --to in a folder that it can't write to" in {
+        generateOver(dir => os.perms.set(dir, "r-x------")) { dir =>
+          os.list(dir).map(_.last).toSet shouldBe Set("root.yaml", "out.yaml")
+        }
+      }
     }
 
     "generating a data package" should {

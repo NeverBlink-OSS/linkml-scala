@@ -207,6 +207,37 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       } shouldBe empty
     }
 
+    "write an annotation value as an IRI only if it is a full IRI" in {
+      val axioms = ontologyOf(
+        """classes:
+          |  Person:
+          |    annotations:
+          |      ex:related: https://example.org/test/Other
+          |      ex:status: ex:draft
+          |      ex:sameEntity: did:web:example.com
+          |      ex:source: info:doi/10.1000/182
+          |      ex:tagged: tag:example.org,2020:a
+          |      ex:book: urn:isbn:0451450523
+          |""",
+      ).axioms
+      axioms should contain(
+        AnnotationAssertion(ns + "Person", Annotation(ns + "related", Iri(ns + "Other"))),
+      )
+      axioms should contain(
+        AnnotationAssertion(ns + "Person", Annotation.text(ns + "status", "ex:draft")),
+      )
+      Seq(
+        "sameEntity" -> "did:web:example.com",
+        "source" -> "info:doi/10.1000/182",
+        "tagged" -> "tag:example.org,2020:a",
+        "book" -> "urn:isbn:0451450523",
+      ).foreach { (property, iri) =>
+        axioms should contain(
+          AnnotationAssertion(ns + "Person", Annotation(ns + property, Iri(iri))),
+        )
+      }
+    }
+
     "fail on an equals_string value that should be an IRI but isn't a URI" in {
       val error = the[IllegalArgumentException] thrownBy ontologyOf(
         """classes:

@@ -14,6 +14,8 @@ import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.SchemaConversionException
 
 import java.io.{ByteArrayOutputStream, OutputStream, PrintStream}
+import java.nio.file.{FileAlreadyExistsException, Files}
+import java.util.concurrent.ThreadLocalRandom
 import scala.util.control.NonFatal
 
 /** Thrown instead of a real process exit when a command runs in test mode. */
@@ -88,10 +90,15 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
 
   /** Write to `file`, or to the command's stdout when there is none.
     *
-    * A regular file is written to a temporary file next to it first, which then replaces it. So if
-    * `write` fails, the previous `file` is kept, or none is made, and no partially written file is
-    * left behind. Anything else that exists at `file`, such as a link or `/dev/stdout`, is written
-    * to as it is.
+    * A regular file is written to a new temporary file next to it first, which then replaces it,
+    * with the permissions of the previous `file`. A new `file` gets the permissions that any new
+    * file gets, as the umask allows. So if `write` fails, the previous `file` is kept, or none is
+    * made, and no partially written file is left behind. A hard link to the previous `file` still
+    * has the previous content.
+    *
+    * Anything else that exists at `file`, such as a link or `/dev/stdout`, is written to as it is.
+    * So is `file` if no temporary file can be made next to it, such as in a folder that can't be
+    * written to.
     */
   protected final def writeToFileOrStdout(file: Option[String], write: OutputStream => Unit): Unit =
     file.foldFast {
@@ -100,11 +107,20 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
       outStream.flush()
     } { value =>
       val path = os.Path(value, os.pwd)
-      if (os.exists(path, followLinks = false) && !os.isFile(path, followLinks = false))
-        writeTo(path, write)
+      val exists = os.exists(path, followLinks = false)
+      val temp =
+        if (exists && !os.isFile(path, followLinks = false)) null
+        else {
+          try newTempFile(path)
+          catch { case NonFatal(_) => null }
+        }
+      if (temp eq null) writeTo(path, write)
       else {
-        val temp = path / os.up / ("." + path.last + ".tmp")
         try {
+          // A file system without POSIX permissions, as on Windows, can't copy them
+          if (exists)
+            try os.perms.set(temp, os.perms(path))
+            catch { case _: UnsupportedOperationException => }
           writeTo(temp, write)
           os.move(temp, path, replaceExisting = true)
         } catch {
@@ -115,6 +131,24 @@ abstract class BaseCommand[T: {Parser, Help}] extends Command[T] {
         }
       }
     }
+
+  /** A new empty file next to `path`, with a unique name. It isn't made with `os.temp`, which makes
+    * a file that only its owner can read, so that a new output file gets the permissions that any
+    * new file gets.
+    */
+  private def newTempFile(path: os.Path): os.Path = {
+    val dir = path / os.up
+    var temp: os.Path = null
+    while (temp eq null) {
+      val random = java.lang.Long.toUnsignedString(ThreadLocalRandom.current().nextLong(), 36)
+      val candidate = dir / ("." + path.last + "." + random + ".tmp")
+      try {
+        Files.createFile(candidate.toNIO)
+        temp = candidate
+      } catch { case _: FileAlreadyExistsException => }
+    }
+    temp
+  }
 
   private def writeTo(path: os.Path, write: OutputStream => Unit): Unit = {
     val stream = os.write.over.outputStream(path)

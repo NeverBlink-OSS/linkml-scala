@@ -572,5 +572,17 @@ class ImportMapSpec extends AnyWordSpec, Matchers, Inside {
       )
       loadedNames("C:\\a\\model.yaml", importer) shouldBe Seq("model", "core")
     }
+
+    "load a schema view from a Windows path whose imports are written with /" in {
+      val importer = MapImporter(
+        "C:\\a\\model.yaml" ->
+          schemaText("model", imports = Seq("sub/core", "../shared/units")),
+        "C:/a/sub/core.yaml" -> schemaText("core", imports = Seq("../../shared/units")),
+        "C:/shared/units.yaml" -> schemaText("units"),
+      )
+      inside(SchemaView.loadSchemaViewFromUri("C:\\a\\model.yaml", importer)) { case Right(view) =>
+        view.schemas.map(_.name) shouldBe Seq("model", "core", "units")
+      }
+    }
   }
 }
