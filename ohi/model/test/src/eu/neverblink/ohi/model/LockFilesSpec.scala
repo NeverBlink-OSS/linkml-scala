@@ -1,6 +1,6 @@
 package eu.neverblink.ohi.model
 
-import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.linkml.runtime.{Uri, stringify}
 import eu.neverblink.ohi.model.generated.lock.{Format, Lock, LockedFile}
 import java.io.{FilterOutputStream, IOException}
 import java.nio.charset.StandardCharsets.{UTF_8, UTF_16LE}
@@ -32,12 +32,10 @@ class LockFilesSpec extends AnyWordSpec, Matchers {
       code: String,
       operation: String,
   ): Unit = {
-    val data = ujson.read(LockErrorJson.encode(failure.error))
-    data("code").str shouldBe code
-    data("operation").str shouldBe operation
-    data("path").str shouldBe path.toString
-    data.obj.keySet shouldBe Set("code", "operation", "path", "message")
-    data("message").str should not be empty
+    stringify(failure.error.code) shouldBe code
+    stringify(failure.error.operation) shouldBe operation
+    failure.error.path shouldBe Some(path.toString)
+    failure.error.message should not be empty
   }
 
   "LockFiles.write" should {

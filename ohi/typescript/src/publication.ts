@@ -1,21 +1,11 @@
-import { newAjv } from "./ajv.js";
 import type { Publication } from "./generated.js";
-import schema from "./package.schema.json" with { type: "json" };
 
-const ajv = newAjv();
-const validate = ajv.compile<Publication>(schema);
-
-/** Decode publication metadata, validating consumed fields and discarding extras. */
+/** Decode publication metadata, discarding extras. Field values are not validated. */
 export function decodePublication(text: string): Publication {
-  const data: unknown = JSON.parse(text);
-  if (!validate(data)) throw new Error(ajv.errorsText(validate.errors));
+  const data: Publication = JSON.parse(text);
   if (data.preferred_prefix !== undefined && data.namespace_iri === undefined) {
     throw new Error("preferred_prefix requires namespace_iri");
   }
-  if (data.artifacts.some(({ size_bytes }) => !Number.isSafeInteger(size_bytes))) {
-    throw new Error("artifact size_bytes exceeds the supported integer range");
-  }
-
   const artifactUrls = data.artifacts.map(({ url }) => url);
   if (new Set(artifactUrls).size !== artifactUrls.length) {
     throw new Error("artifacts must have unique URLs");

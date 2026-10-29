@@ -22,10 +22,6 @@
     "test": "npm run build && node --test test/*.test.mjs",
     "test:browser": "npm run build && node --test test/browser.mjs"
   },
-  "dependencies": {
-    "ajv": "8.20.0",
-    "ajv-formats": "3.0.1"
-  },
   "devDependencies": {
     "@types/node": "22.20.5",
     "esbuild": "0.28.2",

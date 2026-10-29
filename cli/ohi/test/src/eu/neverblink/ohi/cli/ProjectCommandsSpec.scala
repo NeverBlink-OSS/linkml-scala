@@ -13,15 +13,12 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
 import scala.jdk.CollectionConverters.*
-import tools.jackson.databind.JsonNode
-import tools.jackson.databind.json.JsonMapper
 
 class ProjectCommandsSpec extends AnyWordSpec, Matchers {
-  private val mapper = JsonMapper.builder().build()
 
-  private def json(text: String): JsonNode = mapper.readTree(text)
+  private def json(text: String): ujson.Value = ujson.read(text)
 
-  private def keys(node: JsonNode): Set[String] = node.propertyNames().asScala.toSet
+  private def keys(node: ujson.Value): Set[String] = node.obj.keySet.toSet
   private val emptyDeclaration = "format_version: 1\nselections: []\n"
 
   private def withDirectory(check: os.Path => Unit): Unit = {
@@ -134,7 +131,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
     error
   }
 
-  private def declaration(path: os.Path): JsonNode =
+  private def declaration(path: os.Path): ujson.Value =
     json(JsonUtil.yamlToJson(parseYaml(os.read(path)).toOption.get))
 
   private def assertResult(
@@ -145,13 +142,14 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       lockChanged: Boolean,
       delivery: Option[(String, os.Path)] = None,
   ): Unit = {
-    val expected = mapper.createObjectNode()
-      .put("operation", operation)
-      .put("project_directory", project.toString)
-      .put("declaration_changed", declarationChanged)
-      .put("lock_changed", lockChanged)
+    val expected = ujson.Obj(
+      "operation" -> operation,
+      "project_directory" -> project.toString,
+      "declaration_changed" -> declarationChanged,
+      "lock_changed" -> lockChanged,
+    )
     delivery.foreach { (url, path) =>
-      expected.putObject("delivery").put("url", url).put("path", path.toString)
+      expected("delivery") = ujson.Obj("url" -> url, "path" -> path.toString)
     }
     json(text) shouldBe expected
   }
@@ -162,7 +160,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       project: os.Path,
       code: String,
       cause: Option[String] = None,
-  ): JsonNode = {
+  ): ujson.Value = {
     val error = json(text)
     keys(error) shouldBe Set(
       "operation",
@@ -172,12 +170,12 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       "declaration_changed",
       "lock_changed",
     ) ++ cause
-    error.get("operation").stringValue() shouldBe operation
-    error.get("project_directory").stringValue() shouldBe project.toString
-    error.get("code").stringValue() shouldBe code
-    error.get("declaration_changed").booleanValue() shouldBe false
-    error.get("lock_changed").booleanValue() shouldBe false
-    error.get("message").stringValue() should not be empty
+    error("operation").str shouldBe operation
+    error("project_directory").str shouldBe project.toString
+    error("code").str shouldBe code
+    error("declaration_changed").bool shouldBe false
+    error("lock_changed").bool shouldBe false
+    error("message").str should not be empty
     error
   }
 
@@ -617,7 +615,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           project,
           "INVALID_DECLARATION",
         )
-        error.get("message").stringValue() should include((project / "ohi.yaml").toString)
+        error("message").str should include((project / "ohi.yaml").toString)
         os.read(project / "ohi.yaml") shouldBe "selections: ["
         os.read(project / "ohi.lock.json") shouldBe "untouched lock"
       }
@@ -685,10 +683,10 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             "OPERATION_FAILED",
             Some("lock_error"),
           )
-          val cause = error.get("lock_error")
-          cause.get("code").stringValue() shouldBe "INVALID_LOCK"
-          cause.get("operation").stringValue() shouldBe "READ"
-          cause.get("path").stringValue() shouldBe (project / "ohi.lock.json").toString
+          val cause = error("lock_error")
+          cause("code").str shouldBe "INVALID_LOCK"
+          cause("operation").str shouldBe "READ"
+          cause("path").str shouldBe (project / "ohi.lock.json").toString
           requests shouldBe empty
           os.read(project / "ohi.yaml") shouldBe declarationText
           os.read(project / "ohi.lock.json") shouldBe "invalid lock sentinel"
@@ -719,11 +717,9 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             "OPERATION_FAILED",
             Some("file_error"),
           )
-          error.get("file_error").get("code").stringValue() shouldBe "DESTINATION_EXISTS"
-          error.get("file_error").get("url").stringValue() shouldBe base + "/file.ttl"
-          error.get("file_error").get(
-            "path",
-          ).stringValue() shouldBe (downloads / "file.ttl").toString
+          error("file_error")("code").str shouldBe "DESTINATION_EXISTS"
+          error("file_error")("url").str shouldBe base + "/file.ttl"
+          error("file_error")("path").str shouldBe (downloads / "file.ttl").toString
           requests shouldBe empty
           os.read(project / "ohi.yaml") shouldBe emptyDeclaration
           os.exists(project / "ohi.lock.json") shouldBe false
@@ -756,13 +752,13 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             "OPERATION_FAILED",
             Some("catalog_error"),
           )
-          val cause = error.get("catalog_error")
+          val cause = error("catalog_error")
           keys(cause) shouldBe Set("code", "message", "operation", "url", "status", "response_json")
-          cause.get("code").stringValue() shouldBe "HTTP_ERROR"
-          cause.get("operation").stringValue() shouldBe "INSPECT"
-          cause.get("url").stringValue() shouldBe base + "/missing"
-          cause.get("status").intValue() shouldBe 404
-          cause.get("response_json") shouldBe json(
+          cause("code").str shouldBe "HTTP_ERROR"
+          cause("operation").str shouldBe "INSPECT"
+          cause("url").str shouldBe base + "/missing"
+          cause("status").num.toInt shouldBe 404
+          cause("response_json") shouldBe json(
             """{"error":{"reasons":["absent",{"retry":false},null],"detail":null},"status":404,"ratio":1.25}""",
           )
           requests.asScala.toSeq shouldBe Seq("GET /missing")

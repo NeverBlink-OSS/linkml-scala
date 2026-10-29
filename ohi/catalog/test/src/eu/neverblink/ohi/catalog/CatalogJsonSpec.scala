@@ -1,11 +1,14 @@
-package eu.neverblink.ohi.model
+package eu.neverblink.ohi.catalog
 
-import eu.neverblink.ohi.model.generated.error.*
 import eu.neverblink.linkml.runtime.stringify
+import eu.neverblink.linkml.yaml.{LinkmlYamlCodec, NodeJson}
+import eu.neverblink.ohi.model.generated.error.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class CatalogJsonSpec extends AnyWordSpec, Matchers {
+  private val errorCodec: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
+
   private def response(
       page: Int = 1,
       urls: Seq[String] = Seq("urn:ohi:b", "urn:ohi:a"),
@@ -40,12 +43,12 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
       "search_cutoff" -> false,
     )
 
-  "CatalogJson.decodeSearch" should {
+  "CatalogClient.decodeSearch" should {
     for (
       (page, urls) <- Seq(1 -> Seq("urn:ohi:b", "urn:ohi:a"), 2 -> Seq("urn:ohi:c"), 3 -> Seq.empty)
     ) {
       s"preserve counts on page $page including partial and empty pages" in {
-        val result = CatalogJson.decodeSearch(ujson.write(response(page, urls)), page, 2)
+        val result = CatalogClient.decodeSearch(ujson.write(response(page, urls)), page, 2)
         result.hits.map(_.baseUrl.original) shouldBe urls
         result.total shouldBe 3
         result.page shouldBe page
@@ -59,7 +62,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
       val raw = response()
       raw("hits")(0)("document")("extra") = "ignored"
       raw("hits")(0)("document")("keywords") = ujson.Arr("sensors", "observations")
-      val hit = CatalogJson.decodeSearch(ujson.write(raw), 1, 2).hits.head
+      val hit = CatalogClient.decodeSearch(ujson.write(raw), 1, 2).hits.head
       hit.baseUrl.original shouldBe "urn:ohi:b"
       hit.namespace shouldBe "example"
       hit.name shouldBe "sensors"
@@ -86,7 +89,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
           {"value":"a","count":0}]},
         {"field_name":"formats","counts":[]}
       ]""")
-      val facets = CatalogJson.decodeSearch(ujson.write(raw), 1, 2).facetCounts
+      val facets = CatalogClient.decodeSearch(ujson.write(raw), 1, 2).facetCounts
       facets.map(_.fieldName) shouldBe Seq("namespace", "formats")
       facets.head.counts.map(c => c.value -> c.count) shouldBe Seq(
         "z" -> Int.MaxValue,
@@ -98,14 +101,14 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
     "accept an empty facet list" in {
       val raw = response()
       raw("facet_counts") = ujson.Arr()
-      val result = CatalogJson.decodeSearch(ujson.write(raw), 1, 2)
+      val result = CatalogClient.decodeSearch(ujson.write(raw), 1, 2)
       result.facetCounts shouldBe empty
     }
 
     "preserve cutoff on a short capped page" in {
       val raw = response(urls = Seq("urn:ohi:b"))
       raw("search_cutoff") = true
-      val result = CatalogJson.decodeSearch(ujson.write(raw), 1, 2)
+      val result = CatalogClient.decodeSearch(ujson.write(raw), 1, 2)
       result.searchCutoff shouldBe true
       result.total shouldBe 3
       result.hits.map(_.baseUrl.original) shouldBe Seq("urn:ohi:b")
@@ -118,13 +121,6 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         "missing reference" -> (v => { v("hits")(0)("document").obj.remove("base_url"); () }),
         "missing summary title" -> (v => { v("hits")(0)("document").obj.remove("title"); () }),
         "language-only format" -> (v => v("hits")(0)("document")("formats") = ujson.Arr("owl")),
-        "empty formats" -> (v => v("hits")(0)("document")("formats") = ujson.Arr()),
-        "non-string keyword" -> (v => v("hits")(0)("document")("keywords") = ujson.Arr(1)),
-        "invalid timestamp" -> (v => v("hits")(0)("document")("published_at") = "yesterday"),
-        "timestamp without timezone" -> (v =>
-          v("hits")(0)("document")("published_at") = "2026-10-13T12:30:00"
-        ),
-        "null facets" -> (v => v("facet_counts") = ujson.Null),
         "missing facet field" -> (v => v("facet_counts") = ujson.read("""[{"counts":[]}]""")),
         "missing facet counts" -> (v =>
           v("facet_counts") = ujson.read("""[{"field_name":"formats"}]""")
@@ -141,12 +137,12 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
       s"reject $name" in {
         val raw = response()
         edit(raw)
-        intercept[IllegalArgumentException](CatalogJson.decodeSearch(ujson.write(raw), 1, 2))
+        intercept[IllegalArgumentException](CatalogClient.decodeSearch(ujson.write(raw), 1, 2))
       }
     }
 
-    for (count <- Seq(-1d, 0.5d, 2147483648d)) {
-      s"reject invalid or unrepresentable facet count $count" in {
+    for (count <- Seq(0.5d, 2147483648d)) {
+      s"reject unrepresentable facet count $count" in {
         val raw = response()
         raw("facet_counts") = ujson.Arr(
           ujson.Obj(
@@ -154,25 +150,25 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
             "counts" -> ujson.Arr(ujson.Obj("value" -> "owl-turtle", "count" -> count)),
           ),
         )
-        intercept[IllegalArgumentException](CatalogJson.decodeSearch(ujson.write(raw), 1, 2))
+        intercept[IllegalArgumentException](CatalogClient.decodeSearch(ujson.write(raw), 1, 2))
       }
     }
 
     "accept the maximum Scala count without wrapping" in {
       val raw = response()
       raw("found") = ujson.Num(2147483647d)
-      CatalogJson.decodeSearch(ujson.write(raw), 1, 2).total shouldBe Int.MaxValue
+      CatalogClient.decodeSearch(ujson.write(raw), 1, 2).total shouldBe Int.MaxValue
     }
 
     "reject an integer count outside the Scala range" in {
       val raw = response()
       raw("found") = ujson.Num(2147483648d)
-      intercept[IllegalArgumentException](CatalogJson.decodeSearch(ujson.write(raw), 1, 2))
-        .getMessage should include("Scala Int range")
+      intercept[IllegalArgumentException](CatalogClient.decodeSearch(ujson.write(raw), 1, 2))
+        .getMessage should include("int")
     }
   }
 
-  "CatalogErrorJson.encode" should {
+  "CatalogError encoding" should {
     "embed server objects and nested nulls rather than the LinkmlAny wrapper" in {
       val error = CatalogError(
         code = CatalogErrorCode.HttpError,
@@ -180,11 +176,11 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
         operation = CatalogOperation.Search,
         url = Some("https://example.org/search"),
         status = Some(503),
-        responseJson = CatalogErrorJson.responseObject(
+        responseJson = CatalogClient.responseObject(
           """{"details":{"unknown":[1,null]},"recovery":{"args":{"key":null}}}""",
         ),
       )
-      ujson.read(CatalogErrorJson.encode(error)) shouldBe ujson.read(
+      ujson.read(NodeJson.write(errorCodec.encode(error))) shouldBe ujson.read(
         """{"code":"HTTP_ERROR","message":"unavailable","operation":"SEARCH","url":"https://example.org/search","status":503,"response_json":{"details":{"unknown":[1,null]},"recovery":{"args":{"key":null}}}}""",
       )
     }
@@ -192,7 +188,7 @@ class CatalogJsonSpec extends AnyWordSpec, Matchers {
     "omit absent fields on pre-request errors" in {
       val error =
         CatalogError(CatalogErrorCode.InvalidInput, "configure search", CatalogOperation.Search)
-      ujson.read(CatalogErrorJson.encode(error)) shouldBe ujson.Obj(
+      ujson.read(NodeJson.write(errorCodec.encode(error))) shouldBe ujson.Obj(
         "code" -> "INVALID_INPUT",
         "message" -> "configure search",
         "operation" -> "SEARCH",

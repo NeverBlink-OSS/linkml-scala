@@ -57,12 +57,6 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
       output should not include "--format=owl-turtle"
     }
 
-    "retain a dash-prefixed query behind the separator when correcting its page" in {
-      val output = rejected(Search, "search", "--page=0", "--per-page", "25", "--", "-topic")
-      output should startWith("Error: --page must be at least 1. Received 0.")
-      output should include("  ohi search --page 1 --per-page 25 -- -topic")
-    }
-
     "quote multiple query words together and retain the supplied search options" in {
       val output = rejected(Search, "search", "water", "quality", "--page=2")
       output should include("Received 2 arguments: water, quality.")

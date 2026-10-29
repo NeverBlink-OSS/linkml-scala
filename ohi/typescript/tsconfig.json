@@ -5,9 +5,8 @@
     "strict": true,
     "types": ["node"],
     "declaration": true,
-    "resolveJsonModule": true,
     "rootDir": "src",
     "outDir": "dist"
   },
-  "include": ["src/**/*.ts", "src/**/*.json"]
+  "include": ["src/**/*.ts"]
 }

@@ -2,20 +2,11 @@
 
 import json
 import os
-from importlib.resources import files
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from jsonschema import Draft202012Validator, ValidationError
-
 from .generated_lock import Lock
 from .generated_lock_error import LockError
-
-
-_validator = Draft202012Validator(
-    json.loads(files(__package__).joinpath("lock.schema.json").read_text(encoding="utf-8")),
-    format_checker=Draft202012Validator.FORMAT_CHECKER,
-)
 
 
 class LockException(Exception):
@@ -32,27 +23,28 @@ def _failure(code, operation, message, path=None):
 
 def _validate(data, operation, path):
     version = data.get("format_version") if isinstance(data, dict) else None
-    if _validator.TYPE_CHECKER.is_type(version, "integer") and version not in (1, 2):
+    if type(version) is int and version not in (1, 2):
         raise _failure("UNSUPPORTED_VERSION", operation,
                        f"Lock revision {version} is unsupported. Supply revision 1 or 2.", path)
     try:
-        _validator.validate(data)
-        for item in data["files"]:
-            if version == 1 and "sha256" in item:
+        lock = Lock.model_validate(data)
+        for item in lock.files:
+            if version == 1 and "sha256" in item.model_fields_set:
                 raise ValueError("revision 1 files must omit sha256")
-            if version == 2 and "sha256" not in item:
+            if version == 2 and item.sha256 is None:
                 raise ValueError("revision 2 files must include sha256")
-        selections = [(item["base_url"], item["url"]) for item in data["selections"]]
-        file_pairs = [(item["base_url"], item["url"]) for item in data["files"]]
+        selections = [(item.base_url, item.url) for item in lock.selections]
+        file_pairs = [(item.base_url, item.url) for item in lock.files]
         if len(set(selections)) != len(selections):
             raise ValueError("each selection pair must occur once")
         if len(set(file_pairs)) != len(file_pairs):
             raise ValueError("each file pair must occur once, regardless of format")
         if not set(selections).issubset(file_pairs):
             raise ValueError("each selection must have a file with the same base_url and url")
-    except (ValidationError, ValueError) as error:
+    except ValueError as error:
         raise _failure("INVALID_LOCK", operation,
                        f"Invalid lock: {error}. Correct the supplied record.", path) from error
+    return lock
 
 
 def _decode(text, operation, path):
@@ -61,10 +53,7 @@ def _decode(text, operation, path):
     except ValueError as error:
         raise _failure("INVALID_LOCK", operation,
                        f"Invalid lock JSON: {error}. Supply UTF-8 JSON without a BOM.", path) from error
-    _validate(data, operation, path)
-    # JSON Schema accepts integral numbers such as 1.0, while the model uses StrictInt.
-    data["format_version"] = int(data["format_version"])
-    return Lock.model_validate(data)
+    return _validate(data, operation, path)
 
 
 def _encode(lock, operation, path):

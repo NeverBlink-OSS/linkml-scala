@@ -84,7 +84,6 @@ object `package` extends Module {
               )
               else Seq.empty)
       } ++ Seq(
-        "ohi.copySchema",
         "ohi.model.jvm.fix",
         "ohi.model.jvm.reformat",
         "cli.ohi.jvm.fix",

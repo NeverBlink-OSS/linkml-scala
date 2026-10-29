@@ -9,7 +9,7 @@ description = "Ohi catalog search, publication inspection and artifact retrieval
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "NeverBlink" }]
-dependencies = ["pydantic>=2.12,<3", "jsonschema[format-nongpl]>=4.26,<5"]
+dependencies = ["pydantic>=2.12,<3"]
 
 [project.urls]
 Documentation = "https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/README.md"

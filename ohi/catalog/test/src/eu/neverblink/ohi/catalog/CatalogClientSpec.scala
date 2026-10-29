@@ -2,7 +2,6 @@ package eu.neverblink.ohi.catalog
 
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
 import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.ohi.model.CatalogErrorJson
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.{CatalogError, CatalogErrorCode, CatalogOperation}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
@@ -114,8 +113,6 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
       (label, configuration) <- Seq[(String, String => CatalogConfig)](
         "missing query_by" -> (url => CatalogConfig(searchUrl = Some(Uri(url)))),
         "missing search_url" -> (_ => CatalogConfig(queryBy = Some("name"))),
-        "blank query_by" -> (url => CatalogConfig(searchUrl = Some(Uri(url)), queryBy = Some(" "))),
-        "zero timeout" -> (_ => CatalogConfig(timeoutMs = Some(0))),
         "search query" -> (url =>
           CatalogConfig(searchUrl = Some(Uri(url + "?q=x")), queryBy = Some("name"))
         ),
@@ -161,28 +158,6 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
         error(CatalogErrorCode.InvalidInput, CatalogOperation.Get, Some(target), None)(
           new CatalogClient().get(target),
         )
-      }
-    }
-
-    for (
-      (label, request) <- Seq(
-        "blank query" -> SearchRequest(q = " \t"),
-        "zero page" -> SearchRequest(q = "*", page = Some(0)),
-        "zero page size" -> SearchRequest(q = "*", perPage = Some(0)),
-        "oversized page" -> SearchRequest(q = "*", perPage = Some(251)),
-        "blank filter" -> SearchRequest(q = "*", filterBy = Some(" ")),
-        "blank sort" -> SearchRequest(q = "*", sortBy = Some(" ")),
-        "blank facet" -> SearchRequest(q = "*", facetBy = Some(" ")),
-        "zero facet limit" -> SearchRequest(q = "*", maxFacetValues = Some(0)),
-      )
-    ) {
-      s"reject $label before sending" in {
-        withServer(exchange => reply(exchange, 200, searchResponse())) { (url, requests) =>
-          error(CatalogErrorCode.InvalidInput, CatalogOperation.Search, Some(url), None)(
-            configured(url).search(request),
-          )
-          requests shouldBe empty
-        }
       }
     }
   }
@@ -317,7 +292,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
           error(CatalogErrorCode.HttpError, CatalogOperation.Search, Some(url), Some(503))(
             configured(url).search(SearchRequest(q = "*")),
           )
-        ujson.read(CatalogErrorJson.encode(failure))("response_json") shouldBe ujson.read(body)
+        ujson.read(failure.responseJson.get.value) shouldBe ujson.read(body)
       }
     }
 

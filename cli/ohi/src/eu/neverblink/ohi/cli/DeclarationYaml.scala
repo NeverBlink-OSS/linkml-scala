@@ -1,61 +1,37 @@
 package eu.neverblink.ohi.cli
 
-import com.networknt.schema.{ExecutionConfig, ExecutionContext, SchemaRegistry}
-import com.networknt.schema.dialect.Dialects
-import eu.neverblink.linkml.generator.util.JsonUtil
-import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import eu.neverblink.ohi.cli.generated.declaration.{ArtifactSelection, Declaration}
+import eu.neverblink.ohi.cli.generated.declaration.Declaration
 import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
 import org.virtuslab.yaml.{NodeOps, parseYaml}
-import scala.jdk.CollectionConverters.*
 import scala.util.control.NonFatal
-import tools.jackson.databind.{DeserializationFeature, JsonNode}
-import tools.jackson.databind.json.JsonMapper
 
 private[cli] object DeclarationYaml {
   private val codec: LinkmlYamlCodec[Declaration] = LinkmlYamlCodec.derived
-  private val mapper = JsonMapper.builder()
-    .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS).build()
-  private val schema = SchemaRegistry.withDialect(Dialects.getDraft202012).getSchema(
-    mapper.readTree(getClass.getResourceAsStream("/declaration.schema.json")),
-  )
-  private val validationConfig = ExecutionConfig.builder().formatAssertionsEnabled(true).build()
 
-  /** Parses a declaration from YAML text.
+  /** Parses a declaration from YAML text. Field values are not validated.
     *
     * @return
     *   the declaration, with selections in the order they appear in `text`
     * @throws ProjectException
-    *   with `InvalidDeclaration` when `text` is not valid YAML, does not match the declaration
-    *   schema or lists the same selection twice
+    *   with `InvalidDeclaration` when `text` is not a YAML declaration of revision 1 or lists the
+    *   same selection twice
     */
   def decode(text: String): Declaration = {
-    val data = try {
-      val node = parseYaml(text).fold(
-        error => throw new IllegalArgumentException(error.msg),
-        identity,
+    val declaration = try
+      codec.decode(
+        parseYaml(text).fold(error => throw new IllegalArgumentException(error.msg), identity),
       )
-      mapper.readTree(JsonUtil.yamlToJson(node))
-    } catch {
+    catch {
       case NonFatal(cause) =>
         throw new ProjectException(
           ProjectErrorCode.InvalidDeclaration,
-          s"Cannot parse the declaration: ${cause.getMessage}. Supply valid YAML.",
+          s"Cannot parse the declaration: ${cause.getMessage}. Correct ohi.yaml.",
           Some(cause),
         )
     }
-    validate(data)
-    // Construct from the validated JSON tree so numeric revision 1.0 has integer semantics.
-    Declaration(
-      formatVersion = data.get("format_version").intValue(),
-      selections = data.get("selections").iterator().asScala.map { selection =>
-        ArtifactSelection(
-          baseUrl = Uri(selection.get("base_url").stringValue()),
-          url = Uri(selection.get("url").stringValue()),
-        )
-      }.toSeq,
-    )
+    check(declaration)
+    declaration
   }
 
   /** Serializes `declaration` as YAML with its purpose and documentation comments.
@@ -63,31 +39,25 @@ private[cli] object DeclarationYaml {
     * @return
     *   the YAML text
     * @throws ProjectException
-    *   with `InvalidDeclaration` when `declaration` does not match the declaration schema or lists
-    *   the same selection twice
+    *   with `InvalidDeclaration` when `declaration` is not revision 1 or lists the same selection
+    *   twice
     */
   def encode(declaration: Declaration): String = {
+    check(declaration)
     val node = codec.encode(declaration)
-    validate(mapper.readTree(JsonUtil.yamlToJson(node)))
     // scala-yaml 0.3.21 renders an empty sequence as null. Keep the required empty list explicit.
     val body = if declaration.selections.isEmpty then "format_version: 1\nselections: []\n"
     else node.asYaml
     "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n" + body
   }
 
-  private def validate(data: JsonNode): Unit = {
-    val errors = schema.validate(
-      data,
-      (context: ExecutionContext) => context.setExecutionConfig(validationConfig),
-    )
-    if !errors.isEmpty then
+  private def check(declaration: Declaration): Unit = {
+    if declaration.formatVersion != 1 then
       throw new ProjectException(
         ProjectErrorCode.InvalidDeclaration,
-        s"Invalid declaration: ${errors.asScala.mkString(", ")}. Correct ohi.yaml using revision 1 and exact selection URLs.",
+        s"Declaration revision ${declaration.formatVersion} is unsupported. Use revision 1 in ohi.yaml.",
       )
-    val pairs = data.get("selections").iterator().asScala.map(value =>
-      (value.get("base_url").stringValue(), value.get("url").stringValue()),
-    ).toSeq
+    val pairs = declaration.selections.map(value => (value.baseUrl.original, value.url.original))
     if pairs.distinct.size != pairs.size then
       throw new ProjectException(
         ProjectErrorCode.InvalidDeclaration,

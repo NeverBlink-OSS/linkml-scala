@@ -1,8 +1,8 @@
 package eu.neverblink.ohi.model
 
-import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.linkml.runtime.{Uri, stringify}
 import eu.neverblink.ohi.model.generated.lock.*
-import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockError, LockOperation}
+import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockOperation}
 import java.nio.file.{Files, Path}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -27,11 +27,10 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
   private def decode(value: ujson.Value): Lock = LockJson.decode(ujson.write(value))
 
   private def assertError(failure: LockException, code: String, operation: String): Unit = {
-    val data = ujson.read(LockErrorJson.encode(failure.error))
-    data("code").str shouldBe code
-    data("operation").str shouldBe operation
-    data.obj.keySet shouldBe Set("code", "operation", "message")
-    data("message").str should not be empty
+    stringify(failure.error.code) shouldBe code
+    stringify(failure.error.operation) shouldBe operation
+    failure.error.path shouldBe None
+    failure.error.message should not be empty
   }
 
   "LockJson.decode" should {
@@ -63,20 +62,11 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         )
       }
 
-    for revision <- Seq(1, 2) do
-      s"accept an empty lock with integral decimal revision $revision" in {
-        val lock = LockJson.decode(s"""{"format_version":$revision.0,"selections":[],"files":[]}""")
-        lock.formatVersion shouldBe revision
-        lock.selections shouldBe empty
-        lock.files shouldBe empty
-      }
-
     for (text, behavior) <- Seq(
         "{" -> "malformed JSON",
         "" -> "empty input",
         "null" -> "null root",
         "[]" -> "array root",
-        "{} false" -> "trailing JSON",
         "\uFEFF{}" -> "leading BOM",
       )
     do
@@ -94,28 +84,11 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         data.obj.remove(field)
         assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
       }
-      s"reject a null $field collection" in {
-        val data = example()
-        data(field) = ujson.Null
-        assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
-      }
     }
-
-    for field <- Seq("root", "selections", "files") do
-      s"reject unknown properties in $field" in {
-        val data = example()
-        val target = if field == "root" then data else data(field)(0)
-        target("extra") = true
-        assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
-      }
 
     for (label, hash) <- Seq(
         "a missing hash" -> None,
         "a null hash" -> Some(ujson.Null),
-        "a non-string hash" -> Some(ujson.Num(7)),
-        "an uppercase hash" -> Some(
-          ujson.Str("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
-        ),
       )
     do
       s"reject revision 2 with $label" in {
@@ -126,7 +99,6 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
       }
 
     for hash <- Seq(
-        ujson.Null,
         ujson.Str("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
       )
     do
@@ -154,15 +126,8 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         decode(data).files.head.format shouldBe expected
       }
 
-    for (field, value) <- Seq("base_url" -> "relative", "url" -> "https://example.org/a b") do
-      s"validate the $field URI format" in {
-        val data = example()
-        data("files")(1)(field) = value
-        assertError(intercept[LockException](decode(data)), "INVALID_LOCK", "DECODE")
-      }
-
-    for revision <- Seq("3.0", "1e400") do
-      s"report unsupported integral revision $revision before missing collections" in {
+    for revision <- Seq("3", "99999999999") do
+      s"report unsupported revision $revision before missing collections" in {
         assertError(
           intercept[LockException](LockJson.decode(s"""{"format_version":$revision}""")),
           "UNSUPPORTED_VERSION",
@@ -313,53 +278,10 @@ class LockJsonSpec extends AnyWordSpec, Matchers {
         assertError(intercept[LockException](LockJson.encode(lock)), "INVALID_LOCK", "ENCODE")
       }
 
-    "validate URI fields reachable through generated constructors" in {
-      val lock = Lock(
-        Seq(LockedFile(Uri("relative"), Format.OwlTurtle, Uri("urn:file:z"))),
-        1,
-        Seq.empty,
-      )
-      assertError(intercept[LockException](LockJson.encode(lock)), "INVALID_LOCK", "ENCODE")
-    }
-
     "reject incomplete records before returning encoded text" in {
       val lock =
         Lock(Seq.empty, 1, Seq(ArtifactSelectionImpl(Uri("urn:release:z"), Uri("urn:file:z"))))
       assertError(intercept[LockException](LockJson.encode(lock)), "INVALID_LOCK", "ENCODE")
-    }
-  }
-
-  "LockErrorJson.encode" should {
-    "emit the generated error values and omit absent text paths" in {
-      ujson.read(
-        LockErrorJson.encode(
-          LockError(LockErrorCode.InvalidLock, "Correct the lock", LockOperation.Decode),
-        ),
-      ) shouldBe
-        ujson.Obj(
-          "code" -> "INVALID_LOCK",
-          "operation" -> "DECODE",
-          "message" -> "Correct the lock",
-        )
-    }
-
-    "preserve caller path spelling without including a native cause" in {
-      ujson.read(
-        LockErrorJson.encode(
-          LockError(
-            LockErrorCode.StorageError,
-            "Check the path",
-            LockOperation.Write,
-            Some("./locks/../chosen.json"),
-          ),
-        ),
-      ) shouldBe
-        ujson.Obj(
-          "code" -> "STORAGE_ERROR",
-          "operation" -> "WRITE",
-          "message" -> "Check the path",
-          "path" -> "./locks/../chosen.json",
-        )
     }
   }
 }

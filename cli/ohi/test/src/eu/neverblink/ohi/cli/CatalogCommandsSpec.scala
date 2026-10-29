@@ -12,8 +12,6 @@ import eu.neverblink.ohi.cli.generated.lockdownload.{
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tools.jackson.databind.JsonNode
-import tools.jackson.databind.json.JsonMapper
 
 import java.net.{InetSocketAddress, URI, URLDecoder}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -22,7 +20,6 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters.*
 
 class CatalogCommandsSpec extends AnyWordSpec, Matchers {
-  private val mapper = JsonMapper.builder().build()
 
   // Synthetic metadata exercises output fields and ordering without claiming real catalog data.
   private val hits = """[
@@ -54,9 +51,9 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
     "dependencies":[{"base_url":"https://example.org/dependency/"}]
   }"""
 
-  private def json(document: String): JsonNode = mapper.readTree(document)
+  private def json(document: String): ujson.Value = ujson.read(document)
 
-  private def keys(node: JsonNode): Set[String] = node.propertyNames().asScala.toSet
+  private def keys(node: ujson.Value): Set[String] = node.obj.keySet.toSet
 
   private def withServer(response: String, status: Int = 200)(
       check: (String, ConcurrentLinkedQueue[String]) => Unit,
@@ -357,11 +354,11 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
     }
 
     "omit absent optional scalars and retain empty required publication lists" in {
-      val minimal = json(publication).asInstanceOf[tools.jackson.databind.node.ObjectNode]
-      minimal.remove("namespace_iri")
-      minimal.remove("preferred_prefix")
-      minimal.set("dependencies", mapper.createArrayNode())
-      withServer(mapper.writeValueAsString(minimal)) { (url, _) =>
+      val minimal = json(publication)
+      minimal.obj.remove("namespace_iri")
+      minimal.obj.remove("preferred_prefix")
+      minimal("dependencies") = ujson.Arr()
+      withServer(ujson.write(minimal)) { (url, _) =>
         val result = json(successful(Inspect, "inspect", url, "--json"))
         keys(result) shouldBe Set(
           "schema_version",
@@ -379,8 +376,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "dependencies",
         )
         Seq("licenses", "keywords", "dependencies").foreach { field =>
-          result.get(field).isArray shouldBe true
-          result.get(field).isEmpty shouldBe true
+          result(field).arr shouldBe empty
         }
       }
     }
@@ -428,11 +424,10 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
                 base + "/publication",
               ),
             )
-            val files =
-              metadata.get("artifacts").asInstanceOf[tools.jackson.databind.node.ArrayNode]
-            val first = files.get(0).asInstanceOf[tools.jackson.databind.node.ObjectNode]
-            first.put("url", base + "/first.ttl")
-            files.add(first.deepCopy().put("url", base + "/second.ttl"))
+            val files = metadata("artifacts").arr
+            files(0)("url") = base + "/first.ttl"
+            files += ujson.copy(files(0))
+            files(1)("url") = base + "/second.ttl"
             (request: String) =>
               if new URI(request).getPath == "/search" then 200 -> search.getBytes(UTF_8)
               else 200 -> metadata.toString.getBytes(UTF_8)
@@ -634,11 +629,11 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
             result.err.text() shouldBe empty
             val output = json(result.out.text())
             val receipt = if lockMode then {
-              output.get("files").size() shouldBe 1
-              output.get("files").get(0).get("status").stringValue() shouldBe "DOWNLOADED"
-              output.get("files").get(0)
+              output("files").arr.size shouldBe 1
+              output("files")(0)("status").str shouldBe "DOWNLOADED"
+              output("files")(0)
             } else output
-            receipt.get("path").stringValue() shouldBe
+            receipt("path").str shouldBe
               directory.toNIO.toRealPath().resolve("file.ttl").toString
             os.read(directory / "file.ttl") shouldBe "abc"
             os.read(directory / "ohi.yaml") shouldBe "invalid declaration"
@@ -658,8 +653,8 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           val out = successful(Get, "get", targetUrl, "--to", directory.toString, "--json")
           val receipt = json(out)
           keys(receipt) shouldBe Set("url", "path")
-          receipt.get("url").stringValue() shouldBe targetUrl
-          receipt.get("path").stringValue() shouldBe (directory / "energy model+v2.ttl").toString
+          receipt("url").str shouldBe targetUrl
+          receipt("path").str shouldBe (directory / "energy model+v2.ttl").toString
           os.read.bytes(directory / "energy model+v2.ttl").toSeq shouldBe bytes.toSeq
           requests.asScala.toSeq shouldBe Seq("/energy%20model+v2.ttl?revision=2")
           os.read(directory / "ohi.yaml") shouldBe "unchanged declaration\n"
@@ -692,11 +687,11 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           val error =
             json(failed(Get, "get", url + "/file.ttl", "--to", directory.toString, "--json"))
           keys(error) shouldBe Set("code", "message", "url", "directory", "path")
-          error.get("code").stringValue() shouldBe "DESTINATION_EXISTS"
-          error.get("url").stringValue() shouldBe url + "/file.ttl"
-          error.get("directory").stringValue() shouldBe directory.toString
-          error.get("path").stringValue() shouldBe (directory / "file.ttl").toString
-          error.get("message").stringValue() should not be empty
+          error("code").str shouldBe "DESTINATION_EXISTS"
+          error("url").str shouldBe url + "/file.ttl"
+          error("directory").str shouldBe directory.toString
+          error("path").str shouldBe (directory / "file.ttl").toString
+          error("message").str should not be empty
           requests shouldBe empty
           os.read(directory / "file.ttl") shouldBe "sentinel"
           os.list(directory).map(_.last) shouldBe Seq("file.ttl")
@@ -748,35 +743,6 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       error.trim should not startWith "{"
     }
 
-    for emptyLock <- Seq(false, true) do
-      s"validate configuration before ${
-          if emptyLock then "an empty lock" else "a missing lock"
-        }" in {
-        withDirectory { directory =>
-          val path = if emptyLock then writeLock(directory) else directory / "missing.json"
-          val error = json(
-            failed(
-              Get,
-              "get",
-              "--lock",
-              path.toString,
-              "--to",
-              "bad\u0000destination",
-              "--timeout-ms",
-              "0",
-              "--json",
-            ),
-          )
-          keys(error) shouldBe Set("files", "catalog_error")
-          error.get("files") shouldBe json("[]")
-          val cause = error.get("catalog_error")
-          keys(cause) shouldBe Set("code", "operation", "message")
-          cause.get("code").stringValue() shouldBe "INVALID_INPUT"
-          cause.get("operation").stringValue() shouldBe "CONFIGURE"
-          cause.get("message").stringValue() should include("timeout_ms")
-        }
-      }
-
     "return an empty result without interpreting the destination of an empty version-2 lock" in {
       withDirectory { directory =>
         val path = writeLock(directory)
@@ -802,14 +768,14 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           ),
         )
         keys(error) shouldBe Set("files", "lock_error")
-        error.get("files") shouldBe json("[]")
-        val cause = error.get("lock_error")
+        error("files") shouldBe json("[]")
+        val cause = error("lock_error")
         keys(cause) shouldBe Set("code", "operation", "path", "message")
-        cause.get("code").stringValue() shouldBe "UNSUPPORTED_VERSION"
-        cause.get("operation").stringValue() shouldBe "READ"
-        cause.get("path").stringValue() shouldBe path.toString
-        cause.get("message").stringValue() should include("ohi lock --project <directory>")
-        cause.get("message").stringValue() should include("originating application")
+        cause("code").str shouldBe "UNSUPPORTED_VERSION"
+        cause("operation").str shouldBe "READ"
+        cause("path").str shouldBe path.toString
+        cause("message").str should include("ohi lock --project <directory>")
+        cause("message").str should include("originating application")
         os.exists(directory / "out") shouldBe false
       }
     }
@@ -829,11 +795,11 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           ),
         )
         keys(error) shouldBe Set("files", "lock_error")
-        error.get("files") shouldBe json("[]")
-        val cause = error.get("lock_error")
-        cause.get("code").stringValue() shouldBe "STORAGE_ERROR"
-        cause.get("operation").stringValue() shouldBe "READ"
-        cause.get("path").stringValue() shouldBe path.toString
+        error("files") shouldBe json("[]")
+        val cause = error("lock_error")
+        cause("code").str shouldBe "STORAGE_ERROR"
+        cause("operation").str shouldBe "READ"
+        cause("path").str shouldBe path.toString
         os.list(directory) shouldBe empty
       }
     }
@@ -852,13 +818,13 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         LockDownloadOutput.error(LockDownloadOutput.failure(Seq.empty, failure), json = true),
       )
       keys(error) shouldBe Set("files", "file_error")
-      error.get("files") shouldBe json("[]")
-      val cause = error.get("file_error")
+      error("files") shouldBe json("[]")
+      val cause = error("file_error")
       keys(cause) shouldBe Set("code", "message", "directory", "path", "url")
-      cause.get("code").stringValue() shouldBe "HASH_MISMATCH"
-      cause.get("directory").stringValue() shouldBe "/out"
-      cause.get("path").stringValue() shouldBe "/out/file.ttl"
-      cause.get("url").stringValue() shouldBe "https://example.org/file.ttl"
+      cause("code").str shouldBe "HASH_MISMATCH"
+      cause("directory").str shouldBe "/out"
+      cause("path").str shouldBe "/out/file.ttl"
+      cause("url").str shouldBe "https://example.org/file.ttl"
     }
 
     "report only the completed prefix on failure and resume the same command in lock order" in {
@@ -893,16 +859,16 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           val args = Seq("get", "--lock", path.toString, "--to", directory.toString, "--json")
           val error = json(failed(Get, args*))
           keys(error) shouldBe Set("files", "catalog_error")
-          error.get("files") shouldBe json(s"""[
+          error("files") shouldBe json(s"""[
             {"url":"$base/z.ttl?revision=2","path":"$directory/z.ttl","status":"DOWNLOADED"}
           ]""")
-          val cause = error.get("catalog_error")
+          val cause = error("catalog_error")
           keys(cause) shouldBe Set("code", "message", "operation", "url", "status", "response_json")
-          cause.get("code").stringValue() shouldBe "HTTP_ERROR"
-          cause.get("operation").stringValue() shouldBe "GET"
-          cause.get("url").stringValue() shouldBe base + "/a.ttl"
-          cause.get("status").intValue() shouldBe 503
-          cause.get("response_json") shouldBe json(serverError)
+          cause("code").str shouldBe "HTTP_ERROR"
+          cause("operation").str shouldBe "GET"
+          cause("url").str shouldBe base + "/a.ttl"
+          cause("status").num.toInt shouldBe 503
+          cause("response_json") shouldBe json(serverError)
           requests.asScala.toSeq shouldBe Seq("/z.ttl?revision=2", "/a.ttl")
           os.read.bytes(directory / "z.ttl").toSeq shouldBe zBytes.toSeq
           os.read(directory / "m.ttl") shouldBe "hello"
@@ -983,11 +949,11 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           out shouldBe empty
           val error = json(err)
           keys(error) shouldBe Set("code", "message", "operation", "url", "status", "response_json")
-          error.get("code").stringValue() shouldBe "HTTP_ERROR"
-          error.get("operation").stringValue() shouldBe "INSPECT"
-          error.get("url").stringValue() shouldBe url + "/absent?revision=2"
-          error.get("status").intValue() shouldBe 404
-          error.get("response_json") shouldBe json(
+          error("code").str shouldBe "HTTP_ERROR"
+          error("operation").str shouldBe "INSPECT"
+          error("url").str shouldBe url + "/absent?revision=2"
+          error("status").num.toInt shouldBe 404
+          error("response_json") shouldBe json(
             """{"error":{"reason":"missing","retry":false},"status":404}""",
           )
           requests.asScala.toSeq shouldBe Seq("/absent?revision=2")
@@ -1004,25 +970,6 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           requests shouldBe empty
         }
       }
-
-    "preserve representable zero timeout as an SDK configuration error before retrieval" in {
-      withServer(publication) { (url, requests) =>
-        val error = json(failed(Inspect, "inspect", url, "--timeout-ms", "0", "--json"))
-        keys(error) shouldBe Set("code", "message", "operation")
-        error.get("code").stringValue() shouldBe "INVALID_INPUT"
-        error.get("operation").stringValue() shouldBe "CONFIGURE"
-        error.get("message").stringValue() should include("timeout_ms")
-        requests shouldBe empty
-      }
-    }
-
-    "accept omitted search flags and validate the query against the default catalog before retrieval" in {
-      val error = json(failed(Search, "search", " ", "--json"))
-      error.get("code").stringValue() shouldBe "INVALID_INPUT"
-      error.get("operation").stringValue() shouldBe "SEARCH"
-      error.get("url").stringValue() shouldBe
-        "https://api.ohi.dev/search/collections/packages/documents/search"
-    }
 
     for (label, command, args, diagnostic) <- Seq(
         (

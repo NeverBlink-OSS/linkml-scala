@@ -117,7 +117,9 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
       text should endWith(
         "  ohi lock --project /work/study\n  ohi get https://example.org/file.ttl --to ./ontologies",
       )
-      ProjectOutput.error(error, json = true) should include("\"message\":\"Legacy JSON message\"")
+      ujson.read(ProjectOutput.error(error, json = true))(
+        "message",
+      ).str shouldBe "Legacy JSON message"
     }
 
     "retain both completed records when the download service fails" in {

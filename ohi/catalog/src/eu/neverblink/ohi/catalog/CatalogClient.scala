@@ -1,7 +1,8 @@
 package eu.neverblink.ohi.catalog
 
-import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.ohi.model.{CatalogErrorJson, CatalogJson, PublicationJson}
+import eu.neverblink.linkml.runtime.{LinkmlAny, Uri}
+import eu.neverblink.linkml.yaml.{LinkmlYamlCodec, NodeJson}
+import eu.neverblink.ohi.model.{ModelJson, PublicationJson}
 import eu.neverblink.ohi.model.generated.Publication
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.*
@@ -11,13 +12,17 @@ import java.io.{EOFException, IOException, InputStream}
 import java.net.{HttpURLConnection, SocketTimeoutException, URI, URISyntaxException, URLEncoder}
 import java.nio.ByteBuffer
 import java.nio.charset.{CharacterCodingException, StandardCharsets}
-import scala.util.Using
+import org.virtuslab.yaml.Node
+import scala.util.{Try, Using}
 
 /** Synchronous HTTP(S) operations. Omitting both search settings selects ohi.dev. */
 final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
   private[catalog] val settings =
     input(CatalogOperation.Configure, config.searchUrl.map(_.original)) {
-      CatalogJson.validateConfig(config)
+      require(
+        config.searchUrl.isDefined == config.queryBy.isDefined,
+        "search_url and query_by must be supplied together",
+      )
       config.searchUrl.foreach { value =>
         val uri = transportUri(value.original)
         require(
@@ -41,9 +46,6 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
       page = Some(request.page.getOrElse(1)),
       perPage = Some(request.perPage.getOrElse(10)),
     )
-    input(CatalogOperation.Search, searchUrl) {
-      CatalogJson.validateRequest(effective)
-    }
     val endpoint = searchUrl.get
     val page = effective.page.get
     val perPage = effective.perPage.get
@@ -60,7 +62,7 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
     }.mkString("&")
     val bytes = retrieve(s"$endpoint?$query", CatalogOperation.Search, endpoint)
     decode(CatalogOperation.Search, endpoint, CatalogErrorCode.InvalidResponse) {
-      CatalogJson.decodeSearch(utf8(bytes), page, perPage)
+      CatalogClient.decodeSearch(utf8(bytes), page, perPage)
     }
   }
 
@@ -142,7 +144,7 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
         val response = try {
           val stream = if (status.get >= 400) http.getErrorStream else http.getInputStream
           Option(stream).flatMap(value =>
-            CatalogErrorJson.responseObject(utf8(Using.resource(value)(readBody(http, _)))),
+            CatalogClient.responseObject(utf8(Using.resource(value)(readBody(http, _)))),
           )
         } catch {
           case _: IOException => None
@@ -219,4 +221,24 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
     ),
     cause,
   )
+}
+
+private[catalog] object CatalogClient {
+  private val searchCodec: LinkmlYamlCodec[TypesenseResponse] = LinkmlYamlCodec.derived
+
+  def decodeSearch(text: String, page: Int, perPage: Int): SearchResult = {
+    val response = ModelJson.decode(searchCodec, text)
+    require(response.groupedHits.isEmpty, "grouped search responses are unsupported")
+    val result = response.result
+    require(result.page == page, "response page differs from requested page")
+    require(result.perPage == perPage, "response per_page differs from requested per_page")
+    require(result.hits.size <= perPage, "response contains more hits than requested")
+    result
+  }
+
+  /** The JSON object in an HTTP error body, if it has one. */
+  def responseObject(text: String): Option[LinkmlAny] =
+    Try(ModelJson.parse(text)).toOption.collect { case node: Node.MappingNode =>
+      LinkmlAny(NodeJson.write(node))
+    }
 }

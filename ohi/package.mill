@@ -2,13 +2,4 @@ package build.ohi
 
 import mill.*
 
-object `package` extends Module {
-  def copySchema() = Task.Command {
-    val root = mill.api.BuildCtx.workspaceRoot / "ohi"
-    Seq(root / "python" / "src" / "ohi", root / "typescript" / "src").foreach { directory =>
-      Seq("package", "search-request", "search", "catalog-config", "lock").foreach { name =>
-        os.copy.over(root / "model" / "resources" / s"$name.schema.json", directory / s"$name.schema.json")
-      }
-    }
-  }
-}
+object `package` extends Module
