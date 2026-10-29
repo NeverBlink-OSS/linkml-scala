@@ -16,13 +16,17 @@ Use a CLI from the same checkout or release as this skill. Check `ohi <command> 
 | --- | --- |
 | Find publications from search terms | `ohi search` defaults to ohi.dev when both search settings are omitted. Supply both `--search-url` and `--query-by` to use another catalog |
 | Examine a known publication | `ohi inspect` with its exact `base_url` |
-| Download an ontology without project tracking | `ohi get namespace/name[@version] --format <format>` or `ohi get <file-url>`. Use `--to` to change the current-directory destination |
+| Download an ontology without project tracking | `ohi get namespace/name[@version] [--format <format>]` or `ohi get <file-url>`. Use `--to` to change the current-directory destination |
 | Download the files in a lock | [`ohi get --lock <file> --to <directory>`](references/cli.md#download-a-lock) |
 | Create an empty project declaration | `ohi init` with the intended project directory |
-| Record a selection and download its file | `ohi add namespace/name[@version] --format <format>` or `ohi add <base-url> --artifact <file-url>`. Use `--project` and `--to` to override the invocation directory |
+| Record a selection and download its file | `ohi add namespace/name[@version] [--format <format>]` or `ohi add <base-url> --artifact <file-url>`. Use `--project` and `--to` to override the invocation directory |
 | Rebuild a project's lock after changing its selections | `ohi lock` with the project directory |
 
 Read the relevant section of [CLI behavior and recovery](references/cli.md) when interpreting search results, checking downloads or changing project records. Use only the operations the task needs. A supplied publication or artifact URL can skip search. Catalog commands require no project and leave project records unchanged.
+
+Without `--format`, ontology references use the common format in `ohi.yaml`, then fall back to
+`linkml-yaml`. See [format selection](references/cli.md#retrieve-a-selected-file) for project locations
+and failure behavior. Supply `--format` when the task requires a particular format.
 
 ## Preserve references and state
 

@@ -14,21 +14,27 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
 
   "focused corrections" should {
     for (name, command) <- Seq("get" -> Get, "add" -> Add) do
-      s"retain $name version and destination in neutral format guidance before writing files" in {
+      s"retain $name version and destination when correcting an invalid format before writing files" in {
         val root = os.temp.dir(prefix = "ohi guidance ")
         try {
           val destination = root / "a friend's files"
           val project = if name == "add" then Seq("--project", root.toString) else Seq.empty
           val output = rejected(
             command,
-            (Seq(name, "w3c/prov-o@2013", "--to", destination.toString) ++ project)*,
+            (Seq(
+              name,
+              "w3c/prov-o@2013",
+              "--format",
+              "turtle",
+              "--to",
+              destination.toString,
+            ) ++ project)*,
           )
-          output should startWith("Choose a file format with --format.\n\nSupported formats\n")
+          output should startWith("Error: Unsupported format 'turtle'.\n\nSupported formats\n")
           output should include(
             s"ohi $name w3c/prov-o@2013 --format owl-turtle --to '$root/a friend'\\''s files'",
           )
           if name == "add" then output should include(s"--project '$root'")
-          output should not include "Error:"
           os.exists(destination) shouldBe false
           os.list(root) shouldBe empty
         } finally os.remove.all(root)
@@ -63,7 +69,7 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
       output should include("  ohi search 'water quality' --page=2")
     }
 
-    "distinguish an invalid supplied format from an omitted one" in {
+    "show supported formats for an invalid supplied format" in {
       val output = rejected(Get, "get", "w3c/prov-o", "--format", "turtle")
       output should startWith("Error: Unsupported format 'turtle'.")
       output should include("Supported formats")

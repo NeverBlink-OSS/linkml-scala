@@ -39,11 +39,13 @@ Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, c
 Download from ohi.dev using the namespace and name shown by `search`:
 
 ```sh
-ohi get namespace/name --format owl-turtle
+ohi get namespace/name
 ohi get namespace/name@version --format owl-turtle --to ./ontologies
 ```
 
-`--format` is required. Omit `@version` for the most recently published release.
+Omit `@version` for the latest published release. Without `--format`, `get` and `add`
+prefer the format shared by all ontologies in `ohi.yaml`, falling back to `linkml-yaml`.
+Use `--format` to require a specific format.
 
 ## Catalog commands
 
@@ -85,7 +87,7 @@ ohi lock --project ./project
 | Command | Effect |
 | --- | --- |
 | `init [directory]` | Creates the directory if needed and an `ohi.yaml` with no selections. Keeps an existing `ohi.yaml`. |
-| `add <namespace/name[@version]> --format <format>` | Records the selected release and file URLs in `ohi.yaml`, rebuilds `ohi.lock.json` and downloads the file. |
+| `add <namespace/name[@version]> [--format <format>]` | Records the selected release and file URLs in `ohi.yaml`, rebuilds `ohi.lock.json` and downloads the file. |
 | `add <base-url> --artifact <url>` | Records and downloads the exact URL pair. |
 | `lock` | Rebuilds `ohi.lock.json` from `ohi.yaml`. Downloads nothing. |
 

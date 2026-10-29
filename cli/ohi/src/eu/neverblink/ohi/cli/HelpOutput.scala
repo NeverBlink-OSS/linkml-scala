@@ -71,14 +71,14 @@ private[cli] object HelpOutput {
       case "inspect" => Seq("<release-url> [options]")
       case "get" =>
         Seq(
-          "<namespace>/<name>[@version] --format <format> [options]",
+          "<namespace>/<name>[@version] [--format <format>] [options]",
           "<file-url> [options]",
           "--lock <file> [options]",
         )
       case "init" => Seq("[directory] [options]")
       case "add" =>
         Seq(
-          "<namespace>/<name>[@version] --format <format> [options]",
+          "<namespace>/<name>[@version] [--format <format>] [options]",
           "<release-url> --artifact <file-url> [options]",
         )
       case "lock" => Seq("[options]")
@@ -94,8 +94,10 @@ private[cli] object HelpOutput {
       case "inspect" => "A release URL is the metadata URL shown by search."
       case "get" | "add" if full =>
         "Without @version, selects the most recently published release.\n" +
-          (if name == "get" then "References require --format. File URLs select the file directly."
-           else "References require --format. Release URLs require --artifact.") +
+          "Without --format, tries the common format in ohi.yaml, then linkml-yaml.\n" +
+          (if name == "get" then
+             "Reads ohi.yaml in the current directory. File URLs select the file directly."
+           else "Reads ohi.yaml in --project. Release URLs require --artifact.") +
           "\n\n" + CliFormatting.formatsHelp(colored)
       case "init" =>
         section(

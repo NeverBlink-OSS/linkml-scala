@@ -23,7 +23,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
   private val metadata = ProjectTestData.publication(
     "https://Catalog.example/releases/exact?key=%2F",
     Seq(
-      "https://files.example/unselected.yaml" -> Format.LinkmlYaml,
+      "https://files.example/linkml.yaml" -> Format.LinkmlYaml,
       "https://Files.example/advertised%2F.ttl" -> Format.OwlTurtle,
     ),
   ).copy(namespace = "w3c", name = "prov-o")
@@ -42,8 +42,9 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       format: Option[String],
       search: SearchRequest => SearchResult,
       inspect: String => Publication,
+      preference: => Option[Format] = None,
   ): Either[String, (Publication, Artifact)] =
-    OntologyReference.resolve(input, format, search, inspect).left.map(_.message)
+    OntologyReference.resolve(input, format, search, inspect, preference).left.map(_.message)
 
   "ontology reference classification" should {
     "recognize HTTP(S) prefixes without treating a colon-bearing namespace as a URL" in {
@@ -55,9 +56,74 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
   }
 
   "ontology reference resolution" should {
-    "require a format before searching" in {
-      resolve("w3c/prov-o", None, noSearch, noInspect) shouldBe
-        Left("--format is required for ontology reference 'w3c/prov-o'.")
+    "default to LinkML when no project format is preferred" in {
+      val result = resolve("w3c/prov-o", None, _ => page(Seq(hit), 1), _ => metadata)
+      result.map(_._2.url.original) shouldBe Right("https://files.example/linkml.yaml")
+    }
+
+    "select the project format before an available LinkML artifact" in {
+      val result = resolve(
+        "w3c/prov-o",
+        None,
+        _ => page(Seq(hit), 1),
+        _ => metadata,
+        Some(Format.OwlTurtle),
+      )
+      result.map(_._2.url.original) shouldBe Right("https://Files.example/advertised%2F.ttl")
+    }
+
+    "fall back to LinkML in the selected publication when its project format is absent" in {
+      val inspections = ArrayBuffer.empty[String]
+      val result = resolve(
+        "w3c/prov-o",
+        None,
+        _ => page(Seq(hit, hit.copy(baseUrl = Uri("https://example.org/older"), version = "9")), 2),
+        url => {
+          inspections += url
+          metadata
+        },
+        Some(Format.OwlRdfxml),
+      )
+      result.map(_._2.url.original) shouldBe Right("https://files.example/linkml.yaml")
+      inspections.toSeq shouldBe Seq("https://Catalog.example/releases/exact?key=%2F")
+    }
+
+    "reject unavailable preferred formats instead of choosing another advertised format" in {
+      resolve(
+        "w3c/prov-o",
+        None,
+        _ => page(Seq(hit), 1),
+        _ => metadata.copy(artifacts = metadata.artifacts.filter(_.format == Format.OwlTurtle)),
+        Some(Format.OwlRdfxml),
+      ) shouldBe Left(
+        "Formats 'owl-rdfxml' or 'linkml-yaml' are unavailable for ontology reference 'w3c/prov-o': " +
+          "https://Catalog.example/releases/exact?key=%2F",
+      )
+    }
+
+    "keep an ambiguous preferred format ambiguous when LinkML is available" in {
+      resolve(
+        "w3c/prov-o",
+        None,
+        _ => page(Seq(hit), 1),
+        _ =>
+          metadata.copy(artifacts =
+            metadata.artifacts :+
+              metadata.artifacts.last.copy(url = Uri("https://files.example/second.ttl")),
+          ),
+        Some(Format.OwlTurtle),
+      ) shouldBe Left("w3c/prov-o has more than one file in owl-turtle format.")
+    }
+
+    "honor an explicit format without evaluating the project preference" in {
+      val result = resolve(
+        "w3c/prov-o",
+        Some("owl-turtle"),
+        _ => page(Seq(hit), 1),
+        _ => metadata,
+        fail("Explicit format must not read the project"),
+      )
+      result.map(_._2.url.original) shouldBe Right("https://Files.example/advertised%2F.ttl")
     }
 
     "reject an unknown format before searching" in {

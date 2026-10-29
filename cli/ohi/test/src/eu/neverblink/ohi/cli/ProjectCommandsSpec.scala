@@ -63,9 +63,10 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       baseUrl: String,
       artifacts: Seq[String],
       dependencies: Seq[String] = Seq.empty,
+      format: String = "owl-turtle",
   ): String = {
     val files = artifacts.map(url => s"""{
-      "format":"owl-turtle","origin":"UPSTREAM","url":"$url",
+      "format":"$format","origin":"UPSTREAM","url":"$url",
       "roots":["https://example.org/entry-root"],"size_bytes":4,
       "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
     }""").mkString(",")
@@ -77,6 +78,14 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       "licenses":[],"keywords":[],"artifacts":[$files],"dependencies":[$refs]
     }"""
   }
+
+  private def searchResponse(baseUrl: String): String = s"""{
+    "found":1,"page":1,"request_params":{"per_page":250},"search_cutoff":false,"hits":[{"document":{
+      "base_url":"$baseUrl","namespace":"test","name":"example","version":"1",
+      "title":"Example ontology","description":"Synthetic command metadata",
+      "published_at":"2026-10-15T00:00:00Z","licenses":[],"formats":["owl-turtle"]
+    }}]
+  }"""
 
   private def run(command: BaseCommand[?], args: String*): (String, String, Int) =
     command.runTestCommandWithExitCode(args.toList, new OhiApp().main)
@@ -180,13 +189,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.makeDir(project)
         withServer(base =>
           Map(
-            "/search" -> (200 -> s"""{
-            "found":1,"page":1,"request_params":{"per_page":250},"search_cutoff":false,"hits":[{"document":{
-              "base_url":"$base/publication","namespace":"test","name":"example","version":"1",
-              "title":"Example ontology","description":"Synthetic command metadata",
-              "published_at":"2026-10-15T00:00:00Z","licenses":[],"formats":["owl-turtle"]
-            }}]
-          }"""),
+            "/search" -> (200 -> searchResponse(base + "/publication")),
             "/publication" -> (200 -> publication(base + "/publication", Seq(base + "/file.ttl"))),
             "/file.ttl" -> (200 -> "one\n"),
           ),
@@ -229,6 +232,110 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           os.read(downloads / "file.ttl") shouldBe "one\n"
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe
             Seq("GET /search", "GET /publication", "GET /file.ttl")
+        }
+      }
+    }
+
+    for (format, filename, behavior) <- Seq(
+        ("owl-turtle", "file.ttl", "use the selected project's common format"),
+        ("linkml-yaml", "file.yaml", "fall back to LinkML when the project format is unavailable"),
+      )
+    do
+      s"$behavior and reuse inspected metadata when building the lock" in {
+        withDirectory { root =>
+          val project = root / "project"
+          val downloads = root / "downloads"
+          os.makeDir(project)
+          os.makeDir(downloads)
+          os.write(downloads / "ohi.yaml", "unrelated destination declaration")
+          withServer(base =>
+            Map(
+              "/existing" -> (200 -> publication(base + "/existing", Seq(base + "/selected.yaml"))),
+              "/search" -> (200 -> searchResponse(base + "/publication")),
+              "/publication" -> (200 -> publication(
+                base + "/publication",
+                Seq(base + "/" + filename),
+                format = format,
+              )),
+              ("/" + filename) -> (200 -> "selected bytes\n"),
+            ),
+          ) { (base, requests) =>
+            os.write(
+              project / "ohi.yaml",
+              s"""format_version: 1
+              |selections:
+              |  - base_url: $base/existing
+              |    url: $base/selected.yaml
+              |""".stripMargin,
+            )
+            os.write(
+              project / "ohi.lock.json",
+              """{"format_version":2,"selections":[],"files":[]}""",
+            )
+            val command = new AddCommand {
+              override protected def client(): CatalogClient =
+                new CatalogClient(
+                  CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name")),
+                )
+            }
+            val result = command.runTestCommandWithExitCode(
+              List(
+                "test/example",
+                "--project",
+                project.toString,
+                "--to",
+                downloads.toString,
+                "--json",
+              ),
+              args => command.main("ohi add", args),
+            )
+            assertResult(
+              successful(result),
+              "ADD",
+              project,
+              true,
+              true,
+              Some((base + "/" + filename) -> (downloads / filename)),
+            )
+            declaration(project / "ohi.yaml") shouldBe json(s"""{
+              "format_version":1,"selections":[
+                {"base_url":"$base/existing","url":"$base/selected.yaml"},
+                {"base_url":"$base/publication","url":"$base/$filename"}]
+            }""")
+            val locked = json(os.read(project / "ohi.lock.json"))
+            locked.get("files") shouldBe json(s"""[
+              {"base_url":"$base/existing","url":"$base/selected.yaml","format":"owl-turtle",
+               "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
+              {"base_url":"$base/publication","url":"$base/$filename","format":"$format",
+               "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]
+            """)
+            os.read(downloads / filename) shouldBe "selected bytes\n"
+            os.read(downloads / "ohi.yaml") shouldBe "unrelated destination declaration"
+            requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe
+              Seq("GET /existing", "GET /search", "GET /publication", "GET /" + filename)
+          }
+        }
+      }
+
+    "report an invalid declaration before searching for an omitted-format add" in {
+      withDirectory { project =>
+        val invalid = "format_version: 99\nselections: []\n"
+        os.write(project / "ohi.yaml", invalid)
+        withServer(_ => Map.empty) { (base, requests) =>
+          val command = new AddCommand {
+            override protected def client(): CatalogClient =
+              new CatalogClient(
+                CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name")),
+              )
+          }
+          val result = command.runTestCommandWithExitCode(
+            List("test/example", "--project", project.toString, "--json"),
+            args => command.main("ohi add", args),
+          )
+          unchangedError(failed(result), "ADD", project, "INVALID_DECLARATION")
+          requests shouldBe empty
+          os.read(project / "ohi.yaml") shouldBe invalid
+          os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
         }
       }
     }
@@ -676,6 +783,8 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       out should include("Usage\n  ohi add")
       Seq("--artifact", "--format", "--to", "--project", "--json").foreach(out should include(_))
       out should not include "--timeout-ms"
+      out should include("[--format <format>]")
+      out should include("common format in ohi.yaml, then linkml-yaml")
     }
 
     "reject add without --artifact and point to its help" in {
@@ -685,11 +794,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
     }
 
     for (description, arguments, expected) <- Seq(
-        (
-          "require --format for an ontology reference",
-          Seq("test/example"),
-          "Choose a file format with --format.",
-        ),
         (
           "reject --artifact with an ontology reference",
           Seq("test/example", "--artifact", "https://example.org/file"),
