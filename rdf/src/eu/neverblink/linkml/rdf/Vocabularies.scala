@@ -19,6 +19,8 @@ object XmlSchema extends Vocabulary("http://www.w3.org/2001/XMLSchema#") {
   val maxInclusive: Iri = get("maxInclusive")
   val minExclusive: Iri = get("minExclusive")
   val maxExclusive: Iri = get("maxExclusive")
+  val minLength: Iri = get("minLength")
+  val maxLength: Iri = get("maxLength")
   val pattern: Iri = get("pattern")
   val nonNegativeInteger: Iri = get("nonNegativeInteger")
 }

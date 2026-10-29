@@ -48,7 +48,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | enum                                                       | `owl:Class` equivalent to `owl:oneOf` its permissible values                                           |
 | permissible value                                          | `owl:NamedIndividual` with the `meaning` as its IRI, and `skos:notation` for its text when that is not the IRI's local name |
 | type                                                       | its `uri`; with constraints, a datatype restriction on it (`xsd:integer[>= 0]`)                        |
-| `pattern`, `minimum_value`, `maximum_value`                | `xsd:pattern`, `xsd:minInclusive`, `xsd:maxInclusive`. An XSD pattern matches the whole value, so `^abc$` is written `abc`, and `abc` is written `.*abc.*` |
+| `pattern`, `minimum_value`, `maximum_value`, `minimum_length`, `maximum_length` | `xsd:pattern`, `xsd:minInclusive`, `xsd:maxInclusive`, `xsd:minLength`, `xsd:maxLength`. An XSD pattern matches the whole value, so `^abc$` is written `abc`, and `abc` is written `.*abc.*` |
 | `title`                                                    | `rdfs:label`, tagged with `in_language` when the schema has one |
 | `description`                                              | `rdfs:comment` (or `skos:definition` with `--metadata-profile linkml`)                                  |
 | other documentation (`aliases`, `comments`, `see_also`, mappings, …) | the property the LinkML metamodel gives it, such as `skos:altLabel`, `skos:note`, `rdfs:seeAlso` |
