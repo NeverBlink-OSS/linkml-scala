@@ -139,6 +139,33 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       result.schema.types("ShortString").typeof.map(_.value) shouldBe Some("string")
       result.warnings.mkString should include("ShortString: xsd:length")
     }
+
+    "not turn a datatype that is a subclass of rdfs:Literal into a class" in {
+      // As in the RDF vocabulary, for `rdf:HTML`.
+      val result = importing(
+        """:Html a rdfs:Datatype ; rdfs:subClassOf rdfs:Literal ; rdfs:label "HTML" .""",
+      )
+      result.schema.types("Html").typeof.map(_.value) shouldBe Some("string")
+      result.schema.classes shouldBe empty
+      result.warnings shouldBe empty
+    }
+
+    "use a parent datatype as typeof" in {
+      val result = importing(""":Code a rdfs:Datatype ; rdfs:subClassOf xsd:integer .""")
+      result.schema.types("Code").typeof.map(_.value) shouldBe Some("integer")
+      result.schema.classes shouldBe empty
+      result.warnings shouldBe empty
+    }
+
+    "leave out RDF's built-in datatypes" in {
+      val result = importing(
+        """<http://www.w3.org/1999/02/22-rdf-syntax-ns#langString> a rdfs:Datatype ;
+          |    rdfs:subClassOf rdfs:Literal .""",
+      )
+      result.schema.classes shouldBe empty
+      result.schema.types.keySet should not contain "langString"
+      result.warnings shouldBe empty
+    }
   }
 
   "importing IRIs" should {

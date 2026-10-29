@@ -265,6 +265,9 @@ object OwlImporter {
 
     private val wellKnownClasses = Set(owlNs + "Thing", owlNs + "Nothing", Rdfs.Resource.value)
 
+    private def isDatatype(iri: String): Boolean =
+      isDeclared(iri, EntityKind.Datatype) || OwlRdfReader.isBuiltInDatatype(iri)
+
     /** Classes that are declared or used. Declarations of RDF, RDFS and OWL terms are ignored
       * (FOAF, for example, declares `rdfs:Class`).
       */
@@ -272,6 +275,7 @@ object OwlImporter {
       (axioms.collect {
         case Declaration(EntityKind.Class, iri, _) if !isStandardVocabulary(iri) => iri
       } ++ expressions.flatMap(classesIn)).distinct.filterNot(wellKnownClasses)
+        .filterNot(isDatatype)
 
     /** True if the namespace is the ontology IRI, ignoring a trailing `#` or `/`. */
     private def isOntologyNamespace(namespace: String): Boolean =
@@ -459,6 +463,23 @@ object OwlImporter {
         )
     }
 
+    // Every datatype is a set of literals, so `rdfs:subClassOf rdfs:Literal` says nothing.
+    subClassOf.foreach { (d, sups) =>
+      if isDatatype(d) then
+        sups.foreach {
+          case (a, ClassExpr.Named(p)) if p == Rdfs.Literal.value => take(a)
+          case _ =>
+        }
+    }
+
+    /** The parent datatype of a datatype, from `rdfs:subClassOf`. */
+    private def parentDatatype(iri: String): Option[String] =
+      subClassOf.getOrElse(iri, Nil).collectFirst {
+        case (a, ClassExpr.Named(p)) if p != Rdfs.Literal.value && isDatatype(p) =>
+          take(a)
+          p
+      }
+
     // Prefixes and names
 
     private val naming = OwlImportNames(
@@ -580,7 +601,9 @@ object OwlImporter {
           case Some(other) =>
             warn("Datatype definition that LinkML cannot express", s"$iri: ${render(other.range)}")
             ("string", Nil, None)
-          case None => (derivedTypes.getOrElse(iri, "string"), Nil, None)
+          case None =>
+            val base = parentDatatype(iri).map(typeNameFor)
+            (base.getOrElse(derivedTypes.getOrElse(iri, "string")), Nil, None)
         }
         facets.map(_._1).distinct.filterNot(typeFacets).foreach { f =>
           warn("Datatype facet that LinkML cannot express", s"$name: ${short(f)}")
