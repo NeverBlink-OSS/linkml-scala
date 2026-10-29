@@ -356,6 +356,12 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       typeAttribute.pattern.foreachFast { p =>
         sink.triple(subject, Shacl.pattern, Literal(p.linkml))
       }
+      typeAttribute.minimumLength.foreachFast { n =>
+        sink.triple(subject, Shacl.minLength, Literal(n.toString, XmlSchema.integer))
+      }
+      typeAttribute.maximumLength.foreachFast { n =>
+        sink.triple(subject, Shacl.maxLength, Literal(n.toString, XmlSchema.integer))
+      }
       // Bounds (min / max values) only make sense for ordered literal ranges.
       if (typeAttribute.implicitPrefix.isEmpty)
         datatypeForValueBound(typeAttribute.typeView).foreachFast { datatype =>

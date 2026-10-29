@@ -162,6 +162,8 @@ class FrictionlessGenerator(using sv: SchemaView)
                     pattern = tv.pattern.mapFast(_.linkml),
                     maximum = tv.maximumValue.mapFast(_.value.strip()),
                     minimum = tv.minimumValue.mapFast(_.value.strip()),
+                    minLength = tv.minimumLength,
+                    maxLength = tv.maximumLength,
                   ),
                 ),
               )

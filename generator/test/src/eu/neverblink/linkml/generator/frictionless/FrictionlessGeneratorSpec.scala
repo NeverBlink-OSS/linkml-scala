@@ -165,6 +165,30 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       stringConstraints.pattern shouldBe Some("^([0-9]{3})?[0-9]{3}-[0-9]{4}$")
     }
 
+    "generate minLength and maxLength constraints" in {
+      val td = rootTable(
+        load(
+          """id: https://neverblink.eu/test/
+          |name: test
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    attributes:
+          |      code:
+          |        range: string
+          |        minimum_length: 2
+          |        maximum_length: 5
+          |""".stripMargin,
+        ),
+      )
+      val constraints = td.fields.head.constraints.get
+      (constraints.minLength, constraints.maxLength) shouldBe (Some(2), Some(5))
+    }
+
     "date, time and datetime columns use the ISO 8601 format" in {
       // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
       val td = rootTable(

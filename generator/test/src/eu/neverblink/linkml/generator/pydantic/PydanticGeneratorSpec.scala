@@ -99,7 +99,11 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |      quote: {range: string, pattern: 'say "hi"'}
           |      price: {range: decimal, minimum_value: 0.5}
           |      day: {range: date, pattern: "^2"}
+          |      code: {range: string, minimum_length: 2, maximum_length: 5}
           |""".stripMargin,
+      )
+      py should include(
+        "    code: Annotated[str, Field(min_length=2, max_length=5)] | None = None\n",
       )
       py should include("    age: Annotated[StrictInt, Field(ge=0, le=200)] | None = None\n")
       py should include(
