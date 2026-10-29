@@ -9,6 +9,8 @@ on:
     paths:
       - 'cli/install.sh'
       - 'cli/test-install.sh'
+      - 'cli/install.ps1'
+      - 'cli/test-install.ps1'
       - '.github/workflows/install.yml'
   schedule:
     - cron: '0 5 * * 1'
@@ -28,10 +30,13 @@ jobs:
       fail-fast: false
       matrix:
         # Every platform with a published release asset that install.sh supports.
-        os: [ ubuntu-latest, ubuntu-22.04-arm, macos-15, macos-15-intel ]
+        # windows-latest runs it under Git Bash.
+        os: [ ubuntu-latest, ubuntu-22.04-arm, macos-15, macos-15-intel, windows-latest ]
     defaults:
       run:
         shell: bash
+    env:
+      EXE: ${{ startsWith(matrix.os, 'windows') && '.exe' || '' }}
 
     steps:
       - name: Checkout sources
@@ -46,13 +51,16 @@ jobs:
         run: |
           . ./cli/install.sh
           command -v ohi # sourcing must make it callable immediately
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          # GITHUB_PATH is read by the Windows runner, not by Git Bash.
+          dir="$HOME/.local/bin"
+          if command -v cygpath >/dev/null 2>&1; then dir=$(cygpath -w "$dir"); fi
+          echo "$dir" >> "$GITHUB_PATH"
 
       # The other documented form. Must work without a TTY and without prompting.
       - name: Install via install.sh, executed rather than sourced
         run: |
           LINKML_SCALA_INSTALL_DIR="$RUNNER_TEMP/ohi-exec" bash ./cli/install.sh
-          "$RUNNER_TEMP/ohi-exec/ohi" version
+          "$RUNNER_TEMP/ohi-exec/ohi$EXE" version
 
       # Runners ship a current gh, so the strict path must actually verify. Guards both
       # halves: that our releases really carry provenance, and that install.sh reports a
@@ -68,7 +76,7 @@ jobs:
             echo "Error: expected the provenance check to succeed."
             exit 1
           fi
-          "$RUNNER_TEMP/ohi-attest/ohi" version
+          "$RUNNER_TEMP/ohi-attest/ohi$EXE" version
 
       # A sourced install.sh must never terminate the caller's shell.
       # `set +e` mirrors an interactive shell, which is the case that matters. It also keeps
@@ -99,3 +107,64 @@ jobs:
             echo "Error: Expected success message not found."
             exit 1
           fi
+
+  install-script-powershell:
+    name: install.ps1 on windows-latest
+    if: github.event_name != 'schedule' || github.repository == 'NeverBlink-OSS/linkml-scala'
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      # test-install.ps1 serves its fixtures with python -m http.server.
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+
+      - name: Check installer against controlled releases
+        run: pwsh cli/test-install.ps1
+
+      # The invocation documented in README. Running it puts the install dir on PATH for the
+      # rest of this step, as piping it into iex does for the session.
+      - name: Install via install.ps1
+        run: |
+          ./cli/install.ps1
+          Get-Command ohi
+          "$HOME\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      # Windows PowerShell 5.1 is what ships with Windows, and it is the stricter of the two.
+      - name: Install under Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $env:LINKML_SCALA_INSTALL_DIR = "$env:RUNNER_TEMP\ohi-ps51"
+          ./cli/install.ps1
+          & "$env:RUNNER_TEMP\ohi-ps51\ohi.exe" version
+
+      - name: Install with build provenance required
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $env:LINKML_SCALA_INSTALL_DIR = "$env:RUNNER_TEMP\ohi-attest"
+          $env:LINKML_SCALA_REQUIRE_ATTESTATION = '1'
+          $output = ./cli/install.ps1 *>&1 | Out-String
+          Write-Host $output
+          if ($output -notmatch 'Build provenance verified') {
+            throw 'Expected the provenance check to succeed.'
+          }
+          & "$env:RUNNER_TEMP\ohi-attest\ohi.exe" version
+
+      - name: Installed binary reports its version
+        run: ohi version
+
+      - name: Installed binary can validate a schema
+        run: |
+          $output = ohi linkml validate tests/resources/models/basic/model.yaml | Out-String
+          Write-Host $output
+          if ($output -notmatch 'Schema is valid\.') {
+            throw 'Expected success message not found.'
+          }

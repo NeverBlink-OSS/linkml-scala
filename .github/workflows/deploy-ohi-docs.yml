@@ -6,8 +6,9 @@ on:
     branches: [main]
     paths:
       - "ohi/docs/**"
-      # Published alongside the docs, as https://ohi.dev/install.sh.
+      # Published alongside the docs, as https://ohi.dev/install.sh and install.ps1
       - "cli/install.sh"
+      - "cli/install.ps1"
       - ".github/workflows/deploy-ohi-docs.yml"
   workflow_dispatch:
 

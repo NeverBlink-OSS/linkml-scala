@@ -7,9 +7,11 @@ test_root=$(mktemp -d "${TMPDIR:-/tmp}/linkml-install-test.XXXXXX")
 trap 'rm -rf "$test_root"' EXIT
 mkdir -p "$test_root/bin" "$test_root/release"
 
+ext=
 case "$(uname -s)" in
   Linux) platform=linux ;;
   Darwin) platform=macos ;;
+  MINGW* | MSYS* | CYGWIN*) platform=windows; ext=.exe ;;
   *) echo "Unsupported test platform" >&2; exit 1 ;;
 esac
 case "$(uname -m)" in
@@ -17,9 +19,12 @@ case "$(uname -m)" in
   aarch64 | arm64) platform="$platform-arm64" ;;
   *) echo "Unsupported test architecture" >&2; exit 1 ;;
 esac
+# There is no arm64 Windows build, and install.sh falls back to the x86_64 one.
+[ -z "$ext" ] || platform=windows-x86_64
 
 for name in linkml-scala ohi; do
-  printf '#!/bin/sh\nprintf "fixture %s\\n"\n' "$name" | gzip > "$test_root/release/$name-$platform.gz"
+  printf '#!/bin/sh\nprintf "fixture %s\\n"\n' "$name" |
+    gzip > "$test_root/release/$name-$platform$ext.gz"
 done
 (
   cd "$test_root/release"
@@ -93,8 +98,14 @@ run_case() {
 
 assert_installed() {
   name=$1
-  [ "$("$case_dir/install/$name")" = "fixture $name" ] || fail "payload did not run"
-  [ "$(ls "$case_dir/install")" = "$name" ] || fail "unexpected installed file"
+  [ "$(ls "$case_dir/install")" = "$name$ext" ] || fail "unexpected installed file"
+  if [ -n "$ext" ]; then
+    # Windows will not run a shell script named .exe, so compare the bytes instead.
+    gzip -dc "$case_dir/release/$name-$platform$ext.gz" > "$case_dir/expected"
+    cmp -s "$case_dir/expected" "$case_dir/install/$name$ext" || fail "payload does not match"
+  else
+    [ "$("$case_dir/install/$name")" = "fixture $name" ] || fail "payload did not run"
+  fi
 }
 
 assert_refused() {
@@ -125,7 +136,7 @@ for shell in bash zsh; do
   new_case "default_sourced_$shell"
   run_case 0 "$(command -v "$shell")" -c 'set -- ohi ignored; . "$INSTALLER"; command -v ohi'
   assert_installed ohi
-  grep -Fxq "$case_dir/install/ohi" "$case_dir/output" || fail "source did not update PATH"
+  grep -Fq "$case_dir/install/ohi" "$case_dir/output" || fail "source did not update PATH"
   passed
 done
 
@@ -140,11 +151,11 @@ new_case checksum_missing_selected_asset
 grep -v 'ohi-' "$case_dir/release/SHA256SUMS" > "$case_dir/release/remaining"
 mv "$case_dir/release/remaining" "$case_dir/release/SHA256SUMS"
 run_case 1 env LINKML_SCALA_TOOL=ohi bash "$installer"
-assert_refused "does not list ohi-$platform.gz"
+assert_refused "does not list ohi-$platform$ext.gz"
 passed
 
 new_case checksum_mismatch
-printf '#!/bin/sh\nexit 0\n' | gzip > "$case_dir/release/ohi-$platform.gz"
+printf '#!/bin/sh\nexit 0\n' | gzip > "$case_dir/release/ohi-$platform$ext.gz"
 run_case 1 env LINKML_SCALA_TOOL=ohi bash "$installer"
 assert_refused 'checksum mismatch'
 passed

@@ -27,11 +27,18 @@ into `mise.toml`. Everyone who runs `mise install` in that repo then gets byte-i
 
 ## Option 2 — the install script
 
-For a user-level install on Linux, macOS or WSL. Download and read it first:
+For a user-level install on Linux, macOS or Windows. Download and read it first:
 
 ```shell
 curl -fsSLO https://ohi.dev/install.sh
 bash install.sh
+```
+
+For PowerShell:
+
+```powershell
+irm https://ohi.dev/install.ps1 -OutFile install.ps1
+.\install.ps1
 ```
 
 It installs into `~/.local/bin`, verifies the download against the release's `SHA256SUMS`, checks
@@ -45,8 +52,8 @@ variables:
 | `LINKML_SCALA_REQUIRE_CHECKSUM=1` | Refuse a release that publishes no checksums |
 | `LINKML_SCALA_MODIFY_PROFILE=1` | Pre-answer the PATH prompt (needed when unattended) |
 
-Sourcing it instead (`. <(curl -sSfL https://ohi.dev/install.sh)`) also puts the directory on the
-current shell's PATH, at the cost of not being able to read the script first.
+Sourcing it instead (`. <(curl -sSfL https://ohi.dev/install.sh)`) also puts the directory on the current shell's PATH,
+at the cost of not being able to read the script first. `install.sh` works with Git Bash, MSYS2, Cygwin and WSL. For PowerShell use `install.ps1`.
 
 ## Option 3 — manual download, verified
 

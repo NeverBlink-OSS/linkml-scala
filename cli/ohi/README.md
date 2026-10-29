@@ -4,10 +4,17 @@ ohi lets command-line users find ontology publications, download files, track th
 
 ## Install
 
-On Linux or macOS, run this in Bash or Zsh:
+In Bash or Zsh, on Linux, macOS or Windows - Git Bash, MSYS2, Cygwin, WSL:
 
 ```sh
 . <(curl -sSfL https://ohi.dev/install.sh)
+ohi version
+```
+
+In PowerShell:
+
+```powershell
+irm https://ohi.dev/install.ps1 | iex
 ohi version
 ```
 
@@ -16,13 +23,12 @@ The installer downloads the latest GitHub release, verifies its checksum and ins
 version, or `LINKML_SCALA_INSTALL_DIR` to choose the directory. It adds that directory to the current
 shell's `PATH` and asks before changing your shell profile. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` to
 refuse releases that publish no checksum manifest, which is every release up to and including v0.12.0.
-Read the script before running it: [install.sh](../install.sh).
+Both scripts take the same variables and install to the same place; the PowerShell one updates the
+session's `PATH` and asks before changing your PowerShell profile. Read them before running them:
+[install.sh](../install.sh), [install.ps1](../install.ps1).
 
 Native releases support Linux and macOS 14 or later on x86_64 and arm64, plus Windows on x86_64.
 Download other release assets from [GitHub Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases).
-On Windows, download `ohi-windows-x86_64.exe` and `SHA256SUMS` from the same release. Compare
-`(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` in PowerShell with that asset's
-entry in `SHA256SUMS`, then rename it to `ohi.exe` and place it on your `PATH`.
 The `ohi.jar` asset runs with Java 17 or later using `java -jar ohi.jar`.
 ohi and LinkML use the same release version.
 See [download verification](https://linkml.ohi.dev/docs/verifying-downloads/) for checksums and build provenance.
