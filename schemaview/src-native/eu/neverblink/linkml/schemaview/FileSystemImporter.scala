@@ -12,7 +12,10 @@ import scala.util.control.NonFatal
   * importer used by SchemaView.
   */
 object FileSystemImporter extends StringImporter {
-  def read(path: String): String = new String(Files.readAllBytes(Paths.get(path)), UTF_8)
+  def read(path: String): String = {
+    val file = if (LinktimeInfo.isWindows) Importer.windowsFilePath(path) else path
+    new String(Files.readAllBytes(Paths.get(file)), UTF_8)
+  }
 
   /** Identify the file by its device and inode, so symbolic and hard links to one file share a key.
     * It calls `stat` directly, because the file keys of Scala Native's `java.nio` compare only hash
@@ -22,7 +25,8 @@ object FileSystemImporter extends StringImporter {
     */
   override def schemaKey(path: String): String =
     try {
-      if (LinktimeInfo.isWindows) Paths.get(path).toRealPath().toString
+      if (LinktimeInfo.isWindows)
+        Paths.get(Importer.windowsFilePath(path)).toRealPath().toString
       else
         // `stat` needs C memory that the GC does not manage: a C string for the path and a
         // `struct stat` for the result. `Zone` frees everything allocated in it (`alloc`,

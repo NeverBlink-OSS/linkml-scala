@@ -225,6 +225,13 @@ class ImporterSpec extends AnyWordSpec, Matchers, Inside {
     }
   }
 
+  "Importer.windowsFilePath" should {
+    "replace / with \\ in a path joined from a Windows directory and an import" in {
+      Importer.windowsFilePath("C:/shared/core.yaml") shouldBe "C:\\shared\\core.yaml"
+      Importer.windowsFilePath("C:\\a/sub/core.yaml") shouldBe "C:\\a\\sub\\core.yaml"
+    }
+  }
+
   "Importer.normalizePath" should {
     "collapse dot segments and repeated separators" in {
       Importer.normalizePath("dir/./sub/../a.yaml") shouldBe "dir/a.yaml"
