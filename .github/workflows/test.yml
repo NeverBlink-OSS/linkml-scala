@@ -98,6 +98,7 @@ jobs:
         run: bash cli/test-install.sh
 
       - name: Re-generate the model-derived sources and check they are committed
+        if: matrix.java == 25
         run: |
           ./mill --no-server regenerate
           # The folders of the LinkMlModelModule modules, the npm package's model types and Ohi
