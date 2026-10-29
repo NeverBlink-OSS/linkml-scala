@@ -160,7 +160,12 @@ final class PydanticGenerator(using sv: SchemaView)
     case AnyType | UnknownType =>
       ctx.imports.typing("Any")
       "Any"
-    case StringType | UriOrCurieType | UriType | CurieType | NcNameType | LocalizedTextType => "str"
+    case LocalizedTextType =>
+      // A plain string, or a non-empty dict from language tag to text
+      ctx.imports.typing("Annotated")
+      ctx.imports.pydantic("Field")
+      "str | Annotated[dict[str, str], Field(min_length=1)]"
+    case StringType | UriOrCurieType | UriType | CurieType | NcNameType => "str"
   }
 
   /** Python type of an attribute, without `| None` for optional slots. */

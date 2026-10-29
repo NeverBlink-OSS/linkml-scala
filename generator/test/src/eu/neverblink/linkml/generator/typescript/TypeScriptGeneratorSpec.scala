@@ -46,6 +46,8 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |      uc: {range: uriorcurie}
           |      many: {range: string, multivalued: true}
           |      whatever: {range: Anything}
+          |      title: {range: langstring}
+          |      keywords: {range: langstring, multivalued: true}
           |""".stripMargin,
       )
       ts should include("export interface C {\n")
@@ -60,6 +62,8 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("  uc?: string;\n")
       ts should include("  many?: string[];\n")
       ts should include("  whatever?: unknown;\n")
+      ts should include("  title?: string | Record<string, string>;\n")
+      ts should include("  keywords?: (string | Record<string, string>)[];\n")
       ts should not include "interface Anything"
       ts should not include "KeyOptional"
     }
