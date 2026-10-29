@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Regenerate the native-vs-Python `generate shacl` race GIF (docs/img/generate-race.gif).
+# Regenerate the native-vs-Python `generate shacl` race GIF (website/src/assets/generate-race.gif).
 #
 # Builds the GraalVM native image, sets up a Python 3.14 `linkml` venv, puts both
 # `linkml-scala` (native) and `linkml` (python) on PATH, then renders the tmux
@@ -8,7 +8,7 @@
 #
 # Requirements: vhs, ttyd, ffmpeg, tmux, uv, a JDK + ./mill (bundled), Python 3.14.
 #
-# Usage: docs/screenshots/generate-comparison.sh
+# Usage: website/screenshots/generate-comparison.sh
 
 set -euo pipefail
 
@@ -45,13 +45,13 @@ export LC_ALL=C
 # Prime both CLIs once so the recorded run is warm and stable (the first Python
 # invocation compiles bytecode and is markedly slower, which would overrun the tape).
 echo "==> Warming up..."
-( cd docs/examples \
+( cd website/examples \
     && linkml-scala generate shacl core.yaml >/dev/null 2>&1 \
     && linkml generate shacl core.yaml >/dev/null 2>&1 ) || true
 
-mkdir -p docs/img
+mkdir -p website/src/assets
 tmux kill-server 2>/dev/null || true
 echo "==> Rendering the race GIF..."
-vhs docs/screenshots/generate-race.tape
+vhs website/screenshots/generate-race.tape
 
-echo "==> Done: docs/img/generate-race.gif"
+echo "==> Done: website/src/assets/generate-race.gif"

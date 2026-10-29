@@ -26,7 +26,7 @@ Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkm
 `frictionless()`, `graphql()`, `typescript()`, `pydantic()`, `er_diagram()`, `docs()`, `translation()`,
 `ossie()`, `owl()`, and `scala()`, plus `lint()` for validation. For how to use the classes
 `pydantic()` generates, see
-[the Pydantic guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/pydantic.md).
+[the Pydantic guide](https://linkml.ohi.dev/docs/pydantic/).
 
 Going the other way, `linkml_scala.from_ossie()` reads an Apache Ossie (incubating) ontology, and `linkml_scala.from_owl()` an OWL ontology in Turtle or N-Triples, and each returns the corresponding LinkML schema as YAML or JSON.
 
@@ -51,7 +51,7 @@ schema = linkml_scala.load_file(
 schema = linkml_scala.load_file("model.yaml", import_map="imports.json")
 ```
 
-See [Import maps](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/import_maps.md).
+See [Import maps](https://linkml.ohi.dev/docs/import-maps/).
 
 ## Supported platforms
 
@@ -61,7 +61,7 @@ To build the package from source (sdist) you must have Java 17+ and Clang instal
 
 ## Documentation
 
-- [Python bindings guide](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/python_bindings.md)
+- [Python bindings guide](https://linkml.ohi.dev/docs/python-bindings/)
   – all the options, and how the C ABI underneath works
 - [LinkML-Scala README](https://github.com/NeverBlink-OSS/linkml-scala) – the CLI, the JVM library
   and the JavaScript library

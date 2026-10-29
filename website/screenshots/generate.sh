@@ -13,11 +13,11 @@
 #   - ffmpeg
 #   - a JDK and ./mill (bundled); the native image build pulls GraalVM
 #
-# Usage: docs/screenshots/generate.sh
+# Usage: website/screenshots/generate.sh
 
 set -euo pipefail
 
-# Repo root (this script lives in docs/screenshots/).
+# Repo root (this script lives in website/screenshots/).
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
@@ -39,12 +39,12 @@ trap 'rm -rf "$BIN_DIR"' EXIT
 ln -sf "$NATIVE" "$BIN_DIR/linkml-scala"
 export PATH="$BIN_DIR:$PATH"
 
-mkdir -p docs/img
-for tape in docs/screenshots/*.tape; do
+mkdir -p website/src/assets
+for tape in website/screenshots/*.tape; do
   # The comparison race tape has its own generator (needs Python + tmux).
   [ "$(basename "$tape")" = "generate-race.tape" ] && continue
   echo "==> Rendering $tape"
   vhs "$tape"
 done
 
-echo "==> Done. Output written to docs/img/."
+echo "==> Done. Output written to website/src/assets/."

@@ -36,7 +36,7 @@ class CrossShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
       "mixinFacets",
       "tooLarge",
     ) -> "LinkML-py ignores `minimum_value` and `maximum_value` of a type",
-    // See "Boolean expressions in SHACL" in docs/implementation_differences.md
+    // See https://linkml.ohi.dev/docs/implementation-differences/#boolean-expressions-in-shacl
     ("allOf", "matchesFirstOnly") -> "LinkML-py ignores `all_of`",
     ("exactlyOneOf", "matchesBoth") -> "LinkML-py ignores `exactly_one_of`",
     ("exactlyOneOf", "matchesNone") -> "LinkML-py ignores `exactly_one_of`",

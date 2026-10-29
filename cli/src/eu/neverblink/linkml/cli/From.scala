@@ -108,7 +108,7 @@ final case class FromOwlOptions(
     common: FromOptions,
     @HelpMessage(
       "Path to a YAML file that changes how the ontology is mapped: names, prefixes, which " +
-        "annotation properties fill which metaslots, and more. See docs/owl.md.",
+        "annotation properties fill which metaslots, and more. See https://linkml.ohi.dev/docs/owl/.",
     )
     config: Option[String] = None,
     @HelpMessage("The `id` of the schema to produce. The default is the ontology IRI.")

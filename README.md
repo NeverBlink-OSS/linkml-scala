@@ -33,9 +33,9 @@ LinkML-Scala compiles to pure JavaScript (zero dependencies, no Wasm), so you ca
 
 For Java, Scala, Kotlin and other JVM languages, LinkML-Scala is available on **[Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)**.
 
-[![Web playground screenshot](./docs/img/playground.png)](https://linkml.ohi.dev/playground)
+[![Web playground screenshot](./website/src/assets/playground.png)](https://linkml.ohi.dev/playground)
 
-We also have [Python and native bindings](docs/python_bindings.md), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
+We also have [Python and native bindings](https://linkml.ohi.dev/docs/python-bindings/), so you can use LinkML-Scala from Python (`pip install neverblink-linkml`), C, C++, or Rust.
 
 ### ⚡ Natively compiled binaries for Linux, macOS, and Windows
 
@@ -47,21 +47,21 @@ It starts up immediately and runs fast, even on extra-large LinkML models. **[Se
 
 LinkML-Scala will tell you exactly what is wrong with your model, and where:
 
-![linkml-scala validate CLI command](./docs/img/validate.gif)
+![linkml-scala validate CLI command](./website/src/assets/validate.gif)
 
 The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
 
 We engineered LinkML-Scala to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
 
-In some cases, LinkML-Scala diverges from the Python implementation. You can find the list of implementation differences [here](docs/implementation_differences.md).
+In some cases, LinkML-Scala diverges from the Python implementation. You can find the list of implementation differences [here](https://linkml.ohi.dev/docs/implementation-differences/).
 
 ### 🚀 It's really fast!
 
-LinkML-Scala was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](docs/benchmarks.md) than the Python implementation**:
+LinkML-Scala was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](https://linkml.ohi.dev/docs/benchmarks/) than the Python implementation**:
 
-![LinkML-Scala vs LinkML-Python: generating a SHACL file](./docs/img/generate-race.gif)
+![LinkML-Scala vs LinkML-Python: generating a SHACL file](./website/src/assets/generate-race.gif)
 
-[**📊 See the benchmarks.**](docs/benchmarks.md)
+[**📊 See the benchmarks.**](https://linkml.ohi.dev/docs/benchmarks/)
 
 ## CLI tool installation
 
@@ -108,7 +108,7 @@ ren linkml-scala-windows-x86_64.exe linkml-scala.exe
 linkml-scala.exe
 ```
 
-Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm a download came from our release workflow. **[See how to verify it.](docs/verifying_downloads.md)**
+Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm a download came from our release workflow. **[See how to verify it.](https://linkml.ohi.dev/docs/verifying-downloads/)**
 
 ### CLI – getting started
 
@@ -165,7 +165,7 @@ schema that is imported by URI or CURIE. Write an import map as a JSON file:
 ```
 
 The option works with `generate` too. The Python, JavaScript and C libraries take the same map as
-`import_map` / `importMap`. See [Import maps](docs/import_maps.md).
+`import_map` / `importMap`. See [Import maps](https://linkml.ohi.dev/docs/import-maps/).
 
 ## JavaScript / TypeScript library
 
@@ -206,7 +206,7 @@ with linkml_scala.load_file("model.yaml") as schema:
     print(schema.shacl())
 ```
 
-See [docs/python_bindings.md](docs/python_bindings.md) for the whole API, and for the ABI for C, C++ and Rust.
+See [the Python bindings guide](https://linkml.ohi.dev/docs/python-bindings/) for the whole API, and for the ABI for C, C++ and Rust.
 
 ## Scala library
 

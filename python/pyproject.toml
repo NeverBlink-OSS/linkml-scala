@@ -33,7 +33,7 @@ classifiers = [
 
 [project.urls]
 Homepage = "https://github.com/NeverBlink-OSS/linkml-scala"
-Documentation = "https://github.com/NeverBlink-OSS/linkml-scala/blob/main/docs/python_bindings.md"
+Documentation = "https://linkml.ohi.dev/docs/python-bindings/"
 Source = "https://github.com/NeverBlink-OSS/linkml-scala"
 Issues = "https://github.com/NeverBlink-OSS/linkml-scala/issues"
 Changelog = "https://github.com/NeverBlink-OSS/linkml-scala/releases"

@@ -16,7 +16,7 @@ import scala.collection.mutable
   *
   * Follows Python's `gen-owl` with its defaults, except where that would disagree with the other
   * RDF generators here, or lose information when [[OwlImporter]] reads the result back. See
-  * docs/owl.md for details.
+  * https://linkml.ohi.dev/docs/owl/ for details.
   */
 class OwlGenerator(using sv: SchemaView) extends RdfGeneratorBase[OwlGenerator.Options] {
   import OwlGenerator.*

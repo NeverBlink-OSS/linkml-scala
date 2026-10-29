@@ -145,7 +145,7 @@ jobs:
               "nativelib-builds/linkml-nativelib-$platform" .
           done
 
-      # See: docs/verifying_downloads.md
+      # See: https://linkml.ohi.dev/docs/verifying-downloads/
       - name: Generate Checksums
         run: sha256sum linkml-scala* ohi-* ohi.jar | tee SHA256SUMS
 

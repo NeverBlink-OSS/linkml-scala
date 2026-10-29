@@ -1,9 +1,8 @@
 // @ts-check
-import path from 'node:path';
+import fs from 'node:fs';
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
-import { docsDir, docSlugs, syncDocs } from './sync-docs.mjs';
 
 const repoUrl = 'https://github.com/NeverBlink-OSS/linkml-scala';
 
@@ -16,30 +15,28 @@ const sidebar = [
   { label: 'Playground', link: 'https://linkml.ohi.dev/playground/', attrs: { target: '_blank' } },
 ];
 
-// Every page in docs/ has to be in the sidebar, or it could only be found through search
+// Every page has to be in the sidebar, or it could only be found through search
+const pagesDir = new URL('./src/content/docs/', import.meta.url);
+const pages = fs
+  .readdirSync(pagesDir)
+  .filter((file) => /\.mdx?$/.test(file))
+  .map((file) => file.replace(/\.mdx?$/, ''));
 const inSidebar = new Set(['index', ...sidebar.flatMap((group) => group.items ?? [])]);
-const missing = docSlugs().filter((slug) => !inSidebar.has(slug));
+const missing = pages.filter((page) => !inSidebar.has(page));
 if (missing.length > 0) {
   throw new Error(`Add these pages to the sidebar in website/astro.config.mjs: ${missing.join(', ')}`);
 }
 
-/** Copies docs/ into the content folder before a build, and again on every change in dev. */
-const docsSync = {
-  name: 'docs-sync',
+/** Copies the playground's favicon and fonts into public/, so the docs look the same (see
+ * src/styles/theme.css). */
+const playgroundAssets = {
+  name: 'playground-assets',
   hooks: {
-    'astro:config:setup': () => syncDocs(),
-    /** @param {{ server: import('vite').ViteDevServer }} options */
-    'astro:server:setup': ({ server }) => {
-      server.watcher.add(docsDir);
-      server.watcher.on('all', (_event, file) => {
-        if (file.startsWith(docsDir + path.sep)) {
-          try {
-            syncDocs();
-          } catch (error) {
-            console.error(error);
-          }
-        }
-      });
+    'astro:config:setup': () => {
+      const ui = new URL('../ui/', import.meta.url);
+      const pub = new URL('./public/', import.meta.url);
+      fs.cpSync(new URL('favicon.svg', ui), new URL('favicon.svg', pub));
+      fs.cpSync(new URL('fonts/', ui), new URL('fonts/', pub), { recursive: true });
     },
   },
 };
@@ -49,7 +46,7 @@ export default defineConfig({
   base: '/docs',
   trailingSlash: 'always',
   integrations: [
-    docsSync,
+    playgroundAssets,
     starlight({
       title: 'ohi LinkML',
       description: 'Documentation for ohi LinkML, a LinkML implementation for the JVM, browsers, Python and native code.',
@@ -64,8 +61,7 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: repoUrl },
         { icon: 'discord', label: 'Discord', href: 'https://discord.gg/HGksVAJ6ss' },
       ],
-      // Each page sets its own editUrl to its file in docs/
-      editLink: { baseUrl: `${repoUrl}/edit/main/docs/` },
+      editLink: { baseUrl: `${repoUrl}/edit/main/website/` },
       sidebar,
       plugins: [starlightLinksValidator()],
     }),
