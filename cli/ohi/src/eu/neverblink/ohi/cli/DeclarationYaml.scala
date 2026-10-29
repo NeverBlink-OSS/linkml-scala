@@ -58,7 +58,7 @@ private[cli] object DeclarationYaml {
     )
   }
 
-  /** Serializes `declaration` as YAML.
+  /** Serializes `declaration` as YAML with its purpose and documentation comments.
     *
     * @return
     *   the YAML text
@@ -70,8 +70,9 @@ private[cli] object DeclarationYaml {
     val node = codec.encode(declaration)
     validate(mapper.readTree(JsonUtil.yamlToJson(node)))
     // scala-yaml 0.3.21 renders an empty sequence as null. Keep the required empty list explicit.
-    if declaration.selections.isEmpty then "format_version: 1\nselections: []\n"
+    val body = if declaration.selections.isEmpty then "format_version: 1\nselections: []\n"
     else node.asYaml
+    "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n" + body
   }
 
   private def validate(data: JsonNode): Unit = {

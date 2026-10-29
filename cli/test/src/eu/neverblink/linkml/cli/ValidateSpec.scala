@@ -78,11 +78,11 @@ class ValidateSpec extends AnyWordSpec, Matchers {
 
   "the validate command" when {
     "the schema has problems" should {
-      "render a colored terminal report with severities and a summary by default" in {
+      "retain terminal report words and icons without ANSI in captured output" in {
         withSchema(schemaWithIssues) { path =>
           val (out, _) = Validate.runTestCommand(List("validate", path))
 
-          out should include(Esc.toString) // colored
+          out should not include Esc.toString
           out should include("ERROR")
           out should include("WARNING")
           out should include("✖")
@@ -257,12 +257,12 @@ class ValidateSpec extends AnyWordSpec, Matchers {
         }
       }
 
-      "report success with a green check in the terminal format" in {
+      "retain the success check without ANSI in a captured terminal report" in {
         withSchema(validSchema) { path =>
           val (out, _) = Validate.runTestCommand(List("validate", path))
           out should include("✔")
           out should include("Schema is valid.")
-          out should include(Esc.toString)
+          out should not include Esc.toString
         }
       }
 

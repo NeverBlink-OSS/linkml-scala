@@ -1,7 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.{LinkmlDateTime, Uri}
-import eu.neverblink.ohi.model.generated.{Format, Publication}
+import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
 import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import org.scalatest.matchers.should.Matchers
@@ -37,6 +37,14 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
 
   private def noInspect(url: String): Publication = fail(s"Unexpected inspection: $url")
 
+  private def resolve(
+      input: String,
+      format: Option[String],
+      search: SearchRequest => SearchResult,
+      inspect: String => Publication,
+  ): Either[String, (Publication, Artifact)] =
+    OntologyReference.resolve(input, format, search, inspect).left.map(_.message)
+
   "ontology reference classification" should {
     "recognize HTTP(S) prefixes without treating a colon-bearing namespace as a URL" in {
       OntologyReference.isUrl("HTTP://example.org/file") shouldBe true
@@ -48,12 +56,12 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
 
   "ontology reference resolution" should {
     "require a format before searching" in {
-      OntologyReference.resolve("w3c/prov-o", None, noSearch, noInspect) shouldBe
+      resolve("w3c/prov-o", None, noSearch, noInspect) shouldBe
         Left("--format is required for ontology reference 'w3c/prov-o'.")
     }
 
     "reject an unknown format before searching" in {
-      OntologyReference.resolve("w3c/prov-o", Some("owl-jsonld"), noSearch, noInspect) shouldBe
+      resolve("w3c/prov-o", Some("owl-jsonld"), noSearch, noInspect) shouldBe
         Left("Invalid format 'owl-jsonld'.")
     }
 
@@ -71,7 +79,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       )
     do
       s"reject $defect before searching" in {
-        OntologyReference.resolve(input, Some("owl-turtle"), noSearch, noInspect) shouldBe
+        resolve(input, Some("owl-turtle"), noSearch, noInspect) shouldBe
           Left(
             s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
           )
@@ -85,7 +93,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       behavior in {
         val searches = ArrayBuffer.empty[SearchRequest]
         val inspections = ArrayBuffer.empty[String]
-        val result = OntologyReference.resolve(
+        val result = resolve(
           "w3c/prov-o",
           Some("owl-turtle"),
           request => {
@@ -121,7 +129,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     "quote opaque components and select the exact namespace, name and explicit version" in {
       val exact = hit.copy(namespace = "https:team", name = "Model+%2F", version = "v:1")
       val searches = ArrayBuffer.empty[SearchRequest]
-      val result = OntologyReference.resolve(
+      val result = resolve(
         "https:team/Model+%2F@v:1",
         Some("owl-turtle"),
         request => {
@@ -157,7 +165,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
 
     "continue past a full page of near-matches to the next exact match" in {
       val pages = ArrayBuffer.empty[Option[Int]]
-      val result = OntologyReference.resolve(
+      val result = resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         request => {
@@ -180,17 +188,19 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     }
 
     "report no release when search has no hits" in {
-      OntologyReference.resolve(
+      resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         _ => page(Seq.empty, 0),
         noInspect,
-      ) shouldBe Left("No matching release for ontology reference 'w3c/prov-o'.")
+      ) shouldBe Left(
+        "No matching release for ontology reference 'w3c/prov-o'. Check its namespace, name and version with 'ohi search'.",
+      )
     }
 
     "report exhaustion for a complete final page of near-matches" in {
       val pages = ArrayBuffer.empty[Option[Int]]
-      OntologyReference.resolve(
+      resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         request => {
@@ -202,35 +212,43 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
           }
         },
         noInspect,
-      ) shouldBe Left("No matching release for ontology reference 'w3c/prov-o'.")
+      ) shouldBe Left(
+        "No matching release for ontology reference 'w3c/prov-o'. Check its namespace, name and version with 'ohi search'.",
+      )
       pages.toSeq shouldBe Seq(Some(1), Some(2))
     }
 
     "reject cutoff before inspecting an exact hit" in {
-      OntologyReference.resolve(
+      resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         _ => page(Seq(hit), 1).copy(searchCutoff = true),
         noInspect,
-      ) shouldBe Left("Search stopped early for ontology reference 'w3c/prov-o'.")
+      ) shouldBe Left(
+        "Search stopped early for ontology reference 'w3c/prov-o'. Try the same command again.",
+      )
     }
 
     "reject an empty unfinished page before inspecting" in {
-      OntologyReference.resolve(
+      resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         _ => page(Seq.empty, 251),
         noInspect,
-      ) shouldBe Left("Incomplete search for ontology reference 'w3c/prov-o' on page 1.")
+      ) shouldBe Left(
+        "Incomplete search for ontology reference 'w3c/prov-o' on page 1. Try the same command again.",
+      )
     }
 
     "reject a nonempty short page before inspecting" in {
-      OntologyReference.resolve(
+      resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         _ => page(nearMatches.take(1), 251),
         noInspect,
-      ) shouldBe Left("Incomplete search for ontology reference 'w3c/prov-o' on page 1.")
+      ) shouldBe Left(
+        "Incomplete search for ontology reference 'w3c/prov-o' on page 1. Try the same command again.",
+      )
     }
 
     for (changed, field) <- Seq(
@@ -243,7 +261,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       )
     do
       s"reject an inspected $field that differs from the selected hit" in {
-        OntologyReference.resolve(
+        resolve(
           "w3c/prov-o",
           Some("owl-turtle"),
           _ => page(Seq(hit), 1),
@@ -252,14 +270,14 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
             changed
           },
         ) shouldBe Left(
-          "Inspected publication does not match ontology reference 'w3c/prov-o': " +
-            "https://Catalog.example/releases/exact?key=%2F",
+          "Release metadata does not match ontology reference 'w3c/prov-o': " +
+            changed.baseUrl.original + ". Report the inconsistent metadata to the catalog operator.",
         )
       }
 
     "refuse an absent format on the newest release without trying an older release" in {
       val inspections = ArrayBuffer.empty[String]
-      val result = OntologyReference.resolve(
+      val result = resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         _ =>
@@ -283,7 +301,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     }
 
     "refuse multiple artifacts of the requested format instead of choosing the first" in {
-      OntologyReference.resolve(
+      resolve(
         "w3c/prov-o",
         Some("owl-turtle"),
         _ => page(Seq(hit), 1),
@@ -295,8 +313,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
             ),
           ),
       ) shouldBe Left(
-        "Format 'owl-turtle' is ambiguous for ontology reference 'w3c/prov-o': " +
-          "https://Catalog.example/releases/exact?key=%2F",
+        "w3c/prov-o has more than one file in owl-turtle format.",
       )
     }
   }

@@ -43,7 +43,12 @@ object Validate extends BaseCommand[ValidateOptions] {
     val schemaImporter = importer(options.importMap)
     // Every file is checked even if an earlier one failed.
     val reports = inputNames.map(name => name -> collectIssues(name, schemaImporter))
-    printLine(ValidationReport.renderAll(reports, format))
+    val report = ValidationReport.renderAll(reports, format)
+    printLine(
+      if format == Format.Terminal && !TerminalOutput.colored(outStream) then
+        TerminalOutput.withoutAnsi(report)
+      else report,
+    )
 
     // Errors and fatal problems always fail the command. Warnings only fail in --strict mode.
     val failed = reports.exists((_, issues) =>

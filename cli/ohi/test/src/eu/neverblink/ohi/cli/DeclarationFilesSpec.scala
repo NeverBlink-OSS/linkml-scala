@@ -84,7 +84,7 @@ class DeclarationFilesSpec extends AnyWordSpec, Matchers {
         failure.getMessage should include(path.toString)
         failure.getMessage should include("Inspect or remove")
         failure.getMessage should include("before retrying")
-        Files.readAllBytes(path).toSeq shouldBe Seq[Byte](102)
+        Files.readAllBytes(path).toSeq shouldBe Seq[Byte](35)
         entries(root) shouldBe Seq("ohi.yaml")
       }
     }
@@ -104,7 +104,9 @@ class DeclarationFilesSpec extends AnyWordSpec, Matchers {
             (stage, target) => {
               stage.getParent shouldBe root
               target shouldBe path
-              Files.readString(stage) shouldBe yaml
+              Files.readString(
+                stage,
+              ) shouldBe "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n" + yaml
               Files.readAllBytes(path).toSeq shouldBe Seq[Byte](71, 72, 0, -1)
               throw primary
             },

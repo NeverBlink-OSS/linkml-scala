@@ -20,8 +20,8 @@ import java.util.Locale
 import scala.util.Try
 import scala.util.control.NonFatal
 
-/** The Ohi project in `directory`. Each public method except `failure` runs one project command.
-  * Use a new instance per command, because `failure` reports the files this instance wrote.
+/** The ohi project in `directory` with command effects and recovery information. Use a new instance
+  * per command, because `failure` reports the files this instance wrote.
   */
 private[cli] final class Project(
     val directory: Path,
@@ -101,17 +101,13 @@ private[cli] final class Project(
     *   interrupted work
     */
   def failure(cause: Throwable): ProjectError = {
-    def quoted(value: String): String = "'" + value.replace("'", "'\\''") + "'"
+    def quoted(value: String): String = CliFormatting.quote(value, always = true)
     val get = download.map { (url, destination) =>
       s"ohi get ${quoted(url)} --to ${quoted(destination)}"
     }
-    val lockWriteFailed = cause match {
-      case failure: LockException => failure.error.operation == LockOperation.Write
-      case _ => false
-    }
     val recovery =
       if lockChanged then s"Correct the reported cause, then run ${get.get}."
-      else if declarationChanged || lockWriteFailed || operation == ProjectOperation.Lock then
+      else if needsLock(cause) then
         s"Lock refresh did not complete. Correct the reported cause, then run ohi lock --project ${quoted(directory.toString)}" +
           get.fold(".")(command => s", then $command.")
       else s"Correct the reported cause and rerun ohi ${operation.toString.toLowerCase}."
@@ -124,6 +120,27 @@ private[cli] final class Project(
       recovery,
     )
   }
+
+  /** Commands that complete interrupted writes, retaining the resolved download URL and
+    * destination.
+    */
+  def recoveryCommands(cause: Throwable): Seq[String] = {
+    val get = download.map { (url, destination) =>
+      s"ohi get ${CliFormatting.quote(url)} --to ${CliFormatting.quote(destination)}"
+    }.toSeq
+    if lockChanged then get
+    else if needsLock(cause) then
+      Seq(s"ohi lock --project ${CliFormatting.quote(directory.toString)}") ++ get
+    else if operation == ProjectOperation.Init then
+      Seq(s"ohi init ${CliFormatting.quote(directory.toString)}")
+    else Nil
+  }
+
+  private def needsLock(cause: Throwable): Boolean =
+    declarationChanged || operation == ProjectOperation.Lock || (cause match {
+      case failure: LockException => failure.error.operation == LockOperation.Write
+      case _ => false
+    })
 
   private def read(allowMissing: Boolean): Declaration = {
     requireDirectory()
@@ -171,11 +188,13 @@ private[cli] final class Project(
   private def exists(path: Path): Boolean = Files.exists(path, NOFOLLOW_LINKS)
 
   private def requireDirectory(): Unit =
-    if !Files.isDirectory(directory) then
+    if !Files.isDirectory(directory) then {
+      val label = if operation == ProjectOperation.Init then "Project directory" else "--project"
       throw new ProjectException(
         ProjectErrorCode.InvalidProject,
-        s"Project '$directory' is not an existing directory. Run ohi init with the intended directory first.",
+        s"$label '$directory' is not an existing directory. Run: ohi init ${CliFormatting.quote(directory.toString)}",
       )
+    }
 
   private def refuseSymlink(path: Path): Unit =
     if Files.isSymbolicLink(path) then

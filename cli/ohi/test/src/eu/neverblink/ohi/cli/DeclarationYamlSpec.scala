@@ -49,6 +49,12 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
   }
 
   "DeclarationYaml.encode" should {
+    "include the purpose and documentation comments in an empty declaration" in {
+      DeclarationYaml.encode(Declaration(1, Seq.empty)) shouldBe
+        "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n" +
+        "format_version: 1\nselections: []\n"
+    }
+
     "preserve exact URLs and supplied order in deterministic YAML" in {
       val declaration = Declaration(
         1,
@@ -58,6 +64,9 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
         ),
       )
       val encoded = DeclarationYaml.encode(declaration)
+      encoded should startWith(
+        "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n",
+      )
       val mapper = JsonMapper.builder().build()
       val data = mapper.readTree(JsonUtil.yamlToJson(parseYaml(encoded).toOption.get))
       data shouldBe mapper.readTree("""{"format_version":1,"selections":[

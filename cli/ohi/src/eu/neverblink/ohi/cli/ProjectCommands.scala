@@ -2,7 +2,6 @@ package eu.neverblink.ohi.cli
 
 import caseapp.*
 import caseapp.core.Error
-import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException}
 import eu.neverblink.ohi.cli.generated.projecterror.ProjectOperation
 import eu.neverblink.ohi.cli.generated.projectresult.ProjectResult
@@ -17,34 +16,49 @@ trait ProjectOptions {
 /** Base class of the `init`, `add` and `lock` commands. Prints the command's result, or its error
   * with recovery steps, as text or JSON.
   */
-abstract class ProjectCommand[T <: ProjectOptions: {Parser, Help}] extends BaseCommand[T] {
+abstract class ProjectCommand[T <: ProjectOptions: {Parser, Help}] extends OhiCommand[T] {
   protected def operation: ProjectOperation
   protected def inputCount: Range.Inclusive
   protected def directory(options: T, inputs: Seq[String]): String
   protected def execute(options: T, inputs: Seq[String], project: Project): ProjectResult
-  private def commandName: String = operation.toString.toLowerCase
+  override protected def commandName: String = operation.toString.toLowerCase
 
   override final def names: List[List[String]] = List(List(commandName))
 
-  override final def error(message: Error): Nothing =
-    err(s"${message.message}\nRun 'ohi $commandName --help' for usage.")
-
   override final def run(options: T, remainingArgs: RemainingArgs): Unit = {
     val inputs = remainingArgs.all
+    if inputs.isEmpty && inputCount.start > 0 then shortHelp()
     if !inputCount.contains(inputs.size) then
-      err(s"Invalid number of arguments for $commandName. Run 'ohi $commandName --help' for usage.")
+      if operation == ProjectOperation.Lock then
+        correction(
+          "Select the project directory with --project.",
+          if inputs.size == 1 then
+            "  " + example(invocation(Seq("--project" -> Some(inputs.head)), Some(Seq.empty)))
+          else "",
+        )
+      else
+        correction(if operation == ProjectOperation.Init then "Init accepts at most one directory."
+        else "Add accepts one ontology reference or release URL.")
     val path = try Path.of(directory(options, inputs)).toAbsolutePath.normalize()
     catch {
       case cause: InvalidPathException =>
-        err(
-          s"Invalid project directory: ${cause.getMessage}. Run 'ohi $commandName --help' for usage.",
+        correction(
+          s"Invalid project directory: ${cause.getMessage}.",
         )
     }
     val project = new Project(path, operation)
-    try printLine(ProjectOutput.result(execute(options, inputs, project), options.json))
+    try printLine(ProjectOutput.result(execute(options, inputs, project), options.json, colored))
     catch {
       case cause: (ProjectException | CatalogException | LockException | CliFileException) =>
-        err(ProjectOutput.error(project.failure(cause), options.json))
+        err(
+          ProjectOutput.error(
+            project.failure(cause),
+            options.json,
+            errorColored,
+            Some(cause.getMessage),
+            project.recoveryCommands(cause),
+          ),
+        )
     }
   }
 }
@@ -52,7 +66,7 @@ abstract class ProjectCommand[T <: ProjectOptions: {Parser, Help}] extends BaseC
 @HelpMessage("Create ohi.yaml in a project directory")
 @ArgsName("[directory]")
 final case class InitOptions(
-    @HelpMessage("Emit one JSON result or error instead of human-readable output.")
+    @HelpMessage("Write JSON output")
     json: Boolean = false,
 ) extends ProjectOptions
 
@@ -70,19 +84,25 @@ object Init extends ProjectCommand[InitOptions] {
 
 @HelpMessage(
   "Add an ontology file to the project\n" +
-    "Adds it to ohi.yaml, updates ohi.lock.json and downloads the artifact.",
+    "Adds it to ohi.yaml, updates ohi.lock.json and downloads the file.",
 )
-@ArgsName("<ontology-or-base-url>")
+@ArgsName("<ontology-or-release-url>")
 final case class AddOptions(
-    @HelpMessage("Artifact URL to add. Required with a publication URL.")
+    @HelpMessage("Required with a release URL\nCannot be combined with an ontology reference")
+    @ValueDescription("<file-url>")
     artifact: Option[String] = None,
-    @HelpMessage("Format to download. Required for an ontology reference.")
+    @HelpMessage("Required for ontology references\nCannot be combined with a release URL")
+    @ValueDescription("<format>")
     format: Option[String] = None,
-    @HelpMessage("Destination directory. Default: current directory.")
+    @HelpMessage(
+      "Download directory. Default: current directory.\nExisting files are never overwritten.",
+    )
+    @ValueDescription("<directory>")
     to: String = ".",
-    @HelpMessage("Project directory containing ohi.yaml. Default: current directory.")
+    @HelpMessage("Existing project directory. Default: current directory.")
+    @ValueDescription("<directory>")
     project: String = ".",
-    @HelpMessage("Emit one JSON result or error instead of human-readable output.")
+    @HelpMessage("Write JSON output")
     json: Boolean = false,
 ) extends ProjectOptions
 
@@ -103,17 +123,31 @@ private[cli] class AddCommand extends ProjectCommand[AddOptions] {
     val input = inputs.head
     if OntologyReference.isUrl(input) then {
       if options.format.nonEmpty then
-        error(Error.Other("--format cannot be used with a publication URL."))
+        correction(
+          "--format cannot be used with a release URL.",
+          if options.artifact.nonEmpty then
+            "The file is selected by --artifact:\n  " + example(invocation(Seq("--format" -> None)))
+          else
+            "Choose a file with --artifact. Inspect the release:\n  " + example(
+              "ohi inspect " + CliFormatting.quote(input),
+            ),
+        )
       val artifact = options.artifact.getOrElse(
-        error(Error.Other("Required option --artifact not specified")),
+        correction(
+          "Choose a file with --artifact.",
+          "Inspect the release to choose a file:\n  " + example(
+            "ohi inspect " + CliFormatting.quote(input),
+          ) +
+            "\n\nThen add its exact file URL:\n  " +
+            example(invocation(Seq("--artifact" -> Some("<file-url>")))),
+          invalid = false,
+        ),
       )
       project.add(input, artifact, options.to, catalog.inspect, catalog.get)
     } else {
       if options.artifact.nonEmpty then
         error(Error.Other("--artifact cannot be used with an ontology reference."))
-      val (publication, artifact) =
-        OntologyReference.resolve(input, options.format, catalog.search, catalog.inspect)
-          .fold(message => error(Error.Other(message)), identity)
+      val (publication, artifact) = reference(input, options.format, catalog)
       project.add(
         publication.baseUrl.original,
         artifact.url.original,
@@ -127,11 +161,12 @@ private[cli] class AddCommand extends ProjectCommand[AddOptions] {
 
 object Add extends AddCommand
 
-@HelpMessage("Rebuild ohi.lock.json from ohi.yaml\nDownloads nothing.")
+@HelpMessage("Rebuild ohi.lock.json from ohi.yaml without downloading")
 final case class LockOptions(
-    @HelpMessage("Project directory containing ohi.yaml. Default: current directory.")
+    @HelpMessage("Directory containing ohi.yaml\nDefault: current directory")
+    @ValueDescription("<directory>")
     project: String = ".",
-    @HelpMessage("Emit one JSON result or error instead of human-readable output.")
+    @HelpMessage("Write JSON output")
     json: Boolean = false,
 ) extends ProjectOptions
 

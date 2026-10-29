@@ -471,12 +471,14 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
     }
 
     "report completed initialization effects in human output without requiring JSON" in {
-      withDirectory { project =>
+      withDirectory { root =>
+        val project = root / "two  spaces"
         val out = successful(run(Init, "init", project.toString))
-        out should include(s"INIT completed in $project")
-        out should include("Declaration written: true. Lock written: false.")
+        out shouldBe s"Created $project/ohi.yaml\n\nNext: ohi add --help\nDocs: https://ohi.dev/docs/\n"
         declaration(project / "ohi.yaml") shouldBe json("""{"format_version":1,"selections":[]}""")
         os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
+        successful(run(Init, "init", project.toString)) shouldBe
+          s"$project/ohi.yaml already exists. No changes made.\n"
       }
     }
   }
@@ -671,7 +673,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       code shouldBe 0
       err shouldBe empty
       val out = raw.replaceAll("\u001b\\[[0-9;]*m", "")
-      out should include("Usage: ohi add")
+      out should include("Usage\n  ohi add")
       Seq("--artifact", "--format", "--to", "--project", "--json").foreach(out should include(_))
       out should not include "--timeout-ms"
     }
@@ -683,7 +685,11 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
     }
 
     for (description, arguments, expected) <- Seq(
-        ("require --format for an ontology reference", Seq("test/example"), "--format is required"),
+        (
+          "require --format for an ontology reference",
+          Seq("test/example"),
+          "Choose a file format with --format.",
+        ),
         (
           "reject --artifact with an ontology reference",
           Seq("test/example", "--artifact", "https://example.org/file"),
@@ -709,18 +715,18 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         "--to",
         ".",
         "--json",
-      ) should include("Invalid number of arguments")
+      ) should include("ohi add <namespace>/<name>")
     }
 
     "reject init with two directories and point to its help" in {
       usageError(Init, "init", "first", "second", "--json") should include(
-        "Invalid number of arguments",
+        "Init accepts at most one directory.",
       )
     }
 
     "reject lock with an argument and point to its help" in {
       usageError(Lock, "lock", "unexpected", "--json") should include(
-        "Invalid number of arguments",
+        "Select the project directory with --project.",
       )
     }
   }
