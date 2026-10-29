@@ -33,7 +33,8 @@ class AppSpec extends AnyWordSpec, Matchers {
     ("linkml from owl", FromOwl, "Convert an OWL ontology or RDFS vocabulary"),
   )
   private val generateAliases = engineCommands.collect {
-    case (name, _, _) if name.startsWith("linkml to ") => name.replace("linkml to ", "linkml generate ")
+    case (name, _, _) if name.startsWith("linkml to ") =>
+      name.replace("linkml to ", "linkml generate ")
   }
   private val versionNames =
     Seq("version", "v", "--version", "linkml version", "linkml v", "linkml --version")
