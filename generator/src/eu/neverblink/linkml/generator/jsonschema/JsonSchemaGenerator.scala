@@ -298,7 +298,9 @@ object JsonSchemaGenerator {
   ) extends HasMetadataLanguage
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
-    * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members.
+    * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members. A
+    * `LocalizedText` type, such as `langstring`, accepts a plain string or an object from language
+    * tag to text.
     */
   def typeToRuntime(tv: TypeView): Schema =
     if (tv.isUnion) {
@@ -330,7 +332,7 @@ object JsonSchemaGenerator {
     case _: UriType.type => uriSchema
     case _: CurieType.type => curieSchema
     case _: NcNameType.type => ncNameSchema
-    case _: LocalizedTextType.type => stringSchema // TODO LNK-195
+    case _: LocalizedTextType.type => localizedTextSchema
     case _: UnknownType.type => Schema.Empty
   }
 
@@ -441,4 +443,12 @@ object JsonSchemaGenerator {
   private val uriSchema: Schema = stringSchema.copy(format = new Some("iri"))
   private val curieSchema: Schema = stringSchema.copy(format = new Some("curie"))
   private val uriOrCurieSchema: Schema = new Schema(anyOf = List(uriSchema, curieSchema))
+
+  /** A plain string, or a non-empty object from language tag to text. */
+  private val localizedTextSchema: Schema = new Schema(anyOf =
+    List(
+      stringSchema,
+      objectSchema.copy(additionalProperties = Some(stringSchema), minProperties = Some(1)),
+    ),
+  )
 }
