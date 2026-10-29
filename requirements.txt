@@ -1,5 +1,7 @@
-linkml==1.12.1
+# For FrictionlessIntegrationSpec
 frictionless==5.19.0
 # For PydanticRoundTripSpec, which loads data with the generated Python classes
 pydantic==2.13.5
 jsonschema==4.26.0
+# For the upstream validator in OssieIntegrationSpec
+pyyaml==6.0.3

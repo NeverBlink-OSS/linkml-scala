@@ -86,7 +86,7 @@ Edit skills in `.agents/skills/`. Regenerate these LinkML references from their 
 
 | File | Source |
 | --- | --- |
-| `900-metaslots.tsv` | LinkML metamodel YAML fetched by the build |
+| `900-metaslots.tsv` | LinkML metamodel bundled with the `metamodel` module |
 | `200-limitations.md` | `website/src/content/docs/implementation-differences.md` |
 | `210-slot-usage-inheritance.md` | `website/src/content/docs/slot-usage-inheritance.md` |
 | `220-import-maps.md` | `website/src/content/docs/import-maps.md` |
@@ -94,10 +94,8 @@ Edit skills in `.agents/skills/`. Regenerate these LinkML references from their 
 | `910-examples.md` | `tests/resources/models/` |
 
 ```sh
-./mill show metamodel.definitions
-python3 .agents/generate.py
-python3 .agents/generate.py --check
-python3 .agents/check.py --require-cli
+./mill agents.generate
+./mill agents.test
 ```
 
-The checks require `ohi` on PATH. Review nested ohi reference links separately.
+`./mill regenerate` also runs `agents.generate`. The tests check that the generated files are up to date, the skills' structure and links, and that every schema example validates. Review nested ohi reference links separately.

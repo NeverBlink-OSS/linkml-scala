@@ -60,10 +60,8 @@ jobs:
         with:
           activate-environment: true
 
-      - name: Install Python deps and generate cross-test models
-        run: |
-          uv pip install -r requirements.txt
-          python cross_test.py 
+      - name: Install Python deps
+        run: uv pip install -r requirements.txt
 
       - name: Install test deps
         run: |

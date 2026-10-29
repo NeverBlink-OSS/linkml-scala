@@ -39,63 +39,7 @@ jobs:
           ./mill --no-server __.jvm.__.checkFormat
           ./mill --no-server __.js.__.checkFormat
           ./mill --no-server __.native.__.checkFormat
-
-
-  skills-check:
-    name: Agent skills
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        shell: bash
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v7
-
-      - name: Relocate the coursier archive cache # see scalafmt-lint
-        shell: bash
-        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
-
-      - name: Cache dependencies
-        uses: coursier/cache-action@v8
-        # Also hash the build files that declare dependencies: by default only build.mill and
-        # ./mill are hashed, so a new dependency would be downloaded again on every run.
-        with:
-          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
-
-      - name: Setup JVM
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Install PyYAML
-        run: pip install --quiet pyyaml
-
-      # check.py validates every schema example in the skill against the real validator.
-      - name: Build the ohi CLI and put it on PATH
-        run: |
-          ./mill --no-server cli.ohi.jvm.assembly
-          jar="$(pwd)/out/cli/ohi/jvm/assembly.dest/out.jar"
-          test -f "$jar" || { echo "no assembly at $jar"; ls -la "$(dirname "$jar")"; exit 1; }
-          # Prefer JAVA_HOME over whatever java happens to be first on PATH.
-          java="java"
-          if [ -x "$JAVA_HOME/bin/java" ]; then java="$JAVA_HOME/bin/java"; fi
-          mkdir -p "$RUNNER_TEMP/bin"
-          printf '#!/bin/sh\nexec "%s" -jar "%s" "$@"\n' "$java" "$jar" \
-            > "$RUNNER_TEMP/bin/ohi"
-          chmod +x "$RUNNER_TEMP/bin/ohi"
-          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
-          # Prove the wrapper runs here, where the error is legible.
-          "$RUNNER_TEMP/bin/ohi" version
-
-      - name: Fetch the LinkML metamodel definitions
-        run: ./mill --no-server show metamodel.definitions
-
-      - name: Regenerate the skill's derived files and check they are committed
-        run: python3 .agents/generate.py --check
-
-      - name: Check skill structure, links and every schema example
-        run: python3 .agents/check.py --require-cli
+          ./mill --no-server agents.__.checkFormat
 
 
   ui-check:

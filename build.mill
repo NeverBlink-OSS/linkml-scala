@@ -97,7 +97,7 @@ object `package` extends Module {
     def lint: Seq[String] = {
       val platforms =
         Seq("__.jvm.__", "__.js.__") ++ Option.when(NativeOptional.nativeEnabled)("__.native.__")
-      alias(platforms.flatMap(p => Seq(s"$p.fix", s"$p.reformat"))*)
+      alias((platforms :+ "agents.__").flatMap(p => Seq(s"$p.fix", s"$p.reformat"))*)
     }
 
     /** Regenerate every checked-in source generated from a LinkML model. */
@@ -105,6 +105,7 @@ object `package` extends Module {
       "__:LinkMlModelModule.regenerate",
       "__:LinkMlModelModule.jvm.fix",
       "__:LinkMlModelModule.jvm.reformat",
+      "agents.generate",
     ) ++ ohiGeneration)*)
 
     def regenerateBindings: Seq[String] = alias(
@@ -136,6 +137,29 @@ object `package` extends Module {
     val schema = ujson.read(os.read(path))
     schema("$defs").obj.remove("Format")
     os.write.over(path, ujson.write(schema, indent = 2) + "\n")
+  }
+
+  /** Generates the derived files of the agent skills in `.agents/`, and checks the skills. Not
+    * published.
+    */
+  object agents extends ScalaModule, ScalafmtModule, ScalafixModule {
+    override def moduleDir = super.moduleDir / os.up / ".agents"
+
+    def scalaVersion = Version.scala
+
+    def scalacOptions = Seq("-Wunused:all")
+
+    def moduleDeps = Seq(build.schemaview.jvm)
+
+    override def mvnDeps = Seq(mvn"com.lihaoyi::os-lib:0.11.8")
+
+    def generate() = Task.Command {
+      runner().run(Seq(mill.api.BuildCtx.workspaceRoot.toString))
+    }
+
+    object test extends ScalaTests, CommonTestModule {
+      override def mvnDeps = super.mvnDeps() ++ Seq(mvn"com.lihaoyi::ujson:4.4.3")
+    }
   }
 
   /** A JDK 25, for the test modules that pull in RDF4J 6.x.

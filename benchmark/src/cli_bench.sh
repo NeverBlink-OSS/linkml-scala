@@ -75,7 +75,7 @@ command -v hyperfine >/dev/null 2>&1 || {
 
 [[ -x "$LINKML_PY" ]] || {
   echo "No python linkml executable found at $LINKML_PY." \
-    "Run \`uv venv; source .venv/bin/activate; uv pip install -r requirements.txt\` to fix" >&2
+    "Run \`uv venv; source .venv/bin/activate; uv pip install -r benchmark/requirements.txt\` to fix" >&2
   exit 1
 }
 
