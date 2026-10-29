@@ -301,7 +301,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
                 {"base_url":"$base/publication","url":"$base/$filename"}]
             }""")
             val locked = json(os.read(project / "ohi.lock.json"))
-            locked.get("files") shouldBe json(s"""[
+            locked("files") shouldBe json(s"""[
               {"base_url":"$base/existing","url":"$base/selected.yaml","format":"owl-turtle",
                "sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"},
               {"base_url":"$base/publication","url":"$base/$filename","format":"$format",

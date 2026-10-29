@@ -69,8 +69,8 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
     exception.error
   }
 
-  private def searchResponse(page: Int = 1, perPage: Int = 10): Array[Byte] =
-    s"""{"hits":[],"found":0,"page":$page,"request_params":{"per_page":$perPage},"search_cutoff":false}""".getBytes(
+  private def searchResponse(perPage: Int): Array[Byte] =
+    s"""{"hits":[],"found":0,"page":1,"request_params":{"per_page":$perPage},"search_cutoff":false}""".getBytes(
       UTF_8,
     )
 
@@ -166,7 +166,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
     for (size <- Seq(None, Some(1), Some(250))) {
       s"send default page and accepted page size $size" in {
         val expectedSize = size.getOrElse(10)
-        withServer(exchange => reply(exchange, 200, searchResponse(perPage = expectedSize))) {
+        withServer(exchange => reply(exchange, 200, searchResponse(expectedSize))) {
           (url, requests) =>
             val result = configured(url).search(SearchRequest(q = "*", perPage = size))
             result.page shouldBe 1
