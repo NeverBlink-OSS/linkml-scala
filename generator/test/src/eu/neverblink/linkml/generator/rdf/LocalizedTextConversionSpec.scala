@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.rdf
 
+import eu.neverblink.linkml.generator.options.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.generator.RdfGeneratorBase
-import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText}
 import org.scalatest.matchers.should.Matchers
@@ -58,6 +58,8 @@ object LocalizedTextConversionSpec {
   /** The text to convert, wrapped as the options an [[RdfGeneratorBase]] takes. */
   private[rdf] final case class TextOptions(
       text: LocalizedText,
-      format: RdfFormat = RdfFormat.nt,
-  ) extends RdfOptions
+      format: RdfFormat = RdfFormat.Nt,
+  ) extends RdfOptions {
+    override def infer(): TextOptions = this
+  }
 }

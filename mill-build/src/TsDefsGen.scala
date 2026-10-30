@@ -40,14 +40,43 @@ object TsDefsGen {
       Seq("SchemaStats"),
       "The schema statistics, generated from model/schema-stats.yaml.",
     ),
+    // The options the generator functions take, see [[optionTypes]]
+    ModelTypes(
+      "generator-options",
+      Seq.empty,
+      "The options of the generators, generated from model/generator-options.yaml.",
+    ),
   )
+
+  /** The names a TypeScript declaration file exports. */
+  private def exportedNames(declarations: String): Seq[String] =
+    "(?m)^export (?:declare )?(?:interface|type|enum|const) (\\w+)".r
+      .findAllMatchIn(declarations)
+      .map(_.group(1))
+      .toSeq
+
+  /** The option types the facade's signatures use, as `GeneratorOptions[X]`. */
+  private def optionTypes(scalaSource: String): Seq[String] =
+    "GeneratorOptions\\[(\\w+)\\]".r
+      .findAllMatchIn(scalaSource)
+      .map(_.group(1))
+      .filter(_ != "T")
+      .toSeq
+      .distinct
+      .sorted
 
   /** @param scalaSource
     *   source of `LinkMlJsApi.scala`
+    * @param modelTypes
+    *   the content of each of the [[modelTypes]] files, by file name
     * @param modelTypesDir
     *   where index.d.ts finds the [[modelTypes]] files: `./` in the package
     */
-  def apply(scalaSource: String, modelTypesDir: String = "./"): String = {
+  def apply(
+      scalaSource: String,
+      modelTypeFiles: String => String,
+      modelTypesDir: String = "./",
+  ): String = {
     val parsed = dialects.Scala3(scalaSource).parse[Source].get
     val obj = findObject(parsed).getOrElse(sys.error(s"object $objectName not found"))
 
@@ -57,12 +86,22 @@ object TsDefsGen {
       .filterNot(_.mods.exists(_.is[Mod.Private]))
 
     val members = methods.map(renderMethod(scalaSource, _)).mkString("\n\n")
+    // A name that an earlier file exports already, such as the `PruningMode` of both the schema
+    // statistics and the generator options, would be ambiguous, so only the others are exported.
+    val exported = collection.mutable.Set.empty[String]
     val imports = modelTypes.map { m =>
       val module = s"$modelTypesDir${m.name}.js"
       val comment = m.comment.linesIterator.map("// ".concat).mkString("\n")
+      val uses = if m.uses.isEmpty then optionTypes(scalaSource) else m.uses
+      val names = exportedNames(modelTypeFiles(m.file))
+      val reexport =
+        if names.exists(exported.contains) then
+          s"export type { ${names.filterNot(exported.contains).mkString(", ")} } from \"$module\";"
+        else s"export * from \"$module\";"
+      exported ++= names
       s"""$comment
-         |import type { ${m.uses.mkString(", ")} } from "$module";
-         |export * from "$module";
+         |import type { ${uses.mkString(", ")} } from "$module";
+         |$reexport
          |""".stripMargin
     }.mkString("\n")
 
@@ -138,9 +177,10 @@ object TsDefsGen {
     }
 
   private def mapType(scalaType: String): String =
-    innerOf(scalaType, "Option")
-      .orElse(innerOf(scalaType, "js.UndefOr"))
-      .map(mapType)
+    innerOf(scalaType, "GeneratorOptions")
+      .map(inner => s"Partial<$inner>")
+      .orElse(innerOf(scalaType, "Option").map(mapType))
+      .orElse(innerOf(scalaType, "js.UndefOr").map(mapType))
       .getOrElse {
         scalaType match {
           case "String" => "string"

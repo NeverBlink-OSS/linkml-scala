@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.shacl
 
+import eu.neverblink.linkml.generator.options.ShaclGeneratorOptions
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, RdfUtils}
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -472,7 +473,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
            |""".stripMargin
       val turtle =
         RdfUtils.toTurtle(
-          ShaclGenerator(using loadWithImports(input)).generate(_, ShaclGenerator.Options()),
+          ShaclGenerator(using loadWithImports(input)).generate(_, ShaclGeneratorOptions()),
         )
       val model = Rio.parse(StringReader(turtle), RDFFormat.TURTLE)
       def closed(cls: String): Boolean = Models.objectLiteral(
@@ -505,7 +506,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val schemaView = loadWithImports(input)
       val turtle =
         RdfUtils.toTurtle(
-          ShaclGenerator(using schemaView).generate(_, ShaclGenerator.Options(open = true)),
+          ShaclGenerator(using schemaView).generate(_, ShaclGeneratorOptions(open = true)),
         )
       val expected =
         """@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -893,7 +894,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       val turtle =
         RdfUtils.toTurtle(
           ShaclGenerator(using sv)
-            .generate(_, ShaclGenerator.Options(onlyClassesFromRootSchema = true)),
+            .generate(_, ShaclGeneratorOptions(onlyClassesFromRootSchema = true)),
         )
       turtle should include("linkml:Annotatable a sh:NodeShape")
       turtle should include("linkml:Annotation a sh:NodeShape")

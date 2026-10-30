@@ -1,9 +1,6 @@
-package millbuild
+package eu.neverblink.linkml.optionsgen
 
-/** The generators exposed by the native library exposes.
-  *
-  * This is used by the C and Python code generators.
-  */
+/** The generators the native library exposes, for [[CApiGen]] and [[PyBindingsGen]]. */
 object Entrypoints {
 
   /** @param python
@@ -13,7 +10,7 @@ object Entrypoints {
     * @param scalaMethod
     *   the `LinkMlNativeApi` method the C entry point calls
     * @param generator
-    *   the generator object holding the `Options` case class
+    *   the generator, whose options are the class `<generator>Options` of the options schema
     * @param returns
     *   Python return annotation. Anything but `str` is parsed as JSON.
     * @param summary
@@ -30,14 +27,6 @@ object Entrypoints {
       summary: String,
       cComment: String,
   ) {
-
-    /** Where the generator lives, derived from its name: the package is the lower-cased name minus
-      * the `Generator` suffix, which is the layout the whole generator module follows.
-      */
-    def source: String = {
-      val pkg = generator.stripSuffix("Generator").toLowerCase
-      s"generator/src/eu/neverblink/linkml/generator/$pkg/$generator.scala"
-    }
 
     /** Whether the result is JSON to be parsed rather than a document to hand back as-is. */
     def structured: Boolean = returns != "str"

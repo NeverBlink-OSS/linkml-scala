@@ -42,23 +42,29 @@ void loadedWithImportMap;
 void loadedFromStringWithImportMap;
 
 const jsonSchema: string = LinkML.jsonSchema(view);
-const jsonSchemaFull: string = LinkML.jsonSchema(view, true, "Person");
+const jsonSchemaFull: string = LinkML.jsonSchema(view, { open: true, tree_root: "Person" });
 const shacl: string = LinkML.shacl(view);
-const shaclFull: string = LinkML.shacl(view, false, true, "ttl");
+const shaclFull: string = LinkML.shacl(view, { only_classes_from_root_schema: true, format: "ttl" });
 const rdfs: string = LinkML.rdfs(view);
-const rdfsFull: string = LinkML.rdfs(view, false, "ttl");
+const rdfsFull: string = LinkML.rdfs(view, { format: "ttl" });
 const linkml: string = LinkML.linkml(view);
-const linkmlFull: string = LinkML.linkml(view, "skip", true, "Person", "json");
-const scala: Record<string, string> = LinkML.scala(view, "com.example");
+const linkmlFull: string = LinkML.linkml(view, { pruning_mode: "skip", skip_class_derivation: true, format: "json" });
+const scala: Record<string, string> = LinkML.scala(view, { package: "com.example" });
 const frictionless: Record<string, string> = LinkML.frictionless(view);
-const frictionlessRoot: Record<string, string> = LinkML.frictionless(view, "treeRoot", "Person", true);
+const frictionlessRoot: Record<string, string> = LinkML.frictionless(view, {
+  pruning_mode: "tree_root",
+  tree_root: "Person",
+  skip_classes_without_identifier: true,
+});
 const erDiagram: string = LinkML.erDiagram(view);
-const erDiagramFull: string = LinkML.erDiagram(view, "skip", "Person", false);
+const erDiagramFull: string = LinkML.erDiagram(view, { pruning_mode: "skip", optional_marker: false });
 const stats: SchemaStats = LinkML.stats(view);
-const statsTreeRoot: SchemaStats = LinkML.stats(view, "treeRoot", "Person");
+const statsTreeRoot: SchemaStats = LinkML.stats(view, { pruning_mode: "tree_root", tree_root: "Person" });
 const classCount: number = stats.elements.classes.count;
 const ossie: string = LinkML.ossie(view);
-const ossieFull: string = LinkML.ossie(view, "treeRoot", "Person", "json");
+const ossieFull: string = LinkML.ossie(view, { pruning_mode: "tree_root", tree_root: "Person", format: "json" });
+// @ts-expect-error the pruning modes are the names in the options schema
+LinkML.stats(view, { pruning_mode: "treeRoot" });
 const lint: SchemaValidationReport = LinkML.lint(view);
 const lintIssues: SchemaIssue[] = lint.issues;
 const lintNoMessages: SchemaValidationReport = LinkML.lint(view, false);

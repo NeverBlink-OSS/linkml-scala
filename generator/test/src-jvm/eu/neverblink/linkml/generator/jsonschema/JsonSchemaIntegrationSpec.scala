@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.jsonschema
 
+import eu.neverblink.linkml.generator.options.JsonSchemaGeneratorOptions
 import com.networknt.schema.{ExecutionConfig, ExecutionContext, InputFormat, SchemaRegistry}
 import com.networknt.schema.dialect.Dialects
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
@@ -57,8 +58,8 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
       s"includeNull=$includeNull" when {
         "Optional scalar nulls" in {
           val options =
-            if includeNull then JsonSchemaGenerator.Options(includeNull = true)
-            else JsonSchemaGenerator.Options()
+            if includeNull then JsonSchemaGeneratorOptions(includeNull = true)
+            else JsonSchemaGeneratorOptions()
 
           val jsonSchema = JsonSchemaGenerator(using ModelCatalogue.basic.model).serialize(options)
           val schema = sr.getSchema(jsonSchema)
@@ -77,7 +78,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         "Compact dictionary entries" in {
           val model =
             ModelCatalogue.inlines.explicitInlineImplicitlyAsCompactDict.model
-          val options = JsonSchemaGenerator.Options(includeNull = includeNull)
+          val options = JsonSchemaGeneratorOptions(includeNull = includeNull)
           val schema = sr.getSchema(JsonSchemaGenerator(using model).serialize(options))
 
           def accepts(json: String): Boolean =
@@ -92,7 +93,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         "Simple dictionary entries" in {
           val model =
             ModelCatalogue.inlines.explicitInlineImplicitlyAsSimpleDict.model
-          val options = JsonSchemaGenerator.Options(includeNull = includeNull)
+          val options = JsonSchemaGeneratorOptions(includeNull = includeNull)
           val schema = sr.getSchema(JsonSchemaGenerator(using model).serialize(options))
 
           def accepts(json: String): Boolean =
@@ -108,7 +109,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         }
 
         "Simple root dictionary requirements" in {
-          val options = JsonSchemaGenerator.Options(
+          val options = JsonSchemaGeneratorOptions(
             treeRootInlineType = Some("simple_dict"),
             includeNull = includeNull,
           )
@@ -145,7 +146,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
 
         "Inline list nulls" in {
           val model = ModelCatalogue.inlines.explicitInlineList.model
-          val options = JsonSchemaGenerator.Options(includeNull = includeNull)
+          val options = JsonSchemaGeneratorOptions(includeNull = includeNull)
           val schema = sr.getSchema(JsonSchemaGenerator(using model).serialize(options))
 
           def accepts(json: String): Boolean =
@@ -162,7 +163,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         }
 
         "Required list presence" in {
-          val options = JsonSchemaGenerator.Options(includeNull = includeNull)
+          val options = JsonSchemaGeneratorOptions(includeNull = includeNull)
           val schema = sr.getSchema(
             JsonSchemaGenerator(using ModelCatalogue.cardinality.model).serialize(options),
           )
@@ -184,7 +185,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         }
 
         "List size constraints" in {
-          val options = JsonSchemaGenerator.Options(includeNull = includeNull)
+          val options = JsonSchemaGeneratorOptions(includeNull = includeNull)
           val schema = sr.getSchema(
             JsonSchemaGenerator(using ModelCatalogue.cardinalityExplicit.model)
               .serialize(options),
@@ -209,7 +210,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         }
 
         "Enum constraints" in {
-          val options = JsonSchemaGenerator.Options(includeNull = includeNull)
+          val options = JsonSchemaGeneratorOptions(includeNull = includeNull)
           val schema = sr.getSchema(
             JsonSchemaGenerator(using ModelCatalogue.`enum`.model).serialize(options),
           )
@@ -252,7 +253,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
             SchemaView.loadSchemaViewFromString(schemaYaml),
           )
 
-          val options = JsonSchemaGenerator.Options(
+          val options = JsonSchemaGeneratorOptions(
             treeRootInlineType = Some("compact_dict"),
             includeNull = includeNull,
           )
@@ -275,7 +276,7 @@ class JsonSchemaIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
       }
 
     "Respect required content in root dictionary entries" in {
-      val options = JsonSchemaGenerator.Options(
+      val options = JsonSchemaGeneratorOptions(
         treeRootInlineType = Some("compact_dict"),
         includeNull = true,
       )

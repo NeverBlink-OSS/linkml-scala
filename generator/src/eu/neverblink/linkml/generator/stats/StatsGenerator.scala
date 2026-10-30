@@ -1,9 +1,10 @@
 package eu.neverblink.linkml.generator.stats
 
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, PruningMode, StatsGeneratorOptions}
 import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.generator.stats.model.{PruningMode as _, *}
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
+import eu.neverblink.linkml.generator.util.JsonUtil
+import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.metamodel.{CommonMetadata, SlotDefinition}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
 import eu.neverblink.linkml.runtime.{LocalizedText, MultilingualText, PlainText, Reference}
@@ -18,14 +19,14 @@ import scala.collection.mutable
   * documented, deprecated or mapped, which languages its text is in, and how many schemas it
   * imports. Follows the `schema-stats.yaml` model.
   */
-final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[StatsGenerator.Options] {
+final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[StatsGeneratorOptions] {
   import StatsGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: StatsGeneratorOptions = StatsGeneratorOptions()
 
-  def generate(options: Options = Options()): SchemaStats = {
-    val query = options.pruningMode.derivedQuery(false, true)
-    val skip = options.pruningMode == PruningMode.skip
+  def generate(options: StatsGeneratorOptions = StatsGeneratorOptions()): SchemaStats = {
+    val query = options.pruning.derivedQuery(false, true)
+    val skip = options.pruningMode == PruningMode.Skip
     val root = sv.root
     val languages = mutable.HashMap.empty[String, Int]
     val subsetsUsed = mutable.HashSet.empty[String]
@@ -106,9 +107,9 @@ final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[Stats
         hasVersion = root.version.isDefined,
       ),
       pruningMode = options.pruningMode match {
-        case PruningMode.treeRoot(_) => model.PruningMode.TreeRoot
-        case PruningMode.schemaRoot => model.PruningMode.Schema
-        case PruningMode.skip => model.PruningMode.Skip
+        case PruningMode.TreeRoot => model.PruningMode.TreeRoot
+        case PruningMode.Schema => model.PruningMode.Schema
+        case PruningMode.Skip => model.PruningMode.Skip
       },
       schemaId = root.id,
       schemaName = root.name.toString,
@@ -116,30 +117,24 @@ final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[Stats
   }
 
   /** The statistics as YAML. */
-  override def serialize(options: Options = Options()): String = serialize(options, yaml)
+  override def serialize(options: StatsGeneratorOptions = StatsGeneratorOptions()): String =
+    serialize(options, JsonOutputFormat.Yaml)
 
-  def serialize(options: Options, format: JsonOutputFormat): String =
+  def serialize(options: StatsGeneratorOptions, format: JsonOutputFormat): String =
     JsonUtil.write(StatsGenerator.codec.encode(generate(options)), format)
 
   /** Write the statistics as YAML. */
-  override def writeTo(out: OutputStream, options: Options = Options()): Unit =
-    writeTo(out, options, yaml)
+  override def writeTo(
+      out: OutputStream,
+      options: StatsGeneratorOptions = StatsGeneratorOptions(),
+  ): Unit =
+    writeTo(out, options, JsonOutputFormat.Yaml)
 
-  def writeTo(out: OutputStream, options: Options, format: JsonOutputFormat): Unit =
+  def writeTo(out: OutputStream, options: StatsGeneratorOptions, format: JsonOutputFormat): Unit =
     JsonUtil.write(StatsGenerator.codec.encode(generate(options)), format, out)
 }
 
 object StatsGenerator {
-
-  /** Options for [[StatsGenerator]].
-    *
-    * @param pruningMode
-    *   Which elements are in scope, and so are counted. By default, everything defined in the root
-    *   schema and what it uses.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.schemaRoot,
-  )
 
   given codec: LinkmlYamlCodec[SchemaStats] = LinkmlYamlCodec.derived
 

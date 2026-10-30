@@ -48,6 +48,7 @@ object `package` extends Module {
 
     override def moduleDeps = Seq(
       build.generator.jvm,
+      build.cli.options.jvm,
     )
 
     object test extends ScalaTests, CommonTestModule {

@@ -153,7 +153,7 @@ ohi linkml to shacl <input-file>
 
 Generate a LinkML model that:
 - Has all imports resolved
-- Has all class slots materialized into attributes (opt out by passing `--skip-derivation`)
+- Has all class slots materialized into attributes (opt out by passing `--skip-class-derivation`)
 - Has all unused elements removed (controlled by `--pruning-mode`)
 
 ```shell

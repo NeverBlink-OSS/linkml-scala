@@ -13,15 +13,17 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
   private val repoRoot: Option[os.Path] =
     sys.env.get("MILL_WORKSPACE_ROOT").map(os.Path(_)).filter(os.exists)
 
-  /** Every generator in the generator module: a `*Generator.scala` declaring an `Options` case
-    * class. The `Options` is what makes it a public generator rather than an internal helper.
+  /** Every generator: one with options in `model/generator-options.yaml`. The options are what make
+    * it a public generator rather than an internal helper.
     */
   private def generators(root: os.Path): Seq[String] = {
-    val dir = root / "generator" / "src" / "eu" / "neverblink" / "linkml" / "generator"
-    os.walk(dir)
-      .filter(p => p.last.endsWith("Generator.scala"))
-      .filter(p => os.read(p).contains("final case class Options("))
-      .map(_.last.stripSuffix(".scala"))
+    val dir =
+      root / "generator" / "options" / "src" / "eu" / "neverblink" / "linkml" / "generator" /
+        "options"
+    os.list(dir)
+      .map(_.last)
+      .filter(_.endsWith("GeneratorOptions.scala"))
+      .map(_.stripSuffix("Options.scala"))
       .sorted
   }
 
@@ -113,10 +115,14 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
     "be listed in the shared entry-point table" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val table = os.read(root / "mill-build" / "src" / "Entrypoints.scala")
+      val table = os.read(
+        root / "generator" / "optionsgen" / "src" / "eu" / "neverblink" / "linkml" / "optionsgen" /
+          "Entrypoints.scala",
+      )
       val missing = generators(root).filterNot(name => table.contains(s"\"$name\""))
       withClue(
-        "add a row to mill-build/src/Entrypoints.scala, then run LINKML_NATIVE=1 ./mill bindings: ",
+        "add a row to generator/optionsgen/src/.../Entrypoints.scala, then run " +
+          "LINKML_NATIVE=1 ./mill nativelib.bindings: ",
       )(missing shouldBe empty)
     }
 

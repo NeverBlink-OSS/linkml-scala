@@ -75,26 +75,30 @@ an Ossie ontology. Both exceptions are a `LinkMlError`, as is any other failure.
 schema.json_schema(open=False, tree_root=None, tree_root_inline_type=None, indentation_step=2)
 schema.shacl(open=False, only_classes_from_root_schema=False, format="ttl")
 schema.rdfs(only_classes_from_root_schema=False, format="ttl")
-schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, output_format="yaml")
+schema.linkml(pruning_mode="skip", tree_root=None, skip_class_derivation=False, format="yaml")
 schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_identifier=False)
 schema.graphql(pruning_mode="schema", tree_root=None)
 schema.typescript(pruning_mode="skip", tree_root=None, include_null=False, open=False)
 schema.pydantic(pruning_mode="skip", tree_root=None, include_null=False, open=False)
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
 schema.docs(pruning_mode="schema", tree_root=None, metadata_language="en", single_file=False)
-schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml")
+schema.ossie(pruning_mode="skip", tree_root=None, format="yaml")
 schema.owl(only_root_schema=False, metadata_profile="rdfs", permissible_values="individual", format="ttl")
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
 schema.stats(pruning_mode="schema", tree_root=None)
-schema.translation(to="base")
+schema.translation(target="base")
 ```
 
-All arguments are keyword-only. Every one returns a string, except `scala()`, `frictionless()` and
+All arguments are keyword-only. Their names, values and defaults are the ones in
+[`model/generator-options.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/generator-options.yaml), which the
+command line and the JavaScript API share. `pruning_mode` is one of `"tree_root"`, `"schema"` or
+`"skip"`, and `tree_root` applies only to `"tree_root"`. Every one returns a string, except `scala()`, `frictionless()` and
 `docs()`, which return a filename-to-content dict, and `stats()`, which returns the
 schema statistics as a dict.
 
 `shacl()`, `rdfs()` and `owl()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
-pretty-printed, or `"nt"` for N-Triples.
+pretty-printed, or `"nt"` for N-Triples. For `linkml()` and `ossie()`, `format` is `"yaml"` or
+`"json"`.
 
 ### Converting to LinkML
 

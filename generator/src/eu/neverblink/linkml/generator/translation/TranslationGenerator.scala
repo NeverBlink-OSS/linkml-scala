@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.translation
 
+import eu.neverblink.linkml.generator.options.TranslationGeneratorOptions
 import com.github.plokhotnyuk.jsoniter_scala.core.{
   JsonReader,
   JsonValueCodec,
@@ -25,9 +26,9 @@ import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
 import scala.collection.immutable.ListMap
 
 class TranslationGenerator(using sv: SchemaView)
-    extends JsonDocumentGenerator[TranslationGenerator.Options, Translation] {
-  override final def generate(options: TranslationGenerator.Options): Translation = {
-    val renamer = resolveRenames(Case.base(options.to).filter(_ != '_'))
+    extends JsonDocumentGenerator[TranslationGeneratorOptions, Translation] {
+  override final def generate(options: TranslationGeneratorOptions): Translation = {
+    val renamer = resolveRenames(Case.base(options.target).filter(_ != '_'))
     Translation(
       sv.classes.values.map(el => el.name -> renamer.className(el)).toMap,
       sv.classes.values.map { el =>
@@ -53,11 +54,11 @@ class TranslationGenerator(using sv: SchemaView)
   override protected def codec: JsonValueCodec[Translation] =
     JsonCodecMaker.make[Translation](CodecMakerConfig.withEncodingOnly(true))
 
-  override protected def writerConfig(options: TranslationGenerator.Options): WriterConfig =
+  override protected def writerConfig(options: TranslationGeneratorOptions): WriterConfig =
     WriterConfig.withIndentionStep(options.indentationStep)
 
-  override protected def defaultOptions: TranslationGenerator.Options =
-    TranslationGenerator.Options()
+  override protected def defaultOptions: TranslationGeneratorOptions =
+    TranslationGeneratorOptions()
 
   def resolveRenames(id: String): Renamer = TranslationGenerator.resolveRenames(id)
 }
@@ -93,26 +94,6 @@ object TranslationGenerator {
       slots: Map[String, String],
       permissibleValues: Map[String, Map[String, String]],
       functions: Map[String, String],
-  )
-
-  /** Options for [[TranslationGenerator]].
-    *
-    * @param to
-    *   The framework whose names the dictionaries translate to. One of "base", "uri", "scala",
-    *   "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic" or "docs".
-    *
-    * @param indentationStep
-    *   Indentation of the JSON output.
-    *
-    * @param derivedAttributes
-    *   Also list inherited slots, mixin slots and slots from the class's `slots` list in
-    *   `classAttributes`. If false (the default), `classAttributes` lists only the class's own
-    *   `attributes`.
-    */
-  final case class Options(
-      to: String = "base",
-      indentationStep: Int = 2,
-      derivedAttributes: Boolean = false,
   )
 
   object UriRenamer extends Renamer {

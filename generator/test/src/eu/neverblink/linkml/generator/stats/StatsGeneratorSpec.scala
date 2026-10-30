@@ -1,7 +1,11 @@
 package eu.neverblink.linkml.generator.stats
 
+import eu.neverblink.linkml.generator.options.{
+  JsonOutputFormat,
+  PruningMode as Pruning,
+  StatsGeneratorOptions,
+}
 import eu.neverblink.linkml.generator.stats.model.*
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, PruningMode as Pruning}
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -88,8 +92,8 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
   private given SchemaView =
     SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(root, MapImporter("other" -> other)))
 
-  private def stats(mode: Pruning = Pruning.schemaRoot): SchemaStats =
-    StatsGenerator().generate(StatsGenerator.Options(pruningMode = mode))
+  private def stats(mode: Pruning = Pruning.Schema): SchemaStats =
+    StatsGenerator().generate(StatsGeneratorOptions(pruningMode = mode))
 
   "StatsGenerator" should {
     "count what the root schema defines and what it uses, by default" in {
@@ -116,7 +120,7 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "count every element without pruning" in {
-      val e = stats(Pruning.skip).elements
+      val e = stats(Pruning.Skip).elements
       e.classes.count shouldBe 4
       e.slots.count shouldBe 3
       e.enums.count shouldBe 2
@@ -126,7 +130,7 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "count the elements the tree root uses" in {
-      val s = stats(Pruning.treeRoot(None))
+      val s = stats(Pruning.TreeRoot)
       s.pruningMode shouldBe PruningMode.TreeRoot
       s.elements.classes.count shouldBe 2
       s.elements.slots.count shouldBe 0
@@ -153,7 +157,7 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       def counts(s: SchemaStats) = s.languages.view.mapValues(_.count).toSeq
       // 8 in the schemas here, and a description and a note each on `string` and `integer`
       counts(stats()) shouldBe Seq("" -> 12, "de" -> 1, "en" -> 2, "pl" -> 1)
-      val all = counts(stats(Pruning.skip))
+      val all = counts(stats(Pruning.Skip))
       all.tail shouldBe Seq("de" -> 1, "en" -> 2, "pl" -> 1)
       all.head._2 should be > 13 // also `NotUsed` and every type
     }
@@ -175,7 +179,7 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       val generator = StatsGenerator()
       val yaml = generator.serialize()
       yaml should include("languages:\n  \"\": 12\n  de: 1\n")
-      val json = generator.serialize(StatsGenerator.Options(), JsonOutputFormat.json)
+      val json = generator.serialize(StatsGeneratorOptions(), JsonOutputFormat.Json)
       json should include(""""languages": {
                              |    "": 12,""".stripMargin)
     }

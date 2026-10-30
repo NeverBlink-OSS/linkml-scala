@@ -1,8 +1,8 @@
 package eu.neverblink.linkml.generator.ossie
 
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OssieGeneratorOptions}
 import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.ossie.expression.{Expression, Literal}
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{SchemaDefinition, SlotDefinition}
 import eu.neverblink.linkml.runtime.{PlainText, Reference, Uri}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
@@ -36,10 +36,10 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         s"Model catalogue: ${entry.name}" in {
           assume(entry.name != "mixinFacets", "LNK-250: Fix Ossie naming properly")
           val original = OssieGenerator(using entry.model)
-            .serialize(OssieGenerator.Options(outputFormat = JsonOutputFormat.json))
+            .serialize(OssieGeneratorOptions(format = JsonOutputFormat.Json))
           OssieGenerator(using reimport(original))
             .serialize(
-              OssieGenerator.Options(outputFormat = JsonOutputFormat.json),
+              OssieGeneratorOptions(format = JsonOutputFormat.Json),
             ) shouldBe original
         }
     }
@@ -57,9 +57,9 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
 
     "survive being written and read as JSON" in {
       val original = OssieGenerator(using schemaOf(severalKinds))
-        .serialize(OssieGenerator.Options(outputFormat = JsonOutputFormat.json))
+        .serialize(OssieGeneratorOptions(format = JsonOutputFormat.Json))
       OssieGenerator(using reimport(original))
-        .serialize(OssieGenerator.Options(outputFormat = JsonOutputFormat.json)) shouldBe original
+        .serialize(OssieGeneratorOptions(format = JsonOutputFormat.Json)) shouldBe original
     }
   }
 
@@ -137,7 +137,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
           |  - concept: Thing
           |    type: EntityType
           """)),
-        OssieImporter.Options(outputFormat = JsonOutputFormat.json),
+        OssieImporter.Options(outputFormat = JsonOutputFormat.Json),
       )
       json should startWith("{")
       json should include("\"name\": \"spec\"")
@@ -577,7 +577,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         Some(Uri("http://xmlns.com/foaf/0.1/homepage"))
       schema.enums("Status").enumUri shouldBe Some(Uri("http://www.w3.org/ns/org#Status"))
       // The schema declares `foaf`, so the URIs are written as CURIEs
-      val written = OssieImporter().serializeSchema(schema, JsonOutputFormat.yaml)
+      val written = OssieImporter().serializeSchema(schema, JsonOutputFormat.Yaml)
       written should include("class_uri: foaf:Agent")
       written should include("slot_uri: foaf:homepage")
     }
@@ -619,7 +619,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
         """))
       schema.classes("Concept").classUri shouldBe
         Some(Uri("http://www.w3.org/2004/02/skos/core#Concept"))
-      OssieImporter().serializeSchema(schema, JsonOutputFormat.yaml) should include(
+      OssieImporter().serializeSchema(schema, JsonOutputFormat.Yaml) should include(
         "class_uri: skos:Concept",
       )
     }

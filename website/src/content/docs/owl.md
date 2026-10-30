@@ -22,7 +22,7 @@ ohi linkml to owl schema.yaml --to schema.owl.ttl
 | `--metadata-profile`   | `rdfs` writes descriptions as `rdfs:comment`, which most ontologies use and OWL tools show (the default). `linkml` uses `skos:definition`, as the LinkML metamodel says and Python's `gen-owl` does. |
 | `--permissible-values` | `individual` makes permissible values named individuals (the default). `class` makes them subclasses of the enum.        |
 
-From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleValues, format)`. From Python, `schema.owl(format="nt")`.
+From JavaScript, `LinkML.owl(view, { format: "nt" })`, with the options `only_root_schema`, `metadata_profile`, `permissible_values` and `format`. From Python, `schema.owl(format="nt")`.
 
 ### Mapping LinkML to OWL
 

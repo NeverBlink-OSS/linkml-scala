@@ -27,17 +27,16 @@ export type OptionValues = Record<string, string | number | boolean>;
 
 /** The tree root override, for the generators that only reach it through the pruning mode.
  *
- * Those pass it to `PruningMode(mode, treeRoot)`, which keeps it in tree-root mode and drops it in
- * every other one - so outside that mode the field does nothing and is not offered. JSON Schema is
- * the exception: it has no pruning mode and applies its override unconditionally, so it declares a
+ * Outside the `tree_root` mode the field does nothing, so it is not offered. JSON Schema is the
+ * exception: it has no pruning mode and applies its override unconditionally, so it declares a
  * field of its own.
  */
 const TREE_ROOT: Option = {
-  key: "treeRoot",
+  key: "tree_root",
   type: "text",
   label: "Tree root",
   placeholder: "Class name (optional)",
-  showIf: (o) => o.pruningMode === "treeRoot",
+  showIf: (o) => o.pruning_mode === "tree_root",
 };
 
 /** The validation report types, generated from model/issue-types.yaml into linkml.d.ts. */
@@ -109,30 +108,28 @@ export const TARGETS: Target[] = [
   {
     id: "ossie",
     label: "Apache Ossie",
-    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    lang: (o) => (o.format === "json" ? "json" : "yaml"),
     options: [
       // Defaults to `skip` for the same reason as Frictionless: a root schema may only import its
       // classes, and an ontology with no concepts at all is not valid Ossie.
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
       TREE_ROOT,
-      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+      { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, v, o) =>
-        api.ossie(v, String(o.pruningMode || "skip"), blankToUndef(o.treeRoot), String(o.outFormat || "yaml")),
+    call: (api, v, o) => api.ossie(v, generatorOptions(o)),
   },
   {
     id: "linkml",
     label: "Derived LinkML",
-    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    lang: (o) => (o.format === "json" ? "json" : "yaml"),
     options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
-      { key: "skipDerivation", type: "checkbox", label: "Skip derivation" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "tree_root" },
+      { key: "skip_class_derivation", type: "checkbox", label: "Skip derivation" },
       TREE_ROOT,
-      { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
-      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+      { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
+      { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, v, o) =>
-      api.linkml(v, String(o.pruningMode || "treeRoot"), !!o.skipDerivation, blankToUndef(o.treeRoot), String(o.outFormat || "yaml"), !!o.fullUris),
+    call: (api, v, o) => api.linkml(v, generatorOptions(o)),
   },
   {
     id: "docs",
@@ -141,14 +138,14 @@ export const TARGETS: Target[] = [
     view: "page",
     options: [
       // Defaults to `schema`, like the ER diagram: documentation is for the whole model.
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "schema" },
       TREE_ROOT,
-      { key: "metadataLanguage", type: "text", label: "Language", placeholder: "en", title: "Language of titles and descriptions given in more than one language" },
+      { key: "metadata_language", type: "text", label: "Language", placeholder: "en", title: "Language of titles and descriptions given in more than one language" },
     ],
     // Always one document: the page view links its sections with anchors, and a file tab per class
     // would be too many for a real schema.
     call: (api, v, o) =>
-      api.docs(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), true, String(o.metadataLanguage || "en"))["docs.md"] ?? "",
+      api.docs(v, { ...generatorOptions(o), single_file: true })["docs.md"] ?? "",
   },
   {
     id: "erDiagram",
@@ -156,20 +153,19 @@ export const TARGETS: Target[] = [
     lang: "text",
     view: "diagram",
     options: [
-      // Defaults to `schema` rather than `treeRoot`: a diagram is for looking at the whole model,
+      // Defaults to `schema` rather than `tree_root`: a diagram is for looking at the whole model,
       // and pruning to the tree root hides every class it cannot reach.
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "schema" },
       TREE_ROOT,
       {
-        key: "optionalMarker",
+        key: "optional_marker",
         type: "checkbox",
         label: "Optional ?",
         title: "Mark optional attributes with a trailing '?' (needs Mermaid 11.16+)",
         default: true,
       },
     ],
-    call: (api, v, o) =>
-        api.erDiagram(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot), !!o.optionalMarker),
+    call: (api, v, o) => api.erDiagram(v, generatorOptions(o)),
   },
   {
     id: "frictionless",
@@ -178,27 +174,26 @@ export const TARGETS: Target[] = [
     options: [
       // Defaults to `skip`: narrower modes can leave the package empty, because a root schema may
       // only import its classes rather than define any.
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
       TREE_ROOT,
       {
-        key: "skipClassesWithoutIdentifier",
+        key: "skip_classes_without_identifier",
         type: "checkbox",
         label: "Identified only",
         title: "Skip classes that have no identifier slot",
       },
     ],
-    call: (api, v, o) =>
-      api.frictionless(v, String(o.pruningMode), blankToUndef(o.treeRoot), !!o.skipClassesWithoutIdentifier),
+    call: (api, v, o) => api.frictionless(v, generatorOptions(o)),
   },
   {
     id: "graphQl",
     label: "GraphQL",
     lang: "graphql",
     options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "treeRoot" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "tree_root" },
       TREE_ROOT,
     ],
-    call: (api, v, o) => api.graphQl(v, String(o.pruningMode || "treeRoot"), blankToUndef(o.treeRoot)),
+    call: (api, v, o) => api.graphQl(v, generatorOptions(o)),
   },
   {
     id: "jsonSchema",
@@ -206,9 +201,9 @@ export const TARGETS: Target[] = [
     lang: "json",
     options: [
       { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
-      { key: "treeRootOverride", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
+      { key: "tree_root", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
     ],
-    call: (api, v, o) => api.jsonSchema(v, !!o.open, blankToUndef(o.treeRootOverride)),
+    call: (api, v, o) => api.jsonSchema(v, generatorOptions(o)),
   },
   {
     id: "translation",
@@ -217,13 +212,13 @@ export const TARGETS: Target[] = [
     options: [
       { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", "docs"], default: "base" },
       {
-        key: "derivedAttributes",
+        key: "derived_attributes",
         type: "checkbox",
         label: "Derived attributes",
         title: "Also list inherited slots, mixin slots and slots from the class's slots list",
       },
     ],
-    call: (api, v, o) => api.translation(v, String(o.target), !!o.derivedAttributes)
+    call: (api, v, o) => api.translation(v, generatorOptions(o)),
   },
   {
     id: "lint",
@@ -241,58 +236,44 @@ export const TARGETS: Target[] = [
     lang: "json",
     view: "stats",
     options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "schema" },
       TREE_ROOT,
     ],
-    call: (api, v, o) => api.stats(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot)),
+    call: (api, v, o) => api.stats(v, generatorOptions(o)),
   },
   {
     id: "owl",
     label: "OWL 2",
     lang: "turtle",
     options: [
-      { key: "onlyRootSchema", type: "checkbox", label: "Root schema only" },
-      { key: "metadataProfile", type: "select", label: "Descriptions", choices: ["rdfs", "linkml"], default: "rdfs" },
-      { key: "permissibleValues", type: "select", label: "Permissible values", choices: ["individual", "class"], default: "individual" },
+      { key: "only_root_schema", type: "checkbox", label: "Root schema only" },
+      { key: "metadata_profile", type: "select", label: "Descriptions", choices: ["rdfs", "linkml"], default: "rdfs" },
+      { key: "permissible_values", type: "select", label: "Permissible values", choices: ["individual", "class"], default: "individual" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) =>
-      api.owl(
-        v,
-        !!o.onlyRootSchema,
-        String(o.metadataProfile || "rdfs"),
-        String(o.permissibleValues || "individual"),
-        String(o.format || "ttl"),
-      ),
+    call: (api, v, o) => api.owl(v, generatorOptions(o)),
   },
   {
     id: "pydantic",
     label: "Pydantic",
     lang: "python",
     options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
       TREE_ROOT,
-      { key: "includeNull", type: "checkbox", label: "Nulls", title: "Keep nulls when dumping" },
+      { key: "include_null", type: "checkbox", label: "Nulls", title: "Keep nulls when dumping" },
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
     ],
-    call: (api, v, o) =>
-      api.pydantic(
-        v,
-        String(o.pruningMode || "skip"),
-        blankToUndef(o.treeRoot),
-        !!o.includeNull,
-        !!o.open,
-      ),
+    call: (api, v, o) => api.pydantic(v, generatorOptions(o)),
   },
   {
     id: "rdfs",
     label: "RDFS",
     lang: "turtle",
     options: [
-      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) => api.rdfs(v, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
+    call: (api, v, o) => api.rdfs(v, generatorOptions(o)),
   },
   {
     id: "scala",
@@ -301,7 +282,7 @@ export const TARGETS: Target[] = [
     options: [
       { key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" },
       {
-        key: "errorHandling",
+        key: "error_handling",
         type: "select",
         label: "Function errors",
         title: "How the functions of the schema report their errors",
@@ -309,12 +290,7 @@ export const TARGETS: Target[] = [
         default: "annotation",
       },
     ],
-    call: (api, v, o) =>
-      api.scala(
-        v,
-        String(o.package || "eu.neverblink.linkml.metamodel"),
-        String(o.errorHandling || "annotation"),
-      ),
+    call: (api, v, o) => api.scala(v, generatorOptions(o)),
   },
   {
     id: "shacl",
@@ -323,38 +299,30 @@ export const TARGETS: Target[] = [
     lang: "turtle",
     options: [
       { key: "open", type: "checkbox", label: "Open", title: "sh:closed false" },
-      { key: "onlyClassesFromRootSchema", type: "checkbox", label: "Root schema only" },
+      { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) => api.shacl(v, !!o.open, !!o.onlyClassesFromRootSchema, String(o.format || "ttl")),
+    call: (api, v, o) => api.shacl(v, generatorOptions(o)),
   },
   {
     id: "typeScript",
     label: "TypeScript",
     lang: "typescript",
     options: [
-      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "skip" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
       TREE_ROOT,
-      { key: "includeNull", type: "checkbox", label: "Nulls", title: "Allow null for optional slots" },
+      { key: "include_null", type: "checkbox", label: "Nulls", title: "Allow null for optional slots" },
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
       {
-        key: "errorHandling",
+        key: "error_handling",
         type: "select",
         label: "Function errors",
         title: "How the functions of the schema report their errors",
-        choices: ["throw", "result"],
-        default: "throw",
+        choices: ["exception", "result"],
+        default: "exception",
       },
     ],
-    call: (api, v, o) =>
-      api.typeScript(
-        v,
-        String(o.pruningMode || "skip"),
-        blankToUndef(o.treeRoot),
-        !!o.includeNull,
-        !!o.open,
-        String(o.errorHandling || "throw"),
-      ),
+    call: (api, v, o) => api.typeScript(v, generatorOptions(o)),
   },
 ];
 
@@ -410,6 +378,14 @@ export function targetById(id: string): Target | undefined {
 
 export function importerById(id: string): Importer | undefined {
   return IMPORTERS.find((i) => i.id === id);
+}
+
+/** The option values of a generator as its options object, the keys being the names in
+ * model/generator-options.yaml. Blank text fields are left out, so they take their defaults. */
+function generatorOptions<T>(o: OptionValues): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(o).filter(([, v]) => !(typeof v === "string" && v.trim() === "")),
+  ) as Partial<T>;
 }
 
 function blankToUndef(v: string | number | boolean | undefined): string | undefined {

@@ -4,7 +4,8 @@ import caseapp.*
 import eu.neverblink.linkml.generator.ossie.OssieImporter
 import eu.neverblink.linkml.generator.owl.OwlImporter
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
+import eu.neverblink.linkml.cli.options.EnumParsers.given
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, RdfFormat}
 
 import java.io.{ByteArrayOutputStream, InputStream, OutputStream}
 import scala.util.control.NonFatal
@@ -22,6 +23,17 @@ object FromOptions:
 trait HasFromOptions:
   @Recurse
   val common: FromOptions
+
+object From {
+
+  /** The help of `--format`. */
+  final val formatHelp = "The serialization of the schema: yaml or json. Default: yaml"
+
+  /** The help of `--full-uris`. */
+  final val fullUrisHelp =
+    "Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. " +
+      "Default: false"
+}
 
 /** A `from <format>` command: reads a document in some other format and returns the corresponding
   * LinkML schema. The opposite of `generate <name>`.
@@ -70,9 +82,9 @@ final case class FromOssieOptions(
         "is a placeholder built from the ontology's name.",
     )
     schemaId: Option[String] = None,
-    @HelpMessage(outputFormatHelp)
-    format: String = "yaml",
-    @HelpMessage(fullUrisHelp)
+    @HelpMessage(From.formatHelp)
+    format: JsonOutputFormat = JsonOutputFormat.Yaml,
+    @HelpMessage(From.fullUrisHelp)
     fullUris: Boolean = false,
 ) extends HasFromOptions
 
@@ -89,8 +101,7 @@ object FromOssie extends From[FromOssieOptions] {
       out,
       OssieImporter.Options(
         schemaId = options.schemaId,
-        outputFormat = JsonOutputFormat.parse(options.format)
-          .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+        outputFormat = options.format,
         fullUris = options.fullUris,
       ),
     )
@@ -118,10 +129,10 @@ final case class FromOwlOptions(
     @HelpMessage(
       "RDF syntax of the ontology: 'ttl' (Turtle, the default) or 'nt' (N-Triples).",
     )
-    inputFormat: String = "ttl",
-    @HelpMessage(outputFormatHelp)
-    format: String = "yaml",
-    @HelpMessage(fullUrisHelp)
+    inputFormat: RdfFormat = RdfFormat.Ttl,
+    @HelpMessage(From.formatHelp)
+    format: JsonOutputFormat = JsonOutputFormat.Yaml,
+    @HelpMessage(From.fullUrisHelp)
     fullUris: Boolean = false,
 ) extends HasFromOptions
 
@@ -139,10 +150,6 @@ object FromOwl extends From[FromOwlOptions] {
       try OwlImportConfigs.parse(os.read(path))
       catch case e: Exception => err(s"Cannot read the config $file: ${e.getMessage}")
     }
-    val format = JsonOutputFormat.parse(options.format)
-      .getOrElse(err(JsonOutputFormat.unknownFormat(options.format)))
-    val inputFormat = RdfOutput.parse(options.inputFormat)
-      .getOrElse(err(RdfOutput.unknownFormat(options.inputFormat)))
     // Relative imports are relative to where the schema is written.
     val base = options.common.to.fold("")(to => (os.Path(to, os.pwd) / os.up).toString)
     val result = OwlImporter().importWithWarnings(
@@ -150,11 +157,11 @@ object FromOwl extends From[FromOwlOptions] {
       OwlImporter.Options(
         config = options.schemaId.fold(config)(id => config.copy(schemaId = Some(id))),
         base = base,
-        inputFormat = inputFormat,
+        inputFormat = options.inputFormat,
       ),
     )
     if options.listNotImported then
       result.warnings.foreach(w => printLine(s"Not imported: $w", toStderr = true))
-    OwlImporter().writeSchema(result.schema, out, format, options.fullUris)
+    OwlImporter().writeSchema(result.schema, out, options.format, options.fullUris)
   }
 }

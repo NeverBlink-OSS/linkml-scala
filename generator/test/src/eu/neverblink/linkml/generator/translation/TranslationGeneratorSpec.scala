@@ -1,8 +1,11 @@
 package eu.neverblink.linkml.generator.translation
 
+import eu.neverblink.linkml.generator.options.{
+  FrictionlessGeneratorOptions,
+  TranslationGeneratorOptions,
+}
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
-import eu.neverblink.linkml.generator.translation.TranslationGenerator.Options
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
@@ -25,7 +28,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             |""".stripMargin.strip()
             .linesIterator.toSeq
 
-        val result = gen.serialize(Options("base"))
+        val result = gen.serialize(TranslationGeneratorOptions(target = "base"))
 
         snippets.foreach { snippet =>
           result should include(snippet)
@@ -44,7 +47,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             |""".stripMargin.strip()
             .linesIterator.toSeq
 
-        val result = gen.serialize(Options("URI"))
+        val result = gen.serialize(TranslationGeneratorOptions(target = "URI"))
 
         snippets.foreach { snippet =>
           result should include(snippet)
@@ -63,7 +66,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             |""".stripMargin.strip()
             .linesIterator.toSeq
 
-        val result = gen.serialize(Options("scala"))
+        val result = gen.serialize(TranslationGeneratorOptions(target = "scala"))
 
         snippets.foreach { snippet =>
           result should include(snippet)
@@ -82,7 +85,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             |""".stripMargin.strip()
             .linesIterator.toSeq
 
-        val result = gen.serialize(Options("graphql"))
+        val result = gen.serialize(TranslationGeneratorOptions(target = "graphql"))
 
         snippets.foreach { snippet =>
           result should include(snippet)
@@ -101,7 +104,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             |""".stripMargin.strip()
             .linesIterator.toSeq
 
-        val result = gen.serialize(Options("ossie"))
+        val result = gen.serialize(TranslationGeneratorOptions(target = "ossie"))
 
         snippets.foreach { snippet =>
           result should include(snippet)
@@ -111,7 +114,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
 
     "translate ER diagram names without aliases" in {
       val result = TranslationGenerator(using ModelCatalogue.aliases.model)
-        .generate(Options("erdiagram"))
+        .generate(TranslationGeneratorOptions(target = "erdiagram"))
 
       result.classes("SomeOtherClass") shouldBe "SomeOtherClass"
       result.classAttributes("SomeOtherClass") shouldBe Map(
@@ -122,10 +125,14 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
 
     "list a class's own attributes by default, and every slot it has with derivedAttributes" in {
       val gen = TranslationGenerator(using slotSources)
-      gen.generate(Options("graphql")).classAttributes("Child") shouldBe Map(
+      gen.generate(TranslationGeneratorOptions(target = "graphql")).classAttributes(
+        "Child",
+      ) shouldBe Map(
         "own value" -> "own_value",
       )
-      gen.generate(Options("graphql", derivedAttributes = true)).classAttributes("Child") shouldBe
+      gen.generate(
+        TranslationGeneratorOptions(target = "graphql", derivedAttributes = true),
+      ).classAttributes("Child") shouldBe
         Map(
           "own value" -> "own_value",
           "shared-slot" -> "shared_slot",
@@ -144,7 +151,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
         .toSet
       val translation =
         TranslationGenerator(using slotSources).generate(
-          Options("graphql", derivedAttributes = true),
+          TranslationGeneratorOptions(target = "graphql", derivedAttributes = true),
         )
       for (cls, fields) <- translation.classAttributes; (slot, field) <- fields do
         withClue(s"$cls.$slot -> $field:\n$sdl") {
@@ -156,10 +163,12 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
     "name class attributes the way the Frictionless generator names the fields" in {
       val sv = slotSources
       val translation =
-        TranslationGenerator(using sv).generate(Options("frictionless", derivedAttributes = true))
+        TranslationGenerator(using sv).generate(
+          TranslationGeneratorOptions(target = "frictionless", derivedAttributes = true),
+        )
       for cls <- Seq("Base", "Child") do
         val table = FrictionlessGenerator(using sv)
-          .tableSchema(sv.classes(cls))(using FrictionlessGenerator.Options())
+          .tableSchema(sv.classes(cls))(using FrictionlessGeneratorOptions())
         translation.classAttributes(cls).values.toSet shouldBe table.fields.map(_.name).toSet
       translation.classAttributes("Child")("shared-slot") shouldBe "shared-slot"
       translation.classAttributes("Child")("baseValue") shouldBe "base"
@@ -191,7 +200,7 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
         for target <- TranslationGenerator.targets do
           s"target is $target" in {
             val result = TranslationGenerator(using entry.model).generate(
-              TranslationGenerator.Options(target),
+              TranslationGeneratorOptions(target = target),
             )
             if entry.model.classes.nonEmpty then result.classes should not be empty
             if entry.model.types.nonEmpty then result.types should not be empty
@@ -207,16 +216,16 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
     val sv = ModelCatalogue.functions.returns.model
     val gen = TranslationGenerator(using sv)
     "target is typescript" in {
-      gen.generate(Options("typescript")).functions should contain("list_items" -> "listItems")
+      gen.generate(TranslationGeneratorOptions(target = "typescript")).functions should contain("list_items" -> "listItems")
     }
     "target is pydantic" in {
-      gen.generate(Options("pydantic")).functions should contain("list_items" -> "list_items")
+      gen.generate(TranslationGeneratorOptions(target = "pydantic")).functions should contain("list_items" -> "list_items")
     }
     "target is scala" in {
-      gen.generate(Options("scala")).functions should contain("list_items" -> "listItems")
+      gen.generate(TranslationGeneratorOptions(target = "scala")).functions should contain("list_items" -> "listItems")
     }
     "target is URI" in {
-      gen.generate(Options("uri")).functions should contain(
+      gen.generate(TranslationGeneratorOptions(target = "uri")).functions should contain(
         "list_items" -> "https://neverblink.eu/linkml/tests/functions/returns/list_items",
       )
     }
