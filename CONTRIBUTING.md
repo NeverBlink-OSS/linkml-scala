@@ -1,4 +1,4 @@
-# Contributing to LinkML-Scala
+# Contributing to ohi LinkML
 
 Issues and pull requests are welcome. We don't have a Contributor License Agreement (CLA) yet, so we can't merge large external contributions in the code. If you plan something big, [email us](mailto:contact@neverblink.eu) first.
 

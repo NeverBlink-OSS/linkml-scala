@@ -5,7 +5,7 @@ import fastparse.NoWhitespace.given
 
 /** One expression of the SQL-like expression language used in the Ossie ontology specification.
   *
-  * This is a model of a subset of the language, as supported in LinkML-Scala. As of Ossie 0.2.0 the
+  * This is a model of a subset of the language, as supported in ohi LinkML. As of Ossie 0.2.0 the
   * language has no formal grounding, so this is rough in places. We will try to make it more robust
   * when the language is better defined.
   *

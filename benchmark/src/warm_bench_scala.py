@@ -44,7 +44,7 @@ def bench_forks(fn, model: str, warmup: int, iterations: int, forks: int) -> lis
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Benchmark linkml-scala generators, excluding schema loading/parsing.",
+        description="Benchmark ohi LinkML generators, excluding schema loading/parsing.",
     )
     parser.add_argument(
         "--models-glob",

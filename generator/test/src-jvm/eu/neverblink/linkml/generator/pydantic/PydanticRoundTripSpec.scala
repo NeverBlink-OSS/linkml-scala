@@ -251,7 +251,7 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       }
 
     // Dogfooding test
-    "load real LinkML-Scala validation reports" in {
+    "load real ohi LinkML validation reports" in {
       requirePython()
       given SchemaView = SchemaIssues.orThrow(
         SchemaView.loadSchemaViewFromUri((repoRoot / "model" / "issue-types.yaml").toString),

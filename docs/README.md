@@ -1,4 +1,4 @@
-# LinkML-Scala documentation
+# ohi LinkML documentation
 
 > [!IMPORTANT]
 > ## The docs have moved to [linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)

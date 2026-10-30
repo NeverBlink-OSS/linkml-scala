@@ -3,7 +3,7 @@ title: Python bindings
 description: The Python package, and the C ABI for C, C++ and Rust.
 ---
 
-LinkML-Scala compiled to a native shared library, called from Python through `ctypes`. No JVM, no
+ohi LinkML compiled to a native shared library, called from Python through `ctypes`. No JVM, no
 subprocess per schema, and no dependency on the `linkml` Python package.
 
 ## Installation
@@ -129,7 +129,7 @@ if you are loading many schemas.
 
 Note: these are rough numbers on a Ryzen 7900 workstation. Full benchmark is still pending. See: [benchmark code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/benchmark/src), [datasets](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/benchmark/resources/schemas).
 
-Here we measured only the time to generate the output, not the time to load the schema. The Python side is LinkML 1.11.1, and the Scala side is LinkML-Scala 975f65a, v0.13.1-15-g975f65a.
+Here we measured only the time to generate the output, not the time to load the schema. The Python side is LinkML 1.11.1, and the Scala side is ohi LinkML 975f65a, v0.13.1-15-g975f65a.
 
 ### JSON Schema
 
@@ -185,7 +185,7 @@ long long h = linkml_load_file("model.yaml",
 
 A loaded schema is an integer handle.
 
-**One thread.** Due to a current limitation in Scala Native, the library has to be used from a single thread, which calls `linkml_init_threads()` once before anything else. The Python bindings do this for you: they own a worker thread and send all requests to it. Calling LinkML-Scala from multiple threads in Python is safe, but the calls will be executed serially.
+**One thread.** Due to a current limitation in Scala Native, the library has to be used from a single thread, which calls `linkml_init_threads()` once before anything else. The Python bindings do this for you: they own a worker thread and send all requests to it. Calling ohi LinkML from multiple threads in Python is safe, but the calls will be executed serially.
 
 ## Building it yourself
 

@@ -6,7 +6,7 @@
 #   - the `generator` matrix: drop anything nobody consumes. `linkml` is worth keeping -
 #     it emits a single self-contained schema with imports resolved and slots
 #     materialised, which downstream consumers can read without any LinkML tooling.
-#   - the action's version tag: it matches the linkml-scala release it bundles.
+#   - the action's version tag: it matches the ohi LinkML release it bundles.
 #     Check the latest at
 #     https://github.com/NeverBlink-OSS/linkml-scala-action/releases
 #

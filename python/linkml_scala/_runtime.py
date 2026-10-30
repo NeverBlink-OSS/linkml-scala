@@ -134,7 +134,7 @@ def _options(options: Mapping[str, Any] | None) -> bytes | None:
 
 
 class _Worker:
-    """LinkML-Scala native worker thread."""
+    """ohi LinkML native worker thread."""
 
     def __init__(self, path: Path) -> None:
         self._work: queue.SimpleQueue = queue.SimpleQueue()

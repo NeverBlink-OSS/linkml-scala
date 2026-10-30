@@ -5,7 +5,7 @@ package eu.neverblink.linkml.schemaview.buildinfo
 
 import eu.neverblink.linkml.runtime.*
 
-/** The kind of build a LinkML-Scala distribution is.
+/** The kind of build an ohi LinkML distribution is.
   *
   * @see
   *   From schema: https://linkml.ohi.dev/model/build-info

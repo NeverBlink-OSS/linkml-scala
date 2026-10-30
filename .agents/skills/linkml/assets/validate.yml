@@ -6,7 +6,7 @@
 #     holding the imported files, keyed by the path used in `imports:`.
 #   - `strict`: recommended for published schemas. Warnings such as a missing `tree_root`
 #     degrade every generated artifact, so failing on them is usually right.
-#   - the action's version tag: it matches the linkml-scala release it bundles.
+#   - the action's version tag: it matches the ohi LinkML release it bundles.
 #     Check the latest at
 #     https://github.com/NeverBlink-OSS/linkml-scala-action/releases
 #

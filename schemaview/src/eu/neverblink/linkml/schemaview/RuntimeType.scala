@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.schemaview
 
-/** An enum-like representation of all linkml-scala runtime supported types. Generators are expected
+/** An enum-like representation of all ohi LinkML runtime supported types. Generators are expected
   * to handle all cases of these types, or at least the [[CoreType]] subset.
   */
 sealed trait RuntimeType:

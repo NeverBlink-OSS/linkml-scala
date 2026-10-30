@@ -4,7 +4,7 @@
 and report the result — it will either fail confusingly or appear to pass while checking nothing.
 
 The route is two steps: generate a validation artifact from the schema, then run a validator for
-that format. This is exactly how linkml-scala tests itself, using
+that format. This is exactly how ohi LinkML tests itself, using
 [networknt/json-schema-validator](https://github.com/networknt/json-schema-validator) for JSON
 Schema and RDF4J's SHACL engine for RDF.
 
@@ -156,7 +156,7 @@ fix.
 
 ## Worked examples to check against
 
-The linkml-scala test suite ships `valid/` and `invalid/` instance data next to most example
+The ohi LinkML test suite ships `valid/` and `invalid/` instance data next to most example
 schemas — genuinely useful for confirming your pipeline works before trusting it on real data.
 A schema plus a file that *should* fail is the best way to prove the validator is actually
 running:

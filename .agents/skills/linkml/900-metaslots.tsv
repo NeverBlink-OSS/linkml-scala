@@ -15,7 +15,7 @@
 # slot of their is_a/mixins ancestors, so class_definition does accept name and
 # description even though those are declared on element.
 #
-# Presence here means the *metamodel* defines it, NOT that linkml-scala implements
+# Presence here means the *metamodel* defines it, NOT that ohi LinkML implements
 # it. Check 200-limitations.md before relying on anything unusual.
 #
 # slot	used_on	range	cardinality	tier	description

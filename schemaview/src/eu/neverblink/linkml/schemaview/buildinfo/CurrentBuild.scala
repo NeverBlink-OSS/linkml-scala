@@ -3,7 +3,7 @@ package eu.neverblink.linkml.schemaview.buildinfo
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
 
-/** The build metadata of the LinkML-Scala distribution this code is part of.
+/** The build metadata of the ohi LinkML distribution this code is part of.
   *
   * The version numbers come from [[BuildConstants]], which the build fills in, and the rest is read
   * off the running platform. Callers that know about additional components (beyond SchemaView) can

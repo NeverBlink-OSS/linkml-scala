@@ -8,14 +8,14 @@ license: Apache-2.0
 
 [LinkML](https://linkml.io) is a YAML data-modelling language: write the model once, generate
 JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skill drives
-[linkml-scala](https://github.com/NeverBlink-OSS/linkml-scala).
+[ohi LinkML](https://github.com/NeverBlink-OSS/linkml-scala).
 
 ## Rules
 
 * ALWAYS validate after editing a schema. The validator takes milliseconds and its messages are
   precise — never reason about whether a schema is correct when you can run it and know.
 * ALWAYS check [200-limitations.md](200-limitations.md) before using a LinkML feature you have
-  not already used with linkml-scala. A significant set of the language is unimplemented and
+  not already used with ohi LinkML. A significant set of the language is unimplemented and
   **fails silently** — `rules:`, boolean expressions, arrays, dynamic enums, type designators.
   This is the single most common way to produce a schema that looks right and does nothing.
 * NEVER claim a generator or importer exists without checking.

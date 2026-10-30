@@ -1,6 +1,6 @@
 # LinkML authoring reference
 
-Depth on constructs the skill body only mentions. Everything here is supported by linkml-scala
+Depth on constructs the skill body only mentions. Everything here is supported by ohi LinkML
 unless explicitly noted. Check `200-limitations.md` before using anything not covered here.
 
 Examples are fragments; wrap them in the minimal schema from the skill body. All of them are
@@ -131,7 +131,7 @@ classes:
 
 That import adds `int8`…`int64`, `uint8`…`uint64`, `float16`/`float32`/`float64`,
 `signedinteger`, `unsignedinteger` and `any_number`. It is part of the upstream LinkML
-metamodel, not a linkml-scala extension, but it is new enough and obscure enough that other
+metamodel, not an ohi LinkML extension, but it is new enough and obscure enough that other
 tooling may not handle these types — prefer plain `integer`/`float` unless the width matters.
 
 `structured_pattern` composes a regex from `settings:`, and is expanded at derivation time:
@@ -190,13 +190,13 @@ classes:
 ```
 
 - At most one `identifier` **or** `key` per class; more is an error.
-- The range must be a scalar type. A class or enum range is an error in linkml-scala.
+- The range must be a scalar type. A class or enum range is an error in ohi LinkML.
 - The presence of one changes inlining everywhere the class is used, so this is not a
   cosmetic choice.
 
 `unique_keys` declares additional uniqueness over slot combinations. Note that
 `unique_key_slots` resolves against **top-level `slots:` only** — naming an inline attribute
-there is a fatal `Unknown reference` in linkml-scala, so a class using `unique_keys` has to
+there is a fatal `Unknown reference` in ohi LinkML, so a class using `unique_keys` has to
 declare those slots at the top level:
 
 ```yaml
@@ -238,7 +238,7 @@ its keys and locations are full URIs or paths, because a map doesn't belong to a
 prefixes could expand them. A full URI key also matches CURIE imports that expand to it, so
 `https://example.org/units/core` matches `units:core`. See [Import maps](220-import-maps.md).
 
-All references are checked **eagerly** in linkml-scala: an unresolvable name is fatal and the
+All references are checked **eagerly** in ohi LinkML: an unresolvable name is fatal and the
 schema will not load at all, so imports must be right before anything else works.
 
 Flatten a multi-file schema into one self-contained file with:
@@ -296,7 +296,7 @@ classes:
         inlined_as_list: true
 ```
 
-One class in the root schema should be `tree_root`. `tree_root_as` (a linkml-scala extension)
+One class in the root schema should be `tree_root`. `tree_root_as` (an ohi LinkML extension)
 controls the root's shape — `plain`, `optional`, `list`, `compact_dict`, `simple_dict`:
 
 ```yaml
@@ -336,7 +336,7 @@ Remember that omitting `range` gives you `string` (via `default_range`), not "an
 ## Checking whether a construct exists
 
 `900-metaslots.tsv` (see the skill body for the queries) lists what the *metamodel* defines, which
-is not what linkml-scala implements. Cross-check anything unusual against
+is not what ohi LinkML implements. Cross-check anything unusual against
 [200-limitations.md](200-limitations.md), and when in doubt write the smallest schema using it and
 run the validator.
 
@@ -356,5 +356,5 @@ Only worth fetching when nothing here answers the question.
 | Per-element metamodel pages | `https://linkml.io/linkml-model/latest/docs/<ElementName>/` |
 | Machine-readable metamodel | <https://w3id.org/linkml/meta.yaml> |
 
-Where linkml.io and linkml-scala disagree, [200-limitations.md](200-limitations.md) wins — it
+Where linkml.io and ohi LinkML disagree, [200-limitations.md](200-limitations.md) wins — it
 describes the implementation you are running.
