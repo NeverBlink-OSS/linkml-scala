@@ -1,145 +1,139 @@
 # Contributing to LinkML-Scala
 
-Thanks for your interest in LinkML-Scala! We're happy to see the project used and  improved by others.
+Issues and pull requests are welcome. We don't have a Contributor License Agreement (CLA) yet, so we can't merge large external contributions in the code. If you plan something big, [email us](mailto:contact@neverblink.eu) first.
 
-A note on expectations: we don't yet have a Contributor License Agreement (CLA) process in place, so we can't merge substantial external contributions just yet. You are very welcome to open issues and pull requests – bug reports and feature requests are always appreciated and help us a lot. If you're serious about contributing something larger, please [reach out to us](mailto:contact@neverblink.eu) first so we can sort out the details together.
+Questions and ideas: **[Discord](https://discord.gg/HGksVAJ6ss)**. The project follows our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-Want to chat with the maintainers, ask a question, or discuss an idea before opening a PR? **[Join our Discord](https://discord.gg/HGksVAJ6ss)**.
+## Setup
 
-## Building the project
+The build tool is [mill](https://mill-build.org/). The repository includes the `./mill` script, which downloads mill on first use.
 
-LinkML-Scala uses [mill](https://mill-build.org/) as the build tool. A bootstrap script is included with this repo (`./mill`), so no additional setup is required for CLI usage. In IntelliJ, [you have to import the project as BSP](https://mill-build.org/mill/cli/installation-ide.html#_intellij) and you are good to go.
+| You need        | For                                                        |
+|-----------------|------------------------------------------------------------|
+| JDK 17 or newer | Everything                                                 |
+| Node 24 and npm | The docs sites, playground and npm package.                |
+| Python 3        | Tests of the Python bindings                               |
 
-Common tasks with mill:
+In IntelliJ, [import the project as BSP](https://mill-build.org/mill/cli/installation-ide.html#_intellij).
 
-- Run CLI directly: `./mill cli.jvm.run --help`
-- Serve the whole site (landing page, playground and docs): `./mill ui.serve`
-- Preview the docs site: `./mill website.serve` (see [Docs site](#docs-site))
-- Scan the mill project structure: `./mill resolve _`
-- Compile all modules: `./mill __.compile`
-- Run all tests: `./mill __.testForked` (prefer specific test running for faster feedback, like `./mill generator.jvm.test`).
-- Run the JMH benchmarks: `./mill benchmark.runJmh` (see [Benchmarks](#benchmarks))
-- Lint the project: `./mill lint` (scalafix + scalafmt)
-- Re-generate all classes generated from LinkML models (metamodel, validation report, build info, OWL import config, conformance tests, ohi client models): `./mill regenerate` (see [Generated models](#generated-models))
-- Fetch the metamodel definitions from [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) `./mill metamodel.definitions`
-- Publish artifacts locally: `./mill __.publishLocal`
-- Assembly runnable .jar: `./mill cli.jvm.assembly`
-- Build native binary: `./mill cli.jvm.nativeImage` (requires Coursier (cs) to be installed)
-- Assemble the npm package: `./mill generator.js.npmPackage` (TS declarations are generated from the Scala facade)
-- Verify the npm package (README examples run + types compile): `./mill generator.js.verifyPackage` (requires Node.js and npm)
+## Development commands
 
-### Generated models
+| Task                         | Command                                      |
+|------------------------------|----------------------------------------------|
+| Compile everything           | `./mill __.compile`                          |
+| Test one module              | `./mill generator.jvm.test`                  |
+| Test everything              | `./mill __.testForked`                       |
+| Lint (scalafix and scalafmt) | `./mill lint`                                |
+| Run the `linkml-scala` CLI   | `./mill cli.jvm.run --help`                  |
+| Run the `ohi` CLI            | `./mill cli.ohi.jvm.run --help`              |
+| Build a runnable jar         | `./mill cli.jvm.assembly`, `./mill cli.ohi.jvm.assembly` |
+| Publish to the local Ivy repository | `./mill __.publishLocal`              |
 
-The classes generated from each LinkML schema in this repo live in their own module, which extends `LinkMlModelModule` (in `mill-build/src`):
+## Docs and sites
 
-| Module                 | Schema                             | Other generated files                  |
-|------------------------|------------------------------------|----------------------------------------|
-| `metamodel`            | `linkml:meta`                      |                                        |
-| `validation`           | `model/issue-types.yaml`           | `generator/npm/validation-report.d.ts` |
-| `schemaview.buildinfo` | `model/build-info.yaml`            | `generator/npm/build-info.d.ts`        |
-| `generator.owlconfig`  | `model/owl-import-config.yaml`     |                                        |
-| `tests.conformance`    | the conformance suite's model.yaml |                                        |
+| Site        | Sources                 | Serve locally           | Address                       |
+|-------------|-------------------------|-------------------------|-------------------------------|
+| [LinkML docs](https://linkml.ohi.dev/docs) | [`website/`](website/)  | `./mill website.serve`  | <http://localhost:4321/docs/> |
+| [ohi docs](https://ohi.dev/docs)    | [`ohi/docs/`](ohi/docs/) | `./mill ohi.docs.serve` | <http://localhost:4321/docs/> |
+| [LinkML site](https://linkml.ohi.dev) | [`ui/`](ui/), [`pages/`](pages/) | `./mill ui.serve` | <http://localhost:8000/>      |
 
-The generated classes are committed, because generating them needs the CLI, which depends on them.
+The docs servers will reload on every change to the source files.
 
-#### Regenerating
+`ui.serve` serves the whole linkml.ohi.dev site as it is deployed: the landing page at `/`, the playground at `/playground/` and the docs at `/docs/`. It builds the docs once, so use `website.serve` to work on them.
 
-Regenerate the classes after you change one of the schemas, the Scala or TypeScript generator, or the metamodel version:
+The docs pages are Markdown files:
 
-- All models: `./mill regenerate`. It runs `regenerate`, `fix` and `reformat` on every model module, and then regenerates the ohi models (see [ohi/README.md](ohi/README.md)).
-- One model: run its `regenerate` command, and then format the result, as separate commands:
-  ```shell
-  ./mill validation.regenerate
-  ./mill validation.jvm.fix
-  ./mill validation.jvm.reformat
-  ```
-  Don't join them with `+`: Mill can then format the files before they are written.
+- LinkML docs: `website/src/content/docs/`. Add a new page to the sidebar in `website/astro.config.mjs` and to the list in `index.md`. Some pages are copied into the agent skills, so after editing a page, run `./mill agents.generate` (see [Generated files](#generated-files)).
+- ohi docs: `ohi/docs/src/content/docs/`. Add a new page to the sidebar in `ohi/docs/astro.config.mjs`.
 
-Then commit the changed files.
+CI runs `./mill website.build`, `./mill ohi.docs.build` and `./mill ui.check`. The docs builds fail on broken links between pages and to headings. `website.preview` and `ohi.docs.preview` build a site and serve the result, with search.
 
-Things to know:
+The first run of any of these commands installs the npm dependencies.
 
-- The metamodel and the conformance suite's model.yaml come from a copy of [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) that Mill keeps in `out/`, and Mill does not fetch it again on its own. To regenerate from the latest version, as CI does, run `./mill clean metamodel.definitionsRepo` first.
-- `regenerate` runs the CLI, so the generated classes must compile. If they don't (for example, after a bad manual edit), revert them with `git checkout -- <module>/src` and regenerate again.
-- CI runs `./mill regenerate` and fails if the result differs from what is committed in the model modules, `generator/npm`, `ohi` and `cli/ohi`.
+## Generated files
 
-#### Adding a model
+Some source files are generated and committed. CI regenerates them and fails if the result differs from what is committed. After you change a schema, a generator or the metamodel version, regenerate and commit the result.
+
+`./mill regenerate` updates everything except the last two rows:
+
+| Files                                                  | Source                             |
+|--------------------------------------------------------|------------------------------------|
+| `metamodel`                                            | `linkml:meta`                      |
+| `validation`, `generator/npm/validation-report.d.ts`   | `model/issue-types.yaml`           |
+| `schemaview.buildinfo`, `generator/npm/build-info.d.ts` | `model/build-info.yaml`           |
+| `generator.owlconfig`                                  | `model/owl-import-config.yaml`     |
+| `tests.conformance`                                    | the conformance suite's model.yaml |
+| ohi models in `ohi/` and `cli/ohi/`                    | `ohi/model/schema/`, see [ohi/README.md](ohi/README.md#regenerate-and-test) |
+| Agent skill references in `.agents/skills/linkml/`     | the metamodel, four LinkML docs pages and `tests/resources/models/`, see [.agents/README.md](.agents/README.md#maintenance) |
+| `ui/linkml.d.ts`                                       | `LinkMlJsApi.scala`, with `./mill ui.types` |
+| `python/linkml_scala/_generated.py`, `LinkMlCGenerators.scala` | `LINKML_NATIVE=1 ./mill nativelib.bindings` |
+
+The model classes are committed because generating them needs the CLI, which depends on them. So `regenerate` only works when the committed classes compile. If they don't, revert them with `git checkout -- <module>/src` and regenerate again.
+
+The metamodel and the conformance suite come from a copy of [NeverBlink-OSS/linkml-model](https://github.com/NeverBlink-OSS/linkml-model) in `out/`. Mill does not update it on its own. To regenerate from the latest version, as CI does, run `./mill clean metamodel.definitionsRepo` first.
+
+To regenerate one model, run these as separate commands:
+
+```shell
+./mill validation.regenerate
+./mill validation.jvm.fix
+./mill validation.jvm.reformat
+```
+
+If you join them with `+`, mill can format the files before they are written.
+
+### Adding a model
 
 1. Create a `package.mill` for the module, next to the module that uses the classes (like `generator/owlconfig/package.mill`).
-2. Make the module extend `LinkMlModelModule`, set `modelGeneratorCli` to `build.cli.jvm.runner`, and set `modelSchema` and `modelPackage`. Set `otherModelOutputs` to also run other generators, like `typescript`.
+2. Make the module extend `LinkMlModelModule` (in `mill-build/src`), set `modelGeneratorCli` to `build.cli.jvm.runner`, and set `modelSchema` and `modelPackage`. To also run other generators, like `typescript`, set `otherModelOutputs`.
 3. Add the `jvm` module, and `js` and `native` if the classes are needed there, with a dependency on `build.runtime` (or `build.yaml`, if hand-written codecs live next to the classes).
 4. Add the new module to the `moduleDeps` of the modules that use it.
 5. Run `./mill regenerate` and commit the generated classes.
 
-`./mill regenerate` and the CI check find the new module on their own. Hand-written code that needs more than the generated classes can stay in the module that uses it, in the same package.
+`./mill regenerate` and the CI check find the new module on their own.
+
+## Other targets
 
 ### Scala Native
 
-The library cross-compiles to Scala Native as well as the JVM and Scala.js, and all three are published to Maven Central. The shared library and the Python bindings are built with Scala Native too – see [Python bindings](https://linkml.ohi.dev/docs/python-bindings/). The CLI executable is still a GraalVM native image.
+The library is published for the JVM, Scala.js and Scala Native. The shared library and the [Python bindings](https://linkml.ohi.dev/docs/python-bindings/) are built with Scala Native.
 
-The Scala Native submodules are **hidden from the build unless you enable them**, because the Scala Native toolchain rather heavy. To enable them, set `LINKML_NATIVE=1`:
-
-```shell
-LINKML_NATIVE=1 ./mill --no-server __.native.__.testForked   # all Scala Native tests
-LINKML_NATIVE=1 ./mill --no-server schemaview.native.compile # just one module
-LINKML_NATIVE=1 ./mill --no-server nativelib.native.pythonTest  # the C library and Python bindings
-```
-
-Building the shared library needs clang; the Scala modules only need the JVM.
-
-The env var is set when starting the mill process, so if you have a daemon running, restart it and pass this variable.
-
-### Playground UI
-
-The browser playground lives in [`ui/`](ui/) – a TypeScript app (CodeMirror editors) bundled with [esbuild](https://esbuild.github.io/). It loads the Scala.js generator bundle at runtime. **Node.js and npm must be on your `PATH`** for the tasks below. The first run installs the npm dependencies automatically.
-
-- Serve it locally: `./mill ui.serve` – builds the Scala.js bundle, the UI bundle and the docs, then serves the whole site as it's deployed: the landing page ([`pages/index.html`](pages/index.html)) at <http://localhost:8000/>, the playground at <http://localhost:8000/playground/> and the docs at <http://localhost:8000/docs/>. Reload to see edits to the landing page and the playground. The docs are built once, so use `./mill website.serve` to work on them.
-- Build the whole site, as it's deployed: `./mill ui.site` → `out/ui/site.dest/`. `ui.serve` serves the same files.
-- Build the UI bundle only: `./mill ui.bundle` → `ui/dist/app.js`
-- Type-check and bundle (what CI runs): `./mill ui.check`
-- Regenerate the LinkML API types: `./mill ui.types` – run after changing `generator/src-js/.../LinkMlJsApi.scala`
-
-`ui/linkml.d.ts` is generated from the Scala facade and **committed** (so editors resolve types without a build). CI regenerates it and fails if it's stale, so re-run `./mill uiTypes` and commit the result when the facade changes.
-
-You can also work in `ui/` directly with npm:
+The Scala Native modules are hidden unless `LINKML_NATIVE=1` is set, because the toolchain is slow to load. The variable is read when the mill daemon starts, so stop a running daemon first (`./mill shutdown`), or use `--no-server`:
 
 ```shell
-cd ui
-npm install       # first-time setup
-npm run watch     # esbuild, rebuilds on change
-npm run typecheck # tsc --noEmit
-npm run build     # one-off bundle
+LINKML_NATIVE=1 ./mill --no-server __.native.__.testForked      # all Scala Native tests
+LINKML_NATIVE=1 ./mill --no-server schemaview.native.compile    # one module
+LINKML_NATIVE=1 ./mill --no-server nativelib.native.pythonTest  # the shared library and the Python bindings
 ```
 
-### Docs site
+### Native CLI executables
 
-The guides are published at <https://linkml.ohi.dev/docs/> with [Starlight](https://starlight.astro.build/). The site's sources are in [`website/`](website/). Markdown pages are written in `website/src/content/docs/`. **Node.js and npm must be on your `PATH`**, and the first run installs the npm dependencies.
+The CLI executables are GraalVM native images. Mill downloads GraalVM.
 
-- Serve it locally: `./mill website.serve` – at <http://localhost:4321/docs/>, reloads on every change
-- Build it (what CI runs): `./mill website.build` → `website/dist/`. It fails on a broken link between pages or to a heading.
-- Build and serve the result: `./mill website.preview`
+```shell
+./mill cli.jvm.nativeImage       # out/cli/jvm/nativeImage.dest/linkml-scala
+./mill cli.ohi.jvm.nativeImage   # out/cli/ohi/jvm/nativeImage.dest/ohi
+```
 
-A new guide has to be added to the sidebar in `website/astro.config.mjs`, and to the list in `index.md`, which is the landing page. The build fails if it is missing from the sidebar.
+### npm package
 
-The ohi SDK has its own site in [`ohi/docs/`](ohi/docs/), published at <https://ohi.dev/docs/>. Its pages are written directly in `ohi/docs/src/content/docs/`, and new ones are added to the sidebar in `ohi/docs/astro.config.mjs`. The commands are the same, under `ohi.docs`: `./mill ohi.docs.serve`, `./mill ohi.docs.build` (also run by CI) and `./mill ohi.docs.preview`.
+```shell
+./mill generator.js.npmPackage    # assemble the package
+./mill generator.js.verifyPackage # run the README examples and compile the types
+```
 
 ## Benchmarks
 
-Performance benchmarks live in [`benchmark/`](benchmark/) and use [JMH](https://github.com/openjdk/jmh) via the mill JMH plugin. The module is JVM-only and is never published.
+The JMH benchmarks are in [`benchmark/`](benchmark/).
 
-- Run all benchmarks: `./mill benchmark.runJmh`
-- Run a subset (regex over benchmark names): `./mill benchmark.runJmh ".*NTriples.*"`
-- List available benchmarks: `./mill benchmark.listJmhBenchmarks`
+```shell
+./mill benchmark.runJmh                  # all benchmarks
+./mill benchmark.runJmh ".*NTriples.*"   # those matching a regex
+./mill benchmark.listJmhBenchmarks
+```
 
-## Releasing with GitHub UI
+## Releasing
 
-1. Go to Releases -> Draft a new release
-2. Press "Select tag" list
-3. Enter the tag name in form `v0.2.3`
-4. Press "Generate Release Notes" button
-5. Select "Pre-release" or "Release" list item
-6. Press "Publish Release" button
+Create a release in the GitHub UI with a new tag like `v0.2.3`, and press "Generate release notes". The tag starts [`release.yml`](.github/workflows/release.yml), which builds and publishes everything. A tag with a `-` in it, like `v0.3.0-rc1`, makes a pre-release and publishes the npm package under the `next` tag.
 
-## Snapshots
-
-We publish snapshot versions of LinkML-Scala, you can find them [here](https://central.sonatype.com/repository/maven-snapshots/eu/neverblink/linkml/generator_3/maven-metadata.xml)
+[Snapshot versions](https://central.sonatype.com/repository/maven-snapshots/eu/neverblink/linkml/generator_3/maven-metadata.xml) are published to Maven Central's snapshot repository.
