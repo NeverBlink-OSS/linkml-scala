@@ -20,6 +20,7 @@ Generators accept both forms:
 - JSON Schema: `anyOf` a string and a non-empty object with string values.
 - TypeScript: `string | Record<string, string>`.
 - Pydantic: `str | Annotated[dict[str, str], Field(min_length=1)]`.
+- GraphQL: a custom scalar, `Langstring`, as GraphQL has no unions of scalars.
 - SHACL: `sh:or ( [ sh:datatype xsd:string ] [ sh:datatype rdf:langString ] )`. A single-valued slot holds one plain string, or texts in different languages (`sh:uniqueLang true`).
 - OWL: `rdf:PlainLiteral`. A single-valued slot is not functional, as a text in several languages is one literal per language. It has at most one plain string (`owl:maxQualifiedCardinality 1` on `xsd:string`).
 
