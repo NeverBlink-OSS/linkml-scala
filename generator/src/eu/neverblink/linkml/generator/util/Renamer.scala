@@ -14,4 +14,5 @@ trait Renamer {
   def typeName(el: TypeView): String
   def enumName(el: EnumView): String
   def permissibleValueName(el: EnumView, pv: PermissibleValue): String
+  def functionName(el: FunctionView): String
 }

@@ -56,7 +56,7 @@ trait ScalaRenamer extends Renamer {
     Case.base(pv.text),
   )
 
-  def functionName(el: FunctionView): String = scalaCamel(el.baseName)
+  override def functionName(el: FunctionView): String = scalaCamel(el.baseName)
 
   /** The name of the trait that contains the functions of a schema, such as `SearchFunctions` for a
     * schema named `search`.

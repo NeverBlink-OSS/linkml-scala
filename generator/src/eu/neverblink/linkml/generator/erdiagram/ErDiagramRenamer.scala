@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.erdiagram
 
 import eu.neverblink.linkml.generator.util.Renamer
 import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
-import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, TypeView}
+import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, FunctionView, SlotView, TypeView}
 
 trait ErDiagramRenamer extends Renamer {
 
@@ -52,6 +52,9 @@ trait ErDiagramRenamer extends Renamer {
 
   override def enumName(el: EnumView): String =
     prefix(Case.baseToPascal(el.baseName))
+
+  override def functionName(el: FunctionView): String =
+    prefix(el.baseName)
 
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
     prefix(Case.base(pv.text))

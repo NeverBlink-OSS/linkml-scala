@@ -28,6 +28,70 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
     TypeScriptGenerator(using load(classesYaml)).serialize(options)
 
   "TypeScriptGenerator" should {
+    "give every function of a catalogue model a method on one interface" in {
+      ModelCatalogue.all.filter(_.model.root.functions.nonEmpty).foreach { entry =>
+        withClue(s"${entry.name}: ") {
+          val code = TypeScriptGenerator(using entry.model).serialize()
+          val name = TypeScriptRenamer.functionsInterfaceName(entry.model)
+          code should include(s"export interface $name {")
+          entry.model.root.functions.keys.foreach { fn =>
+            code should include(s"  ${TypeScriptRenamer.functionName(entry.model.functions(fn))}(")
+          }
+        }
+      }
+    }
+
+    "return what a function gives back, or one of its errors" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model).serialize()
+      code should include("fetch(id: string): Item | Unavailable | Closed;")
+      code should include("listItems(): ItemList | Closed;")
+      code should include("status(): Status;") // an enum
+      code should include("totalValue(): number;") // a type
+      val basic = TypeScriptGenerator(using ModelCatalogue.functions.basic.model).serialize()
+      basic should include("reindex(): void;")
+      basic should include("remove(title: string): void | NotFound;")
+      basic should include("countBooks(): number;")
+    }
+
+    "mark the optional parameters at the end of the list with ?" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.parameters.model).serialize()
+      Seq(
+        "q: string,",
+        "tags?: string[],",
+        "page?: number,",
+        "sortBy?: SortOrder,",
+        "): SearchResult;",
+        "@param q Required text query.",
+      ).foreach(snippet => code should include(snippet))
+    }
+
+    "keep the place of an optional parameter that a required one follows" in {
+      val code = generate(
+        """classes:
+          |  Request:
+          |    attributes:
+          |      first:
+          |        range: string
+          |      second:
+          |        range: string
+          |        required: true
+          |  Result:
+          |functions:
+          |  go:
+          |    parameters: Request
+          |    returns: Result
+          |""".stripMargin,
+      )
+      // A required parameter cannot follow an optional one, so `first` takes undefined instead
+      code should include("first: string | undefined,")
+      code should include("second: string,")
+    }
+
+    "generate no functions interface for a schema without functions" in {
+      TypeScriptGenerator(using ModelCatalogue.basic.model).serialize() should
+        not include "Functions {"
+    }
+
     "map slot ranges to TypeScript types" in {
       val ts = generate(
         """classes:

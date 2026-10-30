@@ -31,6 +31,74 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
   def py(text: String): String = text.replace("'''", "\"\"\"")
 
   "PydanticGenerator" should {
+    "give every function of a catalogue model a method on one Protocol" in {
+      ModelCatalogue.all.filter(_.model.root.functions.nonEmpty).foreach { entry =>
+        withClue(s"${entry.name}: ") {
+          val code = PydanticGenerator(using entry.model).serialize()
+          val name = PydanticRenamer.functionsProtocolName(entry.model)
+          code should include(s"class $name(Protocol):")
+          entry.model.root.functions.keys.foreach { fn =>
+            val fv = entry.model.functions(fn)
+            code should include(s"    def ${PydanticRenamer.functionName(fv)}(")
+            fv.errors.foreach { cls =>
+              val error = PydanticRenamer.errorName(cls)
+              code should include(s"class $error(Exception):")
+              code should include(s":raises $error:")
+            }
+          }
+        }
+      }
+    }
+
+    "raise the errors of a function rather than returning them" in {
+      val code = PydanticGenerator(using ModelCatalogue.functions.returns.model).serialize()
+      code should include("class ClosedError(Exception):")
+      code should include("    def __init__(self, error: Closed) -> None:")
+      code should include("    def fetch(self, id: str) -> Item:")
+      code should include(":raises ClosedError: The store is closed.")
+      code should include("    def status(self) -> Status:") // an enum
+      val basic = PydanticGenerator(using ModelCatalogue.functions.basic.model).serialize()
+      basic should include("    def reindex(self) -> None:")
+      basic should include("    def remove(self, title: str) -> None:")
+    }
+
+    "give a function the slots of its parameter class as arguments" in {
+      val code = PydanticGenerator(using ModelCatalogue.functions.parameters.model).serialize()
+      Seq(
+        "        q: str,",
+        "        tags: list[str] | None = None,",
+        "        sort_by: SortOrder | None = None,",
+        "    ) -> SearchResult:",
+        ":param q: Required text query.",
+      ).foreach(snippet => code should include(snippet))
+    }
+
+    "keep the place of an optional parameter that a required one follows" in {
+      val code = generate(
+        """classes:
+          |  Request:
+          |    attributes:
+          |      first:
+          |        range: string
+          |      second:
+          |        range: string
+          |        required: true
+          |  Result:
+          |functions:
+          |  go:
+          |    parameters: Request
+          |    returns: Result
+          |""".stripMargin,
+      )
+      // A parameter without a default cannot follow one with a default, so `first` gets none
+      code should include("def go(self, first: str | None, second: str) -> Result:")
+    }
+
+    "generate no functions Protocol for a schema without functions" in {
+      PydanticGenerator(using ModelCatalogue.basic.model).serialize() should
+        not include "(Protocol):"
+    }
+
     "map slot ranges to Python types" in {
       val py = generate(
         """classes:

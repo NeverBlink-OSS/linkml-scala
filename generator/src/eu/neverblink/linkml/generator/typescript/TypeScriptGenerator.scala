@@ -172,8 +172,76 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append(";\n")
   }
 
+  /** The functions of the schema, as one interface with a method for each. */
+  private def writeFunctions(sink: CharSink, functions: Seq[FunctionView], ctx: Context)(using
+      Options,
+  ): Unit = {
+    writeDoc(sink, Seq(s"The functions of the `${sv.root.name}` schema."), "")
+    sink.append("export interface ")
+    sink.append(functionsInterfaceName(sv))
+    sink.append(" {\n")
+    functions.foreach {
+      var first = true
+      fv =>
+        if !first then sink.append('\n')
+        first = false
+        writeFunction(sink, fv, ctx)
+    }
+    sink.append("}\n")
+  }
+
+  private def writeFunction(sink: CharSink, fv: FunctionView, ctx: Context)(using
+      Options,
+  ): Unit = {
+    val attributes = fv.parameters.foldFast(Seq.empty[AttributeView])(_.sortedAttributeViews)
+    // A required parameter cannot follow an optional one in TypeScript, so only the optional
+    // parameters at the end of the list get `?`.
+    var optionalFrom = attributes.length
+    while optionalFrom > 0 && !attributes(optionalFrom - 1).slotView.slot.required do
+      optionalFrom -= 1
+    var index = 0
+    val arguments = attributes.map { attribute =>
+      val slot = attribute.slotView
+      val name = TypeScriptRenamer.member(slot.baseName)
+      val tpe = attributeType(attribute, fv.parameters.get, ctx)
+      val argument =
+        if slot.slot.required then s"$name: $tpe"
+        else if index >= optionalFrom then s"$name?: $tpe"
+        else s"$name: $tpe | undefined"
+      index += 1
+      argument
+    }
+    val returned = fv.returns.foldFast("void") {
+      case cv: ClassView => if cv.isAny then "unknown" else classRef(cv)
+      case tv: TypeView => runtimeType(tv)
+      case ev: EnumView => enumName(ev)
+      case _ => "unknown"
+    }
+    val tags = attributes.map { attribute =>
+      val text = DocLines(attribute.slotView.slot).mkString(" ")
+      s"@param ${TypeScriptRenamer.member(attribute.slotView.baseName)} $text".strip
+    } ++ Option.when(fv.errors.nonEmpty)(
+      s"@returns ${fv.errors.map(_.name).mkString(", ")} when it fails.",
+    )
+    val description = DocLines(fv.function)
+    val separator = if description.nonEmpty && tags.nonEmpty then Seq("") else Nil
+    writeDoc(sink, description ++ separator ++ tags, "  ")
+    sink.append("  ")
+    sink.append(functionName(fv))
+    // One argument per line once there is more than one
+    if arguments.sizeIs > 1 then sink.append(arguments.mkString("(\n    ", ",\n    ", ",\n  )"))
+    else sink.append(arguments.mkString("(", "", ")"))
+    sink.append(": ")
+    sink.append((returned +: fv.errors.map(classRef)).mkString(" | "))
+    sink.append(";\n")
+  }
+
   /** Check that no two generated types share a name. */
-  private def checkNames(classes: Seq[ClassView], enums: Seq[EnumView]): Unit = {
+  private def checkNames(
+      classes: Seq[ClassView],
+      enums: Seq[EnumView],
+      hasFunctions: Boolean,
+  ): Unit = {
     val seen = mutable.HashMap.empty[String, String]
     def claim(name: String, owner: String): Unit =
       seen.put(name, owner).foreachFast { other =>
@@ -192,6 +260,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       if !hasInterface(cls) then claim(className(cls), s"the union of abstract class '${cls.name}'")
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
+    if hasFunctions then claim(functionsInterfaceName(sv), "the functions of the schema")
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
@@ -201,7 +270,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums =
       sv.enums.values.filter(query.reachable).toVector.sortBy(ev => sv.elementOrder(ev._enum))
-    checkNames(classes, enums)
+    val functions =
+      sv.functions.values.filter(query.reachable).toVector
+        .sortBy(fv => sv.elementOrder(fv.function))
+    checkNames(classes, enums, functions.nonEmpty)
 
     sink.append(GeneratedHeader("//"))
     classes.foreach { cls =>
@@ -215,6 +287,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     enums.foreach { ev =>
       sink.append('\n')
       writeEnum(sink, ev)
+    }
+    if functions.nonEmpty then {
+      sink.append('\n')
+      writeFunctions(sink, functions, ctx)
     }
     if ctx.usesKeyOptional then {
       sink.append('\n')

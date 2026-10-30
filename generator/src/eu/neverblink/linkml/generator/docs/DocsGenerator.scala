@@ -730,6 +730,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
             (t.language, PydanticRenamer.attribute(s.aliasedName, pythonNames))
           else (t.language, t.renamer.slotName(s))
         }
+      case fv: FunctionView => codeTargets.map(t => (t.language, t.renamer.functionName(fv)))
       case _ => Nil
     }
 
