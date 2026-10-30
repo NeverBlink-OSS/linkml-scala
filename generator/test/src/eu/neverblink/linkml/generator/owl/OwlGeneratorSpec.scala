@@ -336,7 +336,13 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
               is(c, EntityKind.Class)
             case Triple(_, Shacl.path, Iri(p)) => is(p, properties*)
             case Triple(_, Shacl.datatype, Iri(d)) if !d.startsWith(linkml) =>
-              withClue(s"$d: ")(datatypes should contain(d))
+              withClue(s"$d: ") {
+                // OWL writes a `langstring` range as rdf:PlainLiteral, which has both kinds of
+                // values that SHACL lists for it
+                if (d == XmlSchema.string.value || d == Rdf.langString.value)
+                  datatypes should contain atLeastOneOf (d, Rdf.get("PlainLiteral").value)
+                else datatypes should contain(d)
+              }
             case _ =>
           }
           def members(cell: Node): Seq[Node] =

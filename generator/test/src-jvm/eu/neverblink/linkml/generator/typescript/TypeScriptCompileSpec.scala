@@ -51,6 +51,7 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "typeDerivation" -> "negativeCount" -> bounds,
     "typeDerivation" -> "lowercaseCode" -> pattern,
     "typed" -> "notDate" -> "TypeScript types cannot express string formats such as dates",
+    "langString" -> "emptyMapping" -> "TypeScript types cannot require a non-empty object",
     "unionOf" -> "badPattern" -> pattern,
     "unionOf" -> "negative" -> bounds,
     "allOf" -> "matchesFirstOnly" -> pattern,
