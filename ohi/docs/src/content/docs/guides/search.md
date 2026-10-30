@@ -51,4 +51,4 @@ This saves `dcat3.owl.ttl` in your current directory. Add `--to ./ontologies` to
 Omit `@3` to select the most recently published release.
 
 To record this choice in a project and download its dependencies, follow
-[Manage ontology projects](/docs/guides/dependencies/).
+[Manage ontology projects](/docs/guides/projects/).

@@ -34,7 +34,7 @@ export default defineConfig({
         },
         {
           label: 'Guides',
-          items: ['guides/search', 'guides/dependencies', 'guides/ai-assistants'],
+          items: ['guides/search', 'guides/projects', 'guides/ai-agents'],
         },
         {
           label: 'Reference',

@@ -147,7 +147,7 @@ ohi add w3c/prov-o@2013 --format owl-turtle --to ./ontologies
 you run the command.
 
 To download the dependencies too, use `ohi get --lock ohi.lock.json --to ./ontologies`.
-See [Manage ontology projects](/docs/guides/dependencies/) for the complete workflow.
+See [Manage ontology projects](/docs/guides/projects/) for the complete workflow.
 
 ## lock
 

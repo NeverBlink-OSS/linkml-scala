@@ -24,4 +24,4 @@ This saves `20140114.owl.ttl` in an `ontologies` folder, creating the folder if 
 `owl-turtle` selects OWL in Turtle syntax. Open the file in a text editor to see its definitions.
 
 To record ontology choices in a project and download their dependencies, continue with
-[Manage ontology projects](/docs/guides/dependencies/).
+[Manage ontology projects](/docs/guides/projects/).

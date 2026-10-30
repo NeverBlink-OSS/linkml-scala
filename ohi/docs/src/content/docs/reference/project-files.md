@@ -10,7 +10,7 @@ An ohi project uses two files. Keep both in version control.
 | `ohi.yaml` | The publications and files you selected. | You, `ohi init` and `ohi add`. |
 | `ohi.lock.json` | Exact files and checksums, including dependencies. | `ohi add` and `ohi lock`. |
 
-For a walkthrough, see [Manage ontology projects](/docs/guides/dependencies/).
+For a walkthrough, see [Manage ontology projects](/docs/guides/projects/).
 
 ## ohi.yaml
 
