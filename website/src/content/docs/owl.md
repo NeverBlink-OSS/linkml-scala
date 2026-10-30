@@ -34,7 +34,7 @@ From JavaScript, `LinkML.owl(view, onlyRootSchema, metadataProfile, permissibleV
 | `is_a`, `mixins`                                           | `rdfs:subClassOf` the parents                                                                          |
 | a slot of the class (in `slots`, `attributes`, `slot_usage`) | restrictions on the class: `owl:allValuesFrom` the range, cardinalities, `owl:hasValue`, `owl:someValuesFrom` |
 | `required`, `minimum_cardinality`, `maximum_cardinality`   | `owl:minCardinality`, `owl:maxCardinality`, or `owl:cardinality` when the two are equal. On a transitive slot, its parents and inverses, which OWL 2 DL allows no counts on, `required` is `owl:someValuesFrom owl:Thing` and the counts are skipped |
-| a single-valued slot                                       | `owl:maxCardinality 1`, and `owl:FunctionalProperty` when it is single-valued everywhere it is used    |
+| a single-valued slot                                       | `owl:maxCardinality 1`, and `owl:FunctionalProperty` when it is single-valued everywhere it is used. A `langstring` slot gets `owl:maxQualifiedCardinality 1` on `xsd:string` instead, as a text in several languages is one literal per language |
 | `equals_string`, `equals_number`                           | `owl:hasValue`                                                                                         |
 | `has_member`, and more `has_member` under `all_of`         | `owl:someValuesFrom`, one each                                                                         |
 | `abstract` with two or more `is_a` children                | `rdfs:subClassOf` the union of the children                                                            |
@@ -136,6 +136,7 @@ The importer also reads vocabularies written in plain RDFS, such as DC terms or 
 | `rdfs:range`                                                | `range`, `any_of` for a union, `Any` (from `linkml:extended_types`) when there is none or when it mixes classes and datatypes |
 | `rdfs:domain`                                               | `domain` and the class's `slots`; for a union, `domain_of` and each class's `slots`                                 |
 | `owl:FunctionalProperty`                                    | single-valued. Other slots are multivalued, as OWL allows any number of values                                      |
+| `owl:maxQualifiedCardinality 1` on `xsd:string`, for a property with range `rdf:PlainLiteral` or `rdf:langString` | single-valued `langstring` slot                                         |
 | `rdfs:subPropertyOf`                                        | `is_a` and `mixins`. A parent from another ontology becomes a slot that stands for it, of the same kind as the child |
 | `owl:inverseOf`, characteristics, `owl:equivalentProperty`  | `inverse`, `transitive` and friends, `exact_mappings`                                                               |
 | class defined by `owl:oneOf`                                | enum. The text of a value is its `skos:notation`, else its local name                                               |

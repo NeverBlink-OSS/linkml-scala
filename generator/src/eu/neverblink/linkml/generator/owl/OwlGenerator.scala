@@ -498,6 +498,18 @@ object OwlGenerator {
             if (m > 0) stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Min, m, p))
           }
           max.foreachFast(m => stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Max, m, p)))
+          // A single-valued `langstring` slot holds at most one plain string. OWL can't say that
+          // it holds at most one text per language. The importer reads this back as single-valued.
+          if (max.isEmpty && !annotation && !any(_.multivalued) && isText(s)) {
+            stated.addOne(
+              ClassExpr.Cardinality(
+                ClassExpr.Bound.Max,
+                1,
+                p,
+                Some(DataRange.Datatype(XmlSchema.string.value)),
+              ),
+            )
+          }
         }
         first(_.equalsString).flatMapFast(valueOf(s, _))
           .orElseFast(first(_.equalsNumber).mapFast(n => Literal(n.toString, XmlSchema.integer)))

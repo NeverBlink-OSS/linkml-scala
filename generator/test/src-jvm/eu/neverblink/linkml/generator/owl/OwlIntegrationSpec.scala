@@ -80,7 +80,8 @@ object OwlIntegrationSpec {
   }
 
   private val oneTextValue =
-    "OWL cannot say that a `langstring` value is one plain string or one text per language"
+    "OWL can only say that a `langstring` value has at most one plain string, not that it is one " +
+      "plain string or texts in different languages"
 
   /** Invalid instances OWL can't tell from valid ones, and valid ones it can't handle. */
   val skipInstances: Map[(String, String), String] = Map(
@@ -96,7 +97,6 @@ object OwlIntegrationSpec {
     "unionRangeReference" -> "baseOnly" ->
       "OWL infers that a value is of the range's class rather than rejecting one not said to be",
     "enum" -> "badType" -> noUniqueNames,
-    "langString" -> "twoPlain" -> oneTextValue,
     "langString" -> "repeatedLanguage" -> oneTextValue,
     "langString" -> "plainAndLanguage" -> oneTextValue,
     "typed" -> "notDate" -> "HermiT does not support xsd:date, so it cannot reject a value that is not a date",

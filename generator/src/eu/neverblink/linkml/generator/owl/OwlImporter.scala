@@ -747,6 +747,26 @@ object OwlImporter {
     private lazy val inverseOf: Map[String, String] =
       index.inverses.map(take).flatMap(a => Seq(a.first -> a.second, a.second -> a.first)).toMap
 
+    /** The property of a restriction that allows at most one plain string, `p max 1 xsd:string`, if
+      * the range of the property is `langstring`. The OWL generator writes this for a single-valued
+      * `langstring` slot, as a text in several languages is one literal per language.
+      */
+    private def plainTextLimit(expr: ClassExpr): Option[String] = expr match {
+      case c: ClassExpr.Cardinality
+          if c.bound == Bound.Max && c.n == 1 && !c.property.inverse &&
+            c.filler.contains(DataRange.Datatype(XmlSchema.string.value)) &&
+            slotRanges.get(c.property.iri).exists(_.range.contains("langstring")) =>
+        Some(c.property.iri)
+      case _ => None
+    }
+
+    /** The `langstring` properties that are single-valued, see [[plainTextLimit]]. */
+    private lazy val singleTexts: Set[String] = {
+      val b = Set.newBuilder[String]
+      subClassOf.valuesIterator.foreach(_.foreach(e => plainTextLimit(e._2).foreach(b.addOne)))
+      b.result()
+    }
+
     private lazy val slots: Seq[SlotDefinition] =
       propertyKinds.toSeq.filterNot((p, _) => imported.contains(p)).map { (p, kind) =>
         val name = names(p)
@@ -822,7 +842,7 @@ object OwlImporter {
             multivalued = kind != EntityKind.AnnotationProperty &&
               (inheritsMultivalued || config.multivalued && !characteristics.contains(
                 PropertyCharacteristic.Functional,
-              )),
+              ) && !singleTexts(p)),
             domain = domain,
             domainOf = domainOf,
             inverse = inverseOf.get(p).filter(names.contains).map(i => Reference(names(i))),
@@ -1057,6 +1077,8 @@ object OwlImporter {
                 restrict(p, withMember(_, r.range))
               case _ => unsupported("Restriction that LinkML cannot express", expr)
             }
+        // The slot is single-valued already, see `singleTexts`
+        case _ if plainTextLimit(expr).isDefined =>
         case ClassExpr.Cardinality(bound, n, PropertyRef(p, false), filler)
             if propertyKinds.contains(p) =>
           val qualifiedNarrower = filler.exists(f => !coversRange(p, f))
