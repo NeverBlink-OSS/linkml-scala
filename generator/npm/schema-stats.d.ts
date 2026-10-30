@@ -27,6 +27,8 @@ export interface ElementStats {
   classes: ElementKindStats;
   /** enums */
   enums: ElementKindStats;
+  /** functions */
+  functions: ElementKindStats;
   /** permissible values: Statistics for the permissible values of the enums in scope. */
   permissible_values: ElementKindStats;
   /** slots */

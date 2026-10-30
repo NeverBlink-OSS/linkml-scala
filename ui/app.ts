@@ -944,6 +944,7 @@ const STATS_KINDS: [ElementKind, string][] = [
   ["permissible_values", "Permissible values"],
   ["types", "Types"],
   ["subsets", "Subsets"],
+  ["functions", "Functions"],
 ];
 
 const MAPPING_KINDS = ["exact", "close", "broad", "narrow", "related", "generic"] as const;

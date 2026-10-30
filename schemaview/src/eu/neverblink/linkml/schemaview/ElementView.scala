@@ -838,3 +838,28 @@ final case class SubsetView(subset: SubsetDefinition, definingSchema: SchemaDefi
 
   override def canonicalName: String = baseName
 }
+
+final case class FunctionView(function: FunctionDefinition, definingSchema: SchemaDefinition)(using
+    sv: SchemaView,
+) extends ElementView[FunctionDefinition, Nothing] {
+  def inner: FunctionDefinition = function
+
+  override def aliasedName: String = baseName
+
+  def uri: Uri =
+    // there is no function_uri in the metamodel
+    Uri.synthetic(defaultPrefixUri, baseName)
+
+  override def canonicalName: String = baseName
+
+  /** The class whose slots are the function's parameters, if it takes any. */
+  lazy val parameters: Option[ClassView] =
+    function.parameters.flatMapFast(r => sv.classes.get(r.value))
+
+  /** What the function returns, if it returns anything. */
+  lazy val returns: Option[ElementView[?, ?]] =
+    function.returns.flatMapFast(r => sv.elements.get(r.value))
+
+  /** The classes describing how the function can fail. */
+  lazy val errors: Seq[ClassView] = function.errors.flatMap(r => sv.classes.get(r.value))
+}

@@ -25,6 +25,99 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
     // split itself rely on.
     val splitOptions = ScalaGenerator.Options(testPkg, skipLeafInterfaces = false)
 
+    "generate a trait with a method for every function of a catalogue model" in {
+      ModelCatalogue.all.filter(_.model.root.functions.nonEmpty).foreach { entry =>
+        withClue(s"${entry.name}: ") {
+          given SchemaView = entry.model
+          val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+          val traitName = ScalaRenamer.functionsTraitName(entry.model)
+          val code = files(traitName + ".scala")
+          code should include(s"trait $traitName {")
+          entry.model.root.functions.keys.foreach { name =>
+            val fv = entry.model.functions(name)
+            code should include(s"def ${ScalaRenamer.functionName(fv)}")
+            fv.errors.foreach { cv =>
+              code should include(s"@throws[${ScalaRenamer.exceptionName(cv)}]")
+              code should include(s"final case class ${ScalaRenamer.exceptionName(cv)}(")
+            }
+          }
+        }
+      }
+    }
+
+    "give a function the slots of its parameter class as arguments" in {
+      given SchemaView = ModelCatalogue.functions.parameters.model
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg))
+        .toMap.apply("FunctionsParametersFunctions.scala")
+      Seq(
+        "def search(",
+        "q: String,",
+        "tags: Seq[String] = Seq(),",
+        "page: Option[Int] = None,",
+        "exact: Boolean = false,",
+        "sortBy: Option[SortOrder] = Some(SortOrder.Relevance),",
+        "within: Option[Shelf] = None,",
+        "): SearchResult",
+        // The slot descriptions become @param tags
+        "@param q",
+        "Required text query.",
+      ).foreach(snippet => code should include(snippet))
+    }
+
+    "return what a function returns, and Unit when it returns nothing" in {
+      given SchemaView = ModelCatalogue.functions.returns.model
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg))
+        .toMap.apply("FunctionsReturnsFunctions.scala")
+      code should include("def fetch(\n      id: String,\n  ): Item")
+      code should include("def listItems(): ItemList")
+      code should include("def status(): Status") // an enum
+      code should include("def totalValue(): Price") // a type
+      // The `errors` of a function become exception classes, not return values
+      code should include("final case class ClosedException(error: Closed)")
+      code should include("@throws[UnavailableException]")
+
+      val basic = ScalaGenerator(using ModelCatalogue.functions.basic.model)
+        .generate(ScalaGenerator.Options(testPkg))
+        .toMap.apply("FunctionsBasicFunctions.scala")
+      basic should include("def reindex(): Unit")
+      basic should include("def countBooks(): Int")
+    }
+
+    "put the errors on the left of an Either when asked" in {
+      given SchemaView = ModelCatalogue.functions.returns.model
+      val files = ScalaGenerator()
+        .generate(ScalaGenerator.Options(testPkg, errorHandling = ErrorHandling.either)).toMap
+      val code = files("FunctionsReturnsFunctions.scala")
+      code should include("): Either[Unavailable | Closed, Item]")
+      code should include("def listItems(): Either[Closed, ItemList]")
+      // A function with no errors keeps its plain return type
+      code should include("def status(): Status")
+      code should include("def totalValue(): Price")
+      Seq("@throws", "Exception").foreach(snippet => code should not include snippet)
+
+      val basic = ScalaGenerator(using ModelCatalogue.functions.basic.model)
+        .generate(ScalaGenerator.Options(testPkg, errorHandling = ErrorHandling.either))
+        .toMap.apply("FunctionsBasicFunctions.scala")
+      basic should include("): Either[NotFound, Book]")
+      basic should include("def reindex(): Unit")
+      basic should include("def countBooks(): Int")
+    }
+
+    "throw exceptions by default, and keep them out of the return type" in {
+      given SchemaView = ModelCatalogue.functions.returns.model
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg))
+        .toMap.apply("FunctionsReturnsFunctions.scala")
+      code should include("@throws[ClosedException]")
+      code should include("final case class ClosedException(error: Closed)")
+      code should not include "Either["
+    }
+
+    "generate no functions file for a schema without functions" in {
+      given SchemaView = ModelCatalogue.basic.model
+      val files = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+      files.keys.filter(_.endsWith("Functions.scala")) shouldBe empty
+    }
+
     "generate abstract interfaces and implementations for plain classes" in {
       given SchemaView = ModelCatalogue.basic.model
       val code =

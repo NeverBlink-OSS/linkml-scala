@@ -81,6 +81,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   ): Iterable[(String, String)] = {
     val header = GeneratedHeader("//") + "\n"
     (generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
+      ++ generateFunctions(options)
       ++ (if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`) else None))
       .map((file, code) => file -> header.concat(code))
   }
@@ -166,6 +167,86 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         Some(name.concat(".scala") -> enumInfo)
       }
     }
+
+  /** The functions of the schema, as one trait with a method for each. The trait is named after the
+    * schema, such as `SearchFunctions`.
+    */
+  private def generateFunctions(options: Options): Option[(String, String)] = {
+    if (sv.functions.isEmpty) return None
+    val functions = sv.functions.values.toVector.sortBy(fv => sv.elementOrder(fv.function))
+    val name = functionsTraitName(sv)
+    val errorClasses =
+      if (options.errorHandling != ErrorHandling.annotation) Vector.empty
+      else functions.flatMap(_.errors).distinctBy(_.name).sortBy(cv => sv.elementOrder(cv.cls))
+    val exceptions = errorClasses.map { cv =>
+      val doc = ScalaDoc(
+        s"The error `${cv.name}`, thrown by a function that lists it in its `errors`.",
+        Seq("From schema: ".concat(cv.definingSchema.id.original)),
+        Nil,
+        Nil,
+        Nil,
+      )
+      s"${doc.print}final case class ${exceptionName(cv)}(error: ${valueType(cv)})\n" +
+        "    extends RuntimeException"
+    }
+    val traitDoc = ScalaDoc(
+      s"The functions of the `${sv.root.name}` schema.",
+      Seq("From schema: ".concat(sv.root.id.original)),
+      Nil,
+      Nil,
+      Nil,
+    )
+    val methods = functions.map(fv => generateFunction(fv, options)).mkString("\n\n")
+    val body = (exceptions :+ s"${traitDoc.print}trait $name {\n$methods\n}").mkString("\n\n")
+    Some(
+      name.concat(".scala") -> s"""package ${options.`package`}
+         |
+         |import eu.neverblink.linkml.runtime.*
+         |
+         |$body
+         |""".stripMargin,
+    )
+  }
+
+  private def generateFunction(fv: FunctionView, options: Options): String = {
+    val parameters = fv.parameters.foldFast(Seq.empty[ScalaField]) { cv =>
+      val collectionForm = CollectionForm.of(cv)
+      cv.sortedAttributeViews.map(av => makeScalaField(av, collectionForm, cv, options))
+    }
+    val arguments = parameters.map { field =>
+      field.default.foldFast(s"${field.name}: ${field.typeName}")(d =>
+        s"${field.name}: ${field.typeName} = $d",
+      )
+    }
+    val valueReturned = fv.returns.foldFast("Unit") {
+      case cv: ClassView => valueType(cv)
+      case tv: TypeView => if (tv.isPrimitive) typeToRuntime(tv) else typeName(tv)
+      case ev: EnumView => if (ScalaGenerator.definesEnum(ev)) enumName(ev) else "String"
+      case _ => "LinkmlAny" // should not happen
+    }
+    val onEither = options.errorHandling == ErrorHandling.either && fv.errors.nonEmpty
+    val returnType =
+      if (!onEither) valueReturned
+      else s"Either[${fv.errors.map(valueType).mkString(" | ")}, $valueReturned]"
+    val doc = ScalaDoc(fv.function, fv.definingSchema.id, options)
+      .withParams(parameters.map(field => (field.name, field.doc.main)))
+    val throws =
+      if (options.errorHandling != ErrorHandling.annotation) ""
+      else fv.errors.map(cv => s"  @throws[${exceptionName(cv)}]\n").mkString
+    // One argument per line
+    val argumentList =
+      if (arguments.isEmpty) "()"
+      else arguments.mkString("(\n      ", ",\n      ", ",\n  )")
+    val signature = s"  def ${functionName(fv)}$argumentList: $returnType"
+    val docLines = doc.print.linesIterator.map("  ".concat).mkString("\n")
+    s"$docLines\n$throws$signature"
+  }
+
+  /** The Scala name of [[cv]] where a value of it is returned or stored, such as a function's
+    * return type.
+    */
+  private def valueType(cv: ClassView): String =
+    if (cv.isAny) "LinkmlAny" else className(cv)
 
   private def generateEmitPrefixes(pkg: String): Option[(String, String)] = {
     if sv.root.emitPrefixes.isEmpty then return None
@@ -630,12 +711,15 @@ object ScalaGenerator {
     *   (with `is_a` or `mixins`), and generate it as a single case class named after it instead of
     *   an interface plus a `...Impl` case class. Turn it off if code outside of the generated
     *   sources has to extend the generated classes.
+    * @param errorHandling
+    *   How the functions of the schema report their `errors`. See [[ErrorHandling]].
     */
   final case class Options(
       `package`: String = "eu.neverblink.linkml.metamodel",
       generateEmitPrefixes: Boolean = true,
       metadataLanguage: String = "en",
       skipLeafInterfaces: Boolean = true,
+      errorHandling: ErrorHandling = ErrorHandling.annotation,
   ) extends HasMetadataLanguage
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a

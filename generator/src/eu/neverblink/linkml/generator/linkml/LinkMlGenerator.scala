@@ -68,6 +68,10 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
             ),
           )
       },
+      functions = sv.functions.collect {
+        case (k, v) if query.reachable(v.function) =>
+          (k, v.function.copy(fromSchema = new Some(v.definingSchema.id)))
+      },
       slotDefinitions =
         if (skipClassDerivation) {
           sv.slotDefinitions.collect {

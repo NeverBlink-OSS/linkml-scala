@@ -1,0 +1,93 @@
+id: https://neverblink.eu/linkml/tests/functions/parameters/
+name: functionsParameters
+description: >-
+  A function whose parameter class covers the slot shapes a parameter can have: required,
+  optional, multivalued, with a default, and over a class or an enum.
+
+prefixes:
+  ex: https://example.org/
+
+imports:
+  - linkml:types
+
+classes:
+  Catalogue:
+    description: The root class, so that the schema has something to serialize.
+    tree_root: true
+    attributes:
+      name:
+        description: Name of the catalogue.
+        rank: 1
+        range: string
+        required: true
+      entries:
+        description: How many entries it holds.
+        rank: 2
+        range: integer
+
+  SearchRequest:
+    description: The parameters of `search`, one per slot.
+    attributes:
+      q:
+        description: Required text query.
+        rank: 1
+        range: string
+        required: true
+      tags:
+        description: Optional list of tags to filter by.
+        rank: 2
+        range: string
+        multivalued: true
+      page:
+        description: One-based page number, 1 when it is left out.
+        rank: 3
+        range: integer
+        minimum_value: 1
+        ifabsent: int(1)
+      exact:
+        description: Whether to match the query exactly.
+        rank: 4
+        range: boolean
+        ifabsent: "false"
+      sort_by:
+        description: How to order the hits.
+        rank: 5
+        range: SortOrder
+        ifabsent: SortOrder(RELEVANCE)
+      within:
+        description: Restrict the search to one shelf.
+        rank: 6
+        range: Shelf
+        inlined: true
+
+  Shelf:
+    description: One shelf of the catalogue.
+    attributes:
+      code:
+        description: Identifier of the shelf.
+        range: string
+        identifier: true
+
+  SearchResult:
+    description: What `search` gives back.
+    attributes:
+      total:
+        description: How many entries matched.
+        range: integer
+        required: true
+
+enums:
+  SortOrder:
+    description: How search hits are ordered.
+    permissible_values:
+      RELEVANCE:
+        description: Best match first.
+        meaning: ex:relevance
+      NEWEST:
+        description: Most recent first.
+
+functions:
+  search:
+    description: Searches the catalogue.
+    parameters: SearchRequest
+    returns: SearchResult

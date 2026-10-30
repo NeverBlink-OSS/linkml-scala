@@ -43,6 +43,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: ClassDefinition => classes.get(ref.value).mapFast(_.cls)
       case _: EnumDefinition => enums.get(ref.value).mapFast(_._enum)
       case _: SubsetDefinition => subsets.get(ref.value).mapFast(_.subset)
+      case _: FunctionDefinition => functions.get(ref.value).mapFast(_.function)
       // `range` slot's `range` is underspecified as per the metamodel notes,
       // I think it should be ClassDef | TypeDef | EnumDef
       case _: Element => elements.get(ref.value).mapFast(_.inner)
@@ -54,6 +55,7 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       case _: EnumView => enums.get(ref.value)
       case _: SlotView => slotDefinitions.get(ref.value)
       case _: SubsetView => subsets.get(ref.value)
+      case _: FunctionView => functions.get(ref.value)
       case _: ElementView[?, ?] => elements.get(ref.value)
       case _ => compiletime.error("SchemaView can't dereference ".concat(compiletime.codeOf(ref)))
     }).asInstanceOf[Option[T]]
@@ -119,9 +121,18 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       acc
     }.result()
 
+  /** All functions defined in the loaded schemas, as views.
+    */
+  lazy val functions: Map[String, FunctionView] =
+    schemas.foldLeft(Map.newBuilder[String, FunctionView]) { (acc, schema) =>
+      schema.functions.foreach((k, v) => acc.addOne((k, FunctionView(v, schema))))
+      acc
+    }.result()
+
   lazy val elements: Map[String, ElementView[? <: Element, ?]] =
     immutable.HashMap.newBuilder[String, ElementView[? <: Element, ?]]
       .addAll(subsets)
+      .addAll(functions)
       .addAll(slotDefinitions)
       .addAll(enums)
       .addAll(types)

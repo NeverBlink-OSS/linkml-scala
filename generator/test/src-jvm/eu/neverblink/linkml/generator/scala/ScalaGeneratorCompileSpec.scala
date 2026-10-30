@@ -31,6 +31,20 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
     Option.when(reporter.hasErrors)(log.toString)
   }
 
+  /** Generate [[entry]] with [[options]] and compile the result. */
+  private def compileModel(entry: ModelCatalogue.Entry, options: ScalaGenerator.Options): Unit = {
+    val dir = os.temp.dir(prefix = "linkml-scala-src")
+    val sources =
+      ScalaGenerator(using entry.model).generate(options).map { (name, content) =>
+        val file = dir / name
+        os.write(file, content)
+        file
+      }.toSeq
+    sources should not be empty
+    val failure = compileScala(sources)
+    withClue(s"compiler output:\n${failure.getOrElse("")}\n")(failure shouldBe None)
+  }
+
   "ScalaGenerator" should {
     for
       entry <- ModelCatalogue.all
@@ -39,18 +53,20 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
       val variant = if skipLeafInterfaces then "" else " with leaf interfaces"
       s"generate compilable code for model '${entry.name}'$variant" in {
         processSkip(entry.name, "")
-        val dir = os.temp.dir(prefix = "linkml-scala-src")
-        val options =
-          ScalaGenerator.Options("generated", skipLeafInterfaces = skipLeafInterfaces)
-        val sources =
-          ScalaGenerator(using entry.model).generate(options).map { (name, content) =>
-            val file = dir / name
-            os.write(file, content)
-            file
-          }.toSeq
-        sources should not be empty
-        val failure = compileScala(sources)
-        withClue(s"compiler output:\n${failure.getOrElse("")}\n")(failure shouldBe None)
+        compileModel(
+          entry,
+          ScalaGenerator.Options("generated", skipLeafInterfaces = skipLeafInterfaces),
+        )
+      }
+
+    // Only the models with functions
+    for entry <- ModelCatalogue.all.filter(_.model.root.functions.nonEmpty) do
+      s"generate compilable code for model '${entry.name}' with errors as Either" in {
+        processSkip(entry.name, "")
+        compileModel(
+          entry,
+          ScalaGenerator.Options("generated", errorHandling = ErrorHandling.either),
+        )
       }
   }
 }

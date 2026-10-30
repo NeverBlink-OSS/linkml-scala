@@ -1,6 +1,8 @@
 package eu.neverblink.linkml.cli
 
 import caseapp.*
+import caseapp.core.Error
+import caseapp.core.argparser.{ArgParser, SimpleArgParser}
 import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
@@ -11,7 +13,7 @@ import eu.neverblink.linkml.generator.owl.OwlGenerator
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.util.{GeneratedHeader, JsonOutputFormat}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
-import eu.neverblink.linkml.generator.scala.ScalaGenerator
+import eu.neverblink.linkml.generator.scala.{ErrorHandling, ScalaGenerator}
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
@@ -23,6 +25,14 @@ import eu.neverblink.linkml.schemaview.SchemaView
 import java.io.OutputStream
 
 // Scala
+
+/** Parses `--error-handling`, accepting camel, kebab and snake case alike. */
+private given errorHandlingParser: ArgParser[ErrorHandling] =
+  SimpleArgParser.from("annotation|either") { value =>
+    ErrorHandling.parse(value).toRight(
+      Error.MalformedValue("error handling mode", s"$value (expected one of: annotation, either)"),
+    )
+  }
 
 @HelpMessage("Generate Scala classes")
 @ArgsName("<input-file>")
@@ -44,6 +54,15 @@ final case class ScalaOptions(
         "the generated classes. Default value: true",
     )
     skipLeafInterfaces: Boolean = true,
+    @HelpMessage(
+      "How the functions of the schema report their errors.\n" +
+        "annotation - each error class gets an exception class, and the method is annotated " +
+        "with @throws for each of them.\n" +
+        "either - the method returns Either[E1 | E2, R], with the error classes on the left, " +
+        "and no exception classes are generated.\n" +
+        "Default: annotation.",
+    )
+    errorHandling: ErrorHandling = ErrorHandling.annotation,
     @HelpMessage(
       "Before writing, delete the .scala files in the --to directory that start with the " +
         "generated code header, so that classes no longer in the model do not linger. " +
@@ -69,6 +88,7 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
         `package` = options.`package`,
         generateEmitPrefixes = options.generateEmitPrefixes,
         skipLeafInterfaces = options.skipLeafInterfaces,
+        errorHandling = options.errorHandling,
       ),
     )
 }
@@ -562,8 +582,8 @@ object Translation extends StreamGenerate[TranslationOptions] {
 @HelpMessage(
   "Generate Markdown documentation\n" +
     "If --to is a directory, the documentation is written as index.md plus one page per class, " +
-    "slot, enum and type, in the classes/, slots/, enums/ and types/ folders. If --to is a .md " +
-    "file, or with no --to at all, it is written as a single document.",
+    "slot, enum, type and function, in the classes/, slots/, enums/, types/ and functions/ " +
+    "folders. If --to is a .md file, or with no --to at all, it is written as a single document.",
 )
 @ArgsName("<input-file>")
 final case class DocsOptions(

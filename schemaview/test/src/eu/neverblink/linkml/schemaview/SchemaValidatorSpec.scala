@@ -373,6 +373,58 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         """Invalid range 'wrong' at /slots/wrong/range/, which refers to SlotDefinition. Ranges can only reference types, classes or enums.""".stripMargin
     }
 
+    "fail on a function returning a subset" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |subsets:
+           |  some_subset:
+           |classes:
+           |  Request:
+           |functions:
+           |  wrong:
+           |    parameters: Request
+           |    returns: some_subset
+           |""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Invalid range 'some_subset' at /functions/wrong/returns/, which refers to SubsetDefinition. Ranges can only reference types, classes or enums.""".stripMargin
+    }
+
+    "fail on a function whose parameters or errors are not classes" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |classes:
+           |  Request:
+           |functions:
+           |  wrong:
+           |    parameters: NoSuchClass
+           |    errors:
+           |      - AlsoMissing
+           |""".stripMargin
+      loadFailure(schemaYaml) shouldBe
+        """Unknown reference 'AlsoMissing' at /functions/wrong/errors/0/
+          |Unknown reference 'NoSuchClass' at /functions/wrong/parameters/""".stripMargin
+    }
+
+    "warn about a function without a description" in {
+      val schemaYaml =
+        s"""$schemaShared
+           |description: A schema with a function.
+           |classes:
+           |  Request:
+           |    description: A request.
+           |functions:
+           |  undocumented:
+           |    parameters: Request
+           |""".stripMargin
+      val sv = load(schemaYaml)
+      SchemaValidator(using sv).lintProblems.collect { case p: MissingRecommendedSlot =>
+        p.location.jsonPointer.getOrElse("(schema)") + ": " + p.infer().message.get
+      } shouldBe Seq(
+        "/functions/undocumented: function_definition 'undocumented' has no value for the " +
+          "recommended slot 'description'",
+      )
+    }
+
     "fail on ranges referencing subsets" in {
       val schemaYaml =
         s"""$schemaShared

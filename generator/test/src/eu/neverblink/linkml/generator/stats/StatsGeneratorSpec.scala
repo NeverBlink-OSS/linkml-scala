@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.stats
 import eu.neverblink.linkml.generator.stats.model.*
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, PruningMode as Pruning}
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues, SchemaView}
+import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -76,6 +77,12 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       |          de: Entwurf
       |      DONE:
       |        mappings: [ex:Done]
+      |functions:
+      |  write:
+      |    description: Writes a book.
+      |    parameters: Book
+      |    returns: Chapter
+      |  tidy:
       |""".stripMargin
 
   private given SchemaView =
@@ -94,6 +101,18 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       e.permissibleValues.count shouldBe 2
       e.types.count shouldBe 2 // integer and the default range, string
       e.subsets.count shouldBe 2
+      e.functions.count shouldBe 2
+    }
+
+    "count the functions of every catalogue model" in {
+      ModelCatalogue.all.foreach { entry =>
+        withClue(s"${entry.name}: ") {
+          val counted = StatsGenerator(using entry.model).generate().elements.functions
+          counted.count shouldBe entry.model.root.functions.size
+          counted.withDescription shouldBe
+            entry.model.root.functions.values.count(_.description.isDefined)
+        }
+      }
     }
 
     "count every element without pruning" in {
@@ -103,6 +122,7 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       e.enums.count shouldBe 2
       e.permissibleValues.count shouldBe 3
       e.types.count should be > 2
+      e.functions.count shouldBe 2
     }
 
     "count the elements the tree root uses" in {
@@ -110,6 +130,8 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       s.pruningMode shouldBe PruningMode.TreeRoot
       s.elements.classes.count shouldBe 2
       s.elements.slots.count shouldBe 0
+      // Nothing reaches a function from a tree root class
+      s.elements.functions.count shouldBe 0
     }
 
     "count documentation, deprecation and mappings" in {
@@ -124,12 +146,13 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
       e.permissibleValues.withMappings shouldBe 1
       e.permissibleValues.mappings.generic shouldBe 1
       e.classes.withMeaning shouldBe None
+      e.functions.withDescription shouldBe 1
     }
 
     "count the strings in each language of the elements in scope" in {
       def counts(s: SchemaStats) = s.languages.view.mapValues(_.count).toSeq
-      // 7 in the schemas here, and a description and a note each on `string` and `integer`
-      counts(stats()) shouldBe Seq("" -> 11, "de" -> 1, "en" -> 2, "pl" -> 1)
+      // 8 in the schemas here, and a description and a note each on `string` and `integer`
+      counts(stats()) shouldBe Seq("" -> 12, "de" -> 1, "en" -> 2, "pl" -> 1)
       val all = counts(stats(Pruning.skip))
       all.tail shouldBe Seq("de" -> 1, "en" -> 2, "pl" -> 1)
       all.head._2 should be > 13 // also `NotUsed` and every type
@@ -151,10 +174,10 @@ class StatsGeneratorSpec extends AnyWordSpec, Matchers {
     "write the languages as a map from tag to count" in {
       val generator = StatsGenerator()
       val yaml = generator.serialize()
-      yaml should include("languages:\n  \"\": 11\n  de: 1\n")
+      yaml should include("languages:\n  \"\": 12\n  de: 1\n")
       val json = generator.serialize(StatsGenerator.Options(), JsonOutputFormat.json)
       json should include(""""languages": {
-                             |    "": 11,""".stripMargin)
+                             |    "": 12,""".stripMargin)
     }
   }
 }

@@ -1136,9 +1136,12 @@ object OwlImporter {
         case a @ DisjointClasses(ops, _)
             if ops.sizeIs > 2 && ops.forall(_.isInstanceOf[ClassExpr.Named]) =>
           val members = ops.collect { case ClassExpr.Named(o) => o }
+
           // That case is handled below, with `children_are_mutually_disjoint` on the parent.
-          val allChildren =
+          // Members that became enums have no parents, so they are checked first.
+          def allChildren =
             commonParent(members).exists(p => childrenOf.getOrElse(p, Nil).toSet == members.toSet)
+
           if members.forall(classParents.contains) && !allChildren then {
             take(a)
             disjoint = disjoint ++ members.filterNot(_ == c).map(names)

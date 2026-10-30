@@ -298,8 +298,23 @@ export const TARGETS: Target[] = [
     id: "scala",
     label: "Scala code",
     lang: "scala",
-    options: [{ key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" }],
-    call: (api, v, o) => api.scala(v, String(o.package || "eu.neverblink.linkml.metamodel")),
+    options: [
+      { key: "package", type: "text", label: "Package", default: "eu.neverblink.linkml.metamodel" },
+      {
+        key: "errorHandling",
+        type: "select",
+        label: "Function errors",
+        title: "How the functions of the schema report their errors",
+        choices: ["annotation", "either"],
+        default: "annotation",
+      },
+    ],
+    call: (api, v, o) =>
+      api.scala(
+        v,
+        String(o.package || "eu.neverblink.linkml.metamodel"),
+        String(o.errorHandling || "annotation"),
+      ),
   },
   {
     id: "shacl",

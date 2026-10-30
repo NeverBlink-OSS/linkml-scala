@@ -376,6 +376,7 @@ class Generators:
         generate_emit_prefixes: bool = True,
         metadata_language: str = "en",
         skip_leaf_interfaces: bool = True,
+        error_handling: str = "annotation",
     ) -> dict[str, str]:
         """Generate Scala classes, as a filename to source mapping.
 
@@ -388,6 +389,8 @@ class Generators:
             that no other class extends (with `is_a` or `mixins`), and generate it as a single
             case class named after it instead of an interface plus a `...Impl` case class. Turn
             it off if code outside of the generated sources has to extend the generated classes.
+        :param error_handling: How the functions of the schema report their `errors`. See
+            [[ErrorHandling]].
         """
         return self._json(
             "linkml_scala",
@@ -395,6 +398,7 @@ class Generators:
             generateEmitPrefixes=generate_emit_prefixes,
             metadataLanguage=metadata_language,
             skipLeafInterfaces=skip_leaf_interfaces,
+            errorHandling=error_handling,
         )
 
     def stats(

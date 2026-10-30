@@ -1,0 +1,63 @@
+id: https://neverblink.eu/linkml/tests/functions/basic/
+name: functionsBasic
+description: A schema with the three shapes a function can take.
+
+imports:
+  - linkml:types
+
+classes:
+  Library:
+    description: The root class, so that the schema has something to serialize.
+    tree_root: true
+    attributes:
+      name:
+        description: Name of the library.
+        rank: 1
+        range: string
+        required: true
+      size:
+        description: How many books it holds.
+        rank: 2
+        range: integer
+
+  LookupRequest:
+    description: What `lookup` takes.
+    attributes:
+      title:
+        description: Title to look for.
+        range: string
+        required: true
+
+  Book:
+    description: What `lookup` gives back.
+    attributes:
+      title:
+        description: Title of the book.
+        range: string
+        required: true
+      year:
+        description: Year it was published.
+        range: integer
+
+  NotFound:
+    description: Nothing matched the title.
+    attributes:
+      title:
+        description: The title that was looked up.
+        range: string
+        required: true
+
+functions:
+  lookup:
+    description: Finds one book by its title.
+    parameters: LookupRequest
+    returns: Book
+    errors:
+      - NotFound
+
+  reindex:
+    description: Rebuilds the index. Takes nothing, gives nothing back.
+
+  count_books:
+    description: How many books there are, as a bare integer.
+    returns: integer
