@@ -4,6 +4,7 @@ import eu.neverblink.linkml.metamodel.{
   ClassDefinition,
   Element,
   EnumDefinition,
+  FunctionDefinition,
   SlotDefinition,
   SubsetDefinition,
   TypeDefinition,
@@ -199,6 +200,9 @@ private trait MacroValidator[T] {
   *   Whether to treat omitted ranges as an error
   * @param isRange
   *   Whether this particular slot is a range and should be additionally checked
+  * @param rangeHasDefault
+  *   Whether omitting this range means `default_range`, as it does for `range`. `returns`
+  *   has no default.
   * @param fromSchema
   *   The id of the schema that is validated
   * @param prefixes
@@ -214,6 +218,7 @@ private trait MacroValidator[T] {
 final class ValidatorContext private (
     val defaultRangeAllowed: Boolean,
     val isRange: Boolean,
+    val rangeHasDefault: Boolean,
     val fromSchema: Uri,
     val prefixes: PrefixMap,
     val classScope: Option[String],
@@ -225,6 +230,22 @@ final class ValidatorContext private (
     new ValidatorContext(
       defaultRangeAllowed,
       true,
+      true,
+      fromSchema,
+      prefixes,
+      classScope,
+      slotsMayBeLocal,
+      isImport,
+    )
+
+  /** Mark this slot as a range that may be omitted, such as `returns`. SHOULD NOT BE USED OUTSIDE
+    * THE MACRO
+    */
+  def asOptionalRange: ValidatorContext =
+    new ValidatorContext(
+      defaultRangeAllowed,
+      true,
+      false,
       fromSchema,
       prefixes,
       classScope,
@@ -237,6 +258,7 @@ final class ValidatorContext private (
     new ValidatorContext(
       defaultRangeAllowed,
       isRange,
+      rangeHasDefault,
       fromSchema,
       prefixes,
       Some(className),
@@ -251,6 +273,7 @@ final class ValidatorContext private (
     new ValidatorContext(
       defaultRangeAllowed,
       isRange,
+      rangeHasDefault,
       fromSchema,
       prefixes,
       classScope,
@@ -263,6 +286,7 @@ final class ValidatorContext private (
     new ValidatorContext(
       defaultRangeAllowed,
       isRange,
+      rangeHasDefault,
       fromSchema,
       prefixes,
       classScope,
@@ -272,7 +296,16 @@ final class ValidatorContext private (
 
 object ValidatorContext:
   def apply(defaultRangeAllowed: Boolean, fromSchema: Uri, prefixes: PrefixMap): ValidatorContext =
-    new ValidatorContext(defaultRangeAllowed, false, fromSchema, prefixes, None, false, false)
+    new ValidatorContext(
+      defaultRangeAllowed,
+      false,
+      false,
+      fromSchema,
+      prefixes,
+      None,
+      false,
+      false,
+    )
 
 private object MacroValidator {
   given MacroValidator[LinkmlAny] = new MacroValidator[LinkmlAny] {
@@ -359,6 +392,7 @@ private object MacroValidator {
     el match {
       case _: SubsetDefinition => "SubsetDefinition"
       case _: SlotDefinition => "SlotDefinition"
+      case _: FunctionDefinition => "FunctionDefinition"
       case _ => "???"
     }
   }
@@ -443,7 +477,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
           val opt = x.asInstanceOf[Expr[Option[t1]]]
           '{
             if ($opt ne None) ${ genValidator[t1](tpe1, '{ $opt.get }, sv, vc) }
-            else if $vc.isRange && ! $vc.defaultRangeAllowed then
+            else if $vc.isRange && $vc.rangeHasDefault && ! $vc.defaultRangeAllowed then
               ValidatorResult(
                 invalidDefaultRanges = Seq(InvalidDefaultRange("", $vc.fromSchema)),
               )
@@ -513,6 +547,7 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
                 sv,
                 fieldInfo.mappedName match {
                   case "range" => '{ $vc.asRange }
+                  case "returns" => '{ $vc.asOptionalRange }
                   case "imports" => '{ $vc.asImport }
                   // LinkML scopes these to the enclosing class, they may reference its attributes.
                   case "unique_key_slots" | "defining_slots" | "slot_group" =>

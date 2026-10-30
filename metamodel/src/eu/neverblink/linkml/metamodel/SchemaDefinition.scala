@@ -156,6 +156,8 @@ import eu.neverblink.linkml.runtime.*
   *   An index to the collection of all slot definitions in the schema
   * @param subsets
   *   An index to the collection of all subset definitions in the schema
+  * @param functions
+  *   The functions defined in the schema
   * @see
   *   https://en.wikipedia.org/wiki/Data_dictionary
   * @see
@@ -276,6 +278,8 @@ final case class SchemaDefinition(
     slotDefinitions: Map[String, SlotDefinition] = Map(),
     @compactDict
     subsets: Map[String, SubsetDefinition] = Map(),
+    @compactDict
+    functions: Map[String, FunctionDefinition] = Map(),
 ) extends Element {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
