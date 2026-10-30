@@ -159,9 +159,10 @@ export interface LinkMLApi {
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
    * @param includeNull Whether optional slots may also be `null`.
    * @param open Whether all interfaces should allow additional properties, not only those of classes whose `extra_slots` allows them.
+   * @param errorHandling How the functions of the schema report their `errors`. One of: `throw`, where the method returns the value and its doc comment gets a `@throws` tag for each error class; or `result`, where the method returns `Result<R, Failure<...> | ...>`, the value or one of the errors tagged with the name of its type. Default: throw.
    * @returns TypeScript source code
    */
-  typeScript(schema: SchemaView, pruningMode?: string, treeRoot?: string, includeNull?: boolean, open?: boolean): string;
+  typeScript(schema: SchemaView, pruningMode?: string, treeRoot?: string, includeNull?: boolean, open?: boolean, errorHandling?: string): string;
 
   /**
    * Generate Python classes based on pydantic from a loaded LinkML schema. The classes load and dump the same JSON as [[jsonSchema]] describes: load data with `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.
