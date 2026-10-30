@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/identifiedLangString/> .
+
+<https://neverblink.eu/linkml/tests/instances/one> a :SomeClass ;
+  :id <https://neverblink.eu/linkml/tests/instances/one> ;
+  :some_slot "Book" .

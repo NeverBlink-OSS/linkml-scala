@@ -49,6 +49,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `enumInheritance` | 0 | 0 |  |
 | `equalsExpression` | 0 | 0 |  |
 | `externalType` | 0 | 0 | This model uses a type which has an unknown and empty 'base… |
+| `identifiedLangString` | 8 | 9 | A tree root named by a uri identifier, with a single-valued… |
 | `identifiedNested` | 6 | 0 | A tree root named by a uri identifier, owning an inlined cl… |
 | `identifiedReference` | 8 | 0 | A tree root named by a uri identifier, referencing another… |
 | `identifiedUri` | 6 | 0 | A tree root named by a uri identifier, alongside slots of s… |
