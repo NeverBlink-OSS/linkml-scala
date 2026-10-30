@@ -51,7 +51,7 @@ object LinkMlCGenerators {
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.graphQl)
 
   /** Generate TypeScript types for the schema's JSON data. Options: `pruningMode`, `includeNull`,
-    * `open`, `metadataLanguage`.
+    * `open`, `errorHandling`, `metadataLanguage`.
     */
   @exported("linkml_typescript")
   def typescript(handle: CLongLong, options: CString, error: Ptr[CString]): CString =

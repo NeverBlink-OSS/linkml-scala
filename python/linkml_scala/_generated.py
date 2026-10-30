@@ -214,6 +214,7 @@ class Generators:
         tree_root: str | None = None,
         include_null: bool = False,
         open: bool = False,
+        error_handling: str = "exception",
         metadata_language: str = "en",
     ) -> str:
         """Generate TypeScript types for the schema's JSON data, with no runtime code.
@@ -229,6 +230,8 @@ class Generators:
         :param open: Whether interfaces should allow additional properties (`[key: string]:
             unknown`), as `additionalProperties` in the JSON Schema generator. Default: false.
             Interfaces of classes whose `extra_slots` allows extra data allow them anyway.
+        :param error_handling: How the functions of the schema report their `errors`. See
+            [[ErrorHandling]].
         :param metadata_language: Which language to use for titles and descriptions in doc
             comments.
         """
@@ -237,6 +240,7 @@ class Generators:
             pruningMode=_pruning(pruning_mode, tree_root),
             includeNull=include_null,
             open=open,
+            errorHandling=error_handling,
             metadataLanguage=metadata_language,
         )
 
