@@ -38,7 +38,7 @@ object SkillFiles {
   def generate(repo: os.Path): ListMap[String, String] = ListMap(
     "900-metaslots.tsv" -> metaslots,
     "200-limitations.md" -> (banner + source("implementation-differences") +
-      "> **Read this before using any LinkML feature you have not used with linkml-scala\n" +
+      "> **Read this before using any LinkML feature you have not used with ohi LinkML\n" +
       "> before.** Everything under *Limitations* is ignored or rejected. The semantics\n" +
       "> sections diverge from linkml-python, so a schema can behave differently here.\n\n" +
       guide(repo, "implementation-differences")),
@@ -130,7 +130,7 @@ object SkillFiles {
        |# slot of their is_a/mixins ancestors, so class_definition does accept name and
        |# description even though those are declared on element.
        |#
-       |# Presence here means the *metamodel* defines it, NOT that linkml-scala implements
+       |# Presence here means the *metamodel* defines it, NOT that ohi LinkML implements
        |# it. Check 200-limitations.md before relying on anything unusual.
        |#
        |# slot\tused_on\trange\tcardinality\ttier\tdescription
@@ -180,7 +180,7 @@ object SkillFiles {
     (Seq(
       banner,
       "# Known-good example schemas\n",
-      "Dozens of schemas from the linkml-scala test suite. Each exercises one feature and is",
+      "Dozens of schemas from the ohi LinkML test suite. Each exercises one feature and is",
       "verified against every generator on every commit, so when you are unsure how something is",
       "written, read the matching `model.yaml` instead of guessing.\n",
       "Paths are relative to `tests/resources/models/`:",
