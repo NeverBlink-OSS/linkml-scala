@@ -43,6 +43,7 @@ final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[Stats
     val permissibleValues = Kind()
     val types = Kind()
     val subsets = Kind()
+    val functions = Kind()
 
     val slotNames = mutable.HashSet.empty[String]
     sv.classes.foreachEntry { (_, cv) =>
@@ -72,6 +73,9 @@ final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[Stats
     sv.types.foreachEntry { (_, tv) =>
       if (query.reachable(tv)) count(types, tv._type)
     }
+    sv.functions.foreachEntry { (_, fv) =>
+      if (query.reachable(fv)) count(functions, fv.function)
+    }
     // Pruning follows ranges, which never lead to a subset, so we patch it here
     // TODO: fix pruning of subsets?
     sv.subsets.foreachEntry { (name, sub) =>
@@ -89,6 +93,7 @@ final class StatsGenerator(using sv: SchemaView) extends DocumentGenerator[Stats
         permissibleValues = permissibleValues.result(withMeaning = true),
         types = types.result(),
         subsets = subsets.result(),
+        functions = functions.result(),
       ),
       imports = ImportStats(direct = root.imports.size, transitive = sv.schemas.size - 1),
       languages = VectorMap.from(

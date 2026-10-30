@@ -13,7 +13,7 @@ import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConf
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
-import eu.neverblink.linkml.generator.scala.ScalaGenerator
+import eu.neverblink.linkml.generator.scala.{ErrorHandling, ScalaGenerator}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.docs.DocsGenerator
@@ -91,6 +91,18 @@ private object Options {
 
     override def nullValue: RdfFormat = null
   }
+
+  private given errorHandlingCodec: JsonValueCodec[ErrorHandling] =
+    new JsonValueCodec[ErrorHandling] {
+      override def decodeValue(in: JsonReader, default: ErrorHandling): ErrorHandling = {
+        val value = in.readString(null)
+        ErrorHandling.parse(value).getOrElse(in.decodeError(ErrorHandling.unknownMode(value)))
+      }
+
+      override def encodeValue(x: ErrorHandling, out: JsonWriter): Unit = out.writeVal(x.toString)
+
+      override def nullValue: ErrorHandling = null
+    }
 
   /** A Scala enum as its value's name, such as `"rdfs"`. */
   private def enumCodec[E](values: Array[E], what: String): JsonValueCodec[E] =

@@ -33,6 +33,8 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
 
   val types: Seq[TypeView] = sorted(sv.types.values.filter(query.reachable))
 
+  val functions: Seq[FunctionView] = sorted(sv.functions.values.filter(query.reachable))
+
   /** The class each class is a direct `is_a` child of, and the classes that use it as a mixin. */
   private val children = mutable.HashMap.empty[String, mutable.ListBuffer[ClassView]]
   private val mixinUsers = mutable.HashMap.empty[String, mutable.ListBuffer[ClassView]]
@@ -47,6 +49,21 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
 
   /** Names of the top-level slots that a documented class has, either its own or inherited. */
   private val usedSlots = mutable.HashSet.empty[String]
+
+  /** Functions that name a class, an enum or a type, keyed by that element's name. */
+  private val functionUsages = mutable.HashMap.empty[String, mutable.ListBuffer[FunctionUsage]]
+
+  functions.foreach { fv =>
+    fv.function.parameters.foreachFast(r =>
+      add(functionUsages, r.value, FunctionUsage(fv, FunctionRole.parameters)),
+    )
+    fv.function.returns.foreachFast(r =>
+      add(functionUsages, r.value, FunctionUsage(fv, FunctionRole.returns)),
+    )
+    fv.function.errors.foreach(r =>
+      add(functionUsages, r.value, FunctionUsage(fv, FunctionRole.errors)),
+    )
+  }
 
   classes.foreach { cv =>
     cv.cls.isA.foreachFast(parent => add(children, parent.value, cv))
@@ -74,6 +91,7 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
   private val slotPages = pagesOf(PageKind.slots, slots, DocsRenamer.slotName)
   private val enumPages = pagesOf(PageKind.enums, enums, DocsRenamer.enumName)
   private val typePages = pagesOf(PageKind.types, types, DocsRenamer.typeName)
+  private val functionPages = pagesOf(PageKind.functions, functions, DocsRenamer.functionName)
 
   /** The page about [[el]], if it is documented. */
   def pageOf(el: ElementView[?, ?]): Option[Page] = el match {
@@ -81,6 +99,7 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
     case s: SlotView => slotPages.get(s.name)
     case ev: EnumView => enumPages.get(ev.name)
     case tv: TypeView => typePages.get(tv.name)
+    case fv: FunctionView => functionPages.get(fv.name)
     case _ => None
   }
 
@@ -124,6 +143,12 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
     }
     usages.foldFast(Nil)(_.toList)
   }
+
+  /** The documented functions that use [[el]] as their parameters, their return value or one of
+    * their errors.
+    */
+  def functionUsagesOf(el: ElementView[?, ?]): Seq[FunctionUsage] =
+    functionUsages.get(el.name).foldFast(Nil)(_.toList)
 
   /** The nearest ancestor of [[cv]] that declares the slot [[name]], or `None` if [[cv]] declares
     * it itself.
@@ -209,6 +234,7 @@ object DocsSite {
     case slots extends PageKind("slots", "Slot", "slot-")
     case enums extends PageKind("enums", "Enum", "enum-")
     case types extends PageKind("types", "Type", "type-")
+    case functions extends PageKind("functions", "Function", "function-")
 
   /** The page about one element.
     *
@@ -249,4 +275,19 @@ object DocsSite {
     *   The slot as it is in [[classView]], with the class' `slot_usage` applied
     */
   final case class Usage(classView: ClassView, attribute: AttributeView)
+
+  /** What a function uses an element for. */
+  enum FunctionRole(val label: String):
+    case parameters extends FunctionRole("Parameters")
+    case returns extends FunctionRole("Return value")
+    case errors extends FunctionRole("Error")
+
+  /** A function that uses an element, and what it uses it for.
+    *
+    * @param functionView
+    *   The function
+    * @param role
+    *   Whether it is the function's parameters, its return value or one of its errors
+    */
+  final case class FunctionUsage(functionView: FunctionView, role: FunctionRole)
 }

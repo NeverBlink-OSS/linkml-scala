@@ -51,6 +51,21 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
       domainNode.resolve.foreachFast(el => results.addOne((ElementTypeTag(el), el.name)))
     }
   }
+
+  /** Shared method for collecting the [[TaggedReference]]s of a function's parameters, return value
+    * and errors.
+    */
+  protected def collectFunctionRefs(
+      function: FunctionView,
+      results: mutable.ArrayBuffer[TaggedReference],
+  ): Unit = {
+    function.parameters.foreachFast(cv => results.addOne((classDef, cv.name)))
+    function.returns.foreachFast { rv =>
+      val el = rv.inner
+      results.addOne((ElementTypeTag(el), el.name))
+    }
+    function.errors.foreach(cv => results.addOne((classDef, cv.name)))
+  }
 }
 
 /** Reachability query that simply returns true for all elements.
@@ -114,6 +129,8 @@ final class DerivedReachabilityQuery(
       sv.enums(name)._enum.inherits.foreach { er =>
         er.resolve.foreachFast(ed => result.addOne((enumDef, ed.name)))
       }
+    } else if (tag eq ElementTypeTag.functionDef) {
+      collectFunctionRefs(sv.functions(name), result)
     }
     result
   }
@@ -182,6 +199,8 @@ final class UnderivedReachabilityQuery(
       sv.enums(name)._enum.inherits.foreach { er =>
         er.resolve.foreachFast(ed => result.addOne((enumDef, ed.name)))
       }
+    } else if (tag eq ElementTypeTag.functionDef) {
+      collectFunctionRefs(sv.functions(name), result)
     }
     result
 }
@@ -191,7 +210,7 @@ private object SchemaReachabilityQuery {
   /** Runtime type tag for [[Element]]s
     */
   enum ElementTypeTag:
-    case classDef, typeDef, slotDef, enumDef, other
+    case classDef, typeDef, slotDef, enumDef, functionDef, other
 
   object ElementTypeTag:
     def apply(el: Element): ElementTypeTag = el match {
@@ -199,6 +218,7 @@ private object SchemaReachabilityQuery {
       case _: TypeDefinition => typeDef
       case _: SlotDefinition => slotDef
       case _: EnumDefinition => enumDef
+      case _: FunctionDefinition => functionDef
       case _ => other
     }
 

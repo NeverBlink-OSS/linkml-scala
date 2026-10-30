@@ -55,6 +55,75 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "keep functions and the classes they use when pruning from the schema root" in {
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_range: string
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Request: {}
+          |  Result: {}
+          |  Failure: {}
+          |  Unused: {}
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter(
+            "root.yaml" ->
+              """id: https://example.org/root
+                |name: root
+                |imports:
+                |  - other
+                |functions:
+                |  run:
+                |    parameters: Request
+                |    returns: Result
+                |    errors:
+                |      - Failure
+                |""".stripMargin,
+            "other.yaml" -> other,
+          ),
+        ),
+      )
+      val generated =
+        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = schemaRoot))
+      generated.functions.keys should contain only "run"
+      generated.classes.keys should contain theSameElementsAs Seq("Request", "Result", "Failure")
+    }
+
+    "drop functions that the tree root does not reach" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/tree-root-functions
+          |name: tree_root_functions
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_range: string
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Root:
+          |    tree_root: true
+          |    attributes:
+          |      a: {}
+          |  Request: {}
+          |functions:
+          |  run:
+          |    parameters: Request
+          |""".stripMargin,
+        ),
+      )
+      val generated =
+        LinkMlGenerator(using sv).generate(LinkMlGenerator.Options(pruningMode = treeRoot(None)))
+      generated.functions shouldBe empty
+      generated.classes.keys should contain only "Root"
+    }
+
     "preserve type unions and their dependencies through pruning and reload" in {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""
           |id: https://example.org/type-unions

@@ -38,6 +38,8 @@ final class SchemaValidator(using sv: SchemaView) {
           Some("/types/" + _type.name)
         case SubsetView(subset, definingSchema) =>
           Some("/subsets/" + subset.name)
+        case FunctionView(function, definingSchema) =>
+          Some("/functions/" + function.name)
       },
     )
   }
@@ -271,6 +273,9 @@ final class SchemaValidator(using sv: SchemaView) {
     }
     elements(root, "subsets") { (name, node) =>
       check(fieldsOf(node), "subset_definition", name, at("/subsets/" + name, schemaId))
+    }
+    elements(root, "functions") { (name, node) =>
+      check(fieldsOf(node), "function_definition", name, at("/functions/" + name, schemaId))
     }
     warnings.result()
   }

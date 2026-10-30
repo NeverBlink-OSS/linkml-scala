@@ -1,0 +1,104 @@
+id: https://neverblink.eu/linkml/tests/functions/returns/
+name: functionsReturns
+description: Functions returning each kind of element a `returns` may name.
+
+imports:
+  - linkml:types
+
+classes:
+  Store:
+    description: The root class, so that the schema has something to serialize.
+    tree_root: true
+    attributes:
+      name:
+        description: Name of the store.
+        rank: 1
+        range: string
+        required: true
+      open:
+        description: Whether it is open.
+        rank: 2
+        range: boolean
+
+  Item:
+    description: One item, returned by `fetch`.
+    attributes:
+      id:
+        description: Identifier of the item.
+        range: string
+        identifier: true
+      label:
+        description: What it is called.
+        range: string
+        required: true
+
+  ItemList:
+    description: A list of items, returned by `list_items`.
+    attributes:
+      items:
+        description: The items, in store order.
+        range: Item
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+
+  FetchRequest:
+    description: What `fetch` takes.
+    attributes:
+      id:
+        description: Identifier to fetch.
+        range: string
+        required: true
+
+  Unavailable:
+    description: The item is not in the store.
+    attributes:
+      id:
+        description: The identifier that was asked for.
+        range: string
+        required: true
+
+  Closed:
+    description: The store is closed.
+    attributes:
+      reopens:
+        description: When it opens again.
+        range: string
+
+enums:
+  Status:
+    description: What state the store is in.
+    permissible_values:
+      OPEN:
+        description: Taking orders.
+      CLOSED:
+        description: Not taking orders.
+
+types:
+  Price:
+    description: An amount in the smallest currency unit.
+    typeof: integer
+    minimum_value: 0
+
+functions:
+  fetch:
+    description: Returns one item, which is a class.
+    parameters: FetchRequest
+    returns: Item
+    errors:
+      - Unavailable
+      - Closed
+
+  list_items:
+    description: Returns every item, as a class that holds a list.
+    returns: ItemList
+    errors:
+      - Closed
+
+  status:
+    description: Returns the state of the store, which is an enum.
+    returns: Status
+
+  total_value:
+    description: Returns the value of the stock, which is a type.
+    returns: Price
