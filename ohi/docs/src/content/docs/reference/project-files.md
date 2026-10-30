@@ -10,7 +10,7 @@ An ohi project uses two files. Keep both in version control.
 | `ohi.yaml` | The publications and files you selected. | You, `ohi init` and `ohi add`. |
 | `ohi.lock.json` | Exact files and checksums, including dependencies. | `ohi add` and `ohi lock`. |
 
-For a walkthrough, see [Manage project dependencies](/docs/guides/dependencies/).
+For a walkthrough, see [Manage ontology projects](/docs/guides/dependencies/).
 
 ## ohi.yaml
 
@@ -81,8 +81,8 @@ run `ohi lock` in its project directory.
 ## Dependency files
 
 The lock includes each selected file and one file in the same format from each required
-dependency publication. For example, selecting SAREF4ENER
-in `owl-turtle` also records SAREF Core's Turtle file in the lock.
+dependency publication. For example, selecting DCAT 3 in `owl-turtle` also records
+the Turtle files for Dublin Core Terms, SKOS and PROV-O in the lock.
 
 Each dependency must provide exactly one file in that format. If a dependency has none or more
 than one, lock creation fails. Rebuilding the lock keeps the exact publications in `ohi.yaml`.

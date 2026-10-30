@@ -1,16 +1,16 @@
 ---
-title: Manage project dependencies
+title: Manage ontology projects
 description: Record your ontology choices and download the same files and dependencies again.
 ---
 
-Use `ohi add` to keep track of the ontologies your project uses. Here we'll add SAREF4ENER and
-download its SAREF Core dependency.
+Use `ohi add` to keep track of the ontologies your project uses. Here we'll add
+[DCAT 3](https://ohi.dev/w3c/dcat@3), which describes data catalogs, and download its dependencies.
 
 ## Create a project
 
 ```sh
-ohi init energy-project
-cd energy-project
+ohi init city-catalog
+cd city-catalog
 ```
 
 This creates `ohi.yaml`, where your ontology choices are saved. For an existing project, run
@@ -19,14 +19,15 @@ This creates `ohi.yaml`, where your ontology choices are saved. For an existing 
 ## Add an ontology
 
 ```sh
-ohi add saref/saref4ener@v2.1.1 --format owl-turtle --to ontologies
+ohi add w3c/dcat@3 --format owl-turtle --to ontologies
 ```
 
-You'll get `ontologies/saref4ener.ttl`. Your selection is saved in `ohi.yaml`, and ohi creates
-`ohi.lock.json` with the exact files and checksums for both SAREF4ENER and SAREF Core.
+You'll get `ontologies/dcat3.owl.ttl`. Your selection is saved in `ohi.yaml`, and ohi creates
+`ohi.lock.json` with the exact files and checksums for DCAT and its dependencies, Dublin Core Terms,
+SKOS and PROV-O.
 
-Omit `@v2.1.1` to choose the latest publication. The saved selection still points to that exact
-publication, so later commands won't silently switch versions.
+Omit `@3` to choose the most recently published release on ohi.dev. The saved selection still points
+to that exact publication, so later commands won't silently switch versions.
 
 ## Download the dependencies
 
@@ -34,8 +35,8 @@ publication, so later commands won't silently switch versions.
 ohi get --lock ohi.lock.json --to ontologies
 ```
 
-This downloads SAREF Core's `saref.ttl` and reuses the `saref4ener.ttl` you already have. ohi checks
-both files against the checksums in the lock.
+This downloads `dublin_core_terms.owl.ttl`, `skos.owl.ttl` and `prov-o.ttl`, and reuses the
+`dcat3.owl.ttl` you already have. ohi checks all four files against the checksums in the lock.
 
 Keep `ohi.yaml` and `ohi.lock.json` in version control. After cloning the project on another machine,
 run the same command to retrieve the same files.
@@ -50,8 +51,8 @@ with the selected file's `url`:
 ```yaml
 format_version: 1
 selections:
-  - base_url: https://api.ohi.dev/files/packages/saref/saref4ener/v2.1.1/
-    url: https://api.ohi.dev/files/packages/saref/saref4ener/v2.1.1/saref4ener.ttl
+  - base_url: https://api.ohi.dev/files/packages/w3c/dcat/3/
+    url: https://api.ohi.dev/files/packages/w3c/dcat/3/dcat3.owl.ttl
 ```
 
 Remove the entry, or replace both URLs with ones from

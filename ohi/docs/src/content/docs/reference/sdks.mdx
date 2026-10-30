@@ -5,7 +5,7 @@ description: Search ohi.dev, inspect publications and download their files from 
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
-The ohi SDK lets Scala/JVM, Python and TypeScript applications search publications on
+The ohi SDKs let Scala/JVM, Python and TypeScript applications search publications on
 [ohi.dev](https://ohi.dev), inspect their metadata, download selected files and save file selections.
 
 ## Installation
@@ -43,7 +43,9 @@ The CLI, the Python package and the TypeScript package share the ohi LinkML rele
     from ohi import CatalogClient, SearchRequest
 
     client = CatalogClient()
-    page = client.search(SearchRequest(q="sensors", page=1, per_page=10))
+    page = client.search(
+        SearchRequest(q="sensors", page=1, per_page=10)
+    )
     if page.hits:
         publication = client.inspect(page.hits[0].base_url)
         artifact = publication.artifacts[0]
@@ -54,18 +56,38 @@ The CLI, the Python package and the TypeScript package share the ohi LinkML rele
     ```typescript
     import { CatalogClient } from "@neverblink/ohi";
 
-    const page = await new CatalogClient().search({ q: "sensors" });
+    const client = new CatalogClient();
+    const page = await client.search({
+      q: "sensors",
+      page: 1,
+      per_page: 10,
+    });
+    if (page.hits.length > 0) {
+      const publication = await client.inspect(page.hits[0].base_url);
+      const artifact = publication.artifacts[0];
+      const content = await client.get(artifact.url);
+    }
     ```
   </TabItem>
 </Tabs>
 
 ## Language bindings
 
-| Language | Client | Operation results |
-| --- | --- | --- |
-| Scala/JVM | `eu.neverblink.ohi.catalog.CatalogClient` in `ohi.catalog.jvm` | Synchronous `SearchResult`, `Publication`, `Array[Byte]` |
-| Python | `ohi.CatalogClient` | Synchronous `SearchResult`, `Publication`, `bytes` |
-| TypeScript | `CatalogClient` from the package entry point | Promises of `SearchResult`, `Publication`, `Uint8Array` |
+<Tabs syncKey="language">
+  <TabItem label="Python">
+    `ohi.CatalogClient` is synchronous. `search`, `inspect` and `get` return
+    `SearchResult`, `Publication` and `bytes`, respectively.
+  </TabItem>
+  <TabItem label="TypeScript">
+    Import `CatalogClient` from `@neverblink/ohi`. `search`, `inspect` and `get` return
+    promises of `SearchResult`, `Publication` and `Uint8Array`, respectively.
+  </TabItem>
+  <TabItem label="Scala">
+    Use `eu.neverblink.ohi.catalog.CatalogClient` in `ohi.catalog.jvm`.
+    `search`, `inspect` and `get` synchronously return `SearchResult`, `Publication`
+    and `Array[Byte]`, respectively.
+  </TabItem>
+</Tabs>
 
 ## Search
 
@@ -85,66 +107,99 @@ Dependency files must be selected and retrieved separately.
 A known publication or artifact URL can be passed directly to `inspect` or `get`, without
 searching first.
 
-## Using another catalog
+## Configuration
 
-To use another catalog, supply both `search_url` and `query_by`:
+Set `timeout_ms` to change the default 30000 ms timeout.
 
-```python
-from ohi import CatalogClient, CatalogConfig
+<Tabs syncKey="language">
+  <TabItem label="Python">
+    ```python
+    from ohi import CatalogClient, CatalogConfig
 
-client = CatalogClient(CatalogConfig(
-    search_url="https://catalog.example/search/collections/packages/documents/search",
-    query_by="title,name",
-))
-```
+    client = CatalogClient(CatalogConfig(timeout_ms=60000))
+    ```
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```typescript
+    import { CatalogClient } from "@neverblink/ohi";
 
-In TypeScript, pass the fields directly: `new CatalogClient({ search_url, query_by })`.
+    const client = new CatalogClient({ timeout_ms: 60000 });
+    ```
+  </TabItem>
+</Tabs>
 
-Replace the example endpoint and indexed fields with your catalog's values. Omitting both selects
+To override search settings, supply `search_url` and `query_by` together. Omitting both selects
 ohi.dev. Supplying only one is an error.
 
 ## Save and reload file selections
 
 Supply all selected and dependency files with their hashes from publication metadata.
+The URLs and hash below are illustrative.
 
-```python
-from ohi import ArtifactSelection, Lock, LockedFile, read_lock, write_lock
+<Tabs syncKey="language">
+  <TabItem label="Python">
+    ```python
+    from ohi import ArtifactSelection, Lock, LockedFile, read_lock, write_lock
 
-selected = LockedFile(
-    base_url="https://hub.example/releases/energy/2/",
-    url="https://files.example/energy.ttl",
-    format="owl-turtle",
-    sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-)
-lock = Lock(
-    format_version=2,
-    selections=[ArtifactSelection(base_url=selected.base_url, url=selected.url)],
-    files=[selected],
-)
-write_lock("ohi.lock.json", lock)
-saved = read_lock("ohi.lock.json")
-```
+    selected = LockedFile(
+        base_url="https://hub.example/releases/energy/2/",
+        url="https://files.example/energy.ttl",
+        format="owl-turtle",
+        sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    )
+    lock = Lock(
+        format_version=2,
+        selections=[ArtifactSelection(base_url=selected.base_url, url=selected.url)],
+        files=[selected],
+    )
+    write_lock("ohi.lock.json", lock)
+    saved = read_lock("ohi.lock.json")
+    ```
 
-The URLs and hash are illustrative.
+    Use `decode_lock` and `encode_lock` from `ohi` for JSON text.
+    File paths accept a string or path-like object.
+  </TabItem>
+  <TabItem label="TypeScript">
+    ```typescript
+    import type { Lock, LockedFile } from "@neverblink/ohi";
+    import { readLock, writeLock } from "@neverblink/ohi/node";
+
+    const selected: LockedFile = {
+      base_url: "https://hub.example/releases/energy/2/",
+      url: "https://files.example/energy.ttl",
+      format: "owl-turtle",
+      sha256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    };
+    const lock: Lock = {
+      format_version: 2,
+      selections: [{ base_url: selected.base_url, url: selected.url }],
+      files: [selected],
+    };
+    await writeLock("ohi.lock.json", lock);
+    const saved = await readLock("ohi.lock.json");
+    ```
+
+    File operations take a string path and return promises through the `/node` entry.
+    Use `encodeLock` and `decodeLock` from `@neverblink/ohi` for JSON text.
+    Browser applications supply their own storage.
+  </TabItem>
+  <TabItem label="Scala">
+    Use `LockJson.decode` and `LockJson.encode` for JSON text.
+    `LockFiles.read` and `LockFiles.write` take a `java.nio.file.Path`.
+    Both APIs are in `eu.neverblink.ohi.model`.
+  </TabItem>
+</Tabs>
+
 [Version-1 locks](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/examples/selection.lock.json)
 omit hashes and remain supported. See the
 [lock schema](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/model/schema/lock.yaml).
 
-### In each language
-
-| Binding | JSON text | Explicit file path |
-| --- | --- | --- |
-| Scala/JVM, `eu.neverblink.ohi.model` | `LockJson.decode`, `LockJson.encode` | `LockFiles.read`, `LockFiles.write`, using `java.nio.file.Path` |
-| Python, `ohi` | `decode_lock`, `encode_lock` | `read_lock`, `write_lock`, using a string or path-like object |
-| TypeScript, `@neverblink/ohi` | `decodeLock`, `encodeLock` | `readLock`, `writeLock` from `@neverblink/ohi/node`, returning promises |
-
 Create the parent directory before writing a lock. Writes replace an existing lock and preserve its
-contents on failure. Browser applications use `encodeLock` and `decodeLock` with their own storage.
-File operations are available through the TypeScript `/node` entry.
+contents on failure.
 
 ## Metadata
 
-The SDK accepts
+The ohi SDKs accept
 [revision 2 publication metadata](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/model/schema/package.yaml),
 illustrated by the synthetic
 [Sensors example](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/examples/sensors-package.json).
@@ -161,4 +216,3 @@ additional fields.
 ## HTTP behavior
 
 Use the final HTTP(S) URL for publications and files. Requests do not follow redirects or retry.
-Set `CatalogConfig.timeout_ms` to override the default 30000 ms timeout.

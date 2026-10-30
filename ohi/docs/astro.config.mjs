@@ -16,7 +16,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: 'ohi',
+      title: 'ohi.dev',
       description: 'Find, download and manage ontologies.',
       logo: { src: './src/assets/logo.svg' },
       favicon: '/favicon.svg',

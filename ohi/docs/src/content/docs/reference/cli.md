@@ -26,7 +26,7 @@ Run `ohi --help` for the command overview, or `ohi <command> --help` for a comma
 
 ## Ontology references and formats
 
-`get` and `add` accept `namespace/name[@version]` from the ohi Hub, such as
+`get` and `add` accept `namespace/name[@version]` from ohi.dev, such as
 `w3c/prov-o@2013`. Without `@version`, they select the most recently published release.
 
 Without `--format`, ohi prefers the format shared by all selections in `ohi.yaml`, falling back
@@ -147,7 +147,7 @@ ohi add w3c/prov-o@2013 --format owl-turtle --to ./ontologies
 you run the command.
 
 To download the dependencies too, use `ohi get --lock ohi.lock.json --to ./ontologies`.
-See [Manage project dependencies](/docs/guides/dependencies/) for the complete workflow.
+See [Manage ontology projects](/docs/guides/dependencies/) for the complete workflow.
 
 ## lock
 
@@ -171,7 +171,7 @@ help for its arguments and options:
 ```sh
 ohi linkml --help
 ohi linkml validate --help
-ohi linkml generate json-schema --help
+ohi linkml to json-schema --help
 ```
 
 ## version

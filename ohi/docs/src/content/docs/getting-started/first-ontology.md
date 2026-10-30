@@ -1,28 +1,27 @@
 ---
 title: Download your first ontology
-description: Find SAREF4ENER and download its OWL file in Turtle syntax.
+description: Find FOAF and download its OWL file in Turtle syntax.
 ---
 
-We'll download SAREF4ENER, an ontology for energy devices. You'll need
-[ohi installed](/docs/getting-started/install/). Downloading by name requires the next ohi release,
-after v0.17.2.
+We'll download [FOAF](https://ohi.dev/foaf/foaf@2014-01-14), an ontology for people and their
+relationships. You'll need [ohi installed](/docs/getting-started/install/).
 
 ## Find the ontology
 
 ```sh
-ohi search saref4ener
+ohi search foaf
 ```
 
-Look for `saref/saref4ener` at version `v2.1.1`. The result lists its available formats.
+Look for `foaf/foaf` at version `2014-01-14`. The result lists its available formats.
 
 ## Download it
 
 ```sh
-ohi get saref/saref4ener@v2.1.1 --format owl-turtle --to ontologies
+ohi get foaf/foaf@2014-01-14 --format owl-turtle --to ontologies
 ```
 
-This saves `saref4ener.ttl` in an `ontologies` folder, creating the folder if needed.
+This saves `20140114.owl.ttl` in an `ontologies` folder, creating the folder if needed.
 `owl-turtle` selects OWL in Turtle syntax. Open the file in a text editor to see its definitions.
 
-SAREF4ENER also uses definitions from SAREF Core. To download both and record your choices,
-continue with [Manage project dependencies](/docs/guides/dependencies/).
+To record ontology choices in a project and download their dependencies, continue with
+[Manage ontology projects](/docs/guides/dependencies/).

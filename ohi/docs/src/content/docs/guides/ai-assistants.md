@@ -1,3 +1,3 @@
 ---
-title: Use ohi with AI assistants
+title: Use ohi with AI agents
 ---

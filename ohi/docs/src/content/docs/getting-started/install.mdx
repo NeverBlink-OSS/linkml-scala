@@ -8,11 +8,6 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 Install the ohi command-line tool to search and download ontologies from your terminal.
 For Python or TypeScript applications, see [SDK installation](/docs/reference/sdks/#installation).
 
-:::note[Release availability]
-The installer currently provides v0.17.2. Downloading by ontology name, as shown in the
-first-download walkthrough, requires the next ohi release.
-:::
-
 ## Install
 
 <Tabs>
@@ -31,24 +26,17 @@ first-download walkthrough, requires the next ohi release.
     Run the same command again to update.
   </TabItem>
   <TabItem label="Windows">
-    Supports Windows on x86_64.
+    Supports Windows on x86_64. Run this in Windows PowerShell 5.1 or PowerShell 7:
 
-    1. Download **ohi-windows-x86_64.exe** and **SHA256SUMS** from the
-       [latest release](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest)
-       into the same folder.
-    2. Open PowerShell in that folder. Compare the checksum below with the
-       `ohi-windows-x86_64.exe` entry in `SHA256SUMS`:
+    ```powershell
+    irm https://ohi.dev/install.ps1 | iex
+    ```
 
-       ```powershell
-       (Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash
-       ```
+    The [installer](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/cli/install.ps1)
+    downloads the latest release, verifies its checksum and puts `ohi.exe` in `$HOME\.local\bin`.
+    Accept its offer to add that directory to your PowerShell profile so `ohi` works in new terminals too.
 
-    3. If they match, rename the executable to `ohi.exe` and move it to a folder such as
-       `C:\Tools\ohi`.
-    4. Open **Edit environment variables for your account** in Windows. Add that folder to
-       your **Path** variable, then open a new terminal.
-
-    To update, replace `ohi.exe` with the verified executable from a newer release.
+    Run the same command again to update.
   </TabItem>
 </Tabs>
 

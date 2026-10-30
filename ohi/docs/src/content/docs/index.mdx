@@ -29,23 +29,24 @@ ontologies, download their files and keep track of the versions and dependencies
 ### Ontology
 
 An ontology defines concepts and relationships in a domain. For example,
-[SAREF4ENER](https://saref.etsi.org/saref4ener/v2.1.1/) describes devices and how they use or supply energy.
+[FOAF](https://ohi.dev/foaf/foaf@2014-01-14) describes people, organizations and their relationships.
 
 <OntologyExample />
 
 ### Publication
 
-A publication is an **immutable** release of an ontology on the ohi Hub. It includes the ontology's
+A publication is an **immutable** release of an ontology on ohi.dev. It includes the ontology's
 files, metadata and dependencies. Once published, its contents stay unchanged.
 
 Several publications can share the original publisher's version tag. This can happen when the
 publisher changes a source file without updating the tag, or when ohi updates a generated file.
-ohi adds timestamps to distinguish these publications.
+ohi adds timestamps to distinguish these publications. For example, FOAF could keep its version tag
+through these changes:
 
 <figure className="concept-figure not-content">
   <div className="publication-source">
-    <strong>SAREF4ENER</strong>
-    <span>Publisher's version <code>v2.1.1</code></span>
+    <strong>FOAF</strong>
+    <span>Publisher's version <code>2014-01-14</code></span>
   </div>
   <div className="publication-branches">
     <div className="diagram-node">
@@ -58,7 +59,7 @@ ohi adds timestamps to distinguish these publications.
       <span className="diagram-label">Publication</span>
       <strong>2 Oct 2026</strong>
       <span className="diagram-time">11:00 UTC</span>
-      <span className="diagram-detail">Publisher corrects a device description</span>
+      <span className="diagram-detail">Publisher corrects a class description</span>
     </div>
     <div className="diagram-node">
       <span className="diagram-label">Publication</span>
@@ -77,18 +78,18 @@ publication becomes available.
 An artifact is one downloadable ontology file. Its **format** combines a modeling language with a
 file syntax.
 
-Take “an energy device is a type of device.” In **OWL + Turtle** (`owl-turtle`), it looks like this:
+Take “a person is a type of agent.” In **OWL + Turtle** (`owl-turtle`), it looks like this:
 
 ```turtle
-:EnergyDevice a owl:Class ;
-    rdfs:subClassOf :Device .
+foaf:Person a owl:Class ;
+    rdfs:subClassOf foaf:Agent .
 ```
 
 The same statement in **OWL + RDF/XML** (`owl-rdfxml`):
 
 ```xml
-<owl:Class rdf:about="#EnergyDevice">
-  <rdfs:subClassOf rdf:resource="#Device" />
+<owl:Class rdf:about="http://xmlns.com/foaf/0.1/Person">
+  <rdfs:subClassOf rdf:resource="http://xmlns.com/foaf/0.1/Agent" />
 </owl:Class>
 ```
 
@@ -96,30 +97,32 @@ The language is still OWL. Only the syntax changed. In **LinkML + YAML** (`linkm
 
 ```yaml
 classes:
-  EnergyDevice:
-    is_a: Device
+  Person:
+    is_a: Agent
 ```
 
+ohi.dev supports OWL in Turtle or RDF/XML, RDFS in Turtle, and LinkML or Apache Ossie in YAML.
 Choose an available artifact in a format your tools can read.
 
 ### Dependency
 
-A dependency is another ontology that your chosen ontology builds on. SAREF4ENER, for example,
-reuses SAREF Core's definition of a device instead of defining it from scratch.
+A dependency is another ontology that your chosen ontology builds on.
+[DCAT](https://ohi.dev/w3c/dcat@3), for example, describes datasets such as a city's bus timetables.
+It uses Dublin Core's <code>title</code> property to name them.
 
 <figure className="concept-figure not-content">
   <div className="dependency-flow">
     <div className="diagram-node">
-      <strong>SAREF4ENER</strong>
-      <span>Energy devices</span>
+      <strong>DCAT</strong>
+      <span>Datasets</span>
     </div>
     <div className="dependency-edge">
       <span>depends on</span>
       <Icon name="right-arrow" size="1.5rem" />
     </div>
     <div className="diagram-node">
-      <strong>SAREF Core</strong>
-      <span>Basic device concepts</span>
+      <strong>Dublin Core Terms</strong>
+      <span>Titles, creators and dates</span>
     </div>
   </div>
 </figure>
@@ -131,9 +134,11 @@ dependency so your project can use the same definitions again later.
 
 <CardGrid>
   <LinkCard
-    title="Browse the Hub"
+    title="Browse ohi.dev"
     description="Explore ontologies and their available files."
     href="https://ohi.dev"
+    target="_blank"
+    rel="noopener"
   />
   <LinkCard
     title="Use the CLI"
@@ -146,7 +151,7 @@ dependency so your project can use the same definitions again later.
     href="/docs/reference/sdks/"
   />
   <LinkCard
-    title="Use an AI assistant"
+    title="Use an AI agent"
     description="Set up the ohi agent skills."
     href="/docs/guides/ai-assistants/"
   />
