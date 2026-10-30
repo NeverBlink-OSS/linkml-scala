@@ -29,6 +29,7 @@ import eu.neverblink.linkml.runtime.*
   typeDesignator.Member(classOf[InvalidRange], "InvalidRange"),
   typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
   typeDesignator.Member(classOf[InvalidUriOrCurie], "InvalidUriOrCurie"),
+  typeDesignator.Member(classOf[MissingRecommendedSlot], "MissingRecommendedSlot"),
   typeDesignator.Member(classOf[MultipleKeyOrIdSlots], "MultipleKeyOrIdSlots"),
   typeDesignator.Member(classOf[MultipleTreeRoots], "MultipleTreeRoots"),
   typeDesignator.Member(classOf[NoTreeRootClass], "NoTreeRootClass"),

@@ -12,6 +12,7 @@ import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, Uri, UriOrCurie}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{
+  MissingRecommendedSlot,
   SchemaError,
   SchemaFatal,
   UndeclaredCuriePrefix,
@@ -996,6 +997,70 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       sv.lintProblems.collect { case p: UnwritableUri => p.infer().message.get } shouldBe Seq(
         "URI 'http://example.org/A' at /classes/Imported/class_uri/ can't be written, as 'http' " +
           "is a declared prefix of the root schema",
+      )
+    }
+
+    "report each element of the root schema without a recommended slot" in {
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |classes:
+          |  Imported: {}
+          |""".stripMargin
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |imports:
+          |  - other
+          |default_range: Code
+          |classes:
+          |  Person:
+          |    tree_root: true
+          |    description: A person
+          |    attributes:
+          |      name:
+          |        description: The full name
+          |      age: {}
+          |slots:
+          |  id: {}
+          |  code:
+          |    description: ""
+          |enums:
+          |  Status:
+          |    description: The status
+          |    permissible_values:
+          |      ACTIVE:
+          |        description: Active
+          |      INACTIVE: {}
+          |types:
+          |  Code:
+          |    base: str
+          |    uri: http://www.w3.org/2001/XMLSchema#string
+          |subsets:
+          |  Basic: {}
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter("root.yaml" -> root, "other.yaml" -> other),
+        ),
+      )
+
+      // The class from the imported schema isn't reported
+      sv.lintProblems.collect { case p: MissingRecommendedSlot =>
+        p.location.jsonPointer.getOrElse("(schema)") + ": " + p.infer().message.get
+      } shouldBe Seq(
+        "(schema): schema_definition 'root' has no value for the recommended slot 'description'",
+        "/classes/Person/attributes/age: slot_definition 'Person.age' has no value for the " +
+          "recommended slot 'description'",
+        "/slots/id: slot_definition 'id' has no value for the recommended slot 'description'",
+        "/slots/code: slot_definition 'code' has no value for the recommended slot " +
+          "'description'",
+        "/enums/Status/permissible_values/INACTIVE: permissible_value 'Status.INACTIVE' has no " +
+          "value for the recommended slot 'description'",
+        "/types/Code: type_definition 'Code' has no value for the recommended slot 'description'",
+        "/subsets/Basic: subset_definition 'Basic' has no value for the recommended slot " +
+          "'description'",
       )
     }
 

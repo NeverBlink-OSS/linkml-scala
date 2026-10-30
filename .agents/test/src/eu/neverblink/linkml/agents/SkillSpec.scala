@@ -2,6 +2,7 @@ package eu.neverblink.linkml.agents
 
 import eu.neverblink.linkml.agents.Yaml.*
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaValidator, SchemaView}
+import eu.neverblink.linkml.validation.MissingRecommendedSlot
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.{Node, Tag}
@@ -109,9 +110,13 @@ class SkillSpec extends AnyWordSpec, Matchers {
               case Right(sv) => SchemaValidator(using sv).lintProblems
               case Left(fatal) => fatal
             }
-            // Like `validate --strict`: warnings fail too.
+            // Like `validate --strict`: warnings fail too. Warnings about elements without a
+            // description are skipped, as they are noise for a fragment.
             withClue(ujson.write(doc, indent = 2)) {
-              issues.map(_.infer()).map(i =>
+              issues.filter {
+                case _: MissingRecommendedSlot => false
+                case _ => true
+              }.map(_.infer()).map(i =>
                 s"${i.severity}: ${SchemaIssues.description(i)}",
               ) shouldBe empty
             }

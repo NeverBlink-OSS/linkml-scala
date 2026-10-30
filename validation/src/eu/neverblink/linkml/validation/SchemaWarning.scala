@@ -12,6 +12,7 @@ import eu.neverblink.linkml.runtime.*
   "issue_type",
   typeDesignator.Member(classOf[FlankingSeparator], "FlankingSeparator"),
   typeDesignator.Member(classOf[InvalidSlotUsage], "InvalidSlotUsage"),
+  typeDesignator.Member(classOf[MissingRecommendedSlot], "MissingRecommendedSlot"),
   typeDesignator.Member(classOf[NoTreeRootClass], "NoTreeRootClass"),
   typeDesignator.Member(classOf[NonStandardSeparator], "NonStandardSeparator"),
   typeDesignator.Member(classOf[RepeatedSeparator], "RepeatedSeparator"),

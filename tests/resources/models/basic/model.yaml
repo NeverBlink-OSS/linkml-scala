@@ -1,20 +1,24 @@
 id: https://neverblink.eu/linkml/tests/basic/
 name: basic
+description: A minimal schema with one class and two slots.
 
 imports:
   - linkml:types
 
 classes:
   SomeClass:
+    description: The root class.
     tree_root: true
     slots:
       - some_slot
       - some_other_slot
 slots:
   some_slot:
+    description: An optional text value.
     rank: 1
     range: string
   some_other_slot:
+    description: A required number.
     rank: 2
     range: integer
     required: true

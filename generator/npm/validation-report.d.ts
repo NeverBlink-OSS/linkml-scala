@@ -185,6 +185,26 @@ export interface IssueLocation {
   schema_id?: string;
 }
 
+/** An element of the root schema, or the root schema itself, has no value for a slot that the LinkML metamodel marks as `recommended`, such as `description`. */
+export interface MissingRecommendedSlot {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** element name: Name of the element the issue was found in. */
+  element_name: string;
+  /** element type: Name of the metamodel class of the element, such as `class_definition`. */
+  element_type: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "MissingRecommendedSlot";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** slot name */
+  slot_name: string;
+}
+
 /** A class has more than one `key` or `identifier` slot. */
 export interface MultipleKeyOrIdSlots {
   /** class name: Name of the class the issue was found in. */
@@ -386,6 +406,7 @@ export type SchemaIssue =
   | InvalidRange
   | InvalidSlotUsage
   | InvalidUriOrCurie
+  | MissingRecommendedSlot
   | MultipleKeyOrIdSlots
   | MultipleTreeRoots
   | NoTreeRootClass
@@ -435,6 +456,7 @@ export interface SchemaValidationReport {
 export type SchemaWarning =
   | FlankingSeparator
   | InvalidSlotUsage
+  | MissingRecommendedSlot
   | NoTreeRootClass
   | NonStandardSeparator
   | RepeatedSeparator

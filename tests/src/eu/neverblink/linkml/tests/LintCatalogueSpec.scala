@@ -16,7 +16,7 @@ class LintCatalogueSpec extends AnyWordSpec, Matchers {
   for entry <- ModelCatalogue.all do {
     s"Model '${entry.model.root.name}'" should {
       "lint" in {
-        entry.model.lint() shouldBe None
+        ModelCatalogue.lintProblemsExceptMissingRecommendedSlots(entry.model) shouldBe empty
       }
 
       "have ranks defined for tree_root" in {

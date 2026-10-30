@@ -434,6 +434,28 @@ classes:
           it is meant as a CURIE, declare the prefix '{prefix}' in the schema that uses it.
           Otherwise, use a URI whose scheme isn't a declared prefix.
 
+  MissingRecommendedSlot:
+    is_a: SchemaWarning
+    description: >-
+      An element of the root schema, or the root schema itself, has no value for a slot that the
+      LinkML metamodel marks as `recommended`, such as `description`.
+    slots:
+      - element_name
+    attributes:
+      element_type:
+        range: string
+        required: true
+        title: element type
+        description: Name of the metamodel class of the element, such as `class_definition`.
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+    slot_usage:
+      message:
+        equals_expression: >-
+          {element_type} '{element_name}' has no value for the recommended slot '{slot_name}'
+
 
   InvalidSlotUsage:
     is_a: SchemaWarning

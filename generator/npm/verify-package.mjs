@@ -98,7 +98,7 @@ import { LinkML } from "@neverblink/linkml";
 
 const head = "id: https://example.org/s\\nname: s\\nimports:\\n  - linkml:types\\n";
 const schemas = [
-  // clean
+  // warnings only: no descriptions
   head + "classes:\\n  A:\\n    tree_root: true\\n    attributes:\\n      x:\\n        range: string\\n",
   // fatal: an unknown range
   head + "classes:\\n  A:\\n    attributes:\\n      x:\\n        range: Nope\\n",
