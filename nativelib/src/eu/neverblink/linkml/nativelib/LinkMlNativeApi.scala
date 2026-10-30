@@ -52,8 +52,9 @@ object LinkMlNativeApi {
     *   - 3: rebuilt with Scala Native. The isolate arguments were removed. `linkml_init_threads`
     *     replaces `graal_create_isolate`. `platform` in `linkml_build_info` is now `SCALA_NATIVE`.
     *     Added `linkml_from_ossie`.
+    *   - 5: removed `linkml_init_threads`. Any thread may call in, several at once.
     */
-  final val abiVersion: Int = 4
+  final val abiVersion: Int = 5
 
   private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
 

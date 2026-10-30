@@ -12,11 +12,10 @@ from __future__ import annotations
 import ctypes
 import json
 import os
-import queue
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Callable, Mapping
+from typing import Any, Mapping
 
 from ._generated import DOCUMENT_FUNCTIONS
 
@@ -30,7 +29,7 @@ __all__ = [
 ]
 
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
-_EXPECTED_ABI_VERSION = 4
+_EXPECTED_ABI_VERSION = 5
 
 _LIB_STEM = "liblinkml_scala"
 
@@ -133,77 +132,21 @@ def _options(options: Mapping[str, Any] | None) -> bytes | None:
     return json.dumps(present).encode("utf-8")
 
 
-class _Worker:
-    """ohi LinkML native worker thread."""
-
-    def __init__(self, path: Path) -> None:
-        self._work: queue.SimpleQueue = queue.SimpleQueue()
-        ready: queue.SimpleQueue = queue.SimpleQueue()
-        self._thread = threading.Thread(
-            target=self._loop, args=(path, ready), name="linkml-scala", daemon=True
-        )
-        self._thread.start()
-        ok, value = ready.get()
-        if not ok:
-            raise value
-        self.lib: ctypes.CDLL = value
-
-    def _loop(self, path: Path, ready: queue.SimpleQueue) -> None:
-        # Load the library from this thread and keep all calls to this thread.
-        try:
-            lib = ctypes.CDLL(str(path))
-            # dlopen and the library constructor run several frames below this one, so the stack
-            # bottom Scala Native recorded is *lower* than where calls will arrive from -- the same
-            # inversion as loading from anywhere else, just smaller. Re-record it from here.
-            lib.linkml_init_threads.argtypes = []
-            lib.linkml_init_threads.restype = ctypes.c_int
-            lib.linkml_init_threads()
-        except BaseException as error:  # noqa: BLE001 - returned to the caller as-is
-            ready.put((False, error))
-            return
-        ready.put((True, lib))
-
-        while True:
-            call, box = self._work.get()
-            try:
-                box.put((True, call()))
-            except BaseException as error:  # noqa: BLE001 - returned to the caller as-is
-                box.put((False, error))
-
-    def run(self, call: Callable[[], Any]) -> Any:
-        """Run ``call`` on the worker and return its result here."""
-        if threading.get_ident() == self._thread.ident:
-            # Re-entrant: a finaliser the worker itself triggered. Running it inline is both
-            # correct and the only option, since the worker cannot wait for itself.
-            return call()
-        if sys.is_finalizing():
-            # The worker is a daemon thread, and Python stops those once shutdown starts.
-            # Waiting for it would hang the process on exit.
-            raise LinkMlError("Python is shutting down, so the library can no longer be called")
-        box: queue.SimpleQueue = queue.SimpleQueue()
-        self._work.put((call, box))
-        ok, value = box.get()
-        if ok:
-            return value
-        raise value
-
-
 class Runtime:
     """The loaded library, and the calls into it.
 
-    Thread-safe: calls from any thread are passed to the one worker thread that owns the library.
-    They are therefore serialised.
+    Thread-safe. ctypes releases the GIL during each call, so calls from several threads run in
+    parallel.
 
     Prefer the process-wide instance from :func:`runtime` over building your own.
     """
 
     def __init__(self, path: str | Path | None = None) -> None:
         self._path = Path(path) if path is not None else library_path()
-        self._worker = _Worker(self._path)
-        self._lib = self._worker.lib
+        self._lib = ctypes.CDLL(str(self._path))
         self._declare_signatures()
 
-        version = self._call(self._lib.linkml_abi_version)
+        version = self._lib.linkml_abi_version()
         if version != _EXPECTED_ABI_VERSION:
             raise LinkMlError(
                 f"{self._path} speaks ABI version {version}, but this package expects "
@@ -215,9 +158,6 @@ class Runtime:
         """The library file backing this runtime."""
         return self._path
 
-    def _call(self, function: Callable[..., Any], *args: Any) -> Any:
-        return self._worker.run(lambda: function(*args))
-
     # Loading
 
     def load_file(
@@ -228,8 +168,7 @@ class Runtime:
         :return: the schema handle, 0 if the schema had fatal problems, and the validation report.
         """
         report, error = _Chars(), _Chars()
-        handle = self._call(
-            self._lib.linkml_load_file,
+        handle = self._lib.linkml_load_file(
             path.encode("utf-8"),
             _options(options),
             ctypes.byref(report),
@@ -256,8 +195,7 @@ class Runtime:
         bodies = (ctypes.c_char_p * count)(*(value.encode("utf-8") for value in entries.values()))
 
         report, error = _Chars(), _Chars()
-        handle = self._call(
-            self._lib.linkml_load_string,
+        handle = self._lib.linkml_load_string(
             None if path is None else path.encode("utf-8"),
             None if schema is None else schema.encode("utf-8"),
             names if count else None,
@@ -272,10 +210,9 @@ class Runtime:
     def close(self, handle: int) -> None:
         """Release a schema handle. Releasing one that is already gone does nothing."""
         if sys.is_finalizing():
-            # Too late to reach the library (see _Worker.run), and pointless: the process is
-            # exiting.
+            # Pointless: the process is exiting.
             return
-        self._call(self._lib.linkml_close, handle)
+        self._lib.linkml_close(handle)
 
     # Generating
 
@@ -289,9 +226,7 @@ class Runtime:
         :raises LinkMlError: if the library reported another failure.
         """
         error = _Chars()
-        result = self._call(
-            getattr(self._lib, function), handle, _options(options), ctypes.byref(error)
-        )
+        result = getattr(self._lib, function)(handle, _options(options), ctypes.byref(error))
         # Take both, so neither leaks whichever way the call went.
         message = self._take(error)
         text = self._take(result)
@@ -311,7 +246,7 @@ class Runtime:
         :raises LinkMlError: if the library reported a failure.
         """
         error = _Chars()
-        result = self._call(self._lib.linkml_build_info, ctypes.byref(error))
+        result = self._lib.linkml_build_info(ctypes.byref(error))
         # Take both, so neither leaks whichever way the call went.
         message = self._take(error)
         text = self._take(result)
@@ -330,8 +265,7 @@ class Runtime:
         :raises LinkMlError: if the library reported another failure.
         """
         error = _Chars()
-        result = self._call(
-            getattr(self._lib, function),
+        result = getattr(self._lib, function)(
             document.encode("utf-8"),
             _options(options),
             ctypes.byref(error),
@@ -359,7 +293,7 @@ class Runtime:
         try:
             raw = ctypes.cast(pointer, ctypes.c_char_p).value
         finally:
-            self._call(self._lib.linkml_free, pointer)
+            self._lib.linkml_free(pointer)
         return None if raw is None else raw.decode("utf-8")
 
     def _declare_signatures(self) -> None:

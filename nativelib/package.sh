@@ -104,13 +104,12 @@ and the lifecycle. Two conventions cover all of it.
 Options are one JSON string, and may be NULL for defaults, so the common case needs no JSON:
 
     char *err = NULL;
-    char *shacl = linkml_shacl(thread, handle, NULL, &err);
+    char *shacl = linkml_shacl(handle, NULL, &err);
 
 Failure is NULL plus a message written to the error out-param. Everything the library hands back --
 documents, reports and error messages alike -- is yours, and must be released with \`linkml_free\`.
 
-Create an isolate with \`graal_create_isolate\` and attach any further threads with
-\`graal_attach_thread\` before calling in.
+Any thread may call in, and several threads may call at once.
 
 The options each generator accepts, and a worked example in Python, are documented at:
 

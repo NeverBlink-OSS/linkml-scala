@@ -9,7 +9,6 @@ import com.goyeau.mill.scalafix.ScalafixModule
 import mill.api.Evaluator
 import mill.contrib.jmh.JmhModule
 import mill.scalalib.scalafmt.ScalafmtModule
-import mill.scalanativelib.ScalaNativeModule
 import mill.scalanativelib.api.*
 
 /** LinkML as a native shared library with a C ABI, and the Python bindings on top of it.
@@ -48,12 +47,10 @@ object `package` extends Module, NativeOptional {
     )
   }
   
-  object native extends ScalaNativeModule, ScalafmtModule, ScalafixModule {
+  object native extends ScalaNativeNightly, ScalafmtModule, ScalafixModule {
     override def moduleDir = super.moduleDir / os.up
 
     def scalaVersion = Version.scala
-
-    def scalaNativeVersion = Version.scalaNative
 
     def moduleDeps = Seq(build.generator.native)
 
@@ -61,12 +58,9 @@ object `package` extends Module, NativeOptional {
 
     override def nativeBuildTarget = BuildTarget.LibraryDynamic
 
-    /** The Python bindings drive the library from one dedicated thread, which is the only
-      * arrangement Scala Native supports for a library another runtime loads. Multithreading
-      * support would only cost us safepoint checks we never benefit from.
-      */
+    /** Callers may call in from any number of their own threads at once. */
     override def nativeMultithreading = Task {
-      Some(false)
+      Some(true)
     }
 
     override def releaseMode = Task {
@@ -77,19 +71,13 @@ object `package` extends Module, NativeOptional {
       Task.env.get("LINKML_SCALA_TARGET")
     }
 
-    /** Link-time optimisation. Thin LTO is not supported on macOS. */
+    /** No LTO: with multithreading, thin and full LTO both crash in the library constructor when
+      * Python loads the library (seen on Linux aarch64, Scala Native 0.5.13 nightly). Costs about
+      * 15% on one thread. Once fixed, go back to thin LTO, and full LTO on macOS, which has no thin
+      * LTO.
+      */
     override def nativeLTO = Task {
-      val isMac = nativeTarget()
-        .map(t => t.contains("apple") || t.contains("darwin"))
-        .getOrElse(_root_.scala.util.Properties.isMac)
-      if isMac then LTO.Full else LTO.Thin
-    }
-
-    /** Override needed for Scala Native 0.15.2. Remove after upgrading. */
-    override def runClasspath = Task {
-      val ours = compile().classes.path
-      val classpath = super.runClasspath()
-      classpath.filter(_.path == ours) ++ classpath.filterNot(_.path == ours)
+      LTO.None
     }
 
     override def nativeBaseName = Task {
@@ -102,11 +90,8 @@ object `package` extends Module, NativeOptional {
       if _root_.scala.util.Properties.isMac then Seq(s"-mmacosx-version-min=14.0")
       else Seq.empty
 
-    /** _LIBUNWIND_IS_NATIVE_ONLY: see https://github.com/scala-native/scala-native/pull/5034
-      */
     override def nativeCompileOptions = Task {
-      super.nativeCompileOptions() ++ macosTarget ++
-        Seq("-O3", "-D_LIBUNWIND_IS_NATIVE_ONLY")
+      super.nativeCompileOptions() ++ macosTarget :+ "-O3"
     }
 
     override def nativeLinkingOptions = Task {

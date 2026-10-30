@@ -732,8 +732,7 @@ class HandleTest(unittest.TestCase):
                 self.assertIn("Thing", second.json_schema())
 
     def test_exiting_with_a_schema_still_open_does_not_hang(self):
-        # The schema's finaliser runs during shutdown, after Python has stopped the worker thread
-        # for good. A close that waited for the worker then would never return.
+        # The schema's finaliser runs during shutdown, which must neither hang nor crash.
         script = textwrap.dedent(
             f"""
             import linkml_scala
@@ -756,27 +755,35 @@ class RuntimeTest(unittest.TestCase):
     def test_library_path_points_at_a_real_file(self):
         self.assertTrue(linkml_scala.library_path().is_file())
 
-    def test_other_threads_can_call_in(self):
-        # Every thread has to attach to the isolate before its first call. Getting that wrong takes
-        # the whole process down rather than raising, so this test either passes or nothing does.
+    def test_threads_can_call_in_at_once(self):
+        # Each thread loads its own schema and also shares one with the others. Enough rounds to
+        # collect garbage while other threads are inside the library. Getting this wrong takes the
+        # whole process down rather than raising, so this test either passes or nothing does.
+        thread_count, rounds = 8, 20
         results: list[str] = []
         errors: list[BaseException] = []
+        start = threading.Barrier(thread_count)
 
-        def work():
-            try:
-                with linkml_scala.load_string(PERSON) as loaded:
-                    results.append(loaded.json_schema())
-            except BaseException as error:  # noqa: BLE001 - reported on the main thread
-                errors.append(error)
+        with linkml_scala.load_string(PERSON) as shared:
 
-        threads = [threading.Thread(target=work) for _ in range(4)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
+            def work():
+                try:
+                    start.wait()
+                    for _ in range(rounds):
+                        with linkml_scala.load_string(PERSON) as loaded:
+                            results.append(loaded.json_schema())
+                        results.append(shared.json_schema())
+                except BaseException as error:  # noqa: BLE001 - reported on the main thread
+                    errors.append(error)
+
+            threads = [threading.Thread(target=work) for _ in range(thread_count)]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
 
         self.assertEqual([], errors)
-        self.assertEqual(4, len(results))
+        self.assertEqual(thread_count * rounds * 2, len(results))
         self.assertEqual(1, len(set(results)), "the same schema should generate the same output")
 
     def test_non_ascii_survives_the_round_trip(self):

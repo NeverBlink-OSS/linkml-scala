@@ -163,7 +163,6 @@ void      linkml_close    (long long handle);
 void      linkml_free     (char*);
 
 int       linkml_abi_version(void);
-int       linkml_init_threads(void);
 char*     linkml_build_info (char** err);
 ```
 
@@ -187,7 +186,7 @@ long long h = linkml_load_file("model.yaml",
 
 A loaded schema is an integer handle.
 
-**One thread.** Due to a current limitation in Scala Native, the library has to be used from a single thread, which calls `linkml_init_threads()` once before anything else. The Python bindings do this for you: they own a worker thread and send all requests to it. Calling ohi LinkML from multiple threads in Python is safe, but the calls will be executed serially.
+**Any thread.** Any thread may call any function, and several threads may call at once, also with the same schema handle. In Python, calls from several threads run in parallel, because ctypes releases the GIL while the library works.
 
 ## Building it yourself
 

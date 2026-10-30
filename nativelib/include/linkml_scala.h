@@ -14,10 +14,8 @@
  * Every string the library returns belongs to the caller and must go back through linkml_free().
  * Strings in and out are NUL-terminated UTF-8.
  *
- * Threading: the library must be used from one thread. Scala Native cannot register a thread it
- * did not create (scala-native#4951), so a caller with several threads has to funnel calls through
- * one of its own, as the Python bindings do. Call linkml_init_threads() once from that thread
- * before anything else.
+ * Threading: any thread may call any function, and several threads may call at once, also with the
+ * same schema handle.
  */
 
 #ifndef LINKML_SCALA_H
@@ -28,14 +26,10 @@ extern "C" {
 #endif
 
 /* Bumped whenever a change to the exported functions or to the options JSON breaks callers. */
-#define LINKML_ABI_VERSION 4
+#define LINKML_ABI_VERSION 5
 
 /* The ABI version this library was built with. Compare against LINKML_ABI_VERSION. */
 int linkml_abi_version(void);
-
-/* Correct the stack bounds recorded when the library was loaded, and claim the calling thread.
- * Call once, from the thread that loaded the library and that will make every call. */
-int linkml_init_threads(void);
 
 /* Version and build metadata for this library, as a BuildInfo document in JSON. */
 char *linkml_build_info(char **error);

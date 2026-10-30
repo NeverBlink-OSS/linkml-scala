@@ -105,7 +105,7 @@ def link(root: Path) -> Path:
         "--gc", GC,
         "--mode", MODE,
         "--lto", LTO,
-        "--multithreading", "false",
+        "--multithreading", "true",
         *[arg for option in COMPILE_OPTIONS for arg in ("--compile-option", option)],
         "--outpath", str(output),
         "--workdir", str(root / "_native" / "workdir"),

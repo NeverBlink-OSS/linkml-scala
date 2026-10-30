@@ -219,7 +219,7 @@ See [the Python bindings guide](https://linkml.ohi.dev/docs/python-bindings/) fo
 
 ## Scala library
 
-The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli). ohi's Scala modules ship inside its CLI and are not published to Maven Central.
+The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM and Scala.js. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli). ohi's Scala modules ship inside its CLI and are not published to Maven Central.
 
 ## GitHub Action (CI)
 

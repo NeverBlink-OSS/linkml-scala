@@ -96,7 +96,7 @@ If you join them with `+`, mill can format the files before they are written.
 
 ### Scala Native
 
-The library is published for the JVM, Scala.js and Scala Native. The shared library and the [Python bindings](https://linkml.ohi.dev/docs/python-bindings/) are built with Scala Native.
+The library is published to Maven for the JVM and Scala.js. Scala Native builds only the shared library and the [Python bindings](https://linkml.ohi.dev/docs/python-bindings/), so its modules are not published. It is pinned to a nightly, see `mill-build/src/Version.scala`.
 
 The Scala Native modules are hidden unless `LINKML_NATIVE=1` is set, because the toolchain is slow to load. The variable is read when the mill daemon starts, so stop a running daemon first (`./mill shutdown`), or use `--no-server`:
 
