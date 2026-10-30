@@ -29,6 +29,18 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
     }
   }
 
+  "round-tripping a langstring slot" should {
+    "keep it single-valued, without warnings" in {
+      val (sv, warnings) = reimport(ModelCatalogue.langString.model)
+      warnings shouldBe empty
+      val slots = sv.slotDefinitions
+      slots("some_slot").slot.multivalued shouldBe false
+      slots("some_slot").slot.maximumLength shouldBe Some(10)
+      slots("many_slot").slot.multivalued shouldBe true
+      sv.classes("SomeClass").cls.slotUsage("some_slot").required shouldBe true
+    }
+  }
+
   "reading a document" should {
     "read Turtle, taking its prefix names" in {
       val ttl =

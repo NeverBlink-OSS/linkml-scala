@@ -112,6 +112,11 @@ final class PydanticGenerator(using sv: SchemaView)
       }.distinct.mkString(" | ")
     else constrainedType(tav, ctx)
 
+  /** Python type of a type range that is not a union, with the constraints of the slot and the
+    * type. A `LocalizedText` type, such as `langstring`, is a plain string or a non-empty dict from
+    * language tag to text. The lengths and the pattern apply to the plain string and to the text in
+    * each language.
+    */
   private def constrainedType(tav: TypeAttributeView, ctx: Context): String = {
     val base = runtimeType(tav.typeView, ctx)
     val constraints = mutable.ListBuffer.empty[String]
@@ -124,12 +129,18 @@ final class PydanticGenerator(using sv: SchemaView)
       number(tav.minimumValue).foreachFast(v => constraints.addOne("ge=".concat(v)))
       number(tav.maximumValue).foreachFast(v => constraints.addOne("le=".concat(v)))
     }
-    if constraints.isEmpty then base
-    else {
+    val text =
+      if constraints.isEmpty then base
+      else {
+        ctx.imports.typing("Annotated")
+        ctx.imports.pydantic("Field")
+        s"Annotated[$base, Field(${constraints.mkString(", ")})]"
+      }
+    if (tav.typeView.runtimeType eq LocalizedTextType) {
       ctx.imports.typing("Annotated")
       ctx.imports.pydantic("Field")
-      s"Annotated[$base, Field(${constraints.mkString(", ")})]"
-    }
+      s"$text | Annotated[dict[str, $text], Field(min_length=1)]"
+    } else text
   }
 
   private def runtimeType(tv: TypeView, ctx: Context): String = tv.runtimeType match {
@@ -160,6 +171,7 @@ final class PydanticGenerator(using sv: SchemaView)
     case AnyType | UnknownType =>
       ctx.imports.typing("Any")
       "Any"
+    // [[constrainedType]] adds the dict form of LocalizedText
     case StringType | UriOrCurieType | UriType | CurieType | NcNameType | LocalizedTextType => "str"
   }
 

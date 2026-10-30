@@ -1,8 +1,6 @@
 id: https://neverblink.eu/linkml/tests/langString/
 name: langString
-
-extensions:
-  opt_in: true
+default_range: langstring
 
 types:
   langstring:
@@ -10,7 +8,14 @@ types:
 
 classes:
   SomeClass:
+    tree_root: true
     attributes:
       some_slot:
+        rank: 1
         range: langstring
         required: true
+        maximum_length: 10
+      many_slot:
+        rank: 2
+        range: langstring
+        multivalued: true

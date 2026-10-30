@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/langString/> .
+
+_:b a :SomeClass;
+    :some_slot "Book";
+    :many_slot "novel", "story"@en, "Geschichte"@de, "tale"@en .

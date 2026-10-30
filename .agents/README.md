@@ -91,6 +91,7 @@ Edit skills in `.agents/skills/`. Regenerate these LinkML references from their 
 | `210-slot-usage-inheritance.md` | `website/src/content/docs/slot-usage-inheritance.md` |
 | `220-import-maps.md` | `website/src/content/docs/import-maps.md` |
 | `230-curies.md` | `website/src/content/docs/curies.md` |
+| `240-langstring.md` | `website/src/content/docs/langstring.md` |
 | `910-examples.md` | `tests/resources/models/` |
 
 ```sh

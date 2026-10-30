@@ -373,7 +373,8 @@ object OssieGenerator {
     case _: UriOrCurieType.type => BuiltInConcept.string
     case _: CurieType.type => BuiltInConcept.string
     case _: NcNameType.type => BuiltInConcept.string
-    case _: LocalizedTextType.type => BuiltInConcept.string // TODO LNK-195
+    // Ossie has no built-in concept for a text in several languages.
+    case _: LocalizedTextType.type => BuiltInConcept.string
     case _: AnyType.type => BuiltInConcept.any
     case _: UnknownType.type => BuiltInConcept.any
   }

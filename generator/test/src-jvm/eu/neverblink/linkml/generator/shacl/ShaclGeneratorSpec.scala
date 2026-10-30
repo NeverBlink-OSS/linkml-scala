@@ -1272,6 +1272,48 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "accept plain and language strings for langstring slots" in {
+      val input =
+        s"""$schemaShared
+           |prefixes:
+           |  t: https://neverblink.eu/linkml/shacl/test/
+           |default_prefix: t
+           |classes:
+           |  Book:
+           |    slots:
+           |    - title
+           |    - keywords
+           |slots:
+           |  title:
+           |    range: langstring
+           |    required: true
+           |  keywords:
+           |    range: langstring
+           |    multivalued: true
+           |""".stripMargin
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using loadWithImports(input)).generate(_))
+      val validator = ShaclValidator.builder().withShapes(turtle, RDFFormat.TURTLE).build()
+
+      def conforms(properties: String): Boolean = {
+        val data =
+          s"""@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+             |t:b a t:Book; $properties .
+             |""".stripMargin
+        validator.validate(data, RDFFormat.TURTLE).conforms()
+      }
+
+      withClue(turtle) {
+        conforms("""t:title "Book"""") shouldBe true
+        conforms("""t:title "Book"@en, "Buch"@de""") shouldBe true
+        conforms("""t:title "Book"; t:keywords "a", "b"@en, "c"@en""") shouldBe true
+        conforms("""t:title "Book", "Buch"""") shouldBe false
+        conforms("""t:title "Book"@en, "Novel"@en""") shouldBe false
+        conforms("""t:title "Book", "Buch"@de""") shouldBe false
+        conforms("t:title 1") shouldBe false
+        conforms("""t:keywords "a"""") shouldBe false
+      }
+    }
+
     "map exactly_one_of to sh:xone" in {
       val input =
         s"""$schemaShared

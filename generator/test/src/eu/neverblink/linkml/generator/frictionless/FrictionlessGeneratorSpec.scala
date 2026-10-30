@@ -189,6 +189,15 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       (constraints.minLength, constraints.maxLength) shouldBe (Some(2), Some(5))
     }
 
+    "make langstring columns `any`, without the constraints that `any` can't have" in {
+      val td = rootTable(ModelCatalogue.langString.model)
+      val someSlot = td.fields.head
+      someSlot.`type` shouldBe "any"
+      val constraints = someSlot.constraints.get
+      constraints.required shouldBe Some(true)
+      constraints.maxLength shouldBe None
+    }
+
     "date, time and datetime columns use the ISO 8601 format" in {
       // The `any` format would also accept things like 01/02/2020, which the LinkML types do not.
       val td = rootTable(

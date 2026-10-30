@@ -484,7 +484,7 @@ object OwlGenerator {
         // A subclass inherits this limit, so a `slot_usage` there that makes the slot multivalued
         // has no effect (LNK-238).
         val max = exact.orElseFast(first(_.maximumCardinality))
-          .orElseFast(if (!annotation && !any(_.multivalued)) Some(1) else None)
+          .orElseFast(if (!annotation && !any(_.multivalued) && !isText(s)) Some(1) else None)
         // OWL 2 DL allows no cardinality on a non-simple property, so a required value becomes
         // `someValuesFrom`.
         if (nonSimple(s.uriStr)) {
@@ -498,6 +498,18 @@ object OwlGenerator {
             if (m > 0) stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Min, m, p))
           }
           max.foreachFast(m => stated.addOne(ClassExpr.Cardinality(ClassExpr.Bound.Max, m, p)))
+          // A single-valued `langstring` slot holds at most one plain string. OWL can't say that
+          // it holds at most one text per language. The importer reads this back as single-valued.
+          if (max.isEmpty && !annotation && !any(_.multivalued) && isText(s)) {
+            stated.addOne(
+              ClassExpr.Cardinality(
+                ClassExpr.Bound.Max,
+                1,
+                p,
+                Some(DataRange.Datatype(XmlSchema.string.value)),
+              ),
+            )
+          }
         }
         first(_.equalsString).flatMapFast(valueOf(s, _))
           .orElseFast(first(_.equalsNumber).mapFast(n => Literal(n.toString, XmlSchema.integer)))
@@ -540,7 +552,12 @@ object OwlGenerator {
       s.derivedRange.resolve.orNullFast match {
         case ev: EnumView => ev.toMeaning.get(text).mapFast(m => Iri(m.original))
         case tv: TypeView =>
-          new Some(if (tv.isIri) iri else Literal(text, Iri(baseDatatype(tv))))
+          // An `equals_string` of a `langstring` slot is a plain string, an `xsd:string` literal
+          new Some(
+            if (tv.isIri) iri
+            else if (tv.runtimeType eq LocalizedTextType) Literal(text)
+            else Literal(text, Iri(baseDatatype(tv))),
+          )
         case _: ClassView => new Some(iri)
         case _ => new Some(Literal(text))
       }
@@ -640,10 +657,13 @@ object OwlGenerator {
         case _ => None
       }
 
+    /** The data range of a type. A `LocalizedText` type, such as `langstring`, is
+      * `rdf:PlainLiteral`, which has both plain strings and texts in a language.
+      */
     private def datatypeOf(tv: TypeView): DataRange =
-      if (tv.isPrimitive) {
+      if (tv.runtimeType eq LocalizedTextType) DataRange.Datatype(plainLiteral)
+      else if (tv.isPrimitive) {
         tv.name match {
-          case "langstring" => DataRange.Datatype(plainLiteral)
           case "date_or_datetime" =>
             DataRange.UnionOf(
               Seq(
@@ -684,7 +704,9 @@ object OwlGenerator {
       d.maximumLength.isDefined || d.pattern.isDefined
     }
 
-    /** The XSD datatype that a type's values have in RDF. */
+    /** The datatype that a type's values have in RDF: an XSD datatype, or `rdf:PlainLiteral` for a
+      * `LocalizedText` type, such as `langstring`.
+      */
     private def baseDatatype(tv: TypeView): String = {
       val uri = tv.uriStr
       if OwlRdfReader.isBuiltInDatatype(uri) then uri
@@ -699,6 +721,7 @@ object OwlGenerator {
           case _: DateTimeType.type => XmlSchema.dateTime.value
           case _: TimeType.type => XmlSchema.time.value
           case _: UriType.type | _: UriOrCurieType.type => XmlSchema.anyURI.value
+          case _: LocalizedTextType.type => plainLiteral
           case _ => XmlSchema.string.value
         }
     }
@@ -762,13 +785,21 @@ object OwlGenerator {
       b.result()
     }
 
+    /** Whether the slot's range is a `LocalizedText` type, such as `langstring`. A text in several
+      * languages is one literal per language, so such a slot is not limited to one value.
+      */
+    private def isText(s: SlotView): Boolean = s.derivedRange.resolve.foldFast(false) {
+      case tv: TypeView => tv.runtimeType eq LocalizedTextType
+      case _ => false
+    }
+
     /** Whether each property is single-valued in every class that uses it. */
     private lazy val singleValued: collection.Map[String, Boolean] = {
       val b = mutable.HashMap.empty[String, Boolean]
       sv.classes.foreachEntry { (_, c) =>
         c.derivedAttributes.foreachEntry { (_, a) =>
           val iri = a.uriStr
-          b.update(iri, !a.slot.multivalued && b.getOrElse(iri, true))
+          b.update(iri, !a.slot.multivalued && !isText(a) && b.getOrElse(iri, true))
         }
       }
       b
@@ -858,7 +889,10 @@ object OwlGenerator {
         if (slot.asymmetric) add(Characteristic(iri, PropertyCharacteristic.Asymmetric))
         if (slot.reflexive) add(Characteristic(iri, PropertyCharacteristic.Reflexive))
         if (slot.irreflexive) add(Characteristic(iri, PropertyCharacteristic.Irreflexive))
-        if (!slot.multivalued && singleValued.getOrElse(iri, true) && !nonSimple(iri)) {
+        if (
+          !slot.multivalued && !isText(slotView) && singleValued.getOrElse(iri, true) &&
+          !nonSimple(iri)
+        ) {
           add(Characteristic(iri, PropertyCharacteristic.Functional))
         }
       }

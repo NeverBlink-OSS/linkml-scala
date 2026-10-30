@@ -51,6 +51,10 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
 
   /** Emit `sh:datatype`, `sh:class` or `sh:in` for a range.
     *
+    * A `LocalizedText` range, such as `langstring`, gets `sh:or ( [ sh:datatype xsd:string ] [
+    * sh:datatype rdf:langString ] )`: a plain string is an `xsd:string` literal, and a text in a
+    * language is an `rdf:langString` literal.
+    *
     * @param isIri
     *   Whether values are IRIs even for a literal type (e.g. with `implicit_prefix`)
     */
@@ -63,7 +67,12 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     range.asInstanceOf[Reference[ElementView[?, ?]]].resolve.foreachFast {
       case typeView: TypeView =>
         if (!typeView.isIri && !isIri) {
-          sink.triple(subject, Shacl.datatype, Iri(typeView.uriStr))
+          if (typeView.runtimeType eq LocalizedTextType) {
+            sink.beginList(subject, Shacl.or)
+            datatypeMember(sink, XmlSchema.string)
+            datatypeMember(sink, Rdf.langString)
+            sink.endList()
+          } else sink.triple(subject, Shacl.datatype, Iri(typeView.uriStr))
           sink.triple(subject, Shacl.nodeKind, Shacl.Literal)
         } else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
       case classView: ClassView =>
@@ -75,6 +84,49 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
         sink.list(subject, Shacl.in, enumView.derivedValues.map(value => Iri(value.uriStr)))
       case _ => throw RuntimeException(s"Couldn't map range $range")
     }
+
+  /** Add `[ sh:datatype <datatype> ]` to the list started with `sink.beginList`. */
+  private def datatypeMember(sink: RdfSink, datatype: Iri): Unit = {
+    val shape = inlineBlankNode()
+    sink.listMember(shape)
+    sink.triple(shape, Shacl.datatype, datatype)
+  }
+
+  /** Emit the value count check of a single-valued slot with a `LocalizedText` range, such as
+    * `langstring`. It replaces the `sh:maxCount 1` of other single-valued slots, as a text in
+    * several languages is one `rdf:langString` literal per language.
+    *
+    * The value must be one plain string, or texts in different languages:
+    * {{{
+    * sh:or (
+    *   [ sh:property [ sh:path <slot>; sh:maxCount 1; sh:datatype xsd:string ] ]
+    *   [ sh:property [ sh:path <slot>; sh:datatype rdf:langString; sh:uniqueLang true ] ]
+    * )
+    * }}}
+    *
+    * @param path
+    *   The slot's property
+    * @param subject
+    *   The class's NodeShape
+    */
+  private def processSingleText(sink: RdfSink, path: Iri, subject: Resource): Unit = {
+    sink.beginList(subject, Shacl.or)
+    val plain = inlineBlankNode()
+    sink.listMember(plain)
+    val plainProperty = inlineBlankNode()
+    sink.triple(plain, Shacl.property, plainProperty)
+    sink.triple(plainProperty, Shacl.path, path)
+    sink.triple(plainProperty, Shacl.maxCount, Literal("1", XmlSchema.integer))
+    sink.triple(plainProperty, Shacl.datatype, XmlSchema.string)
+    val tagged = inlineBlankNode()
+    sink.listMember(tagged)
+    val taggedProperty = inlineBlankNode()
+    sink.triple(tagged, Shacl.property, taggedProperty)
+    sink.triple(taggedProperty, Shacl.path, path)
+    sink.triple(taggedProperty, Shacl.datatype, Rdf.langString)
+    sink.triple(taggedProperty, Shacl.uniqueLang, Literal("true", XmlSchema.boolean))
+    sink.endList()
+  }
 
   /** Emit `sh:minCount` and `sh:maxCount`. Cardinality metaslots have precedence over `required`.
     *
@@ -436,10 +488,16 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
         sink.triple(property, Shacl.group, new Iri(groupView.uriStr))
       }
     }
+    val singleText = !slot.multivalued && (attributeView match {
+      case t: TypeAttributeView =>
+        (t.typeView.runtimeType eq LocalizedTextType) && !t.typeView.isIri &&
+        slot.implicitPrefix.isEmpty
+      case _ => false
+    })
     processCardinality(
       sink,
       slot,
-      if (slot.multivalued) None else ShaclGenerator.one,
+      if (slot.multivalued || singleText) None else ShaclGenerator.one,
       property,
     )
     val path = new Iri(s.uriStr)
@@ -453,6 +511,7 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     sink.triple(property, Shacl.order, Literal(rank.toString, XmlSchema.integer))
     // Per-instance logical constraint components go on the class's NodeShape
     processBooleanSlots(sink, path, range, slot, propertyDomain, Check.PerInstance)
+    if (singleText) processSingleText(sink, path, propertyDomain)
   }
 
   /** Declare the slots used as `slot_group` targets as sh:PropertyGroup instances, so that the

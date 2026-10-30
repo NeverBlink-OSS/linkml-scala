@@ -66,6 +66,7 @@ object Shacl extends Vocabulary("http://www.w3.org/ns/shacl#") {
   val pattern: Iri = get("pattern")
   val property: Iri = get("property")
   val targetClass: Iri = get("targetClass")
+  val uniqueLang: Iri = get("uniqueLang")
   val xone: Iri = get("xone")
 }
 

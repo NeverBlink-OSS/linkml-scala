@@ -50,6 +50,8 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |      uc: {range: uriorcurie}
           |      many: {range: string, multivalued: true}
           |      whatever: {range: Anything}
+          |      title: {range: langstring}
+          |      keywords: {range: langstring, multivalued: true}
           |""".stripMargin,
       )
       py should include("class C(LinkMLModel):\n")
@@ -65,6 +67,12 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py should include("    uc: str | None = None\n")
       py should include("    many: list[str] | None = None\n")
       py should include("    whatever: Any = None\n")
+      py should include(
+        "    title: str | Annotated[dict[str, str], Field(min_length=1)] | None = None\n",
+      )
+      py should include(
+        "    keywords: list[str | Annotated[dict[str, str], Field(min_length=1)]] | None = None\n",
+      )
       py should not include "class Anything"
       py should not include "_with_keys"
     }
@@ -100,7 +108,12 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |      price: {range: decimal, minimum_value: 0.5}
           |      day: {range: date, pattern: "^2"}
           |      code: {range: string, minimum_length: 2, maximum_length: 5}
+          |      title: {range: langstring, maximum_length: 5}
           |""".stripMargin,
+      )
+      py should include(
+        "    title: Annotated[str, Field(max_length=5)] | Annotated[dict[str, " +
+          "Annotated[str, Field(max_length=5)]], Field(min_length=1)] | None = None\n",
       )
       py should include(
         "    code: Annotated[str, Field(min_length=2, max_length=5)] | None = None\n",

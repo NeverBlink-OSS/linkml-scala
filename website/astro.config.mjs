@@ -8,7 +8,7 @@ const repoUrl = 'https://github.com/NeverBlink-OSS/linkml-scala';
 
 const sidebar = [
   { label: 'Overview', link: '/' },
-  { label: 'Generators and importers', items: ['owl', 'pydantic', 'typescript', 'ossie-mapping', 'docs'] },
+  { label: 'Generators and importers', items: ['owl', 'pydantic', 'typescript', 'ossie-mapping', 'docs', 'langstring'] },
   { label: 'Schemas', items: ['curies', 'import-maps', 'slot-usage-inheritance'] },
   { label: 'Using ohi LinkML', items: ['python-bindings', 'verifying-downloads'] },
   { label: 'Reference', items: ['implementation-differences', 'benchmarks'] },

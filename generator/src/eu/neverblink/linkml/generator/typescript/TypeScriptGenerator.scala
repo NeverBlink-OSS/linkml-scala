@@ -264,10 +264,13 @@ object TypeScriptGenerator {
       |""".stripMargin
 
   /** TS type of a LinkML type. Its core type is enough: all the string-based types (dates, URIs...)
-    * are plain strings in JSON. A `union_of` type is the union of its members' types.
+    * are plain strings in JSON. A `union_of` type is the union of its members' types. A
+    * `LocalizedText` type, such as `langstring`, is a plain string or an object from language tag
+    * to text.
     */
   def runtimeType(tv: TypeView): String =
-    if tv.isUnion then tv.unionAlternatives.map(runtimeType).distinct.mkString(" | ")
+    if (tv.isUnion) tv.unionAlternatives.map(runtimeType).distinct.mkString(" | ")
+    else if (tv.runtimeType eq LocalizedTextType) "string | Record<string, string>"
     else
       tv.coreType match {
         case _: StringType.type => "string"

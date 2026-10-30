@@ -6,7 +6,15 @@ import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.{LocalizedText, Reference}
-import eu.neverblink.linkml.schemaview.{ClassView, EnumView, SchemaView, SlotView}
+import eu.neverblink.linkml.schemaview.{
+  ClassView,
+  ElementView,
+  EnumView,
+  LocalizedTextType,
+  SchemaView,
+  SlotView,
+  TypeView,
+}
 
 import scala.collection.mutable
 
@@ -54,6 +62,14 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     }
   }
 
+  /** The `rdfs:range` for the range of a slot. A `LocalizedText` type, such as `langstring`, is
+    * `rdf:PlainLiteral`, which has both plain strings and texts in a language.
+    */
+  private def rangeIri(range: ElementView[?, ?]): Iri = range match {
+    case tv: TypeView if tv.runtimeType eq LocalizedTextType => RdfsGenerator.plainLiteral
+    case _ => Iri(range.uriStr)
+  }
+
   /** Emit a single RDFS property covering all the usages of one slot URI: the declaration and the
     * metadata once, a domain per class using it, and each distinct range it derives to.
     *
@@ -77,8 +93,8 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
       sink.triple(propertyNameIri, Rdfs.domain, domain)
     }
 
-    usages.flatMap(_.derivedRange.resolve.toList).map(e => Iri(e.uriStr)).distinct.foreach {
-      range => sink.triple(propertyNameIri, Rdfs.range, range)
+    usages.flatMap(_.derivedRange.resolve.toList).map(rangeIri).distinct.foreach { range =>
+      sink.triple(propertyNameIri, Rdfs.range, range)
     }
 
     usages.flatMap(_.parents).map(_.uriStr).distinct.foreach { parentUriStr =>
@@ -209,6 +225,8 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
 }
 
 object RdfsGenerator {
+
+  private val plainLiteral: Iri = Rdf.get("PlainLiteral")
 
   /** Options for [[RdfsGenerator]].
     *

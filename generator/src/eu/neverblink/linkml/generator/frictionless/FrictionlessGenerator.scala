@@ -58,7 +58,8 @@ class FrictionlessGenerator(using sv: SchemaView)
     case _: UriType.type => (types.string, "uri")
     case _: CurieType.type => (types.string, "default")
     case _: NcNameType.type => (types.string, "default")
-    case _: LocalizedTextType.type => (types.string, "default") // TODO LNK-195
+    // A cell holds a plain string, or a JSON object from language tag to text. Only `any` takes both.
+    case _: LocalizedTextType.type => (types.any, "default")
     case _: UnknownType.type => (types.any, "default")
   }
 
@@ -157,15 +158,19 @@ class FrictionlessGenerator(using sv: SchemaView)
                 `type` = type_,
                 rdfType = new Some(tv.typeView.uriStr),
                 format = format,
-                constraints = base.constraints.mapFast(
-                  _.copy(
-                    pattern = tv.pattern.mapFast(_.linkml),
-                    maximum = tv.maximumValue.mapFast(_.value.strip()),
-                    minimum = tv.minimumValue.mapFast(_.value.strip()),
-                    minLength = tv.minimumLength,
-                    maxLength = tv.maximumLength,
-                  ),
-                ),
+                // An `any` field can't have these constraints
+                constraints =
+                  if (type_ eq types.any) base.constraints
+                  else
+                    base.constraints.mapFast(
+                      _.copy(
+                        pattern = tv.pattern.mapFast(_.linkml),
+                        maximum = tv.maximumValue.mapFast(_.value.strip()),
+                        minimum = tv.minimumValue.mapFast(_.value.strip()),
+                        minLength = tv.minimumLength,
+                        maxLength = tv.maximumLength,
+                      ),
+                    ),
               )
             }
 

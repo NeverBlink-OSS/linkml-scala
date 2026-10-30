@@ -145,16 +145,25 @@ class JsonSchemaGenerator(using sv: SchemaView)
             if (typeAttribute.slotView.slot.designatesType && owner.isConcrete)
               owner.typeDesignatorValues
             else Nil
-          typeToRuntime(typeAttribute.typeView)
-            .copy(
-              minimum = toBigDecimalOpt(typeAttribute.minimumValue),
-              maximum = toBigDecimalOpt(typeAttribute.maximumValue),
-              minLength = typeAttribute.minimumLength,
-              maxLength = typeAttribute.maximumLength,
-              pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
-              `enum` =
-                if (designatorValues.isEmpty) None
-                else Some(designatorValues.map(ExampleSingleValue(_)).toList),
+          def withText(schema: Schema): Schema = schema.copy(
+            minLength = typeAttribute.minimumLength,
+            maxLength = typeAttribute.maximumLength,
+            pattern = typeAttribute.pattern.mapFast(p => new Pattern(p.linkml)),
+          )
+          val tv = typeAttribute.typeView
+          // The lengths and the pattern apply to a plain string and to the text in each language
+          val schema =
+            if (!tv.isUnion && (tv.runtimeType eq LocalizedTextType))
+              localizedTextOf(withText(stringSchema))
+            else
+              withText(typeToRuntime(tv)).copy(
+                minimum = toBigDecimalOpt(typeAttribute.minimumValue),
+                maximum = toBigDecimalOpt(typeAttribute.maximumValue),
+              )
+          schema
+            .copy(`enum` =
+              if (designatorValues.isEmpty) None
+              else Some(designatorValues.map(ExampleSingleValue(_)).toList),
             )
             .arrayOfIf(typeAttribute.slotView.slot.multivalued)
         case EnumAttributeView(slotView, _, enumView) =>
@@ -298,7 +307,9 @@ object JsonSchemaGenerator {
   ) extends HasMetadataLanguage
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
-    * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members.
+    * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members. A
+    * `LocalizedText` type, such as `langstring`, accepts a plain string or an object from language
+    * tag to text.
     */
   def typeToRuntime(tv: TypeView): Schema =
     if (tv.isUnion) {
@@ -330,7 +341,7 @@ object JsonSchemaGenerator {
     case _: UriType.type => uriSchema
     case _: CurieType.type => curieSchema
     case _: NcNameType.type => ncNameSchema
-    case _: LocalizedTextType.type => stringSchema // TODO LNK-195
+    case _: LocalizedTextType.type => localizedTextSchema
     case _: UnknownType.type => Schema.Empty
   }
 
@@ -441,4 +452,15 @@ object JsonSchemaGenerator {
   private val uriSchema: Schema = stringSchema.copy(format = new Some("iri"))
   private val curieSchema: Schema = stringSchema.copy(format = new Some("curie"))
   private val uriOrCurieSchema: Schema = new Schema(anyOf = List(uriSchema, curieSchema))
+
+  private val localizedTextSchema: Schema = localizedTextOf(stringSchema)
+
+  /** A plain string, or a non-empty object from language tag to text.
+    *
+    * @param text
+    *   The schema of the plain string and of the text in each language
+    */
+  private def localizedTextOf(text: Schema): Schema = new Schema(anyOf =
+    List(text, objectSchema.copy(additionalProperties = Some(text), minProperties = Some(1))),
+  )
 }
