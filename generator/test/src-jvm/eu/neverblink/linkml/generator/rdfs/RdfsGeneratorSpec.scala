@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.rdfs
 
+import eu.neverblink.linkml.generator.owl.OwlImporter
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -8,7 +9,8 @@ import org.eclipse.rdf4j.rio.{RDFFormat, Rio}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
-import java.io.StringReader
+import java.io.{ByteArrayInputStream, StringReader}
+import java.nio.charset.StandardCharsets.UTF_8
 
 class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
   "RdfsGenerator" should {
@@ -665,6 +667,17 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
           Iri(base + "SomeBaseEnum"),
         ),
       )
+    }
+
+    "use rdf:PlainLiteral as the range of langstring slots, which the OWL importer reads back" in {
+      given SchemaView = ModelCatalogue.langString.model
+      val sink = CollectingRdfSink()
+      RdfsGenerator().generate(sink, RdfsGenerator.Options())
+      val plainLiteral = Rdf.get("PlainLiteral")
+      sink.triples.filter(_.pred == Rdfs.range).map(_.obj).toSet shouldBe Set(plainLiteral)
+      val turtle = RdfUtils.toTurtle(RdfsGenerator().generate(_))
+      val schema = OwlImporter().importSchema(ByteArrayInputStream(turtle.getBytes(UTF_8)))
+      schema.slotDefinitions("some_slot").range.map(_.value) shouldBe Some("langstring")
     }
 
     "generate all catalogue models without errors" when {

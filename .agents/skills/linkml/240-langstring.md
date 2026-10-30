@@ -20,6 +20,7 @@ Generators accept both forms:
 - JSON Schema: `anyOf` a string and a non-empty object with string values.
 - TypeScript: `string | Record<string, string>`.
 - Pydantic: `str | Annotated[dict[str, str], Field(min_length=1)]`.
+- RDFS: `rdfs:range rdf:PlainLiteral`, as for OWL.
 - GraphQL: a custom scalar, `Langstring`, as GraphQL has no unions of scalars.
 - Frictionless: an `any` field, as a CSV cell holds a plain string or a JSON object from language tag to text. An `any` field can't have lengths or a pattern, so they are not checked.
 - SHACL: `sh:or ( [ sh:datatype xsd:string ] [ sh:datatype rdf:langString ] )`. A single-valued slot holds one plain string, or texts in different languages (`sh:uniqueLang true`).
