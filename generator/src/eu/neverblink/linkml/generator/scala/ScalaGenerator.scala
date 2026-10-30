@@ -242,8 +242,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     s"$docLines\n$throws$signature"
   }
 
-  /** The Scala name of [[cv]] where a value of it is returned or stored, such as a function's return
-    * type.
+  /** The Scala name of [[cv]] where a value of it is returned or stored, such as a function's
+    * return type.
     */
   private def valueType(cv: ClassView): String =
     if (cv.isAny) "LinkmlAny" else className(cv)
