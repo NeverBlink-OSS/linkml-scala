@@ -187,6 +187,11 @@ classes:
         required: true
         inlined: true
         title: subsets
+      functions:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: functions
 
   ElementKindStats:
     title: Element kind statistics

@@ -19,6 +19,7 @@ final case class ElementStats(
     attributes: ElementKindStats,
     classes: ElementKindStats,
     enums: ElementKindStats,
+    functions: ElementKindStats,
     @named("permissible_values")
     permissibleValues: ElementKindStats,
     slots: ElementKindStats,

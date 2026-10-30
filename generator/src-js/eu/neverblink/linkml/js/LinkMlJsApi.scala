@@ -10,7 +10,7 @@ import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.scala.ScalaGenerator
+import eu.neverblink.linkml.generator.scala.{ErrorHandling, ScalaGenerator}
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -286,15 +286,26 @@ object LinkMlJsApi {
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param `package`
     *   Package to generate the classes in
+    * @param errorHandling
+    *   How the functions of the schema report their `errors`. One of: `annotation`, where each
+    *   error class gets an exception class and the method is annotated with `@throws`; or `either`,
+    *   where the method returns `Either[E1 | E2, R]` with the error classes on the left. Default:
+    *   annotation.
     * @return
     *   JS dictionary (object) containing a mapping from filename to the generated Scala code.
     */
   def scala(
       schema: SchemaViewJs,
       `package`: String,
+      errorHandling: String = "annotation",
   ): js.Dictionary[String] =
     ScalaGenerator(using schema.underlying)
-      .generate(ScalaGenerator.Options(`package` = `package`))
+      .generate(
+        ScalaGenerator.Options(
+          `package` = `package`,
+          errorHandling = ErrorHandling(errorHandling),
+        ),
+      )
       .toMap
       .toJSDictionary
 
@@ -681,8 +692,8 @@ object LinkMlJsApi {
     *   Which language to use for titles and descriptions. Default: en
     * @return
     *   JS dictionary (object) containing a mapping from filename to file content: `index.md` plus
-    *   `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md` and `types/<name>.md`, or only
-    *   `docs.md` if [[singleFile]] is true.
+    *   `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md`, `types/<name>.md` and
+    *   `functions/<name>.md`, or only `docs.md` if [[singleFile]] is true.
     */
   def docs(
       schema: SchemaViewJs,

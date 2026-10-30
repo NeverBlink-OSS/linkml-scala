@@ -24,13 +24,13 @@ import scala.collection.mutable
 
 /** Generator for Markdown documentation of a LinkML schema.
   *
-  * The documentation has an index page plus one page for each class, slot, enum and type. Pages
-  * link to each other with relative links, so they work on GitHub and in static site tools like
-  * Docusaurus, MkDocs or VitePress without any changes.
+  * The documentation has an index page plus one page for each class, slot, enum, type and function.
+  * Pages link to each other with relative links, so they work on GitHub and in static site tools
+  * like Docusaurus, MkDocs or VitePress without any changes.
   *
   * This generator has two entrypoints:
   *   - [[generateFiles]] writes `index.md` plus `classes/<name>.md`, `slots/<name>.md`,
-  *     `enums/<name>.md` and `types/<name>.md`.
+  *     `enums/<name>.md`, `types/<name>.md` and `functions/<name>.md`.
   *   - [[writeTo]] and [[serialize]] write the same pages as sections of one document, which link
   *     to each other with anchors.
   *
@@ -91,6 +91,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     addPages(site.slots)
     addPages(site.enums)
     addPages(site.types)
+    addPages(site.functions)
     files.result()
   }
 
@@ -118,6 +119,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     addSections(site.slots)
     addSections(site.enums)
     addSections(site.types)
+    addSections(site.functions)
   }
 
   /** One page as a string, starting with the generated header. */
@@ -180,6 +182,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       elementTable(md, "Slots", "Slot", site.slots)(_ => "")
       elementTable(md, "Enums", "Enum", site.enums)(_ => "")
       elementTable(md, "Types", "Type", site.types)(_ => "")
+      elementTable(md, "Functions", "Function", site.functions)(_ => "")
       indexSections(md, site)
     }
 
@@ -220,6 +223,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         case s: SlotView => slotPage(md, s, from)
         case ev: EnumView => enumPage(md, ev, from)
         case tv: TypeView => typePage(md, tv, from)
+        case fv: FunctionView => functionPage(md, fv, from)
         case _ =>
       }
       elementSections(md, el, site)
@@ -290,6 +294,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
       uniqueKeys(md, cv, from)
       usages(md, cv, from)
+      functionUsages(md, cv, from)
     }
 
     /** A table of the `unique_keys` of [[cv]], with the slots of each. */
@@ -438,6 +443,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         md.endList()
       }
       usages(md, ev, from)
+      functionUsages(md, ev, from)
     }
 
     /** A "Values from" section with where the values of [[ev]] come from, other than its own
@@ -547,7 +553,86 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       metadataItems(md, tv)
       md.endList()
       usages(md, tv, from)
+      functionUsages(md, tv, from)
       examples(md, t)
+    }
+
+    private def functionPage(md: Markdown, fv: FunctionView, from: Option[Page]): Unit = {
+      uriItem(md, fv)
+      md.startItem("Parameters")
+      fv.parameters.foldFast(md.append("none"))(cv => link(md, cv, from))
+      md.endItem()
+      md.startItem("Returns")
+      fv.returns.foldFast(md.append("nothing"))(el => link(md, el, from))
+      md.endItem()
+      if (fv.function.errors.nonEmpty) {
+        md.startItem("Errors")
+        joined(md, fv.function.errors)(e => classLinkByName(md, e.value, from))
+        md.endItem()
+      }
+      metadataItems(md, fv)
+      md.endList()
+
+      // The slots of the parameter class are the function's parameters, so they are shown here
+      // rather than leaving the reader to follow the link.
+      fv.parameters.foreachFast { cv =>
+        val attributes = cv.sortedAttributeViews
+        if (attributes.nonEmpty) {
+          md.heading(2, "Parameters")
+          md.tableHeader("Name", "Range", "Cardinality", "Default", "Description")
+          attributes.foreach { av =>
+            val slot = av.slotView.slot
+            md.startRow()
+            slotName(md, cv, av, from)
+            md.nextCell()
+            range(md, av, from)
+            md.nextCell()
+            cardinality(md, slot)
+            md.nextCell()
+            slot.ifabsent.foreachFast(md.code)
+            md.nextCell()
+            summary(md, slot)
+            md.endRow()
+          }
+          md.endList()
+        }
+      }
+
+      val errors = fv.errors
+      if (errors.nonEmpty) {
+        md.heading(2, "Errors")
+        md.paragraph("How the function can fail.")
+        md.tableHeader("Class", "Description")
+        errors.foreach { cv =>
+          md.startRow()
+          link(md, cv, from)
+          md.nextCell()
+          summary(md, cv.cls)
+          md.endRow()
+        }
+        md.endList()
+      }
+    }
+
+    /** A table of the functions that use [[el]] as their parameters, their return value or one of
+      * their errors.
+      */
+    private def functionUsages(md: Markdown, el: ElementView[?, ?], from: Option[Page]): Unit = {
+      val usages = site.functionUsagesOf(el)
+      if (usages.nonEmpty) {
+        md.heading(2, "Functions")
+        md.tableHeader("Function", "Used as", "Description")
+        usages.foreach { usage =>
+          md.startRow()
+          link(md, usage.functionView, from)
+          md.nextCell()
+          md.append(usage.role.label)
+          md.nextCell()
+          summary(md, usage.functionView.function)
+          md.endRow()
+        }
+        md.endList()
+      }
     }
 
     /** A table of the slots that have [[el]] as their range. */

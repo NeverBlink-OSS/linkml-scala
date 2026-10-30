@@ -201,8 +201,8 @@ private trait MacroValidator[T] {
   * @param isRange
   *   Whether this particular slot is a range and should be additionally checked
   * @param rangeHasDefault
-  *   Whether omitting this range means `default_range`, as it does for `range`. `returns`
-  *   has no default.
+  *   Whether omitting this range means `default_range`, as it does for `range`. `returns` has no
+  *   default.
   * @param fromSchema
   *   The id of the schema that is validated
   * @param prefixes

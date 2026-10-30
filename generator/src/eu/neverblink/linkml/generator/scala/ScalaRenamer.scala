@@ -2,7 +2,15 @@ package eu.neverblink.linkml.generator.scala
 
 import eu.neverblink.linkml.generator.util.Renamer
 import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
-import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, TypeView}
+import eu.neverblink.linkml.schemaview.{
+  Case,
+  ClassView,
+  EnumView,
+  FunctionView,
+  SchemaView,
+  SlotView,
+  TypeView,
+}
 
 trait ScalaRenamer extends Renamer {
 
@@ -47,6 +55,17 @@ trait ScalaRenamer extends Renamer {
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String = scalaPascal(
     Case.base(pv.text),
   )
+
+  def functionName(el: FunctionView): String = scalaCamel(el.baseName)
+
+  /** The name of the trait that contains the functions of a schema, such as `SearchFunctions` for a
+    * schema named `search`.
+    */
+  def functionsTraitName(sv: SchemaView): String =
+    scalaPascal(Case.base(sv.root.name)).concat("Functions")
+
+  /** The name of the exception class for an error class, such as `NotFoundException`. */
+  def exceptionName(el: ClassView): String = className(el).concat("Exception")
 }
 
 object ScalaRenamer extends ScalaRenamer
