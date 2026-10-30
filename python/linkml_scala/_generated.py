@@ -39,6 +39,7 @@ DOCUMENT_FUNCTIONS = (
     "linkml_ossie",
     "linkml_owl",
     "linkml_scala",
+    "linkml_stats",
     "linkml_translation",
 )
 
@@ -394,6 +395,24 @@ class Generators:
             generateEmitPrefixes=generate_emit_prefixes,
             metadataLanguage=metadata_language,
             skipLeafInterfaces=skip_leaf_interfaces,
+        )
+
+    def stats(
+        self,
+        *,
+        pruning_mode: str = "schema",
+        tree_root: str | None = None,
+    ) -> dict[str, Any]:
+        """Count the elements, their documentation, mappings and languages, and the imports.
+
+        :param pruning_mode: Which elements are in scope, and so are counted. By default,
+            everything defined in the root schema and what it uses.
+        :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
+            valid with `pruning_mode="treeRoot"`.
+        """
+        return self._json(
+            "linkml_stats",
+            pruningMode=_pruning(pruning_mode, tree_root),
         )
 
     def translation(

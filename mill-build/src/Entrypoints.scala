@@ -162,6 +162,15 @@ object Entrypoints {
       "Generate Scala sources, as a JSON object mapping filename to source.",
     ),
     Entrypoint(
+      "stats",
+      "linkml_stats",
+      "stats",
+      "StatsGenerator",
+      "dict[str, Any]",
+      "Count the elements, their documentation, mappings and languages, and the imports.",
+      "Generate statistics about the schema, as a JSON object following `schema-stats.yaml`.",
+    ),
+    Entrypoint(
       "translation",
       "linkml_translation",
       "translation",

@@ -15,6 +15,7 @@ import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.docs.DocsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
@@ -149,6 +150,9 @@ private object Options {
   private given ossieOptions: JsonValueCodec[OssieGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
+  private given statsOptions: JsonValueCodec[StatsGenerator.Options] =
+    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+
   private given owlOptions: JsonValueCodec[OwlGenerator.Options] =
     JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
 
@@ -200,6 +204,8 @@ private object Options {
   def docs(json: String): DocsGenerator.Options = apply(json, DocsGenerator.Options())
 
   def ossie(json: String): OssieGenerator.Options = apply(json, OssieGenerator.Options())
+
+  def stats(json: String): StatsGenerator.Options = apply(json, StatsGenerator.Options())
 
   def fromOssie(json: String): OssieImporter.Options = apply(json, OssieImporter.Options())
 

@@ -12,6 +12,7 @@ import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
@@ -51,6 +52,11 @@ type SchemaValidationReport = js.Any
   * declarations: there, it is the type generated from model/build-info.yaml.
   */
 type BuildInfo = js.Any
+
+/** A `SchemaStats` (model/schema-stats.yaml) as a plain JS object. Only a name for the TypeScript
+  * declarations: there, it is the type generated from model/schema-stats.yaml.
+  */
+type SchemaStats = js.Any
 
 /** What loading a schema produced: always a validation report, and a usable handle if the schema
   * could be loaded at all.
@@ -630,6 +636,31 @@ object LinkMlJsApi {
         optionalMarker = optionalMarker,
       ),
     )
+
+  /** Statistics about a loaded LinkML schema: how many elements of each kind it has, how many of
+    * them are documented, deprecated or mapped, the strings in each language, and the imports.
+    *
+    * @param schema
+    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+    * @param pruningMode
+    *   Which elements to count. One of treeRoot|schema|skip. treeRoot - the elements reachable from
+    *   the tree_root class. schema - the elements reachable from any of the classes defined in the
+    *   root schema. skip - every element. Default: schema
+    * @param treeRoot
+    *   Tree root class name to use instead of the schema defined tree_root.
+    * @return
+    *   A `SchemaStats` object, as described by https://linkml.ohi.dev/model/schema-stats
+    */
+  def stats(
+      schema: SchemaViewJs,
+      pruningMode: String = "schema",
+      treeRoot: js.UndefOr[String] = js.undefined,
+  ): SchemaStats = {
+    val stats = StatsGenerator(using schema.underlying).generate(
+      StatsGenerator.Options(pruningMode = PruningMode(pruningMode, treeRoot.toOption)),
+    )
+    js.JSON.parse(JsonUtil.yamlToJson(StatsGenerator.codec.encode(stats)))
+  }
 
   /** Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for
     * each class, slot, enum and type, which link to each other.

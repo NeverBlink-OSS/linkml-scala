@@ -131,6 +131,9 @@ int main(void) {
         out = linkml_er_diagram(handle, NULL, &error);
         expect("er-diagram", out, &error, "erDiagram");
 
+        out = linkml_stats(handle, "{\"pruningMode\":\"skip\"}", &error);
+        expect("stats", out, &error, "\"pruning_mode\": \"skip\"");
+
         out = linkml_lint(handle, NULL, &error);
         expect("lint returns a report", out, &error, "issues");
 

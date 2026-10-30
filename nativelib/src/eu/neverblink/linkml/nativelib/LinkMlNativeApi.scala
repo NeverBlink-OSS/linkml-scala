@@ -13,6 +13,7 @@ import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
 import eu.neverblink.linkml.rdf.RdfParseException
@@ -233,6 +234,12 @@ object LinkMlNativeApi {
   def docsFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     writeFiles(DocsGenerator().generateFiles(Options.docs(optionsJson)).map(_.toTuple), out)
+  }
+
+  /** Statistics about the schema, as a `SchemaStats` in JSON. */
+  def stats(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+    given SchemaView = view(handle)
+    StatsGenerator().writeTo(out, Options.stats(optionsJson), JsonOutputFormat.json)
   }
 
   /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the
