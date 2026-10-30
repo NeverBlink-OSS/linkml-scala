@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.tests
 
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView, yamlAs}
+import eu.neverblink.linkml.validation.{MissingRecommendedSlot, SchemaIssue}
 
 import scala.jdk.CollectionConverters.*
 
@@ -129,6 +130,15 @@ object ModelCatalogue extends ModelCatalogueEntries {
         ),
       )
     }
+
+  /** Lint problems of a schema, except missing recommended slots, as the test models don't describe
+    * all their elements.
+    */
+  def lintProblemsExceptMissingRecommendedSlots(sv: SchemaView): Seq[SchemaIssue] =
+    sv.lintProblems.filter {
+      case _: MissingRecommendedSlot => false
+      case _ => true
+    }.map(_.infer())
 
   /** All model catalogue entries that do not have the `opt_in` flag set. */
   lazy val all: Seq[Entry] = allOptIn

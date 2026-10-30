@@ -1023,6 +1023,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |      age: {}
           |slots:
           |  id: {}
+          |  code:
+          |    description: ""
           |enums:
           |  Status:
           |    description: The status
@@ -1052,6 +1054,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "/classes/Person/attributes/age: slot_definition 'Person.age' has no value for the " +
           "recommended slot 'description'",
         "/slots/id: slot_definition 'id' has no value for the recommended slot 'description'",
+        "/slots/code: slot_definition 'code' has no value for the recommended slot " +
+          "'description'",
         "/enums/Status/permissible_values/INACTIVE: permissible_value 'Status.INACTIVE' has no " +
           "value for the recommended slot 'description'",
         "/types/Code: type_definition 'Code' has no value for the recommended slot 'description'",

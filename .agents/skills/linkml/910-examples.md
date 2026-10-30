@@ -17,7 +17,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `abstract` | 0 | 0 |  |
 | `aliases` | 8 | 5 |  |
 | `anything` | 6 | 3 |  |
-| `basic` | 8 | 12 |  |
+| `basic` | 8 | 12 | A minimal schema with one class and two slots. |
 | `basic2` | 0 | 0 |  |
 | `booleanExpressions/allOf` | 3 | 3 | A value must match all members of `all_of` |
 | `booleanExpressions/allOfInheritance` | 3 | 6 | A `slot_usage` with an `all_of` list. A value must match th… |

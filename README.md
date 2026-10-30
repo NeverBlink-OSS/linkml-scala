@@ -132,7 +132,7 @@ ohi linkml validate <input-file> ...
 The CLI outputs issues directly to your terminal, categorized into three severity levels:
 - Fatal: critical blockers (unknown references, invalid range types, used undefined default range, invalid URIs or CURIEs)
 - Errors: structural violations (multiple keys or ID slots, multiple tree roots, ID collisions)
-- Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root, undeclared CURIE prefixes)
+- Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root, undeclared CURIE prefixes, missing recommended slots such as `description`)
 
 All generators require that there are no *fatal* issues in the schema.
 

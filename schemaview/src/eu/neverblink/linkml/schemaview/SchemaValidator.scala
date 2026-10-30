@@ -176,8 +176,9 @@ final class SchemaValidator(using sv: SchemaView) {
     )
 
   /** Warnings for each element of the root schema, and for the root schema itself, without a value
-    * for a slot that the LinkML metamodel marks as `recommended`, such as `description`. As in
-    * LinkML-Python, imported schemas aren't checked.
+    * for a slot that the LinkML metamodel marks as `recommended`, such as `description`. Imported
+    * schemas aren't checked. Their authors must fix them, not the author of the root schema. Some
+    * of them, such as `linkml:meta`, leave many elements without a description.
     */
   private lazy val missingRecommendedSlots: Seq[SchemaWarning] = {
     val warnings = Vector.newBuilder[SchemaWarning]
@@ -186,6 +187,15 @@ final class SchemaValidator(using sv: SchemaView) {
     def fieldsOf(node: Node): util.HashMap[String, Node] = node match {
       case m: Node.MappingNode => LinkmlYamlCodec.getFields(m)
       case _ => new util.HashMap[String, Node]
+    }
+
+    // An empty value, such as `description: ""`, is considered a missing value
+    def hasNoValue(node: Node): Boolean = node match {
+      case null => true
+      case s: Node.ScalarNode => s.value.isEmpty
+      case s: Node.SequenceNode => s.nodes.isEmpty
+      case m: Node.MappingNode => m.mappings.isEmpty
+      case _ => false
     }
 
     def check(
@@ -197,7 +207,7 @@ final class SchemaValidator(using sv: SchemaView) {
       val slotNames = SchemaValidator.recommendedSlots.get(elementType)
       if (slotNames ne null) {
         slotNames.foreach { slotName =>
-          if (!fields.containsKey(slotName)) {
+          if (hasNoValue(fields.get(slotName))) {
             warnings.addOne(
               new MissingRecommendedSlot(
                 location = location,

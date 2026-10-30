@@ -2,11 +2,11 @@ package eu.neverblink.linkml.generator.linkml
 
 import eu.neverblink.linkml.generator.util.PruningMode.*
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
-import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.{lintProblemsExceptMissingRecommendedSlots, skipModels}
+import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
-import eu.neverblink.linkml.validation.{MissingRecommendedSlot, SchemaIssue}
+import eu.neverblink.linkml.tests.ModelCatalogue.lintProblemsExceptMissingRecommendedSlots
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -618,13 +618,4 @@ object LinkMlGeneratorSpec {
   val skipModels: Map[String, String] = Map(
     "unionRange" -> "Not yet implemented: LNK-110",
   )
-
-  /** Lint problems of the schema, except missing recommended slots, as the test schemas don't
-    * describe all their elements.
-    */
-  def lintProblemsExceptMissingRecommendedSlots(sv: SchemaView): Seq[SchemaIssue] =
-    sv.lintProblems.filter {
-      case _: MissingRecommendedSlot => false
-      case _ => true
-    }.map(_.infer())
 }
