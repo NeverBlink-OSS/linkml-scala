@@ -302,9 +302,8 @@ class Generators:
     ) -> dict[str, str]:
         """Generate Markdown documentation, as a filename to content mapping.
 
-        :param pruning_mode: Which classes to document, schemaRoot by default (classes reachable
-            from any class defined in the root schema). The enums, types and slots these classes
-            use are documented with them.
+        :param pruning_mode: What to document, schemaRoot by default (everything defined in the
+            root schema, and what it uses).
         :param tree_root: prune from this class instead of the schema's own `tree_root`. Only
             valid with `pruning_mode="treeRoot"`.
         :param metadata_language: Which language to use for titles and descriptions.

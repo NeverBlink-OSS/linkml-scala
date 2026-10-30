@@ -21,7 +21,7 @@ final case class PruningOptions(
 }
 
 /** The same as [[PruningOptions]], but `schema` by default, for `generate docs`. The documentation
-  * of a schema is about the elements it uses, not every type of `linkml:types`.
+  * of a schema is about what it defines and uses, not every type of `linkml:types`.
   */
 final case class DocsPruningOptions(
     @HelpMessage(PruningOptions.modeHelp + "Default: schema.")
@@ -49,7 +49,7 @@ object PruningOptions {
   final val modeHelp =
     "Which unused elements (classes, types, enums) to remove.\n" +
       "treeRoot - remove all elements unreachable from the tree_root class.\n" +
-      "schema - remove all elements unreachable from any of the classes defined in the root schema.\n" +
+      "schema - remove all elements unreachable from anything defined in the root schema.\n" +
       "skip - do not remove unused elements.\n"
 
   /** The help text of `--tree-root`. */

@@ -432,8 +432,8 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for removing unused elements (classes, types, enums). One of
     *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
-    *   schema - remove all elements unreachable from any of the classes defined in the root schema.
-    *   skip - do not remove unused elements. Default: treeRoot
+    *   schema - remove all elements unreachable from anything defined in the root schema. skip - do
+    *   not remove unused elements. Default: treeRoot
     * @param skipDerivation
     *   If true, will not derive classes and instead copy them as-is.
     * @param treeRoot
@@ -476,7 +476,7 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for choosing which classes become tables. One of treeRoot|schema|skip.
     *   treeRoot - only classes reachable from the tree_root class. schema - only classes reachable
-    *   from any of the classes defined in the root schema. skip - every class. Default: skip
+    *   from anything defined in the root schema. skip - every class. Default: skip
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
     *   tree root pruning mode.
@@ -511,8 +511,8 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for removing unused elements (classes, types, enums). One of
     *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
-    *   schema - remove all elements unreachable from any of the classes defined in the root schema.
-    *   skip - do not remove unused elements. Default: treeRoot
+    *   schema - remove all elements unreachable from anything defined in the root schema. skip - do
+    *   not remove unused elements. Default: treeRoot
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root.
     * @return
@@ -536,8 +536,8 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip.
     *   treeRoot - remove all elements unreachable from the tree_root class. schema - remove all
-    *   elements unreachable from any of the classes defined in the root schema. skip - do not
-    *   remove unused elements. Default: skip
+    *   elements unreachable from anything defined in the root schema. skip - do not remove unused
+    *   elements. Default: skip
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root.
     * @param includeNull
@@ -572,8 +572,8 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip.
     *   treeRoot - remove all elements unreachable from the tree_root class. schema - remove all
-    *   elements unreachable from any of the classes defined in the root schema. skip - do not
-    *   remove unused elements. Default: skip
+    *   elements unreachable from anything defined in the root schema. skip - do not remove unused
+    *   elements. Default: skip
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root.
     * @param includeNull
@@ -608,8 +608,8 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for removing unused elements (classes, types, enums). One of
     *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
-    *   schema - remove all elements unreachable from any of the classes defined in the root schema.
-    *   skip - do not remove unused elements. Default: treeRoot
+    *   schema - remove all elements unreachable from anything defined in the root schema. skip - do
+    *   not remove unused elements. Default: treeRoot
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root.
     * @param optionalMarker
@@ -637,10 +637,10 @@ object LinkMlJsApi {
     * @param schema
     *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
     * @param pruningMode
-    *   Which classes to document. One of treeRoot|schema|skip. treeRoot - only classes reachable
-    *   from the tree_root class. schema - only classes reachable from any of the classes defined in
-    *   the root schema. skip - every class. The enums, types and slots these classes use are
-    *   documented with them. Default: schema
+    *   What to document. One of treeRoot|schema|skip. treeRoot - only what the tree_root class
+    *   reaches. schema - everything defined in the root schema, and what it uses. skip - every
+    *   element. The enums, types and slots a documented class uses are documented with it. Default:
+    *   schema
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
     *   tree root pruning mode.
@@ -709,8 +709,8 @@ object LinkMlJsApi {
     * @param pruningMode
     *   Pruning mode to use for choosing which elements become concepts. One of
     *   treeRoot|schema|skip. treeRoot - only elements reachable from the tree_root class. schema -
-    *   only elements reachable from any of the classes defined in the root schema. skip - every
-    *   element. Default: skip
+    *   only elements reachable from anything defined in the root schema. skip - every element.
+    *   Default: skip
     * @param treeRoot
     *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
     *   tree root pruning mode.

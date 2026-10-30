@@ -816,8 +816,8 @@ object DocsGenerator {
   /** Options for [[DocsGenerator]].
     *
     * @param pruningMode
-    *   Which classes to document, schemaRoot by default (classes reachable from any class defined
-    *   in the root schema). The enums, types and slots these classes use are documented with them.
+    *   What to document, schemaRoot by default (everything defined in the root schema, and what it
+    *   uses).
     * @param metadataLanguage
     *   Which language to use for titles and descriptions.
     * @param singleFile

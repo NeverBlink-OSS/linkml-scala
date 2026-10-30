@@ -261,6 +261,10 @@ object BenchmarkSchemaSpec {
     "tc57cim" -> "graphql" ->
       ("Bug: emits `enum X {}` for an enum with no permissible values, " +
         "which is a syntax error in GraphQL"),
+    "crdch" -> "graphql" ->
+      ("Bug: two enum names that differ only in case and underscores become one GraphQL type - " +
+        "`enum_CRDCH_TimePoint_event_type` and `enum_CRDCH_TimePoint_eventType` both render as " +
+        "`EnumCrdchTimePointEventType`"),
     "iso27001" -> "graphql" ->
       ("Bug: two slots whose aliases collide become one duplicated field - " +
         "ManagementReview gets `review_date` twice, from the slots `review_date` and " +

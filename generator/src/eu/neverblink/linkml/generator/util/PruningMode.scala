@@ -25,7 +25,9 @@ enum PruningMode:
     */
   case treeRoot(_override: Option[String])
 
-  /** Prune all elements that are unreachable from all the classes defined in the root schema. */
+  /** Prune all elements that are unreachable from what is defined in the root schema itself: its
+    * classes, types, enums and slots.
+    */
   case schemaRoot
 
   /** Don't prune anything */
@@ -42,13 +44,18 @@ enum PruningMode:
     this match {
       case PruningMode.treeRoot(ovr) =>
         sv.treeRootWithOverride(ovr).get
-          .foldFast(defaultRanges ++ sv.root.classes.keys.map(sv.classes.apply)) { value =>
-            defaultRanges :+ value
-          }
-      case PruningMode.schemaRoot => defaultRanges ++ sv.root.classes.keys.map(sv.classes.apply)
+          .foldFast(defaultRanges ++ rootElements) { value => defaultRanges :+ value }
+      case PruningMode.schemaRoot => defaultRanges ++ rootElements
       case PruningMode.skip => Seq.empty
     }
   }
+
+  /** Everything defined in the root schema, as views. */
+  private def rootElements(using sv: SchemaView): Seq[ElementView[?, ?]] =
+    sv.root.classes.keys.map(sv.classes.apply).toSeq ++
+      sv.root.types.keys.map(sv.types.apply) ++
+      sv.root.enums.keys.map(sv.enums.apply) ++
+      sv.root.slotDefinitions.keys.map(sv.slotDefinitions.apply)
 
   def derivedQuery(inlinedOnly: Boolean, includeClassAncestors: Boolean)(using
       sv: SchemaView,

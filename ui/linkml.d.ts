@@ -119,7 +119,7 @@ export interface LinkMLApi {
   /**
    * Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes unreachable elements.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
+   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from anything defined in the root schema. skip - do not remove unused elements. Default: treeRoot
    * @param skipDerivation If true, will not derive classes and instead copy them as-is.
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
@@ -131,7 +131,7 @@ export interface LinkMLApi {
   /**
    * Generate a Frictionless Data Package from a loaded LinkML schema. Every class becomes a CSV table, described by its own Table Schema, and references between classes become foreign keys between the tables.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for choosing which classes become tables. One of treeRoot|schema|skip. treeRoot - only classes reachable from the tree_root class. schema - only classes reachable from any of the classes defined in the root schema. skip - every class. Default: skip
+   * @param pruningMode Pruning mode to use for choosing which classes become tables. One of treeRoot|schema|skip. treeRoot - only classes reachable from the tree_root class. schema - only classes reachable from anything defined in the root schema. skip - every class. Default: skip
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
    * @param skipClassesWithoutIdentifier Whether to skip classes that have no identifier slot. Such a table gets no primary key and nothing can reference it, so it is often not useful. Default: false
    * @returns JS dictionary (object) containing a mapping from filename to file content: a `datapackage.json` plus one `schemas/<table>.json` per table.
@@ -141,7 +141,7 @@ export interface LinkMLApi {
   /**
    * Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums, queries must be provided for a specific implementation.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
+   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from anything defined in the root schema. skip - do not remove unused elements. Default: treeRoot
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
    * @returns Table Schema, serialized as a JSON
    */
@@ -150,7 +150,7 @@ export interface LinkMLApi {
   /**
    * Generate TypeScript types from a loaded LinkML schema. The types describe the same JSON as [[jsonSchema]], with no runtime code: load data with `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: skip
+   * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from anything defined in the root schema. skip - do not remove unused elements. Default: skip
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
    * @param includeNull Whether optional slots may also be `null`.
    * @param open Whether all interfaces should allow additional properties, not only those of classes whose `extra_slots` allows them.
@@ -161,7 +161,7 @@ export interface LinkMLApi {
   /**
    * Generate Python classes based on pydantic from a loaded LinkML schema. The classes load and dump the same JSON as [[jsonSchema]] describes: load data with `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: skip
+   * @param pruningMode Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from anything defined in the root schema. skip - do not remove unused elements. Default: skip
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
    * @param includeNull Whether dumps keep the nulls that were loaded or set. Otherwise they leave out every field without a value.
    * @param open Whether the classes should accept and keep additional properties.
@@ -172,7 +172,7 @@ export interface LinkMLApi {
   /**
    * Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become entities, type- and enum-ranged slots become their attributes, and class-ranged slots become relationship lines.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from any of the classes defined in the root schema. skip - do not remove unused elements. Default: treeRoot
+   * @param pruningMode Pruning mode to use for removing unused elements (classes, types, enums). One of treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class. schema - remove all elements unreachable from anything defined in the root schema. skip - do not remove unused elements. Default: treeRoot
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
    * @param optionalMarker Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands this from version 11.16 onwards, older renderers throw an error instead. Default: true
    * @returns The ER diagram, serialized as Mermaid
@@ -182,7 +182,7 @@ export interface LinkMLApi {
   /**
    * Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for each class, slot, enum and type, which link to each other.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Which classes to document. One of treeRoot|schema|skip. treeRoot - only classes reachable from the tree_root class. schema - only classes reachable from any of the classes defined in the root schema. skip - every class. The enums, types and slots these classes use are documented with them. Default: schema
+   * @param pruningMode What to document. One of treeRoot|schema|skip. treeRoot - only what the tree_root class reaches. schema - everything defined in the root schema, and what it uses. skip - every element. The enums, types and slots a documented class uses are documented with it. Default: schema
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
    * @param singleFile Whether to write all pages as sections of one `docs.md` document. Default: false
    * @param metadataLanguage Which language to use for titles and descriptions. Default: en
@@ -202,7 +202,7 @@ export interface LinkMLApi {
   /**
    * Generate an Apache Ossie ontology from a loaded LinkML schema. Classes become entity types, enums and named types become value types, and slots become the relationships grouped under the concept that plays their first role.
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-   * @param pruningMode Pruning mode to use for choosing which elements become concepts. One of treeRoot|schema|skip. treeRoot - only elements reachable from the tree_root class. schema - only elements reachable from any of the classes defined in the root schema. skip - every element. Default: skip
+   * @param pruningMode Pruning mode to use for choosing which elements become concepts. One of treeRoot|schema|skip. treeRoot - only elements reachable from the tree_root class. schema - only elements reachable from anything defined in the root schema. skip - every element. Default: skip
    * @param treeRoot Tree root class name to use instead of the schema defined tree_root. Does nothing if not in tree root pruning mode.
    * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
    * @returns The ontology, serialized in the specified format.
