@@ -217,12 +217,21 @@ final class TypeScriptGenerator(using sv: SchemaView)
       case ev: EnumView => enumName(ev)
       case _ => "unknown"
     }
+    val onResult = ctx.options.errorHandling == ErrorHandling.result && fv.errors.nonEmpty
+    val returnType =
+      if !onResult then returned
+      else {
+        val failures =
+          fv.errors.map(cv => s"Failure<${stringLiteral(classRef(cv))}, ${classRef(cv)}>")
+        s"Result<$returned, ${failures.mkString(" | ")}>"
+      }
+    val throws =
+      if ctx.options.errorHandling != ErrorHandling.exception then Nil
+      else fv.errors.map(cv => s"@throws {${classRef(cv)}} ${DocLines(cv.cls).mkString(" ")}".strip)
     val tags = attributes.map { attribute =>
       val text = DocLines(attribute.slotView.slot).mkString(" ")
       s"@param ${TypeScriptRenamer.member(attribute.slotView.baseName)} $text".strip
-    } ++ Option.when(fv.errors.nonEmpty)(
-      s"@returns ${fv.errors.map(_.name).mkString(", ")} when it fails.",
-    )
+    } ++ throws
     val description = DocLines(fv.function)
     val separator = if description.nonEmpty && tags.nonEmpty then Seq("") else Nil
     writeDoc(sink, description ++ separator ++ tags, "  ")
@@ -232,7 +241,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     if arguments.sizeIs > 1 then sink.append(arguments.mkString("(\n    ", ",\n    ", ",\n  )"))
     else sink.append(arguments.mkString("(", "", ")"))
     sink.append(": ")
-    sink.append((returned +: fv.errors.map(classRef)).mkString(" | "))
+    sink.append(returnType)
     sink.append(";\n")
   }
 
@@ -241,6 +250,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       classes: Seq[ClassView],
       enums: Seq[EnumView],
       hasFunctions: Boolean,
+      usesResult: Boolean,
   ): Unit = {
     val seen = mutable.HashMap.empty[String, String]
     def claim(name: String, owner: String): Unit =
@@ -261,6 +271,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
     if hasFunctions then claim(functionsInterfaceName(sv), "the functions of the schema")
+    if usesResult then {
+      claim("Result", "the Result helper type")
+      claim("Failure", "the Failure helper type")
+    }
   }
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
@@ -273,7 +287,9 @@ final class TypeScriptGenerator(using sv: SchemaView)
     val functions =
       sv.functions.values.filter(query.reachable).toVector
         .sortBy(fv => sv.elementOrder(fv.function))
-    checkNames(classes, enums, functions.nonEmpty)
+    val usesResult =
+      options.errorHandling == ErrorHandling.result && functions.exists(_.errors.nonEmpty)
+    checkNames(classes, enums, functions.nonEmpty, usesResult)
 
     sink.append(GeneratedHeader("//"))
     classes.foreach { cls =>
@@ -291,6 +307,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     if functions.nonEmpty then {
       sink.append('\n')
       writeFunctions(sink, functions, ctx)
+    }
+    if usesResult then {
+      sink.append('\n')
+      sink.append(resultDefinition)
     }
     if ctx.usesKeyOptional then {
       sink.append('\n')
@@ -313,6 +333,8 @@ object TypeScriptGenerator {
     *   Whether interfaces should allow additional properties (`[key: string]: unknown`), as
     *   `additionalProperties` in the JSON Schema generator. Default: false. Interfaces of classes
     *   whose `extra_slots` allows extra data allow them anyway.
+    * @param errorHandling
+    *   How the functions of the schema report their `errors`. See [[ErrorHandling]].
     * @param metadataLanguage
     *   Which language to use for titles and descriptions in doc comments.
     */
@@ -320,6 +342,7 @@ object TypeScriptGenerator {
       pruningMode: PruningMode = PruningMode.skip,
       includeNull: Boolean = false,
       open: Boolean = false,
+      errorHandling: ErrorHandling = ErrorHandling.exception,
       metadataLanguage: String = "en",
   ) extends HasMetadataLanguage
 
@@ -337,6 +360,17 @@ object TypeScriptGenerator {
       |export type KeyOptional<T, K extends keyof T> = T extends unknown
       |  ? Omit<T, K> & Partial<Pick<T, K>> extends infer O ? { [P in keyof O]: O[P] } : never
       |  : never;
+      |""".stripMargin
+
+  /** Helper types for functions in the `result` error handling mode. */
+  val resultDefinition: String =
+    """/** Return value of a function: the actual value, or one of the errors. */
+      |export type Result<T, E> =
+      |  | { ok: true; value: T }
+      |  | { ok: false; error: E };
+      |
+      |/** One of the errors declared for a function, tagged with the name of its type. */
+      |export type Failure<K extends string, T> = { kind: K; value: T };
       |""".stripMargin
 
   /** TS type of a LinkML type. Its core type is enough: all the string-based types (dates, URIs...)

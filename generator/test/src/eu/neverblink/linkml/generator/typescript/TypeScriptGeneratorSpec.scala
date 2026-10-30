@@ -27,6 +27,9 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
   ): String =
     TypeScriptGenerator(using load(classesYaml)).serialize(options)
 
+  val resultMode: TypeScriptGenerator.Options =
+    TypeScriptGenerator.Options(errorHandling = ErrorHandling.result)
+
   "TypeScriptGenerator" should {
     "give every function of a catalogue model a method on one interface" in {
       ModelCatalogue.all.filter(_.model.root.functions.nonEmpty).foreach { entry =>
@@ -41,16 +44,65 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "return what a function gives back, or one of its errors" in {
+    "return what a function gives back, and document what it throws" in {
       val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model).serialize()
-      code should include("fetch(id: string): Item | Unavailable | Closed;")
-      code should include("listItems(): ItemList | Closed;")
+      code should include("fetch(id: string): Item;")
+      code should include("@throws {Unavailable} The item is not in the store.")
+      code should include("@throws {Closed} The store is closed.")
+      code should include("listItems(): ItemList;")
       code should include("status(): Status;") // an enum
       code should include("totalValue(): number;") // a type
+      code should not include "Result<"
       val basic = TypeScriptGenerator(using ModelCatalogue.functions.basic.model).serialize()
       basic should include("reindex(): void;")
-      basic should include("remove(title: string): void | NotFound;")
+      basic should include("remove(title: string): void;")
       basic should include("countBooks(): number;")
+    }
+
+    "return a tagged Result when asked" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model)
+        .serialize(resultMode)
+      code should include(
+        "fetch(id: string): " +
+          """Result<Item, Failure<"Unavailable", Unavailable> | Failure<"Closed", Closed>>;""",
+      )
+      code should include("""listItems(): Result<ItemList, Failure<"Closed", Closed>>;""")
+      code should include("status(): Status;")
+      code should include("export type Result<T, E> =")
+      code should include("export type Failure<K extends string, T> = { kind: K; value: T };")
+      code should not include "@throws"
+    }
+
+    "wrap a function that returns nothing but can fail" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.basic.model)
+        .serialize(resultMode)
+      code should include("""remove(title: string): Result<void, Failure<"NotFound", NotFound>>;""")
+      code should include("reindex(): void;")
+    }
+
+    "leave out the Result helpers when no function has errors" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.parameters.model)
+        .serialize(resultMode)
+      code should include("): SearchResult;")
+      code should not include "export type Result<"
+    }
+
+    "refuse a class that takes the name of a Result helper" in {
+      val thrown = intercept[IllegalArgumentException] {
+        generate(
+          """classes:
+            |  Failure:
+            |  Book:
+            |functions:
+            |  lookup:
+            |    returns: Book
+            |    errors:
+            |      - Failure
+            |""".stripMargin,
+          resultMode,
+        )
+      }
+      thrown.getMessage should include("the Failure helper type")
     }
 
     "mark the optional parameters at the end of the list with ?" in {

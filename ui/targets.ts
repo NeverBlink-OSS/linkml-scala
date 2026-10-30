@@ -337,6 +337,14 @@ export const TARGETS: Target[] = [
       TREE_ROOT,
       { key: "includeNull", type: "checkbox", label: "Nulls", title: "Allow null for optional slots" },
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
+      {
+        key: "errorHandling",
+        type: "select",
+        label: "Function errors",
+        title: "How the functions of the schema report their errors",
+        choices: ["throw", "result"],
+        default: "throw",
+      },
     ],
     call: (api, v, o) =>
       api.typeScript(
@@ -345,6 +353,7 @@ export const TARGETS: Target[] = [
         blankToUndef(o.treeRoot),
         !!o.includeNull,
         !!o.open,
+        String(o.errorHandling || "throw"),
       ),
   },
 ];
