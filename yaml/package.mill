@@ -36,6 +36,7 @@ object `package` extends Module, NativeOptional {
   trait YamlModule extends CommonModule {
     def mvnDeps = Seq(
       mvn"com.github.plokhotnyuk.scala-yaml::scala-yaml::0.3.21",
+      mvn"com.github.plokhotnyuk.jsoniter-scala::jsoniter-scala-core::2.41.6",
     )
   }
 }

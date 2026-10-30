@@ -2,12 +2,15 @@ package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.LinkmlAny
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import org.virtuslab.yaml.parseYaml
-import tools.jackson.databind.json.JsonMapper
-import tools.jackson.databind.node.ObjectNode
+import eu.neverblink.ohi.cli.generated.fileerror.CliFileError
+import eu.neverblink.ohi.model.generated.error.CatalogError
+import eu.neverblink.ohi.model.generated.lockerror.LockError
+import org.virtuslab.yaml.{Node, Tag, parseYaml}
 
 private[cli] object ErrorOutput {
-  private val mapper = JsonMapper.builder().build()
+  given catalogErrorCodec: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
+  given lockErrorCodec: LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
+  given fileErrorCodec: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
   private def heading(message: String, colored: Boolean): String =
     s"${CliFormatting.styled("Error:", "1;31", colored)} ${CliFormatting.clean(message)}"
@@ -71,15 +74,16 @@ private[cli] object ErrorOutput {
     }
     val detail = if code == "HTTP_ERROR" then
       responseJson.flatMap { response =>
-        val data = mapper.readTree(response.value)
-        Seq(
-          data.get("message"),
-          data.get("error"),
-          data.path("error").get("message"),
-          data.path("error").get("reason"),
-        )
-          .find(value => value != null && value.isString && value.stringValue().nonEmpty)
-          .map(_.stringValue())
+        def at(node: Option[Node], key: String): Option[Node] = node.collect {
+          case mapping: Node.MappingNode => LinkmlYamlCodec.getFields(mapping).get(key)
+        }.flatMap(Option(_))
+        val data = parseYaml(response.value).toOption
+        val error = at(data, "error")
+        Seq(at(data, "message"), error, at(error, "message"), at(error, "reason")).flatten
+          .collectFirst {
+            case value: Node.ScalarNode if (value.tag eq Tag.str) && value.value.nonEmpty =>
+              value.value
+          }
       }
     else if code == "TIMEOUT" then None
     else Some(message)
@@ -149,16 +153,7 @@ private[cli] object ErrorOutput {
   }
 
   // Imported records have distinct generated Scala types.
-  def adapt[T: LinkmlYamlCodec](json: String): T =
-    summon[LinkmlYamlCodec[T]].decode(parseYaml(json).fold(throw _, identity))
-
-  /** Restores raw JSON to preserve nulls and numeric values. */
-  def withCatalogResponse(json: String, response: Option[LinkmlAny]): String = {
-    val data = mapper.readTree(json)
-    response.foreach(value =>
-      data.get("catalog_error").asInstanceOf[ObjectNode]
-        .set("response_json", mapper.readTree(value.value)),
-    )
-    mapper.writeValueAsString(data)
+  extension [S](value: S)(using from: LinkmlYamlCodec[S]) {
+    def as[T](using to: LinkmlYamlCodec[T]): T = to.decode(from.encode(value))
   }
 }

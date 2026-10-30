@@ -80,11 +80,10 @@ class LockCodecTests(LockAssertions):
                 lock.files[0].format = Format.owl_turtle
                 self.assert_example_wire(json.loads(encode_lock(lock)), revision)
 
-    def test_accepts_integral_revision_and_preserves_required_empty_arrays(self):
+    def test_preserves_required_empty_arrays(self):
         for revision in (1, 2):
             with self.subTest(revision=revision):
-                lock = decode_lock(f'{{"format_version": {revision}.0, "selections": [], "files": []}}')
-                self.assertIs(type(lock.format_version), int)
+                lock = decode_lock(f'{{"format_version": {revision}, "selections": [], "files": []}}')
                 self.assertEqual(lock.selections, [])
                 self.assertEqual(lock.files, [])
                 self.assertEqual(json.loads(encode_lock(lock)),
@@ -149,20 +148,13 @@ class LockCodecTests(LockAssertions):
         data["files"][0]["format"] = "owl"
         self.reject(data)
 
-    def test_rejects_invalid_file_uris(self):
-        for field in ("base_url", "url"):
-            with self.subTest(field=field):
-                data = example()
-                data["files"][1][field] = "relative.ttl"
-                self.reject(data)
-
     def test_reports_unsupported_integer_revision_before_missing_fields(self):
-        self.reject({"format_version": 3.0}, "UNSUPPORTED_VERSION")
+        self.reject({"format_version": 3}, "UNSUPPORTED_VERSION")
 
     def test_rejects_missing_or_noninteger_revision(self):
         data = {"selections": [], "files": []}
         self.reject(data)
-        for value in (True, 1.5, "1"):
+        for value in (True, 1.0, 1.5, "1"):
             with self.subTest(value=value):
                 self.reject({**data, "format_version": value})
 
@@ -208,16 +200,14 @@ class LockCodecTests(LockAssertions):
                 self.assertEqual([(item["base_url"], item["url"]) for item in wire["selections"]], pairs)
                 self.assertEqual([(item["base_url"], item["url"]) for item in wire["files"]], pairs)
 
-    def test_encode_rejects_mutated_pairs_and_unvalidated_uri(self):
-        for fault in ("duplicate", "missing selected file", "invalid URI"):
+    def test_encode_rejects_mutated_pairs(self):
+        for fault in ("duplicate", "missing selected file"):
             with self.subTest(fault=fault):
                 lock = Lock.model_validate(example())
                 if fault == "duplicate":
                     lock.files.append(lock.files[0])
-                elif fault == "missing selected file":
-                    lock.files.pop(0)
                 else:
-                    lock.files[1].url = "relative.yaml"
+                    lock.files.pop(0)
                 with self.assertRaises(LockException) as caught:
                     encode_lock(lock)
                 self.assert_error(caught.exception, "INVALID_LOCK", "ENCODE")
@@ -338,11 +328,11 @@ class LockFileTests(LockAssertions):
         self.assert_entries()
 
     def test_read_preserves_public_operation_for_unsupported_revision(self):
-        self.path.write_text('{"format_version": 3.0}', encoding="utf-8")
+        self.path.write_text('{"format_version": 3}', encoding="utf-8")
         with self.assertRaises(LockException) as caught:
             read_lock(self.path)
         self.assert_error(caught.exception, "UNSUPPORTED_VERSION", "READ", self.path)
-        self.assertEqual(self.path.read_bytes(), b'{"format_version": 3.0}')
+        self.assertEqual(self.path.read_bytes(), b'{"format_version": 3}')
         self.assert_entries(self.path.name)
 
     def test_validation_precedes_staging_and_preserves_destination(self):

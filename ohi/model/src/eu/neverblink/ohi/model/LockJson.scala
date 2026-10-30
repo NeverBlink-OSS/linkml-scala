@@ -1,139 +1,96 @@
 package eu.neverblink.ohi.model
 
-import com.networknt.schema.{ExecutionConfig, ExecutionContext, SchemaRegistry}
-import com.networknt.schema.dialect.Dialects
-import eu.neverblink.linkml.runtime.{Uri, stringify}
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.ohi.model.generated.lock.*
 import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockOperation}
-import scala.jdk.CollectionConverters.*
-import tools.jackson.core.JacksonException
-import tools.jackson.databind.{DeserializationFeature, JsonNode}
-import tools.jackson.databind.json.JsonMapper
-import tools.jackson.databind.node.ObjectNode
+import org.virtuslab.yaml.{Node, Tag}
 
-/** Validates complete supplied file locks and preserves exact URL strings and array order. */
+/** Reads and writes complete supplied file locks with the generated classes, preserving exact URL
+  * strings and array order.
+  */
 object LockJson {
-  private val mapper = JsonMapper.builder()
-    .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
-    .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS).build()
-  private val schema = SchemaRegistry.withDialect(Dialects.getDraft202012).getSchema(
-    mapper.readTree(getClass.getResourceAsStream("/lock.schema.json")),
-  )
-  private val validationConfig = ExecutionConfig.builder().formatAssertionsEnabled(true).build()
-  private val formats = Seq[Format](
-    Format.OwlTurtle,
-    Format.OwlRdfxml,
-    Format.RdfsTurtle,
-    Format.LinkmlYaml,
-    Format.OssieYaml,
-  ).map(value => stringify(value) -> value).toMap
+  private val codec: LinkmlYamlCodec[Lock] = LinkmlYamlCodec.derived
 
-  /** Decodes and validates JSON. Throws [[LockException]] for invalid records or unsupported
-    * revisions.
-    */
+  /** Decodes JSON. Throws [[LockException]] for invalid records or unsupported revisions. */
   def decode(text: String): Lock = decode(text, LockOperation.Decode, None)
 
-  /** Validates and encodes the supplied record. Throws [[LockException]] for invalid records or
-    * unsupported revisions.
+  /** Encodes the supplied record. Throws [[LockException]] for invalid records or unsupported
+    * revisions.
     */
   def encode(lock: Lock): String = encode(lock, LockOperation.Encode, None)
 
   private[model] def decode(text: String, operation: LockOperation, path: Option[String]): Lock = {
-    val data = try mapper.readTree(text)
+    val node = try ModelJson.parse(text)
     catch {
-      case cause: JacksonException =>
-        throw LockException.failure(
-          LockErrorCode.InvalidLock,
-          operation,
-          path,
-          s"Cannot parse the lock: ${cause.getMessage}. Supply one complete JSON record.",
-          Some(cause),
-        )
+      case cause: IllegalArgumentException =>
+        throw invalid(operation, path, s"Cannot parse the lock: ${cause.getMessage}", Some(cause))
     }
-    validate(data, operation, path)
-    Lock(
-      formatVersion = data.get("format_version").intValue(),
-      selections = data.get("selections").iterator().asScala.map { selection =>
-        ArtifactSelectionImpl(
-          baseUrl = Uri(selection.get("base_url").stringValue()),
-          url = Uri(selection.get("url").stringValue()),
-        )
-      }.toSeq,
-      files = data.get("files").iterator().asScala.map { file =>
-        LockedFile(
-          baseUrl = Uri(file.get("base_url").stringValue()),
-          url = Uri(file.get("url").stringValue()),
-          format = formats(file.get("format").stringValue()),
-          sha256 = Option(file.get("sha256")).map(_.stringValue()),
-        )
-      }.toSeq,
-    )
+    // Report a revision this reader does not know before the fields that depend on it.
+    node match {
+      case mapping: Node.MappingNode =>
+        LinkmlYamlCodec.getFields(mapping).get("format_version") match {
+          case revision: Node.ScalarNode if revision.tag eq Tag.int =>
+            revision.value.toIntOption match {
+              case Some(value) => checkRevision(value, operation, path)
+              case None => throw unsupported(revision.value, operation, path)
+            }
+          case _ =>
+        }
+      case _ =>
+    }
+    val lock = try codec.decode(node)
+    catch {
+      case cause: Exception => throw invalid(operation, path, cause.getMessage, Some(cause))
+    }
+    checkRevision(lock.formatVersion, operation, path)
+    check(lock, operation, path)
+    lock
   }
 
   private[model] def encode(lock: Lock, operation: LockOperation, path: Option[String]): String = {
-    val data = mapper.createObjectNode().put("format_version", lock.formatVersion)
-    val selections = data.putArray("selections")
-    lock.selections.foreach(value => selections.add(selectionNode(value)))
-    val files = data.putArray("files")
-    lock.files.foreach { value =>
-      val file = selectionNode(value).put("format", stringify(value.format))
-      value.sha256.foreach(hash => file.put("sha256", hash))
-      files.add(file)
-    }
-    validate(data, operation, path)
-    mapper.writeValueAsString(data)
+    checkRevision(lock.formatVersion, operation, path)
+    check(lock, operation, path)
+    ModelJson.encode(codec, lock)
   }
 
-  private def selectionNode(selection: ArtifactSelection): ObjectNode =
-    mapper.createObjectNode()
-      .put("base_url", selection.baseUrl.original)
-      .put("url", selection.url.original)
+  private def checkRevision(revision: Int, operation: LockOperation, path: Option[String]): Unit =
+    if revision != 1 && revision != 2 then throw unsupported(revision.toString, operation, path)
 
-  private def validate(data: JsonNode, operation: LockOperation, path: Option[String]): Unit = {
-    val revision = data.path("format_version")
-    if revision.isNumber && revision.decimalValue().stripTrailingZeros().scale() <= 0 &&
-      revision.decimalValue().compareTo(java.math.BigDecimal.ONE) != 0 &&
-      revision.decimalValue().compareTo(java.math.BigDecimal.valueOf(2)) != 0
-    then
-      throw LockException.failure(
-        LockErrorCode.UnsupportedVersion,
-        operation,
-        path,
-        s"Lock revision $revision is unsupported. Supply revision 1 or 2, or use a reader that supports this revision.",
-      )
-    val errors = schema.validate(
-      data,
-      (context: ExecutionContext) => context.setExecutionConfig(validationConfig),
+  private def unsupported(revision: String, operation: LockOperation, path: Option[String]) =
+    LockException.failure(
+      LockErrorCode.UnsupportedVersion,
+      operation,
+      path,
+      s"Lock revision $revision is unsupported. Supply revision 1 or 2, or use a reader that supports this revision.",
     )
-    if !errors.isEmpty then
-      throw LockException.failure(
-        LockErrorCode.InvalidLock,
-        operation,
-        path,
-        s"Invalid lock: ${errors.asScala.mkString(", ")}. Correct the supplied lock record.",
-      )
-    def pairs(field: String): Seq[(String, String)] =
-      data.get(field).iterator().asScala.map(value =>
-        (value.get("base_url").stringValue(), value.get("url").stringValue()),
-      ).toSeq
-    val selections = pairs("selections")
-    val files = pairs("files")
+
+  private def invalid(
+      operation: LockOperation,
+      path: Option[String],
+      message: String,
+      cause: Option[Throwable] = None,
+  ) = LockException.failure(
+    LockErrorCode.InvalidLock,
+    operation,
+    path,
+    s"Invalid lock: $message. Correct the supplied lock record.",
+    cause,
+  )
+
+  private def check(lock: Lock, operation: LockOperation, path: Option[String]): Unit = {
+    def pairs(values: Seq[ArtifactSelection]): Seq[(String, String)] =
+      values.map(value => (value.baseUrl.original, value.url.original))
+    val selections = pairs(lock.selections)
+    val files = pairs(lock.files)
     val problem =
-      if data.get("files").iterator().asScala.exists(_.has("sha256") != (revision.intValue() == 2))
-      then Some("Revision 1 files must omit sha256 and revision 2 files must supply it")
+      if lock.files.exists(_.sha256.isDefined != (lock.formatVersion == 2)) then
+        Some("revision 1 files must omit sha256 and revision 2 files must supply it")
       else if selections.distinct.size != selections.size then
-        Some("Each selection pair must occur once")
-      else if files.distinct.size != files.size then Some("Each file pair must occur once")
+        Some("each selection pair must occur once")
+      else if files.distinct.size != files.size then Some("each file pair must occur once")
       else if !selections.forall(files.toSet.contains) then
-        Some("Every selection must have a matching file pair")
+        Some("every selection must have a matching file pair")
       else None
-    problem.foreach(message =>
-      throw LockException.failure(
-        LockErrorCode.InvalidLock,
-        operation,
-        path,
-        s"$message. Correct the supplied lock record.",
-      ),
-    )
+    problem.foreach(message => throw invalid(operation, path, message))
   }
 }

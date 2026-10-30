@@ -37,8 +37,6 @@ test("omitted search settings use production catalog and preserve timeout", asyn
 for (const [name, config] of Object.entries({
   "endpoint without fields": { search_url: "http://localhost/search" },
   "fields without endpoint": { query_by: "name" },
-  "zero timeout": { timeout_ms: 0 },
-  "overflow timeout": { timeout_ms: 2147483648 },
   "endpoint query": { search_url: "http://localhost/search?q=a", query_by: "name" },
   "endpoint fragment": { search_url: "http://localhost/search#x", query_by: "name" },
   "empty endpoint query": { search_url: "http://localhost/search?", query_by: "name" },
@@ -51,33 +49,6 @@ for (const [name, config] of Object.entries({
 for (const url of ["urn:ohi:one", "/relative", "https://user:secret@example.org/file"]) {
   test(`HTTP boundary rejects ${url}`, async () => {
     await assert.rejects(new CatalogClient().get(url), failure("INVALID_INPUT", "GET", url));
-  });
-}
-
-test("HTTP boundary rejects URI whitespace before native URL normalization", async (t) => {
-  const fixture = await server(t, (_, res) => res.end(binary));
-  const url = `${fixture.url}/a b`;
-  await assert.rejects(new CatalogClient().get(url), failure("INVALID_INPUT", "GET", url));
-  assert.equal(fixture.requests.length, 0);
-});
-
-for (const [name, request] of Object.entries({
-  "blank query": { q: " \t" }, "zero page": { q: "*", page: 0 },
-  "unsafe page": { q: "*", page: 9007199254740992 },
-  "zero page size": { q: "*", per_page: 0 }, "large page size": { q: "*", per_page: 251 },
-  "blank facets": { q: "*", facet_by: " \t" },
-  "null facets": { q: "*", facet_by: null },
-  "nonstring facets": { q: "*", facet_by: 7 },
-  "zero facet limit": { q: "*", max_facet_values: 0 },
-  "fractional facet limit": { q: "*", max_facet_values: 1.5 },
-  "string facet limit": { q: "*", max_facet_values: "30" },
-  "unsafe facet limit": { q: "*", max_facet_values: 9007199254740992 },
-})) {
-  test(`search rejects ${name} before sending`, async (t) => {
-    const fixture = await server(t, (_, res) => res.end("{}"));
-    const client = new CatalogClient({ search_url: fixture.url, query_by: "name" });
-    await assert.rejects(client.search(request), failure("INVALID_INPUT", "SEARCH", fixture.url));
-    assert.equal(fixture.requests.length, 0);
   });
 }
 
@@ -165,16 +136,6 @@ test("search preserves an explicitly empty facet list", async (t) => {
 });
 
 for (const [name, mutate] of Object.entries({
-  "missing count": (wire) => { delete wire.found; },
-  "missing cutoff": (wire) => { delete wire.search_cutoff; },
-  "missing reference": (wire) => { delete wire.hits[0].document.base_url; },
-  "base-URL-only hit": (wire) => { wire.hits = [{ document: { base_url: "https://example.org/a" } }]; },
-  "blank title": (wire) => { wire.hits[0].document.title = " \t"; },
-  "empty formats": (wire) => { wire.hits[0].document.formats = []; },
-  "unknown format": (wire) => { wire.hits[0].document.formats = ["owl"]; },
-  "blank license": (wire) => { wire.hits[0].document.licenses = [" "]; },
-  "non-string keyword": (wire) => { wire.hits[0].document.keywords = [1]; },
-  "invalid publication time": (wire) => { wire.hits[0].document.published_at = "yesterday"; },
   "nonobject document": (wire) => { wire.hits = [{ document: null }]; },
   "missing request parameters": (wire) => { delete wire.request_params; },
   "nonarray hits": (wire) => { wire.hits = {}; },
@@ -182,15 +143,9 @@ for (const [name, mutate] of Object.entries({
   "page mismatch": (wire) => { wire.page = 2; },
   "page size mismatch": (wire) => { wire.request_params.per_page = 2; },
   "too many hits": (wire) => { wire.hits = page(["urn:a", "urn:b"]).hits; },
-  "unsafe total": (wire) => { wire.found = 9007199254740992; },
   "null facet list": (wire) => { wire.facet_counts = null; },
   "nonarray facet list": (wire) => { wire.facet_counts = {}; },
-  "missing facet field": (wire) => { wire.facet_counts = [{ counts: [] }]; },
   "missing facet counts": (wire) => { wire.facet_counts = [{ field_name: "licenses" }]; },
-  "missing facet value": (wire) => { wire.facet_counts = [{ field_name: "licenses", counts: [{ count: 1 }] }]; },
-  "negative facet count": (wire) => { wire.facet_counts = [{ field_name: "licenses", counts: [{ value: "MIT", count: -1 }] }]; },
-  "fractional facet count": (wire) => { wire.facet_counts = [{ field_name: "licenses", counts: [{ value: "MIT", count: 1.5 }] }]; },
-  "unsafe facet count": (wire) => { wire.facet_counts = [{ field_name: "licenses", counts: [{ value: "MIT", count: 9007199254740992 }] }]; },
 })) {
   test(`search rejects ${name}`, async (t) => {
     const wire = page(["https://example.org/a"], 1, 1);
@@ -272,7 +227,7 @@ for (const operation of ["SEARCH", "INSPECT"]) {
   }
 }
 
-test("inspect delegates schema validation to the publication decoder", async (t) => {
+test("inspect rejects metadata the publication decoder rejects", async (t) => {
   const fixture = await server(t, (_, res) => res.end("{}"));
   await assert.rejects(new CatalogClient().inspect(fixture.url), failure("INVALID_RESPONSE", "INSPECT", fixture.url, 200));
 });

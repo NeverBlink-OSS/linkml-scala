@@ -5,10 +5,10 @@ import eu.neverblink.linkml.cli.TerminalOutput
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.ohi.catalog.CatalogException
-import eu.neverblink.ohi.cli.ErrorOutput.adapt
+import eu.neverblink.ohi.cli.ErrorOutput.{as, given}
 import eu.neverblink.ohi.cli.generated.projecterror.*
 import eu.neverblink.ohi.cli.generated.projectresult.ProjectResult
-import eu.neverblink.ohi.model.{CatalogErrorJson, LockErrorJson, LockException}
+import eu.neverblink.ohi.model.LockException
 
 import java.nio.file.Path
 
@@ -17,9 +17,9 @@ import CliFormatting.{action, styled}
 private[cli] object ProjectOutput {
   private val resultCodec: LinkmlYamlCodec[ProjectResult] = LinkmlYamlCodec.derived
   private val errorCodec: LinkmlYamlCodec[ProjectError] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
+  private given catalogError: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
+  private given lockError: LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
+  private given fileError: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
   def failure(
       operation: ProjectOperation,
@@ -42,14 +42,13 @@ private[cli] object ProjectOutput {
       case failure: CatalogException =>
         base.copy(catalogError =
           Some(
-            adapt[CatalogError](CatalogErrorJson.encode(failure.error))
-              .copy(responseJson = failure.error.responseJson),
+            failure.error.as[CatalogError],
           ),
         )
       case failure: LockException =>
-        base.copy(lockError = Some(adapt[LockError](LockErrorJson.encode(failure.error))))
+        base.copy(lockError = Some(failure.error.as[LockError]))
       case failure: CliFileException =>
-        base.copy(fileError = Some(adapt[CliFileError](CatalogOutput.fileError(failure.error))))
+        base.copy(fileError = Some(failure.error.as[CliFileError]))
     }
   }
 
@@ -79,12 +78,7 @@ private[cli] object ProjectOutput {
       recoveryCommands: Seq[String] = Nil,
   ): String =
     if json then {
-      val withoutResponse =
-        error.copy(catalogError = error.catalogError.map(_.copy(responseJson = None)))
-      ErrorOutput.withCatalogResponse(
-        JsonUtil.yamlToJson(errorCodec.encode(withoutResponse)),
-        error.catalogError.flatMap(_.responseJson),
-      )
+      JsonUtil.yamlToJson(errorCodec.encode(error))
     } else {
       val directory = java.nio.file.Path.of(error.projectDirectory)
       val declaration = directory.resolve("ohi.yaml").toString

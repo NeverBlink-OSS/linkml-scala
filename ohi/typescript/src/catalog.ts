@@ -1,19 +1,9 @@
-import { newAjv } from "./ajv.js";
 import type { Publication } from "./generated.js";
 import type { CatalogConfig } from "./generated_config.js";
 import type { CatalogError, CatalogOperation } from "./generated_error.js";
 import type { SearchRequest } from "./generated_search_request.js";
-import type { SearchResult } from "./generated_search.js";
+import type { FacetCount, SearchHit, SearchResult } from "./generated_search.js";
 import { decodePublication } from "./publication.js";
-import configSchema from "./catalog-config.schema.json" with { type: "json" };
-import requestSchema from "./search-request.schema.json" with { type: "json" };
-import resultSchema from "./search.schema.json" with { type: "json" };
-
-const ajv = newAjv();
-const validateConfig = ajv.compile<CatalogConfig>(configSchema);
-const validateRequest = ajv.compile<SearchRequest>(requestSchema);
-const validateResult = ajv.compile<SearchResult>(resultSchema);
-const validateUri = ajv.compile({ type: "string", format: "uri" });
 
 export class CatalogException extends Error {
   constructor(readonly error: CatalogError, options?: ErrorOptions) {
@@ -24,7 +14,6 @@ export class CatalogException extends Error {
 
 function httpUrl(value: string, operation: CatalogOperation): URL {
   try {
-    if (!validateUri(value)) throw new TypeError("Invalid URI.");
     const url = new URL(value);
     if (!(url.protocol === "http:" || url.protocol === "https:") || !url.hostname || url.username || url.password) {
       throw new TypeError("Invalid HTTP(S) URL.");
@@ -49,22 +38,17 @@ function searchResult(bytes: Uint8Array, page: number, perPage: number): SearchR
   if (!object(raw) || "grouped_hits" in raw || !Array.isArray(raw.hits) || !object(raw.request_params)) {
     throw new Error("Expected an ungrouped search response with hits and request_params.");
   }
-  const result = {
+  const result: SearchResult = {
     hits: raw.hits.map((hit: unknown) => {
       if (!object(hit) || !object(hit.document)) throw new Error("Expected a search hit document.");
-      return hit.document;
+      return hit.document as SearchHit;
     }),
-    total: raw.found,
-    page: raw.page,
-    per_page: raw.request_params.per_page,
-    search_cutoff: raw.search_cutoff,
-    ...(raw.facet_counts === undefined ? {} : { facet_counts: raw.facet_counts }),
+    total: raw.found as number,
+    page: raw.page as number,
+    per_page: raw.request_params.per_page as number,
+    search_cutoff: raw.search_cutoff as boolean,
+    ...(raw.facet_counts === undefined ? {} : { facet_counts: raw.facet_counts as FacetCount[] }),
   };
-  if (!validateResult(result)) throw new Error(ajv.errorsText(validateResult.errors));
-  if (!Number.isSafeInteger(result.total) ||
-      result.facet_counts?.some(({ counts }) => counts.some(({ count }) => !Number.isSafeInteger(count)))) {
-    throw new Error("Search integers exceed the supported range.");
-  }
   if (result.page !== page || result.per_page !== perPage || result.hits.length > perPage) {
     throw new Error("Search response does not match the requested page and page size.");
   }
@@ -87,10 +71,6 @@ export class CatalogClient {
 
   constructor(config: CatalogConfig = {}) {
     const url = config.search_url;
-    if (!validateConfig(config)) {
-      throw new CatalogException({ code: "INVALID_INPUT", operation: "CONFIGURE",
-        ...(typeof url === "string" ? { url } : {}), message: ajv.errorsText(validateConfig.errors) });
-    }
     if ((config.search_url === undefined) !== (config.query_by === undefined)) {
       throw new CatalogException({ code: "INVALID_INPUT", operation: "CONFIGURE",
         ...(url === undefined ? {} : { url }), message: "Supply both search_url and query_by, or omit both." });
@@ -112,12 +92,6 @@ export class CatalogClient {
 
   async search(request: SearchRequest): Promise<SearchResult> {
     const endpoint = this.config.search_url!;
-    if (!validateRequest(request) ||
-        (request.page !== undefined && !Number.isSafeInteger(request.page)) ||
-        (request.max_facet_values !== undefined && !Number.isSafeInteger(request.max_facet_values))) {
-      throw new CatalogException({ code: "INVALID_INPUT", operation: "SEARCH",
-        url: endpoint, message: "Supply a valid search query and representable integer parameters." });
-    }
     const page = request.page ?? 1;
     const perPage = request.per_page ?? 10;
     const url = new URL(endpoint);

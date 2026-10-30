@@ -8,7 +8,6 @@ import eu.neverblink.linkml.generator.util.JsonUtil
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
-import tools.jackson.databind.json.JsonMapper
 
 import java.io.{FilterOutputStream, IOException}
 import java.nio.file.{Files, Path}
@@ -17,7 +16,6 @@ import java.util.Locale
 import scala.collection.mutable.ArrayBuffer
 
 class ProjectSpec extends AnyWordSpec, Matchers {
-  private val mapper = JsonMapper.builder().build()
   private val emptyDeclaration = "# preserve this comment\nformat_version: 1\nselections: []\n"
   private val oldLock = "{\"format_version\":1,\"selections\":[],\"files\":[]}"
   private val base = "https://example.org/publication"
@@ -39,10 +37,10 @@ class ProjectSpec extends AnyWordSpec, Matchers {
   private def noFetch(url: String): Array[Byte] = fail(s"Unexpected retrieval: $url")
 
   private def error(project: Project, cause: Throwable, declaration: Boolean, lock: Boolean) = {
-    val data = mapper.readTree(ProjectOutput.error(project.failure(cause), json = true))
-    data.get("project_directory").stringValue() shouldBe project.directory.toString
-    data.get("declaration_changed").booleanValue() shouldBe declaration
-    data.get("lock_changed").booleanValue() shouldBe lock
+    val data = ujson.read(ProjectOutput.error(project.failure(cause), json = true))
+    data("project_directory").str shouldBe project.directory.toString
+    data("declaration_changed").bool shouldBe declaration
+    data("lock_changed").bool shouldBe lock
     data
   }
 
@@ -71,8 +69,8 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val failure = intercept[ProjectException](project.init(createParents = true))
         failure.getCause shouldBe primary
         val data = error(project, failure, declaration = false, lock = false)
-        data.get("operation").stringValue() shouldBe "INIT"
-        data.get("code").stringValue() shouldBe "STORAGE_ERROR"
+        data("operation").str shouldBe "INIT"
+        data("code").str shouldBe "STORAGE_ERROR"
         os.exists(target) shouldBe false
         os.exists(directory / "nested") shouldBe true
         os.exists(directory / "nested" / "ohi.lock.json") shouldBe false
@@ -104,8 +102,8 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           )
         }
         val data = error(project, failure, declaration = false, lock = false)
-        data.get("code").stringValue() shouldBe "STORAGE_ERROR"
-        data.get("message").stringValue() should include("rerun ohi add")
+        data("code").str shouldBe "STORAGE_ERROR"
+        data("message").str should include("rerun ohi add")
         requests.toSeq shouldBe Seq(base)
         os.read(directory / "ohi.yaml") shouldBe emptyDeclaration
         os.read(directory / "ohi.lock.json") shouldBe oldLock
@@ -132,17 +130,15 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           project.add(base, url, (directory / "downloads").toString, _ => metadata, noFetch)
         }
         val data = error(project, failure, declaration = true, lock = false)
-        data.get("code").stringValue() shouldBe "OPERATION_FAILED"
-        data.get("lock_error").get("operation").stringValue() shouldBe "WRITE"
-        data.get("lock_error").get(
-          "path",
-        ).stringValue() shouldBe (directory / "ohi.lock.json").toString
-        data.has("catalog_error") shouldBe false
-        data.has("file_error") shouldBe false
-        data.get("message").stringValue() should include(
+        data("code").str shouldBe "OPERATION_FAILED"
+        data("lock_error")("operation").str shouldBe "WRITE"
+        data("lock_error")("path").str shouldBe (directory / "ohi.lock.json").toString
+        data.obj.contains("catalog_error") shouldBe false
+        data.obj.contains("file_error") shouldBe false
+        data("message").str should include(
           s"ohi lock --project '${directory.toString}'",
         )
-        data.get("message").stringValue() should include(
+        data("message").str should include(
           s"ohi get '$url' --to '${directory / "downloads"}'",
         )
         os.read(directory / "ohi.yaml") should include(base)
@@ -171,25 +167,25 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           )
         }
         val data = error(project, failure, declaration = true, lock = true)
-        data.get("code").stringValue() shouldBe "OPERATION_FAILED"
-        data.get("file_error").get("code").stringValue() shouldBe "DESTINATION_EXISTS"
-        data.get("file_error").get("path").stringValue() shouldBe target.toString
-        data.get("file_error").get("directory").stringValue() shouldBe downloads.toString
-        data.get("file_error").get("url").stringValue() shouldBe url
-        data.has("lock_error") shouldBe false
-        data.has("catalog_error") shouldBe false
-        data.get("message").stringValue() should include(
+        data("code").str shouldBe "OPERATION_FAILED"
+        data("file_error")("code").str shouldBe "DESTINATION_EXISTS"
+        data("file_error")("path").str shouldBe target.toString
+        data("file_error")("directory").str shouldBe downloads.toString
+        data("file_error")("url").str shouldBe url
+        data.obj.contains("lock_error") shouldBe false
+        data.obj.contains("catalog_error") shouldBe false
+        data("message").str should include(
           s"ohi get '$url' --to '$downloads'",
         )
-        data.get("message").stringValue() should not include "ohi lock"
-        val recorded = mapper.readTree(os.read(directory / "ohi.lock.json"))
-        recorded shouldBe mapper.readTree(
+        data("message").str should not include "ohi lock"
+        val recorded = ujson.read(os.read(directory / "ohi.lock.json"))
+        recorded shouldBe ujson.read(
           s"""{"format_version":2,"selections":[{"base_url":"$base","url":"$url"}],"files":[{"base_url":"$base","url":"$url","format":"owl-turtle","sha256":"0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"}]}""",
         )
-        mapper.readTree(
+        ujson.read(
           JsonUtil.yamlToJson(parseYaml(os.read(directory / "ohi.yaml")).toOption.get),
         ) shouldBe
-          mapper.readTree(
+          ujson.read(
             s"""{"format_version":1,"selections":[{"base_url":"$base","url":"$url"}]}""",
           )
         os.read(target) shouldBe "competing file"
@@ -216,8 +212,8 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         failure.getMessage should include(s"$base returned identity $base/")
         requests.toSeq shouldBe Seq(base)
         val data = error(project, failure, declaration = false, lock = false)
-        data.get("message").stringValue() should include("Lock refresh did not complete")
-        data.get("message").stringValue() should include(
+        data("message").str should include("Lock refresh did not complete")
+        data("message").str should include(
           s"ohi lock --project '${directory.toString}'",
         )
         os.read(directory / "ohi.yaml") shouldBe declaration
@@ -317,11 +313,11 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         failure.getCause shouldBe cleanup
         cleanup.getSuppressed.toSeq shouldBe empty
         val data = error(project, failure, declaration = false, lock = false)
-        data.get("code").stringValue() shouldBe "STORAGE_ERROR"
+        data("code").str shouldBe "STORAGE_ERROR"
         val retained = os.list(directory)
         retained.size shouldBe 1
         retained.head.last should startWith(".ohi-case-")
-        val message = data.get("message").stringValue()
+        val message = data("message").str
         message should include(retained.head.toNIO.toRealPath().toString)
         message should include(cleanup.getMessage)
       }
@@ -343,11 +339,11 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         failure.getCause shouldBe lookup
         lookup.getSuppressed.toSeq shouldBe Seq(cleanup)
         val data = error(project, failure, declaration = false, lock = false)
-        data.get("code").stringValue() shouldBe "STORAGE_ERROR"
+        data("code").str shouldBe "STORAGE_ERROR"
         val retained = os.list(directory)
         retained.size shouldBe 1
         retained.head.last should startWith(".ohi-case-")
-        val message = data.get("message").stringValue()
+        val message = data("message").str
         message should include(retained.head.toNIO.toRealPath().toString)
         message should include(lookup.getMessage)
         message should include(cleanup.getMessage)
@@ -364,9 +360,9 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         )
         val project = new Project(directory.toNIO, ProjectOperation.Lock)
         val failure = intercept[ProjectException](project.refresh(noInspect))
-        error(project, failure, declaration = false, lock = false).get(
+        error(project, failure, declaration = false, lock = false)(
           "code",
-        ).stringValue() shouldBe "INVALID_PROJECT"
+        ).str shouldBe "INVALID_PROJECT"
         os.read(directory / "ohi.yaml") shouldBe emptyDeclaration
         os.read(directory / "referent") shouldBe "malformed untouched lock"
         Files.isSymbolicLink((directory / "ohi.lock.json").toNIO) shouldBe true

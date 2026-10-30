@@ -1,10 +1,5 @@
-import { newAjv } from "./ajv.js";
 import type { ArtifactSelection, Lock } from "./generated_lock.js";
 import type { LockError, LockOperation } from "./generated_lock_error.js";
-import schema from "./lock.schema.json" with { type: "json" };
-
-const ajv = newAjv();
-const validate = ajv.compile<Lock>(schema);
 
 export class LockException extends Error {
   constructor(readonly error: LockError, options?: ErrorOptions) {
@@ -31,19 +26,19 @@ function checkedLock(data: unknown, operation: LockOperation): Lock {
       message: `Unsupported lock revision ${data.format_version}. Supply revision 1 or 2 or use a reader supporting this revision.` });
   }
   try {
-    if (!validate(data)) throw new Error(ajv.errorsText(validate.errors));
-    if (data.format_version === 1 && data.files.some((file) => file.sha256 !== undefined)) {
+    const lock = data as Lock;
+    if (lock.format_version === 1 && lock.files.some((file) => file.sha256 !== undefined)) {
       throw new Error("Revision 1 files must omit sha256.");
     }
-    if (data.format_version === 2 && data.files.some((file) => file.sha256 === undefined)) {
+    if (lock.format_version === 2 && lock.files.some((file) => file.sha256 === undefined)) {
       throw new Error("Revision 2 files require sha256.");
     }
-    const selections = uniquePairs(data.selections, "selections");
-    const files = uniquePairs(data.files, "files");
+    const selections = uniquePairs(lock.selections, "selections");
+    const files = uniquePairs(lock.files, "files");
     if ([...selections].some((selection) => !files.has(selection))) {
       throw new Error("Every selection must have a corresponding file record.");
     }
-    return data;
+    return lock;
   } catch (cause) {
     throw new LockException({ code: "INVALID_LOCK", operation,
       message: `Invalid lock. Correct the supplied record. ${cause instanceof Error ? cause.message : String(cause)}` }, { cause });

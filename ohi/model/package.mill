@@ -6,11 +6,7 @@ import millbuild.*
 
 object `package` extends Module {
   object jvm extends CommonBuildModule {
-    def moduleDeps = Seq(build.runtime.jvm)
-
-    override def mvnDeps = super.mvnDeps() ++ Seq(
-      mvn"com.networknt:json-schema-validator:3.0.8",
-    )
+    def moduleDeps = Seq(build.yaml.jvm)
 
     object test extends ScalaTests, CommonTestModule {
       override def mvnDeps = super.mvnDeps() ++ Seq(mvn"com.lihaoyi::ujson:4.4.3")

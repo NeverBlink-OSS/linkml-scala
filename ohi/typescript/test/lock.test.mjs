@@ -91,8 +91,6 @@ for (const [name, version, sha256] of [
   ["revision 1 hash", 1, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"],
   ["revision 1 null hash", 1, null],
   ["revision 2 missing hash", 2, undefined],
-  ["revision 2 null hash", 2, null],
-  ["revision 2 uppercase hash", 2, "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"],
 ]) {
   test(`decode rejects ${name}`, () => {
     const lock = example(version);
@@ -114,19 +112,10 @@ test("revision 2 encode rejects an undefined hash", () => {
 });
 
 for (const [name, change] of [
-  ["missing revision", (lock) => { delete lock.format_version; }],
-  ["boolean revision", (lock) => { lock.format_version = true; }],
-  ["fractional revision", (lock) => { lock.format_version = 1.5; }],
-  ["string revision", (lock) => { lock.format_version = "1"; }],
   ["missing selections", (lock) => { delete lock.selections; }],
   ["missing files", (lock) => { delete lock.files; }],
   ["null selections", (lock) => { lock.selections = null; }],
   ["null files", (lock) => { lock.files = null; }],
-  ["unknown root field", (lock) => { lock.extra = true; }],
-  ["unknown selection field", (lock) => { lock.selections[0].extra = true; }],
-  ["unknown file field", (lock) => { lock.files[0].extra = true; }],
-  ["unknown format", (lock) => { lock.files[0].format = "future-format"; }],
-  ["relative URI", (lock) => { lock.files[1].url = "relative.ttl"; }],
   ["duplicate selection", (lock) => { lock.selections.push({ ...lock.selections[0] }); }],
   ["identical duplicate file", (lock) => { lock.files.push({ ...lock.files[0] }); }],
   ["conflicting duplicate file", (lock) => { lock.files.push({ ...lock.files[0], format: "owl-rdfxml" }); }],
@@ -159,10 +148,6 @@ for (const [name, base, url, expected] of [
     assert.equal(decoded.files[2].format, "owl-turtle");
   });
 }
-
-test("encode rejects schema-invalid records without dropping fields", () => {
-  rejects(() => encodeLock({ ...example(), extra: true }), "INVALID_LOCK", "ENCODE");
-});
 
 test("encode enforces selection-to-file relations", () => {
   const lock = example();

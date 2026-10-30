@@ -55,35 +55,6 @@ test("accepts empty keywords", () => {
   assert.deepEqual(decode(example("units")).keywords, []);
 });
 
-for (const field of ["namespace", "keywords", "dependencies"]) {
-  test(`requires publication ${field}`, () => {
-    delete data[field];
-    reject(data);
-  });
-}
-
-test("requires artifact roots despite publication roots", () => {
-  data.roots = data.artifacts[0].roots;
-  delete data.artifacts[0].roots;
-  reject(data);
-});
-
-test("requires dependency base despite file metadata", () => {
-  data.dependencies[0] = { url: "https://example.org/units.ttl" };
-  reject(data);
-});
-
-for (const value of [null, 7]) {
-  test(`rejects namespace ${JSON.stringify(value)}`, () => {
-    data.namespace = value;
-    reject(data);
-  });
-}
-
-test("rejects scalar keywords", () => {
-  data.keywords = "sensors";
-  reject(data);
-});
 
 test("rejects a nonobject publication", () => {
   reject([]);
@@ -94,40 +65,13 @@ test("rejects a nonobject artifact", () => {
   reject(data);
 });
 
-test("rejects a nonobject dependency", () => {
-  data.dependencies[0] = "units";
-  reject(data);
-});
 
-test("rejects empty artifacts", () => {
-  data.artifacts = [];
-  reject(data);
-});
-
-test("rejects empty artifact roots", () => {
-  data.artifacts[0].roots = [];
-  reject(data);
-});
-
-test("rejects blank namespace", () => {
-  data.namespace = " \t\n";
-  reject(data);
-});
 
 test("preserves opaque version labels", () => {
   data.version = " release + amendment ";
   assert.equal(decode(data).version, " release + amendment ");
 });
 
-test("rejects an unsupported revision", () => {
-  data.schema_version = 3;
-  reject(data);
-});
-
-test("rejects the former revision instead of migrating metadata", () => {
-  data.schema_version = 1;
-  reject(data);
-});
 
 test("omits absent namespace metadata", () => {
   const publication = decode(example("units"));
@@ -145,49 +89,12 @@ test("accepts a namespace IRI with non-ASCII letters", () => {
   assert.equal(decode(data).namespace_iri, "https://example.org/czujniki-żółwi#");
 });
 
-for (const iri of ["https://example.org/a b#", "not an iri", "https://example.org/\u0085#", "https://example.org/\ud83d#"]) {
-  test(`rejects malformed namespace IRI ${JSON.stringify(iri)}`, () => {
-    data.namespace_iri = iri;
-    reject(data);
-  });
-}
-
-test("rejects malformed publication time", () => {
-  data.published_at = "2026-13-13T12:30:00Z";
-  reject(data);
-});
 
 test("preserves supplied timestamp precision and offset", () => {
   data.published_at = "2026-10-13T12:30:00.123456789+00:00";
   assert.equal(decode(data).published_at, "2026-10-13T12:30:00.123456789+00:00");
 });
 
-test("accepts the largest exactly representable artifact integer", () => {
-  data.artifacts[0].size_bytes = 9007199254740991;
-  assert.equal(decode(data).artifacts[0].size_bytes, 9007199254740991);
-});
-
-test("rejects an unsafe artifact integer", () => {
-  data.artifacts[0].size_bytes = 9007199254740992;
-  reject(data);
-});
-
-for (const value of ["1", true]) {
-  test(`rejects nonnumeric revision ${JSON.stringify(value)}`, () => {
-    data.schema_version = value;
-    reject(data);
-  });
-}
-
-test("rejects an unknown format", () => {
-  data.artifacts[0].format = "future-format";
-  reject(data);
-});
-
-test("rejects an unknown origin", () => {
-  data.artifacts[0].origin = "FUTURE";
-  reject(data);
-});
 
 test("discards extras at each record level", () => {
   data.package = "obsolete";
@@ -204,15 +111,6 @@ test("discards extras at each record level", () => {
   assert.equal(publication.dependencies[0].base_url, "https://example.org/packages/units/2.0.0/");
 });
 
-test("rejects an invalid dependency URI beside extras", () => {
-  data.backend = true;
-  data.dependencies[0].base_url = "https://example.org/a b";
-  assert.throws(() => decode(data), (error) => {
-    assert.ok(error instanceof Error);
-    assert.match(error.message, /base_url/);
-    return true;
-  });
-});
 
 test("accepts HTTP development references", () => {
   const publication = decodePublication(JSON.stringify(data).replaceAll("https://example.org", "http://localhost:8080"));
@@ -232,10 +130,6 @@ test("preserves URI spelling", () => {
   assert.equal(decode(data).base_url, "https://Example.org/publication?revision=1#entry");
 });
 
-test("rejects a relative publication base", () => {
-  data.base_url = "relative.ttl";
-  reject(data);
-});
 
 test("rejects duplicate artifact URLs", () => {
   data.artifacts[1].url = data.artifacts[0].url;

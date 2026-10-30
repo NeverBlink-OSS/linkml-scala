@@ -4,16 +4,16 @@ import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.ohi.catalog.CatalogException
-import eu.neverblink.ohi.cli.ErrorOutput.adapt
+import eu.neverblink.ohi.cli.ErrorOutput.{as, given}
 import eu.neverblink.ohi.cli.generated.lockdownload.*
-import eu.neverblink.ohi.model.{CatalogErrorJson, LockErrorJson, LockException}
+import eu.neverblink.ohi.model.LockException
 
 private[cli] object LockDownloadOutput {
   private val resultCodec: LinkmlYamlCodec[LockDownloadResult] = LinkmlYamlCodec.derived
   private val errorCodec: LinkmlYamlCodec[LockDownloadError] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
+  private given catalogError: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
+  private given lockError: LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
+  private given fileError: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
   def failure(
       files: Seq[LockFileResult],
@@ -23,19 +23,18 @@ private[cli] object LockDownloadOutput {
       LockDownloadError(
         files = files,
         catalogError = Some(
-          adapt[CatalogError](CatalogErrorJson.encode(failure.error))
-            .copy(responseJson = failure.error.responseJson),
+          failure.error.as[CatalogError],
         ),
       )
     case failure: LockException =>
       LockDownloadError(
         files = files,
-        lockError = Some(adapt[LockError](LockErrorJson.encode(failure.error))),
+        lockError = Some(failure.error.as[LockError]),
       )
     case failure: CliFileException =>
       LockDownloadError(
         files = files,
-        fileError = Some(adapt[CliFileError](CatalogOutput.fileError(failure.error))),
+        fileError = Some(failure.error.as[CliFileError]),
       )
   }
 
@@ -56,12 +55,7 @@ private[cli] object LockDownloadOutput {
       retryCommand: Option[String] = None,
   ): String =
     if json then {
-      val withoutResponse =
-        error.copy(catalogError = error.catalogError.map(_.copy(responseJson = None)))
-      ErrorOutput.withCatalogResponse(
-        JsonUtil.yamlToJson(errorCodec.encode(withoutResponse)),
-        error.catalogError.flatMap(_.responseJson),
-      )
+      JsonUtil.yamlToJson(errorCodec.encode(error))
     } else {
       val causes = error.lockError.toSeq.map(cause =>
         ErrorOutput.lock(

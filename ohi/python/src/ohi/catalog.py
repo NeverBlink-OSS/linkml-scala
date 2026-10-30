@@ -2,12 +2,9 @@
 
 import json
 from http.client import HTTPException
-from importlib.resources import files
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
-
-from jsonschema import Draft202012Validator, FormatError, ValidationError
 
 from .generated import Publication
 from .generated_config import CatalogConfig
@@ -15,15 +12,6 @@ from .generated_error import CatalogError
 from .generated_search import SearchResult
 from .generated_search_request import SearchRequest
 from .publication import decode_publication
-
-
-_validators = {
-    name: Draft202012Validator(
-        json.loads(files(__package__).joinpath(f"{name}.schema.json").read_text(encoding="utf-8")),
-        format_checker=Draft202012Validator.FORMAT_CHECKER,
-    )
-    for name in ("catalog-config", "search-request", "search")
-}
 
 
 class CatalogException(Exception):
@@ -43,7 +31,6 @@ def _failure(code, operation, message, url: str | None = None, status=None, resp
 
 def _validate_url(url: str, operation, search=False):
     try:
-        Draft202012Validator.FORMAT_CHECKER.check(url, "uri")
         parsed = urlsplit(url)
         if parsed.scheme not in ("http", "https") or not parsed.hostname:
             raise ValueError("URL must be absolute HTTP(S) with a host")
@@ -52,7 +39,7 @@ def _validate_url(url: str, operation, search=False):
         parsed.port
         if search and ("?" in url or "#" in url):
             raise ValueError("search_url must not contain a query or fragment")
-    except (ValueError, FormatError) as error:
+    except ValueError as error:
         raise _failure("INVALID_INPUT", operation, str(error), url) from error
 
 
@@ -71,20 +58,14 @@ def _decode_search(text, page, per_page):
         }
         if "facet_counts" in data:
             result["facet_counts"] = data["facet_counts"]
-        _validators["search"].validate(result)
-    except (KeyError, TypeError, ValidationError) as error:
+        result = SearchResult.model_validate(result, extra="ignore")
+    except (KeyError, TypeError) as error:
         raise ValueError(f"invalid search response: {error}") from error
-    if result["page"] != page or result["per_page"] != per_page:
+    if result.page != page or result.per_page != per_page:
         raise ValueError("response pagination differs from the requested page")
     if len(hits) > per_page:
         raise ValueError("response contains more hits than per_page")
-    # JSON Schema accepts integers such as 8.0, while generated fields use StrictInt.
-    for field in ("total", "page", "per_page"):
-        result[field] = int(result[field])
-    for facet in result.get("facet_counts", []):
-        for value in facet["counts"]:
-            value["count"] = int(value["count"])
-    return SearchResult.model_validate(result, extra="ignore")
+    return result
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -99,11 +80,10 @@ class CatalogClient:
         config = CatalogConfig() if config is None else config
         url = config.search_url
         try:
-            data = config.model_dump(warnings=False)
-            _validators["catalog-config"].validate(data)
+            data = CatalogConfig.model_validate(config.model_dump(warnings=False)).model_dump()
             if ("search_url" in data) != ("query_by" in data):
                 raise ValueError("search_url and query_by must be supplied together")
-        except (ValueError, ValidationError) as error:
+        except ValueError as error:
             raise _failure("INVALID_INPUT", "CONFIGURE", str(error), url) from error
         if url is not None:
             _validate_url(url, "CONFIGURE", search=True)
@@ -116,14 +96,11 @@ class CatalogClient:
     def search(self, request: SearchRequest) -> SearchResult:
         url = self._search_url
         try:
-            params = request.model_dump(warnings=False)
-            _validators["search-request"].validate(params)
-        except (ValueError, ValidationError) as error:
+            params = SearchRequest.model_validate(request.model_dump(warnings=False)).model_dump()
+        except ValueError as error:
             raise _failure("INVALID_INPUT", "SEARCH", str(error), url) from error
-        params["page"] = int(params.get("page", 1))
-        params["per_page"] = int(params.get("per_page", 10))
-        if "max_facet_values" in params:
-            params["max_facet_values"] = int(params["max_facet_values"])
+        params.setdefault("page", 1)
+        params.setdefault("per_page", 10)
         params["query_by"] = self._query_by
         body = self._get(url + "?" + urlencode(params), "SEARCH", url)
         try:

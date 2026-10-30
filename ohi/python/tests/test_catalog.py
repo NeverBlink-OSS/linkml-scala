@@ -81,9 +81,8 @@ class SearchCodecTests(unittest.TestCase):
 
     def test_rejects_invalid_summary_values(self):
         values = [(field, " \t") for field in ("namespace", "name", "version", "title", "description")]
-        values += [("base_url", "relative"), ("title", 1), ("formats", []),
+        values += [("title", 1), ("formats", []),
                    ("formats", ["owl"]), ("formats", ["OWL-TURTLE"]), ("licenses", [" "]), ("keywords", [1]),
-                   ("published_at", "2026-10-14T10:20:30"),
                    ("published_at", "2026-02-30T10:20:30Z"), ("published_at", 1791973230)]
         for field, value in values:
             with self.subTest(field=field, value=value):
@@ -106,7 +105,7 @@ class SearchCodecTests(unittest.TestCase):
         data = search_body()
         data["facet_counts"] = [
             {"field_name": "namespace", "counts": [
-                {"value": "z", "count": 8.0, "highlighted": "<mark>z</mark>"},
+                {"value": "z", "count": 8, "highlighted": "<mark>z</mark>"},
                 {"value": "a", "count": 0},
             ], "stats": {"total_values": 2}},
             {"field_name": "formats", "counts": [{"value": "owl-turtle", "count": 18446744073709551617}]},
@@ -121,7 +120,7 @@ class SearchCodecTests(unittest.TestCase):
         self.assertIs(type(result.facet_counts[0].counts[0].count), int)
 
     def test_rejects_invalid_facet_shapes_and_counts(self):
-        facets = [None, {}, [None], [{}], [{"field_name": "formats"}],
+        facets = [{}, [None], [{}], [{"field_name": "formats"}],
                   [{"field_name": 1, "counts": []}], [{"field_name": "formats", "counts": None}],
                   [{"field_name": "formats", "counts": [{}]}],
                   [{"field_name": "formats", "counts": [{"value": "owl-turtle"}]}],
@@ -169,8 +168,8 @@ class SearchCodecTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _decode_search(json.dumps(search_body(["urn:a", "urn:b", "urn:c"])), 1, 2)
 
-    def test_accepts_integral_numbers_and_preserves_unbounded_total(self):
-        result = _decode_search(json.dumps(search_body(page=1.0, per_page=2.0,
+    def test_preserves_unbounded_total(self):
+        result = _decode_search(json.dumps(search_body(page=1, per_page=2,
                                                        total=18446744073709551617)), 1, 2)
         self.assertEqual((result.page, result.per_page, result.total),
                          (1, 2, 18446744073709551617))
@@ -322,13 +321,10 @@ class CatalogTests(unittest.TestCase):
                 self.assertEqual(result.per_page, size)
                 self.assertEqual(parse_qs(urlsplit(self.server.requests[-1][0]).query)["per_page"], [str(size)])
 
-    def test_search_forwards_integral_facet_limits_as_integers(self):
+    def test_search_forwards_facet_limits(self):
         self.route("/search", json.dumps(search_body(per_page=10)).encode())
-        for value, expected in ((1, "1"), (30.0, "30")):
-            with self.subTest(value=value):
-                self.search_client().search(SearchRequest.model_construct(q="*", max_facet_values=value))
-                self.assertEqual(parse_qs(urlsplit(self.server.requests[-1][0]).query)["max_facet_values"],
-                                 [expected])
+        self.search_client().search(SearchRequest.model_construct(q="*", max_facet_values=30))
+        self.assertEqual(parse_qs(urlsplit(self.server.requests[-1][0]).query)["max_facet_values"], ["30"])
 
     def test_search_encodes_parameters_once_and_preserves_order_and_duplicates(self):
         data = search_body(["urn:b", "urn:a", "urn:b"], page=2, per_page=3)

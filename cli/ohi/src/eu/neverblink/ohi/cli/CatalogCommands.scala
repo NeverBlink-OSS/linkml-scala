@@ -1,9 +1,10 @@
 package eu.neverblink.ohi.cli
 
 import caseapp.*
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.{Uri, stringify}
 import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException}
-import eu.neverblink.ohi.model.{CatalogErrorJson, LockException, LockFiles}
+import eu.neverblink.ohi.model.{LockException, LockFiles}
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.{CatalogError, CatalogErrorCode, CatalogOperation}
 import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
@@ -43,13 +44,8 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Oh
 
   protected def execute(options: T, input: String, client: CatalogClient): String
 
-  // Explain validated input failures here, keeping the SDK as the validation authority.
-  protected def inputCorrection(options: T, input: String, error: CatalogError): Unit =
-    if options.common.timeoutMs.exists(_ < 1) then
-      correction(
-        s"--timeout-ms must be at least 1. Received ${options.common.timeoutMs.get}.",
-        "Use a positive timeout in milliseconds.",
-      )
+  // Explain the SDK's input failures in terms of command options.
+  protected def inputCorrection(options: T, error: CatalogError): Unit = ()
 
   override def run(options: T, remainingArgs: RemainingArgs): Unit = {
     val inputs = remainingArgs.all
@@ -72,9 +68,10 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Oh
       case failure: CatalogException =>
         val error = failure.error
         if !options.common.json && error.code == CatalogErrorCode.InvalidInput then
-          inputCorrection(options, inputs.head, error)
+          inputCorrection(options, error)
         err(
-          if options.common.json then CatalogErrorJson.encode(error)
+          if options.common.json then
+            JsonUtil.yamlToJson(ErrorOutput.catalogErrorCodec.encode(error))
           else {
             val (diagnostic, recovery) = ErrorOutput.catalog(
               stringify(error.code),
@@ -150,14 +147,8 @@ object Search extends CatalogCommand[SearchOptions] {
   override protected def commandName: String = "search"
   override protected def argumentName: String = "query"
 
-  override protected def inputCorrection(
-      options: SearchOptions,
-      input: String,
-      error: CatalogError,
-  ): Unit = {
-    super.inputCorrection(options, input, error)
+  override protected def inputCorrection(options: SearchOptions, error: CatalogError): Unit =
     if error.operation == CatalogOperation.Configure then {
-      if options.queryBy.exists(_.isBlank) then correction("--query-by cannot be empty.")
       if options.searchUrl.nonEmpty && options.queryBy.isEmpty then
         correction(
           "Supply --query-by with --search-url.",
@@ -171,41 +162,7 @@ object Search extends CatalogCommand[SearchOptions] {
           "Supply the complete HTTP search endpoint for this catalog.",
           invalid = false,
         )
-    } else {
-      if input.isBlank then
-        correction(
-          "The search query is empty.",
-          "Enter search text, or use '*' to browse.\n  " + example(
-            invocation(inputs = Some(Seq("*"))),
-          ),
-        )
-      val ranges = Seq(
-        ("--page", options.page, 1, Int.MaxValue),
-        ("--per-page", options.perPage, 1, 250),
-        ("--max-facet-values", options.maxFacetValues, 1, Int.MaxValue),
-      )
-      ranges.foreach { (name, value, minimum, maximum) =>
-        value.filter(v => v < minimum || v > maximum).foreach { received =>
-          val range =
-            if maximum == Int.MaxValue then s"at least $minimum" else s"from $minimum to $maximum"
-          correction(
-            s"$name must be $range. Received $received.",
-            (if name == "--page" then "To request the first page:"
-             else "Example with an accepted value:") +
-              "\n  " + example(invocation(Seq(name -> Some(minimum.toString)))),
-          )
-        }
-      }
-      Seq(
-        "--filter-by" -> options.filterBy,
-        "--sort-by" -> options.sortBy,
-        "--facet-by" -> options.facetBy,
-      )
-        .foreach { (name, value) =>
-          if value.exists(_.isBlank) then correction(s"$name cannot be empty.")
-        }
     }
-  }
 
   override protected def config(options: SearchOptions): CatalogConfig =
     CatalogConfig(

@@ -6,7 +6,6 @@ import eu.neverblink.ohi.cli.generated.declaration.{ArtifactSelection, Declarati
 import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
-import tools.jackson.databind.json.JsonMapper
 import org.virtuslab.yaml.parseYaml
 
 class DeclarationYamlSpec extends AnyWordSpec, Matchers {
@@ -37,10 +36,6 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
       rejected("format_version: 1\n")
     }
 
-    "reject a selection whose base URL is not a URI" in {
-      rejected("format_version: 1\nselections:\n- base_url: not a URI\n  url: urn:file:z\n")
-    }
-
     "reject a selection listed twice" in {
       rejected(s"format_version: 1\nselections:\n$selection$selection").getMessage should include(
         "selection pair must occur once",
@@ -67,9 +62,8 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
       encoded should startWith(
         "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n",
       )
-      val mapper = JsonMapper.builder().build()
-      val data = mapper.readTree(JsonUtil.yamlToJson(parseYaml(encoded).toOption.get))
-      data shouldBe mapper.readTree("""{"format_version":1,"selections":[
+      val data = ujson.read(JsonUtil.yamlToJson(parseYaml(encoded).toOption.get))
+      data shouldBe ujson.read("""{"format_version":1,"selections":[
         {"base_url":"urn:release:z","url":"https://files.example/Z%2F.ttl?q=1"},
         {"base_url":"urn:release:a","url":"https://files.example/a.ttl"}]}""")
       DeclarationYaml.encode(declaration) shouldBe encoded
