@@ -11,9 +11,12 @@
 <!-- Picks the theme and the page color before anything is drawn, so moving here from the landing
      page or the docs doesn't flash the other theme. app.ts applies the theme again when it loads. -->
 <script>
+  let storedTheme = null;
   try {
-    if (localStorage.getItem("linkml-ui-theme") === "light") document.documentElement.setAttribute("data-theme", "light");
+    storedTheme = localStorage.getItem("linkml-ui-theme");
   } catch (e) {}
+  if (storedTheme ? storedTheme === "light" : matchMedia("(prefers-color-scheme: light)").matches)
+    document.documentElement.setAttribute("data-theme", "light");
 </script>
 <style>
   html { background: #0a0b0e; }

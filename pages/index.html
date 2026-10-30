@@ -12,9 +12,12 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <!-- Same theme as the playground and the docs, which store the choice under this key -->
   <script>
+    let storedTheme = null;
     try {
-      if (localStorage.getItem("linkml-ui-theme") === "light") document.documentElement.dataset.theme = "light";
+      storedTheme = localStorage.getItem("linkml-ui-theme");
     } catch (e) {}
+    if (storedTheme ? storedTheme === "light" : matchMedia("(prefers-color-scheme: light)").matches)
+      document.documentElement.dataset.theme = "light";
   </script>
   <style>
     /* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt).
