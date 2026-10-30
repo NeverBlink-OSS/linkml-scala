@@ -21,4 +21,6 @@ Generators accept both forms:
 - TypeScript: `string | Record<string, string>`.
 - Pydantic: `str | Annotated[dict[str, str], Field(min_length=1)]`.
 - SHACL: `sh:or ( [ sh:datatype xsd:string ] [ sh:datatype rdf:langString ] )`. A single-valued slot holds one plain string, or texts in different languages (`sh:uniqueLang true`).
-- OWL: `rdf:PlainLiteral`. A single-valued slot is not functional, as a text in several languages is one literal per language.
+- OWL: `rdf:PlainLiteral`. A single-valued slot is not functional, as a text in several languages is one literal per language. It has at most one plain string (`owl:maxQualifiedCardinality 1` on `xsd:string`).
+
+The lengths and the pattern of a `langstring` slot apply to a plain string and to the text in each language.
