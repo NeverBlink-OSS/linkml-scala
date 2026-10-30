@@ -110,6 +110,23 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       classes("Green").isA.map(_.value) shouldBe Some("Colour")
       result.warnings shouldBe empty
     }
+
+    "skip a disjoint group that has an enum among its members" in {
+      // As in D3FEND 0.16.0: `Audience` becomes an enum, because it has an individual and is used
+      // as a range.
+      val result = importing(
+        """:UseCase a owl:Class ;
+          |    rdfs:subClassOf [ a owl:Restriction ;
+          |        owl:onProperty :hasAudience ; owl:someValuesFrom :Audience ] .
+          |:Audience a owl:Class .
+          |:Goal a owl:Class .
+          |:Architects a :Audience, owl:NamedIndividual .
+          |:hasAudience a owl:ObjectProperty .
+          |[] a owl:AllDisjointClasses ; owl:members ( :UseCase :Audience :Goal ) .""",
+      )
+      result.schema.enums.keySet shouldBe Set("Audience")
+      result.schema.classes("UseCase").disjointWith shouldBe empty
+    }
   }
 
   "importing a datatype" should {
