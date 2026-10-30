@@ -1,0 +1,51 @@
+---
+title: Install ohi
+description: Install the ohi command-line tool on macOS, Linux or Windows.
+---
+
+import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+Install the ohi command-line tool to search and download ontologies from your terminal.
+For Python or TypeScript applications, see [SDK installation](/docs/reference/sdks/#installation).
+
+## Install
+
+Supports Intel and Apple silicon Macs running macOS 14 or later, Linux on x86_64 or arm64,
+and Windows on x86_64.
+
+<Tabs>
+  <TabItem label="Bash / Zsh">
+    Run this in Zsh on macOS, Bash on Linux, or Git Bash, MSYS2, Cygwin or WSL on Windows:
+
+    ```sh
+    . <(curl -sSfL https://ohi.dev/install.sh)
+    ```
+
+    The [installer](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/cli/install.sh)
+    downloads the latest release, verifies its checksum and puts `ohi` in `~/.local/bin`.
+    Accept its offer to add that directory to your shell profile so `ohi` works in new terminals too.
+
+    Run the same command again to update.
+  </TabItem>
+  <TabItem label="PowerShell">
+    Run this in Windows PowerShell 5.1 or PowerShell 7:
+
+    ```powershell
+    irm https://ohi.dev/install.ps1 | iex
+    ```
+
+    The [installer](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/cli/install.ps1)
+    downloads the latest release, verifies its checksum and puts `ohi.exe` in `$HOME\.local\bin`.
+    Accept its offer to add that directory to your PowerShell profile so `ohi` works in new terminals too.
+
+    Run the same command again to update.
+  </TabItem>
+</Tabs>
+
+## Check the installation
+
+```sh
+ohi version
+```
+
+You should see the installed version. Then [download your first ontology](/docs/getting-started/first-ontology/).

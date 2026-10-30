@@ -1,0 +1,157 @@
+<figure class="concept-figure not-content" role="img" aria-label="In FOAF, Person and Organization are types of Agent.">
+  <div class="ontology-graph">
+    <div class="ontology-node">
+      <span class="node-icon person">
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <circle cx="22" cy="13" r="7" />
+          <path d="M9 37v-4a13 13 0 0 1 26 0v4" />
+        </svg>
+      </span>
+      <strong>Person</strong>
+    </div>
+    <div class="ontology-edge">
+      <span>is a type of</span>
+      <svg viewBox="0 0 80 20" aria-hidden="true">
+        <path class="type-line" d="M2 10h74" />
+        <path d="m69 4 7 6-7 6" />
+      </svg>
+    </div>
+    <div class="ontology-node">
+      <span class="node-icon agent">
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <circle cx="16" cy="14" r="6" />
+          <path d="M5 36v-4a11 11 0 0 1 22 0v4M30 9a6 6 0 0 1 0 12m3 4a10 10 0 0 1 6 9v2" />
+        </svg>
+      </span>
+      <strong>Agent</strong>
+    </div>
+    <div class="ontology-edge">
+      <span>is a type of</span>
+      <svg viewBox="0 0 80 20" aria-hidden="true">
+        <path class="type-line" d="M2 10h74" />
+        <path d="m9 4-7 6 7 6" />
+      </svg>
+    </div>
+    <div class="ontology-node">
+      <span class="node-icon organization">
+        <svg viewBox="0 0 44 44" aria-hidden="true">
+          <rect x="10" y="5" width="24" height="34" rx="2" />
+          <path d="M16 12h3m6 0h3M16 19h3m6 0h3M16 26h3m6 0h3M19 39v-7h6v7" />
+        </svg>
+      </span>
+      <strong>Organization</strong>
+    </div>
+  </div>
+</figure>
+
+<style>
+  .ontology-graph {
+    display: grid;
+    grid-template-columns: 1fr 0.65fr 1fr 0.65fr 1fr;
+    gap: 0.5rem;
+    align-items: start;
+    padding-block: 0.5rem;
+  }
+
+  .ontology-node {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    text-align: center;
+    color: var(--sl-color-white);
+  }
+
+  .node-icon {
+    display: grid;
+    place-items: center;
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+  }
+
+  .node-icon svg {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .person {
+    color: #17685d;
+    background: #d9f1e8;
+  }
+
+  .agent {
+    color: #845000;
+    background: #ffecb3;
+  }
+
+  .organization {
+    color: #6652a3;
+    background: #ece5ff;
+  }
+
+  .ontology-edge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 0.875rem;
+    color: var(--sl-color-gray-2);
+    font-size: 0.8125rem;
+    white-space: nowrap;
+  }
+
+  .ontology-edge svg {
+    width: 100%;
+    height: 1.25rem;
+  }
+
+  .ontology-edge path {
+    vector-effect: non-scaling-stroke;
+  }
+
+  .type-line {
+    stroke-dasharray: 4 4;
+  }
+
+  @media (max-width: 34rem) {
+    .ontology-graph {
+      grid-template-columns: 1fr;
+      gap: 0.375rem;
+      max-width: 17rem;
+      margin-inline: auto;
+    }
+
+    .ontology-node,
+    .ontology-edge {
+      display: grid;
+      grid-template-columns: 4.5rem 1fr;
+      align-items: center;
+      text-align: left;
+      gap: 1rem;
+    }
+
+    .ontology-edge {
+      padding: 0;
+    }
+
+    .ontology-edge span {
+      grid-column: 2;
+    }
+
+    .ontology-edge svg {
+      grid-area: 1 / 1;
+      justify-self: center;
+      width: 2rem;
+      height: 2rem;
+      transform: rotate(90deg);
+    }
+  }
+</style>

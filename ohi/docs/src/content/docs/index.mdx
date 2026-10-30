@@ -1,90 +1,160 @@
 ---
-title: ohi SDK
-description: Search ohi.dev, inspect publications and download their files from Scala, Python and TypeScript.
+title: Welcome to ohi
+description: Find, download and manage ontologies with ohi.
 ---
 
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { CardGrid, Icon, LinkButton, LinkCard } from '@astrojs/starlight/components';
+import OntologyExample from '../../components/OntologyExample.astro';
+import '../../styles/welcome.css';
 
-The ohi SDK lets Scala/JVM, Python and TypeScript applications search publications on
-[ohi.dev](https://ohi.dev), inspect their metadata, download selected files and save file selections.
+<div className="welcome-page">
 
-## Installation
+<div className="welcome-intro">
 
-The `ohi` command-line tool installs with one line on Linux, macOS and Windows. It searches the
-catalog, tracks a project's selections and runs every LinkML command as `ohi linkml`:
+ohi is an ontology package manager for people, applications and AI agents. It helps you find
+ontologies, download their files and keep track of the versions and dependencies used by your project.
 
-```sh
-. <(curl -sSfL https://ohi.dev/install.sh)
-ohi version
+<LinkButton
+  href="/docs/getting-started/first-ontology/"
+  icon="right-arrow"
+  class="welcome-start"
+>
+  Download your first ontology
+</LinkButton>
+
+</div>
+
+## Basic concepts
+
+### Ontology
+
+An ontology defines concepts and relationships in a domain. For example,
+[FOAF](https://ohi.dev/foaf/foaf@2014-01-14) describes people, organizations and their relationships.
+
+<OntologyExample />
+
+### Publication
+
+A publication is an **immutable** release of an ontology on ohi.dev. It includes the ontology's
+files, metadata and dependencies. Once published, its contents stay unchanged.
+
+Several publications can share the original publisher's version tag. This can happen when the
+publisher changes a source file without updating the tag, or when ohi updates a generated file.
+ohi adds timestamps to distinguish these publications. For example, FOAF could keep its version tag
+through these changes:
+
+<figure className="concept-figure not-content">
+  <div className="publication-source">
+    <strong>FOAF</strong>
+    <span>Publisher's version <code>2014-01-14</code></span>
+  </div>
+  <div className="publication-branches">
+    <div className="diagram-node">
+      <span className="diagram-label">Publication</span>
+      <strong>1 Oct 2026</strong>
+      <span className="diagram-time">09:00 UTC</span>
+      <span className="diagram-detail">Original files</span>
+    </div>
+    <div className="diagram-node">
+      <span className="diagram-label">Publication</span>
+      <strong>2 Oct 2026</strong>
+      <span className="diagram-time">11:00 UTC</span>
+      <span className="diagram-detail">Publisher corrects a class description</span>
+    </div>
+    <div className="diagram-node">
+      <span className="diagram-label">Publication</span>
+      <strong>3 Oct 2026</strong>
+      <span className="diagram-time">14:00 UTC</span>
+      <span className="diagram-detail">ohi updates a generated file</span>
+    </div>
+  </div>
+</figure>
+
+Referencing a specific publication ensures you receive identical files each time, even if a newer
+publication becomes available.
+
+### Artifact
+
+An artifact is one downloadable ontology file. Its **format** combines a modeling language with a
+file syntax.
+
+Take “a person is a type of agent.” In **OWL + Turtle** (`owl-turtle`), it looks like this:
+
+```turtle
+foaf:Person a owl:Class ;
+    rdfs:subClassOf foaf:Agent .
 ```
 
-In PowerShell:
+The same statement in **OWL + RDF/XML** (`owl-rdfxml`):
 
-```powershell
-irm https://ohi.dev/install.ps1 | iex
-ohi version
+```xml
+<owl:Class rdf:about="http://xmlns.com/foaf/0.1/Person">
+  <rdfs:subClassOf rdf:resource="http://xmlns.com/foaf/0.1/Agent" />
+</owl:Class>
 ```
 
-See the [CLI README](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/cli/ohi/README.md)
-for its commands, and for installing with [mise](https://mise.jdx.dev/).
+The language is still OWL. Only the syntax changed. In **LinkML + YAML** (`linkml-yaml`), you'd write:
 
-The language bindings are packaged separately:
+```yaml
+classes:
+  Person:
+    is_a: Agent
+```
 
-<Tabs syncKey="language">
-  <TabItem label="Python">
-    Python 3.10 or later:
+ohi.dev supports OWL in Turtle or RDF/XML, RDFS in Turtle, and LinkML or Apache Ossie in YAML.
+Choose an available artifact in a format your tools can read.
 
-    ```sh
-    python -m pip install ohi-sdk
-    ```
-  </TabItem>
-  <TabItem label="TypeScript">
-    Node 22 or later, or a browser with Fetch. Browsers need CORS access to the catalog,
-    publication and artifact endpoints.
+### Dependency
 
-    ```sh
-    npm install @neverblink/ohi
-    ```
-  </TabItem>
-  <TabItem label="Scala">
-    The Scala modules are built from source and included in the
-    [ohi CLI](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/cli/ohi/README.md). They are not published
-    separately to Maven Central.
-  </TabItem>
-</Tabs>
+A dependency is another ontology that your chosen ontology builds on.
+[DCAT](https://ohi.dev/w3c/dcat@3), for example, describes datasets such as a city's bus timetables.
+It uses Dublin Core's <code>title</code> property to name them.
 
-The CLI, the Python package and the TypeScript package share the ohi LinkML release version.
+<figure className="concept-figure not-content">
+  <div className="dependency-flow">
+    <div className="diagram-node">
+      <strong>DCAT</strong>
+      <span>Datasets</span>
+    </div>
+    <div className="dependency-edge">
+      <span>depends on</span>
+      <Icon name="right-arrow" size="1.5rem" />
+    </div>
+    <div className="diagram-node">
+      <strong>Dublin Core Terms</strong>
+      <span>Titles, creators and dates</span>
+    </div>
+  </div>
+</figure>
 
-## Quick start
+You need both ontologies to use those definitions. ohi records the exact publication of each
+dependency so your project can use the same definitions again later.
 
-<Tabs syncKey="language">
-  <TabItem label="Python">
-    ```python
-    from ohi import CatalogClient, SearchRequest
+## Choose how you work
 
-    client = CatalogClient()
-    page = client.search(SearchRequest(q="sensors", page=1, per_page=10))
-    if page.hits:
-        publication = client.inspect(page.hits[0].base_url)
-        artifact = publication.artifacts[0]
-        content = client.get(artifact.url)
-    ```
-  </TabItem>
-  <TabItem label="TypeScript">
-    ```typescript
-    import { CatalogClient } from "@neverblink/ohi";
+<CardGrid>
+  <LinkCard
+    title="Browse ohi.dev"
+    description="Explore ontologies and their available files."
+    href="https://ohi.dev"
+    target="_blank"
+    rel="noopener"
+  />
+  <LinkCard
+    title="Use the CLI"
+    description="Install ohi and work from your terminal."
+    href="/docs/getting-started/install/"
+  />
+  <LinkCard
+    title="Use an SDK"
+    description="Use ohi from Python, TypeScript or Scala."
+    href="/docs/reference/sdks/"
+  />
+  <LinkCard
+    title="Use an AI agent"
+    description="Set up the ohi agent skills."
+    href="/docs/guides/ai-agents/"
+  />
+</CardGrid>
 
-    const page = await new CatalogClient().search({ q: "sensors" });
-    ```
-  </TabItem>
-</Tabs>
-
-See [Search, inspect and retrieve](/docs/search/) for what each step does.
-
-## Language bindings
-
-| Language | Client | Operation results |
-| --- | --- | --- |
-| Scala/JVM | `eu.neverblink.ohi.catalog.CatalogClient` in `ohi.catalog.jvm` | Synchronous `SearchResult`, `Publication`, `Array[Byte]` |
-| Python | `ohi.CatalogClient` | Synchronous `SearchResult`, `Publication`, `bytes` |
-| TypeScript | `CatalogClient` from the package entry point | Promises of `SearchResult`, `Publication`, `Uint8Array` |
+</div>

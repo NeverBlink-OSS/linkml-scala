@@ -1,0 +1,200 @@
+.welcome-page {
+  --diagram-line: var(--sl-color-gray-4);
+}
+
+.welcome-page .welcome-intro {
+  font-size: 1.125rem;
+  line-height: 1.75;
+}
+
+.welcome-page .welcome-start {
+  max-width: 100%;
+  margin: 1.25rem 0 0;
+  padding: 0.875rem 1.125rem;
+  border: 1px solid #d99500;
+  border-radius: 0.5rem;
+  background: #ffca28;
+  color: #241a00;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  gap: 1rem;
+}
+
+.welcome-page .welcome-start:hover {
+  background: #ffd54f;
+  color: #241a00;
+}
+
+.welcome-page h3 {
+  font-size: 1.375rem;
+}
+
+.welcome-page .concept-figure {
+  margin-block: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.75rem;
+  background: var(--sl-color-gray-7, var(--sl-color-gray-6));
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.welcome-page .publication-source {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.welcome-page .publication-source code {
+  color: var(--sl-color-text-accent);
+  font-size: 0.875rem;
+}
+
+.welcome-page .publication-branches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  padding-top: 2rem;
+  position: relative;
+}
+
+.welcome-page .publication-branches::before {
+  content: '';
+  position: absolute;
+  top: 0.25rem;
+  left: 50%;
+  height: 1.75rem;
+  border-left: 1px solid var(--diagram-line);
+}
+
+.welcome-page .publication-branches::after {
+  content: '';
+  position: absolute;
+  top: 1rem;
+  left: calc(100% / 6 - 1rem / 3);
+  right: calc(100% / 6 - 1rem / 3);
+  height: 1rem;
+  border: 1px solid var(--diagram-line);
+  border-bottom: 0;
+  border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.welcome-page .diagram-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem 0.75rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 0.5rem;
+  background: var(--sl-color-bg);
+  text-align: center;
+}
+
+.welcome-page .diagram-node strong,
+.welcome-page .publication-source strong {
+  color: var(--sl-color-white);
+}
+
+.welcome-page .diagram-label {
+  margin-bottom: 0.5rem;
+  color: var(--sl-color-text-accent);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.welcome-page .diagram-time {
+  font-size: 0.8125rem;
+}
+
+.welcome-page .diagram-detail {
+  align-self: stretch;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--sl-color-gray-5);
+  font-size: 0.875rem;
+}
+
+.welcome-page .dependency-flow {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.welcome-page .dependency-flow .diagram-node {
+  align-self: stretch;
+  justify-content: center;
+  gap: 0.375rem;
+}
+
+.welcome-page .dependency-edge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--sl-color-text-accent);
+  font-size: 0.8125rem;
+}
+
+.welcome-page .card-grid {
+  gap: 0.875rem;
+}
+
+.welcome-page .sl-link-card {
+  box-shadow: none;
+  padding: 1.25rem;
+}
+
+.welcome-page .sl-link-card:hover {
+  border-color: var(--sl-color-accent);
+}
+
+@media (max-width: 34rem) {
+  .welcome-page .concept-figure {
+    padding: 1rem;
+  }
+
+  .welcome-page .publication-branches {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding-top: 1rem;
+  }
+
+  .welcome-page .publication-branches::after {
+    display: none;
+  }
+
+  .welcome-page .publication-branches::before {
+    top: 0;
+    bottom: 0;
+    height: auto;
+  }
+
+  .welcome-page .publication-branches .diagram-node {
+    display: grid;
+    grid-template-columns: 6.5rem 1fr;
+    column-gap: 0.75rem;
+    position: relative;
+    text-align: left;
+  }
+
+  .welcome-page .publication-branches .diagram-detail {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: center;
+    margin: 0;
+    padding: 0 0 0 0.75rem;
+    border-top: 0;
+    border-left: 1px solid var(--sl-color-gray-5);
+  }
+
+  .welcome-page .dependency-flow {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-page .dependency-edge svg {
+    transform: rotate(90deg);
+  }
+}
