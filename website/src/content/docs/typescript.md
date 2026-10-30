@@ -21,9 +21,9 @@ ohi linkml to typescript --to model.ts schema.yaml
 
 Options:
 
-- `--pruning-mode <treeRoot|schema|skip>`: which classes and enums to generate. Default: `skip`,
+- `--pruning-mode <tree_root|schema|skip>`: which classes and enums to generate. Default: `skip`,
   i.e. all of them.
-- `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
+- `--tree-root <Class>`: with `--pruning-mode tree_root`, use this class as the tree root.
 - `--include-null`: allow `null` for optional slots.
 - `--open`: allow extra properties on every object, not only on those of classes whose
   `extra_slots` allows them.

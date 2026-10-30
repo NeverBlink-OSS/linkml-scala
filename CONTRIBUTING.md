@@ -62,11 +62,12 @@ Some source files are generated and committed. CI regenerates them and fails if 
 | `validation`, `generator/npm/validation-report.d.ts`   | `model/issue-types.yaml`           |
 | `schemaview.buildinfo`, `generator/npm/build-info.d.ts` | `model/build-info.yaml`           |
 | `generator.owlconfig`                                  | `model/owl-import-config.yaml`     |
+| `generator.options`, `generator/npm/generator-options.d.ts`, `cli.options` | `model/generator-options.yaml` |
 | `tests.conformance`                                    | the conformance suite's model.yaml |
 | ohi models in `ohi/` and `cli/ohi/`                    | `ohi/model/schema/`, see [ohi/README.md](ohi/README.md#regenerate-and-test) |
 | Agent skill references in `.agents/skills/linkml/`     | the metamodel, four LinkML docs pages and `tests/resources/models/`, see [.agents/README.md](.agents/README.md#maintenance) |
 | `ui/linkml.d.ts`                                       | `LinkMlJsApi.scala`, with `./mill ui.types` |
-| `python/linkml_scala/_generated.py`, `LinkMlCGenerators.scala` | `LINKML_NATIVE=1 ./mill nativelib.bindings` |
+| `python/linkml_scala/_generated.py`, `LinkMlCGenerators.scala` | `model/generator-options.yaml`, with `LINKML_NATIVE=1 ./mill nativelib.bindings` |
 
 The model classes are committed because generating them needs the CLI, which depends on them. So `regenerate` only works when the committed classes compile. If they don't, revert them with `git checkout -- <module>/src` and regenerate again.
 

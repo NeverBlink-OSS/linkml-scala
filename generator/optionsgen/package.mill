@@ -1,0 +1,27 @@
+package build.generator.optionsgen
+
+import com.goyeau.mill.scalafix.ScalafixModule
+import mill.*
+import mill.scalalib.*
+import mill.scalalib.scalafmt.ScalafmtModule
+import millbuild.*
+
+/** Generates the code that passes the options of `model/generator-options.yaml` from the command
+  * line, C and Python to the generators. Internal: not published, and only good enough for these
+  * options.
+  */
+object `package` extends ScalaModule, ScalafmtModule, ScalafixModule {
+  def scalaVersion = Version.scala
+
+  def scalacOptions = Seq("-Wunused:all")
+
+  def moduleDeps = Seq(build.generator.jvm)
+
+  /** Write the generated sources of the part named in `args`, unformatted: `cli` for the command line options, which
+    * `./mill regenerate` writes and formats, or `bindings` for the C and Python bindings, which
+    * `LINKML_NATIVE=1 ./mill nativelib.bindings` writes and formats.
+    */
+  def generate(args: String*) = Task.Command {
+    runner().run(mill.api.BuildCtx.workspaceRoot.toString +: args)
+  }
+}

@@ -1,0 +1,418 @@
+id: https://linkml.ohi.dev/model/generator-options
+name: generator-options
+title: Schema for the options of the ohi LinkML generators
+description: >-
+  The options of each generator. The Scala API, the command line, the JavaScript and Python
+  bindings and the C library all take these options, under the same names and with the same
+  defaults.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  options: https://linkml.ohi.dev/model/generator-options#
+default_prefix: options
+imports:
+  - linkml:types
+
+slots:
+  metadata_language:
+    range: string
+    required: true
+    ifabsent: string(en)
+    description: >-
+      The language of the titles and descriptions in the output, for schemas with text in more
+      than one language.
+  pruning_mode:
+    range: PruningMode
+    required: true
+    description: The elements of the schema to include in the output.
+  tree_root:
+    range: string
+    description: >-
+      The class to use as the tree root, instead of the class with `tree_root: true` in the
+      schema.
+  open:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: >-
+      Whether every class allows properties beyond the ones in the schema. Classes whose
+      `extra_slots` allows them allow them anyway.
+  include_null:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: Whether optional values may be null.
+  only_classes_from_root_schema:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: >-
+      Whether to include only the classes and enums of the root schema. This is useful for one
+      output file per schema file, without the imported classes in each.
+  full_uris:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: >-
+      Whether to write URIs in full, instead of compacting them to CURIEs with the schema's
+      prefixes.
+  indentation_step:
+    range: integer
+    required: true
+    ifabsent: int(2)
+    description: The number of spaces for each level of indentation in the output.
+
+enums:
+  PruningMode:
+    description: The elements of the schema to include in the output.
+    permissible_values:
+      tree_root:
+        description: >-
+          The elements reachable from the tree root class. Without a tree root, the same as
+          `schema`.
+        aliases: [treeRoot]
+      schema:
+        description: >-
+          Everything defined in the root schema, and every element reachable from it. This leaves
+          out the unused parts of imported schemas, such as most of `linkml:types`.
+      skip:
+        description: Every element of the root schema and of all its imports.
+  JsonOutputFormat:
+    description: A serialization for output that can be YAML or JSON.
+    permissible_values:
+      yaml:
+        description: YAML.
+        aliases: [yml]
+      json:
+        description: JSON.
+  RdfFormat:
+    description: An RDF serialization.
+    permissible_values:
+      ttl:
+        description: Turtle, with prefixes and pretty-printed.
+        aliases: [turtle]
+      nt:
+        description: N-Triples, one statement per line.
+        aliases: [ntriples]
+  OwlMetadataProfile:
+    description: The annotation property for descriptions in OWL.
+    permissible_values:
+      rdfs:
+        description: '`rdfs:comment`, shown by most OWL tools.'
+      linkml:
+        description: '`skos:definition`, as in the LinkML metamodel and `gen-owl`.'
+  ScalaErrorHandling:
+    description: How the generated Scala methods report the `errors` of a function.
+    permissible_values:
+      annotation:
+        description: >-
+          Each error class gets an exception class, and the method is annotated with `@throws`
+          for each of them.
+      either:
+        description: >-
+          The method returns `Either[E1 | E2, R]`, with the error classes themselves on the left.
+          No exception classes are generated. A function with no `errors` returns `R` as it is.
+  TypeScriptErrorHandling:
+    description: How the generated TypeScript methods report the `errors` of a function.
+    permissible_values:
+      exception:
+        description: >-
+          The method returns the value, and its doc comment gets a `@throws` tag for each error
+          class.
+        aliases: [throw]
+      result:
+        description: >-
+          The method returns `Result<R, Failure<...> | ...>`: the value or one of the errors. A
+          function with no `errors` returns `R` as it is.
+  OwlPermissibleValueKind:
+    description: The kind of OWL entity for the permissible values of an enum.
+    permissible_values:
+      individual:
+        description: Named individuals of the enum's class.
+      class:
+        description: Subclasses of the enum's class, as in `gen-owl`.
+
+classes:
+  MetadataLanguageOptions:
+    mixin: true
+    description: Options of the generators that write titles and descriptions.
+    slots:
+      - metadata_language
+  PruningOptions:
+    mixin: true
+    description: Options of the generators that can leave out unused parts of the schema.
+    slots:
+      - pruning_mode
+      - tree_root
+    slot_usage:
+      tree_root:
+        description: >-
+          The class to use as the tree root, instead of the class with `tree_root: true` in the
+          schema. Only for the `tree_root` pruning mode.
+  RdfOptions:
+    mixin: true
+    description: Options of the generators that write RDF.
+    attributes:
+      format:
+        range: RdfFormat
+        required: true
+        ifabsent: RdfFormat(ttl)
+        description: The RDF serialization of the output.
+
+  JsonSchemaGeneratorOptions:
+    description: Options of the JSON Schema generator.
+    mixins: [MetadataLanguageOptions]
+    slots:
+      - open
+      - tree_root
+      - indentation_step
+      - include_null
+    slot_usage:
+      tree_root:
+        description: >-
+          The class at the root of the JSON Schema, instead of the class with `tree_root: true`
+          in the schema.
+      include_null:
+        description: >-
+          Whether optional values and compact dictionary entries with nothing beyond the key may
+          be null.
+    attributes:
+      tree_root_inline_type:
+        range: string
+        description: >-
+          How the tree root class appears at the root of the JSON Schema, instead of its
+          `tree_root_as` extension. One of `plain`, `optional`, `list`, `compact_dict` or
+          `simple_dict`.
+
+  ShaclGeneratorOptions:
+    description: Options of the SHACL generator.
+    mixins: [RdfOptions]
+    slots:
+      - open
+      - only_classes_from_root_schema
+    slot_usage:
+      open:
+        description: >-
+          Whether every shape is open, allowing properties beyond the ones in the schema. Shapes
+          of classes whose `extra_slots` allows them are open anyway.
+
+  RdfsGeneratorOptions:
+    description: Options of the RDFS generator.
+    mixins: [RdfOptions]
+    slots:
+      - only_classes_from_root_schema
+
+  OwlGeneratorOptions:
+    description: Options of the OWL generator.
+    mixins: [RdfOptions]
+    attributes:
+      only_root_schema:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether to describe only the root schema, with an `owl:imports` for each of its
+          imports. Without it, the output includes the imported schemas, like `gen-owl
+          --mergeimports`.
+      metadata_profile:
+        range: OwlMetadataProfile
+        required: true
+        ifabsent: OwlMetadataProfile(rdfs)
+        description: The annotation property for descriptions.
+      permissible_values:
+        range: OwlPermissibleValueKind
+        required: true
+        ifabsent: OwlPermissibleValueKind(individual)
+        description: The kind of OWL entity for the permissible values of an enum.
+
+  LinkMlGeneratorOptions:
+    description: Options of the generator of derived LinkML schemas.
+    mixins: [PruningOptions]
+    slots:
+      - full_uris
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+    attributes:
+      format:
+        range: JsonOutputFormat
+        required: true
+        ifabsent: JsonOutputFormat(yaml)
+        description: The serialization of the output.
+      skip_class_derivation:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: Whether to copy the classes as they are, instead of deriving them.
+
+  FrictionlessGeneratorOptions:
+    description: Options of the Frictionless Data Package generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: Which classes become tables.
+    attributes:
+      skip_classes_without_identifier:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether to skip the classes with no identifier slot. The table of such a class has no
+          primary key, and so no references from other tables.
+
+  GraphQlGeneratorOptions:
+    description: Options of the GraphQL generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+
+  TypeScriptGeneratorOptions:
+    description: Options of the TypeScript generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slots:
+      - include_null
+      - open
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: >-
+          The classes and enums in the output. A designated union always comes with its
+          members.
+      include_null:
+        description: >-
+          Whether optional values and compact dictionary entries with nothing beyond the key may
+          be null, as in the JSON Schema generator.
+      open:
+        description: >-
+          Whether every interface allows properties beyond the ones in the schema, as
+          `additionalProperties` in the JSON Schema generator. Interfaces of classes whose
+          `extra_slots` allows them allow them anyway.
+    attributes:
+      error_handling:
+        range: TypeScriptErrorHandling
+        required: true
+        ifabsent: TypeScriptErrorHandling(exception)
+        description: How the functions of the schema report their `errors`.
+
+  PydanticGeneratorOptions:
+    description: Options of the pydantic generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slots:
+      - include_null
+      - open
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: >-
+          The classes and enums in the output. Each class always comes with its ancestors, and a
+          designated union with its members.
+      include_null:
+        description: >-
+          Whether dumps keep null values. Without it, dumps leave out every field with no
+          value.
+      open:
+        description: >-
+          Whether the classes accept and keep properties beyond the ones in the schema.
+
+  ErDiagramGeneratorOptions:
+    description: Options of the Mermaid ER diagram generator.
+    mixins: [PruningOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+    attributes:
+      optional_marker:
+        range: boolean
+        required: true
+        ifabsent: 'true'
+        description: >-
+          Whether to mark optional attributes with a `?` after their type. Mermaid supports this
+          from version 11.16 and rejects the whole diagram in older versions.
+
+  DocsGeneratorOptions:
+    description: Options of the Markdown documentation generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+    attributes:
+      single_file:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether to write all pages as sections of one document, `docs.md`, instead of one file
+          for each page.
+
+  OssieGeneratorOptions:
+    description: Options of the Apache Ossie generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: Which elements become concepts.
+    attributes:
+      format:
+        range: JsonOutputFormat
+        required: true
+        ifabsent: JsonOutputFormat(yaml)
+        description: The serialization of the output.
+
+  ScalaGeneratorOptions:
+    description: Options of the Scala generator.
+    mixins: [MetadataLanguageOptions]
+    attributes:
+      package:
+        range: string
+        required: true
+        ifabsent: string(eu.neverblink.linkml.metamodel)
+        description: The package of the generated classes.
+      generate_emit_prefixes:
+        range: boolean
+        required: true
+        ifabsent: 'true'
+        description: Whether to generate a `Prefixes` object with the schema's `emit_prefixes`.
+      skip_leaf_interfaces:
+        range: boolean
+        required: true
+        ifabsent: 'true'
+        description: >-
+          Whether a concrete class that no other class extends with `is_a` or `mixins` becomes
+          one case class, instead of an interface and an `...Impl` case class. Turn it off when
+          other code has to extend the generated classes.
+      error_handling:
+        range: ScalaErrorHandling
+        required: true
+        ifabsent: ScalaErrorHandling(annotation)
+        description: How the functions of the schema report their `errors`.
+
+  StatsGeneratorOptions:
+    description: Options of the schema statistics generator.
+    mixins: [PruningOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+        description: The elements in scope for the counts.
+
+  TranslationGeneratorOptions:
+    description: Options of the translation dictionary generator.
+    slots:
+      - indentation_step
+    attributes:
+      target:
+        range: string
+        required: true
+        ifabsent: string(base)
+        description: >-
+          The framework of the names in the dictionaries. One of `base`, `uri`,
+          `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`,
+          `pydantic` or `docs`.
+      derived_attributes:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether `classAttributes` also lists inherited slots, mixin slots and the slots in the
+          class's `slots` list. Without it, `classAttributes` lists only the class's own
+          `attributes`.

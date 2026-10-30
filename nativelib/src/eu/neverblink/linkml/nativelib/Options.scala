@@ -2,25 +2,13 @@ package eu.neverblink.linkml.nativelib
 
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
-import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
-import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
-import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
-import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
-import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
-import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
+import eu.neverblink.linkml.generator.options.*
+import eu.neverblink.linkml.generator.ossie.OssieImporter
+import eu.neverblink.linkml.generator.owl.OwlImporter
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
-import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
-import eu.neverblink.linkml.generator.scala.{ErrorHandling, ScalaGenerator}
-import eu.neverblink.linkml.generator.shacl.ShaclGenerator
-import eu.neverblink.linkml.generator.stats.StatsGenerator
-import eu.neverblink.linkml.generator.docs.DocsGenerator
-import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
-import eu.neverblink.linkml.generator.translation.TranslationGenerator
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, PruningMode}
 import eu.neverblink.linkml.schemaview.MapImporter
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
+import org.virtuslab.yaml.{Node, parseYaml}
 
 import scala.util.control.NonFatal
 
@@ -31,159 +19,118 @@ private final case class BadRequest(reason: String) extends RuntimeException(rea
 
 /** Reads the options JSON of the C API into the generators' own option types.
   *
-  * A null or empty string means "all defaults".
+  * The options of the generators follow `model/generator-options.yaml`, so they are read with the
+  * same codec as every other LinkML model. A null or empty string means "all defaults".
   */
 private object Options {
 
-  private given pruningModeCodec: JsonValueCodec[PruningMode] = new JsonValueCodec[PruningMode] {
-    override def decodeValue(in: JsonReader, default: PruningMode): PruningMode =
-      if in.isNextToken('{') then {
-        val mode =
-          if in.isCharBufEqualsTo(in.readKeyAsCharBuf(), "treeRoot") then
-            PruningMode.treeRoot(Some(in.readString(null)))
-          else in.decodeError("the only pruning mode taking a value is 'treeRoot'")
-        if !in.isNextToken('}') then in.decodeError("expected a single-field object")
-        mode
-      } else {
-        in.rollbackToken()
-        val value = in.readString(null)
-        PruningMode.parse(value).getOrElse(in.decodeError(PruningMode.unknownMode(value)))
+  /** Parse an options JSON, or return [[defaults]] when there is nothing to parse. */
+  private def model[T](json: String, defaults: T)(using codec: LinkmlYamlCodec[T]): T =
+    if (json eq null) || json.isEmpty then defaults
+    else
+      try
+        parseYaml(json) match {
+          case Right(node) => codec.decode(node)
+          case Left(error) => throw BadRequest(s"malformed options: ${error.msg}")
+        }
+      catch {
+        case e: BadRequest => throw e
+        case ex if NonFatal(ex) => throw BadRequest(s"malformed options: ${ex.getMessage}")
       }
 
-    override def encodeValue(x: PruningMode, out: JsonWriter): Unit = x match {
-      case PruningMode.treeRoot(Some(root)) =>
-        out.writeObjectStart()
-        out.writeKey("treeRoot")
-        out.writeVal(root)
-        out.writeObjectEnd()
-      case PruningMode.treeRoot(None) => out.writeVal("treeRoot")
-      case PruningMode.schemaRoot => out.writeVal("schema")
-      case PruningMode.skip => out.writeVal("skip")
-    }
+  def jsonSchema(json: String): JsonSchemaGeneratorOptions =
+    model(json, JsonSchemaGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-    override def nullValue: PruningMode = null
-  }
+  def shacl(json: String): ShaclGeneratorOptions =
+    model(json, ShaclGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-  private given outputFormatCodec: JsonValueCodec[JsonOutputFormat] =
-    new JsonValueCodec[JsonOutputFormat] {
-      override def decodeValue(in: JsonReader, default: JsonOutputFormat): JsonOutputFormat = {
-        val value = in.readString(null)
-        JsonOutputFormat.parse(value).getOrElse(
-          in.decodeError(JsonOutputFormat.unknownFormat(value)),
-        )
-      }
+  def rdfs(json: String): RdfsGeneratorOptions =
+    model(json, RdfsGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-      override def encodeValue(x: JsonOutputFormat, out: JsonWriter): Unit =
-        out.writeVal(x.toString)
+  def linkml(json: String): LinkMlGeneratorOptions =
+    model(json, LinkMlGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-      override def nullValue: JsonOutputFormat = null
-    }
+  def frictionless(json: String): FrictionlessGeneratorOptions =
+    model(json, FrictionlessGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-  private given rdfFormatCodec: JsonValueCodec[RdfFormat] = new JsonValueCodec[RdfFormat] {
-    override def decodeValue(in: JsonReader, default: RdfFormat): RdfFormat =
-      in.readString(null) match {
-        case "nt" | "ntriples" => RdfFormat.nt
-        case "ttl" | "turtle" => RdfFormat.ttl
-        case other => in.decodeError(s"unknown RDF format '$other', expected nt or ttl")
-      }
+  def graphQl(json: String): GraphQlGeneratorOptions =
+    model(json, GraphQlGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-    override def encodeValue(x: RdfFormat, out: JsonWriter): Unit = out.writeVal(x.toString)
+  def typeScript(json: String): TypeScriptGeneratorOptions =
+    model(json, TypeScriptGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-    override def nullValue: RdfFormat = null
-  }
+  def pydantic(json: String): PydanticGeneratorOptions =
+    model(json, PydanticGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-  private given errorHandlingCodec: JsonValueCodec[ErrorHandling] =
-    new JsonValueCodec[ErrorHandling] {
-      override def decodeValue(in: JsonReader, default: ErrorHandling): ErrorHandling = {
-        val value = in.readString(null)
-        ErrorHandling.parse(value).getOrElse(in.decodeError(ErrorHandling.unknownMode(value)))
-      }
+  def erDiagram(json: String): ErDiagramGeneratorOptions =
+    model(json, ErDiagramGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-      override def encodeValue(x: ErrorHandling, out: JsonWriter): Unit = out.writeVal(x.toString)
+  def docs(json: String): DocsGeneratorOptions =
+    model(json, DocsGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-      override def nullValue: ErrorHandling = null
-    }
+  def ossie(json: String): OssieGeneratorOptions =
+    model(json, OssieGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-  /** A Scala enum as its value's name, such as `"rdfs"`. */
-  private def enumCodec[E](values: Array[E], what: String): JsonValueCodec[E] =
+  def stats(json: String): StatsGeneratorOptions =
+    model(json, StatsGeneratorOptions())(using LinkmlYamlCodec.derived)
+
+  def owl(json: String): OwlGeneratorOptions =
+    model(json, OwlGeneratorOptions())(using LinkmlYamlCodec.derived)
+
+  def scala(json: String): ScalaGeneratorOptions =
+    model(json, ScalaGeneratorOptions())(using LinkmlYamlCodec.derived)
+
+  def translation(json: String): TranslationGeneratorOptions =
+    model(json, TranslationGeneratorOptions())(using LinkmlYamlCodec.derived)
+
+  // The options below are not part of the model, and are read with jsoniter.
+
+  /** A generated enum as its name in the schema, such as `"yaml"`. */
+  private def enumCodec[E](codec: LinkmlYamlCodec[E]): JsonValueCodec[E] =
     new JsonValueCodec[E] {
       override def decodeValue(in: JsonReader, default: E): E = {
         val name = in.readString(null)
-        values.find(_.toString == name).getOrElse(
-          in.decodeError(s"unknown $what '$name', expected ${values.mkString(" or ")}"),
-        )
+        try codec.decode(Node.ScalarNode(name))
+        catch { case ex if NonFatal(ex) => in.decodeError(ex.getMessage) }
       }
 
-      override def encodeValue(x: E, out: JsonWriter): Unit = out.writeVal(x.toString)
+      override def encodeValue(x: E, out: JsonWriter): Unit =
+        codec.encode(x) match {
+          case Node.ScalarNode(value, _) => out.writeVal(value)
+          case other => out.encodeError(s"not a scalar: $other")
+        }
 
       override def nullValue: E = null.asInstanceOf[E]
     }
 
-  private given metadataProfileCodec: JsonValueCodec[OwlGenerator.MetadataProfile] =
-    enumCodec(OwlGenerator.MetadataProfile.values, "metadata profile")
+  private given JsonValueCodec[JsonOutputFormat] = enumCodec(LinkmlYamlCodec.derived)
 
-  private given permissibleValueKindCodec: JsonValueCodec[OwlGenerator.PermissibleValueKind] =
-    enumCodec(OwlGenerator.PermissibleValueKind.values, "permissible value kind")
+  private given JsonValueCodec[RdfFormat] = enumCodec(LinkmlYamlCodec.derived)
 
-  // Unknown fields are rejected rather than skipped.
-  private given fromOssieOptions: JsonValueCodec[OssieImporter.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+  // Unknown fields are rejected rather than skipped, and the names are in snake case like the
+  // generator options. The macro takes the config only as a literal.
+  private given fromOssieOptions: JsonValueCodec[OssieImporter.Options] = JsonCodecMaker.make(
+    CodecMakerConfig
+      .withSkipUnexpectedFields(false)
+      .withFieldNameMapper(JsonCodecMaker.enforce_snake_case),
+  )
 
-  private given jsonSchemaOptions: JsonValueCodec[JsonSchemaGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+  private given fromOwlOptions: JsonValueCodec[FromOwlOptions] = JsonCodecMaker.make(
+    CodecMakerConfig
+      .withSkipUnexpectedFields(false)
+      .withFieldNameMapper(JsonCodecMaker.enforce_snake_case),
+  )
 
-  private given shaclOptions: JsonValueCodec[ShaclGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given rdfsOptions: JsonValueCodec[RdfsGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given linkmlOptions: JsonValueCodec[LinkMlGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given frictionlessOptions: JsonValueCodec[FrictionlessGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given graphQlOptions: JsonValueCodec[GraphQlGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given typeScriptOptions: JsonValueCodec[TypeScriptGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given pydanticOptions: JsonValueCodec[PydanticGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given erDiagramOptions: JsonValueCodec[ErDiagramGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given docsOptions: JsonValueCodec[DocsGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given ossieOptions: JsonValueCodec[OssieGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given statsOptions: JsonValueCodec[StatsGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given owlOptions: JsonValueCodec[OwlGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given fromOwlOptions: JsonValueCodec[FromOwlOptions] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given scalaOptions: JsonValueCodec[ScalaGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given translationOptions: JsonValueCodec[TranslationGenerator.Options] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
-
-  private given loadOptions: JsonValueCodec[LoadOptions] =
-    JsonCodecMaker.make(CodecMakerConfig.withSkipUnexpectedFields(false))
+  private given loadOptions: JsonValueCodec[LoadOptions] = JsonCodecMaker.make(
+    CodecMakerConfig
+      .withSkipUnexpectedFields(false)
+      .withFieldNameMapper(JsonCodecMaker.enforce_snake_case),
+  )
 
   private val readable = ReaderConfig.withAppendHexDumpToParseException(false)
 
   /** Parse an options JSON, or return [[defaults]] when there is nothing to parse. */
-  def apply[T](json: String, defaults: T)(using JsonValueCodec[T]): T =
+  private def apply[T](json: String, defaults: T)(using JsonValueCodec[T]): T =
     if (json eq null) || json.isEmpty then defaults
     else
       try readFromString(json, readable)
@@ -191,37 +138,7 @@ private object Options {
         case ex if NonFatal(ex) => throw BadRequest(s"malformed options: ${ex.getMessage}")
       }
 
-  def jsonSchema(json: String): JsonSchemaGenerator.Options =
-    apply(json, JsonSchemaGenerator.Options())
-
-  def shacl(json: String): ShaclGenerator.Options = apply(json, ShaclGenerator.Options())
-
-  def rdfs(json: String): RdfsGenerator.Options = apply(json, RdfsGenerator.Options())
-
-  def linkml(json: String): LinkMlGenerator.Options = apply(json, LinkMlGenerator.Options())
-
-  def frictionless(json: String): FrictionlessGenerator.Options =
-    apply(json, FrictionlessGenerator.Options())
-
-  def graphQl(json: String): GraphQlGenerator.Options = apply(json, GraphQlGenerator.Options())
-
-  def typeScript(json: String): TypeScriptGenerator.Options =
-    apply(json, TypeScriptGenerator.Options())
-
-  def pydantic(json: String): PydanticGenerator.Options = apply(json, PydanticGenerator.Options())
-
-  def erDiagram(json: String): ErDiagramGenerator.Options =
-    apply(json, ErDiagramGenerator.Options())
-
-  def docs(json: String): DocsGenerator.Options = apply(json, DocsGenerator.Options())
-
-  def ossie(json: String): OssieGenerator.Options = apply(json, OssieGenerator.Options())
-
-  def stats(json: String): StatsGenerator.Options = apply(json, StatsGenerator.Options())
-
   def fromOssie(json: String): OssieImporter.Options = apply(json, OssieImporter.Options())
-
-  def owl(json: String): OwlGenerator.Options = apply(json, OwlGenerator.Options())
 
   /** The importer's options, and whether to list what could not be imported. The mapping config is
     * the YAML text of a config file, not a path to one.
@@ -242,11 +159,6 @@ private object Options {
     )
     (withImports, options.listNotImported)
   }
-
-  def scala(json: String): ScalaGenerator.Options = apply(json, ScalaGenerator.Options())
-
-  def translation(json: String): TranslationGenerator.Options =
-    apply(json, TranslationGenerator.Options())
 
   def load(json: String): LoadOptions = apply(json, LoadOptions())
 }
@@ -273,9 +185,9 @@ private final case class LoadOptions(
 private final case class FromOwlOptions(
     config: Option[String] = None,
     schemaId: Option[String] = None,
-    outputFormat: JsonOutputFormat = JsonOutputFormat.yaml,
+    outputFormat: JsonOutputFormat = JsonOutputFormat.Yaml,
     listNotImported: Boolean = false,
     imports: Option[Map[String, String]] = None,
-    inputFormat: RdfFormat = RdfFormat.ttl,
+    inputFormat: RdfFormat = RdfFormat.Ttl,
     fullUris: Boolean = false,
 )

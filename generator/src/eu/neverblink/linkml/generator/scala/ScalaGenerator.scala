@@ -1,6 +1,8 @@
 package eu.neverblink.linkml.generator.scala
 
+import eu.neverblink.linkml.generator.options.{ScalaErrorHandling, ScalaGeneratorOptions}
 import eu.neverblink.linkml.generator.util.*
+import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.*
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -15,14 +17,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
   /** Whether a class is generated as a single case class named after it, with no separate interface
     * and `...Impl` case class. Only concrete classes without children qualify, and only when
-    * [[Options.skipLeafInterfaces]] is on.
+    * [[ScalaGeneratorOptions.skipLeafInterfaces]] is on.
     */
-  private def isCaseClassOnly(classView: ClassView, options: Options): Boolean =
+  private def isCaseClassOnly(classView: ClassView, options: ScalaGeneratorOptions): Boolean =
     options.skipLeafInterfaces && classView.isConcrete &&
       !classView.hasDescendants
 
   /** Name of the Scala class that holds the instances of a concrete LinkML class. */
-  private def implName(classView: ClassView, options: Options): String = {
+  private def implName(classView: ClassView, options: ScalaGeneratorOptions): String = {
     val name = className(classView)
     if isCaseClassOnly(classView, options) then name else name.concat("Impl")
   }
@@ -34,7 +36,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * [[eu.neverblink.linkml.schemaview.ClassView.isTypeDesignatorUnion type designator union]].
     * Also None if the designator's range has no values that name classes, such as `integer`.
     */
-  private def typeDesignatorAnnotation(classView: ClassView, options: Options): Option[String] =
+  private def typeDesignatorAnnotation(
+      classView: ClassView,
+      options: ScalaGeneratorOptions,
+  ): Option[String] =
     if (classView.isTypeDesignatorUnion) {
       classView.typeDesignatorView.flatMapFast { designator =>
         val members = classView.typeDesignatorMembers
@@ -72,12 +77,12 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
   /** Generate Scala counterparts of all LinkML model elements: Classes, Types and Enums.
     * @param options
-    *   What to generate. See [[ScalaGenerator.Options]].
+    *   What to generate. See [[ScalaGeneratorOptions]].
     * @return
     *   Tuples of form (file name, file content) for all elements in the LinkML model
     */
   def generate(
-      options: ScalaGenerator.Options = ScalaGenerator.Options(),
+      options: ScalaGeneratorOptions = ScalaGeneratorOptions(),
   ): Iterable[(String, String)] = {
     val header = GeneratedHeader("//") + "\n"
     (generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
@@ -89,11 +94,11 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   /** Generate Scala counterparts of LinkML classes: case class implementations for instantiable
     * classes, abstract class interfaces for non-mixin classes, traits for mixins, with LinkML
     * inheritance modeled in abstract classes and traits. Instantiable classes without children
-    * become a single case class when [[Options.skipLeafInterfaces]] is on.
+    * become a single case class when [[ScalaGeneratorOptions.skipLeafInterfaces]] is on.
     * @return
     *   Tuples of form (file name, file content) for all LinkML classes
     */
-  private def generateClasses(options: Options): Iterable[(String, String)] = {
+  private def generateClasses(options: ScalaGeneratorOptions): Iterable[(String, String)] = {
     sv.classes.values.flatMap { classView =>
       // Let's treat linkml:Any as a built-in: no type aliasing
       if classView.isAny then None
@@ -140,7 +145,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * @return
     *   Tuples of form (file name, file content) for all LinkML classes
     */
-  private def generateEnums(options: Options): Iterable[(String, String)] =
+  private def generateEnums(options: ScalaGeneratorOptions): Iterable[(String, String)] =
     sv.enums.values.flatMap { ev =>
       val en = ev._enum
       if (!ScalaGenerator.definesEnum(ev)) None
@@ -171,12 +176,12 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   /** The functions of the schema, as one trait with a method for each. The trait is named after the
     * schema, such as `SearchFunctions`.
     */
-  private def generateFunctions(options: Options): Option[(String, String)] = {
+  private def generateFunctions(options: ScalaGeneratorOptions): Option[(String, String)] = {
     if (sv.functions.isEmpty) return None
     val functions = sv.functions.values.toVector.sortBy(fv => sv.elementOrder(fv.function))
     val name = functionsTraitName(sv)
     val errorClasses =
-      if (options.errorHandling != ErrorHandling.annotation) Vector.empty
+      if (options.errorHandling != ScalaErrorHandling.Annotation) Vector.empty
       else functions.flatMap(_.errors).distinctBy(_.name).sortBy(cv => sv.elementOrder(cv.cls))
     val exceptions = errorClasses.map { cv =>
       val doc = ScalaDoc(
@@ -208,7 +213,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     )
   }
 
-  private def generateFunction(fv: FunctionView, options: Options): String = {
+  private def generateFunction(fv: FunctionView, options: ScalaGeneratorOptions): String = {
     val parameters = fv.parameters.foldFast(Seq.empty[ScalaField]) { cv =>
       val collectionForm = CollectionForm.of(cv)
       cv.sortedAttributeViews.map(av => makeScalaField(av, collectionForm, cv, options))
@@ -224,14 +229,14 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case ev: EnumView => if (ScalaGenerator.definesEnum(ev)) enumName(ev) else "String"
       case _ => "LinkmlAny" // should not happen
     }
-    val onEither = options.errorHandling == ErrorHandling.either && fv.errors.nonEmpty
+    val onEither = options.errorHandling == ScalaErrorHandling.Either && fv.errors.nonEmpty
     val returnType =
       if (!onEither) valueReturned
       else s"Either[${fv.errors.map(valueType).mkString(" | ")}, $valueReturned]"
     val doc = ScalaDoc(fv.function, fv.definingSchema.id, options)
       .withParams(parameters.map(field => (field.name, field.doc.main)))
     val throws =
-      if (options.errorHandling != ErrorHandling.annotation) ""
+      if (options.errorHandling != ScalaErrorHandling.Annotation) ""
       else fv.errors.map(cv => s"  @throws[${exceptionName(cv)}]\n").mkString
     // One argument per line
     val argumentList =
@@ -276,7 +281,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
   /** Generate type aliases for schema type definitions. Skips aliases for types defined in
     * linkml:types and points to the runtime classes directly.
     */
-  private def generateTypeDefinitions(options: Options): Iterable[(String, String)] = {
+  private def generateTypeDefinitions(
+      options: ScalaGeneratorOptions,
+  ): Iterable[(String, String)] = {
     sv.types.values.collect {
       case tv if !tv.isPrimitive =>
         val name = typeName(tv)
@@ -345,7 +352,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def baseRange(
       attribute: AttributeView,
-      options: Options,
+      options: ScalaGeneratorOptions,
   ): (scalaType: String, baseDefault: Option[String]) = {
     attribute match {
       // Redirect classes with uri == linkml:Any to the runtime class, as by spec it's not a builtin class:
@@ -368,14 +375,21 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         (s"Reference[$name]", None)
       case TypeAttributeView(slotView, _, typeView) =>
         val scalaType = if typeView.isPrimitive then typeToRuntime(typeView) else typeName(typeView)
-        val default = slotView.slot.ifabsent.filter(_ => scalaType == "Boolean").mapFast {
-          _.trim.toLowerCase match {
-            case "true" => "true"
-            case "false" => "false"
-            case other =>
-              throw IllegalArgumentException(
-                s"Unsupported ifabsent for boolean slot ${slotView.name}: $other",
-              )
+        val default = slotView.slot.ifabsent.flatMapFast { ifAbsent =>
+          (scalaType, ifAbsent.trim) match {
+            case ("Boolean", value) =>
+              value.toLowerCase match {
+                case "true" => Some("true")
+                case "false" => Some("false")
+                case other =>
+                  throw IllegalArgumentException(
+                    s"Unsupported ifabsent for boolean slot ${slotView.name}: $other",
+                  )
+              }
+            case ("String", ScalaGenerator.stringConstructor(value)) =>
+              Some(scalaStringLiteral(value.stripPrefix("\"").stripSuffix("\"")))
+            case ("Int", ScalaGenerator.intConstructor(value)) => Some(value)
+            case _ => None
           }
         }
         (scalaType, default)
@@ -398,7 +412,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * @return
     *   The inferred [[TypedDefault]]
     */
-  private def makeTypedDefault(attribute: AttributeView, options: Options): TypedDefault = {
+  private def makeTypedDefault(
+      attribute: AttributeView,
+      options: ScalaGeneratorOptions,
+  ): TypedDefault = {
     val slot = attribute.slotView
     val (scalaType, defaultValue) = baseRange(attribute, options)
     // Defaults coming from 'ifabsent' are meaningful and must survive serialization, unlike the
@@ -543,7 +560,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * value can be read. Optional booleans are the exception: they are emitted as a plain `Boolean`
     * defaulting to `false`. Mirrors [[makeTypedDefault]].
     */
-  private def isOptionField(attribute: AttributeView, options: Options): Boolean = {
+  private def isOptionField(attribute: AttributeView, options: ScalaGeneratorOptions): Boolean = {
     val slot = attribute.slotView
     InlineType(slot) == InlineType.optional &&
     !isPlainBoolean(slot, baseRange(attribute, options).scalaType)
@@ -565,7 +582,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * @throws RuntimeException
     *   if an in-scope slot's expression fails to parse, or references an out-of-scope slot
     */
-  private def makeInferredFields(classView: ClassView, options: Options): Seq[InferredField] =
+  private def makeInferredFields(
+      classView: ClassView,
+      options: ScalaGeneratorOptions,
+  ): Seq[InferredField] =
     classView.sortedAttributeViews
       .filter(isSingleValuedString)
       .flatMap(attribute => attribute.equalsExpression.mapFast(attribute -> _))
@@ -596,7 +616,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       classView: ClassView,
       target: AttributeView,
       expression: StringInterpolationExpression,
-      options: Options,
+      options: ScalaGeneratorOptions,
   ): String = {
     import StringInterpolationExpression.{Literal, Substitution}
     if expression.elements.isEmpty then "\"\""
@@ -618,7 +638,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     * links along the way are unwrapped with `inferenceInput`, which fails at runtime if the value
     * is absent. Nested `equals_expression`s are not applied – the value is read as it is.
     */
-  private def renderPath(path: Seq[AttributeView], options: Options): String = {
+  private def renderPath(path: Seq[AttributeView], options: ScalaGeneratorOptions): String = {
     val access = path.foldLeft(("", "")) { case ((expression, prefix), attribute) =>
       val name = attribute.slotView.slot.name
       val qualified = if prefix.isEmpty then name else s"$prefix.$name"
@@ -657,7 +677,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       attribute: AttributeView,
       collectionForm: CollectionForm,
       owner: ClassView,
-      options: Options,
+      options: ScalaGeneratorOptions,
   ): ScalaField = {
     val view = attribute.slotView
     val slot = view.slot
@@ -698,29 +718,11 @@ object ScalaGenerator {
     */
   def definesEnum(ev: EnumView): Boolean = ev._enum.permissibleValues.nonEmpty
 
-  /** Options for [[ScalaGenerator]].
-    *
-    * @param package
-    *   Scala package to generate the classes in.
-    * @param generateEmitPrefixes
-    *   Whether to generate a `Prefixes` object holding the model's `emit_prefixes`.
-    * @param metadataLanguage
-    *   Which language to use for metadata fields (description etc.) in ScalaDocs.
-    * @param skipLeafInterfaces
-    *   Whether to skip the separate interface for a concrete class that no other class extends
-    *   (with `is_a` or `mixins`), and generate it as a single case class named after it instead of
-    *   an interface plus a `...Impl` case class. Turn it off if code outside of the generated
-    *   sources has to extend the generated classes.
-    * @param errorHandling
-    *   How the functions of the schema report their `errors`. See [[ErrorHandling]].
-    */
-  final case class Options(
-      `package`: String = "eu.neverblink.linkml.metamodel",
-      generateEmitPrefixes: Boolean = true,
-      metadataLanguage: String = "en",
-      skipLeafInterfaces: Boolean = true,
-      errorHandling: ErrorHandling = ErrorHandling.annotation,
-  ) extends HasMetadataLanguage
+  /** `ifabsent: string(en)`, with or without quotes around the value. */
+  private val stringConstructor = """^string\((.*)\)$""".r
+
+  /** `ifabsent: int(2)`. */
+  private val intConstructor = """^int\((-?\d+)\)$""".r
 
   /** Contains all information necessary for generating a Scala class/trait file analogous to a
     * LinkML [[ClassDefinition]]
@@ -1036,9 +1038,9 @@ object ScalaGenerator {
     def apply(
         metadata: CommonMetadata,
         fromSchema: Uri,
-        options: ScalaGenerator.Options,
+        options: ScalaGeneratorOptions,
     ): ScalaDoc = {
-      given ScalaGenerator.Options = options
+      given ScalaGeneratorOptions = options
       new ScalaDoc(
         metadata.description.localized
           .mapFast(_.capitalize)

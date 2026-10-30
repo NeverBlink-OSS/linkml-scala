@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.frictionless
 
+import eu.neverblink.linkml.generator.options.FrictionlessGeneratorOptions
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -13,7 +14,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
   private def rootTable(sv: SchemaView, treeRoot: Option[String] = None): TableDescriptor = {
     val root = sv.treeRootWithOverride(treeRoot).get
       .getOrElse(fail("the model has no tree root"))
-    FrictionlessGenerator(using sv).tableSchema(root)(using FrictionlessGenerator.Options())
+    FrictionlessGenerator(using sv).tableSchema(root)(using FrictionlessGeneratorOptions())
   }
 
   private def load(yaml: String): SchemaView =
@@ -333,7 +334,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
         |""".stripMargin
 
     def pkg(
-        options: FrictionlessGenerator.Options = FrictionlessGenerator.Options(),
+        options: FrictionlessGeneratorOptions = FrictionlessGeneratorOptions(),
     ): DataPackageDescriptor =
       FrictionlessGenerator(using load(schema)).generate(options)
 
@@ -389,7 +390,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
       )
       def pkgIn(language: String): DataPackageDescriptor =
         FrictionlessGenerator(using multilingual)
-          .generate(FrictionlessGenerator.Options(metadataLanguage = language))
+          .generate(FrictionlessGeneratorOptions(metadataLanguage = language))
 
       val pl = pkgIn("pl")
       pl.title shouldBe Some("Tytuł")
@@ -432,7 +433,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
     "drop classes without an identifier on request" in {
       // Note has no identifier; Person and Address both do.
       pkg().resources.map(_.name) should contain("note")
-      val skipped = pkg(FrictionlessGenerator.Options(skipClassesWithoutIdentifier = true))
+      val skipped = pkg(FrictionlessGeneratorOptions(skipClassesWithoutIdentifier = true))
       skipped.resources.map(_.name) shouldBe Seq("address", "person")
     }
 
@@ -450,7 +451,7 @@ class FrictionlessGeneratorSpec extends AnyWordSpec, Matchers {
           |      x:
           |""".stripMargin
       FrictionlessGenerator(using load(rootless))
-        .generate(FrictionlessGenerator.Options(skipClassesWithoutIdentifier = true))
+        .generate(FrictionlessGeneratorOptions(skipClassesWithoutIdentifier = true))
         .resources.map(_.name) shouldBe Seq("root")
     }
 

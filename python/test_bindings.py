@@ -500,7 +500,7 @@ class GeneratorTest(unittest.TestCase):
     def test_linkml(self):
         # Deriving pushes inherited and referenced slots down into each class' attributes.
         self.assertIn("attributes:", self.schema.linkml())
-        self.assertIn('"attributes"', self.schema.linkml(output_format="json"))
+        self.assertIn('"attributes"', self.schema.linkml(format="json"))
 
     def test_linkml_pruning_drops_unreachable_classes(self):
         unreachable = schema(
@@ -520,7 +520,7 @@ class GeneratorTest(unittest.TestCase):
         )
         with linkml_scala.load_string(unreachable) as loaded:
             self.assertIn("Orphan", loaded.linkml(pruning_mode="skip"))
-            self.assertNotIn("Orphan", loaded.linkml(pruning_mode="treeRoot"))
+            self.assertNotIn("Orphan", loaded.linkml(pruning_mode="tree_root"))
 
     def test_frictionless(self):
         files = self.schema.frictionless()
@@ -578,7 +578,7 @@ class GeneratorTest(unittest.TestCase):
         self.assertEqual(2, stats["elements"]["classes"]["count"])
         self.assertEqual({"direct": 1, "transitive": 1}, stats["imports"])
         self.assertIn("", stats["languages"])
-        self.assertEqual("tree_root", self.schema.stats(pruning_mode="treeRoot")["pruning_mode"])
+        self.assertEqual("tree_root", self.schema.stats(pruning_mode="tree_root")["pruning_mode"])
 
     def test_ossie(self):
         generated = self.schema.ossie()
@@ -587,13 +587,13 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn("type: EntityType", generated)
         # YAML by default, and the version the Ossie ontology spec pins.
         self.assertIn("version: 0.2.0.dev0", generated)
-        as_json = json.loads(self.schema.ossie(output_format="json"))
+        as_json = json.loads(self.schema.ossie(format="json"))
         self.assertEqual("0.2.0.dev0", as_json["version"])
         self.assertIn("Person", [c["concept"] for c in as_json["ontology"]])
 
     def test_ossie_unknown_output_format_is_rejected(self):
         with self.assertRaises(linkml_scala.LinkMlError) as raised:
-            self.schema.ossie(output_format="toml")
+            self.schema.ossie(format="toml")
         self.assertIn("toml", str(raised.exception))
 
     def test_scala(self):

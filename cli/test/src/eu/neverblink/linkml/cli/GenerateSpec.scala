@@ -146,7 +146,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
       "reject an unknown one, naming the valid modes" in {
         val (out, err, code) = graphQl("--pruning-mode", "bogus")
         err should include("Malformed pruning mode: bogus")
-        err should include("treeRoot, schema, skip")
+        err should include("tree_root, schema, skip")
         out should not include "type Root" // nothing was generated
         code shouldBe 1
       }

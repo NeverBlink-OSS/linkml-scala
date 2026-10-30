@@ -1,11 +1,13 @@
 package eu.neverblink.linkml.generator.docs
 
+import eu.neverblink.linkml.generator.options.{DocsGeneratorOptions, PydanticGeneratorOptions}
 import eu.neverblink.linkml.generator.CharDocumentGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlRenamer
 import eu.neverblink.linkml.generator.pydantic.{PydanticGenerator, PydanticRenamer}
 import eu.neverblink.linkml.generator.scala.{ScalaGenerator, ScalaRenamer}
 import eu.neverblink.linkml.generator.typescript.TypeScriptRenamer
-import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode, Renamer}
+import eu.neverblink.linkml.generator.util.{GeneratedHeader, Renamer}
+import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.metamodel.{
   AnonymousEnumExpression,
   AnonymousSlotExpression,
@@ -17,7 +19,7 @@ import eu.neverblink.linkml.metamodel.{
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.LocalizedText.*
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, MetadataLanguage, PrefixMap, UriOrCurie}
+import eu.neverblink.linkml.runtime.{MetadataLanguage, PrefixMap, UriOrCurie}
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -39,11 +41,11 @@ import scala.collection.mutable
   * To add sections to the pages, such as diagrams, extend this class and override [[indexSections]]
   * or [[elementSections]].
   */
-class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGenerator.Options] {
+class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGeneratorOptions] {
   import DocsGenerator.*
   import DocsSite.Page
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: DocsGeneratorOptions = DocsGeneratorOptions()
 
   /** Write sections at the end of the index page. Does nothing here, and can be overridden to add
     * sections such as a diagram of the schema.
@@ -68,17 +70,19 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
   /** The documentation as `index.md` plus one file for each documented element, as pairs of file
     * path and content. Paths are relative to the output folder and use `/`. With
-    * [[DocsGenerator.Options.singleFile]], it is only `docs.md`, with what [[serialize]] gives.
+    * [[DocsGeneratorOptions.singleFile]], it is only `docs.md`, with what [[serialize]] gives.
     *
     * @param options
-    *   What to document. See [[DocsGenerator.Options]].
+    *   What to document. See [[DocsGeneratorOptions]].
     */
-  def generateFiles(options: Options = Options()): Seq[(path: String, content: String)] =
+  def generateFiles(
+      options: DocsGeneratorOptions = DocsGeneratorOptions(),
+  ): Seq[(path: String, content: String)] =
     if (options.singleFile) Seq((path = "docs.md", content = serialize(options)))
     else pageFiles(options)
 
-  private def pageFiles(options: Options): Seq[(path: String, content: String)] = {
-    val site = new DocsSite(options.pruningMode, singleFile = false)
+  private def pageFiles(options: DocsGeneratorOptions): Seq[(path: String, content: String)] = {
+    val site = new DocsSite(options.pruning, singleFile = false)
     val writer = new PageWriter(site, options)
     val files = Seq.newBuilder[(path: String, content: String)]
     files.addOne((path = "index.md", content = render(md => writer.index(md))))
@@ -99,10 +103,10 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
     * element.
     *
     * @param options
-    *   What to document. See [[DocsGenerator.Options]].
+    *   What to document. See [[DocsGeneratorOptions]].
     */
-  override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    val site = new DocsSite(options.pruningMode, singleFile = true)
+  override protected def writeChars(sink: CharSink, options: DocsGeneratorOptions): Unit = {
+    val site = new DocsSite(options.pruning, singleFile = true)
     val writer = new PageWriter(site, options)
     sink.append(GeneratedHeader.html)
     writer.index(new Markdown(sink, 0))
@@ -131,7 +135,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
   }
 
   /** Writes the pages of one [[DocsSite]]. */
-  private final class PageWriter(site: DocsSite, options: Options) {
+  private final class PageWriter(site: DocsSite, options: DocsGeneratorOptions) {
     private given MetadataLanguage = MetadataLanguage(options.metadataLanguage)
 
     private val treeRoot: Option[ClassView] = sv.treeRoot
@@ -738,7 +742,9 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       * type, which fields do not take. It prunes as the documentation does.
       */
     private lazy val pythonNames: Set[String] =
-      PydanticGenerator().moduleNames(PydanticGenerator.Options(pruningMode = options.pruningMode))
+      PydanticGenerator().moduleNames(
+        PydanticGeneratorOptions(pruningMode = options.pruningMode, treeRoot = options.treeRoot),
+      )
 
     /** List items for the metadata that every element can have. */
     private def metadataItems(md: Markdown, el: ElementView[?, ?]): Unit = {
@@ -898,23 +904,6 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 }
 
 object DocsGenerator {
-
-  /** Options for [[DocsGenerator]].
-    *
-    * @param pruningMode
-    *   What to document, schemaRoot by default (everything defined in the root schema, and what it
-    *   uses).
-    * @param metadataLanguage
-    *   Which language to use for titles and descriptions.
-    * @param singleFile
-    *   Whether to write all pages as sections of one document, `docs.md`, instead of a file for
-    *   each page.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.schemaRoot,
-      metadataLanguage: String = "en",
-      singleFile: Boolean = false,
-  ) extends HasMetadataLanguage
 
   /** A code generator whose names element pages show.
     *

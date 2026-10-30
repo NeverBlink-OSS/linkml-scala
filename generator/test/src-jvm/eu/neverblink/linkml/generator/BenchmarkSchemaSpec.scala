@@ -1,5 +1,13 @@
 package eu.neverblink.linkml.generator
 
+import eu.neverblink.linkml.generator.options.{
+  ErDiagramGeneratorOptions,
+  JsonOutputFormat,
+  LinkMlGeneratorOptions,
+  OssieGeneratorOptions,
+  PruningMode,
+  ScalaGeneratorOptions,
+}
 import com.networknt.schema.InputFormat
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
@@ -10,8 +18,6 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import io.circe.parser.parse as parseJson
@@ -140,7 +146,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assertLinkMl(
               name,
               LinkMlGenerator(using sv).serialize(
-                LinkMlGenerator.Options(outputFormat = JsonOutputFormat.yaml),
+                LinkMlGeneratorOptions(format = JsonOutputFormat.Yaml),
               ),
             )(assertParsesAsYaml)
           }
@@ -150,7 +156,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assertLinkMl(
               name,
               LinkMlGenerator(using sv).serialize(
-                LinkMlGenerator.Options(outputFormat = JsonOutputFormat.json),
+                LinkMlGeneratorOptions(format = JsonOutputFormat.Json),
               ),
             )(assertParsesAsJson(name, _))
           }
@@ -164,7 +170,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assume(!skip.contains((name, "ossie-yaml")), skip.getOrElse((name, "ossie-yaml"), ""))
             assertIsOssieOntology(
               OssieGenerator(using sv).serialize(
-                OssieGenerator.Options(outputFormat = JsonOutputFormat.yaml),
+                OssieGeneratorOptions(format = JsonOutputFormat.Yaml),
               ),
               InputFormat.YAML,
             )
@@ -174,7 +180,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
             assume(!skip.contains((name, "ossie-json")), skip.getOrElse((name, "ossie-json"), ""))
             assertIsOssieOntology(
               OssieGenerator(using sv).serialize(
-                OssieGenerator.Options(outputFormat = JsonOutputFormat.json),
+                OssieGeneratorOptions(format = JsonOutputFormat.Json),
               ),
               InputFormat.JSON,
             )
@@ -183,7 +189,9 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "ER diagram output is a well-formed Mermaid document" in {
             assume(!skip.contains((name, "er-diagram")), skip.getOrElse((name, "er-diagram"), ""))
             val diagram =
-              ErDiagramGenerator(using sv).serialize(ErDiagramGenerator.Options(PruningMode.skip))
+              ErDiagramGenerator(using sv).serialize(
+                ErDiagramGeneratorOptions(pruningMode = PruningMode.Skip),
+              )
             diagram should include("erDiagram")
             withClue("output has no entities: ") {
               diagram.linesIterator.count(_.startsWith("  ")) should be > 0
@@ -193,7 +201,7 @@ class BenchmarkSchemaSpec extends AnyWordSpec, Matchers {
           "Scala output is non-empty" in {
             assume(!skip.contains((name, "scala")), skip.getOrElse((name, "scala"), ""))
             val files = ScalaGenerator(using sv).generate(
-              ScalaGenerator.Options("eu.neverblink.linkml.generated"),
+              ScalaGeneratorOptions(`package` = "eu.neverblink.linkml.generated"),
             ).toSeq
             files should not be empty
             files.foreach { case (fileName, contents) =>

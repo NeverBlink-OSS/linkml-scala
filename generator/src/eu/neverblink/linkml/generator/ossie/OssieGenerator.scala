@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.ossie
 
+import eu.neverblink.linkml.generator.options.OssieGeneratorOptions
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.generator.ossie.expression.{
   Constraints,
   Expression,
@@ -9,15 +9,12 @@ import eu.neverblink.linkml.generator.ossie.expression.{
   Ref,
   Verbalization,
 }
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil, PruningMode}
+import eu.neverblink.linkml.generator.util.JsonUtil
+import eu.neverblink.linkml.generator.util.Pruning.pruning
+import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.metamodel.{Extensible, Prefixes, SlotDefinition}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{
-  HasMetadataLanguage,
-  PrefixMap,
-  SchemaConversionException,
-  UriOrCurie,
-}
+import eu.neverblink.linkml.runtime.{PrefixMap, SchemaConversionException, UriOrCurie}
 import eu.neverblink.linkml.schemaview.*
 import org.virtuslab.yaml.{Node, parseYaml}
 
@@ -32,18 +29,18 @@ import scala.collection.mutable
   * concepts and the relationships between them.
   */
 class OssieGenerator(using sv: SchemaView)
-    extends DocumentGenerator[OssieGenerator.Options],
+    extends DocumentGenerator[OssieGeneratorOptions],
       OssieRenamer {
 
   import OssieGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: OssieGeneratorOptions = OssieGeneratorOptions()
 
   /** Build the ontology document. Public because callers inspect and post-process it. */
-  def generate(options: Options = Options()): OssieOntology = {
-    given Options = options
+  def generate(options: OssieGeneratorOptions = OssieGeneratorOptions()): OssieOntology = {
+    given OssieGeneratorOptions = options
     // Ancestors are included: `extends` has to resolve to a concept that is actually declared.
-    val query = options.pruningMode.derivedQuery(inlinedOnly = false, includeClassAncestors = true)
+    val query = options.pruning.derivedQuery(inlinedOnly = false, includeClassAncestors = true)
 
     val classes = sv.sortedClasses.filter(cv => query.reachable(cv) && !cv.isAny)
     val enums = sv.enums.values.toVector
@@ -102,18 +99,21 @@ class OssieGenerator(using sv: SchemaView)
     obj.extensions.get("ai_context")
       .flatMap(ext => parseYaml(ext.extensionValue.toString).toOption)
 
-  override def serialize(options: Options = Options()): String =
-    JsonUtil.write(OssieOntology.codec.encode(generate(options)), options.outputFormat)
+  override def serialize(options: OssieGeneratorOptions = OssieGeneratorOptions()): String =
+    JsonUtil.write(OssieOntology.codec.encode(generate(options)), options.format)
 
-  override def writeTo(out: OutputStream, options: Options = Options()): Unit =
-    JsonUtil.write(OssieOntology.codec.encode(generate(options)), options.outputFormat, out)
+  override def writeTo(
+      out: OutputStream,
+      options: OssieGeneratorOptions = OssieGeneratorOptions(),
+  ): Unit =
+    JsonUtil.write(OssieOntology.codec.encode(generate(options)), options.format, out)
 
   /** A class, plus the relationships it declares rather than inherits. */
   private def classConcept(
       cv: ClassView,
       conceptOf: Map[String, String],
       declared: Map[String, Seq[Rel]],
-  )(using options: Options): Concept = {
+  )(using options: OssieGeneratorOptions): Concept = {
     val name = conceptOf(cv.name)
     val own = ownRelationships(cv, declared)
     Concept(
@@ -174,7 +174,7 @@ class OssieGenerator(using sv: SchemaView)
       cv: ClassView,
       conceptName: String,
       conceptOf: Map[String, String],
-  )(using options: Options): Seq[Rel] = {
+  )(using options: OssieGeneratorOptions): Seq[Rel] = {
     val singleIdentifier = singleIdentifierSlot(cv)
 
     cv.sortedAttributeViews.map { av =>
@@ -220,7 +220,9 @@ class OssieGenerator(using sv: SchemaView)
   }
 
   /** An enum becomes a value type over strings, constrained to its permissible values. */
-  private def enumConcept(ev: EnumView, name: String)(using options: Options): Concept = {
+  private def enumConcept(ev: EnumView, name: String)(using
+      options: OssieGeneratorOptions,
+  ): Concept = {
     val values = ev.derivedValues.map(v => permissibleValueName(ev, v.pv))
     Concept(
       concept = name,
@@ -235,7 +237,9 @@ class OssieGenerator(using sv: SchemaView)
   }
 
   /** A named type becomes a value type over the built-in for its base, keeping its constraints. */
-  private def typeConcept(tv: TypeView, name: String)(using options: Options): Concept =
+  private def typeConcept(tv: TypeView, name: String)(using
+      options: OssieGeneratorOptions,
+  ): Concept =
     Concept(
       concept = name,
       conceptType = ConceptType.ValueType,
@@ -340,21 +344,6 @@ object OssieGenerator {
 
   /** A relationship, plus the bits of its slot that the containing concept needs. */
   private final case class Rel(relationship: Relationship, required: Boolean, slotName: String)
-
-  /** Options for [[OssieGenerator]].
-    *
-    * @param pruningMode
-    *   Which elements become concepts.
-    * @param outputFormat
-    *   Output serialization format to use.
-    * @param metadataLanguage
-    *   Which language to use for metadata fields (description) in the generated ontology.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
-      outputFormat: JsonOutputFormat = yaml,
-      metadataLanguage: String = "en",
-  ) extends HasMetadataLanguage
 
   /** The Ossie built-in concept standing in for a LinkML type's base. */
   private def builtInFor(rt: RuntimeType): String = rt match {

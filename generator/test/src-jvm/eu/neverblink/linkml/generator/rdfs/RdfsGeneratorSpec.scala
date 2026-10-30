@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.rdfs
 
+import eu.neverblink.linkml.generator.options.RdfsGeneratorOptions
 import eu.neverblink.linkml.generator.owl.OwlImporter
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.schemaview.SchemaIssues
@@ -320,7 +321,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
       val turtle =
         RdfUtils.toTurtle(
           RdfsGenerator(using sv)
-            .generate(_, RdfsGenerator.Options(onlyClassesFromRootSchema = true)),
+            .generate(_, RdfsGeneratorOptions(onlyClassesFromRootSchema = true)),
         )
       turtle should include("linkml:Annotatable a rdfs:Class")
       turtle should include("linkml:Annotation a rdfs:Class")
@@ -672,7 +673,7 @@ class RdfsGeneratorSpec extends AnyWordSpec, Matchers {
     "use rdf:PlainLiteral as the range of langstring slots, which the OWL importer reads back" in {
       given SchemaView = ModelCatalogue.langString.model
       val sink = CollectingRdfSink()
-      RdfsGenerator().generate(sink, RdfsGenerator.Options())
+      RdfsGenerator().generate(sink, RdfsGeneratorOptions())
       val plainLiteral = Rdf.get("PlainLiteral")
       sink.triples.filter(_.pred == Rdfs.range).map(_.obj).toSet shouldBe Set(plainLiteral)
       val turtle = RdfUtils.toTurtle(RdfsGenerator().generate(_))

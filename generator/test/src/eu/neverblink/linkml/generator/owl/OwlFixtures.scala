@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
+import eu.neverblink.linkml.generator.options.{OwlGeneratorOptions, RdfFormat}
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, NTriplesParser, Triple}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 
@@ -26,19 +26,19 @@ trait OwlFixtures {
       ),
     )
 
-  def ontologyOf(body: String, options: OwlGenerator.Options = OwlGenerator.Options()): Ontology =
+  def ontologyOf(body: String, options: OwlGeneratorOptions = OwlGeneratorOptions()): Ontology =
     OwlGenerator(using schemaOf(body)).ontology(options)
 
-  def turtleOf(body: String, options: OwlGenerator.Options = OwlGenerator.Options()): String =
+  def turtleOf(body: String, options: OwlGeneratorOptions = OwlGeneratorOptions()): String =
     OwlGenerator(using schemaOf(body)).serialize(options)
 
   def triplesOf(
       sv: SchemaView,
-      options: OwlGenerator.Options = OwlGenerator.Options(),
+      options: OwlGeneratorOptions = OwlGeneratorOptions(),
   ): Seq[Triple] = {
     val sink = CollectingRdfSink()
     NTriplesParser.parse(
-      OwlGenerator(using sv).serialize(options.copy(format = RdfFormat.nt)),
+      OwlGenerator(using sv).serialize(options.copy(format = RdfFormat.Nt)),
       sink,
     )
     sink.triples

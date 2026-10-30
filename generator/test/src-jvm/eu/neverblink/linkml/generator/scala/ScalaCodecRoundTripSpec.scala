@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.scala
 
+import eu.neverblink.linkml.generator.options.ScalaGeneratorOptions
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -68,7 +69,8 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       )
     }
     val dir = os.temp.dir(prefix = "linkml-roundtrip-src")
-    val generated = ScalaGenerator(using entry.model).generate(ScalaGenerator.Options("generated"))
+    val generated =
+      ScalaGenerator(using entry.model).generate(ScalaGeneratorOptions(`package` = "generated"))
     // A tree root without children is generated as a single case class, with no `...Impl`.
     val rootName = ScalaRenamer.className(treeRoot)
     val rootImpl =

@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator
 
+import eu.neverblink.linkml.generator.options.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink, Utf8ByteSink}
 import eu.neverblink.linkml.runtime.FastUtils.foreachFast
@@ -8,20 +9,9 @@ import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
 
-object RdfGeneratorBase:
-  /** Serialization format for RDF documents. */
-  enum RdfFormat:
-    case nt
-    case ttl
-
-  trait RdfOptions {
-    def format: RdfFormat
-  }
-
 /** Base class for the generators that output RDF.
   */
-abstract class RdfGeneratorBase[O <: RdfGeneratorBase.RdfOptions] extends DocumentGenerator[O] {
-  import RdfGeneratorBase.*
+abstract class RdfGeneratorBase[O <: RdfOptions] extends DocumentGenerator[O] {
 
   /** Push the generated triples into `sink`. */
   def generate(sink: RdfSink, options: O = defaultOptions): Unit
@@ -41,8 +31,8 @@ abstract class RdfGeneratorBase[O <: RdfGeneratorBase.RdfOptions] extends Docume
 
   private def write(sink: CharSink, options: O): Unit = {
     val rdf = options.format match {
-      case RdfFormat.nt => NTriplesWriter(sink)
-      case RdfFormat.ttl => TurtleWriter(sink)
+      case RdfFormat.Nt => NTriplesWriter(sink)
+      case RdfFormat.Ttl => TurtleWriter(sink)
     }
     generate(rdf, options)
     rdf.finish()

@@ -15,7 +15,8 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.generator.options.JsonOutputFormat
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.rdf.RdfParseException
 import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
@@ -52,8 +53,11 @@ object LinkMlNativeApi {
     *   - 3: rebuilt with Scala Native. The isolate arguments were removed. `linkml_init_threads`
     *     replaces `graal_create_isolate`. `platform` in `linkml_build_info` is now `SCALA_NATIVE`.
     *     Added `linkml_from_ossie`.
+    *   - 5: the options of the generators follow `model/generator-options.yaml`, so their names are
+    *     in snake case, and a tree root override is a `tree_root` option of its own. The options of
+    *     loading, linting and the importers are in snake case too.
     */
-  final val abiVersion: Int = 4
+  final val abiVersion: Int = 5
 
   private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
 
@@ -173,7 +177,7 @@ object LinkMlNativeApi {
       Options.translation(optionsJson),
     )
 
-  /** An Apache Ossie ontology, as YAML or JSON depending on the `outputFormat` option. */
+  /** An Apache Ossie ontology, as YAML or JSON depending on the `format` option. */
   def ossie(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     OssieGenerator().writeTo(out, Options.ossie(optionsJson))
@@ -207,7 +211,7 @@ object LinkMlNativeApi {
     val importer = OwlImporter()
     val result =
       importer.importWithWarnings(ByteArrayInputStream(ontology.getBytes(UTF_8)), options)
-    if listNotImported && options.outputFormat == JsonOutputFormat.yaml then
+    if listNotImported && options.outputFormat == JsonOutputFormat.Yaml then
       result.warnings.foreach(w => out.write(s"# Not imported: $w\n".getBytes(UTF_8)))
     importer.writeSchema(result.schema, out, options.outputFormat, options.fullUris)
   }
@@ -239,7 +243,7 @@ object LinkMlNativeApi {
   /** Statistics about the schema, as a `SchemaStats` in JSON. */
   def stats(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
-    StatsGenerator().writeTo(out, Options.stats(optionsJson), JsonOutputFormat.json)
+    StatsGenerator().writeTo(out, Options.stats(optionsJson), JsonOutputFormat.Json)
   }
 
   /** Write a filename-to-content mapping as a JSON object, which is how the C ABI hands back the

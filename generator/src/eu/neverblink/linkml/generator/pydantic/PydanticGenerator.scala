@@ -1,10 +1,13 @@
 package eu.neverblink.linkml.generator.pydantic
 
+import eu.neverblink.linkml.generator.options.PydanticGeneratorOptions
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, PruningMode}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.Pruning.pruning
+import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny}
+import eu.neverblink.linkml.runtime.LinkmlAny
 import eu.neverblink.linkml.runtime.StringUtils.hexDigit
 import eu.neverblink.linkml.schemaview.*
 
@@ -17,11 +20,11 @@ import scala.util.control.NonFatal
   * pydantic 2.11 or later and Python 3.10 or later, and nothing else.
   */
 final class PydanticGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[PydanticGenerator.Options],
+    extends CharDocumentGenerator[PydanticGeneratorOptions],
       PydanticRenamer {
   import PydanticGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: PydanticGeneratorOptions = PydanticGeneratorOptions()
 
   /** Name of the synthetic union type standing for a class and its subclasses, if the class needs
     * one.
@@ -222,7 +225,7 @@ final class PydanticGenerator(using sv: SchemaView)
       attribute: AttributeView,
       owner: ClassView,
       ctx: Context,
-  )(using Options): Unit = {
+  )(using PydanticGeneratorOptions): Unit = {
     val slot = attribute.slotView.slot
     val key = slotName(attribute.slotView)
     val name = fieldNames(owner, ctx)(key)
@@ -309,7 +312,7 @@ final class PydanticGenerator(using sv: SchemaView)
       cls: ClassView,
       parents: Seq[ClassView],
       ctx: Context,
-  )(using Options): Unit = {
+  )(using PydanticGeneratorOptions): Unit = {
     sink.append("class ")
     sink.append(className(cls))
     sink.append('(')
@@ -369,7 +372,7 @@ final class PydanticGenerator(using sv: SchemaView)
       sink: CharSink,
       ev: EnumView,
       ctx: Context,
-  )(using Options): Unit = {
+  )(using PydanticGeneratorOptions): Unit = {
     ctx.imports.add("enum", "Enum")
     sink.append("class ")
     sink.append(enumName(ev))
@@ -399,7 +402,7 @@ final class PydanticGenerator(using sv: SchemaView)
   /** An exception class for a class that a function uses in its `errors`, so that an implementation
     * can raise it. The class itself is a model and cannot also be an exception.
     */
-  private def writeError(sink: CharSink, cls: ClassView, ctx: Context)(using Options): Unit = {
+  private def writeError(sink: CharSink, cls: ClassView, ctx: Context)(using PydanticGeneratorOptions): Unit = {
     sink.append("class ")
     sink.append(errorName(cls))
     sink.append("(Exception):\n")
@@ -412,7 +415,7 @@ final class PydanticGenerator(using sv: SchemaView)
   /** The functions of the schema, as one `Protocol` with a method for each.
     */
   private def writeFunctions(sink: CharSink, functions: Seq[FunctionView], ctx: Context)(using
-      Options,
+      PydanticGeneratorOptions,
   ): Unit = {
     ctx.imports.typing("Protocol")
     sink.append("class ")
@@ -426,7 +429,7 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   private def writeFunction(sink: CharSink, fv: FunctionView, ctx: Context)(using
-      Options,
+      PydanticGeneratorOptions,
   ): Unit = {
     val attributes = fv.parameters.foldFast(Seq.empty[AttributeView])(_.sortedAttributeViews)
     // A parameter without a default cannot follow one with a default, so only the optional
@@ -525,14 +528,14 @@ final class PydanticGenerator(using sv: SchemaView)
   }
 
   /** The classes, enums and document type that the module defines with [[options]]. */
-  private def definitions(options: Options): Definitions = {
+  private def definitions(options: PydanticGeneratorOptions): Definitions = {
     val query =
-      sv.withTypeDesignatorMembers(options.pruningMode.derivedQuery(true, true), true, true)
+      sv.withTypeDesignatorMembers(options.pruning.derivedQuery(true, true), true, true)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums = sv.enums.values.filter(ev => query.reachable(ev) && definesEnum(ev))
       .toVector.sortBy(ev => sv.elementOrder(ev._enum))
-    val treeRootOverride = options.pruningMode match {
-      case PruningMode.treeRoot(o) => o
+    val treeRootOverride = options.pruning match {
+      case Pruning.treeRoot(o) => o
       case _ => None
     }
     val root = sv.treeRootWithOverride(treeRootOverride).get
@@ -546,7 +549,7 @@ final class PydanticGenerator(using sv: SchemaView)
     * [[options]]. A field whose name is one of them gets `_` at the end, as in
     * [[PydanticRenamer.attribute]].
     */
-  def moduleNames(options: Options): Set[String] = namesOf(definitions(options))
+  def moduleNames(options: PydanticGeneratorOptions): Set[String] = namesOf(definitions(options))
 
   private def namesOf(defs: Definitions): Set[String] =
     (defs.classes.flatMap(c => className(c) +: unionName(c).toSeq) ++
@@ -554,8 +557,8 @@ final class PydanticGenerator(using sv: SchemaView)
       defs.functions.flatMap(_.errors).map(errorName) ++
       Option.when(defs.functions.nonEmpty)(functionsProtocolName(sv))).toSet
 
-  override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    given Options = options
+  override protected def writeChars(sink: CharSink, options: PydanticGeneratorOptions): Unit = {
+    given PydanticGeneratorOptions = options
     val defs = definitions(options)
     val classes = defs.classes
     val enums = defs.enums
@@ -715,27 +718,6 @@ object PydanticGenerator {
     */
   def definesEnum(ev: EnumView): Boolean = ev._enum.permissibleValues.nonEmpty
 
-  /** Options for [[PydanticGenerator]].
-    *
-    * @param pruningMode
-    *   Which classes and enums to generate. `skip` (the default) generates all of them. The
-    *   ancestors of the classes it keeps and the members of any designated union are always
-    *   generated with them.
-    * @param includeNull
-    *   Whether dumps include the null values that were loaded or set. If false, dumps skip every
-    *   field without a value or set to null. Default: false
-    * @param open
-    *   Whether classes should accept and keep additional properties. Default: false
-    * @param metadataLanguage
-    *   Which language to use for titles and descriptions in docstrings.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
-      includeNull: Boolean = false,
-      open: Boolean = false,
-      metadataLanguage: String = "en",
-  ) extends HasMetadataLanguage
-
   /** The classes, enums, document type (with its name) and functions that the module defines. */
   private final case class Definitions(
       classes: Seq[ClassView],
@@ -745,7 +727,7 @@ object PydanticGenerator {
   )
 
   /** Mutable state of one generator run. */
-  private final case class Context(options: Options, moduleNames: Set[String]) {
+  private final case class Context(options: PydanticGeneratorOptions, moduleNames: Set[String]) {
     val imports: Imports = Imports()
     val helpers: mutable.Set[Helper] = mutable.Set.empty
     val fieldNames: mutable.HashMap[String, Map[String, String]] = mutable.HashMap.empty

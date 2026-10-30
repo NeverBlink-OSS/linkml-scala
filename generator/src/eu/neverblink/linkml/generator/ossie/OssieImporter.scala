@@ -1,9 +1,8 @@
 package eu.neverblink.linkml.generator.ossie
 
+import eu.neverblink.linkml.generator.options.JsonOutputFormat
 import eu.neverblink.linkml.generator.SchemaImporter
 import eu.neverblink.linkml.generator.ossie.expression.*
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.{
   LinkmlAny,
@@ -63,7 +62,7 @@ object OssieImporter {
     */
   final case class Options(
       schemaId: Option[String] = None,
-      outputFormat: JsonOutputFormat = yaml,
+      outputFormat: JsonOutputFormat = JsonOutputFormat.Yaml,
       fullUris: Boolean = false,
   ) extends SchemaImporter.Options
 

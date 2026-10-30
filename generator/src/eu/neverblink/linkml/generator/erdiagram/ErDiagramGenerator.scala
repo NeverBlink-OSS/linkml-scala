@@ -1,8 +1,9 @@
 package eu.neverblink.linkml.generator.erdiagram
 
+import eu.neverblink.linkml.generator.options.ErDiagramGeneratorOptions
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.PruningMode.schemaRoot
-import eu.neverblink.linkml.generator.util.{GeneratedHeader, PruningMode}
+import eu.neverblink.linkml.generator.util.GeneratedHeader
+import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.rdf.io.{CharSink, StringSink}
 import eu.neverblink.linkml.schemaview.*
 
@@ -15,22 +16,22 @@ import eu.neverblink.linkml.schemaview.*
   * referenced) become relationship lines instead of rows.
   */
 final class ErDiagramGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[ErDiagramGenerator.Options],
+    extends CharDocumentGenerator[ErDiagramGeneratorOptions],
       ErDiagramRenamer {
 
-  override protected def defaultOptions: ErDiagramGenerator.Options =
-    ErDiagramGenerator.Options()
+  override protected def defaultOptions: ErDiagramGeneratorOptions =
+    ErDiagramGeneratorOptions()
 
   /** Generate the ER diagram model.
     *
     * @param options
-    *   What to generate. See [[ErDiagramGenerator.Options]].
+    *   What to generate. See [[ErDiagramGeneratorOptions]].
     */
   def generate(
-      options: ErDiagramGenerator.Options = ErDiagramGenerator.Options(),
+      options: ErDiagramGeneratorOptions = ErDiagramGeneratorOptions(),
   ): ErDiagram = {
-    import options.{optionalMarker, pruningMode}
-    val query = pruningMode.derivedQuery(false, true)
+    import options.optionalMarker
+    val query = options.pruning.derivedQuery(false, true)
 
     val classes = sv.sortedClasses
       .filter(cv => query.reachable(cv) && !cv.isAny) // Never plot linkml:Any
@@ -48,11 +49,11 @@ final class ErDiagramGenerator(using sv: SchemaView)
   /** Generate the ER diagram and write it as Mermaid.
     *
     * @param options
-    *   What to generate. See [[ErDiagramGenerator.Options]].
+    *   What to generate. See [[ErDiagramGeneratorOptions]].
     */
   override protected def writeChars(
       sink: CharSink,
-      options: ErDiagramGenerator.Options,
+      options: ErDiagramGeneratorOptions,
   ): Unit = {
     sink.append(GeneratedHeader("%%"))
     generate(options).writeTo(sink)
@@ -286,21 +287,3 @@ case class ErRelationship(
     body.append(label)
     body.append("\"")
   }
-
-object ErDiagramGenerator {
-
-  /** Options for [[ErDiagramGenerator]].
-    *
-    * @param pruningMode
-    *   How to prune the generated entities, schemaRoot by default (classes reachable from any
-    *   element defined in the root schema).
-    *
-    * @param optionalMarker
-    *   Whether to mark optional attributes with a trailing `?` on their type, which requires
-    *   Mermaid 11.16 or newer.
-    */
-  final case class Options(
-      pruningMode: PruningMode = schemaRoot,
-      optionalMarker: Boolean = true,
-  )
-}

@@ -104,11 +104,14 @@ object `package` extends Module {
       "__:LinkMlModelModule.regenerate",
       "__:LinkMlModelModule.jvm.fix",
       "__:LinkMlModelModule.jvm.reformat",
+      "generator.optionsgen.generate cli",
+      "cli.options.jvm.fix",
+      "cli.options.jvm.reformat",
       "agents.generate",
     ) ++ ohiGeneration)*)
 
     def regenerateBindings: Seq[String] = alias(
-      "nativelib.generateBindings",
+      "generator.optionsgen.generate bindings",
       "nativelib.native.fix",
       "nativelib.native.reformat",
     )

@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.generator.graphql
 
-import eu.neverblink.linkml.generator.util.PruningMode
-import eu.neverblink.linkml.generator.util.PruningMode.skip
+import eu.neverblink.linkml.generator.options.{GraphQlGeneratorOptions, PruningMode}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -242,7 +241,8 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
     "include unused linkml:types elements if requested" in {
       given SchemaView = ModelCatalogue.reference.model
 
-      val result = GraphQlGenerator().serialize(GraphQlGenerator.Options(skip))
+      val result =
+        GraphQlGenerator().serialize(GraphQlGeneratorOptions(pruningMode = PruningMode.Skip))
       Seq(
         "scalar Uri",
         "scalar Uriorcurie",
@@ -256,7 +256,7 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.pruning.model
 
       val result =
-        GraphQlGenerator().serialize(GraphQlGenerator.Options(PruningMode.treeRoot(None)))
+        GraphQlGenerator().serialize(GraphQlGeneratorOptions(pruningMode = PruningMode.TreeRoot))
       Seq(
         "type SomeClass",
         "interface SomeOtherClass",
@@ -278,7 +278,10 @@ class GraphQlGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result =
         GraphQlGenerator().serialize(
-          GraphQlGenerator.Options(PruningMode.treeRoot(Some("NotTreeRootClass"))),
+          GraphQlGeneratorOptions(
+            pruningMode = PruningMode.TreeRoot,
+            treeRoot = Some("NotTreeRootClass"),
+          ),
         )
       Seq(
         "type NotTreeRootClass",

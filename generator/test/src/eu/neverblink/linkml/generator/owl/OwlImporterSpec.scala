@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OwlGeneratorOptions, RdfFormat}
+import eu.neverblink.linkml.generator.util.JsonUtil
 
 import eu.neverblink.linkml.schemaview.{SchemaCodec, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
@@ -16,7 +16,7 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
 
   "round-tripping" should {
     "give the same ontology again (linkml -> owl -> linkml -> owl)" when {
-      for entry <- ModelCatalogue.all; format <- RdfFormat.values do
+      for entry <- ModelCatalogue.all; format <- Seq(RdfFormat.Ttl, RdfFormat.Nt) do
         s"model '${entry.name}' goes through $format" in {
           skipModels.get(entry.name).foreach(cancel(_))
           val first = OwlGenerator(using entry.model).ontology()
@@ -60,7 +60,7 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
     "read N-Triples with either parser" in {
       val nt = "<https://example.org/library/Book> " +
         "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n"
-      for format <- RdfFormat.values do
+      for format <- Seq(RdfFormat.Ttl, RdfFormat.Nt) do
         OwlImporter().importSchema(stream(nt), OwlImporter.Options(inputFormat = format))
           .classes.keySet shouldBe Set("Book")
     }
@@ -277,11 +277,11 @@ object OwlImporterSpec {
     )
 
   /** Generates OWL, imports it back and loads the schema. Also returns the import warnings. */
-  def reimport(sv: SchemaView, format: RdfFormat = RdfFormat.ttl): (SchemaView, Seq[String]) = {
-    val text = OwlGenerator(using sv).serialize(OwlGenerator.Options(format = format))
+  def reimport(sv: SchemaView, format: RdfFormat = RdfFormat.Ttl): (SchemaView, Seq[String]) = {
+    val text = OwlGenerator(using sv).serialize(OwlGeneratorOptions(format = format))
     val result =
       OwlImporter().importWithWarnings(stream(text), OwlImporter.Options(inputFormat = format))
-    val yaml = JsonUtil.write(SchemaCodec.encode(result.schema), JsonOutputFormat.yaml)
+    val yaml = JsonUtil.write(SchemaCodec.encode(result.schema), JsonOutputFormat.Yaml)
     val loaded = SchemaView.loadSchemaViewFromString(yaml) match {
       case Right(view) => view
       case Left(issues) => throw AssertionError(s"$issues\n$yaml")

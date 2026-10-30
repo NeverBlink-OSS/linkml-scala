@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.frictionless
 
+import eu.neverblink.linkml.generator.options.FrictionlessGeneratorOptions
 import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, writeToString}
 import eu.neverblink.linkml.tests.ModelCatalogue.InstanceInFormats
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
@@ -48,7 +49,7 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
             throw RuntimeException(s"model '${entry.name}' has no tree root"),
           )
           val json = writeToString(
-            generator.tableSchema(root)(using FrictionlessGenerator.Options()),
+            generator.tableSchema(root)(using FrictionlessGeneratorOptions()),
             WriterConfig.withIndentionStep(2),
           )
           val path = modelsDir / (entry.name + ".json")

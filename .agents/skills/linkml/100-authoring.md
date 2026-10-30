@@ -307,8 +307,8 @@ classes:
       tree_root_as: list      # the document is a JSON array of Person
 ```
 
-At generation time `--tree-root-override` picks a different root class, and
-`--tree-root-inline-type-override` changes the shape without editing the schema. Details and the
+At generation time `--tree-root` picks a different root class, and
+`--tree-root-inline-type` changes the shape without editing the schema. Details and the
 full inlining decision table are in `200-limitations.md`.
 
 ## Documentation and metadata

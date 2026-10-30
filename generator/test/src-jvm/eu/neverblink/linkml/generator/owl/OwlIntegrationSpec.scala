@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
+import eu.neverblink.linkml.generator.options.{OwlGeneratorOptions, RdfFormat}
 import eu.neverblink.linkml.tests.ModelCatalogue.InstanceInFormats
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
@@ -19,7 +19,7 @@ class OwlIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     for entry <- ModelCatalogue.all do
       s"generate OWL for model '${entry.name}'" when {
         lazy val nt =
-          OwlGenerator(using entry.model).serialize(OwlGenerator.Options(format = RdfFormat.nt))
+          OwlGenerator(using entry.model).serialize(OwlGeneratorOptions(format = RdfFormat.Nt))
 
         "the OWL is in OWL 2 DL" in {
           processSkip(entry.name, "")

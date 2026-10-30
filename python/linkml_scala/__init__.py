@@ -137,7 +137,7 @@ class Schema(Generators):
         :param infer_messages: fill in each issue's human-readable ``message`` and ``details``. Turn
             it off for only the structured fields, which is a little faster.
         """
-        return self._json("linkml_lint", inferMessages=infer_messages)
+        return self._json("linkml_lint", infer_messages=infer_messages)
 
     # Lifecycle
 
@@ -195,10 +195,10 @@ def _import_map_entries(import_map: ImportMap | None) -> dict[str, Any]:
 
 
 def _load_options(infer_messages: bool, import_map: ImportMap | None) -> dict[str, Any]:
-    options: dict[str, Any] = {"inferMessages": infer_messages}
+    options: dict[str, Any] = {"infer_messages": infer_messages}
     entries = _import_map_entries(import_map)
     if entries:
-        options["importMap"] = entries
+        options["import_map"] = entries
     return options
 
 
@@ -327,7 +327,7 @@ def from_ossie(
     return runtime().import_document(
         "linkml_from_ossie",
         ontology,
-        {"schemaId": schema_id, "outputFormat": output_format, "fullUris": full_uris},
+        {"schema_id": schema_id, "output_format": output_format, "full_uris": full_uris},
     )
 
 
@@ -371,12 +371,12 @@ def from_owl(
         ontology,
         {
             "config": config,
-            "schemaId": schema_id,
-            "outputFormat": output_format,
-            "listNotImported": list_not_imported,
+            "schema_id": schema_id,
+            "output_format": output_format,
+            "list_not_imported": list_not_imported,
             "imports": None if imports is None else dict(imports),
-            "inputFormat": input_format,
-            "fullUris": full_uris,
+            "input_format": input_format,
+            "full_uris": full_uris,
         },
     )
 

@@ -1,5 +1,11 @@
 package eu.neverblink.linkml.generator.owl
 
+import eu.neverblink.linkml.generator.options.{
+  OwlGeneratorOptions,
+  OwlMetadataProfile,
+  RdfsGeneratorOptions,
+  ShaclGeneratorOptions,
+}
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.ClassExpr.*
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -262,7 +268,7 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       val definition =
         Annotation.text("http://www.w3.org/2004/02/skos/core#definition", "A good boy.")
       ontologyOf(schema).axioms should contain(AnnotationAssertion(ns + "Dog", comment))
-      val linkml = OwlGenerator.Options(metadataProfile = OwlGenerator.MetadataProfile.linkml)
+      val linkml = OwlGeneratorOptions(metadataProfile = OwlMetadataProfile.Linkml)
       val axioms = ontologyOf(schema, linkml).axioms
       axioms should contain(AnnotationAssertion(ns + "Dog", definition))
       axioms should not contain AnnotationAssertion(ns + "Dog", comment)
@@ -320,7 +326,7 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
           val linkml = "https://w3id.org/linkml/"
 
           val rdfs = CollectingRdfSink()
-          RdfsGenerator().generate(rdfs, RdfsGenerator.Options())
+          RdfsGenerator().generate(rdfs, RdfsGeneratorOptions())
           rdfs.triples.foreach {
             case Triple(Iri(s), Rdf.`type`, Rdfs.Class) if !s.startsWith(linkml) =>
               is(s, EntityKind.Class)
@@ -329,7 +335,7 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
           }
 
           val shacl = CollectingRdfSink()
-          ShaclGenerator().generate(shacl, ShaclGenerator.Options())
+          ShaclGenerator().generate(shacl, ShaclGeneratorOptions())
           val datatypes = owl.axioms.flatMap(datatypesIn).toSet
           shacl.triples.foreach {
             case Triple(_, Shacl.targetClass | Shacl.`class`, Iri(c)) if !c.startsWith(linkml) =>

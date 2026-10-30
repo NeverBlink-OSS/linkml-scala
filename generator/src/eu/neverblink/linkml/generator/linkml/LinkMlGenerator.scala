@@ -1,33 +1,34 @@
 package eu.neverblink.linkml.generator.linkml
 
+import eu.neverblink.linkml.generator.options.LinkMlGeneratorOptions
 import eu.neverblink.linkml.generator.DocumentGenerator
-import eu.neverblink.linkml.generator.util.JsonOutputFormat.yaml
-import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode}
+import eu.neverblink.linkml.generator.util.JsonUtil
+import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.schemaview.{SchemaCodec, SchemaView}
 
 import java.io.OutputStream
 
-class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGenerator.Options] {
-  import LinkMlGenerator.*
+class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGeneratorOptions] {
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: LinkMlGeneratorOptions = LinkMlGeneratorOptions()
 
   /** Generate a derived [[SchemaDefinition]] based on the provided [[SchemaView]]. Merges imports,
     * derives classes and types and if a `tree_root` class is present, prunes the schema to only
     * include the reachable elements.
     * @param options
-    *   What to generate. See [[LinkMlGenerator.Options]].
+    *   What to generate. See [[LinkMlGeneratorOptions]].
     * @return
     *   The derived [[SchemaDefinition]]
     */
   def generate(
-      options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
+      options: LinkMlGeneratorOptions = LinkMlGeneratorOptions(),
   ): SchemaDefinition = {
-    import options.{pruningMode, skipClassDerivation}
+    import options.skipClassDerivation
+    val pruning = options.pruning
     val query =
-      if (skipClassDerivation) pruningMode.underivedQuery()
-      else pruningMode.derivedQuery(false, false)
+      if (skipClassDerivation) pruning.underivedQuery()
+      else pruning.derivedQuery(false, false)
     sv.root.copy(
       imports = Nil,
       classes =
@@ -94,44 +95,23 @@ class LinkMlGenerator(using sv: SchemaView) extends DocumentGenerator[LinkMlGene
     * Merges imports, derives classes and types and if a `tree_root` class is present, prunes the
     * schema to only include the reachable elements.
     * @param options
-    *   What to generate. See [[LinkMlGenerator.Options]].
+    *   What to generate. See [[LinkMlGeneratorOptions]].
     * @return
     *   The derived [[SchemaDefinition]]
     */
   override def serialize(
-      options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
+      options: LinkMlGeneratorOptions = LinkMlGeneratorOptions(),
   ): String =
-    JsonUtil.write(SchemaCodec.encode(generate(options), options.fullUris), options.outputFormat)
+    JsonUtil.write(SchemaCodec.encode(generate(options), options.fullUris), options.format)
 
   /** Generate a derived [[SchemaDefinition]] and write it to [[out]]. */
   override def writeTo(
       out: OutputStream,
-      options: LinkMlGenerator.Options = LinkMlGenerator.Options(),
+      options: LinkMlGeneratorOptions = LinkMlGeneratorOptions(),
   ): Unit =
     JsonUtil.write(
       SchemaCodec.encode(generate(options), options.fullUris),
-      options.outputFormat,
+      options.format,
       out,
     )
-}
-
-object LinkMlGenerator {
-
-  /** Options for [[LinkMlGenerator]].
-    *
-    * @param pruningMode
-    *   Method to use for schema definition pruning.
-    * @param skipClassDerivation
-    *   If true, will not derive classes and instead copy them as-is.
-    * @param outputFormat
-    *   Output serialization format to use.
-    * @param fullUris
-    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
-      skipClassDerivation: Boolean = false,
-      outputFormat: JsonOutputFormat = yaml,
-      fullUris: Boolean = false,
-  )
 }

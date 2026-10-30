@@ -1,8 +1,12 @@
 package eu.neverblink.linkml.generator.docs
 
+import eu.neverblink.linkml.generator.options.{
+  DocsGeneratorOptions,
+  ErDiagramGeneratorOptions,
+  PruningMode,
+}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.metamodel.{ClassDefinition, Prefix, SchemaDefinition}
 import eu.neverblink.linkml.runtime.Uri
 import eu.neverblink.linkml.schemaview.{ElementView, SchemaIssues, SchemaView}
@@ -32,7 +36,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
   /** The generated files of [[sv]], keyed by path. */
   private def files(
       sv: SchemaView,
-      options: DocsGenerator.Options = DocsGenerator.Options(),
+      options: DocsGeneratorOptions = DocsGeneratorOptions(),
   ): Map[String, String] =
     DocsGenerator(using sv).generateFiles(options).map(_.toTuple).toMap
 
@@ -93,7 +97,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
     "leave functions out when pruning from the tree root" in {
       val pages = files(
         ModelCatalogue.functions.returns.model,
-        DocsGenerator.Options(PruningMode.treeRoot(None)),
+        DocsGeneratorOptions(pruningMode = PruningMode.TreeRoot),
       )
       pages.keys.filter(_.startsWith("functions/")) shouldBe empty
       pages("index.md") should not include "## Functions"
@@ -192,7 +196,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           md.heading(2, "Diagram")
           md.codeBlock(
             "mermaid",
-            ErDiagramGenerator(using sv).serialize(ErDiagramGenerator.Options()),
+            ErDiagramGenerator(using sv).serialize(ErDiagramGeneratorOptions()),
           )
         }
 
@@ -270,7 +274,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |      include_self: true
           |""".stripMargin,
       )
-      val pages = files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip))
+      val pages = files(sv, DocsGeneratorOptions(pruningMode = PruningMode.Skip))
       pages("enums/derived.md") should include(
         """## Values from
           |
@@ -462,9 +466,9 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |  Unused:
           |""".stripMargin,
       )
-      files(sv, DocsGenerator.Options(pruningMode = PruningMode.treeRoot(None))).keySet
+      files(sv, DocsGeneratorOptions(pruningMode = PruningMode.TreeRoot)).keySet
         .filter(_.startsWith("classes/")) shouldBe Set("classes/root.md", "classes/child.md")
-      files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip)).keySet should contain(
+      files(sv, DocsGeneratorOptions(pruningMode = PruningMode.Skip)).keySet should contain(
         "classes/unused.md",
       )
     }
@@ -503,7 +507,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |        description: A woman or a girl.
           |""".stripMargin,
       )
-      val pages = files(sv, DocsGenerator.Options(pruningMode = PruningMode.skip))
+      val pages = files(sv, DocsGeneratorOptions(pruningMode = PruningMode.Skip))
       pages("classes/natural_person.md") should include(
         """# Class: natural person
           |
@@ -603,7 +607,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |      de: Ein Ding.
           |""".stripMargin,
       )
-      files(sv, DocsGenerator.Options(metadataLanguage = "de"))("classes/thing.md") should include(
+      files(sv, DocsGeneratorOptions(metadataLanguage = "de"))("classes/thing.md") should include(
         "Ein Ding.",
       )
       files(sv)("classes/thing.md") should include("A thing.")
@@ -647,7 +651,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
   "DocsGenerator.generateFiles with singleFile" should {
     "give one document, as serialize does" in {
       given SchemaView = ModelCatalogue.inheritance.model
-      val options = DocsGenerator.Options(singleFile = true)
+      val options = DocsGeneratorOptions(singleFile = true)
       DocsGenerator().generateFiles(options) shouldBe Seq(
         ("docs.md", DocsGenerator().serialize(options)),
       )

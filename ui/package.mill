@@ -35,7 +35,11 @@ object `package` extends Module {
     // models straight from generator/npm
     os.write.over(
       mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts",
-      TsDefsGen(os.read(build.generator.js.jsApiSource().path), "../generator/npm/"),
+      TsDefsGen(
+        os.read(build.generator.js.jsApiSource().path),
+        f => os.read(build.generator.js.npmMetadata().path / f),
+        "../generator/npm/",
+      ),
     )
   }
 

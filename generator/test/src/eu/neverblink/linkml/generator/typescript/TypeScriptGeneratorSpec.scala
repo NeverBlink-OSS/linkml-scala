@@ -1,6 +1,10 @@
 package eu.neverblink.linkml.generator.typescript
 
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.options.{
+  PruningMode,
+  TypeScriptErrorHandling,
+  TypeScriptGeneratorOptions,
+}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -23,12 +27,12 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
 
   def generate(
       classesYaml: String,
-      options: TypeScriptGenerator.Options = TypeScriptGenerator.Options(),
+      options: TypeScriptGeneratorOptions = TypeScriptGeneratorOptions(),
   ): String =
     TypeScriptGenerator(using load(classesYaml)).serialize(options)
 
-  val resultMode: TypeScriptGenerator.Options =
-    TypeScriptGenerator.Options(errorHandling = ErrorHandling.result)
+  val resultMode: TypeScriptGeneratorOptions =
+    TypeScriptGeneratorOptions(errorHandling = TypeScriptErrorHandling.Result)
 
   "TypeScriptGenerator" should {
     "give every function of a catalogue model a method on one interface" in {
@@ -389,7 +393,8 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |    permissible_values:
           |      a:
           |""".stripMargin
-      def generateWith(mode: PruningMode) = generate(schema, TypeScriptGenerator.Options(mode))
+      def generateWith(mode: PruningMode, treeRoot: Option[String] = None) =
+        generate(schema, TypeScriptGeneratorOptions(pruningMode = mode, treeRoot = treeRoot))
 
       "skip, by default: everything" in {
         val ts = generate(schema)
@@ -398,7 +403,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "treeRoot: what the tree root reaches, including the members of designated unions" in {
-        val ts = generateWith(PruningMode.treeRoot(None))
+        val ts = generateWith(PruningMode.TreeRoot)
         ts should include("export interface Container")
         ts should include("export type Shape =")
         ts should include("export interface Circle")
@@ -408,14 +413,14 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "treeRoot with an override" in {
-        val ts = generateWith(PruningMode.treeRoot(Some("Point")))
+        val ts = generateWith(PruningMode.TreeRoot, Some("Point"))
         ts should include("export interface Point")
         ts should not include "Container"
         ts should not include "Circle"
       }
 
       "schema: everything defined and used in the root schema" in {
-        val ts = generateWith(PruningMode.schemaRoot)
+        val ts = generateWith(PruningMode.Schema)
         ts should include("export interface Unrelated")
         ts should include("export interface Circle")
         ts should include("export type Unused")
@@ -436,7 +441,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |      x: {range: string}
           |      y: {range: string}
           |""".stripMargin,
-        TypeScriptGenerator.Options(includeNull = true, open = true),
+        TypeScriptGeneratorOptions(includeNull = true, open = true),
       )
       ts should include("  a?: string | null;\n")
       ts should include("  b: string;\n")
@@ -511,7 +516,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |    title: {pl: Klasa, de: Klasse}
           |    description: {pl: Opis., en: A description.}
           |""".stripMargin,
-        TypeScriptGenerator.Options(metadataLanguage = "fr"),
+        TypeScriptGeneratorOptions(metadataLanguage = "fr"),
       )
       ts should include("/** Klasse: A description. */\nexport interface C")
     }

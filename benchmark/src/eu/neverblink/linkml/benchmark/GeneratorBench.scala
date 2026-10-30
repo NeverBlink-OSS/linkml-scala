@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.benchmark
 
+import eu.neverblink.linkml.generator.options.{PruningMode, StatsGeneratorOptions}
 import eu.neverblink.linkml.benchmark.BenchUtil.BlackholeOutputStream
 import eu.neverblink.linkml.generator.DocumentGenerator
 import eu.neverblink.linkml.generator.docs.DocsGenerator
@@ -16,7 +17,6 @@ import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
-import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
@@ -246,7 +246,7 @@ class GeneratorBench extends CommonParams {
     StatsGenerator(using SchemaView(schemaView.schemas))
       .writeTo(
         new BlackholeOutputStream(bh),
-        StatsGenerator.Options(pruningMode = PruningMode.skip),
+        StatsGeneratorOptions(pruningMode = PruningMode.Skip),
       )
 
   /** Writes the document with default options to the blackhole, as the CLI writes it to a file. */

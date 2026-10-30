@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.typescript
 
 import eu.neverblink.linkml.generator.DocumentModels.*
+import eu.neverblink.linkml.generator.options.{TypeScriptErrorHandling, TypeScriptGeneratorOptions}
 import eu.neverblink.linkml.schemaview.{ClassView, CollectionForm, InlineType, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
@@ -152,7 +153,7 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       os.write.over(
         outDir / os.RelPath(file),
         TypeScriptGenerator(using entry.sv).serialize(
-          TypeScriptGenerator.Options(errorHandling = ErrorHandling.result),
+          TypeScriptGeneratorOptions(errorHandling = TypeScriptErrorHandling.Result),
         ),
         createFolders = true,
       )

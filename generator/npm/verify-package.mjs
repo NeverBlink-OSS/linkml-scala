@@ -118,7 +118,7 @@ for (const schema of schemas)
     reports.push(loaded.report);
     if (loaded.view) {
       reports.push(LinkML.lint(loaded.view, inferMessages));
-      stats.push(LinkML.stats(loaded.view), LinkML.stats(loaded.view, "skip"));
+      stats.push(LinkML.stats(loaded.view), LinkML.stats(loaded.view, { pruning_mode: "skip" }));
     }
   }
 const issueTypes = new Set(reports.flatMap((r) => r.issues.map((i) => i.issue_type)));

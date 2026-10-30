@@ -43,7 +43,7 @@ Two flags change the outcome materially:
 - **`--open`** (json-schema, shacl) allows properties the schema does not declare. Without it,
   output is **closed** — an undeclared field is a violation. If the user expects extra fields to
   be tolerated, they need `--open`; if they expect typos to be caught, they must not use it.
-- **`--tree-root-override`** (json-schema) validates against a class other than the schema's
+- **`--tree-root`** (json-schema) validates against a class other than the schema's
   `tree_root`. This is how you check a fragment rather than a whole document. For `frictionless`
   every class already gets its own table, so you pick the table instead of the root.
 
@@ -53,7 +53,7 @@ a perfectly good file fails on the root type. You can override it per generation
 the schema:
 
 ```shell
-ohi linkml to json-schema --tree-root-inline-type-override list \
+ohi linkml to json-schema --tree-root-inline-type list \
   --to build/schema.json schema.yaml
 ```
 

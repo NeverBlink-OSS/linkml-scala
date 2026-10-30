@@ -1,9 +1,9 @@
 package eu.neverblink.linkml.generator.owl
 
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OwlGeneratorOptions, RdfFormat}
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.config.{ImportMapping, OwlImportConfig, OwlImportConfigs}
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.generator.util.JsonUtil
 
 import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, NTriplesParser, Triple}
@@ -101,7 +101,7 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
         // Many published ontologies aren't in OWL 2 DL. So only fail on problems about terms
         // that had no problem in the original.
         "give OWL with no OWL 2 DL problems that the ontology does not have" in {
-          val nt = OwlGenerator(using view).serialize(OwlGenerator.Options(format = RdfFormat.nt))
+          val nt = OwlGenerator(using view).serialize(OwlGeneratorOptions(format = RdfFormat.Nt))
           val known = OwlApi.dlViolationsAbout(OwlApi.load(source)).flatMap(_._2).toSet
           val added = OwlApi.dlViolationsAbout(OwlApi.load(nt))
             .collect { case (v, about) if !about.exists(known) => v }
@@ -151,7 +151,7 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
           }
 
           "give the same schema when its own OWL, which imports theirs, is imported" in {
-            val owl = OwlGenerator(using view).ontology(OwlGenerator.Options(onlyRootSchema = true))
+            val owl = OwlGenerator(using view).ontology(OwlGeneratorOptions(onlyRootSchema = true))
             val again = OwlImporter().importOntology(owl, mappedTo(name, imports, files), Nil)
             sameSchema(result.schema, again.schema)
           }
@@ -211,7 +211,7 @@ object OwlCorpusSpec {
   }
 
   def yamlOf(schema: SchemaDefinition): String =
-    JsonUtil.write(SchemaCodec.encode(schema), JsonOutputFormat.yaml)
+    JsonUtil.write(SchemaCodec.encode(schema), JsonOutputFormat.Yaml)
 
   /** Each ontology with the minimum percent of logical axioms that must survive the round trip, set
     * a little below the current result. Most losses are things LinkML can't express: individuals,

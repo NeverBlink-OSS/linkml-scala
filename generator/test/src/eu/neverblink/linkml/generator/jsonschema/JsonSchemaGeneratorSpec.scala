@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.jsonschema
 
+import eu.neverblink.linkml.generator.options.JsonSchemaGeneratorOptions
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
@@ -950,7 +951,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         JsonSchemaGenerator().generate(
-          JsonSchemaGenerator.Options(treeRootInlineType = Some("plain")),
+          JsonSchemaGeneratorOptions(treeRootInlineType = Some("plain")),
         )
           .$ref shouldBe Some("#/$defs/C1")
       }
@@ -963,7 +964,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema = JsonSchemaGenerator().generate(
-          JsonSchemaGenerator.Options(treeRootInlineType = Some("optional")),
+          JsonSchemaGeneratorOptions(treeRootInlineType = Some("optional")),
         )
 
         schema.oneOf.map(
@@ -983,7 +984,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         )
 
         val schema = JsonSchemaGenerator().generate(
-          JsonSchemaGenerator.Options(treeRootInlineType = Some("list")),
+          JsonSchemaGeneratorOptions(treeRootInlineType = Some("list")),
         )
 
         schema.`type` shouldBe Some(List(SchemaType.Array))
@@ -1002,7 +1003,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
         val schema =
           JsonSchemaGenerator().generate(
-            JsonSchemaGenerator.Options(treeRootInlineType = Some("compact_dict")),
+            JsonSchemaGeneratorOptions(treeRootInlineType = Some("compact_dict")),
           )
 
         schema.additionalProperties.get.asInstanceOf[Schema]
@@ -1020,7 +1021,7 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 
         val schema =
           JsonSchemaGenerator().generate(
-            JsonSchemaGenerator.Options(treeRootInlineType = Some("simple_dict")),
+            JsonSchemaGeneratorOptions(treeRootInlineType = Some("simple_dict")),
           )
 
         shouldBeSimpleDictEntryOf(schema.additionalProperties.get, "C1")
@@ -1190,8 +1191,8 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         SchemaIssues.orThrow(SchemaView.loadSchemaViewFromUri("https://w3id.org/linkml/meta"))
       given SchemaView = sv
       val generator = JsonSchemaGenerator()
-      val expected = encoderSchema(generator.generate(JsonSchemaGenerator.Options())).noSpaces
-      val result = generator.serialize(JsonSchemaGenerator.Options(indentationStep = 0))
+      val expected = encoderSchema(generator.generate(JsonSchemaGeneratorOptions())).noSpaces
+      val result = generator.serialize(JsonSchemaGeneratorOptions(indentationStep = 0))
       result shouldBe expected
     }
 
@@ -1200,8 +1201,8 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
         s"model '${entry.model.root.name}'" in {
           assume(!skipModels.contains(entry.model.root.name))
           val generator = JsonSchemaGenerator(using entry.model)
-          val expected = encoderSchema(generator.generate(JsonSchemaGenerator.Options())).noSpaces
-          val result = generator.serialize(JsonSchemaGenerator.Options(indentationStep = 0))
+          val expected = encoderSchema(generator.generate(JsonSchemaGeneratorOptions())).noSpaces
+          val result = generator.serialize(JsonSchemaGeneratorOptions(indentationStep = 0))
           result shouldBe expected
         }
     }

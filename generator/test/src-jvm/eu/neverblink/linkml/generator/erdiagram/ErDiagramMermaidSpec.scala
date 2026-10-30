@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.erdiagram
 
+import eu.neverblink.linkml.generator.options.ErDiagramGeneratorOptions
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, readFromString}
 import com.github.plokhotnyuk.jsoniter_scala.macros.JsonCodecMaker
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
@@ -139,7 +140,7 @@ class ErDiagramMermaidSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       (
         "cardinalityWithoutOptionalMarker",
         ErDiagramGenerator(using ModelCatalogue.cardinality.model)
-          .generate(ErDiagramGenerator.Options(optionalMarker = false)),
+          .generate(ErDiagramGeneratorOptions(optionalMarker = false)),
       ),
     )
 

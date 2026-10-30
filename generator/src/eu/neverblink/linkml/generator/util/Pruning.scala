@@ -1,10 +1,10 @@
 package eu.neverblink.linkml.generator.util
 
+import eu.neverblink.linkml.generator.options.{PruningMode, PruningOptions}
 import eu.neverblink.linkml.metamodel.TypeDefinition
 import eu.neverblink.linkml.runtime.Reference
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.{
-  Case,
   ElementView,
   IncludeAllReachabilityQuery,
   SchemaReachabilityQuery,
@@ -15,7 +15,7 @@ import eu.neverblink.linkml.schemaview.{
 /** The method to use for schema definition pruning: tree root-based, schema root based and no
   * pruning
   */
-enum PruningMode:
+enum Pruning:
   /** Prune all elements that are unreachable from the schema-level tree root class. Falls back to
     * root-schema based pruning if no schema-level tree_root class is present and no override is
     * provided.
@@ -42,11 +42,11 @@ enum PruningMode:
     ).flatMap(_.resolve)
 
     this match {
-      case PruningMode.treeRoot(ovr) =>
+      case Pruning.treeRoot(ovr) =>
         sv.treeRootWithOverride(ovr).get
           .foldFast(defaultRanges ++ rootElements) { value => defaultRanges :+ value }
-      case PruningMode.schemaRoot => defaultRanges ++ rootElements
-      case PruningMode.skip => Seq.empty
+      case Pruning.schemaRoot => defaultRanges ++ rootElements
+      case Pruning.skip => Seq.empty
     }
   }
 
@@ -70,30 +70,15 @@ enum PruningMode:
     else sv.underivedReachabilityQuery(initialSet)
   }
 
-object PruningMode:
+object Pruning:
 
-  /** The mode the caller named, or None if it is not one we know.
-    *
-    * Accepts camel, kebab and snake case (`treeRoot`, `tree-root`, `tree_root`).
-    */
-  def parse(mode: String): Option[PruningMode] = Case.base(mode) match {
-    case "tree_root" => Some(PruningMode.treeRoot(None))
-    case "schema" => Some(PruningMode.schemaRoot)
-    case "skip" => Some(PruningMode.skip)
-    case _ => None
+  /** The pruning that `mode` names, with the tree root override when it is the tree root mode. */
+  def apply(mode: PruningMode, treeRoot: Option[String]): Pruning = mode match {
+    case PruningMode.TreeRoot => Pruning.treeRoot(treeRoot)
+    case PruningMode.Schema => Pruning.schemaRoot
+    case PruningMode.Skip => Pruning.skip
   }
 
-  def unknownMode(mode: String): String =
-    s"Unknown pruning mode '$mode'. Supported modes: treeRoot, schema, skip."
-
-  /** The named mode, with treeRootOverride applied when it is the tree-root one.
-    *
-    * @throws IllegalArgumentException
-    *   if `mode` is not a mode we know
-    */
-  def apply(mode: String, treeRootOverride: Option[String]): PruningMode =
-    parse(mode) match {
-      case Some(PruningMode.treeRoot(_)) => PruningMode.treeRoot(treeRootOverride)
-      case Some(other) => other
-      case None => throw IllegalArgumentException(unknownMode(mode))
-    }
+  extension (options: PruningOptions)
+    /** The pruning these options ask for. */
+    def pruning: Pruning = Pruning(options.pruningMode, options.treeRoot)

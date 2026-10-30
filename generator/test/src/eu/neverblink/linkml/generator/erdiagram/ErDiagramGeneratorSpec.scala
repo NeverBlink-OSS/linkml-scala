@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.erdiagram
 
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.options.{ErDiagramGeneratorOptions, PruningMode}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -63,7 +63,7 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.cardinality.model
 
       val result =
-        ErDiagramGenerator().serialize(ErDiagramGenerator.Options(optionalMarker = false))
+        ErDiagramGenerator().serialize(ErDiagramGeneratorOptions(optionalMarker = false))
       Seq(
         "string one",
         "string at_most_one",
@@ -273,7 +273,9 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
       given SchemaView = ModelCatalogue.pruning.model
 
       val result =
-        ErDiagramGenerator().serialize(ErDiagramGenerator.Options(PruningMode.treeRoot(None)))
+        ErDiagramGenerator().serialize(
+          ErDiagramGeneratorOptions(pruningMode = PruningMode.TreeRoot),
+        )
       result should include("SomeClass {")
       result should not include "NotTreeRootClass"
     }
@@ -283,7 +285,12 @@ class ErDiagramGeneratorSpec extends AnyWordSpec, Matchers {
 
       val result =
         ErDiagramGenerator()
-          .serialize(ErDiagramGenerator.Options(PruningMode.treeRoot(Some("NotTreeRootClass"))))
+          .serialize(
+            ErDiagramGeneratorOptions(
+              pruningMode = PruningMode.TreeRoot,
+              treeRoot = Some("NotTreeRootClass"),
+            ),
+          )
       result should include("NotTreeRootClass {")
       result should not include "SomeClass {"
     }

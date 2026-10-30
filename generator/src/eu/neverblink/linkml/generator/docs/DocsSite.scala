@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.docs
 
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.Pruning
 import eu.neverblink.linkml.metamodel.{Element, SlotDefinition}
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -11,18 +11,18 @@ import scala.collection.mutable
 
 /** Which elements the documentation covers, what their pages are called, and how they are used.
   *
-  * @param pruningMode
+  * @param pruning
   *   Which classes to document. The enums and types they use are documented with them, and so are
   *   the slots they have.
   * @param singleFile
   *   Whether all pages are sections of one document, which changes how they link to each other
   */
-final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolean)(using
+final class DocsSite private[docs] (pruning: Pruning, singleFile: Boolean)(using
     sv: SchemaView,
 ) {
   import DocsSite.*
 
-  private val query = pruningMode.derivedQuery(false, true)
+  private val query = pruning.derivedQuery(false, true)
 
   /** The documented classes, in the common order. `linkml:Any` is left out, as it is not a class
     * that a user defines.
@@ -84,7 +84,7 @@ final class DocsSite private[docs] (pruningMode: PruningMode, singleFile: Boolea
     * documented class has.
     */
   val slots: Seq[SlotView] = sorted(
-    sv.slotDefinitions.values.filter(s => pruningMode == PruningMode.skip || usedSlots(s.name)),
+    sv.slotDefinitions.values.filter(s => pruning == Pruning.skip || usedSlots(s.name)),
   )
 
   private val classPages = pagesOf(PageKind.classes, classes, DocsRenamer.className)

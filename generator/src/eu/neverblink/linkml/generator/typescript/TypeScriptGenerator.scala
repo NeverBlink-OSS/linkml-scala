@@ -1,11 +1,13 @@
 package eu.neverblink.linkml.generator.typescript
 
+import eu.neverblink.linkml.generator.options.{TypeScriptErrorHandling, TypeScriptGeneratorOptions}
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, PruningMode}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.Pruning.pruning
+import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.rdf.io.CharSink
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.runtime.StringUtils.hexDigit
-import eu.neverblink.linkml.runtime.HasMetadataLanguage
 import eu.neverblink.linkml.schemaview.*
 
 import scala.collection.mutable
@@ -19,11 +21,11 @@ import scala.collection.mutable
   * designator (`designates_type`) become discriminated unions of their concrete descendants.
   */
 final class TypeScriptGenerator(using sv: SchemaView)
-    extends CharDocumentGenerator[TypeScriptGenerator.Options],
+    extends CharDocumentGenerator[TypeScriptGeneratorOptions],
       TypeScriptRenamer {
   import TypeScriptGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: TypeScriptGeneratorOptions = TypeScriptGeneratorOptions()
 
   /** Name of the union type standing for a class and its subclasses, if the class needs one. */
   def unionName(cls: ClassView): Option[String] =
@@ -45,7 +47,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     * keeps, and whatever those reach in turn. A slot ranging over a designated class uses the
     * union, so its members must be there too.
     */
-  private def reachability(mode: PruningMode): SchemaReachabilityQuery =
+  private def reachability(mode: Pruning): SchemaReachabilityQuery =
     sv.withTypeDesignatorMembers(mode.derivedQuery(true, false), true, false)
 
   private def hasRequiredContent(cls: ClassView, key: String): Boolean =
@@ -122,7 +124,9 @@ final class TypeScriptGenerator(using sv: SchemaView)
       }
     }
 
-  private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context)(using Options): Unit = {
+  private def writeInterface(sink: CharSink, cls: ClassView, ctx: Context)(using
+      TypeScriptGeneratorOptions,
+  ): Unit = {
     writeDoc(sink, DocLines(cls.cls), "")
     sink.append("export interface ")
     sink.append(className(cls))
@@ -145,7 +149,9 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append("}\n")
   }
 
-  private def writeUnion(sink: CharSink, cls: ClassView, name: String)(using Options): Unit = {
+  private def writeUnion(sink: CharSink, cls: ClassView, name: String)(using
+      TypeScriptGeneratorOptions,
+  ): Unit = {
     if !cls.isConcrete then writeDoc(sink, DocLines(cls.cls), "")
     sink.append("export type ")
     sink.append(name)
@@ -157,7 +163,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append(";\n")
   }
 
-  private def writeEnum(sink: CharSink, ev: EnumView)(using Options): Unit = {
+  private def writeEnum(sink: CharSink, ev: EnumView)(using TypeScriptGeneratorOptions): Unit = {
     writeDoc(sink, DocLines(ev._enum), "")
     sink.append("export type ")
     sink.append(enumName(ev))
@@ -174,7 +180,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
 
   /** The functions of the schema, as one interface with a method for each. */
   private def writeFunctions(sink: CharSink, functions: Seq[FunctionView], ctx: Context)(using
-      Options,
+      TypeScriptGeneratorOptions,
   ): Unit = {
     writeDoc(sink, Seq(s"The functions of the `${sv.root.name}` schema."), "")
     sink.append("export interface ")
@@ -191,7 +197,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   }
 
   private def writeFunction(sink: CharSink, fv: FunctionView, ctx: Context)(using
-      Options,
+      TypeScriptGeneratorOptions,
   ): Unit = {
     val attributes = fv.parameters.foldFast(Seq.empty[AttributeView])(_.sortedAttributeViews)
     // A required parameter cannot follow an optional one in TypeScript, so only the optional
@@ -217,7 +223,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       case ev: EnumView => enumName(ev)
       case _ => "unknown"
     }
-    val onResult = ctx.options.errorHandling == ErrorHandling.result && fv.errors.nonEmpty
+    val onResult = ctx.options.errorHandling == TypeScriptErrorHandling.Result && fv.errors.nonEmpty
     val returnType =
       if !onResult then returned
       else {
@@ -226,7 +232,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
         s"Result<$returned, ${failures.mkString(" | ")}>"
       }
     val throws =
-      if ctx.options.errorHandling != ErrorHandling.exception then Nil
+      if ctx.options.errorHandling != TypeScriptErrorHandling.Exception then Nil
       else fv.errors.map(cv => s"@throws {${classRef(cv)}} ${DocLines(cv.cls).mkString(" ")}".strip)
     val tags = attributes.map { attribute =>
       val text = DocLines(attribute.slotView.slot).mkString(" ")
@@ -277,10 +283,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
     }
   }
 
-  override protected def writeChars(sink: CharSink, options: Options): Unit = {
-    given Options = options
+  override protected def writeChars(sink: CharSink, options: TypeScriptGeneratorOptions): Unit = {
+    given TypeScriptGeneratorOptions = options
     val ctx = Context(options)
-    val query = reachability(options.pruningMode)
+    val query = reachability(options.pruning)
     val classes = sv.sortedClasses.filter(c => !c.isAny && query.reachable(c))
     val enums =
       sv.enums.values.filter(query.reachable).toVector.sortBy(ev => sv.elementOrder(ev._enum))
@@ -288,7 +294,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
       sv.functions.values.filter(query.reachable).toVector
         .sortBy(fv => sv.elementOrder(fv.function))
     val usesResult =
-      options.errorHandling == ErrorHandling.result && functions.exists(_.errors.nonEmpty)
+      options.errorHandling == TypeScriptErrorHandling.Result && functions.exists(_.errors.nonEmpty)
     checkNames(classes, enums, functions.nonEmpty, usesResult)
 
     sink.append(GeneratedHeader("//"))
@@ -321,33 +327,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
 
 object TypeScriptGenerator {
 
-  /** Options for [[TypeScriptGenerator]].
-    *
-    * @param pruningMode
-    *   Which classes and enums to generate. `skip` (the default) generates all of them. The members
-    *   of a designated union are always generated along with the union.
-    * @param includeNull
-    *   Allows null values for optional slots and compact dictionary entries without required
-    *   content beyond the key, as in the JSON Schema generator. Default: false
-    * @param open
-    *   Whether interfaces should allow additional properties (`[key: string]: unknown`), as
-    *   `additionalProperties` in the JSON Schema generator. Default: false. Interfaces of classes
-    *   whose `extra_slots` allows extra data allow them anyway.
-    * @param errorHandling
-    *   How the functions of the schema report their `errors`. See [[ErrorHandling]].
-    * @param metadataLanguage
-    *   Which language to use for titles and descriptions in doc comments.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
-      includeNull: Boolean = false,
-      open: Boolean = false,
-      errorHandling: ErrorHandling = ErrorHandling.exception,
-      metadataLanguage: String = "en",
-  ) extends HasMetadataLanguage
-
   /** Mutable state of one generator run. */
-  private final case class Context(options: Options) {
+  private final case class Context(options: TypeScriptGeneratorOptions) {
     var usesKeyOptional: Boolean = false
   }
 

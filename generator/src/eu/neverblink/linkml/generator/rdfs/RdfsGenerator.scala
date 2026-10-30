@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.rdfs
 
+import eu.neverblink.linkml.generator.options.RdfsGeneratorOptions
 import eu.neverblink.linkml.generator.RdfGeneratorBase
-import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.{CommonMetadata, PermissibleValue}
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -18,9 +18,9 @@ import eu.neverblink.linkml.schemaview.{
 
 import scala.collection.mutable
 
-class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator.Options] {
+class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGeneratorOptions] {
 
-  override protected def defaultOptions: RdfsGenerator.Options = RdfsGenerator.Options()
+  override protected def defaultOptions: RdfsGeneratorOptions = RdfsGeneratorOptions()
 
   /** Emit the RDFS metadata of every definition describing the same subject, skipping titles,
     * descriptions and links repeated between them.
@@ -106,11 +106,11 @@ class RdfsGenerator(using sv: SchemaView) extends RdfGeneratorBase[RdfsGenerator
     * @param sink
     *   The sink that receives namespace declarations and triples.
     * @param options
-    *   What to generate. See [[RdfsGenerator.Options]].
+    *   What to generate. See [[RdfsGeneratorOptions]].
     */
   override final def generate(
       sink: RdfSink,
-      options: RdfsGenerator.Options,
+      options: RdfsGeneratorOptions,
   ): Unit = {
     import options.onlyClassesFromRootSchema
     addNamespaces(
@@ -228,18 +228,4 @@ object RdfsGenerator {
 
   private val plainLiteral: Iri = Rdf.get("PlainLiteral")
 
-  /** Options for [[RdfsGenerator]].
-    *
-    * @param onlyClassesFromRootSchema
-    *   Whether to include only classes and enums from the root schema (turned off by default). This
-    *   is useful if you intend to generate RDFS for each schema file separately, and you don't need
-    *   the imported classes to be included.
-    * @param format
-    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
-    */
-  final case class Options(
-      onlyClassesFromRootSchema: Boolean = false,
-      format: RdfFormat = RdfFormat.ttl,
-  ) extends RdfOptions
 }

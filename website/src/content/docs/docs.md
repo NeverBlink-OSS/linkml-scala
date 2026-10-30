@@ -42,14 +42,14 @@ ohi linkml to docs --to schema.md schema.yaml
 
 Options:
 
-- `--pruning-mode <treeRoot|schema|skip>`: which classes to document. The enums, types and slots
+- `--pruning-mode <tree_root|schema|skip>`: which classes to document. The enums, types and slots
   that these classes use are documented with them.
   - `schema`: the classes defined in the schema, and the classes they use from imported schemas.
     This is the default, unlike for the other generators.
-  - `treeRoot`: only the classes that the tree root class reaches.
+  - `tree_root`: only the classes that the tree root class reaches.
   - `skip`: everything, including all the types from `linkml:types`, whether the schema uses them
     or not.
-- `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
+- `--tree-root <Class>`: with `--pruning-mode tree_root`, use this class as the tree root.
 - `--metadata-language <tag>`: which language to use for titles and descriptions that are given
   in more than one language. Default: `en`.
 
@@ -145,12 +145,13 @@ For example, a Mermaid diagram of the whole schema on the index page, which GitH
 ```scala
 import eu.neverblink.linkml.generator.docs.{DocsGenerator, DocsSite, Markdown}
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
+import eu.neverblink.linkml.generator.options.ErDiagramGeneratorOptions
 import eu.neverblink.linkml.schemaview.SchemaView
 
 class DocsWithDiagram(using SchemaView) extends DocsGenerator {
   override protected def indexSections(md: Markdown, site: DocsSite): Unit = {
     md.heading(2, "Diagram")
-    md.codeBlock("mermaid", ErDiagramGenerator().serialize(ErDiagramGenerator.Options()))
+    md.codeBlock("mermaid", ErDiagramGenerator().serialize(ErDiagramGeneratorOptions()))
   }
 }
 ```

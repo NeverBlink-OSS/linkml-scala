@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.docs
 
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.options.{DocsGeneratorOptions, PruningMode}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import io.github.edadma.markdown.*
@@ -72,7 +72,7 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
     )
 
   /** Each kind of pruning documents a different set of elements, so check them all. */
-  private val modes = Seq(PruningMode.skip, PruningMode.schemaRoot, PruningMode.treeRoot(None))
+  private val modes = Seq(PruningMode.Skip, PruningMode.Schema, PruningMode.TreeRoot)
 
   "the documentation written as files" should {
     "only link to pages that exist" in {
@@ -178,7 +178,9 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
     for (name, sv) <- schemas; mode <- modes do {
       withClue(s"$name, $mode: ") {
         val files =
-          DocsGenerator(using sv).generateFiles(DocsGenerator.Options(mode)).map(_.toTuple).toMap
+          DocsGenerator(using sv).generateFiles(DocsGeneratorOptions(pruningMode = mode)).map(
+            _.toTuple,
+          ).toMap
         check(files, files.map((path, text) => (path, parse(text))))
       }
     }

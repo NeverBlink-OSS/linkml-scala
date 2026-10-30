@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.pydantic
 
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.options.{PruningMode, PydanticGeneratorOptions}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -23,7 +23,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
 
   def generate(
       classesYaml: String,
-      options: PydanticGenerator.Options = PydanticGenerator.Options(),
+      options: PydanticGeneratorOptions = PydanticGeneratorOptions(),
   ): String =
     PydanticGenerator(using load(classesYaml)).serialize(options)
 
@@ -447,7 +447,8 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |    permissible_values:
           |      a:
           |""".stripMargin
-      def generateWith(mode: PruningMode) = generate(schema, PydanticGenerator.Options(mode))
+      def generateWith(mode: PruningMode) =
+        generate(schema, PydanticGeneratorOptions(pruningMode = mode))
 
       "skip, by default: everything" in {
         val py = generate(schema)
@@ -456,7 +457,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       }
 
       "treeRoot: what the tree root reaches, and their parents" in {
-        val py = generateWith(PruningMode.treeRoot(None))
+        val py = generateWith(PruningMode.TreeRoot)
         py should include("class Container(")
         py should include("class Special(Base):")
         py should include("class Base(")
@@ -476,7 +477,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       val default = generate(schema)
       default should include("extra=\"forbid\"")
       default should include("def _skip_none(")
-      val py = generate(schema, PydanticGenerator.Options(includeNull = true, open = true))
+      val py = generate(schema, PydanticGeneratorOptions(includeNull = true, open = true))
       py should include("extra=\"allow\"")
       py should include("def _skip_unset(")
       py should not include "_skip_none"
@@ -521,7 +522,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       cls("OpenChild") should include("    model_config = ConfigDict(extra=\"forbid\")\n")
       cls("Plain") should not include "model_config"
       // With --open, every class allows extra properties already
-      generate(schema, PydanticGenerator.Options(open = true)) should not include allow
+      generate(schema, PydanticGeneratorOptions(open = true)) should not include allow
     }
 
     "generate a document class for a tree root that is not a single object" in {
@@ -585,7 +586,7 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |    title: {pl: Klasa, de: Klasse}
           |    description: {pl: Opis., en: A description.}
           |""".stripMargin,
-        PydanticGenerator.Options(metadataLanguage = "fr"),
+        PydanticGeneratorOptions(metadataLanguage = "fr"),
       )
       py should include("class C(LinkMLModel):\n    \"\"\"Klasse: A description.\"\"\"\n")
     }

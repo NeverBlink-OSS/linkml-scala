@@ -1,8 +1,12 @@
 package eu.neverblink.linkml.generator.owl
 
+import eu.neverblink.linkml.generator.options.{
+  OwlGeneratorOptions,
+  OwlMetadataProfile,
+  OwlPermissibleValueKind,
+}
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.RdfGeneratorBase
-import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.{Iri, Literal, Owl, RdfSink, Rdf, Rdfs, Shacl, XmlSchema}
 import eu.neverblink.linkml.runtime.*
@@ -18,53 +22,21 @@ import scala.collection.mutable
   * RDF generators here, or lose information when [[OwlImporter]] reads the result back. See
   * https://linkml.ohi.dev/docs/owl/ for details.
   */
-class OwlGenerator(using sv: SchemaView) extends RdfGeneratorBase[OwlGenerator.Options] {
+class OwlGenerator(using sv: SchemaView) extends RdfGeneratorBase[OwlGeneratorOptions] {
   import OwlGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: OwlGeneratorOptions = OwlGeneratorOptions()
 
   /** Builds the ontology without writing it as RDF. */
-  def ontology(options: Options = defaultOptions): Ontology = new Build(options).ontology
+  def ontology(options: OwlGeneratorOptions = defaultOptions): Ontology = new Build(
+    options,
+  ).ontology
 
-  override def generate(sink: RdfSink, options: Options = defaultOptions): Unit =
+  override def generate(sink: RdfSink, options: OwlGeneratorOptions = defaultOptions): Unit =
     OwlRdfWriter(sink).write(ontology(options))
 }
 
 object OwlGenerator {
-
-  enum PermissibleValueKind:
-    /** Named individuals that are members of the enum's class. */
-    case individual
-
-    /** Subclasses of the enum's class, as `gen-owl` does. */
-    case `class`
-
-  /** Which annotation property holds `description`. */
-  enum MetadataProfile:
-    /** `skos:definition`, as in the LinkML metamodel and `gen-owl`. */
-    case linkml
-
-    /** `rdfs:comment`, which most OWL tools show. */
-    case rdfs
-
-  /** Options for [[OwlGenerator]].
-    *
-    * @param onlyRootSchema
-    *   Describe only the root schema and add `owl:imports` for its imports. Off by default, which
-    *   merges the imported schemas in, like `gen-owl --mergeimports`.
-    * @param metadataProfile
-    *   Property for descriptions: `rdfs:comment` (default) or `skos:definition`.
-    * @param permissibleValues
-    *   Whether permissible values become individuals (default) or classes.
-    * @param format
-    *   `ttl` for Turtle (default) or `nt` for N-Triples.
-    */
-  final case class Options(
-      onlyRootSchema: Boolean = false,
-      metadataProfile: MetadataProfile = MetadataProfile.rdfs,
-      permissibleValues: PermissibleValueKind = PermissibleValueKind.individual,
-      format: RdfFormat = RdfFormat.ttl,
-  ) extends RdfOptions
 
   private val rdfsLabel = Rdfs.label.value
 
@@ -124,7 +96,7 @@ object OwlGenerator {
   ).toSet
   private[owl] val skosNotation = "http://www.w3.org/2004/02/skos/core#notation"
 
-  private final class Build(options: Options)(using sv: SchemaView) {
+  private final class Build(options: OwlGeneratorOptions)(using sv: SchemaView) {
     private val axioms = mutable.LinkedHashSet.empty[Axiom]
     // The IRIs of the declarations in `axioms`, to check for one without scanning all axioms.
     private val declared = mutable.HashSet.empty[String]
@@ -141,8 +113,8 @@ object OwlGenerator {
       !options.onlyRootSchema || (el.definingSchema eq sv.root)
 
     private val descriptionProperty = options.metadataProfile match {
-      case _: MetadataProfile.linkml.type => "http://www.w3.org/2004/02/skos/core#definition"
-      case _: MetadataProfile.rdfs.type => Rdfs.comment.value
+      case OwlMetadataProfile.Linkml => "http://www.w3.org/2004/02/skos/core#definition"
+      case OwlMetadataProfile.Rdfs => Rdfs.comment.value
     }
 
     def ontology: Ontology = {
@@ -936,10 +908,10 @@ object OwlGenerator {
         val pv = pvv.pv
         val pvIri = pvv.uriStr
         options.permissibleValues match {
-          case _: PermissibleValueKind.individual.type =>
+          case OwlPermissibleValueKind.Individual =>
             add(Declaration(EntityKind.NamedIndividual, pvIri))
             add(ClassAssertion(ClassExpr.Named(iri), pvIri))
-          case _: PermissibleValueKind.`class`.type =>
+          case OwlPermissibleValueKind.Class =>
             add(Declaration(EntityKind.Class, pvIri))
             add(SubClassOf(ClassExpr.Named(pvIri), ClassExpr.Named(iri)))
         }
@@ -954,9 +926,9 @@ object OwlGenerator {
       }
       if (values.nonEmpty)
         options.permissibleValues match {
-          case _: PermissibleValueKind.individual.type =>
+          case OwlPermissibleValueKind.Individual =>
             add(EquivalentClasses(Seq(ClassExpr.Named(iri), ClassExpr.OneOf(values))))
-          case _: PermissibleValueKind.`class`.type =>
+          case OwlPermissibleValueKind.Class =>
             val union = ClassExpr.UnionOf(values.map(ClassExpr.Named(_)))
             add(EquivalentClasses(Seq(ClassExpr.Named(iri), union)))
         }

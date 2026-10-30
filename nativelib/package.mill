@@ -19,9 +19,8 @@ import mill.scalanativelib.api.*
   * Hidden unless `LINKML_NATIVE=1`, like every other Scala Native module.
   */
 object `package` extends Module, NativeOptional {
-  /** Regenerate the C and Python bindings from mill-build/src/Entrypoints.scala and each
-   * generator's `Options` case class, then format the result. Run after adding a generator or an
-   * option.
+  /** Regenerate the C and Python bindings from `model/generator-options.yaml` with
+   * `generator.optionsgen`, then format the result. Run after adding a generator or an option.
    *
    * Needs `LINKML_NATIVE=1`: the C bindings are Scala Native sources, so formatting them means
    * resolving that module.
@@ -34,20 +33,6 @@ object `package` extends Module, NativeOptional {
     else AliasesModule.run(ev, "regenerateBindings")
   }
 
-  /** Writes the generated sources, unformatted. Use `bindings`, which formats them afterwards. */
-  def generateBindings(args: String*) = Task.Command(exclusive = true) {
-    val root = mill.api.BuildCtx.workspaceRoot
-
-    def read(path: String): String = os.read(root / os.RelPath(path))
-
-    os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
-    os.write.over(
-      root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
-        "LinkMlCGenerators.scala",
-      CApiGen(read),
-    )
-  }
-  
   object native extends ScalaNativeModule, ScalafmtModule, ScalafixModule {
     override def moduleDir = super.moduleDir / os.up
 

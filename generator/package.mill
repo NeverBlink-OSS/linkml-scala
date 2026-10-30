@@ -16,6 +16,7 @@ object `package` extends Module, NativeOptional {
       build.rdf.jvm,
       build.generator.owlconfig.jvm,
       build.generator.stats.jvm,
+      build.generator.options.jvm,
     )
 
     // Tests parse the generated RDF back and cross-validate it with rdf4j-shacl, so they compile
@@ -130,6 +131,7 @@ object `package` extends Module, NativeOptional {
       build.rdf.js,
       build.generator.owlconfig.js,
       build.generator.stats.js,
+      build.generator.options.js,
     )
 
     // README and the TS usage sample; the .d.ts itself is generated.
@@ -142,7 +144,7 @@ object `package` extends Module, NativeOptional {
 
     def tsDefs = Task {
       val out = Task.dest / "index.d.ts"
-      os.write(out, TsDefsGen(os.read(jsApiSource().path)))
+      os.write(out, TsDefsGen(os.read(jsApiSource().path), f => os.read(npmMetadata().path / f)))
       PathRef(out)
     }
 
@@ -197,6 +199,7 @@ object `package` extends Module, NativeOptional {
       build.rdf.native,
       build.generator.owlconfig.native,
       build.generator.stats.native,
+      build.generator.options.native,
     )
 
     object test extends ScalaNativeTests, CommonTestModule {
