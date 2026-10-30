@@ -46,6 +46,7 @@ class TranslationGenerator(using sv: SchemaView)
           pvv.pv.text -> renamer.permissibleValueName(el, pvv.pv)
         }.toMap
       }.toMap,
+      sv.functions.values.map(el => el.name -> renamer.functionName(el)).toMap,
     )
   }
 
@@ -91,6 +92,7 @@ object TranslationGenerator {
       enums: Map[String, String],
       slots: Map[String, String],
       permissibleValues: Map[String, Map[String, String]],
+      functions: Map[String, String],
   )
 
   /** Options for [[TranslationGenerator]].
@@ -129,6 +131,8 @@ object TranslationGenerator {
     def slotName(el: SlotView): String = el.uriStr
 
     def typeName(el: TypeView): String = el.uriStr
+
+    def functionName(el: FunctionView): String = el.uriStr
   }
 
   object BaseRenamer extends Renamer {
@@ -145,5 +149,7 @@ object TranslationGenerator {
 
     override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
       Case.base(pv.text)
+
+    override def functionName(el: FunctionView): String = el.baseName
   }
 }

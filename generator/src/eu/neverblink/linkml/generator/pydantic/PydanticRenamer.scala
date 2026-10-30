@@ -1,7 +1,14 @@
 package eu.neverblink.linkml.generator.pydantic
 
 import eu.neverblink.linkml.generator.jsonschema.JsonRenamer
-import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, TypeView}
+import eu.neverblink.linkml.schemaview.{
+  Case,
+  ClassView,
+  EnumView,
+  FunctionView,
+  SchemaView,
+  TypeView,
+}
 
 /** Names in the generated Python. The classes describe the JSON data, so slot names and permissible
   * values are the inherited JSON ones from [[JsonRenamer]]. Only the names of the classes and enums
@@ -16,6 +23,17 @@ trait PydanticRenamer extends JsonRenamer {
   override def typeName(el: TypeView): String = identifier(el.baseName)
 
   override def enumName(el: EnumView): String = identifier(el.baseName)
+
+  override def functionName(el: FunctionView): String = method(el.baseName)
+
+  /** The name of the `Protocol` that contains the functions of a schema, such as `SearchFunctions`
+    * for a schema named `search`.
+    */
+  def functionsProtocolName(sv: SchemaView): String =
+    identifier(Case.base(sv.root.name)).concat("Functions")
+
+  /** The name of the exception class for an error class. */
+  def errorName(el: ClassView): String = className(el).concat("Error")
 }
 
 object PydanticRenamer extends PydanticRenamer {
@@ -161,6 +179,11 @@ object PydanticRenamer extends PydanticRenamer {
       name.concat("_")
     else name
   }
+
+  /** The Python name of a method: the base name, with anything Python would not accept fixed as
+    * [[attribute]] does.
+    */
+  def method(baseName: String): String = attribute(baseName, _ => false)
 
   /** The Python name of an enum member with the given value: as for [[attribute]], but a name that
     * does not start with a letter gets `v` in front.

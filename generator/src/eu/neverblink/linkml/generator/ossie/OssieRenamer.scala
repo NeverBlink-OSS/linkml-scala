@@ -6,6 +6,7 @@ import eu.neverblink.linkml.schemaview.{
   Case,
   ClassView,
   EnumView,
+  FunctionView,
   PermissibleValueView,
   SlotView,
   TypeView,
@@ -30,6 +31,8 @@ trait OssieRenamer extends Renamer {
   override def typeName(el: TypeView): String = Case.baseToPascal(el.baseName)
 
   override def enumName(el: EnumView): String = Case.baseToPascal(el.baseName)
+
+  override def functionName(el: FunctionView): String = el.baseName
 
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
     PermissibleValueView(pv, el).aliasedName

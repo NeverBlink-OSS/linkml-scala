@@ -197,8 +197,29 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
             if entry.model.types.nonEmpty then result.types should not be empty
             if entry.model.enums.nonEmpty then result.enums should not be empty
             if entry.model.slotDefinitions.nonEmpty then result.slots should not be empty
+            // Every function of the schema is named, whatever the target
+            result.functions.keySet shouldBe entry.model.functions.keySet
           }
       }
+  }
+
+  "name the functions of a schema" when {
+    val sv = ModelCatalogue.functions.returns.model
+    val gen = TranslationGenerator(using sv)
+    "target is typescript" in {
+      gen.generate(Options("typescript")).functions should contain("list_items" -> "listItems")
+    }
+    "target is pydantic" in {
+      gen.generate(Options("pydantic")).functions should contain("list_items" -> "list_items")
+    }
+    "target is scala" in {
+      gen.generate(Options("scala")).functions should contain("list_items" -> "listItems")
+    }
+    "target is URI" in {
+      gen.generate(Options("uri")).functions should contain(
+        "list_items" -> "https://neverblink.eu/linkml/tests/functions/returns/list_items",
+      )
+    }
   }
 
   /** A class that gets slots from its own attributes, its `slots` list, a parent class and a mixin.
