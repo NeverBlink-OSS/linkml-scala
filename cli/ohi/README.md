@@ -140,14 +140,14 @@ Use `--json` for [structured results and errors](schema/cli-lock-download.yaml).
 
 ```sh
 ohi linkml validate model.yaml
-ohi linkml generate json-schema model.yaml --to model.schema.json
+ohi linkml to json-schema model.yaml --to model.schema.json
 ```
 
 Replace `model.yaml` with your LinkML schema. Successful validation reports `Schema is valid.` and exits 0. Validation exits 1 for errors or fatal issues, and for warnings when `--strict` is used. To validate application data, use a separate validator with the generated JSON Schema or SHACL definitions.
 
 The generation example writes JSON Schema and replaces an existing destination file.
 
-`ohi linkml --help` lists every supported command. Use a complete command's `--help`, such as `ohi linkml generate scala --help`, to see its options. Generation requires a target, such as `scala` or `json-schema`.
+`ohi linkml --help` lists every supported command. Use a complete command's `--help`, such as `ohi linkml to scala --help`, to see its options. Generation requires a target, such as `scala` or `json-schema`.
 
 Run `ohi version` to check the installed version.
 

@@ -4,7 +4,7 @@ import caseapp.*
 import caseapp.core.Error
 import caseapp.core.help.HelpFormat
 import caseapp.core.util.fansi
-import eu.neverblink.linkml.cli.{App, Version, VersionCommand, VersionOptions}
+import eu.neverblink.linkml.cli.{App, Generate, Version, VersionCommand, VersionOptions}
 
 import java.io.PrintStream
 
@@ -40,15 +40,21 @@ final class OhiApp private[cli] (
 
   override def progName: String = "ohi"
 
-  override def commands: Seq[Command[?]] = super.commands.map {
-    case Version => version
-    case command => new PrefixedCommand(command)
+  override def commands: Seq[Command[?]] = super.commands.flatMap {
+    case Version => Seq(version)
+    // `linkml generate <name>` is a hidden alias for `linkml to <name>`
+    case command: Generate[?] =>
+      Seq(new PrefixedCommand(command, "to"), new PrefixedCommand(command, "generate", true))
+    case command => Seq(new PrefixedCommand(command))
   } ++ Seq(Search, Inspect, Get, Init, Add, Lock)
 
   override def main(args: Array[String]): Unit = {
     val words = args.toList
-    val group = if words.lastOption.exists(helpFlags.contains) then words.init else words
-    if Set(enginePrefix, enginePrefix :+ "generate", enginePrefix :+ "from").contains(group) then {
+    val group = (if words.lastOption.exists(helpFlags.contains) then words.init else words) match {
+      case `enginePrefix` :+ "generate" => enginePrefix :+ "to"
+      case other => other
+    }
+    if Set(enginePrefix, enginePrefix :+ "to", enginePrefix :+ "from").contains(group) then {
       val output = new StringBuilder
       val colored = CliFormatting.enabled(outStream)
       val format =
@@ -79,11 +85,17 @@ final class OhiApp private[cli] (
     exit(0)
   }
 
-  private final class PrefixedCommand[T](command: Command[T])
-      extends Command[T](using command.parser0, command.messages) {
-    override def names: List[List[String]] = command.names.map(enginePrefix ++ _)
-    override def group: String = command.group
-    override def hidden: Boolean = command.hidden
+  /** Puts `command` under `linkml`, optionally replacing its first word with `verb`. */
+  private final class PrefixedCommand[T](
+      command: Command[T],
+      verb: String = "",
+      alias: Boolean = false,
+  ) extends Command[T](using command.parser0, command.messages) {
+    override def names: List[List[String]] = command.names.map { name =>
+      enginePrefix ++ (if verb.isEmpty then name else verb :: name.tail)
+    }
+    override def group: String = if verb.isEmpty then command.group else verb
+    override def hidden: Boolean = alias || command.hidden
     override lazy val finalHelp: Help[?] = command.finalHelp
 
     override def helpFormat: HelpFormat = HelpFormat.default(CliFormatting.enabled(outStream))

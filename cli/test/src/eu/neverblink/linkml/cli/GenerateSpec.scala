@@ -502,7 +502,7 @@ class GenerateSpec extends AnyWordSpec, Matchers {
         withSchemas(3) { paths =>
           val (_, err, _) =
             Shacl.runTestCommandWithExitCode(List("generate", "shacl") ++ paths)
-          err should include("`generate shacl` takes a single input file, but 3 were given")
+          err should include("The shacl generator takes a single input file, but 3 were given")
         }
       }
     }

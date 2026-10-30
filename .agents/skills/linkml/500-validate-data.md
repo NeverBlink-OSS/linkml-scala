@@ -28,9 +28,9 @@ ohi linkml validate --format json schema.yaml
 ## Step 2 — generate
 
 ```shell
-ohi linkml generate json-schema  --to build/schema.json  schema.yaml
-ohi linkml generate shacl --format ttl --to build/shapes.ttl  schema.yaml
-ohi linkml generate frictionless --to build/package  schema.yaml
+ohi linkml to json-schema  --to build/schema.json  schema.yaml
+ohi linkml to shacl --format ttl --to build/shapes.ttl  schema.yaml
+ohi linkml to frictionless --to build/package  schema.yaml
 ```
 
 `frictionless` emits a Frictionless **data package**, one CSV table per class. Where you send it
@@ -53,7 +53,7 @@ a perfectly good file fails on the root type. You can override it per generation
 the schema:
 
 ```shell
-ohi linkml generate json-schema --tree-root-inline-type-override list \
+ohi linkml to json-schema --tree-root-inline-type-override list \
   --to build/schema.json schema.yaml
 ```
 

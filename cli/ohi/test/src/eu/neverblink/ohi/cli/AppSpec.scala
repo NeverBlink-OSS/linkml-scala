@@ -15,23 +15,27 @@ class AppSpec extends AnyWordSpec, Matchers {
   private val engineCommands: Seq[(String, BaseCommand[?], String)] = Seq(
     ("linkml validate", Validate, "Validate one or more LinkML schemas"),
     ("linkml lint", Validate, "Validate one or more LinkML schemas"),
-    ("linkml generate scala", Scala, "Generate Scala classes"),
-    ("linkml generate json-schema", JsonSchema, "Generate a JSON Schema"),
-    ("linkml generate shacl", Shacl, "Generate SHACL shapes"),
-    ("linkml generate rdfs", Rdfs, "Generate an RDF Schema (RDFS) vocabulary"),
-    ("linkml generate owl", Owl, "Generate an OWL 2 ontology"),
-    ("linkml generate linkml", LinkMl, "Generate the materialized, derived LinkML schema"),
-    ("linkml generate frictionless", Frictionless, "Generate a Frictionless Data Package"),
-    ("linkml generate graphql", GraphQl, "Generate a GraphQL schema"),
-    ("linkml generate typescript", TypeScript, "Generate TypeScript types"),
-    ("linkml generate pydantic", Pydantic, "Generate Python classes based on pydantic"),
-    ("linkml generate ossie", Ossie, "Generate an Apache Ossie ontology"),
-    ("linkml generate er-diagram", ErDiagram, "Generate a Mermaid entity relationship diagram"),
-    ("linkml generate docs", Docs, "Generate Markdown documentation"),
-    ("linkml generate translation", Translation, "Generate translation dictionaries"),
+    ("linkml to scala", Scala, "Generate Scala classes"),
+    ("linkml to json-schema", JsonSchema, "Generate a JSON Schema"),
+    ("linkml to shacl", Shacl, "Generate SHACL shapes"),
+    ("linkml to rdfs", Rdfs, "Generate an RDF Schema (RDFS) vocabulary"),
+    ("linkml to owl", Owl, "Generate an OWL 2 ontology"),
+    ("linkml to linkml", LinkMl, "Generate the materialized, derived LinkML schema"),
+    ("linkml to frictionless", Frictionless, "Generate a Frictionless Data Package"),
+    ("linkml to graphql", GraphQl, "Generate a GraphQL schema"),
+    ("linkml to typescript", TypeScript, "Generate TypeScript types"),
+    ("linkml to pydantic", Pydantic, "Generate Python classes based on pydantic"),
+    ("linkml to ossie", Ossie, "Generate an Apache Ossie ontology"),
+    ("linkml to er-diagram", ErDiagram, "Generate a Mermaid entity relationship diagram"),
+    ("linkml to docs", Docs, "Generate Markdown documentation"),
+    ("linkml to translation", Translation, "Generate translation dictionaries"),
     ("linkml from ossie", FromOssie, "Convert an Apache Ossie ontology"),
     ("linkml from owl", FromOwl, "Convert an OWL ontology or RDFS vocabulary"),
   )
+  private val generateAliases = engineCommands.collect {
+    case (name, _, _) if name.startsWith("linkml to ") =>
+      name.replace("linkml to ", "linkml generate ")
+  }
   private val versionNames =
     Seq("version", "v", "--version", "linkml version", "linkml v", "linkml --version")
 
@@ -85,7 +89,7 @@ class AppSpec extends AnyWordSpec, Matchers {
     }
     "register the catalog commands, nested engine commands and six version aliases" in {
       new OhiApp().commands.flatMap(_.names.map(_.mkString(" "))) should contain theSameElementsAs
-        (engineCommands.map(_._1) ++ versionNames ++ Seq(
+        (engineCommands.map(_._1) ++ generateAliases ++ versionNames ++ Seq(
           "search",
           "inspect",
           "get",
@@ -118,7 +122,7 @@ class AppSpec extends AnyWordSpec, Matchers {
       }
 
     "retain Scala options in nested leaf help" in {
-      val (out, err, code) = runApp(List("linkml", "generate", "scala", "--help"), _ => Scala)
+      val (out, err, code) = runApp(List("linkml", "to", "scala", "--help"), _ => Scala)
       code shouldBe 0
       err shouldBe empty
       out should include("--package")
@@ -137,7 +141,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         out should include("Find and download\n  search")
         out should include("Local schemas\n  linkml")
         out should include("About\n  version")
-        out should not include "linkml generate"
+        out should not include "linkml to"
         out should include("https://ohi.dev/docs/")
         out should not include "\u001b"
       }
@@ -149,6 +153,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         engineCommands.foreach { (name, _, _) => out should include(name) }
         out should not include "search"
         out should not include "version"
+        out should not include "generate"
       }
 
     "reject a flat engine command instead of accepting an alternate layout" in {
@@ -159,7 +164,24 @@ class AppSpec extends AnyWordSpec, Matchers {
       err should include("Run 'ohi --help'")
     }
 
-    for group <- Seq("generate", "from") do
+    "list the to group, without the alias, for the hidden generate alias" in {
+      val (out, err, code) = runApp(List("linkml", "generate"))
+      code shouldBe 0
+      err shouldBe empty
+      out should startWith("to commands:\n")
+      out should include("linkml to scala")
+      out should not include "generate scala"
+    }
+
+    "keep generate as an alias of to" in {
+      val (out, err, code) = runApp(List("linkml", "generate", "scala", "--help"), _ => Scala)
+      code shouldBe 0
+      err shouldBe empty
+      plain(out) should include("Usage: ohi linkml generate scala")
+      out should include("--package")
+    }
+
+    for group <- Seq("to", "from") do
       for suffix <- Seq(List.empty[String], List("--help")) do
         s"show the $group group without unrelated commands for ${suffix.mkString(" ")}" in {
           val (out, err, code) = runApp(List("linkml", group) ++ suffix)
@@ -176,10 +198,10 @@ class AppSpec extends AnyWordSpec, Matchers {
         }
 
     "name the unknown nested target without including its input filename" in {
-      val (out, err, code) = runApp(List("linkml", "generate", "malbolge", "model.yaml"))
+      val (out, err, code) = runApp(List("linkml", "to", "malbolge", "model.yaml"))
       code shouldBe 1
       out shouldBe empty
-      err should include("Unknown command: linkml generate malbolge")
+      err should include("Unknown command: linkml to malbolge")
       err should not include "model.yaml"
       err should include("Run 'ohi --help'")
     }
@@ -304,7 +326,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         val dest = path / os.up / "generated schema.json"
         os.write(dest, "filler\n" * 10_000)
         val (out, err, code) = runApp(
-          List("linkml", "generate", "json-schema", "--to", dest.toString, path.toString),
+          List("linkml", "to", "json-schema", "--to", dest.toString, path.toString),
           _ => JsonSchema,
         )
         withClue(s"stderr was: $err\n") { code shouldBe 0 }

@@ -19,7 +19,7 @@ generated JSON Schema, and they check the schema while loading. The output is a 
 From the command line:
 
 ```shell
-ohi linkml generate pydantic --to model.py schema.yaml
+ohi linkml to pydantic --to model.py schema.yaml
 ```
 
 Options:

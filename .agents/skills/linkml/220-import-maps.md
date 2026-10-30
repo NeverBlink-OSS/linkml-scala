@@ -83,7 +83,7 @@ Two files with the same content are loaded without an error.
 
 ### CLI
 
-`generate` and `validate` take `--import-map FILE`, the path of the JSON file:
+`ohi linkml to` and `ohi linkml validate` take `--import-map FILE`, the path of the JSON file:
 
 ```json
 {
@@ -93,7 +93,7 @@ Two files with the same content are loaded without an error.
 ```
 
 ```shell
-ohi linkml generate json-schema --import-map imports.json model.yaml
+ohi linkml to json-schema --import-map imports.json model.yaml
 ```
 
 ### Python
