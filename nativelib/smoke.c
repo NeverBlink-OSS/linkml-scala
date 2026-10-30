@@ -74,12 +74,6 @@ static void expect_refused(const char *what, char *document,
 }
 
 int main(void) {
-    if (linkml_init_threads() != 0) {
-        fprintf(stderr, "FAIL  linkml_init_threads\n");
-        return 1;
-    }
-    ok("runtime started");
-
     if (linkml_abi_version() != LINKML_ABI_VERSION) {
         fail("abi version", "does not match the header");
     } else {

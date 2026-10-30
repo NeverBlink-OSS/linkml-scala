@@ -87,11 +87,6 @@ object LinkMlCApi {
   def free(buffer: CString): Unit =
     if buffer != null then stdlib.free(buffer)
 
-  /** Correct the stack bounds Scala Native recorded when the library was loaded. Call once, from
-    * the thread that loaded it and that will make every call. See the C file for why.
-    */
-  @exported("linkml_init_threads")
-  def initThreads(): CInt = Attach.linkml_init_threads_impl()
 
   // Internals
 

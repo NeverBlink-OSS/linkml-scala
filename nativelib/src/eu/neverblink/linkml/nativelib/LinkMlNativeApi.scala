@@ -58,8 +58,9 @@ object LinkMlNativeApi {
     *   - 4: the options of the generators follow `model/converter/all_generators.yaml`, so their
     *     names are in snake case, and a tree root override is a `tree_root` option of its own. The
     *     options of loading, linting and the importers are in snake case too.
+    *   - 5: removed `linkml_init_threads`. Any thread may call in, several at once.
     */
-  final val abiVersion: Int = 4
+  final val abiVersion: Int = 5
 
   private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
 
