@@ -26,9 +26,6 @@ target/
 # mill
 /out/
 
-# Generated files
-.generated
-
 # Raw data dir
 .data
 
