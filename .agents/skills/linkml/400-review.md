@@ -9,11 +9,13 @@ has a fatal error, and its findings frame everything else:
 ```shell
 ohi linkml validate --strict --format json schema.yaml
 ohi linkml to linkml schema.yaml   # the effective model
+ohi linkml to stats schema.yaml    # statistics about the contents and documentation
 ```
 
 The second command is the one that makes a real review possible: it resolves imports and
 materialises inherited slots into attributes, so you review what the schema *means* rather than
 what it appears to say. Inheritance and `slot_usage` routinely hide surprises. Review both.
+The third returns the size of the schema and tells you where documentation is missing.
 
 **Rank findings by consequence, and separate the two kinds.** Things that will break consumers
 of the schema come first; style comes last. Be specific — quote the element and give the fix.

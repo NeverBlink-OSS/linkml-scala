@@ -1,8 +1,8 @@
 // Packs and installs the built package into a throwaway project, then runs the
 // packaged README's JS examples (skipping blocks tagged `no-test`) and, if a TS
 // usage sample is given, type-checks it against the generated index.d.ts.
-// Finally, it checks that what the API really returns for the build info and for
-// validation reports fits the types generated from their LinkML models.
+// Finally, it checks that what the API really returns for the build info, validation
+// reports and schema statistics fits the types generated from their LinkML models.
 //
 //   node verify-package.mjs <package-dir> [usage-sample.ts]
 //
@@ -91,7 +91,7 @@ if (usageSample && existsSync(usageSample)) {
 
 // 3. Check real return values against the types generated from their LinkML models. The
 // values are written out as object literals, so `tsc` also rejects keys the types don't have.
-console.log("Type-checking real build info and validation reports against index.d.ts");
+console.log("Type-checking real build info, validation reports and stats against index.d.ts");
 const collect = `
 import { writeFileSync } from "node:fs";
 import { LinkML } from "@neverblink/linkml";
@@ -111,18 +111,23 @@ const schemas = [
   "id: [",
 ];
 const reports = [];
+const stats = [];
 for (const schema of schemas)
   for (const inferMessages of [true, false]) {
     const loaded = LinkML.loadFromString(schema, {}, inferMessages);
     reports.push(loaded.report);
-    if (loaded.view) reports.push(LinkML.lint(loaded.view, inferMessages));
+    if (loaded.view) {
+      reports.push(LinkML.lint(loaded.view, inferMessages));
+      stats.push(LinkML.stats(loaded.view), LinkML.stats(loaded.view, "skip"));
+    }
   }
 const issueTypes = new Set(reports.flatMap((r) => r.issues.map((i) => i.issue_type)));
 writeFileSync(
   "outputs.ts",
-  'import type { BuildInfo, SchemaValidationReport } from "@neverblink/linkml";\\n' +
+  'import type { BuildInfo, SchemaStats, SchemaValidationReport } from "@neverblink/linkml";\\n' +
     "export const build: BuildInfo = " + JSON.stringify(LinkML.buildInfo(), null, 2) + ";\\n" +
-    "export const reports: SchemaValidationReport[] = " + JSON.stringify(reports, null, 2) + ";\\n",
+    "export const reports: SchemaValidationReport[] = " + JSON.stringify(reports, null, 2) + ";\\n" +
+    "export const stats: SchemaStats[] = " + JSON.stringify(stats, null, 2) + ";\\n",
 );
 console.log([...issueTypes].sort().join(", "));
 `;

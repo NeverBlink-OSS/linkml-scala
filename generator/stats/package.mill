@@ -1,0 +1,35 @@
+package build.generator.stats
+
+import mill.*
+import millbuild.*
+
+/** The schema statistics model, generated into Scala by this project's own Scala generator. */
+object `package` extends Module, NativeOptional, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
+  def modelSchema = Task { "model/schema-stats.yaml" }
+
+  def modelPackage = "eu.neverblink.linkml.generator.stats.model"
+
+  // The npm package ships these types, see `TsDefsGen.modelTypes`
+  override def otherModelOutputs =
+    Map("typescript" -> build.generator.moduleDir / "npm" / "schema-stats.d.ts")
+
+  object jvm extends CommonModule {
+    def moduleDeps = Seq(
+      build.runtime.jvm,
+    )
+  }
+
+  object js extends NoBspModule, CommonScalaJsModule {
+    def moduleDeps = Seq(
+      build.runtime.js,
+    )
+  }
+
+  object native extends NoBspModule, CommonScalaNativeModule {
+    def moduleDeps = Seq(
+      build.runtime.native,
+    )
+  }
+}

@@ -7,7 +7,7 @@
 // postMessage boundary). Keeping both halves in one file means ids and option keys have a
 // single definition that both sides are type-checked against.
 import type { Format as OhiFormat } from "@neverblink/ohi";
-import type { LinkMLApi, SchemaValidationReport, SchemaView } from "./linkml";
+import type { LinkMLApi, SchemaStats, SchemaValidationReport, SchemaView } from "./linkml";
 import type { OutputLang } from "./editor.js";
 import { EXAMPLE_OSSIE, EXAMPLE_OWL } from "./examples.js";
 
@@ -43,7 +43,10 @@ const TREE_ROOT: Option = {
 /** The validation report types, generated from model/issue-types.yaml into linkml.d.ts. */
 export type { IssueLocation, SchemaIssue, SchemaValidationReport } from "./linkml";
 
-export type TargetResult = string | Record<string, string> | SchemaValidationReport;
+/** The schema statistics, generated from model/schema-stats.yaml into linkml.d.ts. */
+export type { SchemaStats } from "./linkml";
+
+export type TargetResult = string | Record<string, string> | SchemaValidationReport | SchemaStats;
 
 /** The build info, generated from model/build-info.yaml into linkml.d.ts. */
 export type { BuildInfo } from "./linkml";
@@ -61,8 +64,8 @@ export interface Step {
 export interface Target extends Step {
   /** How to display what `call` returns. Defaults to text, or the file tabs for a `Record`.
    * `diagram` renders the result with Mermaid, behind a Diagram/Code tab pair. `page` renders it
-   * as Markdown, behind a Page/Code tab pair. */
-  view?: "report" | "diagram" | "page";
+   * as Markdown, behind a Page/Code tab pair. `stats` renders the statistics as tables. */
+  view?: "report" | "diagram" | "page" | "stats";
   /** Runs in the worker only. `api` is injected rather than imported so this module stays free of
    * the multi-MB Scala.js bundle, which the UI thread never loads. */
   call: (api: LinkMLApi, view: SchemaView, o: OptionValues) => TargetResult;
@@ -231,6 +234,17 @@ export const TARGETS: Target[] = [
       { key: "inferMessages", type: "checkbox", label: "Messages", default: true },
     ],
     call: (api, v, o) => api.lint(v, !!o.inferMessages),
+  },
+  {
+    id: "stats",
+    label: "Statistics",
+    lang: "json",
+    view: "stats",
+    options: [
+      { key: "pruningMode", type: "select", label: "Pruning", choices: ["treeRoot", "schema", "skip"], default: "schema" },
+      TREE_ROOT,
+    ],
+    call: (api, v, o) => api.stats(v, String(o.pruningMode || "schema"), blankToUndef(o.treeRoot)),
   },
   {
     id: "owl",

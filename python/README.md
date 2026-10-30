@@ -24,7 +24,7 @@ with linkml_scala.load_file("model.yaml") as schema:
 
 Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkml()`,
 `frictionless()`, `graphql()`, `typescript()`, `pydantic()`, `er_diagram()`, `docs()`, `translation()`,
-`ossie()`, `owl()`, and `scala()`, plus `lint()` for validation. For how to use the classes
+`ossie()`, `owl()`, `scala()` and `stats()`, plus `lint()` for validation. For how to use the classes
 `pydantic()` generates, see
 [the Pydantic guide](https://linkml.ohi.dev/docs/pydantic/).
 

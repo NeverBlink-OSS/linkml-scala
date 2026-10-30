@@ -29,6 +29,7 @@ class AppSpec extends AnyWordSpec, Matchers {
     ("linkml to er-diagram", ErDiagram, "Generate a Mermaid entity relationship diagram"),
     ("linkml to docs", Docs, "Generate Markdown documentation"),
     ("linkml to translation", Translation, "Generate translation dictionaries"),
+    ("linkml to stats", Stats, "Generate statistics about the schema"),
     ("linkml from ossie", FromOssie, "Convert an Apache Ossie ontology"),
     ("linkml from owl", FromOwl, "Convert an OWL ontology or RDFS vocabulary"),
   )

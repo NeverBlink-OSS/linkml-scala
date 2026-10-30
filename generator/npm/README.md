@@ -103,6 +103,7 @@ Load a schema into a `SchemaView` handle (see above), then pass that handle to a
 | `docs(view, pruningMode?, treeRoot?, singleFile?, metadataLanguage?)`        | `Record<string, string>` | filename → Markdown documentation (`index.md` and a page per element)          |
 | `ossie(view, pruningMode?, treeRoot?, outFormat?)`                           | `string`                 | Apache Ossie ontology, `yaml` (default) or `json`                              |
 | `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
+| `stats(view, pruningMode?, treeRoot?)`                                       | `SchemaStats`            | counts of the elements, their documentation, mappings, languages and imports  |
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 | `fromOssie(ontology, schemaId?, outFormat?, fullUris?)`                      | `string`                 | the LinkML schema from an Apache Ossie ontology                                |

@@ -13,8 +13,10 @@ import eu.neverblink.linkml.generator.owl.OwlGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
+import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
 import org.openjdk.jmh.annotations.{Benchmark, Param, Setup}
@@ -225,6 +227,27 @@ class GeneratorBench extends CommonParams {
   @Benchmark
   def docsFromSchemaView(bh: Blackhole): Unit =
     write(bh, DocsGenerator(using schemaView))
+
+  @Benchmark
+  def statsFromYaml(bh: Blackhole): Unit =
+    write(bh, StatsGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml))))
+
+  @Benchmark
+  def statsFromSchemas(bh: Blackhole): Unit =
+    write(bh, StatsGenerator(using SchemaView(schemaView.schemas)))
+
+  @Benchmark
+  def statsFromSchemaView(bh: Blackhole): Unit =
+    write(bh, StatsGenerator(using schemaView))
+
+  /** Without pruning, which skips the reachability query. */
+  @Benchmark
+  def statsSkipFromSchemas(bh: Blackhole): Unit =
+    StatsGenerator(using SchemaView(schemaView.schemas))
+      .writeTo(
+        new BlackholeOutputStream(bh),
+        StatsGenerator.Options(pruningMode = PruningMode.skip),
+      )
 
   /** Writes the document with default options to the blackhole, as the CLI writes it to a file. */
   private def write(bh: Blackhole, generator: DocumentGenerator[?]): Unit =

@@ -14,6 +14,7 @@ import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
+import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
@@ -608,4 +609,35 @@ object Docs extends SplitGenerate[DocsOptions] {
       SchemaView,
   ): Iterable[(String, String)] =
     DocsGenerator().generateFiles(generator(options)).map(_.toTuple)
+}
+
+// Schema statistics
+
+@HelpMessage(
+  "Generate statistics about the schema\n" +
+    "Counts the elements of each kind, how many of them are documented, deprecated or mapped, " +
+    "the strings in each language, and the imports.",
+)
+@ArgsName("<input-file>")
+final case class StatsOptions(
+    @Recurse
+    common: GenerateOptions,
+    @Recurse
+    pruning: DocsPruningOptions = DocsPruningOptions(),
+    @HelpMessage(outputFormatHelp)
+    format: String = "yaml",
+) extends HasGenerateOptions
+
+object Stats extends StreamGenerate[StatsOptions] {
+  override protected def generatorName: String = "stats"
+
+  override protected[cli] def generate(options: StatsOptions, out: OutputStream)(using
+      SchemaView,
+  ): Unit =
+    StatsGenerator().writeTo(
+      out,
+      StatsGenerator.Options(pruningMode = options.pruning.resolvedPruningMode),
+      JsonOutputFormat.parse(options.format)
+        .getOrElse(err(JsonOutputFormat.unknownFormat(options.format))),
+    )
 }

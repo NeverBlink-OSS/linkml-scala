@@ -69,6 +69,9 @@ char *linkml_er_diagram(long long handle, const char *options, char **error);
 char *linkml_ossie(long long handle, const char *options, char **error);
 char *linkml_owl(long long handle, const char *options, char **error);
 
+/* Statistics about the schema, as a SchemaStats in JSON. */
+char *linkml_stats(long long handle, const char *options, char **error);
+
 /* Generators producing several files, returned as a JSON object of filename to content. */
 char *linkml_scala(long long handle, const char *options, char **error);
 char *linkml_frictionless(long long handle, const char *options, char **error);

@@ -35,6 +35,11 @@ object TsDefsGen {
         "names its kind, so a `switch` on it narrows the issue to that kind.",
     ),
     ModelTypes("build-info", Seq("BuildInfo"), "The build info, generated from model/build-info.yaml."),
+    ModelTypes(
+      "schema-stats",
+      Seq("SchemaStats"),
+      "The schema statistics, generated from model/schema-stats.yaml.",
+    ),
   )
 
   /** @param scalaSource

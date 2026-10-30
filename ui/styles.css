@@ -960,6 +960,68 @@ body { background: var(--bg); }
 
 /* ── Validation report ─────────────────────────────────────────────────────── */
 
+/* Statistics view: tables of counts, each share drawn as a small bar beside its number. */
+.stats {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 24px 32px;
+  background: var(--surface-3);
+  color: var(--text);
+  font-size: 13px;
+}
+.stats[hidden] { display: none; }
+.stats-head { margin-bottom: 16px; }
+.stats-head h3 { margin: 0 0 4px; font-size: 18px; }
+.stats-muted { color: var(--text-muted); overflow-wrap: anywhere; }
+.stats-section { margin-top: 20px; }
+.stats-section h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.stats-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.stats-chip {
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  font-weight: 600;
+}
+.stats-chip--yes { color: var(--success); background: var(--success-soft); border-color: var(--success); }
+.stats-chip--no { color: var(--danger); background: var(--danger-soft); border-color: var(--danger-border); }
+.stats-table-scroll { overflow-x: auto; scrollbar-color: var(--border-strong) transparent; }
+.stats-table { border-collapse: collapse; width: 100%; }
+.stats-table th,
+.stats-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border-subtle);
+  text-align: left;
+  white-space: nowrap;
+}
+.stats-table th { font-weight: 600; color: var(--text-secondary); }
+.stats-table th abbr { text-decoration: underline dotted; text-underline-offset: 3px; cursor: help; }
+.stats-table .stats-num,
+.stats-table .stats-share { text-align: right; font-variant-numeric: tabular-nums; }
+.stats-count { font-weight: 600; }
+.stats-empty td { color: var(--text-muted); }
+.stats-none { color: var(--text-muted); }
+.stats-code { font-family: var(--code-font); }
+.stats-share .stats-num { display: inline-block; min-width: 3ch; }
+.stats-bar {
+  display: inline-block;
+  width: 28px;
+  height: 6px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.stats-bar-fill { display: block; height: 100%; background: var(--accent-strong); }
+
 .report {
   flex: 1;
   min-height: 0;

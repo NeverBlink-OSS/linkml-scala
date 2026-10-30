@@ -10,6 +10,10 @@ export * from "../generator/npm/validation-report.js";
 import type { BuildInfo } from "../generator/npm/build-info.js";
 export * from "../generator/npm/build-info.js";
 
+// The schema statistics, generated from model/schema-stats.yaml.
+import type { SchemaStats } from "../generator/npm/schema-stats.js";
+export * from "../generator/npm/schema-stats.js";
+
 /**
  * Opaque handle to a loaded, import-resolved LinkML schema. Create one with
  * {@link LinkMLApi.load} and pass it to the generator functions. Parse a schema
@@ -178,6 +182,15 @@ export interface LinkMLApi {
    * @returns The ER diagram, serialized as Mermaid
    */
   erDiagram(schema: SchemaView, pruningMode?: string, treeRoot?: string, optionalMarker?: boolean): string;
+
+  /**
+   * Statistics about a loaded LinkML schema: how many elements of each kind it has, how many of them are documented, deprecated or mapped, the strings in each language, and the imports.
+   * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
+   * @param pruningMode Which elements to count. One of treeRoot|schema|skip. treeRoot - the elements reachable from the tree_root class. schema - the elements reachable from any of the classes defined in the root schema. skip - every element. Default: schema
+   * @param treeRoot Tree root class name to use instead of the schema defined tree_root.
+   * @returns A `SchemaStats` object, as described by https://linkml.ohi.dev/model/schema-stats
+   */
+  stats(schema: SchemaView, pruningMode?: string, treeRoot?: string): SchemaStats;
 
   /**
    * Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for each class, slot, enum and type, which link to each other.

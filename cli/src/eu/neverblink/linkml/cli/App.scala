@@ -40,6 +40,7 @@ class App protected[cli] (
     ErDiagram,
     Docs,
     Translation,
+    Stats,
     Ossie,
     FromOssie,
     Owl,

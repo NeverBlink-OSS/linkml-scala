@@ -33,8 +33,8 @@ export interface ConvertRequest {
 }
 
 /** How the UI should render `result`: as editor text, as the Scala file tabs, as the report view, as
- * a Mermaid diagram, or as a Markdown page. */
-export type ResultKind = "text" | "files" | "report" | "diagram" | "page";
+ * a Mermaid diagram, as a Markdown page, or as the statistics tables. */
+export type ResultKind = "text" | "files" | "report" | "diagram" | "page" | "stats";
 
 export type ConvertResponse =
   | {
@@ -131,6 +131,8 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
       ? "diagram"
       : target.view === "page"
       ? "page"
+      : target.view === "stats"
+      ? "stats"
       : typeof result === "object"
       ? "files"
       : "text";

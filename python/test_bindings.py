@@ -572,6 +572,14 @@ class GeneratorTest(unittest.TestCase):
         # Class-ranged slots become relationship lines instead.
         self.assertIn('Person ||--o| Animal : "pet"', generated)
 
+    def test_stats(self):
+        stats = self.schema.stats()
+        self.assertEqual("schema", stats["pruning_mode"])
+        self.assertEqual(2, stats["elements"]["classes"]["count"])
+        self.assertEqual({"direct": 1, "transitive": 1}, stats["imports"])
+        self.assertIn("", stats["languages"])
+        self.assertEqual("tree_root", self.schema.stats(pruning_mode="treeRoot")["pruning_mode"])
+
     def test_ossie(self):
         generated = self.schema.ossie()
         # Classes become entity types, and slots become relationships under them.

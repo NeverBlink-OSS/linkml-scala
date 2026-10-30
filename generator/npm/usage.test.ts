@@ -6,6 +6,7 @@ import {
   type LoadResult,
   type SchemaConversionError,
   type SchemaIssue,
+  type SchemaStats,
   type SchemaValidationReport,
   type SchemaView,
 } from "@neverblink/linkml";
@@ -53,6 +54,9 @@ const frictionless: Record<string, string> = LinkML.frictionless(view);
 const frictionlessRoot: Record<string, string> = LinkML.frictionless(view, "treeRoot", "Person", true);
 const erDiagram: string = LinkML.erDiagram(view);
 const erDiagramFull: string = LinkML.erDiagram(view, "skip", "Person", false);
+const stats: SchemaStats = LinkML.stats(view);
+const statsTreeRoot: SchemaStats = LinkML.stats(view, "treeRoot", "Person");
+const classCount: number = stats.elements.classes.count;
 const ossie: string = LinkML.ossie(view);
 const ossieFull: string = LinkML.ossie(view, "treeRoot", "Person", "json");
 const lint: SchemaValidationReport = LinkML.lint(view);
@@ -94,6 +98,9 @@ void [
   frictionlessRoot,
   erDiagram,
   erDiagramFull,
+  stats,
+  statsTreeRoot,
+  classCount,
   ossie,
   ossieFull,
   lint,

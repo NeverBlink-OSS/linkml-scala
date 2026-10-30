@@ -85,11 +85,13 @@ schema.docs(pruning_mode="schema", tree_root=None, metadata_language="en", singl
 schema.ossie(pruning_mode="skip", tree_root=None, output_format="yaml")
 schema.owl(only_root_schema=False, metadata_profile="rdfs", permissible_values="individual", format="ttl")
 schema.scala(package="eu.neverblink.linkml.metamodel", generate_emit_prefixes=True)
+schema.stats(pruning_mode="schema", tree_root=None)
 schema.translation(to="base")
 ```
 
 All arguments are keyword-only. Every one returns a string, except `scala()`, `frictionless()` and
-`docs()`, which return a filename-to-content dict.
+`docs()`, which return a filename-to-content dict, and `stats()`, which returns the
+schema statistics as a dict.
 
 `shacl()`, `rdfs()` and `owl()` take a `format`: `"ttl"` for Turtle, the default, which is prefixed and
 pretty-printed, or `"nt"` for N-Triples.
@@ -154,7 +156,7 @@ The library is compiled with [Scala Native](https://scala-native.org/), and expo
 ```c
 char* linkml_shacl      (long long handle, const char* opts, char** err);
 char* linkml_json_schema(long long handle, const char* opts, char** err);
-/* rdfs, owl, linkml, frictionless, graphql, typescript, pydantic, er_diagram, docs, scala, lint - same shape */
+/* rdfs, owl, linkml, frictionless, graphql, typescript, pydantic, er_diagram, docs, scala, stats, lint - same shape */
 
 long long linkml_load_file(const char* path, const char* opts, char** report, char** err);
 void      linkml_close    (long long handle);

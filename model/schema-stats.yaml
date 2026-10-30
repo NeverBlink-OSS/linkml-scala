@@ -1,0 +1,295 @@
+id: https://linkml.ohi.dev/model/schema-stats
+name: schema-stats
+title: Schema for LinkML schema statistics
+description: >-
+  Statistics about a LinkML schema. They count the elements of each kind, how many of them are
+  documented, deprecated or mapped to other vocabularies, the strings in each language, and the
+  imported schemas.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  stats: https://linkml.ohi.dev/model/schema-stats#
+default_prefix: stats
+imports:
+  - linkml:types
+
+classes:
+  SchemaStats:
+    title: Schema statistics
+    tree_root: true
+    description: Statistics about one LinkML schema and its imports.
+    notes:
+      - >-
+        `pruning_mode` decides which elements are in scope. `elements` and `languages` count only
+        the elements in scope. `imports` and `metadata` describe the root schema and do not depend
+        on the mode.
+    attributes:
+      schema_id:
+        range: uri
+        required: true
+        title: schema ID
+        description: The `id` of the root schema.
+
+      schema_name:
+        range: string
+        required: true
+        title: schema name
+        description: The `name` of the root schema.
+
+      pruning_mode:
+        range: PruningMode
+        required: true
+        title: pruning mode
+        description: The pruning mode. It decides the scope of the counts.
+
+      metadata:
+        range: MetadataStats
+        required: true
+        inlined: true
+        title: metadata
+        description: Whether the root schema has a license, version, title and description.
+
+      imports:
+        range: ImportStats
+        required: true
+        inlined: true
+        title: imports
+        description: The number of schemas imported by the root schema.
+
+      languages:
+        range: LanguageCount
+        multivalued: true
+        required: true
+        inlined: true
+        title: languages
+        description: >-
+          The number of strings in each language. Strings with no language tag are counted under the
+          empty tag `""`.
+        comments:
+          - >-
+            This counts the `title`, `description`, `aliases`, `comments`, `deprecated`, `keywords`
+            and `notes` of of every element in scope. It also counts these
+            strings in their alternative descriptions, examples and structured aliases.
+
+      elements:
+        range: ElementStats
+        required: true
+        inlined: true
+        title: elements
+        description: Statistics for each kind of element in scope.
+
+  MetadataStats:
+    title: Metadata statistics
+    description: >-
+      Whether the root schema has the metadata needed for publishing and reuse.
+    attributes:
+      has_license:
+        range: boolean
+        required: true
+        title: has license
+        description: True if the root schema sets `license`.
+
+      has_version:
+        range: boolean
+        required: true
+        title: has version
+        description: True if the root schema sets `version`.
+
+      has_title:
+        range: boolean
+        required: true
+        title: has title
+        description: True if the root schema sets `title`.
+
+      has_description:
+        range: boolean
+        required: true
+        title: has description
+        description: True if the root schema sets `description`.
+
+  ImportStats:
+    title: Import statistics
+    description: The number of schemas imported by the root schema.
+    attributes:
+      direct:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: direct imports
+        description: The number of entries in the root schema's `imports`.
+
+      transitive:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: transitive imports
+        description: >-
+          The number of schemas loaded besides the root schema. This includes its direct imports,
+          their imports, and so on. Each loaded schema adds exactly one to this number.
+
+  LanguageCount:
+    title: Language count
+    description: The number of strings in one language.
+    attributes:
+      language:
+        range: string
+        key: true
+        title: language
+        description: The language tag. Strings with no language tag use `""`.
+
+      count:
+        range: integer
+        required: true
+        minimum_value: 1
+        title: count
+        description: The number of strings in the language.
+
+  ElementStats:
+    title: Element statistics
+    description: Statistics for each kind of element in scope.
+    notes:
+      - >-
+        `slots` counts the slots declared at the top level of a schema. `attributes` counts the
+        slots declared in the `attributes` of a class.
+    attributes:
+      classes:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: classes
+      slots:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: slots
+      attributes:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: attributes
+      enums:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: enums
+      permissible_values:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: permissible values
+        description: Statistics for the permissible values of the enums in scope.
+      types:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: types
+      subsets:
+        range: ElementKindStats
+        required: true
+        inlined: true
+        title: subsets
+
+  ElementKindStats:
+    title: Element kind statistics
+    description: >-
+      Statistics for one kind of element. `count` is the number of elements. Every other number
+      counts some of those elements, so it is at most `count`.
+    attributes:
+      count:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: count
+        description: The number of elements of this kind.
+
+      with_title:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: with title
+        description: The number of elements with a `title`.
+
+      with_description:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: with description
+        description: The number of elements with a `description`.
+
+      deprecated:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: deprecated
+        description: The number of elements marked `deprecated`.
+
+      with_mappings:
+        range: integer
+        required: true
+        minimum_value: 0
+        title: with mappings
+        description: >-
+          The number of elements with at least one mapping of any kind, including `mappings`.
+
+      mappings:
+        range: MappingStats
+        required: true
+        inlined: true
+        title: mappings
+        description: The number of elements with each kind of mapping.
+
+      with_meaning:
+        range: integer
+        minimum_value: 0
+        title: with meaning
+        description: >-
+          The number of permissible values with a `meaning`. Only permissible values have this
+          field.
+
+  MappingStats:
+    title: Mapping statistics
+    description: The number of elements with at least one mapping of each kind.
+    attributes:
+      exact:
+        range: integer
+        required: true
+        minimum_value: 0
+        description: The number of elements with `exact_mappings`.
+      close:
+        range: integer
+        required: true
+        minimum_value: 0
+        description: The number of elements with `close_mappings`.
+      broad:
+        range: integer
+        required: true
+        minimum_value: 0
+        description: The number of elements with `broad_mappings`.
+      narrow:
+        range: integer
+        required: true
+        minimum_value: 0
+        description: The number of elements with `narrow_mappings`.
+      related:
+        range: integer
+        required: true
+        minimum_value: 0
+        description: The number of elements with `related_mappings`.
+      generic:
+        range: integer
+        required: true
+        minimum_value: 0
+        description: >-
+          The number of elements with `mappings`. These mappings carry no information about the
+          closeness of the match.
+
+enums:
+  PruningMode:
+    title: Pruning mode
+    description: Decides which elements are in scope.
+    permissible_values:
+      tree_root:
+        description: Count the elements reachable from the `tree_root` class.
+      schema:
+        description: Count everything defined in the root schema and every element it reaches.
+      skip:
+        description: Count every element of the root schema and of all its imports.

@@ -96,6 +96,13 @@ object LinkMlCGenerators {
   def scala(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.scalaFiles)
 
+  /** Generate statistics about the schema, as a JSON object following `schema-stats.yaml`. Options:
+    * `pruningMode`.
+    */
+  @exported("linkml_stats")
+  def stats(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.stats)
+
   /** Generate Translation dictionaries (in JSON), from the original names used in the schema to the
     * names used in generated outputs. Options: `to`, `indentationStep`, `derivedAttributes`.
     */
