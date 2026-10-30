@@ -247,6 +247,9 @@ library:Person a rdfs:Class ;
 
 Schemas can also use language strings in their own data using the `langstring` type imported from `linkml:types`.
 The value is a plain string or a non-empty mapping from language tag to text.
+See [Language strings in generators](/docs/langstring/) for what each generator makes of it.
+
+LinkML-Python writes `langstring` as a plain string.
 
 ## Inline type semantics
 

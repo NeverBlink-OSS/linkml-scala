@@ -177,6 +177,8 @@ Read these when the task calls for them; do not load them up front.
   matched.
 * [URIs and CURIEs](230-curies.md) — how CURIEs are expanded when a schema is loaded and URIs
   compacted when it is written, and which prefixes are used.
+* [Language strings in generators](240-langstring.md) — how each generator writes a `langstring`
+  value, a plain string or a mapping from language tag to text.
 
 ### Workflows
 
