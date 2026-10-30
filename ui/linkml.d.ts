@@ -83,7 +83,7 @@ export interface LinkMLApi {
    * Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
    * @param schema A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
    * @param packageName Package to generate the classes in
-   * @param errorHandling How the functions of the schema report their `errors`. One of `annotation`, where each error class gets an exception class and the method is annotated with `@throws`, or `either`, where the method returns `Either[E1 | E2, R]` with the error classes on the left. Default: annotation.
+   * @param errorHandling How the functions of the schema report their `errors`. One of: `annotation`, where each error class gets an exception class and the method is annotated with `@throws`; or `either`, where the method returns `Either[E1 | E2, R]` with the error classes on the left. Default: annotation.
    * @returns JS dictionary (object) containing a mapping from filename to the generated Scala code.
    */
   scala(schema: SchemaView, packageName: string, errorHandling?: string): Record<string, string>;
