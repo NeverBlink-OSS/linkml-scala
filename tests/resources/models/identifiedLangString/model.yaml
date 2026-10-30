@@ -1,0 +1,23 @@
+id: https://neverblink.eu/linkml/tests/identifiedLangString/
+name: identifiedLangString
+description: >-
+  A tree root named by a uri identifier, with a single-valued langstring slot that has a minimum and
+  a maximum length. Unlike langString, an instance can be looked up by its identifier, and it has no
+  multivalued slot, so it fits in one CSV row.
+
+imports:
+  - linkml:types
+
+classes:
+  SomeClass:
+    tree_root: true
+    attributes:
+      id:
+        rank: 1
+        identifier: true
+        range: uri
+      some_slot:
+        rank: 2
+        range: langstring
+        minimum_length: 2
+        maximum_length: 10
