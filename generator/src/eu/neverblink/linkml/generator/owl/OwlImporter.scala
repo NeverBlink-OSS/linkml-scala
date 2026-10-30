@@ -266,7 +266,7 @@ object OwlImporter {
     private val wellKnownClasses = Set(owlNs + "Thing", owlNs + "Nothing", Rdfs.Resource.value)
 
     private def isDatatype(iri: String): Boolean =
-        isDeclared(iri, EntityKind.Datatype) || OwlRdfReader.isBuiltInDatatype(iri)
+      isDeclared(iri, EntityKind.Datatype) || OwlRdfReader.isBuiltInDatatype(iri)
 
     /** Classes that are declared or used. Declarations of RDF, RDFS and OWL terms are ignored
       * (FOAF, for example, declares `rdfs:Class`).
