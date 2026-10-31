@@ -456,6 +456,30 @@ classes:
         equals_expression: >-
           {element_type} '{element_name}' has no value for the recommended slot '{slot_name}'
 
+  UnquotedStringDefault:
+    is_a: SchemaWarning
+    description: >-
+      The `ifabsent` of a slot is a `string(...)` expression whose value isn't in quotes, such as
+      `string(en)` instead of `string("en")`. It is accepted, but may become an error in the future.
+    attributes:
+      value:
+        range: string
+        required: true
+        title: value
+        description: The `ifabsent` expression as written.
+      quoted_value:
+        range: string
+        required: true
+        title: quoted value
+        description: The same expression with the value in quotes.
+    slot_usage:
+      message:
+        equals_expression: "ifabsent '{value}' at {location.json_pointer} has no quotes around the string"
+      details:
+        equals_expression: >-
+          ifabsent '{value}' at {location.json_pointer} has no quotes around the string. Write
+          {quoted_value} instead. Strings without quotes are accepted for now, but may become an
+          error in the future.
 
   InvalidSlotUsage:
     is_a: SchemaWarning

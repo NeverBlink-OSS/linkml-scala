@@ -3,6 +3,7 @@ package eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.metamodel.*
 import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.runtime.FastUtils.*
+import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import eu.neverblink.linkml.validation.*
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.Node
@@ -276,6 +277,39 @@ final class SchemaValidator(using sv: SchemaView) {
     }
     elements(root, "functions") { (name, node) =>
       check(fieldsOf(node), "function_definition", name, at("/functions/" + name, schemaId))
+    }
+    warnings.result()
+  }
+
+  /** Warnings for each `ifabsent: string(...)` in the root schema whose value has no quotes, such
+    * as `string(en)`. Imported schemas aren't checked, as with [[missingRecommendedSlots]].
+    */
+  private lazy val unquotedStringDefaults: Seq[SchemaWarning] = {
+    val warnings = Vector.newBuilder[SchemaWarning]
+    val schemaId = sv.root.id
+
+    def check(slot: SlotDefinition, pointer: String): Unit =
+      slot.ifabsent.flatMapFast(ConstructorExpression.parseString).foreachFast { s =>
+        if (!s.quoted) {
+          val quote = if s.value.contains('"') then "'" else "\""
+          warnings.addOne(
+            new UnquotedStringDefault(
+              location = at(pointer + "/ifabsent", schemaId),
+              value = slot.ifabsent.get,
+              quotedValue = "string(" + quote + s.value + quote + ")",
+            ),
+          )
+        }
+      }
+
+    sv.root.slotDefinitions.foreachEntry((name, slot) => check(slot, "/slots/" + name))
+    sv.root.classes.foreachEntry { (className, cls) =>
+      cls.attributes.foreachEntry { (name, slot) =>
+        check(slot, "/classes/" + className + "/attributes/" + name)
+      }
+      cls.slotUsage.foreachEntry { (name, slot) =>
+        check(slot, "/classes/" + className + "/slot_usage/" + name)
+      }
     }
     warnings.result()
   }
@@ -732,6 +766,7 @@ final class SchemaValidator(using sv: SchemaView) {
       undeclaredCuriePrefixes ++
       unwritableUris ++
       namingIssues.collect { case e: SchemaWarning => e } ++
+      unquotedStringDefaults ++
       missingRecommendedSlots
 
   /** Any validation problems (fatal + error) found in the schema, empty if the schema is valid.

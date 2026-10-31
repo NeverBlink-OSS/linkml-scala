@@ -57,6 +57,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `identifiedReference` | 8 | 0 | A tree root named by a uri identifier, referencing another… |
 | `identifiedUri` | 6 | 0 | A tree root named by a uri identifier, alongside slots of s… |
 | `ifabsent/enums` | 0 | 0 |  |
+| `ifabsent/scalars` | 0 | 0 | Default values (`ifabsent`) for string, integer and boolean… |
 | `implicitPrefix` | 22 | 0 |  |
 | `inheritance` | 0 | 0 |  |
 | `inlines/explicitInline` | 6 | 3 |  |

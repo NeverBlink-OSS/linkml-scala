@@ -16,6 +16,7 @@ import eu.neverblink.linkml.validation.{
   SchemaError,
   SchemaFatal,
   UndeclaredCuriePrefix,
+  UnquotedStringDefault,
   UnwritableUri,
 }
 
@@ -1114,6 +1115,76 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "/subsets/Basic: subset_definition 'Basic' has no value for the recommended slot " +
           "'description'",
       )
+    }
+
+    "warn about a string ifabsent without quotes in the root schema" in {
+      val root =
+        """id: https://example.org/root
+          |name: root
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |imports:
+          |  - linkml:types
+          |  - other
+          |slots:
+          |  package:
+          |    range: string
+          |    ifabsent: string(eu.neverblink.linkml)
+          |  quoted:
+          |    range: string
+          |    ifabsent: string("en")
+          |  single_quoted:
+          |    range: string
+          |    ifabsent: string('en')
+          |  count:
+          |    range: integer
+          |    ifabsent: int(2)
+          |classes:
+          |  Person:
+          |    is_a: Base
+          |    slot_usage:
+          |      language:
+          |        ifabsent: string(pl)
+          |    attributes:
+          |      greeting:
+          |        range: string
+          |        ifabsent: string(say "hi")
+          |""".stripMargin
+      val other =
+        """id: https://example.org/other
+          |name: other
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    attributes:
+          |      language:
+          |        range: string
+          |        ifabsent: string(en)
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromUri(
+          "root",
+          MapImporter("root.yaml" -> root, "other.yaml" -> other),
+        ),
+      )
+
+      // The slot from the imported schema isn't reported
+      sv.lintProblems.collect { case p: UnquotedStringDefault =>
+        p.infer().details.get
+      } should contain theSameElementsAs Seq(
+        "ifabsent 'string(eu.neverblink.linkml)' at /slots/package/ifabsent has no quotes around " +
+          "the string. Write string(\"eu.neverblink.linkml\") instead. Strings without quotes " +
+          "are accepted for now, but may become an error in the future.",
+        "ifabsent 'string(pl)' at /classes/Person/slot_usage/language/ifabsent has no quotes " +
+          "around the string. Write string(\"pl\") instead. Strings without quotes are accepted " +
+          "for now, but may become an error in the future.",
+        "ifabsent 'string(say \"hi\")' at /classes/Person/attributes/greeting/ifabsent has no " +
+          "quotes around the string. Write string('say \"hi\"') instead. Strings without quotes " +
+          "are accepted for now, but may become an error in the future.",
+      )
+      // Warnings aren't validation problems
+      SchemaValidator(using sv).validationProblems shouldBe empty
     }
 
     "report an equals_string that should be a URI, but isn't" in {

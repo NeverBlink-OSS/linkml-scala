@@ -15,7 +15,7 @@ The following features are not yet supported or are partially supported in ohi L
 - Boolean expressions (`any_of`, `all_of`, `exactly_one_of`, `none_of`) in the JSON Schema, OWL and Pydantic generators
   - JSON Schema and Pydantic ignore them, OWL supports only `any_of` ranges
 - Partial support for default values (`ifabsent`)
-  - Only enum and boolean defaults are supported, only in the Scala generator
+  - Only enum, string, integer and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
 - Partial support for type designators (`designates_type`)

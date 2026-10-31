@@ -368,15 +368,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
         (s"Reference[$name]", None)
       case TypeAttributeView(slotView, _, typeView) =>
         val scalaType = if typeView.isPrimitive then typeToRuntime(typeView) else typeName(typeView)
-        val default = slotView.slot.ifabsent.filter(_ => scalaType == "Boolean").mapFast {
-          _.trim.toLowerCase match {
-            case "true" => "true"
-            case "false" => "false"
-            case other =>
-              throw IllegalArgumentException(
-                s"Unsupported ifabsent for boolean slot ${slotView.name}: $other",
-              )
-          }
+        val default = slotView.ifAbsent(typeView).mapFast {
+          case s: String => scalaStringLiteral(s)
+          case v => v.toString
         }
         (scalaType, default)
       case EnumAttributeView(slotView, _, enumView) =>
@@ -392,7 +386,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
 
   /** Create a [[TypedDefault]] containing all the type-level information for a slot's range / Scala
     * field type. Handles implicit / explicit inlines, inline styles, combining functions and
-    * default values (sans `ifabasent`).
+    * default values.
     * @param attribute
     *   Attribute to derive the type-level information for
     * @return
