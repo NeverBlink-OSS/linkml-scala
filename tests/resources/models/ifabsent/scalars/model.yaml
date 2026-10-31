@@ -23,6 +23,7 @@ classes:
       - indentation_step
     slot_usage:
       indentation_step:
+        rank: 13
         ifabsent: int(2)
     attributes:
       language:
