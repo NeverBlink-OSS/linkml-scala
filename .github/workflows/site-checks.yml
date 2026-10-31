@@ -1,0 +1,90 @@
+name: Site checks
+
+on:
+  pull_request:
+    branches: [ "main" ]
+
+concurrency:
+  group: ${{ github.workflow }}-ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ui-check:
+    name: UI typecheck & build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Relocate the coursier archive cache # see checks.yml
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Regenerate UI LinkML types and check they are committed
+        run: |
+          ./mill --no-server ui.types
+          git diff --exit-code -- ui/linkml.d.ts \
+            || (echo "ui/linkml.d.ts is stale – run ./mill ui.types and commit the result"; exit 1)
+
+      - name: Type-check and bundle the UI
+        run: ./mill --no-server ui.check
+
+  docs-check:
+    name: Docs site build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v7
+
+      - name: Relocate the coursier archive cache # see checks.yml
+        shell: bash
+        run: echo "COURSIER_ARCHIVE_CACHE=${{ runner.temp }}/cs-arc" >> "$GITHUB_ENV"
+
+      - name: Cache dependencies
+        uses: coursier/cache-action@v8
+        # Also hash the build files that declare dependencies: by default only build.mill and
+        # ./mill are hashed, so a new dependency would be downloaded again on every run.
+        with:
+          extraFiles: '["**/package.mill", "mill-build/src/**/*.scala", "!out/**", "!.bsp/**"]'
+
+      - name: Setup JVM
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Build the docs site
+        # Fails on a broken link between pages or to a heading
+        run: ./mill --no-server website.build
+
+      - name: Build the ohi docs site
+        run: ./mill --no-server ohi.docs.build

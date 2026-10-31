@@ -1,9 +1,11 @@
 package eu.neverblink.linkml.generator.ossie
 
 import com.networknt.schema.InputFormat
+import eu.neverblink.linkml.generator.PythonServer
 import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
@@ -12,8 +14,10 @@ import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets.UTF_8
 
 /** Checks the `ossie` generator's output against Apache Ossie's own JSON Schema. */
-class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
+class OssieIntegrationSpec extends AnyWordSpec, Matchers, BeforeAndAfterAll, ModelCatalogueSpec {
   import OssieIntegrationSpec.*
+
+  override def afterAll(): Unit = upstreamValidator.foreach((validator, _) => validator.close())
 
   /** The Ossie flights example, or a cancelled test when there is no checkout to read it from. */
   private def flightsExample: os.Path =
@@ -53,7 +57,7 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
 
         "the upstream Ossie validator accepts the output" in {
           processSkip(entry.name, "upstream")
-          val (python, repo) = upstreamValidator.getOrElse(
+          val (validator, repo) = upstreamValidator.getOrElse(
             cancel(
               "No apache/ossie checkout and Python environment to validate with. Set " +
                 "LINKML_OSSIE_REPO to a checkout (the `ossieRepo` mill task clones one) and " +
@@ -61,17 +65,9 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
             ),
           )
           val document = os.temp(asYaml, suffix = ".yaml")
-          val result = os.call(
-            (
-              python,
-              repo / "validation" / "validate.py",
-              document,
-              "--schema",
-              repo / "ontology" / "ontology.json",
-            ),
-            check = false,
-          )
-          withClue(s"${result.out.text()}${result.err.text()}\n$asYaml") {
+          val result =
+            validator.call(document, "--schema", repo / "ontology" / "ontology.json")
+          withClue(s"${result.output}\n$asYaml") {
             result.exitCode shouldBe 0
           }
         }
@@ -176,17 +172,17 @@ object OssieIntegrationSpec {
   private lazy val ossieRepo: Option[os.Path] =
     Option(System.getenv("LINKML_OSSIE_REPO")).filter(_.nonEmpty).map(os.Path(_, os.pwd))
 
-  /** Python interpreter and apache/ossie checkout to run the upstream validator with, if both are
-    * available.
+  /** The upstream validator, run in one Python process for all the models, and the apache/ossie
+    * checkout it comes from.
     */
-  private lazy val upstreamValidator: Option[(os.Path, os.Path)] = {
+  private lazy val upstreamValidator: Option[(PythonServer, os.Path)] = {
     val python = repoRoot / ".venv" / "bin" / "python"
     for
       r <- ossieRepo
       if os.exists(r / "validation" / "validate.py") && os.exists(r / "ontology" / "ontology.json")
       if os.exists(python)
       if os.call((python, "-c", "import jsonschema, yaml"), check = false).exitCode == 0
-    yield (python, r)
+    yield (PythonServer(python, PythonServer.runScript, r / "validation" / "validate.py"), r)
   }
 
   private def linkmlFor(ontology: String): SchemaView =

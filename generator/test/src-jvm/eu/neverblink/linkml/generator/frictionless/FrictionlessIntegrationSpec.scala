@@ -1,17 +1,26 @@
 package eu.neverblink.linkml.generator.frictionless
 
 import com.github.plokhotnyuk.jsoniter_scala.core.{WriterConfig, writeToString}
+import eu.neverblink.linkml.generator.PythonServer
 import eu.neverblink.linkml.tests.ModelCatalogue.InstanceInFormats
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
+import org.scalatest.BeforeAndAfterAll
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import os.Path
 
-class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
+class FrictionlessIntegrationSpec
+    extends AnyWordSpec,
+      Matchers,
+      BeforeAndAfterAll,
+      ModelCatalogueSpec {
+  import FrictionlessIntegrationSpec.*
+
   val cwd: Path = Option(System.getenv("MILL_WORKSPACE_ROOT"))
     .map(Path(_))
     .getOrElse(os.pwd)
   val frictionless: Path = cwd / ".venv" / "bin" / "frictionless"
+  val python: Path = cwd / ".venv" / "bin" / "python"
 
   override val globalEnable: Boolean =
     os.call((frictionless, "--version"), check = false).exitCode == 0 || System.getenv("CI") != null
@@ -31,6 +40,18 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
   // multi-table test dirs
   lazy val packagesDir: os.Path = os.temp.dir()
   lazy val multiTableDir: os.Path = os.temp.dir()
+
+  /** Runs the frictionless commands via a persistent server for better performance. */
+  private val server = PythonServer(python, frictionlessScript)
+
+  override def afterAll(): Unit = server.close()
+
+  def frictionlessCall(args: os.Shellable*): PythonServer.Result = server.call(args*)
+
+  def frictionlessSucceeds(args: os.Shellable*): Unit = {
+    val result = frictionlessCall(args*)
+    withClue(result.output)(result.exitCode shouldBe 0)
+  }
 
   def isMultiTable(instance: InstanceInFormats): Boolean = {
     instance.additionalFiles.keys.exists(_.endsWith("csv"))
@@ -89,7 +110,7 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
               createFolders = true,
             ),
           )
-          os.call((frictionless, "validate", "--trusted", packageDir / "datapackage.json"))
+          frictionlessSucceeds("validate", "--trusted", packageDir / "datapackage.json")
         }
 
         for valid <- entry.validInstances
@@ -100,17 +121,14 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
             processSkip(entry, valid)
             val dataPath = instancesDir / entry.name / "valid" / valid.name / "data.csv"
             os.write(dataPath, valid.csv.get, createFolders = true)
-            os.call(
-              (
-                frictionless,
-                "validate",
-                "--trusted",
-                "--skip-errors",
-                "blank-row",
-                "--schema",
-                tableSchemaPath,
-                dataPath,
-              ),
+            frictionlessSucceeds(
+              "validate",
+              "--trusted",
+              "--skip-errors",
+              "blank-row",
+              "--schema",
+              tableSchemaPath,
+              dataPath,
             )
           }
         }
@@ -123,19 +141,15 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
             processSkip(entry, invalid)
             val dataPath = instancesDir / entry.name / "invalid" / invalid.name / "data.csv"
             os.write(dataPath, invalid.csv.get, createFolders = true)
-            val result = os.call(
-              (
-                frictionless,
-                "validate",
-                "--trusted",
-                // Frictionless seems to override missing required field errors with blank-row errors
-                // We need to accept blank rows - they are meaningful in linkml semantics.
-                // "--skip-errors", "blank-row",
-                "--schema",
-                tableSchemaPath,
-                dataPath,
-              ),
-              check = false,
+            val result = frictionlessCall(
+              "validate",
+              "--trusted",
+              // Frictionless seems to override missing required field errors with blank-row errors
+              // We need to accept blank rows - they are meaningful in linkml semantics.
+              // "--skip-errors", "blank-row",
+              "--schema",
+              tableSchemaPath,
+              dataPath,
             )
             result.exitCode should not be 0
           }
@@ -164,9 +178,7 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
                 createFolders = true,
               )
             }
-            os.call(
-              (frictionless, "validate", "--trusted", thisDir / "datapackage.json"),
-            )
+            frictionlessSucceeds("validate", "--trusted", thisDir / "datapackage.json")
           }
 
         for valid <- entry.invalidInstances
@@ -192,12 +204,27 @@ class FrictionlessIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueS
                 createFolders = true,
               )
             }
-            val result = os.call(
-              (frictionless, "validate", "--trusted", thisDir / "datapackage.json"),
-              check = false,
-            )
+            val result = frictionlessCall("validate", "--trusted", thisDir / "datapackage.json")
             result.exitCode should not be 0
           }
       }
   }
+}
+
+object FrictionlessIntegrationSpec {
+
+  /** A [[PythonServer]] script that runs `frictionless` commands the way the CLI would. */
+  val frictionlessScript: String =
+    """import json, sys, traceback
+      |from typer.testing import CliRunner
+      |from frictionless.console import console
+      |
+      |runner = CliRunner()
+      |for line in sys.stdin:
+      |    result = runner.invoke(console, json.loads(line))
+      |    output = result.output
+      |    if result.exception is not None and not isinstance(result.exception, SystemExit):
+      |        output += "".join(traceback.format_exception(result.exception))
+      |    print(json.dumps({"exitCode": result.exit_code, "output": output}), flush=True)
+      |""".stripMargin
 }

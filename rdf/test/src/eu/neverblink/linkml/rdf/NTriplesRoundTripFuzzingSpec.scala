@@ -2,6 +2,7 @@ package eu.neverblink.linkml.rdf
 
 import eu.neverblink.linkml.rdf.io.Utf8ByteSink
 import org.scalacheck.Gen
+import org.scalactic.anyvals.PosInt
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
@@ -13,7 +14,7 @@ class NTriplesRoundTripFuzzingSpec extends AnyWordSpec, Matchers, ScalaCheckProp
   import NTriplesRoundTripFuzzingSpec.*
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
-    PropertyCheckConfiguration(minSuccessful = 500)
+    PropertyCheckConfiguration(minSuccessful = cases)
 
   "NTriplesParser" should {
     "read back exactly what NTriplesWriter writes, through any buffer size" in {
@@ -33,6 +34,10 @@ class NTriplesRoundTripFuzzingSpec extends AnyWordSpec, Matchers, ScalaCheckProp
 }
 
 object NTriplesRoundTripFuzzingSpec {
+
+  /** Random cases per property: fewer on JS and Native, which run the same code much slower. */
+  val cases: PosInt =
+    if System.getProperty("java.vm.name", "").startsWith("Scala") then 100 else 500
 
   /** Any UTF-16 string: ASCII, controls, BMP, astral pairs and lone surrogates. */
   private val text: Gen[String] = Gen.listOf(

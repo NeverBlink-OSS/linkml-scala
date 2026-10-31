@@ -12,6 +12,9 @@ import scala.collection.mutable
 /** Parses the generated documentation with a CommonMark parser, with GitHub tables on, and checks
   * what a reader would see: that the links lead to the right pages, that names come out exactly as
   * written in the schema, and that tables keep their columns.
+  *
+  * JVM-only: the generator is the same code on every platform, and the parser is slow on JS and
+  * Native. DocsGeneratorSpec runs on all three.
   */
 class DocsMarkdownSpec extends AnyWordSpec, Matchers {
   import DocsMarkdownSpec.*
@@ -173,15 +176,19 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  /** The files of every schema in every pruning mode, with each page parsed. Generated once and
+    * shared by the tests, as parsing them all takes a while.
+    */
+  private lazy val sites: Seq[(String, Map[String, String], Map[String, Document])] =
+    for (name, sv) <- schemas; mode <- modes yield {
+      val files =
+        DocsGenerator(using sv).generateFiles(DocsGenerator.Options(mode)).map(_.toTuple).toMap
+      (s"$name, $mode: ", files, files.map((path, text) => (path, parse(text))))
+    }
+
   /** Run [[check]] on the files of every schema, in every pruning mode, with each page parsed. */
   private def forEachSite(check: (Map[String, String], Map[String, Document]) => Unit): Unit =
-    for (name, sv) <- schemas; mode <- modes do {
-      withClue(s"$name, $mode: ") {
-        val files =
-          DocsGenerator(using sv).generateFiles(DocsGenerator.Options(mode)).map(_.toTuple).toMap
-        check(files, files.map((path, text) => (path, parse(text))))
-      }
-    }
+    for (clue, files, pages) <- sites do withClue(clue)(check(files, pages))
 }
 
 object DocsMarkdownSpec {
