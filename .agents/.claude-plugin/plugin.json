@@ -1,6 +1,6 @@
 {
   "name": "ohi",
-  "description": "Use Ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
+  "description": "Use ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
   "author": {
     "name": "NeverBlink",
     "url": "https://neverblink.eu"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Check a built or installed Ohi executable against a local publication and optional version."""
+"""Check a built or installed ohi executable against a local publication and optional version."""
 
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -34,7 +34,7 @@ with ThreadingHTTPServer(("127.0.0.1", 0), handler) as server:
         assert publication["name"] == "sensors", result.stdout
         assert publication["version"] == "1.0.0", result.stdout
         assert publication["artifacts"][0]["format"] == "owl-turtle", result.stdout
-        print("Ohi inspected example/sensors 1.0.0 over HTTP.")
+        print("ohi inspected example/sensors 1.0.0 over HTTP.")
     finally:
         server.shutdown()
         thread.join()
@@ -50,4 +50,4 @@ with TemporaryDirectory(prefix="ohi-check-") as directory:
     assert json.loads(result.stdout)["lock_changed"] is True, result.stdout
     saved = json.loads((project / "ohi.lock.json").read_text(encoding="utf-8"))
     assert saved == {"format_version": 2, "selections": [], "files": []}, saved
-    print("Ohi initialized a project and wrote its empty lock.")
+    print("ohi initialized a project and wrote its empty lock.")

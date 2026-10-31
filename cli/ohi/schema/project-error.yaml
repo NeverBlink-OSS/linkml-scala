@@ -40,7 +40,7 @@ enums:
   ProjectErrorCode:
     permissible_values:
       INVALID_DECLARATION:
-        description: ohi.yaml is missing or invalid, or the added selection is invalid.
+        description: The ohi.yaml file is missing or invalid, or the added selection is invalid.
       INVALID_PROJECT:
         description: The project directory or its files are invalid.
       INVALID_SELECTION:

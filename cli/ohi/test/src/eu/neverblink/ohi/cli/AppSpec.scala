@@ -80,8 +80,8 @@ class AppSpec extends AnyWordSpec, Matchers {
     } finally os.remove.all(dir)
   }
 
-  "the Ohi entry point" should {
-    "retain usage-only output for an Ohi command" in {
+  "the ohi entry point" should {
+    "retain usage-only output for an ohi command" in {
       val (out, err, code) = runApp(List("search", "--usage"), _ => Search)
       code shouldBe 0
       err shouldBe empty
@@ -110,7 +110,7 @@ class AppSpec extends AnyWordSpec, Matchers {
     }
 
     for (name, command, description) <- engineCommands do
-      s"route $name help to its handler with the full Ohi usage path" in {
+      s"route $name help to its handler with the full ohi usage path" in {
         val (out, err, code) = runApp(name.split(" ").toList :+ "--help", _ => command)
         code shouldBe 0
         err shouldBe empty
@@ -134,7 +134,7 @@ class AppSpec extends AnyWordSpec, Matchers {
 
     for args <- Seq(List.empty[String], List("--help"), List("-h"), List("-help"), List("--usage"))
     do
-      s"show Ohi usage and command inventory for root ${args.mkString(" ")}" in {
+      s"show ohi usage and command inventory for root ${args.mkString(" ")}" in {
         val (out, err, code) = runApp(args)
         code shouldBe 0
         err shouldBe empty
@@ -246,9 +246,9 @@ class AppSpec extends AnyWordSpec, Matchers {
       }
   }
 
-  "Ohi version" should {
+  "ohi version" should {
     for name <- versionNames do
-      s"identify Ohi and preserve component and provenance information through $name" in {
+      s"identify ohi and preserve component and provenance information through $name" in {
         val (out, err, code) = runApp(name.split(" ").toList)
         code shouldBe 0
         err shouldBe empty
@@ -261,7 +261,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         out should include("https://github.com/NeverBlink-OSS/linkml-scala")
       }
 
-      s"describe Ohi in $name help with its invoked usage path" in {
+      s"describe ohi in $name help with its invoked usage path" in {
         val (out, err, code) = runApp(name.split(" ").toList :+ "--help")
         code shouldBe 0
         err shouldBe empty
@@ -306,7 +306,7 @@ class AppSpec extends AnyWordSpec, Matchers {
     }
   }
 
-  "Ohi engine forwarding" should {
+  "ohi engine forwarding" should {
     "keep a spaced validation path as one input and preserve its JSON report" in {
       withBasicModel { path =>
         val (out, err, code) =

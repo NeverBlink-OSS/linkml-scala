@@ -91,13 +91,13 @@ jobs:
         if: matrix.java == 17
         run: ./mill --no-server generator.js.verifyPackage
 
-      - name: Setup the minimum supported Ohi Python
+      - name: Setup the minimum supported ohi Python
         if: matrix.java == 17
         uses: actions/setup-python@v6
         with:
           python-version: '3.10'
 
-      - name: Check installed Ohi SDK packages on Python 3.10 and Node 22
+      - name: Check installed ohi SDK packages on Python 3.10 and Node 22
         if: matrix.java == 17
         run: bash cli/check-sdks.sh
 
@@ -109,7 +109,7 @@ jobs:
         if: matrix.java == 25
         run: |
           ./mill --no-server regenerate
-          # The folders of the LinkMlModelModule modules, the npm package's model types and Ohi
+          # The folders of the LinkMlModelModule modules, the npm package's model types and ohi
           models=$(./mill --no-server --ticker false resolve '__:LinkMlModelModule' | tr . /)
           paths=($models generator/npm ohi cli/ohi)
           if [ -n "$(git status --porcelain -- "${paths[@]}")" ]; then

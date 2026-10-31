@@ -11,9 +11,9 @@ temporary=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ohi-package.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT
 
 cat > "$temporary/README.md" <<'MARKDOWN'
-# Ohi SDK
+# ohi SDK
 
-The Ohi SDK lets Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
+The ohi SDK lets Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
 
 Install on Python 3.10 or later:
 

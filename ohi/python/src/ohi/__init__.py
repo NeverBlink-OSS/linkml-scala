@@ -1,4 +1,4 @@
-"""Ohi catalog operations, publication metadata and supplied file locks."""
+"""ohi catalog operations, publication metadata and supplied file locks."""
 
 from .catalog import CatalogClient, CatalogException
 from .generated import Artifact, ArtifactOrigin, Dependency, Format, Publication

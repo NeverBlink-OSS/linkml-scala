@@ -12,7 +12,7 @@ sealed abstract class ProjectErrorCode derives Stringify
 
 object ProjectErrorCode {
 
-  /** Ohi.yaml is missing or invalid, or the added selection is invalid.
+  /** The ohi.yaml file is missing or invalid, or the added selection is invalid.
     *
     * @see
     *   From schema: https://ohi.neverblink.eu/contracts/project-error

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ohi-sdk"
 version = "0.0.0"
-description = "Ohi catalog search, publication inspection and artifact retrieval."
+description = "ohi catalog search, publication inspection and artifact retrieval."
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "NeverBlink" }]

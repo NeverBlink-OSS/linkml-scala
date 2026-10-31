@@ -7,7 +7,7 @@ import eu.neverblink.linkml.runtime.stringify
 import eu.neverblink.ohi.catalog.CatalogClient
 import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
 
-/** Ohi help and focused corrections, without changing engine commands or their diagnostics. */
+/** ohi help and focused corrections, without changing engine commands or their diagnostics. */
 abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
   protected def commandName: String
   private var arguments = Seq.empty[String]

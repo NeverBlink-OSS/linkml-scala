@@ -2,7 +2,7 @@ package eu.neverblink.linkml.cli
 
 import java.io.{Console, PrintStream}
 
-/** Terminal styling shared by the engine and Ohi, without changing redirected content. */
+/** Terminal styling shared by the engine and ohi, without changing redirected content. */
 object TerminalOutput {
   private val csi = "(?:\u001b\\[|\u009b)[0-?]*[ -/]*[@-~]".r
 
