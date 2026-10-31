@@ -19,6 +19,10 @@ import eu.neverblink.linkml.runtime.*
   *   Whether every interface allows properties beyond the ones in the schema, as
   *   `additionalProperties` in the JSON Schema generator. Interfaces of classes whose `extra_slots`
   *   allows them allow them anyway.
+  * @param optionalDefaults
+  *   Whether a slot with an `ifabsent` may be left out, for data that a program fills the defaults
+  *   in, such as options. Without it, such a slot is as required as the schema says, as in the JSON
+  *   Schema generator.
   * @param pruningMode
   *   The classes and enums in the output. A designated union always comes with its members.
   * @param treeRoot
@@ -39,6 +43,9 @@ final case class TypeScriptGeneratorOptions(
     metadataLanguage: String = "en",
     @serializeDefault
     open: Boolean = false,
+    @named("optional_defaults")
+    @serializeDefault
+    optionalDefaults: Boolean = false,
     @named("pruning_mode")
     @serializeDefault
     pruningMode: PruningMode = PruningMode.Skip,

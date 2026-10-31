@@ -14,103 +14,121 @@ import scala.scalanative.unsafe.*
   */
 object LinkMlCGenerators {
 
-  /** Generate JSON Schema. Options: `include_null`, `indentation_step`, `metadata_language`,
+  /** Generate Markdown documentation. The files are `index.md` plus a page for each class, slot,
+    * enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.
+    * Returns JSON. Options: `metadata_language`, `pruning_mode`, `single_file`, `tree_root`.
+    */
+  @exported("linkml_docs")
+  def docs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.docs)
+
+  /** Generate a Mermaid entity relationship diagram. Classes become entities, slots ranging over
+    * types and enums become their attributes, and slots ranging over classes become relationship
+    * lines. Options: `optional_marker`, `pruning_mode`, `tree_root`.
+    */
+  @exported("linkml_er_diagram")
+  def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.erDiagram)
+
+  /** Generate a Frictionless Data Package. Every class becomes a CSV table, described by its own
+    * Table Schema, and references between classes become foreign keys between the tables. The files
+    * are a `datapackage.json` plus one `schemas/<table>.json` per table. Returns JSON. Options:
+    * `metadata_language`, `pruning_mode`, `skip_classes_without_identifier`, `tree_root`.
+    */
+  @exported("linkml_frictionless")
+  def frictionless(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.frictionless)
+
+  /** Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries. Options:
+    * `metadata_language`, `pruning_mode`, `tree_root`.
+    */
+  @exported("linkml_graphql")
+  def graphql(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.graphql)
+
+  /** Generate a JSON Schema. Options: `include_null`, `indentation_step`, `metadata_language`,
     * `open`, `tree_root`, `tree_root_inline_type`.
     */
   @exported("linkml_json_schema")
   def jsonSchema(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.jsonSchema)
 
-  /** Generate SHACL shapes as RDF. Options: `format`, `only_classes_from_root_schema`, `open`. */
-  @exported("linkml_shacl")
-  def shacl(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.shacl)
-
-  /** Generate RDFS as RDF. Options: `format`, `only_classes_from_root_schema`. */
-  @exported("linkml_rdfs")
-  def rdfs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.rdfs)
-
-  /** Materialize a derived LinkML schema. Options: `format`, `full_uris`, `pruning_mode`,
+  /** Materialize a derived LinkML schema: imports resolved, slots pushed into attributes, and the
+    * elements out of scope pruned. Options: `format`, `full_uris`, `pruning_mode`,
     * `skip_class_derivation`, `tree_root`.
     */
   @exported("linkml_linkml")
   def linkml(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.linkml)
 
-  /** Generate a Frictionless Data Package, as a JSON object mapping filename to content. Options:
-    * `metadata_language`, `pruning_mode`, `skip_classes_without_identifier`, `tree_root`.
-    */
-  @exported("linkml_frictionless")
-  def frictionless(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.frictionlessFiles)
-
-  /** Generate a GraphQL schema. Options: `metadata_language`, `pruning_mode`, `tree_root`. */
-  @exported("linkml_graphql")
-  def graphql(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.graphQl)
-
-  /** Generate TypeScript types for the schema's JSON data. Options: `error_handling`,
-    * `include_null`, `metadata_language`, `open`, `pruning_mode`, `tree_root`.
-    */
-  @exported("linkml_typescript")
-  def typescript(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.typeScript)
-
-  /** Generate pydantic classes for the schema's JSON data. Options: `include_null`,
-    * `metadata_language`, `open`, `pruning_mode`, `tree_root`.
-    */
-  @exported("linkml_pydantic")
-  def pydantic(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.pydantic)
-
-  /** Generate a Mermaid entity relationship diagram. Options: `optional_marker`, `pruning_mode`,
-    * `tree_root`.
-    */
-  @exported("linkml_er_diagram")
-  def erDiagram(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.erDiagram)
-
-  /** Generate Markdown documentation, as a JSON object mapping filename to content. Options:
-    * `metadata_language`, `pruning_mode`, `single_file`, `tree_root`.
-    */
-  @exported("linkml_docs")
-  def docs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.docsFiles)
-
-  /** Generate an Apache Ossie ontology. Options: `format`, `metadata_language`, `pruning_mode`,
-    * `tree_root`.
+  /** Generate an Apache Ossie ontology, serialized as YAML or JSON. Classes become entity types,
+    * enums and named types become value types, and slots become relationships. Options: `format`,
+    * `metadata_language`, `pruning_mode`, `tree_root`.
     */
   @exported("linkml_ossie")
   def ossie(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.ossie)
 
-  /** Generate an OWL 2 ontology. Options: `format`, `metadata_profile`, `only_root_schema`,
+  /** Generate an OWL 2 ontology, serialized as Turtle or N-Triples. Classes, slots, enums and types
+    * become OWL classes, properties, classes of individuals and datatypes, with the same IRIs as in
+    * `shacl` and `rdfs`. Options: `format`, `metadata_profile`, `only_root_schema`,
     * `permissible_values`.
     */
   @exported("linkml_owl")
   def owl(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.owl)
 
-  /** Generate Scala sources, as a JSON object mapping filename to source. Options:
+  /** Generate pydantic classes for the schema's JSON data. Load data with
+    * `X.model_validate_json(text)` and dump it with `x.model_dump_json()`. Options: `include_null`,
+    * `metadata_language`, `open`, `pruning_mode`, `tree_root`.
+    */
+  @exported("linkml_pydantic")
+  def pydantic(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.pydantic)
+
+  /** Generate RDFS, serialized as N-Triples or Turtle. Options: `format`,
+    * `only_classes_from_root_schema`.
+    */
+  @exported("linkml_rdfs")
+  def rdfs(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.rdfs)
+
+  /** Generate Scala classes, one file per class, enum and type. Returns JSON. Options:
     * `error_handling`, `generate_emit_prefixes`, `metadata_language`, `package`,
     * `skip_leaf_interfaces`.
     */
   @exported("linkml_scala")
   def scala(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
-    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.scalaFiles)
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.scala)
 
-  /** Generate statistics about the schema, as a JSON object following `schema-stats.yaml`. Options:
-    * `pruning_mode`, `tree_root`.
+  /** Generate SHACL shapes, serialized as N-Triples or Turtle. Options: `format`,
+    * `only_classes_from_root_schema`, `open`.
+    */
+  @exported("linkml_shacl")
+  def shacl(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.shacl)
+
+  /** Count the elements, their documentation, mappings and languages, and the imports. Returns a
+    * `SchemaStats` of `model/schema-stats.yaml`. Returns JSON. Options: `pruning_mode`,
+    * `tree_root`.
     */
   @exported("linkml_stats")
   def stats(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.stats)
 
-  /** Generate Translation dictionaries (in JSON), from the original names used in the schema to the
-    * names used in generated outputs. Options: `derived_attributes`, `indentation_step`, `target`.
+  /** Generate translation dictionaries, in JSON, from the names in the schema to the names in the
+    * generated outputs. Useful where those names matter, such as in a query against a database that
+    * follows the schema. Options: `derived_attributes`, `indentation_step`, `target`.
     */
   @exported("linkml_translation")
   def translation(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.translation)
+
+  /** Generate TypeScript types for the schema's JSON data, with no runtime code. Load data with
+    * `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`. Options: `error_handling`,
+    * `include_null`, `metadata_language`, `open`, `optional_defaults`, `pruning_mode`, `tree_root`.
+    */
+  @exported("linkml_typescript")
+  def typescript(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.typescript)
 }

@@ -147,12 +147,12 @@ object LinkMlNativeApi {
     LinkMlGenerator().writeTo(out, Options.linkml(optionsJson))
   }
 
-  def graphQl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+  def graphql(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     GraphQlGenerator().writeTo(out, Options.graphQl(optionsJson))
   }
 
-  def typeScript(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+  def typescript(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     TypeScriptGenerator().writeTo(out, Options.typeScript(optionsJson))
   }
@@ -219,7 +219,7 @@ object LinkMlNativeApi {
   // Results that are structured, and so come back as JSON
 
   /** Generate Scala sources, as a JSON object mapping filename to source. */
-  def scalaFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+  def scala(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     writeFiles(ScalaGenerator().generate(Options.scala(optionsJson)), out)
   }
@@ -227,7 +227,7 @@ object LinkMlNativeApi {
   /** Generate a Frictionless data package, as a JSON object mapping filename to content: the
     * `datapackage.json` descriptor plus a `schemas/<table>.json` for each table.
     */
-  def frictionlessFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+  def frictionless(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     writeFiles(FrictionlessGenerator().generateFiles(Options.frictionless(optionsJson)), out)
   }
@@ -235,7 +235,7 @@ object LinkMlNativeApi {
   /** Markdown documentation, as a filename-to-content JSON object: `index.md` plus a page for each
     * class, slot, enum and type.
     */
-  def docsFiles(handle: Long, optionsJson: String, out: OutputStream): Unit = {
+  def docs(handle: Long, optionsJson: String, out: OutputStream): Unit = {
     given SchemaView = view(handle)
     writeFiles(DocsGenerator().generateFiles(Options.docs(optionsJson)).map(_.toTuple), out)
   }

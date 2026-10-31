@@ -133,21 +133,53 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append(" {\n")
     cls.sortedAttributeViews.foreach { attribute =>
       val slot = attribute.slotView
+      val default = defaultValue(attribute)
       val doc = DocLines(slot.slot) ++ (attribute match {
         case ref: ClassReferenceAttributeView => Seq(s"Reference to ${className(ref.classView)}")
         case _ => Nil
-      })
+      }) ++ default.map("@defaultValue ".concat)
       writeDoc(sink, doc, "  ")
       sink.append("  ")
       sink.append(propertyKey(slotName(slot)))
-      if !slot.slot.required then sink.append('?')
+      if isOptional(attribute, ctx) then sink.append('?')
       sink.append(": ")
       sink.append(propertyType(attribute, cls, ctx))
       sink.append(";\n")
     }
-    if ctx.options.open || cls.allowsExtraSlots then sink.append("  [key: string]: unknown;\n")
+    if ctx.options.open || cls.allowsExtraSlots then {
+      sink.append("  [key: string]: ")
+      sink.append(if ctx.options.open then "unknown" else extraSlotsType(cls))
+      sink.append(";\n")
+    }
     sink.append("}\n")
   }
+
+  /** Whether a property may be left out: the slot is optional, or has a default and
+    * `optionalDefaults` is on.
+    */
+  private def isOptional(attribute: AttributeView, ctx: Context): Boolean =
+    !attribute.slotView.slot.required ||
+      ctx.options.optionalDefaults && defaultValue(attribute).isDefined
+
+  /** The `ifabsent` of an attribute, as a TypeScript literal. */
+  private def defaultValue(attribute: AttributeView): Option[String] = attribute match {
+    case TypeAttributeView(slot, _, tv) =>
+      slot.ifAbsent(tv).mapFast {
+        case s: String => stringLiteral(s)
+        case v => v.toString
+      }
+    case EnumAttributeView(slot, _, ev) => slot.ifAbsent(ev).mapFast(pv => stringLiteral(pv.text))
+    case _ => None
+  }
+
+  /** The type of the extra data of a class: the type its `extra_slots` range over, if the class
+    * has no slots of its own, which would have to fit that type too.
+    */
+  private def extraSlotsType(cls: ClassView): String =
+    cls.cls.extraSlots.flatMapFast(_.rangeExpression).flatMapFast(_.range)
+      .flatMapFast(r => sv.types.get(r.value))
+      .filter(_ => cls.derivedAttributes.isEmpty)
+      .foldFast("unknown")(runtimeType)
 
   private def writeUnion(sink: CharSink, cls: ClassView, name: String)(using
       TypeScriptGeneratorOptions,
@@ -201,8 +233,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
   ): Unit = {
     val parameters = fv.parameters.filterNot(_.isAny)
     val argument = parameters.foldFast("") { cv =>
-      val required = cv.sortedAttributeViews.exists(_.slotView.slot.required)
-      s"params${if required then "" else "?"}: ${classRef(cv)}"
+      val optional = cv.sortedAttributeViews.forall(isOptional(_, ctx))
+      s"params${if optional then "?" else ""}: ${classRef(cv)}"
     }
     val returned = fv.returns.foldFast("void") {
       case cv: ClassView => if cv.isAny then "unknown" else classRef(cv)

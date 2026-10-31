@@ -27,15 +27,15 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       .sorted
   }
 
-  /** The JavaScript facade's public methods that operate on a loaded schema, which is every
-    * generator plus `lint`. Read from the facade because the JS names are not derivable from the
-    * generator names.
+  /** The JavaScript facade's public methods that operate on a loaded schema: the generators, which
+    * are methods of the schema, plus `lint`. Read from the facade because the JS names are not
+    * derivable from the generator names.
     */
   private def jsMethods(root: os.Path): Seq[String] = {
     val facade = os.read(
       root / "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
     )
-    "def (\\w+)\\(\\s*schema: SchemaViewJs".r
+    "def (\\w+)\\((?:params: Params|\\s*schema: SchemaViewJs)".r
       .findAllMatchIn(facade)
       .map(_.group(1))
       .toSeq
@@ -113,15 +113,12 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       withClue("add a target to ui/targets.ts, then run ./mill uiCheck: ")(missing shouldBe empty)
     }
 
-    "be listed in the shared entry-point table" in {
+    "be a function of the options schema" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val table = os.read(
-        root / "generator" / "optionsgen" / "src" / "eu" / "neverblink" / "linkml" / "optionsgen" /
-          "Entrypoints.scala",
-      )
-      val missing = generators(root).filterNot(name => table.contains(s"\"$name\""))
+      val schema = os.read(root / "model" / "generator-options.yaml")
+      val missing = generators(root).filterNot(name => schema.contains(s"parameters: ${name}Options"))
       withClue(
-        "add a row to generator/optionsgen/src/.../Entrypoints.scala, then run " +
+        "add a function to model/generator-options.yaml, then run ./mill regenerate and " +
           "LINKML_NATIVE=1 ./mill nativelib.bindings: ",
       )(missing shouldBe empty)
     }
@@ -133,7 +130,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
           root / "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
         )
       val missing = generators(root).filterNot(facade.contains)
-      withClue("add a method to LinkMlJsApi.scala, then run ./mill uiTypes: ")(
+      withClue("add a method to SchemaViewJs in LinkMlJsApi.scala, then run ./mill ui.types: ")(
         missing shouldBe empty,
       )
     }
@@ -154,7 +151,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
         root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
           "LinkMlCGenerators.scala",
       )
-      // Generated from the table, so this catches a stale checked-in copy rather than a missing row.
+      // Generated from the options schema, so this catches a stale checked-in copy.
       val exported = "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(generated).size
       withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
         exported shouldBe generators(root).size,

@@ -6,19 +6,17 @@ import eu.neverblink.linkml.schemaview.*
 /** The generator options of `model/generator-options.yaml`, as the generated code needs them. */
 final class OptionsSchema(using sv: SchemaView) {
 
-  /** The options class of each generator: every class in the schema that is not a mixin. */
+  /** The generators, as the functions of the schema. */
+  val functions: Seq[GeneratorFunction] =
+    sv.functions.values.toSeq.sortBy(fv => sv.elementOrder(fv.function)).map(GeneratorFunction(_))
+
+  /** The options class of each generator, in the order of the classes in the schema. */
   val generators: Seq[OptionsClass] =
-    sv.sortedClasses.filter(c => c.isConcrete && (c.definingSchema eq sv.root)).map(OptionsClass(_))
+    functions.map(_.options).sortBy(c => sv.elementOrder(c.cv.cls))
 
   /** Every enum of the schema. */
   val enums: Seq[EnumView] =
     sv.enums.values.filter(_.definingSchema eq sv.root).toSeq.sortBy(_.name)
-
-  /** The options of [[generator]], such as `JsonSchemaGenerator`. */
-  def options(generator: String): OptionsClass =
-    generators.find(_.scalaName == s"${generator}Options").getOrElse(
-      sys.error(s"No ${generator}Options class in the options schema"),
-    )
 
   def enumName(ev: EnumView): String = ScalaRenamer.enumName(ev)
 
@@ -31,6 +29,36 @@ final class OptionsSchema(using sv: SchemaView) {
         v.pv.aliases.map(_.plain),
       )
     }
+}
+
+/** One generator, as a function of the schema. */
+final case class GeneratorFunction(fv: FunctionView) {
+
+  /** The name in the schema, such as `json_schema`. */
+  val name: String = fv.baseName
+
+  /** The Scala name, such as `jsonSchema`. */
+  val scalaName: String = ScalaRenamer.functionName(fv)
+
+  /** The exported C function. */
+  val symbol: String = s"linkml_$name"
+
+  val description: String = Text.oneLine(fv.function.description.fold("")(_.plain))
+
+  val options: OptionsClass = OptionsClass(fv.parameters.get)
+
+  /** What it returns: a document, or else JSON with the extra data's type if it is a class with
+    * only that, such as `GeneratedFiles`.
+    */
+  val returns: Option[Option[TypeView]] = fv.returns match {
+    case Some(_: TypeView) => None
+    case Some(cv: ClassView) =>
+      Some(
+        cv.cls.extraSlots.flatMap(_.rangeExpression).flatMap(_.range)
+          .flatMap(r => fv.sv.types.get(r.value)).filter(_ => cv.derivedAttributes.isEmpty),
+      )
+    case other => sys.error(s"Function $name returns an unsupported element: $other")
+  }
 }
 
 /** The options of one generator. */
@@ -55,8 +83,7 @@ final case class OptionField(attribute: AttributeView) {
   /** The Scala name, such as `metadataLanguage`. */
   val scalaName: String = ScalaRenamer.slotName(slot)
 
-  val description: String =
-    slot.slot.description.fold("")(_.plain).split("\\s+").filter(_.nonEmpty).mkString(" ")
+  val description: String = Text.oneLine(slot.slot.description.fold("")(_.plain))
 
   val required: Boolean = slot.slot.required
 
@@ -87,17 +114,16 @@ final case class OptionField(attribute: AttributeView) {
   val default: Option[(scala: String, text: String)] =
     if !required then None
     else
-      (attribute, slot.slot.ifabsent.map(_.trim)) match {
-        case (EnumAttributeView(_, _, ev), Some(_)) =>
+      attribute match {
+        case EnumAttributeView(_, _, ev) =>
           slot.ifAbsent(ev).map { pv =>
             (s"${ScalaRenamer.enumName(ev)}.${ScalaRenamer.permissibleValueName(ev, pv)}", pv.text)
           }
-        case (_, Some(OptionField.stringConstructor(value))) =>
-          val text = value.stripPrefix("\"").stripSuffix("\"")
-          Some((Literals.string(text), text))
-        case (_, Some(OptionField.intConstructor(value))) => Some((value, value))
-        case (_, Some(value)) if valueType == "Boolean" =>
-          Some((value.toLowerCase, value.toLowerCase))
+        case TypeAttributeView(_, _, tv) =>
+          slot.ifAbsent(tv).map {
+            case s: String => (Literals.string(s), s)
+            case v => (v.toString, v.toString)
+          }
         case _ => None
       }
 
@@ -105,9 +131,10 @@ final case class OptionField(attribute: AttributeView) {
   def scalaDefault: Option[String] = if required then default.map(_.scala) else Some("None")
 }
 
-private object OptionField {
-  val stringConstructor = """^string\((.*)\)$""".r
-  val intConstructor = """^int\((-?\d+)\)$""".r
+object Text {
+
+  /** The text with its lines joined. */
+  def oneLine(text: String): String = text.split("\\s+").filter(_.nonEmpty).mkString(" ")
 }
 
 object Literals {

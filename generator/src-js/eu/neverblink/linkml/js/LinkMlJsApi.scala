@@ -42,8 +42,96 @@ import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
   * Wraps a Scala [[SchemaView]] so the schema is parsed once (with all `imports:` resolved) and can
   * then be reused across many generators, instead of re-parsing on every call. Create one with
   * [[LinkMlJsApi.loadFromString]] or [[LinkMlJsApi.loadFromPath]].
+  *
+  * Its methods are the functions of model/generator-options.yaml, which also documents them. Each
+  * takes the generator's options as a plain JS object, with their names in snake case. The options
+  * left out take their defaults.
   */
-final class SchemaViewJs private[js] (private[js] val underlying: SchemaView)
+@JSExportAll
+final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {
+  import SchemaViewJs.{*, given}
+  private given SchemaView = underlying
+
+  def jsonSchema(params: Params = js.undefined): String =
+    JsonSchemaGenerator().serialize(decode[JsonSchemaGeneratorOptions](params))
+
+  def shacl(params: Params = js.undefined): String =
+    ShaclGenerator().serialize(decode[ShaclGeneratorOptions](params))
+
+  def rdfs(params: Params = js.undefined): String =
+    RdfsGenerator().serialize(decode[RdfsGeneratorOptions](params))
+
+  def linkml(params: Params = js.undefined): String =
+    LinkMlJsApi.converting(LinkMlGenerator().serialize(decode[LinkMlGeneratorOptions](params)))
+
+  def frictionless(params: Params = js.undefined): js.Dictionary[String] =
+    FrictionlessGenerator().generateFiles(decode[FrictionlessGeneratorOptions](params))
+      .toMap.toJSDictionary
+
+  def graphql(params: Params = js.undefined): String =
+    GraphQlGenerator().serialize(decode[GraphQlGeneratorOptions](params))
+
+  def typescript(params: Params = js.undefined): String =
+    TypeScriptGenerator().serialize(decode[TypeScriptGeneratorOptions](params))
+
+  def pydantic(params: Params = js.undefined): String =
+    PydanticGenerator().serialize(decode[PydanticGeneratorOptions](params))
+
+  def erDiagram(params: Params = js.undefined): String =
+    ErDiagramGenerator().serialize(decode[ErDiagramGeneratorOptions](params))
+
+  def docs(params: Params = js.undefined): js.Dictionary[String] =
+    DocsGenerator().generateFiles(decode[DocsGeneratorOptions](params))
+      .map(_.toTuple).toMap.toJSDictionary
+
+  def ossie(params: Params = js.undefined): String =
+    LinkMlJsApi.converting(OssieGenerator().serialize(decode[OssieGeneratorOptions](params)))
+
+  def owl(params: Params = js.undefined): String =
+    LinkMlJsApi.converting(OwlGenerator().serialize(decode[OwlGeneratorOptions](params)))
+
+  def scala(params: Params = js.undefined): js.Dictionary[String] =
+    ScalaGenerator().generate(decode[ScalaGeneratorOptions](params)).toMap.toJSDictionary
+
+  def stats(params: Params = js.undefined): js.Any = {
+    val stats = StatsGenerator().generate(decode[StatsGeneratorOptions](params))
+    js.JSON.parse(JsonUtil.yamlToJson(StatsGenerator.codec.encode(stats)))
+  }
+
+  def translation(params: Params = js.undefined): String =
+    TranslationGenerator().serialize(decode[TranslationGeneratorOptions](params))
+}
+
+private object SchemaViewJs {
+
+  /** The options of a generator, as a plain JS object. */
+  type Params = js.UndefOr[js.Object]
+
+  /** The options of a generator, from the plain JS object the caller passed. */
+  def decode[T](params: Params)(using codec: LinkmlYamlCodec[T]): T =
+    parseYaml(params.fold("{}")(js.JSON.stringify(_))) match {
+      case Right(node) =>
+        try codec.decode(node)
+        catch { case e: Exception => throw RuntimeException(s"Invalid options: ${e.getMessage}") }
+      case Left(error) => throw RuntimeException(s"Invalid options: ${error.msg}")
+    }
+
+  given LinkmlYamlCodec[JsonSchemaGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[ShaclGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[ScalaGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[RdfsGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[OwlGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[LinkMlGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[FrictionlessGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[GraphQlGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[TypeScriptGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[PydanticGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[ErDiagramGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[StatsGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[DocsGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[TranslationGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[OssieGeneratorOptions] = LinkmlYamlCodec.derived
+}
 
 /** A `SchemaValidationReport` (model/validation-report.yaml) as a plain JS object. Only a name for
   * the TypeScript declarations. In TS it is the type generated from model/issue-types.yaml.
@@ -54,17 +142,6 @@ type SchemaValidationReport = js.Any
   * declarations: there, it is the type generated from model/build-info.yaml.
   */
 type BuildInfo = js.Any
-
-/** A `SchemaStats` (model/schema-stats.yaml) as a plain JS object. Only a name for the TypeScript
-  * declarations: there, it is the type generated from model/schema-stats.yaml.
-  */
-type SchemaStats = js.Any
-
-/** The options of a generator as a plain JS object, with the fields of [[T]] in snake case. Only a
-  * name for the TypeScript declarations: there, it is a `Partial` of the type generated from
-  * model/generator-options.yaml.
-  */
-type GeneratorOptions[T] = js.Object
 
 /** What loading a schema produced: always a validation report, and a usable handle if the schema
   * could be loaded at all.
@@ -120,8 +197,8 @@ object LinkMlJsApi {
     *   CURIE imports are expanded with the prefixes of the schema that contains them before they
     *   are matched.
     * @return
-    *   The validation report, and a handle to pass to the generator functions unless the schema had
-    *   fatal problems.
+    *   The validation report, and a handle with the generators unless the schema had fatal
+    *   problems.
     */
   def loadFromString(
       mainSchema: String,
@@ -161,8 +238,8 @@ object LinkMlJsApi {
     *   CURIE imports are expanded with the prefixes of the schema that contains them before they
     *   are matched.
     * @return
-    *   The validation report, and a handle to pass to the generator functions unless the schema had
-    *   fatal problems.
+    *   The validation report, and a handle with the generators unless the schema had fatal
+    *   problems.
     */
   def loadFromPath(
       path: String,
@@ -226,7 +303,7 @@ object LinkMlJsApi {
     * [[SchemaConversionException]] or an [[RdfParseException]], is thrown as a JS `Error` with a
     * `SchemaConversionError` issue in its `issue` property, so callers can tell it from a bug.
     */
-  private def converting[A](body: => A): A =
+  private[js] def converting[A](body: => A): A =
     try body
     catch {
       case e @ (_: SchemaConversionException | _: RdfParseException) =>
@@ -237,95 +314,9 @@ object LinkMlJsApi {
         throw js.JavaScriptException(error)
     }
 
-  /** Generate JSON Schema from a loaded LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `JsonSchemaGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   Serialized JSON Schema
-    */
-  def jsonSchema(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[JsonSchemaGeneratorOptions]] = js.undefined,
-  ): String =
-    JsonSchemaGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate SHACL shapes from a loaded LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `ShaclGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   SHACL shapes in the requested format
-    */
-  def shacl(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[ShaclGeneratorOptions]] = js.undefined,
-  ): String =
-    ShaclGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `ScalaGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   JS dictionary (object) containing a mapping from filename to the generated Scala code.
-    */
-  def scala(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[ScalaGeneratorOptions]] = js.undefined,
-  ): js.Dictionary[String] =
-    ScalaGenerator(using schema.underlying).generate(decode(options)).toMap.toJSDictionary
-
-  /** Generate RDFS from a loaded LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `RdfsGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   RDFS in the requested format
-    */
-  def rdfs(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[RdfsGeneratorOptions]] = js.undefined,
-  ): String =
-    RdfsGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate an OWL 2 ontology from a loaded LinkML schema. Classes, slots, enums and types become
-    * OWL classes, properties, classes of individuals and datatypes, with the same IRIs as [[shacl]]
-    * and [[rdfs]].
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `OwlGeneratorOptions` of `model/generator-options.yaml`,
-    *   with their names in snake case. The options left out take their defaults.
-    * @return
-    *   The ontology in the requested format
-    */
-  def owl(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[OwlGeneratorOptions]] = js.undefined,
-  ): String =
-    converting(OwlGenerator(using schema.underlying).serialize(decode(options)))
-
   /** Read an OWL ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[owl]]. Feed the result to [[loadFromString]] if you want to run a generator
+    * The opposite of [[SchemaViewJs.owl]]. Feed the result to [[loadFromString]] if you want to run a generator
     * over it.
     *
     * @param ontology
@@ -391,234 +382,9 @@ object LinkMlJsApi {
     case other => throw RuntimeException(s"Unknown RDF format: $other. Supported formats: nt, ttl.")
   }
 
-  /** The options of a generator, from the plain JS object the caller passed. */
-  private def decode[T](options: js.UndefOr[GeneratorOptions[T]])(using
-      codec: LinkmlYamlCodec[T],
-  ): T =
-    parseYaml(options.fold("{}")(js.JSON.stringify(_))) match {
-      case Right(node) =>
-        try codec.decode(node)
-        catch { case e: Exception => throw RuntimeException(s"Invalid options: ${e.getMessage}") }
-      case Left(error) => throw RuntimeException(s"Invalid options: ${error.msg}")
-    }
-
-  private given LinkmlYamlCodec[JsonSchemaGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[ShaclGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[ScalaGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[RdfsGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[OwlGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[LinkMlGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[FrictionlessGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[GraphQlGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[TypeScriptGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[PydanticGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[ErDiagramGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[StatsGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[DocsGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[TranslationGeneratorOptions] = LinkmlYamlCodec.derived
-  private given LinkmlYamlCodec[OssieGeneratorOptions] = LinkmlYamlCodec.derived
-
-  /** Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes
-    * unreachable elements.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `LinkMlGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   The derived [[SchemaDefinition]] serialized in the specified format.
-    */
-  def linkml(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[LinkMlGeneratorOptions]] = js.undefined,
-  ): String =
-    converting(LinkMlGenerator(using schema.underlying).serialize(decode(options)))
-
-  /** Generate a Frictionless Data Package from a loaded LinkML schema. Every class becomes a CSV
-    * table, described by its own Table Schema, and references between classes become foreign keys
-    * between the tables.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `FrictionlessGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   JS dictionary (object) containing a mapping from filename to file content: a
-    *   `datapackage.json` plus one `schemas/<table>.json` per table.
-    */
-  def frictionless(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[FrictionlessGeneratorOptions]] = js.undefined,
-  ): js.Dictionary[String] =
-    FrictionlessGenerator(using schema.underlying).generateFiles(
-      decode(options),
-    ).toMap.toJSDictionary
-
-  /** Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums,
-    * queries must be provided for a specific implementation.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `GraphQlGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   Table Schema, serialized as a JSON
-    */
-  def graphQl(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[GraphQlGeneratorOptions]] = js.undefined,
-  ): String =
-    GraphQlGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate TypeScript types from a loaded LinkML schema. The types describe the same JSON as
-    * [[jsonSchema]], with no runtime code: load data with `JSON.parse(text) as X` and dump it with
-    * `JSON.stringify(x)`.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `TypeScriptGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   TypeScript source code
-    */
-  def typeScript(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[TypeScriptGeneratorOptions]] = js.undefined,
-  ): String =
-    TypeScriptGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate Python classes based on pydantic from a loaded LinkML schema. The classes load and
-    * dump the same JSON as [[jsonSchema]] describes: load data with `X.model_validate_json(text)`
-    * and dump it with `x.model_dump_json()`.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `PydanticGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   Python source code
-    */
-  def pydantic(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[PydanticGeneratorOptions]] = js.undefined,
-  ): String =
-    PydanticGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become
-    * entities, type- and enum-ranged slots become their attributes, and class-ranged slots become
-    * relationship lines.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `ErDiagramGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   The ER diagram, serialized as Mermaid
-    */
-  def erDiagram(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[ErDiagramGeneratorOptions]] = js.undefined,
-  ): String =
-    ErDiagramGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Statistics about a loaded LinkML schema: how many elements of each kind it has, how many of
-    * them are documented, deprecated or mapped, the strings in each language, and the imports.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `StatsGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   A `SchemaStats` object, as described by https://linkml.ohi.dev/model/schema-stats
-    */
-  def stats(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[StatsGeneratorOptions]] = js.undefined,
-  ): SchemaStats = {
-    val stats = StatsGenerator(using schema.underlying).generate(decode(options))
-    js.JSON.parse(JsonUtil.yamlToJson(StatsGenerator.codec.encode(stats)))
-  }
-
-  /** Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for
-    * each class, slot, enum and type, which link to each other.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `DocsGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   JS dictionary (object) containing a mapping from filename to file content: `index.md` plus
-    *   `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md`, `types/<name>.md` and
-    *   `functions/<name>.md`, or only `docs.md` if [[singleFile]] is true.
-    */
-  def docs(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[DocsGeneratorOptions]] = js.undefined,
-  ): js.Dictionary[String] = {
-    val files = js.Dictionary.empty[String]
-    DocsGenerator(using schema.underlying).generateFiles(decode(options)).foreach(f =>
-      files(f.path) = f.content,
-    )
-    files
-  }
-
-  /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
-    * useful when the framework symbols are significant and must be known, like when constructing a
-    * query that is meant to be executed against a database conformant to a LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `TranslationGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   Translation dictionary for translating the linkml names to framework names.
-    */
-  def translation(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[TranslationGeneratorOptions]] = js.undefined,
-  ): String =
-    TranslationGenerator(using schema.underlying).serialize(decode(options))
-
-  /** Generate an Apache Ossie ontology from a loaded LinkML schema. Classes become entity types,
-    * enums and named types become value types, and slots become the relationships grouped under the
-    * concept that plays their first role.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param options
-    *   The options of the generator, as in `OssieGeneratorOptions` of
-    *   `model/generator-options.yaml`, with their names in snake case. The options left out take
-    *   their defaults.
-    * @return
-    *   The ontology, serialized in the specified format.
-    */
-  def ossie(
-      schema: SchemaViewJs,
-      options: js.UndefOr[GeneratorOptions[OssieGeneratorOptions]] = js.undefined,
-  ): String =
-    converting(OssieGenerator(using schema.underlying).serialize(decode(options)))
-
   /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[ossie]]. Feed the result to [[loadFromString]] if you want to run a
+    * The opposite of [[SchemaViewJs.ossie]]. Feed the result to [[loadFromString]] if you want to run a
     * generator over it.
     *
     * @param ontology

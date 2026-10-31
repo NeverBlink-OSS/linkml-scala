@@ -12,131 +12,77 @@ from typing import Any, Literal
 
 # Every exported function taking (handle, options) and returning a document or NULL.
 DOCUMENT_FUNCTIONS = (
-    "linkml_json_schema",
-    "linkml_shacl",
-    "linkml_rdfs",
-    "linkml_linkml",
+    "linkml_docs",
+    "linkml_er_diagram",
     "linkml_frictionless",
     "linkml_graphql",
-    "linkml_typescript",
-    "linkml_pydantic",
-    "linkml_er_diagram",
-    "linkml_docs",
+    "linkml_json_schema",
+    "linkml_linkml",
     "linkml_ossie",
     "linkml_owl",
-    "ohi_linkml",
+    "linkml_pydantic",
+    "linkml_rdfs",
+    "linkml_scala",
+    "linkml_shacl",
     "linkml_stats",
     "linkml_translation",
+    "linkml_typescript",
 )
 
 
 class Generators:
     """Mixin holding one method per generator. Mixed into :class:`ohi_linkml.Schema`."""
 
-    def json_schema(
+    def docs(
         self,
         *,
-        include_null: bool = False,
-        indentation_step: int = 2,
         metadata_language: str = "en",
-        open: bool = False,
+        pruning_mode: Literal["tree_root", "schema", "skip"] = "schema",
+        single_file: bool = False,
         tree_root: str | None = None,
-        tree_root_inline_type: str | None = None,
-    ) -> str:
-        """Generate a JSON Schema.
+    ) -> dict[str, str]:
+        """Generate Markdown documentation. The files are `index.md` plus a page for each class,
+        slot, enum, type and function, such as `classes/<name>.md`, or only `docs.md` with
+        `single_file`.
 
-        :param include_null: Whether optional values and compact dictionary entries with nothing
-            beyond the key may be null.
-        :param indentation_step: The number of spaces for each level of indentation in the
-            output.
         :param metadata_language: The language of the titles and descriptions in the output, for
             schemas with text in more than one language.
-        :param open: Whether every class allows properties beyond the ones in the schema.
-            Classes whose `extra_slots` allows them allow them anyway.
-        :param tree_root: The class at the root of the JSON Schema, instead of the class with
-            `tree_root: true` in the schema.
-        :param tree_root_inline_type: How the tree root class appears at the root of the JSON
-            Schema, instead of its `tree_root_as` extension. One of `plain`, `optional`, `list`,
-            `compact_dict` or `simple_dict`.
+        :param pruning_mode: The elements of the schema to include in the output.
+        :param single_file: Whether to write all pages as sections of one document, `docs.md`,
+            instead of one file for each page.
+        :param tree_root: The class to use as the tree root, instead of the class with
+            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
         """
-        return self._document(
-            "linkml_json_schema",
-            include_null=include_null,
-            indentation_step=indentation_step,
+        return self._json(
+            "linkml_docs",
             metadata_language=metadata_language,
-            open=open,
+            pruning_mode=pruning_mode,
+            single_file=single_file,
             tree_root=tree_root,
-            tree_root_inline_type=tree_root_inline_type,
         )
 
-    def shacl(
+    def er_diagram(
         self,
         *,
-        format: Literal["ttl", "nt"] = "ttl",
-        only_classes_from_root_schema: bool = False,
-        open: bool = False,
-    ) -> str:
-        """Generate SHACL shapes, serialized as N-Triples or Turtle.
-
-        :param format: The RDF serialization of the output.
-        :param only_classes_from_root_schema: Whether to include only the classes and enums of
-            the root schema. This is useful for one output file per schema file, without the
-            imported classes in each.
-        :param open: Whether every shape is open, allowing properties beyond the ones in the
-            schema. Shapes of classes whose `extra_slots` allows them are open anyway.
-        """
-        return self._document(
-            "linkml_shacl",
-            format=format,
-            only_classes_from_root_schema=only_classes_from_root_schema,
-            open=open,
-        )
-
-    def rdfs(
-        self,
-        *,
-        format: Literal["ttl", "nt"] = "ttl",
-        only_classes_from_root_schema: bool = False,
-    ) -> str:
-        """Generate RDFS, serialized as N-Triples or Turtle.
-
-        :param format: The RDF serialization of the output.
-        :param only_classes_from_root_schema: Whether to include only the classes and enums of
-            the root schema. This is useful for one output file per schema file, without the
-            imported classes in each.
-        """
-        return self._document(
-            "linkml_rdfs",
-            format=format,
-            only_classes_from_root_schema=only_classes_from_root_schema,
-        )
-
-    def linkml(
-        self,
-        *,
-        format: Literal["yaml", "json"] = "yaml",
-        full_uris: bool = False,
-        pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
-        skip_class_derivation: bool = False,
+        optional_marker: bool = True,
+        pruning_mode: Literal["tree_root", "schema", "skip"] = "schema",
         tree_root: str | None = None,
     ) -> str:
-        """Materialize a derived LinkML schema: imports resolved, slots pushed into attributes.
+        """Generate a Mermaid entity relationship diagram. Classes become entities, slots
+        ranging over types and enums become their attributes, and slots ranging over classes
+        become relationship lines.
 
-        :param format: The serialization of the output.
-        :param full_uris: Whether to write URIs in full, instead of compacting them to CURIEs
-            with the schema's prefixes.
+        :param optional_marker: Whether to mark optional attributes with a `?` after their type.
+            Mermaid supports this from version 11.16 and rejects the whole diagram in older
+            versions.
         :param pruning_mode: The elements of the schema to include in the output.
-        :param skip_class_derivation: Whether to copy the classes as they are, instead of
-            deriving them.
         :param tree_root: The class to use as the tree root, instead of the class with
             `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
         """
         return self._document(
-            "linkml_linkml",
-            format=format,
-            full_uris=full_uris,
+            "linkml_er_diagram",
+            optional_marker=optional_marker,
             pruning_mode=pruning_mode,
-            skip_class_derivation=skip_class_derivation,
             tree_root=tree_root,
         )
 
@@ -148,7 +94,9 @@ class Generators:
         skip_classes_without_identifier: bool = False,
         tree_root: str | None = None,
     ) -> dict[str, str]:
-        """Generate a Frictionless Data Package, as a filename to content mapping.
+        """Generate a Frictionless Data Package. Every class becomes a CSV table, described by
+        its own Table Schema, and references between classes become foreign keys between the
+        tables. The files are a `datapackage.json` plus one `schemas/<table>.json` per table.
 
         :param metadata_language: The language of the titles and descriptions in the output, for
             schemas with text in more than one language.
@@ -189,118 +137,69 @@ class Generators:
             tree_root=tree_root,
         )
 
-    def typescript(
+    def json_schema(
         self,
         *,
-        error_handling: Literal["exception", "result"] = "exception",
         include_null: bool = False,
+        indentation_step: int = 2,
         metadata_language: str = "en",
         open: bool = False,
-        pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
         tree_root: str | None = None,
+        tree_root_inline_type: str | None = None,
     ) -> str:
-        """Generate TypeScript types for the schema's JSON data, with no runtime code.
+        """Generate a JSON Schema.
 
-        :param error_handling: How the functions of the schema report their `errors`.
         :param include_null: Whether optional values and compact dictionary entries with nothing
-            beyond the key may be null, as in the JSON Schema generator.
+            beyond the key may be null.
+        :param indentation_step: The number of spaces for each level of indentation in the
+            output.
         :param metadata_language: The language of the titles and descriptions in the output, for
             schemas with text in more than one language.
-        :param open: Whether every interface allows properties beyond the ones in the schema, as
-            `additionalProperties` in the JSON Schema generator. Interfaces of classes whose
-            `extra_slots` allows them allow them anyway.
-        :param pruning_mode: The classes and enums in the output. A designated union always
-            comes with its members.
-        :param tree_root: The class to use as the tree root, instead of the class with
-            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
+        :param open: Whether every class allows properties beyond the ones in the schema.
+            Classes whose `extra_slots` allows them allow them anyway.
+        :param tree_root: The class at the root of the JSON Schema, instead of the class with
+            `tree_root: true` in the schema.
+        :param tree_root_inline_type: How the tree root class appears at the root of the JSON
+            Schema, instead of its `tree_root_as` extension. One of `plain`, `optional`, `list`,
+            `compact_dict` or `simple_dict`.
         """
         return self._document(
-            "linkml_typescript",
-            error_handling=error_handling,
+            "linkml_json_schema",
             include_null=include_null,
+            indentation_step=indentation_step,
             metadata_language=metadata_language,
             open=open,
-            pruning_mode=pruning_mode,
             tree_root=tree_root,
+            tree_root_inline_type=tree_root_inline_type,
         )
 
-    def pydantic(
+    def linkml(
         self,
         *,
-        include_null: bool = False,
-        metadata_language: str = "en",
-        open: bool = False,
+        format: Literal["yaml", "json"] = "yaml",
+        full_uris: bool = False,
         pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
+        skip_class_derivation: bool = False,
         tree_root: str | None = None,
     ) -> str:
-        """Generate pydantic classes that load and dump the schema's JSON data.
+        """Materialize a derived LinkML schema: imports resolved, slots pushed into attributes,
+        and the elements out of scope pruned.
 
-        :param include_null: Whether dumps keep null values. Without it, dumps leave out every
-            field with no value.
-        :param metadata_language: The language of the titles and descriptions in the output, for
-            schemas with text in more than one language.
-        :param open: Whether the classes accept and keep properties beyond the ones in the
-            schema.
-        :param pruning_mode: The classes and enums in the output. Each class always comes with
-            its ancestors, and a designated union with its members.
+        :param format: The serialization of the output.
+        :param full_uris: Whether to write URIs in full, instead of compacting them to CURIEs
+            with the schema's prefixes.
+        :param pruning_mode: The elements of the schema to include in the output.
+        :param skip_class_derivation: Whether to copy the classes as they are, instead of
+            deriving them.
         :param tree_root: The class to use as the tree root, instead of the class with
             `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
         """
         return self._document(
-            "linkml_pydantic",
-            include_null=include_null,
-            metadata_language=metadata_language,
-            open=open,
+            "linkml_linkml",
+            format=format,
+            full_uris=full_uris,
             pruning_mode=pruning_mode,
-            tree_root=tree_root,
-        )
-
-    def er_diagram(
-        self,
-        *,
-        optional_marker: bool = True,
-        pruning_mode: Literal["tree_root", "schema", "skip"] = "schema",
-        tree_root: str | None = None,
-    ) -> str:
-        """Generate a Mermaid entity relationship diagram.
-
-        :param optional_marker: Whether to mark optional attributes with a `?` after their type.
-            Mermaid supports this from version 11.16 and rejects the whole diagram in older
-            versions.
-        :param pruning_mode: The elements of the schema to include in the output.
-        :param tree_root: The class to use as the tree root, instead of the class with
-            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
-        """
-        return self._document(
-            "linkml_er_diagram",
-            optional_marker=optional_marker,
-            pruning_mode=pruning_mode,
-            tree_root=tree_root,
-        )
-
-    def docs(
-        self,
-        *,
-        metadata_language: str = "en",
-        pruning_mode: Literal["tree_root", "schema", "skip"] = "schema",
-        single_file: bool = False,
-        tree_root: str | None = None,
-    ) -> dict[str, str]:
-        """Generate Markdown documentation, as a filename to content mapping.
-
-        :param metadata_language: The language of the titles and descriptions in the output, for
-            schemas with text in more than one language.
-        :param pruning_mode: The elements of the schema to include in the output.
-        :param single_file: Whether to write all pages as sections of one document, `docs.md`,
-            instead of one file for each page.
-        :param tree_root: The class to use as the tree root, instead of the class with
-            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
-        """
-        return self._json(
-            "linkml_docs",
-            metadata_language=metadata_language,
-            pruning_mode=pruning_mode,
-            single_file=single_file,
+            skip_class_derivation=skip_class_derivation,
             tree_root=tree_root,
         )
 
@@ -312,7 +211,8 @@ class Generators:
         pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
         tree_root: str | None = None,
     ) -> str:
-        """Generate an Apache Ossie ontology, serialized as YAML or JSON.
+        """Generate an Apache Ossie ontology, serialized as YAML or JSON. Classes become entity
+        types, enums and named types become value types, and slots become relationships.
 
         :param format: The serialization of the output.
         :param metadata_language: The language of the titles and descriptions in the output, for
@@ -337,7 +237,9 @@ class Generators:
         only_root_schema: bool = False,
         permissible_values: Literal["individual", "class"] = "individual",
     ) -> str:
-        """Generate an OWL 2 ontology, serialized as Turtle or N-Triples.
+        """Generate an OWL 2 ontology, serialized as Turtle or N-Triples. Classes, slots, enums
+        and types become OWL classes, properties, classes of individuals and datatypes, with the
+        same IRIs as in `shacl` and `rdfs`.
 
         :param format: The RDF serialization of the output.
         :param metadata_profile: The annotation property for descriptions.
@@ -354,6 +256,57 @@ class Generators:
             permissible_values=permissible_values,
         )
 
+    def pydantic(
+        self,
+        *,
+        include_null: bool = False,
+        metadata_language: str = "en",
+        open: bool = False,
+        pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
+        tree_root: str | None = None,
+    ) -> str:
+        """Generate pydantic classes for the schema's JSON data. Load data with
+        `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.
+
+        :param include_null: Whether dumps keep null values. Without it, dumps leave out every
+            field with no value.
+        :param metadata_language: The language of the titles and descriptions in the output, for
+            schemas with text in more than one language.
+        :param open: Whether the classes accept and keep properties beyond the ones in the
+            schema.
+        :param pruning_mode: The classes and enums in the output. Each class always comes with
+            its ancestors, and a designated union with its members.
+        :param tree_root: The class to use as the tree root, instead of the class with
+            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
+        """
+        return self._document(
+            "linkml_pydantic",
+            include_null=include_null,
+            metadata_language=metadata_language,
+            open=open,
+            pruning_mode=pruning_mode,
+            tree_root=tree_root,
+        )
+
+    def rdfs(
+        self,
+        *,
+        format: Literal["ttl", "nt"] = "ttl",
+        only_classes_from_root_schema: bool = False,
+    ) -> str:
+        """Generate RDFS, serialized as N-Triples or Turtle.
+
+        :param format: The RDF serialization of the output.
+        :param only_classes_from_root_schema: Whether to include only the classes and enums of
+            the root schema. This is useful for one output file per schema file, without the
+            imported classes in each.
+        """
+        return self._document(
+            "linkml_rdfs",
+            format=format,
+            only_classes_from_root_schema=only_classes_from_root_schema,
+        )
+
     def scala(
         self,
         *,
@@ -363,7 +316,7 @@ class Generators:
         package: str = "eu.neverblink.linkml.metamodel",
         skip_leaf_interfaces: bool = True,
     ) -> dict[str, str]:
-        """Generate Scala classes, as a filename to source mapping.
+        """Generate Scala classes, one file per class, enum and type.
 
         :param error_handling: How the functions of the schema report their `errors`.
         :param generate_emit_prefixes: Whether to generate a `Prefixes` object with the schema's
@@ -376,7 +329,7 @@ class Generators:
             case class. Turn it off when other code has to extend the generated classes.
         """
         return self._json(
-            "ohi_linkml",
+            "linkml_scala",
             error_handling=error_handling,
             generate_emit_prefixes=generate_emit_prefixes,
             metadata_language=metadata_language,
@@ -384,13 +337,37 @@ class Generators:
             skip_leaf_interfaces=skip_leaf_interfaces,
         )
 
+    def shacl(
+        self,
+        *,
+        format: Literal["ttl", "nt"] = "ttl",
+        only_classes_from_root_schema: bool = False,
+        open: bool = False,
+    ) -> str:
+        """Generate SHACL shapes, serialized as N-Triples or Turtle.
+
+        :param format: The RDF serialization of the output.
+        :param only_classes_from_root_schema: Whether to include only the classes and enums of
+            the root schema. This is useful for one output file per schema file, without the
+            imported classes in each.
+        :param open: Whether every shape is open, allowing properties beyond the ones in the
+            schema. Shapes of classes whose `extra_slots` allows them are open anyway.
+        """
+        return self._document(
+            "linkml_shacl",
+            format=format,
+            only_classes_from_root_schema=only_classes_from_root_schema,
+            open=open,
+        )
+
     def stats(
         self,
         *,
         pruning_mode: Literal["tree_root", "schema", "skip"] = "schema",
         tree_root: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> Any:
         """Count the elements, their documentation, mappings and languages, and the imports.
+        Returns a `SchemaStats` of `model/schema-stats.yaml`.
 
         :param pruning_mode: The elements in scope for the counts.
         :param tree_root: The class to use as the tree root, instead of the class with
@@ -409,7 +386,9 @@ class Generators:
         indentation_step: int = 2,
         target: str = "base",
     ) -> str:
-        """Generate Translation dictionaries (in JSON), from the original names used in the schema to the names used in generated outputs.
+        """Generate translation dictionaries, in JSON, from the names in the schema to the names
+        in the generated outputs. Useful where those names matter, such as in a query against a
+        database that follows the schema.
 
         :param derived_attributes: Whether `classAttributes` also lists inherited slots, mixin
             slots and the slots in the class's `slots` list. Without it, `classAttributes` lists
@@ -425,4 +404,45 @@ class Generators:
             derived_attributes=derived_attributes,
             indentation_step=indentation_step,
             target=target,
+        )
+
+    def typescript(
+        self,
+        *,
+        error_handling: Literal["exception", "result"] = "exception",
+        include_null: bool = False,
+        metadata_language: str = "en",
+        open: bool = False,
+        optional_defaults: bool = False,
+        pruning_mode: Literal["tree_root", "schema", "skip"] = "skip",
+        tree_root: str | None = None,
+    ) -> str:
+        """Generate TypeScript types for the schema's JSON data, with no runtime code. Load data
+        with `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`.
+
+        :param error_handling: How the functions of the schema report their `errors`.
+        :param include_null: Whether optional values and compact dictionary entries with nothing
+            beyond the key may be null, as in the JSON Schema generator.
+        :param metadata_language: The language of the titles and descriptions in the output, for
+            schemas with text in more than one language.
+        :param open: Whether every interface allows properties beyond the ones in the schema, as
+            `additionalProperties` in the JSON Schema generator. Interfaces of classes whose
+            `extra_slots` allows them allow them anyway.
+        :param optional_defaults: Whether a slot with an `ifabsent` may be left out, for data
+            that a program fills the defaults in, such as options. Without it, such a slot is as
+            required as the schema says, as in the JSON Schema generator.
+        :param pruning_mode: The classes and enums in the output. A designated union always
+            comes with its members.
+        :param tree_root: The class to use as the tree root, instead of the class with
+            `tree_root: true` in the schema. Only for the `tree_root` pruning mode.
+        """
+        return self._document(
+            "linkml_typescript",
+            error_handling=error_handling,
+            include_null=include_null,
+            metadata_language=metadata_language,
+            open=open,
+            optional_defaults=optional_defaults,
+            pruning_mode=pruning_mode,
+            tree_root=tree_root,
         )

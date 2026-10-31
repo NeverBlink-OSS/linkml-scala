@@ -189,8 +189,8 @@ import { LinkML } from "@neverblink/linkml";
 
 // Parse once into a reusable SchemaView handle. The second argument maps
 // file names to YAML for `imports:`.
-const view = LinkML.loadFromString(mySchemaYaml, {});
-const jsonSchema = LinkML.jsonSchema(view);
+const { view } = LinkML.loadFromString(mySchemaYaml, {});
+const jsonSchema = view?.jsonSchema();
 ```
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the

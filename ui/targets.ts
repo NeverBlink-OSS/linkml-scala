@@ -116,7 +116,7 @@ export const TARGETS: Target[] = [
       TREE_ROOT,
       { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, v, o) => api.ossie(v, generatorOptions(o)),
+    call: (_, v, o) => v.ossie(generatorOptions(o)),
   },
   {
     id: "linkml",
@@ -129,7 +129,7 @@ export const TARGETS: Target[] = [
       { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
       { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, v, o) => api.linkml(v, generatorOptions(o)),
+    call: (_, v, o) => v.linkml(generatorOptions(o)),
   },
   {
     id: "docs",
@@ -144,8 +144,8 @@ export const TARGETS: Target[] = [
     ],
     // Always one document: the page view links its sections with anchors, and a file tab per class
     // would be too many for a real schema.
-    call: (api, v, o) =>
-      api.docs(v, { ...generatorOptions(o), single_file: true })["docs.md"] ?? "",
+    call: (_, v, o) =>
+      v.docs({ ...generatorOptions(o), single_file: true })["docs.md"] ?? "",
   },
   {
     id: "erDiagram",
@@ -165,7 +165,7 @@ export const TARGETS: Target[] = [
         default: true,
       },
     ],
-    call: (api, v, o) => api.erDiagram(v, generatorOptions(o)),
+    call: (_, v, o) => v.erDiagram(generatorOptions(o)),
   },
   {
     id: "frictionless",
@@ -183,17 +183,17 @@ export const TARGETS: Target[] = [
         title: "Skip classes that have no identifier slot",
       },
     ],
-    call: (api, v, o) => api.frictionless(v, generatorOptions(o)),
+    call: (_, v, o) => v.frictionless(generatorOptions(o)),
   },
   {
-    id: "graphQl",
+    id: "graphql",
     label: "GraphQL",
     lang: "graphql",
     options: [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "tree_root" },
       TREE_ROOT,
     ],
-    call: (api, v, o) => api.graphQl(v, generatorOptions(o)),
+    call: (_, v, o) => v.graphql(generatorOptions(o)),
   },
   {
     id: "jsonSchema",
@@ -203,7 +203,7 @@ export const TARGETS: Target[] = [
       { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
       { key: "tree_root", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
     ],
-    call: (api, v, o) => api.jsonSchema(v, generatorOptions(o)),
+    call: (_, v, o) => v.jsonSchema(generatorOptions(o)),
   },
   {
     id: "translation",
@@ -218,7 +218,7 @@ export const TARGETS: Target[] = [
         title: "Also list inherited slots, mixin slots and slots from the class's slots list",
       },
     ],
-    call: (api, v, o) => api.translation(v, generatorOptions(o)),
+    call: (_, v, o) => v.translation(generatorOptions(o)),
   },
   {
     id: "lint",
@@ -239,7 +239,7 @@ export const TARGETS: Target[] = [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "schema" },
       TREE_ROOT,
     ],
-    call: (api, v, o) => api.stats(v, generatorOptions(o)),
+    call: (_, v, o) => v.stats(generatorOptions(o)),
   },
   {
     id: "owl",
@@ -251,7 +251,7 @@ export const TARGETS: Target[] = [
       { key: "permissible_values", type: "select", label: "Permissible values", choices: ["individual", "class"], default: "individual" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) => api.owl(v, generatorOptions(o)),
+    call: (_, v, o) => v.owl(generatorOptions(o)),
   },
   {
     id: "pydantic",
@@ -263,7 +263,7 @@ export const TARGETS: Target[] = [
       { key: "include_null", type: "checkbox", label: "Nulls", title: "Keep nulls when dumping" },
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
     ],
-    call: (api, v, o) => api.pydantic(v, generatorOptions(o)),
+    call: (_, v, o) => v.pydantic(generatorOptions(o)),
   },
   {
     id: "rdfs",
@@ -273,7 +273,7 @@ export const TARGETS: Target[] = [
       { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) => api.rdfs(v, generatorOptions(o)),
+    call: (_, v, o) => v.rdfs(generatorOptions(o)),
   },
   {
     id: "scala",
@@ -290,7 +290,7 @@ export const TARGETS: Target[] = [
         default: "annotation",
       },
     ],
-    call: (api, v, o) => api.scala(v, generatorOptions(o)),
+    call: (_, v, o) => v.scala(generatorOptions(o)),
   },
   {
     id: "shacl",
@@ -302,10 +302,10 @@ export const TARGETS: Target[] = [
       { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (api, v, o) => api.shacl(v, generatorOptions(o)),
+    call: (_, v, o) => v.shacl(generatorOptions(o)),
   },
   {
-    id: "typeScript",
+    id: "typescript",
     label: "TypeScript",
     lang: "typescript",
     options: [
@@ -313,6 +313,12 @@ export const TARGETS: Target[] = [
       TREE_ROOT,
       { key: "include_null", type: "checkbox", label: "Nulls", title: "Allow null for optional slots" },
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
+      {
+        key: "optional_defaults",
+        type: "checkbox",
+        label: "Optional defaults",
+        title: "Let slots with an ifabsent be left out",
+      },
       {
         key: "error_handling",
         type: "select",
@@ -322,7 +328,7 @@ export const TARGETS: Target[] = [
         default: "exception",
       },
     ],
-    call: (api, v, o) => api.typeScript(v, generatorOptions(o)),
+    call: (_, v, o) => v.typescript(generatorOptions(o)),
   },
 ];
 

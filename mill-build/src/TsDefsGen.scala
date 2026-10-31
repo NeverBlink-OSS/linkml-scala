@@ -40,11 +40,10 @@ object TsDefsGen {
       Seq("SchemaStats"),
       "The schema statistics, generated from model/schema-stats.yaml.",
     ),
-    // The options the generator functions take, see [[optionTypes]]
     ModelTypes(
       "generator-options",
-      Seq.empty,
-      "The options of the generators, generated from model/generator-options.yaml.",
+      Seq("GeneratorOptionsFunctions", "StatsGeneratorOptions"),
+      "The generators and their options, generated from model/generator-options.yaml.",
     ),
   )
 
@@ -54,16 +53,6 @@ object TsDefsGen {
       .findAllMatchIn(declarations)
       .map(_.group(1))
       .toSeq
-
-  /** The option types the facade's signatures use, as `GeneratorOptions[X]`. */
-  private def optionTypes(scalaSource: String): Seq[String] =
-    "GeneratorOptions\\[(\\w+)\\]".r
-      .findAllMatchIn(scalaSource)
-      .map(_.group(1))
-      .filter(_ != "T")
-      .toSeq
-      .distinct
-      .sorted
 
   /** @param scalaSource
     *   source of `LinkMlJsApi.scala`
@@ -92,7 +81,6 @@ object TsDefsGen {
     val imports = modelTypes.map { m =>
       val module = s"$modelTypesDir${m.name}.js"
       val comment = m.comment.linesIterator.map("// ".concat).mkString("\n")
-      val uses = if m.uses.isEmpty then optionTypes(scalaSource) else m.uses
       val names = exportedNames(modelTypeFiles(m.file))
       val reexport =
         if names.exists(exported.contains) then
@@ -100,7 +88,7 @@ object TsDefsGen {
         else s"export * from \"$module\";"
       exported ++= names
       s"""$comment
-         |import type { ${uses.mkString(", ")} } from "$module";
+         |import type { ${m.uses.mkString(", ")} } from "$module";
          |$reexport
          |""".stripMargin
     }.mkString("\n")
@@ -110,13 +98,15 @@ object TsDefsGen {
        |
        |$imports
        |/**
-       | * Opaque handle to a loaded, import-resolved LinkML schema. Create one with
-       | * {@link ${exportedName}Api.load} and pass it to the generator functions. Parse a schema
-       | * once and reuse the handle, instead of re-parsing the YAML on every call.
+       | * A loaded, import-resolved LinkML schema, with the generators as its methods. Create one
+       | * with {@link ${exportedName}Api.loadFromString} or {@link ${exportedName}Api.loadFromPath}.
+       | * Parse a schema once and reuse it, instead of re-parsing the YAML on every call.
        | */
-       |export interface SchemaView {
+       |export interface SchemaView extends GeneratorOptionsFunctions {
        |  /** @internal Nominal brand – do not access. */
        |  readonly __linkmlSchemaView: unique symbol;
+       |  /** {@inheritDoc GeneratorOptionsFunctions.stats} */
+       |  stats(params?: StatsGeneratorOptions): SchemaStats;
        |}
        |
        |/**
@@ -177,9 +167,7 @@ object TsDefsGen {
     }
 
   private def mapType(scalaType: String): String =
-    innerOf(scalaType, "GeneratorOptions")
-      .map(inner => s"Partial<$inner>")
-      .orElse(innerOf(scalaType, "Option").map(mapType))
+    innerOf(scalaType, "Option").map(mapType)
       .orElse(innerOf(scalaType, "js.UndefOr").map(mapType))
       .getOrElse {
         scalaType match {

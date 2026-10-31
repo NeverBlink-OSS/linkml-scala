@@ -16,7 +16,7 @@ slots:
   metadata_language:
     range: string
     required: true
-    ifabsent: string(en)
+    ifabsent: 'string("en")'
     description: >-
       The language of the titles and descriptions in the output, for schemas with text in more
       than one language.
@@ -132,6 +132,16 @@ enums:
         description: Subclasses of the enum's class, as in `gen-owl`.
 
 classes:
+  Any:
+    class_uri: linkml:Any
+    description: Any value.
+
+  GeneratedFiles:
+    description: The files a generator wrote, from the path of each to its content.
+    extra_slots:
+      range_expression:
+        range: string
+
   MetadataLanguageOptions:
     mixin: true
     description: Options of the generators that write titles and descriptions.
@@ -294,6 +304,14 @@ classes:
         required: true
         ifabsent: TypeScriptErrorHandling(exception)
         description: How the functions of the schema report their `errors`.
+      optional_defaults:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether a slot with an `ifabsent` may be left out, for data that a program fills the
+          defaults in, such as options. Without it, such a slot is as required as the schema says,
+          as in the JSON Schema generator.
 
   PydanticGeneratorOptions:
     description: Options of the pydantic generator.
@@ -366,7 +384,7 @@ classes:
       package:
         range: string
         required: true
-        ifabsent: string(eu.neverblink.linkml.metamodel)
+        ifabsent: 'string("eu.neverblink.linkml.metamodel")'
         description: The package of the generated classes.
       generate_emit_prefixes:
         range: boolean
@@ -403,7 +421,7 @@ classes:
       target:
         range: string
         required: true
-        ifabsent: string(base)
+        ifabsent: 'string("base")'
         description: >-
           The framework of the names in the dictionaries. One of `base`, `uri`,
           `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`,
@@ -416,3 +434,105 @@ classes:
           Whether `classAttributes` also lists inherited slots, mixin slots and the slots in the
           class's `slots` list. Without it, `classAttributes` lists only the class's own
           `attributes`.
+
+
+functions:
+  json_schema:
+    description: Generate a JSON Schema.
+    parameters: JsonSchemaGeneratorOptions
+    returns: string
+
+  shacl:
+    description: Generate SHACL shapes, serialized as N-Triples or Turtle.
+    parameters: ShaclGeneratorOptions
+    returns: string
+
+  rdfs:
+    description: Generate RDFS, serialized as N-Triples or Turtle.
+    parameters: RdfsGeneratorOptions
+    returns: string
+
+  linkml:
+    description: >-
+      Materialize a derived LinkML schema: imports resolved, slots pushed into attributes, and the
+      elements out of scope pruned.
+    parameters: LinkMlGeneratorOptions
+    returns: string
+
+  frictionless:
+    description: >-
+      Generate a Frictionless Data Package. Every class becomes a CSV table, described by its own
+      Table Schema, and references between classes become foreign keys between the tables. The files
+      are a `datapackage.json` plus one `schemas/<table>.json` per table.
+    parameters: FrictionlessGeneratorOptions
+    returns: GeneratedFiles
+
+  graphql:
+    description: >-
+      Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries.
+    parameters: GraphQlGeneratorOptions
+    returns: string
+
+  typescript:
+    description: >-
+      Generate TypeScript types for the schema's JSON data, with no runtime code. Load data with
+      `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`.
+    parameters: TypeScriptGeneratorOptions
+    returns: string
+
+  pydantic:
+    description: >-
+      Generate pydantic classes for the schema's JSON data. Load data with
+      `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.
+    parameters: PydanticGeneratorOptions
+    returns: string
+
+  er_diagram:
+    description: >-
+      Generate a Mermaid entity relationship diagram. Classes become entities, slots ranging over
+      types and enums become their attributes, and slots ranging over classes become relationship
+      lines.
+    parameters: ErDiagramGeneratorOptions
+    returns: string
+
+  docs:
+    description: >-
+      Generate Markdown documentation. The files are `index.md` plus a page for each class, slot,
+      enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.
+    parameters: DocsGeneratorOptions
+    returns: GeneratedFiles
+
+  ossie:
+    description: >-
+      Generate an Apache Ossie ontology, serialized as YAML or JSON. Classes become entity types,
+      enums and named types become value types, and slots become relationships.
+    parameters: OssieGeneratorOptions
+    returns: string
+
+  owl:
+    description: >-
+      Generate an OWL 2 ontology, serialized as Turtle or N-Triples. Classes, slots, enums and types
+      become OWL classes, properties, classes of individuals and datatypes, with the same IRIs as in
+      `shacl` and `rdfs`.
+    parameters: OwlGeneratorOptions
+    returns: string
+
+  scala:
+    description: Generate Scala classes, one file per class, enum and type.
+    parameters: ScalaGeneratorOptions
+    returns: GeneratedFiles
+
+  stats:
+    description: >-
+      Count the elements, their documentation, mappings and languages, and the imports. Returns a
+      `SchemaStats` of `model/schema-stats.yaml`.
+    parameters: StatsGeneratorOptions
+    returns: Any
+
+  translation:
+    description: >-
+      Generate translation dictionaries, in JSON, from the names in the schema to the names in the
+      generated outputs. Useful where those names matter, such as in a query against a database that
+      follows the schema.
+    parameters: TranslationGeneratorOptions
+    returns: string

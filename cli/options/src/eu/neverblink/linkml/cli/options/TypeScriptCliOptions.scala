@@ -24,6 +24,10 @@ final case class TypeScriptCliOptions(
     )
     open: Boolean = false,
     @HelpMessage(
+      "Whether a slot with an `ifabsent` may be left out, for data that a program fills the defaults in, such as options. Without it, such a slot is as required as the schema says, as in the JSON Schema generator. Default: false",
+    )
+    optionalDefaults: Boolean = false,
+    @HelpMessage(
       "The classes and enums in the output. A designated union always comes with its members. Default: skip",
     )
     pruningMode: PruningMode = PruningMode.Skip,
@@ -40,6 +44,7 @@ final case class TypeScriptCliOptions(
       includeNull = includeNull,
       metadataLanguage = metadataLanguage,
       open = open,
+      optionalDefaults = optionalDefaults,
       pruningMode = pruningMode,
       treeRoot = treeRoot,
     )

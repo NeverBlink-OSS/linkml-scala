@@ -144,6 +144,42 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       code should include("go(params?: Request): Outcome;")
     }
 
+    "document the defaults, and let them be left out when asked" in {
+      given SchemaView = ModelCatalogue.ifabsent.scalars.model
+      val code = TypeScriptGenerator().serialize()
+      Seq(
+        "/** @defaultValue \"en\" */\n  language?: string;",
+        "/** @defaultValue \"say \\\"hi\\\" from C:\\\\temp\" */",
+        "/** @defaultValue \"en\" */\n  required_language: string;",
+        "/** @defaultValue -1 */\n  negative?: number;",
+        "/** @defaultValue true */\n  enabled?: boolean;",
+      ).foreach(snippet => code should include(snippet))
+      TypeScriptGenerator().serialize(TypeScriptGeneratorOptions(optionalDefaults = true)) should
+        include("/** @defaultValue \"en\" */\n  required_language?: string;")
+    }
+
+    "make the parameters optional when all the required ones have defaults, when asked" in {
+      val yaml =
+        """classes:
+          |  Request:
+          |    attributes:
+          |      first:
+          |        range: string
+          |        required: true
+          |        ifabsent: string("a")
+          |      second:
+          |        range: string
+          |  Outcome:
+          |functions:
+          |  go:
+          |    parameters: Request
+          |    returns: Outcome
+          |""".stripMargin
+      generate(yaml) should include("go(params: Request): Outcome;")
+      generate(yaml, TypeScriptGeneratorOptions(optionalDefaults = true)) should
+        include("go(params?: Request): Outcome;")
+    }
+
     "generate no functions interface for a schema without functions" in {
       TypeScriptGenerator(using ModelCatalogue.basic.model).serialize() should
         not include "Functions {"
@@ -471,6 +507,10 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |        range: string
           |    attributes:
           |      a: {}
+          |  TypedOnly:
+          |    extra_slots:
+          |      range_expression:
+          |        range: string
           |  OpenChild:
           |    is_a: Open
           |  Plain:
@@ -484,6 +524,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       interface("Open") should include("  [key: string]: unknown;\n")
       interface("Typed") should include("  [key: string]: unknown;\n")
       interface("ClosedTyped") should not include "[key: string]"
+      interface("TypedOnly") should include("  [key: string]: string;\n")
       interface("OpenChild") should not include "[key: string]"
       interface("Plain") should not include "[key: string]"
     }
