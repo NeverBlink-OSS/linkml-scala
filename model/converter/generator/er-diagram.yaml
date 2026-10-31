@@ -12,6 +12,8 @@ classes:
     mixins: [PruningOptions]
     slot_usage:
       pruning_mode:
+        examples:
+          - value: schema
         ifabsent: PruningMode(schema)
     attributes:
       optional_marker:

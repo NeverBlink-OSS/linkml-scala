@@ -9,7 +9,7 @@ import eu.neverblink.linkml.runtime.*
   *
   * @param config
   *   How to map the ontology: names, prefixes, which annotation properties fill which metaslots,
-  *   and more. See https://linkml.ohi.dev/docs/owl/.
+  *   and more. See https://linkml.ohi.dev/docs/importers/owl/.
   * @param format
   *   The serialization of the schema.
   * @param fullUris

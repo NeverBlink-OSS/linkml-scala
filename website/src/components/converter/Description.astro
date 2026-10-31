@@ -1,0 +1,10 @@
+---
+/** The description of a converter, from its schema. */
+import { converter, inline } from './data';
+
+interface Props {
+  name: string;
+}
+---
+
+<p set:html={inline(converter(Astro.props.name).description)} />

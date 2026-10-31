@@ -9,7 +9,19 @@ const repoUrl = 'https://github.com/NeverBlink-OSS/linkml-scala';
 
 const sidebar = [
   { label: 'Overview', link: '/' },
-  { label: 'Generators and importers', items: ['owl', 'pydantic', 'typescript', 'ossie-mapping', 'docs', 'langstring'] },
+  {
+    label: 'Generators',
+    items: [
+      'generators',
+      { label: 'Schemas', items: ['generators/json-schema', 'generators/graphql', 'generators/frictionless', 'generators/shacl'] },
+      { label: 'Ontologies', items: ['generators/owl', 'generators/rdfs', 'generators/ossie'] },
+      { label: 'Code', items: ['generators/pydantic', 'generators/typescript', 'generators/scala'] },
+      { label: 'Docs', items: ['generators/docs', 'generators/er-diagram'] },
+      { label: 'Schema tools', items: ['generators/linkml', 'generators/stats', 'generators/translation'] },
+      'langstring',
+    ],
+  },
+  { label: 'Importers', items: ['importers', 'importers/owl', 'importers/ossie'] },
   { label: 'Schemas', items: ['curies', 'import-maps', 'slot-usage-inheritance'] },
   { label: 'Using ohi LinkML', items: ['python-bindings', 'verifying-downloads'] },
   { label: 'Reference', items: ['implementation-differences', 'benchmarks'] },
@@ -19,13 +31,21 @@ const sidebar = [
 // Every page has to be in the sidebar, or it could only be found through search
 const pagesDir = new URL('./src/content/docs/', import.meta.url);
 const pages = fs
-  .readdirSync(pagesDir)
+  .readdirSync(pagesDir, { recursive: true })
   .filter((file) => /\.mdx?$/.test(file))
-  .map((file) => file.replace(/\.mdx?$/, ''));
-const inSidebar = new Set(['index', ...sidebar.flatMap((group) => group.items ?? [])]);
+  .map((file) => file.replace(/\.mdx?$/, '').replace(/\/index$/, ''));
+const entries = (items) => items.flatMap((item) => (item.items ? entries(item.items) : [item]));
+const inSidebar = new Set(['index', ...entries(sidebar)]);
 const missing = pages.filter((page) => !inSidebar.has(page));
 if (missing.length > 0) {
   throw new Error(`Add these pages to the sidebar in website/astro.config.mjs: ${missing.join(', ')}`);
+}
+
+// Every generator and importer needs a page, which shows its examples and options
+const converters = JSON.parse(fs.readFileSync(new URL('./src/generated/converters.json', import.meta.url), 'utf8'));
+const withoutPage = converters.functions.filter((f) => !pages.includes(f.page));
+if (withoutPage.length > 0) {
+  throw new Error(`Add a page for each of these: ${withoutPage.map((f) => `src/content/docs/${f.page}.mdx`).join(', ')}`);
 }
 
 /** Copies the playground's favicon and fonts into public/, so the docs look the same (see
@@ -46,6 +66,14 @@ export default defineConfig({
   site: 'https://linkml.ohi.dev',
   base: '/docs',
   trailingSlash: 'always',
+  // Pages that moved
+  redirects: {
+    '/owl/': '/docs/generators/owl/',
+    '/pydantic/': '/docs/generators/pydantic/',
+    '/typescript/': '/docs/generators/typescript/',
+    '/docs/': '/docs/generators/docs/',
+    '/ossie-mapping/': '/docs/generators/ossie/',
+  },
   integrations: [
     playgroundAssets,
     starlight({

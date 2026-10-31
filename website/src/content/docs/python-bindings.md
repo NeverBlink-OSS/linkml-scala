@@ -114,7 +114,7 @@ import in `"warnings"`, which is empty if everything was. Pass the schema to `lo
 a generator over it. `from_owl()` reads Turtle (and so N-Triples), or N-Triples with its own
 parser with `input_format="nt"`. `config` is the mapping config as a dict, and
 `schemas` gives the LinkML schemas the config maps `owl:imports` to, from file name to YAML text.
-By default those are read from the file system. See [the OWL guide](/docs/owl/).
+By default those are read from the file system. See [the OWL importer](/docs/importers/owl/).
 
 ### Validating
 

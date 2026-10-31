@@ -15,6 +15,9 @@ classes:
     slot_usage:
       pruning_mode:
         ifabsent: PruningMode(skip)
+      full_uris:
+        examples:
+          - value: true
     attributes:
       format:
         range: JsonOutputFormat

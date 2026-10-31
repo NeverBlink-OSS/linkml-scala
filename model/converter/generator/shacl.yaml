@@ -15,6 +15,8 @@ classes:
       - only_classes_from_root_schema
     slot_usage:
       open:
+        examples:
+          - value: true
         description: >-
           Whether every shape is open, allowing properties beyond the ones in the schema. Shapes
           of classes whose `extra_slots` allows them are open anyway.

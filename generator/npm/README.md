@@ -124,9 +124,9 @@ return `{ schema, warnings }`: the schema, and what could not be imported.
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind
 (e.g. `"UnknownReference"`), and checking it narrows the issue to that kind's fields. For how to use the generated TypeScript,
-see [the TypeScript guide](https://linkml.ohi.dev/docs/typescript/), and for `pydantic`
-[the Pydantic guide](https://linkml.ohi.dev/docs/pydantic/). For `owl` and `fromOwl`, see
-[the OWL guide](https://linkml.ohi.dev/docs/owl/).
+see [the TypeScript guide](https://linkml.ohi.dev/docs/generators/typescript/), and for `pydantic`
+[the Pydantic guide](https://linkml.ohi.dev/docs/generators/pydantic/). For `owl` and `fromOwl`, see
+[the OWL generator](https://linkml.ohi.dev/docs/generators/owl/) and [the OWL importer](https://linkml.ohi.dev/docs/importers/owl/).
 
 ### Errors
 

@@ -1,0 +1,33 @@
+---
+/** Every generator or importer, with a link to its page. */
+import { converters, inline, pageUrl } from './data';
+
+interface Props {
+  kind: 'generator' | 'importer';
+}
+
+const shown = converters.filter((c) => c.kind === Astro.props.kind);
+---
+
+<table>
+  <thead>
+    <tr>
+      <th>{Astro.props.kind === 'generator' ? 'Generator' : 'Importer'}</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    {
+      shown.map((c) => (
+        <tr>
+          <td>
+            <a href={pageUrl(c)}>
+              <code>{c.name}</code>
+            </a>
+          </td>
+          <td set:html={inline(c.description)} />
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

@@ -28,6 +28,8 @@ classes:
     mixins: [RdfOptions]
     attributes:
       only_root_schema:
+        examples:
+          - value: true
         range: boolean
         required: true
         ifabsent: 'false'

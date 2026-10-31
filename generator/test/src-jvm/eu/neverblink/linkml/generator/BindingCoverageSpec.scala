@@ -89,6 +89,23 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     "`([^`]+)`".r.findAllMatchIn(list).map(_.group(1)).toSet
   }
 
+  /** The functions of the converter schemas in `model/converter/<kind>`, such as `json_schema`. */
+  private def functions(root: os.Path, kind: String): Seq[String] =
+    os.list(root / "model" / "converter" / kind)
+      .flatMap(p => "(?m)^functions:\\n  (\\w+):".r.findAllMatchIn(os.read(p)).map(_.group(1)))
+      .sorted
+
+  /** The functions without a page on the docs site that shows their examples and options, which
+    * `website/src/content/docs/<kind>s/<name>.mdx` does with `<Usage name="<function>" />`.
+    */
+  private def withoutPage(root: os.Path, kind: String, page: String => String): Seq[String] = {
+    val docs = root / "website" / "src" / "content" / "docs" / s"${kind}s"
+    functions(root, kind).filterNot { f =>
+      val path = docs / s"${page(f)}.mdx"
+      os.exists(path) && os.read(path).contains(s"""<Usage name="$f" />""")
+    }
+  }
+
   /** The generator ids offered by the playground's target list. */
   private def playgroundTargets(root: os.Path): Set[String] =
     "id: \"(\\w+)\"".r
@@ -195,6 +212,15 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       withClue("add it to the generator list in python/README.md: ")(missing shouldBe empty)
     }
 
+    "have a page on the docs site" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val missing = withoutPage(root, "generator", _.replace('_', '-'))
+      withClue(
+        "add website/src/content/docs/generators/<name>.mdx with its Usage and Options, add it to " +
+          "the sidebar in website/astro.config.mjs, then run ./mill regenerate: ",
+      )(missing shouldBe empty)
+    }
+
     "be listed in the agent skill" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       withClue("fix the `Generators:` list in .agents/skills/linkml/SKILL.md: ")(
@@ -233,6 +259,15 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       withClue("add a method to LinkMlJsApi in LinkMlJsApi.scala, then run ./mill ui.types: ")(
         missing shouldBe empty,
       )
+    }
+
+    "have a page on the docs site" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val missing = withoutPage(root, "importer", _.stripPrefix("from_").replace('_', '-'))
+      withClue(
+        "add website/src/content/docs/importers/<name>.mdx with its Usage and Options, add it to " +
+          "the sidebar in website/astro.config.mjs, then run ./mill regenerate: ",
+      )(missing shouldBe empty)
     }
 
     "be listed in the agent skill" in {

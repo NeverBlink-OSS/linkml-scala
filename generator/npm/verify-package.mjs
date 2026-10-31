@@ -1,10 +1,12 @@
 // Packs and installs the built package into a throwaway project, then runs the
 // packaged README's JS examples (skipping blocks tagged `no-test`) and, if a TS
 // usage sample is given, type-checks it against the generated index.d.ts.
+// If the examples of the docs are given, it runs them next to the files in
+// <examples-dir>, and type-checks them as TypeScript.
 // Finally, it checks that what the API really returns for the build info, validation
 // reports and schema statistics fits the types generated from their LinkML models.
 //
-//   node verify-package.mjs <package-dir> [usage-sample.ts]
+//   node verify-package.mjs <package-dir> [usage-sample.ts] [snippets.mjs examples-dir]
 //
 // Non-zero exit = install failed, an example threw, the sample did not compile, or
 // a real return value does not fit its declared type.
@@ -16,6 +18,8 @@ import { join } from "node:path";
 
 const pkgDir = process.argv[2];
 const usageSample = process.argv[3];
+const snippets = process.argv[4];
+const examplesDir = process.argv[5];
 if (!pkgDir) {
   console.error("Usage: node verify-package.mjs <package-dir> [usage-sample.ts]");
   process.exit(2);
@@ -66,12 +70,12 @@ blocks.forEach((code, i) => {
   }
 });
 
-run("npm", ["install", "--no-save", "--no-audit", "--no-fund", "typescript"], work);
+run("npm", ["install", "--no-save", "--no-audit", "--no-fund", "typescript", "@types/node"], work);
 
-function typeCheck(file) {
+function typeCheck(file, ...options) {
   run(
     "npx",
-    ["tsc", "--noEmit", "--strict", "--module", "nodenext", "--moduleResolution", "nodenext", file],
+    ["tsc", "--noEmit", "--strict", "--module", "nodenext", "--moduleResolution", "nodenext", ...options, file],
     work,
   );
 }
@@ -89,7 +93,23 @@ if (usageSample && existsSync(usageSample)) {
   }
 }
 
-// 3. Check real return values against the types generated from their LinkML models. The
+// 3. Run the examples of the docs, and type-check them.
+if (snippets) {
+  console.log("Running the examples of the docs");
+  for (const file of readdirSync(examplesDir)) copyFileSync(join(examplesDir, file), join(work, file));
+  copyFileSync(snippets, join(work, "snippets.mjs"));
+  copyFileSync(snippets, join(work, "snippets.ts"));
+  try {
+    run("node", ["snippets.mjs"], work);
+    typeCheck("snippets.ts", "--types", "node");
+    console.log("  docs examples: OK");
+  } catch (e) {
+    failures++;
+    console.error(`  docs examples: FAILED\n${e.stdout || ""}${e.stderr || ""}`);
+  }
+}
+
+// 4. Check real return values against the types generated from their LinkML models. The
 // values are written out as object literals, so `tsc` also rejects keys the types don't have.
 console.log("Type-checking real build info, validation reports and stats against index.d.ts");
 const collect = `

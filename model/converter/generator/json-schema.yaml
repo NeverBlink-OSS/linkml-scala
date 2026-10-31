@@ -17,6 +17,8 @@ classes:
       - include_null
     slot_usage:
       tree_root:
+        examples:
+          - value: Entity
         description: >-
           The class at the root of the JSON Schema, instead of the class with `tree_root: true`
           in the schema.

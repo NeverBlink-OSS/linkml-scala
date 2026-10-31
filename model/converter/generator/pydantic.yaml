@@ -15,6 +15,8 @@ classes:
       - open
     slot_usage:
       pruning_mode:
+        examples:
+          - value: schema
         ifabsent: PruningMode(skip)
         description: >-
           The classes and enums in the output. Each class always comes with its ancestors, and a

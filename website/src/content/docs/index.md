@@ -12,10 +12,11 @@ To install the CLI or the libraries, see the [README](https://github.com/NeverBl
 
 ## Generators and importers
 
-- [LinkML <-> OWL](/docs/owl/): the OWL generator and the OWL importer.
-- [Pydantic](/docs/pydantic/): Python classes for your data.
-- [TypeScript](/docs/typescript/): TypeScript types for your data.
-- [LinkML <-> Apache Ossie](/docs/ossie-mapping/): how the Ossie generator and importer map between the two.
+- [All generators](/docs/generators/) and [all importers](/docs/importers/).
+- [OWL generator](/docs/generators/owl/) and [OWL importer](/docs/importers/owl/).
+- [Pydantic](/docs/generators/pydantic/): Python classes for your data.
+- [TypeScript](/docs/generators/typescript/): TypeScript types for your data.
+- [Ossie generator](/docs/generators/ossie/) and [Ossie importer](/docs/importers/ossie/): how LinkML and Apache Ossie map to each other.
 
 ## Schemas
 

@@ -45,6 +45,11 @@ final case class ConverterFunction(fv: FunctionView) {
   /** The exported C function. */
   val symbol: String = s"linkml_$name"
 
+  /** The command of `ohi linkml`, such as `to json-schema` or `from owl`. */
+  val cliCommand: String =
+    if isImporter then s"from ${name.stripPrefix("from_").replace('_', '-')}"
+    else s"to ${name.replace('_', '-')}"
+
   val description: String = Text.oneLine(fv.function.description.fold("")(_.plain))
 
   val options: OptionsClass = OptionsClass(fv.parameters.get)
@@ -101,6 +106,9 @@ final case class OptionField(attribute: AttributeView) {
 
   val multivalued: Boolean = slot.slot.multivalued
 
+  /** The values of its `examples`, which the docs use. */
+  val examples: Seq[String] = slot.slot.examples.flatMap(_.value)
+
   /** The class of the value, if it is an object, such as a config. */
   val valueClass: Option[ClassView] = attribute match {
     case a: ClassAttributeView => Some(a.classView)
@@ -122,6 +130,13 @@ final case class OptionField(attribute: AttributeView) {
   }
 
   val isEnum: Boolean = attribute.isInstanceOf[EnumAttributeView]
+
+  /** Whether the command line has it. It has none with several objects, such as `schemas`. */
+  val onCli: Boolean = !(multivalued && valueClass.isDefined)
+
+  /** The command line flag, such as `--metadata-language`. */
+  val cliFlag: String =
+    "--" + scalaName.filter(_ != '`').replaceAll("([a-z0-9])([A-Z])", "$1-$2").toLowerCase
 
   /** The names of the values, if the option is an enum. */
   val enumValues: Option[Seq[String]] = attribute match {

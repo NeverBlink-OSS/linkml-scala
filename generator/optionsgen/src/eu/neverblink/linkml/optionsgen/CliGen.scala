@@ -30,7 +30,7 @@ object CliGen {
   private def options(function: ConverterFunction): String = {
     val c = function.options
     val name = className(function)
-    val options = c.fields.filterNot(f => f.multivalued && f.valueClass.isDefined)
+    val options = c.fields.filter(_.onCli)
     val fields = options.map { f =>
       val default = f.default.fold("")(d => s" Default: ${d.text}")
       if f.valueClass.isDefined then

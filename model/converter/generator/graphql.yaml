@@ -12,6 +12,8 @@ classes:
     mixins: [PruningOptions, MetadataLanguageOptions]
     slot_usage:
       pruning_mode:
+        examples:
+          - value: schema
         ifabsent: PruningMode(schema)
 
 functions:
