@@ -24,8 +24,8 @@ import threading
 import unittest
 from pathlib import Path
 
-import linkml_scala
-from linkml_scala import LinkMlError, SchemaConversionError, SchemaLoadError
+import ohi_linkml
+from ohi_linkml import LinkMlError, SchemaConversionError, SchemaLoadError
 
 REPO_ROOT = Path(os.environ.get("LINKML_SCALA_REPO") or Path(__file__).resolve().parents[1])
 
@@ -84,7 +84,7 @@ FIXED = BROKEN.replace("NoSuchThing", "string")
 
 class ExportsTest(unittest.TestCase):
     def test_runtime_exports_every_public_name_it_defines(self):
-        from linkml_scala import _runtime
+        from ohi_linkml import _runtime
 
         defined = {
             name
@@ -106,20 +106,20 @@ class FromOwlTest(unittest.TestCase):
     ).strip()
 
     def test_reads_an_ontology_into_a_schema(self):
-        schema = linkml_scala.from_owl(self.ONTOLOGY)
+        schema = ohi_linkml.from_owl(self.ONTOLOGY)
         self.assertIn("Person:", schema)
         self.assertIn("range: string", schema)
 
     def test_reads_turtle(self):
         turtle = "@prefix ex: <https://example.org/> .\nex:Book a <http://www.w3.org/2002/07/owl#Class> .\n"
-        self.assertIn("Book:", linkml_scala.from_owl(turtle))
+        self.assertIn("Book:", ohi_linkml.from_owl(turtle))
 
     def test_reads_n_triples_with_its_own_parser_when_asked(self):
-        self.assertIn("Person:", linkml_scala.from_owl(self.ONTOLOGY, input_format="nt"))
+        self.assertIn("Person:", ohi_linkml.from_owl(self.ONTOLOGY, input_format="nt"))
 
     def test_lists_what_it_left_out_when_asked(self):
-        self.assertNotIn("# Not imported:", linkml_scala.from_owl(self.ONTOLOGY))
-        self.assertIn("# Not imported:", linkml_scala.from_owl(self.ONTOLOGY, list_not_imported=True))
+        self.assertNotIn("# Not imported:", ohi_linkml.from_owl(self.ONTOLOGY))
+        self.assertIn("# Not imported:", ohi_linkml.from_owl(self.ONTOLOGY, list_not_imported=True))
 
     def test_uses_the_terms_of_a_mapped_import(self):
         ontology = self.ONTOLOGY + textwrap.dedent(
@@ -141,22 +141,22 @@ class FromOwlTest(unittest.TestCase):
             """
         )
         config = "imports:\n  https://other.example.com/onto: other.yaml\n"
-        schema = linkml_scala.from_owl(ontology, config=config, imports={"other.yaml": imported})
+        schema = ohi_linkml.from_owl(ontology, config=config, imports={"other.yaml": imported})
         self.assertIn("is_a: Agent", schema)
         self.assertIn("- other.yaml", schema)
         self.assertNotIn("Agent:", schema)
 
     def test_follows_the_config(self):
-        schema = linkml_scala.from_owl(self.ONTOLOGY, config="default_prefix: mine\nprefixes:\n  mine: https://example.org/\n")
+        schema = ohi_linkml.from_owl(self.ONTOLOGY, config="default_prefix: mine\nprefixes:\n  mine: https://example.org/\n")
         self.assertIn("default_prefix: mine", schema)
 
     def test_writes_json_when_asked(self):
-        schema = json.loads(linkml_scala.from_owl(self.ONTOLOGY, output_format="json"))
+        schema = json.loads(ohi_linkml.from_owl(self.ONTOLOGY, output_format="json"))
         self.assertIn("Person", schema["classes"])
 
     def test_unreadable_config_is_rejected(self):
         with self.assertRaises(LinkMlError) as raised:
-            linkml_scala.from_owl(self.ONTOLOGY, config="naming: [unclosed")
+            ohi_linkml.from_owl(self.ONTOLOGY, config="naming: [unclosed")
         self.assertIn("config", str(raised.exception))
 
 
@@ -178,38 +178,38 @@ class FromOssieTest(unittest.TestCase):
     ).strip()
 
     def test_reads_an_ontology_into_a_schema(self):
-        schema = linkml_scala.from_ossie(self.ONTOLOGY)
+        schema = ohi_linkml.from_ossie(self.ONTOLOGY)
         self.assertIn("name: flights", schema)
         self.assertIn("Airport:", schema)
         self.assertIn("identifier: true", schema)
 
     def test_writes_json_when_asked(self):
-        schema = json.loads(linkml_scala.from_ossie(self.ONTOLOGY, output_format="json"))
+        schema = json.loads(ohi_linkml.from_ossie(self.ONTOLOGY, output_format="json"))
         self.assertEqual("flights", schema["name"])
 
     def test_uses_the_schema_id_it_was_given(self):
-        schema = linkml_scala.from_ossie(self.ONTOLOGY, schema_id="https://example.com/mine")
+        schema = ohi_linkml.from_ossie(self.ONTOLOGY, schema_id="https://example.com/mine")
         self.assertIn("id: https://example.com/mine", schema)
 
     # The point of the round trip: what comes out is a schema the library can load again.
     def test_result_loads_as_a_schema(self):
-        with linkml_scala.load_string(linkml_scala.from_ossie(self.ONTOLOGY)) as schema:
+        with ohi_linkml.load_string(ohi_linkml.from_ossie(self.ONTOLOGY)) as schema:
             self.assertIn("concept: Airport", schema.ossie())
 
     def test_unreadable_document_is_rejected(self):
         with self.assertRaises(LinkMlError) as raised:
-            linkml_scala.from_ossie("name: [unclosed")
+            ohi_linkml.from_ossie("name: [unclosed")
         self.assertIn("Ossie ontology", str(raised.exception))
 
     def test_unknown_output_format_is_rejected(self):
         with self.assertRaises(LinkMlError) as raised:
-            linkml_scala.from_ossie(self.ONTOLOGY, output_format="toml")
+            ohi_linkml.from_ossie(self.ONTOLOGY, output_format="toml")
         self.assertIn("toml", str(raised.exception))
 
     # A problem with the document is an issue, in the same shape as in a validation report.
     def test_a_document_that_is_not_an_ontology_is_a_conversion_error(self):
         with self.assertRaises(SchemaConversionError) as raised:
-            linkml_scala.from_ossie("- not\n- an ontology\n")
+            ohi_linkml.from_ossie("- not\n- an ontology\n")
         issue = raised.exception.issue
         self.assertEqual("SchemaConversionError", issue["issue_type"])
         self.assertEqual("FATAL", issue["severity"])
@@ -220,7 +220,7 @@ class FromOssieTest(unittest.TestCase):
 
 class BuildInfoTest(unittest.TestCase):
     def test_build_info_describes_the_library(self):
-        info = linkml_scala.build_info()
+        info = ohi_linkml.build_info()
         # The versions depend on which library was built, so only their shape is checked.
         self.assertTrue(info["linkml_scala_version"])
         self.assertRegex(info["metamodel_version"], r"^\d+\.\d+\.\d+$")
@@ -228,25 +228,25 @@ class BuildInfoTest(unittest.TestCase):
         self.assertEqual("SCALA_NATIVE", info["platform"])
 
     def test_build_info_reports_the_abi_it_was_checked_against(self):
-        from linkml_scala._runtime import _EXPECTED_ABI_VERSION
+        from ohi_linkml._runtime import _EXPECTED_ABI_VERSION
 
-        self.assertEqual(_EXPECTED_ABI_VERSION, linkml_scala.build_info()["abi_version"])
+        self.assertEqual(_EXPECTED_ABI_VERSION, ohi_linkml.build_info()["abi_version"])
 
     def test_build_info_does_not_claim_components_the_library_lacks(self):
-        info = linkml_scala.build_info()
+        info = ohi_linkml.build_info()
         # The shared library is not a Scala.js build.
         self.assertNotIn("scala_js_version", info)
 
 
 class LoadTest(unittest.TestCase):
     def test_load_string(self):
-        with linkml_scala.load_string(PERSON) as loaded:
-            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+        with ohi_linkml.load_string(PERSON) as loaded:
+            self.assertEqual([], loaded.issues(ohi_linkml.FATAL))
             self.assertIn("Person", loaded.json_schema())
 
     def test_load_file(self):
         model = REPO_ROOT / "tests" / "resources" / "models" / "basic" / "model.yaml"
-        with linkml_scala.load_file(model) as loaded:
+        with ohi_linkml.load_file(model) as loaded:
             self.assertIn("SomeClass", loaded.json_schema())
             # Loading by path records the path as the report's run id.
             self.assertEqual(str(model), loaded.report["validation_run_id"])
@@ -275,7 +275,7 @@ class LoadTest(unittest.TestCase):
                     range: string
             """,
         )
-        with linkml_scala.load_string(root, {"shapes.yaml": shapes}) as loaded:
+        with ohi_linkml.load_string(root, {"shapes.yaml": shapes}) as loaded:
             generated = loaded.json_schema()
             self.assertIn("Drawing", generated)
             self.assertIn("Square", generated)
@@ -306,8 +306,8 @@ class LoadTest(unittest.TestCase):
                     range: string
             """,
         )
-        with linkml_scala.load_string(root, {"shapes": shapes}) as loaded:
-            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+        with ohi_linkml.load_string(root, {"shapes": shapes}) as loaded:
+            self.assertEqual([], loaded.issues(ohi_linkml.FATAL))
             self.assertIn("Square", loaded.json_schema())
 
     def test_load_path_survives_an_import_cycle_through_the_root(self):
@@ -340,8 +340,8 @@ class LoadTest(unittest.TestCase):
             """,
         )
         imports = {"root.yaml": root, "other.yaml": other}
-        with linkml_scala.load_path("root.yaml", imports) as loaded:
-            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+        with ohi_linkml.load_path("root.yaml", imports) as loaded:
+            self.assertEqual([], loaded.issues(ohi_linkml.FATAL))
             self.assertIn("Drawing", loaded.json_schema())
 
     def test_a_missing_import_is_reported(self):
@@ -359,7 +359,7 @@ class LoadTest(unittest.TestCase):
             """,
         )
         with self.assertRaises(SchemaLoadError) as caught:
-            linkml_scala.load_string(root, {})
+            ohi_linkml.load_string(root, {})
         self.assertIn("nowhere", json.dumps(caught.exception.report))
 
     def test_import_map_loads_a_curie_import_from_another_location(self):
@@ -390,19 +390,19 @@ class LoadTest(unittest.TestCase):
         )
         imports = {"root.yaml": root, "deps/shapes.yaml": shapes}
         import_map = {"https://example.org/shapes/core": "deps/shapes.yaml"}
-        with linkml_scala.load_path("root.yaml", imports, import_map=import_map) as loaded:
-            self.assertEqual([], loaded.issues(linkml_scala.FATAL))
+        with ohi_linkml.load_path("root.yaml", imports, import_map=import_map) as loaded:
+            self.assertEqual([], loaded.issues(ohi_linkml.FATAL))
             self.assertIn("Square", loaded.json_schema())
         with tempfile.TemporaryDirectory() as tmp:
             map_file = Path(tmp) / "map.json"
             map_file.write_text(json.dumps(import_map), encoding="utf-8")
             for given in (map_file, str(map_file)):
-                with linkml_scala.load_path("root.yaml", imports, import_map=given) as loaded:
+                with ohi_linkml.load_path("root.yaml", imports, import_map=given) as loaded:
                     self.assertIn("Square", loaded.json_schema())
 
     def test_import_map_with_a_curie_key_is_reported(self):
         with self.assertRaises(SchemaLoadError) as caught:
-            linkml_scala.load_string(PERSON, {}, import_map={"linkml:types": "types.yaml"})
+            ohi_linkml.load_string(PERSON, {}, import_map={"linkml:types": "types.yaml"})
         self.assertIn("is a CURIE", json.dumps(caught.exception.report))
 
     def test_import_map_file_that_is_not_an_object_is_rejected(self):
@@ -410,29 +410,29 @@ class LoadTest(unittest.TestCase):
             map_file = Path(tmp) / "map.json"
             map_file.write_text("[]", encoding="utf-8")
             with self.assertRaises(ValueError) as caught:
-                linkml_scala.load_string(PERSON, {}, import_map=map_file)
+                ohi_linkml.load_string(PERSON, {}, import_map=map_file)
             self.assertIn("not a JSON object", str(caught.exception))
 
     def test_fatal_problems_raise_with_a_report(self):
         with self.assertRaises(SchemaLoadError) as caught:
-            linkml_scala.load_string(BROKEN)
+            ohi_linkml.load_string(BROKEN)
         issues = caught.exception.report["issues"]
-        self.assertEqual([linkml_scala.FATAL], sorted({issue["severity"] for issue in issues}))
+        self.assertEqual([ohi_linkml.FATAL], sorted({issue["severity"] for issue in issues}))
         self.assertIn("NoSuchThing", json.dumps(issues))
 
     def test_unparseable_yaml_raises(self):
         with self.assertRaises(SchemaLoadError):
-            linkml_scala.load_string("this: is: not: a: schema:")
+            ohi_linkml.load_string("this: is: not: a: schema:")
 
     def test_load_needs_a_schema_or_a_path(self):
         with self.assertRaises(LinkMlError):
-            linkml_scala.runtime().load_string(None, None)
+            ohi_linkml.runtime().load_string(None, None)
 
 
 class GeneratorTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.schema = linkml_scala.load_string(PERSON)
+        cls.schema = ohi_linkml.load_string(PERSON)
 
     @classmethod
     def tearDownClass(cls):
@@ -493,7 +493,7 @@ class GeneratorTest(unittest.TestCase):
 
     def test_unknown_rdf_format_is_rejected(self):
         for generator in (self.schema.shacl, self.schema.rdfs):
-            with self.assertRaises(linkml_scala.LinkMlError) as raised:
+            with self.assertRaises(ohi_linkml.LinkMlError) as raised:
                 generator(format="n3")
             self.assertIn("n3", str(raised.exception))
 
@@ -518,7 +518,7 @@ class GeneratorTest(unittest.TestCase):
                     range: string
             """,
         )
-        with linkml_scala.load_string(unreachable) as loaded:
+        with ohi_linkml.load_string(unreachable) as loaded:
             self.assertIn("Orphan", loaded.linkml(pruning_mode="skip"))
             self.assertNotIn("Orphan", loaded.linkml(pruning_mode="treeRoot"))
 
@@ -571,7 +571,7 @@ class GeneratorTest(unittest.TestCase):
             return [line for line in nt.splitlines() if "http://www.w3.org/ns/shacl#" not in line]
 
         ontology = self.schema.owl()
-        with linkml_scala.load_string(linkml_scala.from_owl(ontology)) as reloaded:
+        with ohi_linkml.load_string(ohi_linkml.from_owl(ontology)) as reloaded:
             self.assertEqual(len(statements(self.schema.owl(format="nt"))), len(statements(reloaded.owl(format="nt"))))
 
     def test_er_diagram(self):
@@ -603,7 +603,7 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn("Person", [c["concept"] for c in as_json["ontology"]])
 
     def test_ossie_unknown_output_format_is_rejected(self):
-        with self.assertRaises(linkml_scala.LinkMlError) as raised:
+        with self.assertRaises(ohi_linkml.LinkMlError) as raised:
             self.schema.ossie(output_format="toml")
         self.assertIn("toml", str(raised.exception))
 
@@ -616,7 +616,7 @@ class GeneratorTest(unittest.TestCase):
         # Each generator is its own exported symbol now, so a name that does not exist fails at the
         # ctypes layer rather than being dispatched and rejected by the library.
         with self.assertRaises(AttributeError):
-            linkml_scala.runtime().document("linkml_cuneiform", self.schema._handle)
+            ohi_linkml.runtime().document("linkml_cuneiform", self.schema._handle)
 
     def test_unknown_pruning_mode(self):
         with self.assertRaises(LinkMlError) as caught:
@@ -647,14 +647,14 @@ class GeneratorTest(unittest.TestCase):
                 class_uri: ex:Imported
             """,
         )
-        with linkml_scala.load_string(root, {"other.yaml": other}) as loaded:
+        with ohi_linkml.load_string(root, {"other.yaml": other}) as loaded:
             with self.assertRaises(SchemaConversionError) as raised:
                 loaded.linkml()
         self.assertIn("'ex:Imported' can't be written", raised.exception.issue["reason"])
 
     def test_an_unknown_option_is_rejected_rather_than_ignored(self):
         with self.assertRaises(LinkMlError) as caught:
-            linkml_scala.runtime().document(
+            ohi_linkml.runtime().document(
                 "linkml_json_schema", self.schema._handle, {"opne": True}
             )
         self.assertIn("opne", str(caught.exception))
@@ -676,7 +676,7 @@ class LintTest(unittest.TestCase):
                     description: The full name of the person
             """,
         )
-        with linkml_scala.load_string(described) as loaded:
+        with ohi_linkml.load_string(described) as loaded:
             self.assertEqual([], loaded.lint()["issues"])
 
     def test_warnings_do_not_stop_a_schema_from_loading(self):
@@ -691,8 +691,8 @@ class LintTest(unittest.TestCase):
                     range: string
             """,
         )
-        with linkml_scala.load_string(rootless) as loaded:
-            warnings = loaded.issues(linkml_scala.WARNING)
+        with ohi_linkml.load_string(rootless) as loaded:
+            warnings = loaded.issues(ohi_linkml.WARNING)
             self.assertTrue(warnings, "expected a warning about the missing tree root")
             self.assertTrue(all("message" in warning for warning in warnings))
             # Loading lints as it goes, so the report is already there.
@@ -709,36 +709,36 @@ class LintTest(unittest.TestCase):
                     range: string
             """,
         )
-        with linkml_scala.load_string(rootless, infer_messages=False) as loaded:
+        with ohi_linkml.load_string(rootless, infer_messages=False) as loaded:
             self.assertTrue(loaded.report["issues"])
             self.assertFalse(any("message" in issue for issue in loaded.report["issues"]))
 
 
 class HandleTest(unittest.TestCase):
     def test_using_a_closed_schema_raises(self):
-        loaded = linkml_scala.load_string(PERSON)
+        loaded = ohi_linkml.load_string(PERSON)
         loaded.close()
         with self.assertRaises(LinkMlError):
             loaded.json_schema()
 
     def test_closing_twice_is_fine(self):
-        loaded = linkml_scala.load_string(PERSON)
+        loaded = ohi_linkml.load_string(PERSON)
         loaded.close()
         loaded.close()
 
     def test_an_unknown_handle_raises(self):
         with self.assertRaises(LinkMlError) as caught:
-            linkml_scala.runtime().document("linkml_lint", 999_999)
+            ohi_linkml.runtime().document("linkml_lint", 999_999)
         self.assertIn("999999", str(caught.exception))
 
     def test_handle_zero_raises(self):
         # 0 is what loading returns when it refused, so it must never be usable.
         with self.assertRaises(LinkMlError):
-            linkml_scala.runtime().document("linkml_lint", 0)
+            ohi_linkml.runtime().document("linkml_lint", 0)
 
     def test_handles_are_independent(self):
-        with linkml_scala.load_string(PERSON) as first:
-            with linkml_scala.load_string(FIXED) as second:
+        with ohi_linkml.load_string(PERSON) as first:
+            with ohi_linkml.load_string(FIXED) as second:
                 self.assertIn("Person", first.json_schema())
                 self.assertIn("Thing", second.json_schema())
 
@@ -747,13 +747,13 @@ class HandleTest(unittest.TestCase):
         # for good. A close that waited for the worker then would never return.
         script = textwrap.dedent(
             f"""
-            import linkml_scala
-            loaded = linkml_scala.load_string({PERSON!r})
+            import ohi_linkml
+            loaded = ohi_linkml.load_string({PERSON!r})
             loaded.json_schema()
             """
         )
         # Import the same package this test did, whether from a checkout or an installed wheel.
-        env = dict(os.environ, PYTHONPATH=str(Path(linkml_scala.__file__).resolve().parents[1]))
+        env = dict(os.environ, PYTHONPATH=str(Path(ohi_linkml.__file__).resolve().parents[1]))
         finished = subprocess.run(
             [sys.executable, "-c", script], env=env, capture_output=True, text=True, timeout=60
         )
@@ -762,10 +762,10 @@ class HandleTest(unittest.TestCase):
 
 class RuntimeTest(unittest.TestCase):
     def test_the_runtime_is_shared(self):
-        self.assertIs(linkml_scala.runtime(), linkml_scala.runtime())
+        self.assertIs(ohi_linkml.runtime(), ohi_linkml.runtime())
 
     def test_library_path_points_at_a_real_file(self):
-        self.assertTrue(linkml_scala.library_path().is_file())
+        self.assertTrue(ohi_linkml.library_path().is_file())
 
     def test_other_threads_can_call_in(self):
         # Every thread has to attach to the isolate before its first call. Getting that wrong takes
@@ -775,7 +775,7 @@ class RuntimeTest(unittest.TestCase):
 
         def work():
             try:
-                with linkml_scala.load_string(PERSON) as loaded:
+                with ohi_linkml.load_string(PERSON) as loaded:
                     results.append(loaded.json_schema())
             except BaseException as error:  # noqa: BLE001 - reported on the main thread
                 errors.append(error)
@@ -809,7 +809,7 @@ class RuntimeTest(unittest.TestCase):
         )
         # The emoji is in the slot name, not just the description, because the ER diagram renders
         # names and types but no descriptions.
-        with linkml_scala.load_string(unicode_schema) as loaded:
+        with ohi_linkml.load_string(unicode_schema) as loaded:
             for name in (
                 "linkml",
                 "graphql",
@@ -837,7 +837,7 @@ class RuntimeTest(unittest.TestCase):
             f"        range: Class{(index + 1) % count}"
             for index in range(count)
         )
-        with linkml_scala.load_string(schema("big", f"classes:\n{classes}")) as loaded:
+        with ohi_linkml.load_string(schema("big", f"classes:\n{classes}")) as loaded:
             # N-Triples rather than the default, because one complete statement per line is what
             # makes a truncated copy detectable at all.
             generated = loaded.shacl(format="nt")

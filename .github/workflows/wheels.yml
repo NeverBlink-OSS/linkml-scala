@@ -154,11 +154,11 @@ jobs:
           if [ "$RUNNER_OS" == "Windows" ]; then
             # Windows' own tar is bsdtar, which reads zip.
             # The GNU tar we have on PATH does not, hence the full path.
-            /c/Windows/System32/tar.exe -xf "dist/linkml-scala-lib-${{ matrix.platform }}.zip" -C dist
+            /c/Windows/System32/tar.exe -xf "dist/ohi-linkml-lib-${{ matrix.platform }}.zip" -C dist
           else
-            tar -xzf "dist/linkml-scala-lib-${{ matrix.platform }}.tar.gz" -C dist
+            tar -xzf "dist/ohi-linkml-lib-${{ matrix.platform }}.tar.gz" -C dist
           fi
-          nativelib/smoke.sh "dist/liblinkml-scala-$ARCHIVE_VERSION-${{ matrix.platform }}"
+          nativelib/smoke.sh "dist/libohi-linkml-$ARCHIVE_VERSION-${{ matrix.platform }}"
 
       - name: Upload Shared Library
         uses: actions/upload-artifact@v7

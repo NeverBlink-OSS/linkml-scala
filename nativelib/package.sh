@@ -2,15 +2,15 @@
 #
 # Package a native-image shared library build into the layout C, C++ and Rust consumers expect:
 #
-#   liblinkml-scala-<version>-<platform>/
+#   libohi-linkml-<version>-<platform>/
 #     include/*.h          the C header
-#     lib/liblinkml_scala.*  (bin/ for the Windows DLL, as is conventional there)
-#     linkml-scala.pc      pkg-config, so `pkg-config --cflags --libs linkml-scala` works
+#     lib/libohi_linkml.*  (bin/ for the Windows DLL, as is conventional there)
+#     ohi-linkml.pc        pkg-config, so `pkg-config --cflags --libs ohi-linkml` works
 #     LICENSE
 #     README.md
 #
 # That is what `make install` and `cmake --install` produce, so -I<prefix>/include
-# -L<prefix>/lib -llinkml_scala just work.
+# -L<prefix>/lib -lohi_linkml just work.
 #
 # Usage: nativelib/package.sh <version> <platform> <build-dir> <out-dir>
 #
@@ -19,7 +19,7 @@
 #   build-dir   out/nativelib/sharedLibrary.dest, or a downloaded CI artifact
 #   out-dir     where to write the archive
 #
-# Writes <out-dir>/linkml-scala-lib-<platform>.tar.gz, or .zip for Windows platforms.
+# Writes <out-dir>/ohi-linkml-lib-<platform>.tar.gz, or .zip for Windows platforms.
 
 set -euo pipefail
 
@@ -34,7 +34,7 @@ build_dir="$3"
 out_dir="$4"
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
-prefix_name="liblinkml-scala-${version}-${platform}"
+prefix_name="libohi-linkml-${version}-${platform}"
 staging="$(mktemp -d)"
 prefix="${staging}/${prefix_name}"
 echo "staging in ${staging}" >&2
@@ -80,17 +80,17 @@ rmdir "${prefix}/${runtime_dir}" 2>/dev/null || true
 cp "${repo_root}/LICENSE" "${prefix}/LICENSE"
 
 # ${pcfiledir} keeps this relocatable, so it works wherever the archive is unpacked.
-cat >"${prefix}/linkml-scala.pc" <<EOF
+cat >"${prefix}/ohi-linkml.pc" <<EOF
 prefix=\${pcfiledir}
 includedir=\${prefix}/include
 libdir=\${prefix}/lib
 
-Name: linkml-scala
+Name: ohi-linkml
 Description: LinkML schema validation and multi-format code generation
 URL: https://github.com/NeverBlink-OSS/linkml-scala
 Version: ${version}
 Cflags: -I\${includedir}
-Libs: -L\${libdir} -llinkml_scala
+Libs: -L\${libdir} -lohi_linkml
 EOF
 
 cat >"${prefix}/README.md" <<EOF
@@ -98,7 +98,7 @@ cat >"${prefix}/README.md" <<EOF
 
 LinkML schema validation and code generation as a native shared library, with a C ABI.
 
-See include/linkml_scala.h for the full API: one function per generator, plus loading, linting
+See include/ohi_linkml.h for the full API: one function per generator, plus loading, linting
 and the lifecycle. Two conventions cover all of it.
 
 Options are one JSON string, and may be NULL for defaults, so the common case needs no JSON:
@@ -124,7 +124,7 @@ out_dir="$(cd "$out_dir" && pwd)"
 
 case "$platform" in
 windows-*)
-  archive="${out_dir}/linkml-scala-lib-${platform}.zip"
+  archive="${out_dir}/ohi-linkml-lib-${platform}.zip"
   # zip adds to an existing archive rather than replacing it, so a rerun would otherwise keep
   # entries from the previous one.
   rm -f "$archive"
@@ -147,7 +147,7 @@ windows-*)
   fi
   ;;
 *)
-  archive="${out_dir}/linkml-scala-lib-${platform}.tar.gz"
+  archive="${out_dir}/ohi-linkml-lib-${platform}.tar.gz"
   tar -czf "$archive" -C "$staging" "$prefix_name"
   ;;
 esac

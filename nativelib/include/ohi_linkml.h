@@ -20,8 +20,8 @@
  * before anything else.
  */
 
-#ifndef LINKML_SCALA_H
-#define LINKML_SCALA_H
+#ifndef OHI_LINKML_H
+#define OHI_LINKML_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -87,4 +87,4 @@ void linkml_free(char *buffer);
 }
 #endif
 
-#endif /* LINKML_SCALA_H */
+#endif /* OHI_LINKML_H */

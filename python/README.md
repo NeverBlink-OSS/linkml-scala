@@ -11,12 +11,12 @@ pip install neverblink-linkml
 ## Usage
 
 ```python
-import linkml_scala
+import ohi_linkml
 
-with linkml_scala.load_file("model.yaml") as schema:
+with ohi_linkml.load_file("model.yaml") as schema:
     print(schema.json_schema())
     print(schema.shacl())
-    for issue in schema.issues(linkml_scala.WARNING):
+    for issue in schema.issues(ohi_linkml.WARNING):
         print(issue["severity"], issue["message"])
 ```
 
@@ -28,13 +28,13 @@ Generators available on a `Schema`: `json_schema()`, `shacl()`, `rdfs()`, `linkm
 `pydantic()` generates, see
 [the Pydantic guide](https://linkml.ohi.dev/docs/pydantic/).
 
-Going the other way, `linkml_scala.from_ossie()` reads an Apache Ossie (incubating) ontology, and `linkml_scala.from_owl()` an OWL ontology in Turtle or N-Triples, and each returns the corresponding LinkML schema as YAML or JSON.
+Going the other way, `ohi_linkml.from_ossie()` reads an Apache Ossie (incubating) ontology, and `ohi_linkml.from_owl()` an OWL ontology in Turtle or N-Triples, and each returns the corresponding LinkML schema as YAML or JSON.
 
 To work from memory instead of the file system, use `load_string()` for a single schema or
 `load_path()` when imports are involved:
 
 ```python
-schema = linkml_scala.load_path("model.yaml", {
+schema = ohi_linkml.load_path("model.yaml", {
     "model.yaml": "...",
     "person.yaml": "...",  # referenced via `imports: - person`
 })
@@ -44,11 +44,11 @@ To load an import from another location without changing the schema, pass `impor
 mapping or the path of a JSON file:
 
 ```python
-schema = linkml_scala.load_file(
+schema = ohi_linkml.load_file(
     "model.yaml",
     import_map={"https://example.org/units/": "deps/units/"},
 )
-schema = linkml_scala.load_file("model.yaml", import_map="imports.json")
+schema = ohi_linkml.load_file("model.yaml", import_map="imports.json")
 ```
 
 See [Import maps](https://linkml.ohi.dev/docs/import-maps/).

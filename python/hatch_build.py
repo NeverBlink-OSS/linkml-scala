@@ -1,6 +1,6 @@
 """Building the shared library when needed, and tagging the wheel that contains it.
 
-A wheel build normally finds the library already staged in ``linkml_scala/_lib`` by
+A wheel build normally finds the library already staged in ``ohi_linkml/_lib`` by
 ``./mill nativelib.native.pythonWheel``. A build from the source distribution instead uses the
 distribution that includes Scala Native IR and Scala Native's linker, so
 the target-specific half of the build happens here, on the machine doing the install.
@@ -8,7 +8,7 @@ It needs a JVM and clang, and nothing from the network.
 
 Set ``LINKML_SCALA_WHEEL_PLATFORM`` to override the whole platform tag. Run it like::
 
-    python hatch_build.py linkml_scala/_lib/liblinkml_scala.so
+    python hatch_build.py ohi_linkml/_lib/libohi_linkml.so
 """
 
 from __future__ import annotations
@@ -46,15 +46,15 @@ MUSLLINUX_VERSION = (1, 2)
 
 def library_name() -> str:
     if sys.platform == "darwin":
-        return "liblinkml_scala.dylib"
+        return "libohi_linkml.dylib"
     if sys.platform == "win32":
-        return "liblinkml_scala.dll"
-    return "liblinkml_scala.so"
+        return "libohi_linkml.dll"
+    return "libohi_linkml.so"
 
 
 def find_library(root: Path) -> Path:
     """The one shared library staged inside the package."""
-    lib_dir = root / "linkml_scala" / "_lib"
+    lib_dir = root / "ohi_linkml" / "_lib"
     found = sorted(p for p in lib_dir.glob("*") if p.suffix in LIBRARY_EXTENSIONS)
     if len(found) != 1:
         raise RuntimeError(
@@ -87,7 +87,7 @@ def tool(executable: str, variable: str, why: str) -> str:
 
 def link(root: Path) -> Path:
     """Run Scala Native's linker over the bundled IR, producing the shared library."""
-    output = root / "linkml_scala" / "_lib" / library_name()
+    output = root / "ohi_linkml" / "_lib" / library_name()
     output.parent.mkdir(parents=True, exist_ok=True)
 
     nir = sorted(str(p) for p in (root / NIR_DIR).glob("*.jar"))
@@ -289,7 +289,7 @@ class CustomBuildHook(BuildHookInterface):  # type: ignore[misc]
 
     def initialize(self, version: str, build_data: dict) -> None:
         root = Path(self.root)
-        staged = root / "linkml_scala" / "_lib" / library_name()
+        staged = root / "ohi_linkml" / "_lib" / library_name()
         library = staged if staged.is_file() else link(root)
         tag = f"py3-none-{platform_tag(library)}"
         # Not pure Python, so the files belong in platlib rather than purelib.

@@ -26,12 +26,12 @@ We also provide source distributions (*sdist*), which should work on any platfor
 ## Usage
 
 ```python
-import linkml_scala
+import ohi_linkml
 
-with linkml_scala.load_file("model.yaml") as schema:
+with ohi_linkml.load_file("model.yaml") as schema:
     print(schema.json_schema())
     print(schema.shacl())
-    for issue in schema.issues(linkml_scala.WARNING):
+    for issue in schema.issues(ohi_linkml.WARNING):
         print(issue["severity"], issue["message"])
 ```
 
@@ -101,8 +101,8 @@ pretty-printed, or `"nt"` for N-Triples.
 We currently support importers for Apache Ossie (incubating) ontologies and for OWL ontologies:
 
 ```python
-linkml_scala.from_ossie(ontology, schema_id=None, output_format="yaml")
-linkml_scala.from_owl(ontology, config=None, schema_id=None, output_format="yaml", list_not_imported=False, imports=None, input_format="ttl")
+ohi_linkml.from_ossie(ontology, schema_id=None, output_format="yaml")
+ohi_linkml.from_owl(ontology, config=None, schema_id=None, output_format="yaml", list_not_imported=False, imports=None, input_format="ttl")
 ```
 
 Each returns the LinkML schema as a string. Pass that to `load_string()` to run a generator over it.
@@ -117,7 +117,7 @@ default they are read from the file system. See [the OWL guide](/docs/owl/).
 
 `schema.report` is the report from loading. `schema.lint()` runs the validator again, which is only
 worth doing to get a report with different settings. `schema.issues(severity)` filters by
-`linkml_scala.FATAL`, `ERROR` or `WARNING`. Both follow the
+`ohi_linkml.FATAL`, `ERROR` or `WARNING`. Both follow the
 [`validation-report.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/validation-report.yaml) model, the same JSON the CLI's
 `validate --format json` produces.
 
@@ -135,19 +135,19 @@ Here we measured only the time to generate the output, not the time to load the 
 
 ### JSON Schema
 
-| Dataset          | Size   | linkml (Python) | linkml_scala |  Speedup |
-|------------------|--------|----------------:|-------------:|---------:|
-| `TC57CIM`        | 2.9 MB |        7,413 ms |      55.2 ms | **134×** |
-| `cgmes-dynamics` | 812 KB |          952 ms |       5.5 ms | **174×** |
-| `cgmes-core`     | 196 KB |          471 ms |       3.7 ms | **126×** |
+| Dataset          | Size   | linkml (Python) | ohi_linkml |  Speedup |
+|------------------|--------|----------------:|-----------:|---------:|
+| `TC57CIM`        | 2.9 MB |        7,413 ms |    55.2 ms | **134×** |
+| `cgmes-dynamics` | 812 KB |          952 ms |     5.5 ms | **174×** |
+| `cgmes-core`     | 196 KB |          471 ms |     3.7 ms | **126×** |
 
 ### SHACL
 
-| Dataset          | Size   | linkml (Python) | linkml_scala | Speedup |
-|------------------|--------|----------------:|-------------:|--------:|
-| `TC57CIM`        | 2.9 MB |       17,699 ms |       188 ms | **94×** |
-| `cgmes-dynamics` | 812 KB |        2,039 ms |      20.8 ms | **98×** |
-| `cgmes-core`     | 196 KB |        1,196 ms |      15.0 ms | **80×** |
+| Dataset          | Size   | linkml (Python) | ohi_linkml | Speedup |
+|------------------|--------|----------------:|-----------:|--------:|
+| `TC57CIM`        | 2.9 MB |       17,699 ms |     188 ms | **94×** |
+| `cgmes-dynamics` | 812 KB |        2,039 ms |    20.8 ms | **98×** |
+| `cgmes-core`     | 196 KB |        1,196 ms |    15.0 ms | **80×** |
 
 ## How it works
 
@@ -197,12 +197,12 @@ You need JDK 17+, clang, and Python 3.10 or newer. Then:
 LINKML_NATIVE=1 ./mill nativelib.native.installPythonLib
 ```
 
-Scala Native modules are hidden in the mill project unless `LINKML_NATIVE=1` – see [CONTRIBUTING](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md#scala-native). That task links the library and copies it into `python/linkml_scala/_lib/`, where the Python package looks for it.
+Scala Native modules are hidden in the mill project unless `LINKML_NATIVE=1` – see [CONTRIBUTING](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md#scala-native). That task links the library and copies it into `python/ohi_linkml/_lib/`, where the Python package looks for it.
 
 To use the package, put `python/` on your path:
 
 ```shell
-PYTHONPATH=python python3 -c "import linkml_scala; print(linkml_scala.library_path())"
+PYTHONPATH=python python3 -c "import ohi_linkml; print(ohi_linkml.library_path())"
 ```
 
 Run the tests with:

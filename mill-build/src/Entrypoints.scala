@@ -7,7 +7,7 @@ package millbuild
 object Entrypoints {
 
   /** @param python
-    *   Python method name on `linkml_scala.Schema`
+    *   Python method name on `ohi_linkml.Schema`
     * @param symbol
     *   the exported C function
     * @param scalaMethod

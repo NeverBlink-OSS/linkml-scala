@@ -223,7 +223,7 @@ jobs:
       - name: Regenerate the bindings and check they are committed
         run: |
           ./mill --no-server -j 1 nativelib.bindings
-          git diff --exit-code -- python/linkml_scala/_generated.py \
+          git diff --exit-code -- python/ohi_linkml/_generated.py \
             nativelib/src/eu/neverblink/linkml/nativelib/LinkMlCGenerators.scala \
             || (echo "generated bindings are stale – run LINKML_NATIVE=1 ./mill nativelib.bindings and commit the result"; exit 1)
 
@@ -259,13 +259,13 @@ jobs:
       - name: Check that the release archive works from C
         run: |
           nativelib/package.sh 0.0.0-ci linux-x86_64 out/nativelib/native/sharedLibrary.dest dist
-          tar -xzf dist/linkml-scala-lib-linux-x86_64.tar.gz -C dist
-          nativelib/smoke.sh dist/liblinkml-scala-0.0.0-ci-linux-x86_64
+          tar -xzf dist/ohi-linkml-lib-linux-x86_64.tar.gz -C dist
+          nativelib/smoke.sh dist/libohi-linkml-0.0.0-ci-linux-x86_64
 
       - name: Check that the pkg-config file resolves
         run: |
-          prefix="$PWD/dist/liblinkml-scala-0.0.0-ci-linux-x86_64"
-          flags=$(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs linkml-scala)
+          prefix="$PWD/dist/libohi-linkml-0.0.0-ci-linux-x86_64"
+          flags=$(PKG_CONFIG_PATH="$prefix" pkg-config --cflags --libs ohi-linkml)
           echo "pkg-config: $flags"
           gcc nativelib/smoke.c -o dist/smoke-pc $flags
           LD_LIBRARY_PATH="$prefix/lib" dist/smoke-pc
