@@ -1,0 +1,76 @@
+id: https://neverblink.eu/linkml/tests/ifabsent/scalars/
+name: ifabsent_scalars
+description: Default values (`ifabsent`) for string, integer and boolean slots.
+
+prefixes:
+  ex: https://example.org/
+
+imports:
+  - linkml:types
+
+types:
+  LanguageTag:
+    typeof: string
+
+slots:
+  indentation_step:
+    range: integer
+
+classes:
+  SomeClass:
+    tree_root: true
+    slots:
+      - indentation_step
+    slot_usage:
+      indentation_step:
+        rank: 13
+        ifabsent: int(2)
+    attributes:
+      language:
+        rank: 1
+        range: string
+        ifabsent: string("en")
+      package:
+        rank: 2
+        range: string
+        ifabsent: string("eu.neverblink.linkml.metamodel")
+      single_quoted:
+        rank: 3
+        range: string
+        ifabsent: string('base')
+      with_parentheses:
+        rank: 4
+        range: string
+        ifabsent: string("J/(kg K)")
+      needs_escaping:
+        rank: 5
+        range: string
+        ifabsent: string('say "hi" from C:\temp')
+      empty:
+        rank: 6
+        range: string
+        ifabsent: string("")
+      required_language:
+        rank: 7
+        range: string
+        required: true
+        ifabsent: string("en")
+      custom_type:
+        rank: 8
+        range: LanguageTag
+        ifabsent: string("pl")
+      negative:
+        rank: 9
+        range: integer
+        ifabsent: int(-1)
+      enabled:
+        rank: 10
+        range: boolean
+        ifabsent: "true"
+      disabled:
+        rank: 11
+        range: boolean
+        ifabsent: "false"
+      no_ifabsent:
+        rank: 12
+        range: string

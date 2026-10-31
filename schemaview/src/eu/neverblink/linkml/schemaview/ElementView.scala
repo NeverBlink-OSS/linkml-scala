@@ -560,7 +560,13 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     */
   def ifAbsent[R](range: ElementView[?, R]): Option[R] =
     slot.ifabsent.flatMapFast { ia =>
-      range.evaluateConstructor(ia)
+      try range.evaluateConstructor(ia)
+      catch {
+        case e: ConstructorExpression.EvaluationException =>
+          throw ConstructorExpression.EvaluationException(
+            s"Invalid ifabsent of slot '${slot.name}': ${e.getMessage}",
+          )
+      }
     }
 
   /** Get the URI of this slot, using the default prefix of the implicit [[SchemaView]] if not
@@ -736,6 +742,17 @@ final case class TypeView(_type: TypeDefinition, definingSchema: SchemaDefinitio
       useHashCode = true,
       toUniqueValue = _.name,
     )
+
+  override private[schemaview] def evaluateConstructor(expr: String): Option[RuntimeScalar] =
+    if isUnion || ConstructorExpression.isUnsupportedKeyword(expr) then None
+    else
+      runtimeType match {
+        case StringType => new Some(ConstructorExpression.evaluateString(expr))
+        case IntegerType => new Some(ConstructorExpression.evaluateInt(expr))
+        case BooleanType => new Some(ConstructorExpression.evaluateBoolean(expr))
+        // TODO LNK-63: implement the remaining range types
+        case _ => None
+      }
 
   /** The pattern of this type or the nearest ancestor that has one. */
   def pattern: Option[LinkmlPattern] = LinkmlPattern.option(derivedType.pattern)

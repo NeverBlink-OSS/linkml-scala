@@ -425,6 +425,7 @@ export type SchemaIssue =
   | UnexpectedError
   | UnknownReference
   | UnknownStringReference
+  | UnquotedStringDefault
   | UnwritableUri;
 
 /** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel. Where the underlying parser reported a position, it is carried in `location.code_region`. */
@@ -462,6 +463,7 @@ export type SchemaWarning =
   | RepeatedSeparator
   | UndeclaredCuriePrefix
   | UndefinedDefaultRange
+  | UnquotedStringDefault
   | UnwritableUri;
 
 /** A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python. */
@@ -574,6 +576,24 @@ export interface UnknownStringReference {
   message?: string;
   /** severity: The severity of the issue. */
   severity: IssueSeverity;
+}
+
+/** The `ifabsent` of a slot is a `string(...)` expression whose value isn't in quotes, such as `string(en)` instead of `string("en")`. It is accepted, but may become an error in the future. */
+export interface UnquotedStringDefault {
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UnquotedStringDefault";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** quoted value: The same expression with the value in quotes. */
+  quoted_value: string;
+  /** severity: The severity of the issue. */
+  severity: IssueSeverity;
+  /** value: The `ifabsent` expression as written. */
+  value: string;
 }
 
 /** The text before the first colon of a URI value is a prefix declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`, or `http://example.org/a` when the root schema declares `http`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */

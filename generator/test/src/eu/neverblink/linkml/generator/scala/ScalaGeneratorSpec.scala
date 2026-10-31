@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.scala
 
 import eu.neverblink.linkml.schemaview.SchemaIssues
+import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
 import org.scalatest.matchers.should.Matchers
@@ -53,7 +54,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         "def search(",
         "q: String,",
         "tags: Seq[String] = Seq(),",
-        "page: Option[Int] = None,",
+        "page: Option[Int] = Some(1),",
         "exact: Boolean = false,",
         "sortBy: Option[SortOrder] = Some(SortOrder.Relevance),",
         "within: Option[Shelf] = None,",
@@ -1484,6 +1485,92 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       code should include("@serializeDefault\noff: Boolean = false")
       code should include("plain: Boolean = false")
       code should not include "@serializeDefault\nplain"
+    }
+
+    "generate ifabsent default values for string and integer slots" in {
+      val code = ScalaGenerator(using ModelCatalogue.ifabsent.scalars.model)
+        .generate(ScalaGenerator.Options(testPkg)).toMap
+        .apply("SomeClass.scala").linesIterator.map(_.stripLeading()).mkString("\n")
+      Seq(
+        """@serializeDefault
+          |language: Option[String] = Some("en")""".stripMargin,
+        """@serializeDefault
+          |`package`: Option[String] = Some("eu.neverblink.linkml.metamodel")""".stripMargin,
+        """singleQuoted: Option[String] = Some("base")""",
+        """withParentheses: Option[String] = Some("J/(kg K)")""",
+        """needsEscaping: Option[String] = Some("say \"hi\" from C:\\temp")""",
+        """empty: Option[String] = Some("")""",
+        """@serializeDefault
+          |requiredLanguage: String = "en"""".stripMargin,
+        // A custom type is an alias of its base type, so it takes the same literal
+        """customType: Option[LanguageTag] = Some("pl")""",
+        // From slot_usage
+        """@serializeDefault
+          |indentationStep: Option[Int] = Some(2)""".stripMargin,
+        "negative: Option[Int] = Some(-1)",
+        "@serializeDefault\nenabled: Boolean = true",
+        "@serializeDefault\ndisabled: Boolean = false",
+        "noIfabsent: Option[String] = None",
+      ).foreach(snippet => code should include(snippet))
+      code should not include "@serializeDefault\nnoIfabsent"
+    }
+
+    "accept a string ifabsent without quotes" in {
+      given SchemaView = decode(
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      language:
+           |        range: string
+           |        ifabsent: string(en)
+           |""".stripMargin,
+      )
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+        .apply("SomeClass.scala")
+      code should include("""language: Option[String] = Some("en")""")
+    }
+
+    "ignore the ifabsent keywords that aren't supported yet" in {
+      given SchemaView = decode(
+        s"""$schemaShared
+           |classes:
+           |  SomeClass:
+           |    attributes:
+           |      prefix:
+           |        range: string
+           |        ifabsent: default_ns
+           |""".stripMargin,
+      )
+      val code = ScalaGenerator().generate(ScalaGenerator.Options(testPkg)).toMap
+        .apply("SomeClass.scala")
+      code should include("prefix: Option[String] = None")
+    }
+
+    "reject an ifabsent that doesn't fit the range of the slot" in {
+      for (range, ifabsent) <- Seq(
+          "string" -> "int(2)",
+          "string" -> "en",
+          "integer" -> "string(\"2\")",
+          "integer" -> "int(two)",
+          "boolean" -> "yes",
+        )
+      do
+        withClue(s"$range, $ifabsent: ") {
+          given SchemaView = decode(
+            s"""$schemaShared
+               |classes:
+               |  SomeClass:
+               |    attributes:
+               |      some_slot:
+               |        range: $range
+               |        ifabsent: '$ifabsent'
+               |""".stripMargin,
+          )
+          val e = the[ConstructorExpression.EvaluationException] thrownBy
+            ScalaGenerator().generate(ScalaGenerator.Options(testPkg))
+          e.getMessage should include("Invalid ifabsent of slot 'some_slot'")
+        }
     }
 
     "generate an emit_prefixes object" in {
