@@ -28,8 +28,10 @@ ontologies, download their files and keep track of the versions and dependencies
 
 ### Ontology
 
-An ontology defines concepts and relationships in a domain. For example,
-[FOAF](https://ohi.dev/foaf/foaf@2014-01-14) describes people, organizations and their relationships.
+An ontology defines concepts and relationships in a domain. For example, the
+[Organization ontology](https://ohi.dev/w3c/org@2014) describes organizations and the people who
+belong to them. Both are kinds of `foaf:Agent`, a concept it shares with
+[FOAF](https://ohi.dev/foaf/foaf@2014-01-14).
 
 <OntologyExample />
 
@@ -78,7 +80,7 @@ publication becomes available.
 An artifact is one downloadable ontology file. Its **format** combines a modeling language with a
 file syntax.
 
-Take “a person is a type of agent.” In **OWL + Turtle** (`owl-turtle`), it looks like this:
+Take “a person is a subclass of an agent.” In **OWL + Turtle** (`owl-turtle`), it looks like this:
 
 ```turtle
 foaf:Person a owl:Class ;
