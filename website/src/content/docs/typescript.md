@@ -193,9 +193,8 @@ as the JSON Schema option.
 The `ifabsent` of a slot is in its doc comment, such as `@defaultValue "en"`. A required slot
 with an `ifabsent` stays required, as in the JSON Schema, unless you use `--optional-defaults`.
 
-A class whose `extra_slots` allows extra data gets `[key: string]: unknown`. If the class has no
-slots and `extra_slots` ranges over a type, it's that type instead, such as `[key: string]:
-string`.
+A class whose `extra_slots` allows extra data gets turned into `[key: string]: unknown`. If the class has no
+slots and the range of `extra_slots` is a type, it's that type instead, such as `[key: string]: string`.
 
 ### Enums
 
