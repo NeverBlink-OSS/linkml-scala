@@ -193,23 +193,10 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def writeFunction(sink: CharSink, fv: FunctionView, ctx: Context)(using
       Options,
   ): Unit = {
-    val attributes = fv.parameters.foldFast(Seq.empty[AttributeView])(_.sortedAttributeViews)
-    // A required parameter cannot follow an optional one in TypeScript, so only the optional
-    // parameters at the end of the list get `?`.
-    var optionalFrom = attributes.length
-    while optionalFrom > 0 && !attributes(optionalFrom - 1).slotView.slot.required do
-      optionalFrom -= 1
-    var index = 0
-    val arguments = attributes.map { attribute =>
-      val slot = attribute.slotView
-      val name = TypeScriptRenamer.member(slot.baseName)
-      val tpe = attributeType(attribute, fv.parameters.get, ctx)
-      val argument =
-        if slot.slot.required then s"$name: $tpe"
-        else if index >= optionalFrom then s"$name?: $tpe"
-        else s"$name: $tpe | undefined"
-      index += 1
-      argument
+    val parameters = fv.parameters.filterNot(_.isAny)
+    val argument = parameters.foldFast("") { cv =>
+      val required = cv.sortedAttributeViews.exists(_.slotView.slot.required)
+      s"params${if required then "" else "?"}: ${classRef(cv)}"
     }
     val returned = fv.returns.foldFast("void") {
       case cv: ClassView => if cv.isAny then "unknown" else classRef(cv)
@@ -225,22 +212,17 @@ final class TypeScriptGenerator(using sv: SchemaView)
           fv.errors.map(cv => s"Failure<${stringLiteral(classRef(cv))}, ${classRef(cv)}>")
         s"Result<$returned, ${failures.mkString(" | ")}>"
       }
-    val throws =
+    val tags =
       if ctx.options.errorHandling != ErrorHandling.exception then Nil
       else fv.errors.map(cv => s"@throws {${classRef(cv)}} ${DocLines(cv.cls).mkString(" ")}".strip)
-    val tags = attributes.map { attribute =>
-      val text = DocLines(attribute.slotView.slot).mkString(" ")
-      s"@param ${TypeScriptRenamer.member(attribute.slotView.baseName)} $text".strip
-    } ++ throws
     val description = DocLines(fv.function)
     val separator = if description.nonEmpty && tags.nonEmpty then Seq("") else Nil
     writeDoc(sink, description ++ separator ++ tags, "  ")
     sink.append("  ")
     sink.append(functionName(fv))
-    // One argument per line once there is more than one
-    if arguments.sizeIs > 1 then sink.append(arguments.mkString("(\n    ", ",\n    ", ",\n  )"))
-    else sink.append(arguments.mkString("(", "", ")"))
-    sink.append(": ")
+    sink.append('(')
+    sink.append(argument)
+    sink.append("): ")
     sink.append(returnType)
     sink.append(";\n")
   }

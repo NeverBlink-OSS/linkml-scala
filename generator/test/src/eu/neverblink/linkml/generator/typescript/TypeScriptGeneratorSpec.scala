@@ -46,7 +46,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
 
     "return what a function gives back, and document what it throws" in {
       val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model).serialize()
-      code should include("fetch(id: string): Item;")
+      code should include("fetch(params: FetchRequest): Item;")
       code should include("@throws {Unavailable} The item is not in the store.")
       code should include("@throws {Closed} The store is closed.")
       code should include("listItems(): ItemList;")
@@ -55,7 +55,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       code should not include "Result<"
       val basic = TypeScriptGenerator(using ModelCatalogue.functions.basic.model).serialize()
       basic should include("reindex(): void;")
-      basic should include("remove(title: string): void;")
+      basic should include("remove(params: LookupRequest): void;")
       basic should include("countBooks(): number;")
     }
 
@@ -63,7 +63,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model)
         .serialize(resultMode)
       code should include(
-        "fetch(id: string): " +
+        "fetch(params: FetchRequest): " +
           """Result<Item, Failure<"Unavailable", Unavailable> | Failure<"Closed", Closed>>;""",
       )
       code should include("""listItems(): Result<ItemList, Failure<"Closed", Closed>>;""")
@@ -76,14 +76,16 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
     "wrap a function that returns nothing but can fail" in {
       val code = TypeScriptGenerator(using ModelCatalogue.functions.basic.model)
         .serialize(resultMode)
-      code should include("""remove(title: string): Result<void, Failure<"NotFound", NotFound>>;""")
+      code should include(
+        """remove(params: LookupRequest): Result<void, Failure<"NotFound", NotFound>>;""",
+      )
       code should include("reindex(): void;")
     }
 
     "leave out the Result helpers when no function has errors" in {
       val code = TypeScriptGenerator(using ModelCatalogue.functions.parameters.model)
         .serialize(resultMode)
-      code should include("): SearchResult;")
+      code should include("search(params: SearchRequest): SearchResult;")
       code should not include "export type Result<"
     }
 
@@ -105,19 +107,21 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       thrown.getMessage should include("the Failure helper type")
     }
 
-    "mark the optional parameters at the end of the list with ?" in {
+    "pass the parameters of a function as one object" in {
       val code = TypeScriptGenerator(using ModelCatalogue.functions.parameters.model).serialize()
       Seq(
-        "q: string,",
-        "tags?: string[],",
-        "page?: number,",
-        "sortBy?: SortOrder,",
-        "): SearchResult;",
-        "@param q Required text query.",
+        "search(params: SearchRequest): SearchResult;",
+        // the parameters class is an interface like any other: JSON slot names, and its own docs
+        "export interface SearchRequest {",
+        "  q: string;",
+        "  tags?: string[];",
+        "  page?: number;",
+        "  sort_by?: SortOrder;",
       ).foreach(snippet => code should include(snippet))
+      code should not include "@param"
     }
 
-    "keep the place of an optional parameter that a required one follows" in {
+    "make the parameters optional when none of them is required" in {
       val code = generate(
         """classes:
           |  Request:
@@ -126,17 +130,14 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
           |        range: string
           |      second:
           |        range: string
-          |        required: true
-          |  Result:
+          |  Outcome:
           |functions:
           |  go:
           |    parameters: Request
-          |    returns: Result
+          |    returns: Outcome
           |""".stripMargin,
       )
-      // A required parameter cannot follow an optional one, so `first` takes undefined instead
-      code should include("first: string | undefined,")
-      code should include("second: string,")
+      code should include("go(params?: Request): Outcome;")
     }
 
     "generate no functions interface for a schema without functions" in {

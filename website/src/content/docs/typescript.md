@@ -7,7 +7,7 @@ The TypeScript generator turns a LinkML schema into TypeScript types for your da
 describe exactly the JSON that the generated JSON Schema describes, so they work with
 `JSON.parse` and `JSON.stringify`. The output is a single `.ts` file:
 
-- It has **no runtime dependencies**, no imports and no functions. It's only types.
+- It has **no runtime dependencies**, no imports and no runtime code. It's only types.
 - It uses only syntax that TypeScript can erase (no `enum`, no `namespace`). So it also works
   with Node's built-in type stripping and with `erasableSyntaxOnly`.
 
