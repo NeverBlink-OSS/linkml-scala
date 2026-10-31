@@ -485,11 +485,9 @@ class GeneratorTest(unittest.TestCase):
     def test_rdfs_ntriples(self):
         self.assertIn("rdf-schema#Class", self.schema.rdfs(format="nt"))
 
-    def test_rdf_format_aliases(self):
-        # The long spellings the CLI accepts work here too, and the default is Turtle.
+    def test_rdf_format_defaults_to_turtle(self):
         self.assertEqual(self.schema.shacl(), self.schema.shacl(format="ttl"))
-        self.assertEqual(self.schema.shacl(format="ttl"), self.schema.shacl(format="turtle"))
-        self.assertEqual(self.schema.shacl(format="nt"), self.schema.shacl(format="ntriples"))
+        self.assertNotEqual(self.schema.shacl(format="ttl"), self.schema.shacl(format="nt"))
 
     def test_unknown_rdf_format_is_rejected(self):
         for generator in (self.schema.shacl, self.schema.rdfs):

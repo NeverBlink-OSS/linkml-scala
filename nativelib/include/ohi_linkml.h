@@ -28,7 +28,7 @@ extern "C" {
 #endif
 
 /* Bumped whenever a change to the exported functions or to the options JSON breaks callers. */
-#define LINKML_ABI_VERSION 4
+#define LINKML_ABI_VERSION 5
 
 /* The ABI version this library was built with. Compare against LINKML_ABI_VERSION. */
 int linkml_abi_version(void);

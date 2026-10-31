@@ -27,6 +27,8 @@ Options:
 - `--include-null`: allow `null` for optional slots.
 - `--open`: allow extra properties on every object, not only on those of classes whose
   `extra_slots` allows them.
+- `--optional-defaults`: make a required slot with an `ifabsent` optional, for data that your
+  program fills the defaults in.
 
 ## Loading and dumping data
 
@@ -187,6 +189,13 @@ added to the file when it's used.
 
 With `--include-null`, optional properties also accept `null` (`name?: string | null`), the same
 as the JSON Schema option.
+
+The `ifabsent` of a slot is in its doc comment, such as `@defaultValue "en"`. A required slot
+with an `ifabsent` stays required, as in the JSON Schema, unless you use `--optional-defaults`.
+
+A class whose `extra_slots` allows extra data gets `[key: string]: unknown`. If the class has no
+slots and `extra_slots` ranges over a type, it's that type instead, such as `[key: string]:
+string`.
 
 ### Enums
 
