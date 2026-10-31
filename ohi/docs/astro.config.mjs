@@ -2,6 +2,7 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightLinksValidator from 'starlight-links-validator';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 const repoUrl = 'https://github.com/NeverBlink-OSS/linkml-scala';
 
@@ -45,7 +46,7 @@ export default defineConfig({
           ],
         },
       ],
-      plugins: [starlightLinksValidator()],
+      plugins: [starlightLinksValidator(), starlightLlmsTxt()],
     }),
   ],
 });
