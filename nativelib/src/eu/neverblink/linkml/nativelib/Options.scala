@@ -6,7 +6,10 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
-import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
+import eu.neverblink.linkml.generator.typescript.{
+  ErrorHandling as TsErrorHandling,
+  TypeScriptGenerator,
+}
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
@@ -102,6 +105,18 @@ private object Options {
       override def encodeValue(x: ErrorHandling, out: JsonWriter): Unit = out.writeVal(x.toString)
 
       override def nullValue: ErrorHandling = null
+    }
+
+  private given tsErrorHandlingCodec: JsonValueCodec[TsErrorHandling] =
+    new JsonValueCodec[TsErrorHandling] {
+      override def decodeValue(in: JsonReader, default: TsErrorHandling): TsErrorHandling = {
+        val value = in.readString(null)
+        TsErrorHandling.parse(value).getOrElse(in.decodeError(TsErrorHandling.unknownMode(value)))
+      }
+
+      override def encodeValue(x: TsErrorHandling, out: JsonWriter): Unit = out.writeVal(x.toString)
+
+      override def nullValue: TsErrorHandling = null
     }
 
   /** A Scala enum as its value's name, such as `"rdfs"`. */
