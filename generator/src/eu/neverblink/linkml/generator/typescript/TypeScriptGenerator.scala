@@ -154,7 +154,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     sink.append("}\n")
   }
 
-  /** Whether a property may be left out: the slot is optional, or has a default and
+  /** Whether a property may be skipped: the slot is optional, or has a default and
     * `optionalDefaults` is on.
     */
   private def isOptional(attribute: AttributeView, ctx: Context): Boolean =
@@ -172,9 +172,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
     case _ => None
   }
 
-  /** The type of the extra data of a class: the type its `extra_slots` range over, if the class
-    * has no slots of its own, which would have to fit that type too.
-    */
+  /** The index signature's type. `unknown` with slots, as TS requires them to fit it. */
   private def extraSlotsType(cls: ClassView): String =
     cls.cls.extraSlots.flatMapFast(_.rangeExpression).flatMapFast(_.range)
       .flatMapFast(r => sv.types.get(r.value))

@@ -86,9 +86,7 @@ const { view: withUnits } = LinkML.loadFromPath(
 Load a schema into a `SchemaView` (see above), then call any generator on it. Every generator
 takes an optional options object, such as `{ pruning_mode: "tree_root", format: "json" }`. The
 generators, their options and the defaults are the functions of
-[`model/generator-options.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/generator-options.yaml),
-and their types, such as `LinkMlGeneratorOptions`, are in `index.d.ts`. The options you leave out
-take their defaults.
+[`model/generator-options.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/generator-options.yaml). Their types, such as `LinkMlGeneratorOptions`, are in `index.d.ts`.
 
 | Method of `SchemaView` | Returns | Notes |
 |------------------------|---------|-------|

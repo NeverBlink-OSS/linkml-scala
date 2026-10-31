@@ -31,6 +31,9 @@ trait LinkMlModelModule extends Module {
     */
   def otherModelOutputs: Map[String, os.Path] = Map.empty
 
+  /** Files that the Scala generator writes, but this module doesn't need. They are deleted. */
+  def unusedModelFiles: Seq[String] = Seq.empty
+
   /** Generate the classes of this module and the [[otherModelOutputs]] from [[modelSchema]]. */
   def regenerate() = Task.Command {
     val root = mill.api.BuildCtx.workspaceRoot
@@ -41,6 +44,7 @@ trait LinkMlModelModule extends Module {
       Seq("generate", "scala", "--clean", "--to", to.toString, "--package", modelPackage, schema),
       workingDir = root,
     )
+    unusedModelFiles.foreach(file => os.remove(to / file))
     otherModelOutputs.foreach { (generator, file) =>
       cli.run(
         Seq("generate") ++ generator.split(' ') ++ Seq("--to", file.toString, schema),

@@ -11,6 +11,9 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
 
   def modelPackage = "eu.neverblink.linkml.generator.options"
 
+  // The functions trait and its return type. The generators don't implement it.
+  override def unusedModelFiles = Seq("GeneratorOptionsFunctions.scala", "GeneratedFiles.scala")
+
   // The npm package ships these types, see `TsDefsGen.modelTypes`
   override def otherModelOutputs =
     Map(
