@@ -543,6 +543,17 @@ class GeneratorTest(unittest.TestCase):
     def test_typescript(self):
         self.assertIn("export interface Person {", self.schema.typescript())
 
+    def test_typescript_in_result_mode(self):
+        self.assertIn(
+            "export interface Person {",
+            self.schema.typescript(error_handling="result"),
+        )
+
+    def test_unknown_typescript_error_handling(self):
+        with self.assertRaises(LinkMlError) as caught:
+            self.schema.typescript(error_handling="vigorously")
+        self.assertIn("vigorously", str(caught.exception))
+
     def test_pydantic(self):
         self.assertIn("class Person(LinkMLModel):", self.schema.pydantic())
 

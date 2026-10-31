@@ -25,7 +25,7 @@ trait DocsRenamer extends Renamer {
 
   override def enumName(el: EnumView): String = fix(el.baseName)
 
-  def functionName(el: FunctionView): String = fix(el.baseName)
+  override def functionName(el: FunctionView): String = fix(el.baseName)
 
   /** Permissible values have no page of their own, so this name appears nowhere. */
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =

@@ -27,7 +27,124 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
   ): String =
     TypeScriptGenerator(using load(classesYaml)).serialize(options)
 
+  val resultMode: TypeScriptGenerator.Options =
+    TypeScriptGenerator.Options(errorHandling = ErrorHandling.result)
+
   "TypeScriptGenerator" should {
+    "give every function of a catalogue model a method on one interface" in {
+      ModelCatalogue.all.filter(_.model.root.functions.nonEmpty).foreach { entry =>
+        withClue(s"${entry.name}: ") {
+          val code = TypeScriptGenerator(using entry.model).serialize()
+          val name = TypeScriptRenamer.functionsInterfaceName(entry.model)
+          code should include(s"export interface $name {")
+          entry.model.root.functions.keys.foreach { fn =>
+            code should include(s"  ${TypeScriptRenamer.functionName(entry.model.functions(fn))}(")
+          }
+        }
+      }
+    }
+
+    "return what a function gives back, and document what it throws" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model).serialize()
+      code should include("fetch(params: FetchRequest): Item;")
+      code should include("@throws {Unavailable} The item is not in the store.")
+      code should include("@throws {Closed} The store is closed.")
+      code should include("listItems(): ItemList;")
+      code should include("status(): Status;") // an enum
+      code should include("totalValue(): number;") // a type
+      code should not include "Result<"
+      val basic = TypeScriptGenerator(using ModelCatalogue.functions.basic.model).serialize()
+      basic should include("reindex(): void;")
+      basic should include("remove(params: LookupRequest): void;")
+      basic should include("countBooks(): number;")
+    }
+
+    "return a tagged Result when asked" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.returns.model)
+        .serialize(resultMode)
+      code should include(
+        "fetch(params: FetchRequest): " +
+          """Result<Item, Failure<"Unavailable", Unavailable> | Failure<"Closed", Closed>>;""",
+      )
+      code should include("""listItems(): Result<ItemList, Failure<"Closed", Closed>>;""")
+      code should include("status(): Status;")
+      code should include("export type Result<T, E> =")
+      code should include("export type Failure<K extends string, T> = { kind: K; value: T };")
+      code should not include "@throws"
+    }
+
+    "wrap a function that returns nothing but can fail" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.basic.model)
+        .serialize(resultMode)
+      code should include(
+        """remove(params: LookupRequest): Result<void, Failure<"NotFound", NotFound>>;""",
+      )
+      code should include("reindex(): void;")
+    }
+
+    "leave out the Result helpers when no function has errors" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.parameters.model)
+        .serialize(resultMode)
+      code should include("search(params: SearchRequest): SearchResult;")
+      code should not include "export type Result<"
+    }
+
+    "refuse a class that takes the name of a Result helper" in {
+      val thrown = intercept[IllegalArgumentException] {
+        generate(
+          """classes:
+            |  Failure:
+            |  Book:
+            |functions:
+            |  lookup:
+            |    returns: Book
+            |    errors:
+            |      - Failure
+            |""".stripMargin,
+          resultMode,
+        )
+      }
+      thrown.getMessage should include("the Failure helper type")
+    }
+
+    "pass the parameters of a function as one object" in {
+      val code = TypeScriptGenerator(using ModelCatalogue.functions.parameters.model).serialize()
+      Seq(
+        "search(params: SearchRequest): SearchResult;",
+        // the parameters class is an interface like any other: JSON slot names, and its own docs
+        "export interface SearchRequest {",
+        "  q: string;",
+        "  tags?: string[];",
+        "  page?: number;",
+        "  sort_by?: SortOrder;",
+      ).foreach(snippet => code should include(snippet))
+      code should not include "@param"
+    }
+
+    "make the parameters optional when none of them is required" in {
+      val code = generate(
+        """classes:
+          |  Request:
+          |    attributes:
+          |      first:
+          |        range: string
+          |      second:
+          |        range: string
+          |  Outcome:
+          |functions:
+          |  go:
+          |    parameters: Request
+          |    returns: Outcome
+          |""".stripMargin,
+      )
+      code should include("go(params?: Request): Outcome;")
+    }
+
+    "generate no functions interface for a schema without functions" in {
+      TypeScriptGenerator(using ModelCatalogue.basic.model).serialize() should
+        not include "Functions {"
+    }
+
     "map slot ranges to TypeScript types" in {
       val ts = generate(
         """classes:

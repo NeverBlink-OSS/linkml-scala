@@ -1,7 +1,14 @@
 package eu.neverblink.linkml.generator.typescript
 
 import eu.neverblink.linkml.generator.jsonschema.JsonRenamer
-import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, TypeView}
+import eu.neverblink.linkml.schemaview.{
+  Case,
+  ClassView,
+  EnumView,
+  FunctionView,
+  SchemaView,
+  TypeView,
+}
 
 /** Names in the generated TypeScript. The types describe the JSON data, so slot names and
   * permissible values are the inherited JSON ones from [[JsonRenamer]]. Only the names of the types
@@ -15,6 +22,14 @@ trait TypeScriptRenamer extends JsonRenamer {
   override def typeName(el: TypeView): String = identifier(el.baseName)
 
   override def enumName(el: EnumView): String = identifier(el.baseName)
+
+  override def functionName(el: FunctionView): String = member(el.baseName)
+
+  /** The name of the interface that contains the functions of a schema, such as `SearchFunctions`
+    * for a schema named `search`.
+    */
+  def functionsInterfaceName(sv: SchemaView): String =
+    identifier(Case.base(sv.root.name)).concat("Functions")
 }
 
 object TypeScriptRenamer extends TypeScriptRenamer {
@@ -91,10 +106,17 @@ object TypeScriptRenamer extends TypeScriptRenamer {
   /** Turn a base name into a `PascalCase` TypeScript identifier. A leading digit or a reserved name
     * gets an underscore in front.
     */
-  def identifier(baseName: String): String = {
-    val pascal = Case.baseToPascal(baseName)
+  def identifier(baseName: String): String = usable(Case.baseToPascal(baseName))
+
+  /** Turn a base name into a `camelCase` TypeScript identifier. */
+  def member(baseName: String): String = usable(Case.baseToCamel(baseName))
+
+  /** Make a cased name a usable identifier: anything that is not a letter, a digit, `_` or `$`
+    * becomes `_`, and a leading digit or a reserved name gets an underscore in front.
+    */
+  private def usable(cased: String): String = {
     val name =
-      pascal.map(c => if Character.isLetterOrDigit(c) || c == '_' || c == '$' then c else '_')
+      cased.map(c => if Character.isLetterOrDigit(c) || c == '_' || c == '$' then c else '_')
     if name.isEmpty then "__"
     else if Case.isNumeric(name.head) || reserved.contains(name) then "_".concat(name)
     else name

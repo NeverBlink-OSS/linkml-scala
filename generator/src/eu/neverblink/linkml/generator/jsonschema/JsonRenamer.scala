@@ -22,6 +22,9 @@ trait JsonRenamer extends Renamer {
   /** The enum's key in the JSON Schema `$defs`. Not part of the data. */
   override def enumName(el: EnumView): String = Case.baseToPascal(el.baseName)
 
+  // JSON has no functions, so this is only the name a function is written with in the schema
+  override def functionName(el: FunctionView): String = el.baseName
+
   /** The value as it appears in the data. */
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
     PermissibleValueView(pv, el).aliasedName

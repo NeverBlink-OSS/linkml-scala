@@ -55,8 +55,14 @@ functions:
     errors:
       - NotFound
 
+  remove:
+    description: Removes one book. Can fail, but returns nothing when it works.
+    parameters: LookupRequest
+    errors:
+      - NotFound
+
   reindex:
-    description: Rebuilds the index. Takes nothing, gives nothing back.
+    description: Rebuilds the index. Takes nothing, returns nothing.
 
   count_books:
     description: How many books there are, as a bare integer.

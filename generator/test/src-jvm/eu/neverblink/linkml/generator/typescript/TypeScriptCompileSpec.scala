@@ -105,6 +105,8 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       instanceFiles: Map[(Boolean, String), String],
   )
 
+  private val functionModels: Seq[Model] = catalogue.filter(_.sv.root.functions.nonEmpty)
+
   private lazy val outDir: os.Path = os.temp.dir(prefix = "linkml-ts-")
 
   private lazy val generated: Map[String, Generated] =
@@ -143,10 +145,25 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       )
     }.toMap
 
+  /** The models with functions, generated again in `result` error handling mode. */
+  private lazy val resultMode: Map[String, String] =
+    functionModels.map { entry =>
+      val file = s"${safeName(entry.name)}/model_result.ts"
+      os.write.over(
+        outDir / os.RelPath(file),
+        TypeScriptGenerator(using entry.sv).serialize(
+          TypeScriptGenerator.Options(errorHandling = ErrorHandling.result),
+        ),
+        createFolders = true,
+      )
+      entry.name -> file
+    }.toMap
+
   /** `tsc` diagnostics by file, from a single run over all the generated files. */
   private lazy val diagnostics: Map[String, Seq[Diagnostic]] = {
     val dir = compiler.getOrElse(throw IllegalStateException("no TypeScript compiler"))
     generated // write the files
+    resultMode
     os.write.over(outDir / "tsconfig.json", tsconfig)
     // The generated code is an ES module
     os.write.over(outDir / "package.json", """{"type": "module"}""")
@@ -185,6 +202,12 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   }
 
   "TypeScript generator" should {
+    for entry <- functionModels do
+      s"generate TypeScript for the functions of model '${entry.name}' in result mode" in {
+        requireCompiler()
+        errorsIn(resultMode(entry.name), 0) shouldBe empty
+      }
+
     for entry <- ModelCatalogue.all do
       s"generate TypeScript for model '${entry.name}'" when {
         "the model itself" should {

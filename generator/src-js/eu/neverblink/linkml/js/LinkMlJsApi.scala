@@ -5,7 +5,10 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
-import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
+import eu.neverblink.linkml.generator.typescript.{
+  ErrorHandling as TsErrorHandling,
+  TypeScriptGenerator,
+}
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
@@ -562,6 +565,11 @@ object LinkMlJsApi {
     * @param open
     *   Whether all interfaces should allow additional properties, not only those of classes whose
     *   `extra_slots` allows them.
+    * @param errorHandling
+    *   How the functions of the schema report their `errors`. One of: `throw`, where the method
+    *   returns the value and its doc comment gets a `@throws` tag for each error class; or
+    *   `result`, where the method returns `Result<R, Failure<...> | ...>`, the value or one of the
+    *   errors. Default: throw.
     * @return
     *   TypeScript source code
     */
@@ -571,12 +579,14 @@ object LinkMlJsApi {
       treeRoot: js.UndefOr[String] = js.undefined,
       includeNull: Boolean = false,
       open: Boolean = false,
+      errorHandling: String = "throw",
   ): String =
     TypeScriptGenerator(using schema.underlying).serialize(
       TypeScriptGenerator.Options(
         pruningMode = PruningMode(pruningMode, treeRoot.toOption),
         includeNull = includeNull,
         open = open,
+        errorHandling = TsErrorHandling(errorHandling),
       ),
     )
 

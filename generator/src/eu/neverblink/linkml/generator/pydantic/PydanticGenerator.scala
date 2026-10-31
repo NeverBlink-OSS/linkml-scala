@@ -396,6 +396,95 @@ final class PydanticGenerator(using sv: SchemaView)
     }
   }
 
+  /** An exception class for a class that a function uses in its `errors`, so that an implementation
+    * can raise it. The class itself is a model and cannot also be an exception.
+    */
+  private def writeError(sink: CharSink, cls: ClassView, ctx: Context)(using Options): Unit = {
+    sink.append("class ")
+    sink.append(errorName(cls))
+    sink.append("(Exception):\n")
+    writeDoc(sink, Seq(s"Raised when a function fails with `${cls.name}`."), "    ")
+    sink.append("\n    def __init__(self, error: ")
+    sink.append(className(cls))
+    sink.append(") -> None:\n        super().__init__(error)\n        self.error = error\n")
+  }
+
+  /** The functions of the schema, as one `Protocol` with a method for each.
+    */
+  private def writeFunctions(sink: CharSink, functions: Seq[FunctionView], ctx: Context)(using
+      Options,
+  ): Unit = {
+    ctx.imports.typing("Protocol")
+    sink.append("class ")
+    sink.append(functionsProtocolName(sv))
+    sink.append("(Protocol):\n")
+    writeDoc(sink, Seq(s"The functions of the `${sv.root.name}` schema."), "    ")
+    functions.foreach { fv =>
+      sink.append('\n')
+      writeFunction(sink, fv, ctx)
+    }
+  }
+
+  /** The Python name of a parameter of a function. The method itself already takes `self`. */
+  private def parameterName(attribute: AttributeView): String =
+    PydanticRenamer.attribute(attribute.slotView.baseName, _ == "self")
+
+  private def writeFunction(sink: CharSink, fv: FunctionView, ctx: Context)(using
+      Options,
+  ): Unit = {
+    val attributes = fv.parameters.foldFast(Seq.empty[AttributeView])(_.sortedAttributeViews)
+    // A parameter without a default cannot follow one with a default, so only the optional
+    // parameters at the end of the list get `= None`.
+    var optionalFrom = attributes.length
+    while optionalFrom > 0 && !attributes(optionalFrom - 1).slotView.slot.required do
+      optionalFrom -= 1
+    var index = 0
+    val arguments = attributes.map { attribute =>
+      val slot = attribute.slotView
+      val name = parameterName(attribute)
+      val tpe = attributeType(attribute, fv.parameters.get, ctx)
+      val argument =
+        if slot.slot.required then s"$name: $tpe"
+        else if index >= optionalFrom then s"$name: $tpe | None = None"
+        else s"$name: $tpe | None"
+      index += 1
+      argument
+    }
+    val returned = fv.returns.foldFast("None") {
+      case cv: ClassView =>
+        if cv.isAny then {
+          ctx.imports.typing("Any")
+          "Any"
+        } else classRef(cv)
+      case tv: TypeView => runtimeType(tv, ctx)
+      case ev: EnumView => enumType(ev)
+      case _ =>
+        ctx.imports.typing("Any")
+        "Any"
+    }
+    sink.append("    def ")
+    sink.append(functionName(fv))
+    val self = "self" +: arguments
+    // One argument per line if the whole signature would be long
+    if self.map(_.length + 2).sum + functionName(fv).length + returned.length + 12 <= 100 then
+      sink.append(self.mkString("(", ", ", ")"))
+    else sink.append(self.mkString("(\n        ", ",\n        ", ",\n    )"))
+    sink.append(" -> ")
+    sink.append(returned)
+    sink.append(":\n")
+    val tags = attributes.map { attribute =>
+      val text = DocLines(attribute.slotView.slot).mkString(" ")
+      s":param ${parameterName(attribute)}: $text".strip
+    } ++ fv.errors.map { cls =>
+      val text = DocLines(cls.cls).mkString(" ")
+      s":raises ${errorName(cls)}: ${if text.isEmpty then cls.name else text}"
+    }
+    val description = DocLines(fv.function)
+    val separator = if description.nonEmpty && tags.nonEmpty then Seq("") else Nil
+    writeDoc(sink, description ++ separator ++ tags, "        ")
+    sink.append("        ...\n")
+  }
+
   /** The type of the whole document, if the tree root needs one: a designated union, or a form
     * other than a single object.
     */
@@ -414,6 +503,8 @@ final class PydanticGenerator(using sv: SchemaView)
       classes: Seq[ClassView],
       enums: Seq[EnumView],
       document: Option[(ClassView, String)],
+      functions: Seq[FunctionView],
+      errors: Seq[ClassView],
   ): Unit = {
     val seen = mutable.HashMap.empty[String, String]
     def claim(name: String, owner: String): Unit =
@@ -433,6 +524,8 @@ final class PydanticGenerator(using sv: SchemaView)
     document.foreachFast((root, name) =>
       claim(name, s"the document type of tree root '${root.name}'"),
     )
+    errors.foreach(cls => claim(errorName(cls), s"the error class of '${cls.name}'"))
+    if functions.nonEmpty then claim(functionsProtocolName(sv), "the functions of the schema")
   }
 
   /** The classes, enums and document type that the module defines with [[options]]. */
@@ -448,7 +541,9 @@ final class PydanticGenerator(using sv: SchemaView)
     }
     val root = sv.treeRootWithOverride(treeRootOverride).get
       .filter(r => classes.exists(_.name == r.name))
-    Definitions(classes, enums, root.map(r => (r, className(r).concat("Document"))))
+    val functions = sv.functions.values.filter(query.reachable).toVector
+      .sortBy(fv => sv.elementOrder(fv.function))
+    Definitions(classes, enums, root.map(r => (r, className(r).concat("Document"))), functions)
   }
 
   /** The names of the classes, class unions, enums and document type that the module defines with
@@ -459,7 +554,9 @@ final class PydanticGenerator(using sv: SchemaView)
 
   private def namesOf(defs: Definitions): Set[String] =
     (defs.classes.flatMap(c => className(c) +: unionName(c).toSeq) ++
-      defs.enums.map(enumName) ++ defs.document.map(_._2)).toSet
+      defs.enums.map(enumName) ++ defs.document.map(_._2) ++
+      defs.functions.flatMap(_.errors).map(errorName) ++
+      Option.when(defs.functions.nonEmpty)(functionsProtocolName(sv))).toSet
 
   override protected def writeChars(sink: CharSink, options: Options): Unit = {
     given Options = options
@@ -468,7 +565,10 @@ final class PydanticGenerator(using sv: SchemaView)
     val enums = defs.enums
     val root = defs.document.map(_._1)
     val ctx = Context(options, namesOf(defs))
-    checkNames(classes, enums, defs.document)
+    val functions = defs.functions
+    val errors = functions.flatMap(_.errors).distinctBy(_.name)
+      .sortBy(cls => sv.elementOrder(cls.cls))
+    checkNames(classes, enums, defs.document, functions, errors)
 
     val body = new StringSink
     enums.foreach { ev =>
@@ -493,6 +593,14 @@ final class PydanticGenerator(using sv: SchemaView)
         body.append("\n\n")
         writeUnion(body, cls, name, ctx)
       }
+    }
+    errors.foreach { cls =>
+      body.append("\n\n")
+      writeError(body, cls, ctx)
+    }
+    if functions.nonEmpty then {
+      body.append("\n\n")
+      writeFunctions(body, functions, ctx)
     }
     root.foreachFast { r =>
       documentType(r, ctx).foreachFast { tpe =>
@@ -632,11 +740,12 @@ object PydanticGenerator {
       metadataLanguage: String = "en",
   ) extends HasMetadataLanguage
 
-  /** The classes, enums and document type, with its name, that the module defines. */
+  /** The classes, enums, document type (with its name) and functions that the module defines. */
   private final case class Definitions(
       classes: Seq[ClassView],
       enums: Seq[EnumView],
       document: Option[(ClassView, String)],
+      functions: Seq[FunctionView],
   )
 
   /** Mutable state of one generator run. */

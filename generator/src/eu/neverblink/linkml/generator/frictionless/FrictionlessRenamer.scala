@@ -3,7 +3,7 @@ package eu.neverblink.linkml.generator.frictionless
 import eu.neverblink.linkml.generator.util.Renamer
 import eu.neverblink.linkml.metamodel.{PermissibleValue, SlotDefinition}
 import eu.neverblink.linkml.runtime.FastUtils.getOrElseFast
-import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, SlotView, TypeView}
+import eu.neverblink.linkml.schemaview.{Case, ClassView, EnumView, FunctionView, SlotView, TypeView}
 
 trait FrictionlessRenamer extends Renamer {
   override def className(el: ClassView): String = {
@@ -19,6 +19,8 @@ trait FrictionlessRenamer extends Renamer {
   override def typeName(el: TypeView): String = el.aliasedName
 
   override def enumName(el: EnumView): String = el.aliasedName
+
+  override def functionName(el: FunctionView): String = el.baseName
 
   override def permissibleValueName(el: EnumView, pv: PermissibleValue): String =
     Case.baseToScreamingSnake(Case.base(pv.text))

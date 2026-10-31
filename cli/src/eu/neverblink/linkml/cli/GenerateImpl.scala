@@ -19,7 +19,10 @@ import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
-import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
+import eu.neverblink.linkml.generator.typescript.{
+  ErrorHandling as TsErrorHandling,
+  TypeScriptGenerator,
+}
 import eu.neverblink.linkml.schemaview.SchemaView
 
 import java.io.OutputStream
@@ -402,6 +405,14 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
 
 // TypeScript
 
+/** Parses `--error-handling` for TypeScript, accepting camel, kebab and snake case alike. */
+private given tsErrorHandlingParser: ArgParser[TsErrorHandling] =
+  SimpleArgParser.from("throw|result") { value =>
+    TsErrorHandling.parse(value).toRight(
+      Error.MalformedValue("error handling mode", s"$value (expected one of: throw, result)"),
+    )
+  }
+
 @HelpMessage(
   "Generate TypeScript types\n" +
     "The types describe the same JSON as the generated JSON Schema, with no runtime code: " +
@@ -420,6 +431,15 @@ final case class TypeScriptOptions(
     open: Boolean = false,
     @HelpMessage("Allow null values for optional slots. Default: false")
     includeNull: Boolean = false,
+    @HelpMessage(
+      "How the functions of the schema report their errors.\n" +
+        "throw - the method returns the value, and its doc comment gets a @throws tag for each " +
+        "error class.\n" +
+        "result - the method returns Result<R, Failure<...> | ...>: the value or one of the " +
+        "errors.\n" +
+        "Default: throw.",
+    )
+    errorHandling: TsErrorHandling = TsErrorHandling.exception,
 ) extends HasGenerateOptions
 
 object TypeScript extends StreamGenerate[TypeScriptOptions] {
@@ -434,6 +454,7 @@ object TypeScript extends StreamGenerate[TypeScriptOptions] {
         pruningMode = options.pruning.resolvedPruningMode,
         includeNull = options.includeNull,
         open = options.open,
+        errorHandling = options.errorHandling,
       ),
     )
 }
