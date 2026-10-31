@@ -2,7 +2,7 @@ package eu.neverblink.linkml.optionsgen
 
 import eu.neverblink.linkml.schemaview.{FileSystemImporter, SchemaIssues, SchemaView}
 
-/** Writes the code generated from `model/converter/all_generators.yaml`.
+/** Writes the code generated from `model/converter/all_converters.yaml`.
   *
   * @param root
   *   the root of the repository
@@ -13,7 +13,7 @@ import eu.neverblink.linkml.schemaview.{FileSystemImporter, SchemaIssues, Schema
   val repo = os.Path(root)
   given SchemaView = SchemaIssues.orThrow(
     SchemaView.loadSchemaViewFromUri(
-      (repo / "model" / "converter" / "all_generators.yaml").toString,
+      (repo / "model" / "converter" / "all_converters.yaml").toString,
       FileSystemImporter,
     ),
   )

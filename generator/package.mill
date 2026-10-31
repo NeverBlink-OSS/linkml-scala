@@ -14,7 +14,6 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.schemaview.jvm,
       build.rdf.jvm,
-      build.generator.owlconfig.jvm,
       build.generator.stats.jvm,
       build.generator.options.jvm,
     )
@@ -129,7 +128,6 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.schemaview.js,
       build.rdf.js,
-      build.generator.owlconfig.js,
       build.generator.stats.js,
       build.generator.options.js,
     )
@@ -196,7 +194,6 @@ object `package` extends Module, NativeOptional {
     def moduleDeps = Seq(
       build.schemaview.native,
       build.rdf.native,
-      build.generator.owlconfig.native,
       build.generator.stats.native,
       build.generator.options.native,
     )

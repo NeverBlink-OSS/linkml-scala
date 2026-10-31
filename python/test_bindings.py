@@ -106,20 +106,21 @@ class FromOwlTest(unittest.TestCase):
     ).strip()
 
     def test_reads_an_ontology_into_a_schema(self):
-        schema = ohi_linkml.from_owl(self.ONTOLOGY)
+        schema = ohi_linkml.from_owl(self.ONTOLOGY)["schema"]
         self.assertIn("Person:", schema)
         self.assertIn("range: string", schema)
 
     def test_reads_turtle(self):
         turtle = "@prefix ex: <https://example.org/> .\nex:Book a <http://www.w3.org/2002/07/owl#Class> .\n"
-        self.assertIn("Book:", ohi_linkml.from_owl(turtle))
+        self.assertIn("Book:", ohi_linkml.from_owl(turtle)["schema"])
 
     def test_reads_n_triples_with_its_own_parser_when_asked(self):
-        self.assertIn("Person:", ohi_linkml.from_owl(self.ONTOLOGY, input_format="nt"))
+        self.assertIn("Person:", ohi_linkml.from_owl(self.ONTOLOGY, input_format="nt")["schema"])
 
-    def test_lists_what_it_left_out_when_asked(self):
-        self.assertNotIn("# Not imported:", ohi_linkml.from_owl(self.ONTOLOGY))
-        self.assertIn("# Not imported:", ohi_linkml.from_owl(self.ONTOLOGY, list_not_imported=True))
+    def test_returns_what_it_left_out(self):
+        result = ohi_linkml.from_owl(self.ONTOLOGY)
+        self.assertTrue(result["warnings"])
+        self.assertNotIn("# Not imported:", result["schema"])
 
     def test_uses_the_terms_of_a_mapped_import(self):
         ontology = self.ONTOLOGY + textwrap.dedent(
@@ -140,24 +141,25 @@ class FromOwlTest(unittest.TestCase):
               Agent:
             """
         )
-        config = "imports:\n  https://other.example.com/onto: other.yaml\n"
-        schema = ohi_linkml.from_owl(ontology, config=config, imports={"other.yaml": imported})
+        config = {"imports": {"https://other.example.com/onto": "other.yaml"}}
+        schema = ohi_linkml.from_owl(ontology, config=config, schemas={"other.yaml": imported})["schema"]
         self.assertIn("is_a: Agent", schema)
         self.assertIn("- other.yaml", schema)
         self.assertNotIn("Agent:", schema)
 
     def test_follows_the_config(self):
-        schema = ohi_linkml.from_owl(self.ONTOLOGY, config="default_prefix: mine\nprefixes:\n  mine: https://example.org/\n")
+        config = {"default_prefix": "mine", "prefixes": {"mine": "https://example.org/"}}
+        schema = ohi_linkml.from_owl(self.ONTOLOGY, config=config)["schema"]
         self.assertIn("default_prefix: mine", schema)
 
     def test_writes_json_when_asked(self):
-        schema = json.loads(ohi_linkml.from_owl(self.ONTOLOGY, output_format="json"))
+        schema = json.loads(ohi_linkml.from_owl(self.ONTOLOGY, format="json")["schema"])
         self.assertIn("Person", schema["classes"])
 
     def test_unreadable_config_is_rejected(self):
         with self.assertRaises(LinkMlError) as raised:
-            ohi_linkml.from_owl(self.ONTOLOGY, config="naming: [unclosed")
-        self.assertIn("config", str(raised.exception))
+            ohi_linkml.from_owl(self.ONTOLOGY, config={"naming": {"slots": "kebab"}})
+        self.assertIn("kebab", str(raised.exception))
 
 
 class FromOssieTest(unittest.TestCase):
@@ -178,22 +180,24 @@ class FromOssieTest(unittest.TestCase):
     ).strip()
 
     def test_reads_an_ontology_into_a_schema(self):
-        schema = ohi_linkml.from_ossie(self.ONTOLOGY)
+        result = ohi_linkml.from_ossie(self.ONTOLOGY)
+        self.assertEqual([], result["warnings"])
+        schema = result["schema"]
         self.assertIn("name: flights", schema)
         self.assertIn("Airport:", schema)
         self.assertIn("identifier: true", schema)
 
     def test_writes_json_when_asked(self):
-        schema = json.loads(ohi_linkml.from_ossie(self.ONTOLOGY, output_format="json"))
+        schema = json.loads(ohi_linkml.from_ossie(self.ONTOLOGY, format="json")["schema"])
         self.assertEqual("flights", schema["name"])
 
     def test_uses_the_schema_id_it_was_given(self):
-        schema = ohi_linkml.from_ossie(self.ONTOLOGY, schema_id="https://example.com/mine")
+        schema = ohi_linkml.from_ossie(self.ONTOLOGY, schema_id="https://example.com/mine")["schema"]
         self.assertIn("id: https://example.com/mine", schema)
 
     # The point of the round trip: what comes out is a schema the library can load again.
     def test_result_loads_as_a_schema(self):
-        with ohi_linkml.load_string(ohi_linkml.from_ossie(self.ONTOLOGY)) as schema:
+        with ohi_linkml.load_string(ohi_linkml.from_ossie(self.ONTOLOGY)["schema"]) as schema:
             self.assertIn("concept: Airport", schema.ossie())
 
     def test_unreadable_document_is_rejected(self):
@@ -203,7 +207,7 @@ class FromOssieTest(unittest.TestCase):
 
     def test_unknown_output_format_is_rejected(self):
         with self.assertRaises(LinkMlError) as raised:
-            ohi_linkml.from_ossie(self.ONTOLOGY, output_format="toml")
+            ohi_linkml.from_ossie(self.ONTOLOGY, format="toml")
         self.assertIn("toml", str(raised.exception))
 
     # A problem with the document is an issue, in the same shape as in a validation report.
@@ -569,7 +573,7 @@ class GeneratorTest(unittest.TestCase):
             return [line for line in nt.splitlines() if "http://www.w3.org/ns/shacl#" not in line]
 
         ontology = self.schema.owl()
-        with ohi_linkml.load_string(ohi_linkml.from_owl(ontology)) as reloaded:
+        with ohi_linkml.load_string(ohi_linkml.from_owl(ontology)["schema"]) as reloaded:
             self.assertEqual(len(statements(self.schema.owl(format="nt"))), len(statements(reloaded.owl(format="nt"))))
 
     def test_er_diagram(self):

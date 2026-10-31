@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{prefixMap, renameMap}
-import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig}
+import eu.neverblink.linkml.generator.options.{NameStyle, OwlImportConfig}
 import eu.neverblink.linkml.rdf.{Iri, Literal}
 import eu.neverblink.linkml.metamodel.{Prefixes, SchemaDefinition}
 import eu.neverblink.linkml.runtime.{SchemaConversionException, Uri, UriCurieValidator, UriOrCurie}

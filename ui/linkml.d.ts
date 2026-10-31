@@ -16,7 +16,11 @@ export * from "../generator/npm/schema-stats.js";
 
 // The generators and their options, generated from model/converter/all_generators.yaml.
 import type { GeneratorFunctions, StatsGeneratorOptions } from "../generator/npm/generator-options.js";
-export type { DocsGeneratorOptions, ErDiagramGeneratorOptions, FrictionlessGeneratorOptions, GeneratedFiles, GraphQlGeneratorOptions, JsonSchemaGeneratorOptions, LinkMlGeneratorOptions, MetadataLanguageOptions, OssieGeneratorOptions, OwlGeneratorOptions, PruningOptions, PydanticGeneratorOptions, RdfOptions, RdfsGeneratorOptions, ScalaGeneratorOptions, ShaclGeneratorOptions, StatsGeneratorOptions, TranslationGeneratorOptions, TypeScriptGeneratorOptions, JsonOutputFormat, OwlMetadataProfile, OwlPermissibleValueKind, RdfFormat, ScalaErrorHandling, TypeScriptErrorHandling, GeneratorFunctions } from "../generator/npm/generator-options.js";
+export type { DocsGeneratorOptions, ErDiagramGeneratorOptions, File, Files, FrictionlessGeneratorOptions, GraphQlGeneratorOptions, ImportResult, JsonSchemaGeneratorOptions, LinkMlGeneratorOptions, MetadataLanguageOptions, OssieGeneratorOptions, OwlGeneratorOptions, PruningOptions, PydanticGeneratorOptions, RdfOptions, RdfsGeneratorOptions, ScalaGeneratorOptions, SchemaOutputOptions, ShaclGeneratorOptions, StatsGeneratorOptions, TranslationGeneratorOptions, TypeScriptGeneratorOptions, JsonOutputFormat, OwlMetadataProfile, OwlPermissibleValueKind, RdfFormat, ScalaErrorHandling, TypeScriptErrorHandling, GeneratorFunctions } from "../generator/npm/generator-options.js";
+
+// The importers and their options, generated from model/converter/all_importers.yaml.
+import type { ImporterFunctions } from "../generator/npm/importer-options.js";
+export type { DatatypeMapping, ImportMapping, MetadataSources, NamespacePrefix, Naming, OssieImporterOptions, OwlImportConfig, OwlImporterOptions, TermRename, NameStyle, SomeValuesFrom, ImporterFunctions } from "../generator/npm/importer-options.js";
 
 /**
  * A loaded, import-resolved LinkML schema, with the generators as its methods. Create one
@@ -39,7 +43,14 @@ export interface LoadResult {
   readonly report: SchemaValidationReport;
 }
 
-export interface LinkMLApi {
+/** Functions that take the document to import before their options. */
+type Importers<F> = {
+  [K in keyof F]: F[K] extends (...args: infer A) => infer R
+    ? (document: string, ...args: A) => R
+    : never;
+};
+
+export interface LinkMLApi extends Importers<ImporterFunctions> {
   /**
    * Version and build metadata of this copy of ohi LinkML: which version it is, which LinkML metamodel it was built against, and what it is running on.  Useful in bug reports, and for checking that the version you loaded is the one you meant to.
    * @returns A `BuildInfo` object, as described by https://linkml.ohi.dev/model/build-info
@@ -65,29 +76,6 @@ export interface LinkMLApi {
    * @returns The validation report, and a handle with the generators unless the schema had fatal problems.
    */
   loadFromPath(path: string, imports: Record<string, string>, inferMessages?: boolean, importMap?: Record<string, string>): LoadResult;
-
-  /**
-   * Read an OWL ontology and produce the LinkML schema it describes.  The opposite of [[SchemaViewJs.owl]]. Feed the result to [[loadFromString]] if you want to run a generator over it.
-   * @param ontology The ontology, as Turtle (or N-Triples, which is Turtle too).
-   * @param config How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a file (see https://linkml.ohi.dev/docs/owl/). By default, settings that suit most ontologies.
-   * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
-   * @param listNotImported Whether to list what could not be imported, in comments at the top of the YAML. Default: false
-   * @param imports The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]]. The schema then uses their terms by name rather than copying them in.
-   * @param inputFormat RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
-   * @param fullUris Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. Default: false
-   * @returns The LinkML schema, serialized in the specified format.
-   */
-  fromOwl(ontology: string, config?: string, outFormat?: string, listNotImported?: boolean, imports?: Record<string, string>, inputFormat?: string, fullUris?: boolean): string;
-
-  /**
-   * Read an Apache Ossie ontology and produce the LinkML schema it describes.  The opposite of [[SchemaViewJs.ossie]]. Feed the result to [[loadFromString]] if you want to run a generator over it.
-   * @param ontology The ontology document, as YAML or JSON.
-   * @param schemaId The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it is a placeholder built from the ontology's name.
-   * @param outFormat Output serialization format to use. One of yaml|json. Default: yaml
-   * @param fullUris Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes. Default: false
-   * @returns The LinkML schema, serialized in the specified format.
-   */
-  fromOssie(ontology: string, schemaId?: string, outFormat?: string, fullUris?: boolean): string;
 
   /**
    * Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This method returns a structured JSON that follows the validation-report.yaml model.

@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/owl
-name: owl
+name: owl-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter

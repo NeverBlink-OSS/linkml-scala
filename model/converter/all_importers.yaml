@@ -1,0 +1,12 @@
+id: https://linkml.ohi.dev/model/converter/all_importers
+name: importer
+title: Schema for the ohi LinkML importers and their options
+description: >-
+  API definitions for all ohi LinkML importers, as functions with their options.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - importer/ossie
+  - importer/owl

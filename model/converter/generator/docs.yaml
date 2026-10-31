@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/docs
-name: docs
+name: docs-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter
@@ -28,4 +28,4 @@ functions:
       Generate Markdown documentation. The files are `index.md` plus a page for each class, slot,
       enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.
     parameters: DocsGeneratorOptions
-    returns: GeneratedFiles
+    returns: Files

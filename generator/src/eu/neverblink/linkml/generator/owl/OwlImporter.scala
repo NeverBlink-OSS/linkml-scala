@@ -1,6 +1,13 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.options.{JsonOutputFormat, RdfFormat}
+import eu.neverblink.linkml.generator.options.{
+  NameStyle,
+  OwlImportConfig,
+  ImportResult,
+  OwlImporterOptions,
+  RdfFormat,
+  SomeValuesFrom,
+}
 import eu.neverblink.linkml.generator.SchemaImporter
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.ClassExpr.Bound
@@ -14,7 +21,6 @@ import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{
   slotStyle,
   someValuesFromStyle,
 }
-import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig, SomeValuesFrom}
 import eu.neverblink.linkml.generator.owl.OwlImportNames.*
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.*
@@ -25,6 +31,7 @@ import eu.neverblink.linkml.schemaview.{
   FileSystemImporter,
   Importer,
   LinkmlPattern,
+  MapImporter,
   SchemaView,
 }
 import eu.neverblink.linkml.validation.{SchemaImportError, SchemaParseError}
@@ -37,8 +44,8 @@ import scala.util.control.NonFatal
 
 /** Reads an OWL ontology (Turtle or N-Triples) and turns it into a LinkML schema.
   *
-  * It reverses [[OwlGenerator]]. Use [[config.OwlImportConfig]] to adjust it for ontologies written
-  * in other styles. In short:
+  * It reverses [[OwlGenerator]]. Use [[OwlImportConfig]] to adjust it for ontologies written in
+  * other styles. In short:
   *   - Classes become classes. One named parent becomes `is_a`, preferring one in the class's own
   *     namespace. The rest become `mixins`.
   *   - Object and data properties become top-level slots. `rdfs:domain` adds the slot to a class.
@@ -49,16 +56,29 @@ import scala.util.control.NonFatal
   *
   * Anything LinkML can't express is listed in [[OwlImporter.Result.warnings]]. If it is about a
   * class, it also goes in that class's `notes`.
+  *
+  * @param schemas
+  *   Loads the LinkML schemas that the config maps `owl:imports` to, unless the options have them.
+  *   Their terms are then referenced by name instead of being copied into the schema.
+  * @param base
+  *   Location of the output schema, used to resolve relative `imports`.
   */
-class OwlImporter extends SchemaImporter[OwlImporter.Options] {
+class OwlImporter(schemas: Importer = FileSystemImporter, base: String = "")
+    extends SchemaImporter[OwlImporterOptions] {
   import OwlImporter.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: OwlImporterOptions = OwlImporterOptions()
 
-  override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinition =
+  override def importSchema(
+      in: InputStream,
+      options: OwlImporterOptions = OwlImporterOptions(),
+  ): SchemaDefinition =
     importWithWarnings(in, options).schema
 
-  def importWithWarnings(in: InputStream, options: Options = Options()): Result = {
+  def importWithWarnings(
+      in: InputStream,
+      options: OwlImporterOptions = OwlImporterOptions(),
+  ): Result = {
     val sink = CollectingRdfSink()
     options.inputFormat match {
       case RdfFormat.Ttl => TurtleParser.parse(in, sink)
@@ -71,13 +91,24 @@ class OwlImporter extends SchemaImporter[OwlImporter.Options] {
     importOntology(ontology, options, read.unparsed)
   }
 
+  override def importResult(
+      in: InputStream,
+      options: OwlImporterOptions = OwlImporterOptions(),
+  ): ImportResult = {
+    val result = importWithWarnings(in, options)
+    ImportResult(
+      serializeSchema(result.schema, options.format, options.fullUris),
+      result.warnings,
+    )
+  }
+
   def importTriples(
       triples: Seq[Triple],
       config: OwlImportConfig = OwlImportConfig(),
   ): Result =
-    importTriples(triples, Options(config))
+    importTriples(triples, OwlImporterOptions(config = Some(config)))
 
-  def importTriples(triples: Seq[Triple], options: Options): Result = {
+  def importTriples(triples: Seq[Triple], options: OwlImporterOptions): Result = {
     val read = OwlRdfReader.read(triples)
     importOntology(read.ontology, options, read.unparsed)
   }
@@ -86,39 +117,21 @@ class OwlImporter extends SchemaImporter[OwlImporter.Options] {
       ontology: Ontology,
       config: OwlImportConfig = OwlImportConfig(),
       unparsed: Seq[Triple] = Nil,
-  ): Result = importOntology(ontology, Options(config), unparsed)
+  ): Result = importOntology(ontology, OwlImporterOptions(config = Some(config)), unparsed)
 
-  def importOntology(ontology: Ontology, options: Options, unparsed: Seq[Triple]): Result =
-    Conversion(ontology, options, unparsed).result
+  def importOntology(
+      ontology: Ontology,
+      options: OwlImporterOptions,
+      unparsed: Seq[Triple],
+  ): Result = {
+    val importer =
+      if options.schemas.isEmpty then schemas
+      else MapImporter(options.schemas.values.map(f => f.path -> f.content).toSeq*)
+    Conversion(ontology, options, importer, base, unparsed).result
+  }
 }
 
 object OwlImporter {
-
-  /** Options for [[OwlImporter]].
-    *
-    * @param config
-    *   How to map the ontology.
-    * @param outputFormat
-    *   Output serialization format.
-    * @param schemas
-    *   Loads the LinkML schemas that the config maps `owl:imports` to. Their terms are then
-    *   referenced by name instead of being copied into the schema.
-    * @param base
-    *   Location of the output schema, used to resolve relative `imports`.
-    * @param inputFormat
-    *   RDF syntax of the ontology. The Turtle parser also reads N-Triples; the N-Triples parser is
-    *   only slightly faster.
-    * @param fullUris
-    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-    */
-  final case class Options(
-      config: OwlImportConfig = OwlImportConfig(),
-      outputFormat: JsonOutputFormat = JsonOutputFormat.Yaml,
-      schemas: Importer = FileSystemImporter,
-      base: String = "",
-      inputFormat: RdfFormat = RdfFormat.Ttl,
-      fullUris: Boolean = false,
-  ) extends SchemaImporter.Options
 
   /** `warnings` has one line per kind of thing that could not be imported. */
   final case class Result(schema: SchemaDefinition, warnings: Seq[String])
@@ -248,10 +261,15 @@ object OwlImporter {
 
   private final class Conversion(
       ontology: Ontology,
-      options: Options,
+      options: OwlImporterOptions,
+      schemas: Importer,
+      base: String,
       unparsed: Seq[Triple],
   ) {
-    private val config = options.config
+    private val config = {
+      val config = options.config.getOrElse(OwlImportConfig())
+      options.schemaId.fold(config)(id => config.copy(schemaId = Some(id)))
+    }
 
     private val warnings = mutable.LinkedHashMap.empty[String, mutable.ArrayBuffer[String]]
 
@@ -543,7 +561,7 @@ object OwlImporter {
         imports = Seq(importOf(ref)),
       )
       try
-        SchemaView.loadImports(root, options.base, options.schemas).left.map {
+        SchemaView.loadImports(root, base, schemas).left.map {
           case e: SchemaImportError => e.reason
           case e: SchemaParseError => e.parserMessage
         }.map { schemas =>

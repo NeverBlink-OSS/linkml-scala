@@ -1,0 +1,27 @@
+id: https://linkml.ohi.dev/model/converter/importer/ossie
+name: ossie-importer
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  OssieImporterOptions:
+    description: Options of the Apache Ossie importer.
+    mixins: [SchemaOutputOptions]
+    slots:
+      - schema_id
+    slot_usage:
+      schema_id:
+        description: >-
+          The `id` of the schema to produce. An Ossie ontology has none of its own, so by default
+          it is a placeholder built from the ontology's name.
+
+functions:
+  from_ossie:
+    description: >-
+      Read an Apache Ossie ontology, as YAML or JSON, and produce the LinkML schema it describes.
+      The opposite of `ossie`.
+    parameters: OssieImporterOptions
+    returns: ImportResult

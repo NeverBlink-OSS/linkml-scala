@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/translation
-name: translation
+name: translation-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter

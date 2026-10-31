@@ -22,7 +22,7 @@ import os
 from pathlib import Path
 from typing import Any, Mapping, Union
 
-from ._generated import Generators
+from ._generated import Generators, from_ossie, from_owl
 from ._runtime import (
     LinkMlError,
     NativeLibraryNotFound,
@@ -300,84 +300,6 @@ def load_path(
         *current.load_string(
             path, None, imports, _load_options(infer_messages, import_map)
         ),
-    )
-
-
-def from_ossie(
-    ontology: str,
-    *,
-    schema_id: str | None = None,
-    output_format: str = "yaml",
-    full_uris: bool = False,
-) -> str:
-    """Read an Apache Ossie ontology and return the LinkML schema it describes.
-
-    The opposite of :meth:`Schema.ossie`. Pass the result to :func:`load_string`
-    to run a generator over it.
-
-    :param ontology: The ontology document, as YAML or JSON.
-    :param schema_id: The ``id`` of the schema to produce. An Ossie ontology has none of its own,
-        so by default it is a placeholder built from the ontology's name.
-    :param output_format: Output serialization format to use, ``yaml`` or ``json``.
-    :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the schema's
-        prefixes.
-    :raises SchemaConversionError: if the document is not an ontology that can be imported.
-    :raises LinkMlError: if the options are wrong.
-    """
-    return runtime().import_document(
-        "linkml_from_ossie",
-        ontology,
-        {"schema_id": schema_id, "output_format": output_format, "full_uris": full_uris},
-    )
-
-
-def from_owl(
-    ontology: str,
-    *,
-    config: str | None = None,
-    schema_id: str | None = None,
-    output_format: str = "yaml",
-    list_not_imported: bool = False,
-    imports: Mapping[str, str] | None = None,
-    input_format: str = "ttl",
-    full_uris: bool = False,
-) -> str:
-    """Read an OWL ontology, in Turtle or N-Triples, and return the LinkML schema it describes.
-
-    The opposite of :meth:`Schema.owl`. Pass the result to :func:`load_string` to run a
-    generator over it.
-
-    :param ontology: The ontology, as Turtle or N-Triples. Convert other RDF formats first, for
-        example with rdflib.
-    :param config: How to map the ontology: the text of the config itself, as YAML, not a path to
-        a file. It sets names, prefixes, which annotation properties fill which metaslots, and
-        more. See https://linkml.ohi.dev/docs/owl/.
-    :param schema_id: The ``id`` of the schema to produce. By default, the ontology IRI.
-    :param output_format: Output serialization format to use, ``yaml`` or ``json``.
-    :param list_not_imported: Whether to list what could not be imported, in comments at the top
-        of the YAML.
-    :param imports: The LinkML schemas that ``config`` maps ``owl:imports`` to, as filename to
-        YAML text, keyed as for :func:`load_string`. The schema then uses their terms by name
-        rather than copying them in. By default they are read from the file system.
-    :param input_format: The RDF syntax of ``ontology``: ``ttl`` (Turtle, the default, which also
-        reads N-Triples) or ``nt`` (N-Triples).
-    :param full_uris: Write URIs in full, instead of compacting them to CURIEs with the schema's
-        prefixes.
-    :raises SchemaConversionError: if the document can't be parsed or imported as a schema.
-    :raises LinkMlError: if the config could not be read, or the options are wrong.
-    """
-    return runtime().import_document(
-        "linkml_from_owl",
-        ontology,
-        {
-            "config": config,
-            "schema_id": schema_id,
-            "output_format": output_format,
-            "list_not_imported": list_not_imported,
-            "imports": None if imports is None else dict(imports),
-            "input_format": input_format,
-            "full_uris": full_uris,
-        },
     )
 
 

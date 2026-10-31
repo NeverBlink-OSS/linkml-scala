@@ -3,12 +3,8 @@ package eu.neverblink.linkml.nativelib
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.generator.options.*
-import eu.neverblink.linkml.generator.ossie.OssieImporter
-import eu.neverblink.linkml.generator.owl.OwlImporter
-import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
-import eu.neverblink.linkml.schemaview.MapImporter
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import org.virtuslab.yaml.{Node, parseYaml}
+import org.virtuslab.yaml.parseYaml
 
 import scala.util.control.NonFatal
 
@@ -83,44 +79,15 @@ private object Options {
   def translation(json: String): TranslationGeneratorOptions =
     model(json, TranslationGeneratorOptions())(using LinkmlYamlCodec.derived)
 
-  // The options below are not part of the model, and are read with jsoniter.
+  def fromOssie(json: String): OssieImporterOptions =
+    model(json, OssieImporterOptions())(using LinkmlYamlCodec.derived)
 
-  /** A generated enum as its name in the schema, such as `"yaml"`. */
-  private def enumCodec[E](codec: LinkmlYamlCodec[E]): JsonValueCodec[E] =
-    new JsonValueCodec[E] {
-      override def decodeValue(in: JsonReader, default: E): E = {
-        val name = in.readString(null)
-        try codec.decode(Node.ScalarNode(name))
-        catch { case ex if NonFatal(ex) => in.decodeError(ex.getMessage) }
-      }
+  def fromOwl(json: String): OwlImporterOptions =
+    model(json, OwlImporterOptions())(using LinkmlYamlCodec.derived)
 
-      override def encodeValue(x: E, out: JsonWriter): Unit =
-        codec.encode(x) match {
-          case Node.ScalarNode(value, _) => out.writeVal(value)
-          case other => out.encodeError(s"not a scalar: $other")
-        }
-
-      override def nullValue: E = null.asInstanceOf[E]
-    }
-
-  private given JsonValueCodec[JsonOutputFormat] = enumCodec(LinkmlYamlCodec.derived)
-
-  private given JsonValueCodec[RdfFormat] = enumCodec(LinkmlYamlCodec.derived)
-
-  // Unknown fields are rejected rather than skipped, and the names are in snake case like the
-  // generator options. The macro takes the config only as a literal.
-  private given fromOssieOptions: JsonValueCodec[OssieImporter.Options] = JsonCodecMaker.make(
-    CodecMakerConfig
-      .withSkipUnexpectedFields(false)
-      .withFieldNameMapper(JsonCodecMaker.enforce_snake_case),
-  )
-
-  private given fromOwlOptions: JsonValueCodec[FromOwlOptions] = JsonCodecMaker.make(
-    CodecMakerConfig
-      .withSkipUnexpectedFields(false)
-      .withFieldNameMapper(JsonCodecMaker.enforce_snake_case),
-  )
-
+  // The options below are not part of the model, and are read with jsoniter. Unknown fields are
+  // rejected rather than skipped, and the names are in snake case like the generator options. The
+  // macro takes the config only as a literal.
   private given loadOptions: JsonValueCodec[LoadOptions] = JsonCodecMaker.make(
     CodecMakerConfig
       .withSkipUnexpectedFields(false)
@@ -138,28 +105,6 @@ private object Options {
         case ex if NonFatal(ex) => throw BadRequest(s"malformed options: ${ex.getMessage}")
       }
 
-  def fromOssie(json: String): OssieImporter.Options = apply(json, OssieImporter.Options())
-
-  /** The importer's options, and whether to list what could not be imported. The mapping config is
-    * the YAML text of a config file, not a path to one.
-    */
-  def fromOwl(json: String): (OwlImporter.Options, Boolean) = {
-    val options = apply(json, FromOwlOptions())
-    val config =
-      try options.config.fold(OwlImportConfig())(OwlImportConfigs.parse)
-      catch { case ex if NonFatal(ex) => throw BadRequest(s"malformed config: ${ex.getMessage}") }
-    val importerOptions = OwlImporter.Options(
-      config = options.schemaId.fold(config)(id => config.copy(schemaId = Some(id))),
-      outputFormat = options.outputFormat,
-      inputFormat = options.inputFormat,
-      fullUris = options.fullUris,
-    )
-    val withImports = options.imports.fold(importerOptions)(m =>
-      importerOptions.copy(schemas = MapImporter(m.toSeq*)),
-    )
-    (withImports, options.listNotImported)
-  }
-
   def load(json: String): LoadOptions = apply(json, LoadOptions())
 }
 
@@ -172,22 +117,4 @@ private object Options {
 private final case class LoadOptions(
     inferMessages: Boolean = true,
     importMap: Map[String, String] = Map.empty,
-)
-
-/** @param config
-  *   How to map the ontology: the YAML text of the config itself, not a path to a file (see
-  *   https://linkml.ohi.dev/docs/owl/).
-  * @param schemaId
-  *   The `id` of the schema, instead of the ontology IRI.
-  * @param fullUris
-  *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-  */
-private final case class FromOwlOptions(
-    config: Option[String] = None,
-    schemaId: Option[String] = None,
-    outputFormat: JsonOutputFormat = JsonOutputFormat.Yaml,
-    listNotImported: Boolean = false,
-    imports: Option[Map[String, String]] = None,
-    inputFormat: RdfFormat = RdfFormat.Ttl,
-    fullUris: Boolean = false,
 )

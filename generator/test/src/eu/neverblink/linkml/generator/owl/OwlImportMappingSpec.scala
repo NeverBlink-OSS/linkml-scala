@@ -2,13 +2,14 @@ package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.ClassExpr.*
-import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.classStyle
-import eu.neverblink.linkml.generator.owl.config.{
+import eu.neverblink.linkml.generator.options.{
   NameStyle,
   OwlImportConfig,
-  OwlImportConfigs,
+  OwlImporterOptions,
   SomeValuesFrom as SomeValuesFromStyle,
 }
+import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs
+import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.classStyle
 import eu.neverblink.linkml.metamodel.{AnonymousSlotExpression, SchemaDefinition}
 import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Owl, Rdfs, XmlSchema}
 import eu.neverblink.linkml.runtime.{MultilingualText, PlainText, Reference, Uri}
@@ -521,13 +522,13 @@ class OwlImportMappingSpec extends AnyWordSpec, Matchers {
     )
     val config = OwlImportConfigs.parse("imports:\n  https://other.example.com/onto: other.yaml\n")
     def importWith(schemas: (String, String)*)(extra: Axiom*): OwlImporter.Result =
-      OwlImporter().importOntology(
+      OwlImporter(MapImporter(schemas*)).importOntology(
         Ontology(
           prefixes = prefixes,
           imports = Seq("https://other.example.com/onto"),
           axioms = axioms ++ extra,
         ),
-        OwlImporter.Options(config, schemas = MapImporter(schemas*)),
+        OwlImporterOptions(config = Some(config)),
         Nil,
       )
 

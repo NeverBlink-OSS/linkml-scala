@@ -15,11 +15,13 @@ import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
-import eu.neverblink.linkml.generator.options.JsonOutputFormat
+import eu.neverblink.linkml.generator.SchemaImporter
+import eu.neverblink.linkml.generator.options.{ImportResult, JsonOutputFormat, SchemaOutputOptions}
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.rdf.RdfParseException
 import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.linkml.schemaview.{
   FileSystemImporter,
   ImportMapImporter,
@@ -183,17 +185,9 @@ object LinkMlNativeApi {
     OssieGenerator().writeTo(out, Options.ossie(optionsJson))
   }
 
-  /** The LinkML schema an Apache Ossie ontology describes, as YAML or JSON depending on the
-    * `outputFormat` option.
-    */
-  def fromOssie(ontology: String, optionsJson: String, out: OutputStream): Unit = {
-    if ontology eq null then throw BadRequest("no ontology document was given")
-    OssieImporter().writeTo(
-      ByteArrayInputStream(ontology.getBytes(UTF_8)),
-      out,
-      Options.fromOssie(optionsJson),
-    )
-  }
+  /** The LinkML schema an Apache Ossie ontology describes. */
+  def fromOssie(ontology: String, optionsJson: String, out: OutputStream): Unit =
+    imported(OssieImporter(), ontology, Options.fromOssie(optionsJson), out)
 
   /** An OWL ontology, as Turtle or N-Triples depending on the `format` option. */
   def owl(handle: Long, optionsJson: String, out: OutputStream): Unit = {
@@ -201,19 +195,22 @@ object LinkMlNativeApi {
     OwlGenerator().writeTo(out, Options.owl(optionsJson))
   }
 
-  /** The LinkML schema an OWL ontology (in Turtle or N-Triples) describes, as YAML or JSON
-    * depending on the `outputFormat` option. With `listNotImported`, what could not be imported is
-    * listed in comments at the top of YAML.
+  /** The LinkML schema an OWL ontology, in Turtle or N-Triples, describes. */
+  def fromOwl(ontology: String, optionsJson: String, out: OutputStream): Unit =
+    imported(OwlImporter(), ontology, Options.fromOwl(optionsJson), out)
+
+  /** What an importer made of the document, as an `ImportResult` in JSON. The schema in it is YAML
+    * or JSON depending on the `format` option.
     */
-  def fromOwl(ontology: String, optionsJson: String, out: OutputStream): Unit = {
-    if ontology eq null then throw BadRequest("no ontology document was given")
-    val (options, listNotImported) = Options.fromOwl(optionsJson)
-    val importer = OwlImporter()
-    val result =
-      importer.importWithWarnings(ByteArrayInputStream(ontology.getBytes(UTF_8)), options)
-    if listNotImported && options.outputFormat == JsonOutputFormat.Yaml then
-      result.warnings.foreach(w => out.write(s"# Not imported: $w\n".getBytes(UTF_8)))
-    importer.writeSchema(result.schema, out, options.outputFormat, options.fullUris)
+  private def imported[O <: SchemaOutputOptions](
+      importer: SchemaImporter[O],
+      document: String,
+      options: O,
+      out: OutputStream,
+  ): Unit = {
+    if document eq null then throw BadRequest("no document to import was given")
+    val result = importer.importResult(ByteArrayInputStream(document.getBytes(UTF_8)), options)
+    JsonUtil.writeJson(LinkmlYamlCodec.derived[ImportResult].encode(result), out)
   }
 
   // Results that are structured, and so come back as JSON

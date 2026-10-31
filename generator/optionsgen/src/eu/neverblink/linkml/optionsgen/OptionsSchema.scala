@@ -3,18 +3,14 @@ package eu.neverblink.linkml.optionsgen
 import eu.neverblink.linkml.generator.scala.ScalaRenamer
 import eu.neverblink.linkml.schemaview.*
 
-/** The generator options of `model/converter/all_generators.yaml`, as the generated code needs
-  * them.
+/** The generators and importers of `model/converter/all_converters.yaml`, as the generated code
+  * needs them.
   */
 final class OptionsSchema(using sv: SchemaView) {
 
-  /** The generators, as the functions of the schema. */
-  val functions: Seq[GeneratorFunction] =
-    sv.functions.values.toSeq.sortBy(fv => sv.elementOrder(fv.function)).map(GeneratorFunction(_))
-
-  /** The options class of each generator, in the order of the classes in the schema. */
-  val generators: Seq[OptionsClass] =
-    functions.map(_.options).sortBy(c => sv.elementOrder(c.cv.cls))
+  /** The generators and the importers, as the functions of the schema. */
+  val functions: Seq[ConverterFunction] =
+    sv.functions.values.toSeq.sortBy(fv => sv.elementOrder(fv.function)).map(ConverterFunction(_))
 
   /** Every enum of the schema. */
   val enums: Seq[EnumView] = sv.enums.values.toSeq.sortBy(_.name)
@@ -32,11 +28,16 @@ final class OptionsSchema(using sv: SchemaView) {
     }
 }
 
-/** One generator, as a function of the schema. */
-final case class GeneratorFunction(fv: FunctionView) {
+/** One generator or importer, as a function of the schema. */
+final case class ConverterFunction(fv: FunctionView) {
 
   /** The name in the schema, such as `json_schema`. */
   val name: String = fv.baseName
+
+  /** Whether it is an importer, such as `from_owl`. An importer takes the document to import, and
+    * no schema.
+    */
+  val isImporter: Boolean = name.startsWith("from_")
 
   /** The Scala name, such as `jsonSchema`. */
   val scalaName: String = ScalaRenamer.functionName(fv)
@@ -48,18 +49,28 @@ final case class GeneratorFunction(fv: FunctionView) {
 
   val options: OptionsClass = OptionsClass(fv.parameters.get)
 
-  /** What it returns: a document, or else JSON with the extra data's type if it is a class with
-    * only that, such as `GeneratedFiles`.
-    */
-  val returns: Option[Option[TypeView]] = fv.returns match {
-    case Some(_: TypeView) => None
+  val returns: Returns = fv.returns match {
+    case Some(_: TypeView) => Returns.Document
+    case Some(cv: ClassView) if cv.isAny => Returns.Any
+    case Some(cv: ClassView) if cv.derivedAttributes.nonEmpty => Returns.Object
     case Some(cv: ClassView) =>
-      Some(
-        cv.cls.extraSlots.flatMap(_.rangeExpression).flatMap(_.range)
-          .flatMap(r => fv.sv.types.get(r.value)).filter(_ => cv.derivedAttributes.isEmpty),
-      )
+      cv.cls.extraSlots.flatMap(_.rangeExpression).flatMap(_.range)
+        .flatMap(r => fv.sv.types.get(r.value))
+        .fold(Returns.Any)(Returns.Map(_))
     case other => sys.error(s"Function $name returns an unsupported element: $other")
   }
+}
+
+/** What a function returns. All but a document are JSON. */
+enum Returns {
+  case Document
+
+  /** An object with the slots of a class, such as `OwlImportResult`. */
+  case Object
+
+  /** An object with values of one type, such as `Files`. */
+  case Map(value: TypeView)
+  case Any
 }
 
 /** The options of one generator. */
@@ -88,16 +99,25 @@ final case class OptionField(attribute: AttributeView) {
 
   val required: Boolean = slot.slot.required
 
+  val multivalued: Boolean = slot.slot.multivalued
+
+  /** The class of the value, if it is an object, such as a config. */
+  val valueClass: Option[ClassView] = attribute match {
+    case a: ClassAttributeView => Some(a.classView)
+    case _ => None
+  }
+
   /** The Scala type of the value, without the `Option` of an optional one. */
   val valueType: String = attribute match {
-    case TypeAttributeView(_, _, tv) =>
+    case TypeAttributeView(_, _, tv) if !multivalued =>
       tv.runtimeType match {
         case StringType => "String"
         case IntegerType => "Int"
         case BooleanType => "Boolean"
         case other => sys.error(s"Option $name has an unsupported type: $other")
       }
-    case EnumAttributeView(_, _, ev) => ScalaRenamer.enumName(ev)
+    case EnumAttributeView(_, _, ev) if !multivalued => ScalaRenamer.enumName(ev)
+    case a: ClassAttributeView => ScalaRenamer.className(a.classView)
     case other => sys.error(s"Option $name has an unsupported range: $other")
   }
 

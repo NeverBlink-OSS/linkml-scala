@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/scala
-name: scala
+name: scala-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter
@@ -52,4 +52,4 @@ functions:
   scala:
     description: Generate Scala classes, one file per class, enum and type.
     parameters: ScalaGeneratorOptions
-    returns: GeneratedFiles
+    returns: Files

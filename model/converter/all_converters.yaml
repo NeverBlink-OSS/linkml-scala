@@ -1,0 +1,11 @@
+id: https://linkml.ohi.dev/model/converter/all_converters
+name: converter
+title: Schema for the ohi LinkML generators and importers and their options
+description: The generators and the importers, for the code that serves both.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - all_generators
+  - all_importers

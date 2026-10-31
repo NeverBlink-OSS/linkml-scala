@@ -7,7 +7,6 @@ import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
 import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
-import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
@@ -18,6 +17,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.options.*
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
+import eu.neverblink.linkml.generator.SchemaImporter
 import eu.neverblink.linkml.schemaview.{
   ImportMapImporter,
   Importer,
@@ -102,12 +102,12 @@ final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {
     TranslationGenerator().serialize(decode[TranslationGeneratorOptions](params))
 }
 
-private object SchemaViewJs {
+private[js] object SchemaViewJs {
 
-  /** The options of a generator, as a plain JS object. */
+  /** The options of a generator or importer, as a plain JS object. */
   type Params = js.UndefOr[js.Object]
 
-  /** The options of a generator, from the plain JS object the caller passed. */
+  /** The options of a generator or importer, from the plain JS object the caller passed. */
   def decode[T](params: Params)(using codec: LinkmlYamlCodec[T]): T =
     parseYaml(params.fold("{}")(js.JSON.stringify(_))) match {
       case Right(node) =>
@@ -131,6 +131,8 @@ private object SchemaViewJs {
   given LinkmlYamlCodec[DocsGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[TranslationGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[OssieGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[OssieImporterOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[OwlImporterOptions] = LinkmlYamlCodec.derived
 }
 
 /** A `SchemaValidationReport` (model/validation-report.yaml) as a plain JS object. Only a name for
@@ -155,6 +157,8 @@ final class LoadResult private[js] (
 @JSExportTopLevel("LinkML")
 @JSExportAll
 object LinkMlJsApi {
+  import SchemaViewJs.{*, given}
+
   private case class JsImporter(map: js.Dictionary[String]) extends StringImporter {
     private val lookup = Importer.normalizedMap(map)
 
@@ -314,104 +318,24 @@ object LinkMlJsApi {
         throw js.JavaScriptException(error)
     }
 
-  /** Read an OWL ontology and produce the LinkML schema it describes.
-    *
-    * The opposite of [[SchemaViewJs.owl]]. Feed the result to [[loadFromString]] if you want to run
-    * a generator over it.
-    *
-    * @param ontology
-    *   The ontology, as Turtle (or N-Triples, which is Turtle too).
-    * @param config
-    *   How to map the ontology: the text of the config itself, as YAML or JSON, not a path to a
-    *   file (see https://linkml.ohi.dev/docs/owl/). By default, settings that suit most ontologies.
-    * @param outFormat
-    *   Output serialization format to use. One of yaml|json. Default: yaml
-    * @param listNotImported
-    *   Whether to list what could not be imported, in comments at the top of the YAML. Default:
-    *   false
-    * @param imports
-    *   The LinkML schemas that the config maps `owl:imports` to, keyed as in [[loadFromString]].
-    *   The schema then uses their terms by name rather than copying them in.
-    * @param inputFormat
-    *   RDF syntax of the ontology. One of ttl|nt. Default: ttl, which also reads N-Triples.
-    * @param fullUris
-    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-    *   Default: false
-    * @return
-    *   The LinkML schema, serialized in the specified format.
-    */
-  def fromOwl(
-      ontology: String,
-      config: js.UndefOr[String] = js.undefined,
-      outFormat: String = "yaml",
-      listNotImported: Boolean = false,
-      imports: js.UndefOr[js.Dictionary[String]] = js.undefined,
-      inputFormat: String = "ttl",
-      fullUris: Boolean = false,
-  ): String = {
-    val format = outputFormat(outFormat)
-    val importer = OwlImporter()
-    val result = converting(
-      importer.importWithWarnings(
-        java.io.ByteArrayInputStream(ontology.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
-        OwlImporter.Options(
-          config = config.toOption.fold(OwlImportConfig())(OwlImportConfigs.parse),
-          schemas = JsImporter(imports.getOrElse(js.Dictionary())),
-          inputFormat = rdfFormat(inputFormat),
-        ),
-      ),
-    )
-    val schema = converting(importer.serializeSchema(result.schema, format, fullUris))
-    if listNotImported && format == JsonOutputFormat.Yaml then
-      result.warnings.map(w => s"# Not imported: $w\n").mkString + schema
-    else schema
-  }
+  // The importers are the functions defined in model/converter/all_importers.yaml
 
-  /** The YAML-or-JSON format the caller named. */
-  private def outputFormat(format: String): JsonOutputFormat = format.toLowerCase match {
-    case "yaml" | "yml" => JsonOutputFormat.Yaml
-    case "json" => JsonOutputFormat.Json
-    case other =>
-      throw RuntimeException(s"Unknown output format: $other. Supported formats: yaml, json.")
-  }
+  def fromOwl(document: String, params: Params = js.undefined): js.Any =
+    // There is no file system to read the mapped schemas from: they come in the options.
+    imported(OwlImporter(schemas = JsImporter(js.Dictionary())), document, params)
 
-  /** The RDF format the caller named. */
-  private def rdfFormat(format: String): RdfFormat = format.toLowerCase match {
-    case "nt" | "ntriples" => RdfFormat.Nt
-    case "ttl" | "turtle" => RdfFormat.Ttl
-    case other => throw RuntimeException(s"Unknown RDF format: $other. Supported formats: nt, ttl.")
-  }
+  def fromOssie(document: String, params: Params = js.undefined): js.Any =
+    imported(OssieImporter(), document, params)
 
-  /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
-    *
-    * The opposite of [[SchemaViewJs.ossie]]. Feed the result to [[loadFromString]] if you want to
-    * run a generator over it.
-    *
-    * @param ontology
-    *   The ontology document, as YAML or JSON.
-    * @param schemaId
-    *   The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it
-    *   is a placeholder built from the ontology's name.
-    * @param outFormat
-    *   Output serialization format to use. One of yaml|json. Default: yaml
-    * @param fullUris
-    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-    *   Default: false
-    * @return
-    *   The LinkML schema, serialized in the specified format.
-    */
-  def fromOssie(
-      ontology: String,
-      schemaId: js.UndefOr[String] = js.undefined,
-      outFormat: String = "yaml",
-      fullUris: Boolean = false,
-  ): String = {
-    val options = OssieImporter.Options(
-      schemaId = schemaId.toOption,
-      outputFormat = outputFormat(outFormat),
-      fullUris = fullUris,
-    )
-    converting(OssieImporter().serializeFromString(ontology, options))
+  private def imported[O <: SchemaOutputOptions: LinkmlYamlCodec](
+      importer: SchemaImporter[O],
+      document: String,
+      params: Params,
+  ): js.Any = {
+    val in =
+      java.io.ByteArrayInputStream(document.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+    val result = converting(importer.importResult(in, decode[O](params)))
+    js.JSON.parse(JsonUtil.yamlToJson(LinkmlYamlCodec.derived[ImportResult].encode(result)))
   }
 
   /** Lint a loaded LinkML schema, finding problems that may cause issues when using the model. This

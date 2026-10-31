@@ -103,17 +103,18 @@ pretty-printed, or `"nt"` for N-Triples. For `linkml()` and `ossie()`, `format` 
 We currently support importers for Apache Ossie (incubating) ontologies and for OWL ontologies:
 
 ```python
-ohi_linkml.from_ossie(ontology, schema_id=None, output_format="yaml")
-ohi_linkml.from_owl(ontology, config=None, schema_id=None, output_format="yaml", list_not_imported=False, imports=None, input_format="ttl")
+ohi_linkml.from_ossie(document, format="yaml", full_uris=False, schema_id=None)
+ohi_linkml.from_owl(document, config=None, format="yaml", full_uris=False, input_format="ttl", schema_id=None, schemas=None)
 ```
 
-Each returns the LinkML schema as a string. Pass that to `load_string()` to run a generator over it.
-`from_owl()` reads Turtle (and so N-Triples), or N-Triples with its own parser with
-`input_format="nt"`, and takes its mapping settings as YAML text in `config` (the text itself, not a path to a
-file). With
-`list_not_imported=True`, it lists what it could not import in comments at the top of the YAML.
-`imports` gives the LinkML schemas the config maps `owl:imports` to, as for `load_string()`; by
-default they are read from the file system. See [the OWL guide](/docs/owl/).
+Like the generators, they take the options of
+[`model/converter`](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/model/converter) as
+keyword arguments. Each returns a dict: the LinkML schema in `"schema"`, and what it could not
+import in `"warnings"`, which is empty if everything was. Pass the schema to `load_string()` to run
+a generator over it. `from_owl()` reads Turtle (and so N-Triples), or N-Triples with its own
+parser with `input_format="nt"`. `config` is the mapping config as a dict, and
+`schemas` gives the LinkML schemas the config maps `owl:imports` to, from file name to YAML text.
+By default those are read from the file system. See [the OWL guide](/docs/owl/).
 
 ### Validating
 
@@ -138,18 +139,18 @@ Here we measured only the time to generate the output, not the time to load the 
 ### JSON Schema
 
 | Dataset          | Size   | linkml (Python) | ohi_linkml |  Speedup |
-|------------------|--------|----------------:|-----------:|---------:|
-| `TC57CIM`        | 2.9 MB |        7,413 ms |    55.2 ms | **134×** |
-| `cgmes-dynamics` | 812 KB |          952 ms |     5.5 ms | **174×** |
-| `cgmes-core`     | 196 KB |          471 ms |     3.7 ms | **126×** |
+|------------------|--------|----------------:|-------------:|---------:|
+| `TC57CIM`        | 2.9 MB |        7,413 ms |      55.2 ms | **134×** |
+| `cgmes-dynamics` | 812 KB |          952 ms |       5.5 ms | **174×** |
+| `cgmes-core`     | 196 KB |          471 ms |       3.7 ms | **126×** |
 
 ### SHACL
 
 | Dataset          | Size   | linkml (Python) | ohi_linkml | Speedup |
-|------------------|--------|----------------:|-----------:|--------:|
-| `TC57CIM`        | 2.9 MB |       17,699 ms |     188 ms | **94×** |
-| `cgmes-dynamics` | 812 KB |        2,039 ms |    20.8 ms | **98×** |
-| `cgmes-core`     | 196 KB |        1,196 ms |    15.0 ms | **80×** |
+|------------------|--------|----------------:|-------------:|--------:|
+| `TC57CIM`        | 2.9 MB |       17,699 ms |       188 ms | **94×** |
+| `cgmes-dynamics` | 812 KB |        2,039 ms |      20.8 ms | **98×** |
+| `cgmes-core`     | 196 KB |        1,196 ms |      15.0 ms | **80×** |
 
 ## How it works
 

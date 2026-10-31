@@ -2,7 +2,13 @@ package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OwlGeneratorOptions, RdfFormat}
 import eu.neverblink.linkml.generator.owl.Axiom.*
-import eu.neverblink.linkml.generator.owl.config.{ImportMapping, OwlImportConfig, OwlImportConfigs}
+import eu.neverblink.linkml.generator.options.{
+  File,
+  ImportMapping,
+  OwlImportConfig,
+  OwlImporterOptions,
+}
+import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs
 import eu.neverblink.linkml.generator.util.JsonUtil
 
 import eu.neverblink.linkml.metamodel.SchemaDefinition
@@ -45,12 +51,14 @@ class OwlCorpusSpec extends AnyWordSpec, Matchers {
       name: String,
       imports: Seq[String],
       files: Map[String, String],
-  ): OwlImporter.Options =
-    OwlImporter.Options(
-      configOf(name).copy(imports =
-        imports.flatMap(d => headers(d)._1.map(i => i -> ImportMapping(i, s"$d.yaml"))).toMap,
+  ): OwlImporterOptions =
+    OwlImporterOptions(
+      config = Some(
+        configOf(name).copy(imports =
+          imports.flatMap(d => headers(d)._1.map(i => i -> ImportMapping(i, s"$d.yaml"))).toMap,
+        ),
       ),
-      schemas = MapImporter(files.toSeq*),
+      schemas = files.map((path, content) => path -> File(path = path, content = content)),
     )
 
   private val importedWithImports =

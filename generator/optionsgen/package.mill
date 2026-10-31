@@ -6,7 +6,7 @@ import mill.scalalib.*
 import mill.scalalib.scalafmt.ScalafmtModule
 import millbuild.*
 
-/** Generates the code for processing `model/converter/all_generators.yaml` into APIs for CLI, C and
+/** Generates the code for processing `model/converter/all_converters.yaml` into APIs for CLI, C and
   * Python. Internal: not published, and only good enough for these options.
   */
 object `package` extends ScalaModule, ScalafmtModule, ScalafixModule {

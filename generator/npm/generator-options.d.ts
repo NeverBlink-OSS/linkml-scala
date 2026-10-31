@@ -38,6 +38,19 @@ export interface ErDiagramGeneratorOptions {
   tree_root?: string;
 }
 
+/** A file and its content. */
+export interface File {
+  /** The content of the file. */
+  content: string;
+  /** The path of the file. */
+  path: string;
+}
+
+/** Files, from the path of each to its content. */
+export interface Files {
+  [key: string]: string;
+}
+
 /** Options of the Frictionless Data Package generator. */
 export interface FrictionlessGeneratorOptions {
   /**
@@ -59,11 +72,6 @@ export interface FrictionlessGeneratorOptions {
   tree_root?: string;
 }
 
-/** The files a generator wrote, from the path of each to its content. */
-export interface GeneratedFiles {
-  [key: string]: string;
-}
-
 /** Options of the GraphQL generator. */
 export interface GraphQlGeneratorOptions {
   /**
@@ -78,6 +86,14 @@ export interface GraphQlGeneratorOptions {
   pruning_mode?: PruningMode;
   /** The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode. */
   tree_root?: string;
+}
+
+/** What an importer produced. */
+export interface ImportResult {
+  /** The LinkML schema. */
+  schema: string;
+  /** One line for each kind of thing that could not be imported. Empty if everything was. */
+  warnings: string[];
 }
 
 /** Options of the JSON Schema generator. */
@@ -274,6 +290,20 @@ export interface ScalaGeneratorOptions {
   skip_leaf_interfaces?: boolean;
 }
 
+/** Options of the importers, which write a LinkML schema. */
+export interface SchemaOutputOptions {
+  /**
+   * The serialization of the schema.
+   * @defaultValue "yaml"
+   */
+  format?: JsonOutputFormat;
+  /**
+   * Whether to write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
+   * @defaultValue false
+   */
+  full_uris?: boolean;
+}
+
 /** Options of the SHACL generator. */
 export interface ShaclGeneratorOptions {
   /**
@@ -398,13 +428,13 @@ export type TypeScriptErrorHandling =
 /** The functions of the `generator` schema. */
 export interface GeneratorFunctions {
   /** Generate Markdown documentation. The files are `index.md` plus a page for each class, slot, enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`. */
-  docs(params?: DocsGeneratorOptions): GeneratedFiles;
+  docs(params?: DocsGeneratorOptions): Files;
 
   /** Generate a Mermaid entity relationship diagram. Classes become entities, slots ranging over types and enums become their attributes, and slots ranging over classes become relationship lines. */
   erDiagram(params?: ErDiagramGeneratorOptions): string;
 
   /** Generate a Frictionless Data Package. Every class becomes a CSV table, described by its own Table Schema, and references between classes become foreign keys between the tables. The files are a `datapackage.json` plus one `schemas/<table>.json` per table. */
-  frictionless(params?: FrictionlessGeneratorOptions): GeneratedFiles;
+  frictionless(params?: FrictionlessGeneratorOptions): Files;
 
   /** Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries. */
   graphql(params?: GraphQlGeneratorOptions): string;
@@ -428,7 +458,7 @@ export interface GeneratorFunctions {
   rdfs(params?: RdfsGeneratorOptions): string;
 
   /** Generate Scala classes, one file per class, enum and type. */
-  scala(params?: ScalaGeneratorOptions): GeneratedFiles;
+  scala(params?: ScalaGeneratorOptions): Files;
 
   /** Generate SHACL shapes, serialized as N-Triples or Turtle. */
   shacl(params?: ShaclGeneratorOptions): string;

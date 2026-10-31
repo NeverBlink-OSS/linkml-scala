@@ -13,7 +13,7 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
 
   // The npm package's index.d.ts uses this as the return type of `buildInfo`
   override def otherModelOutputs =
-    Map("typescript" -> build.generator.moduleDir / "npm" / "build-info.d.ts")
+    Seq(ModelOutput("typescript", build.generator.moduleDir / "npm" / "build-info.d.ts"))
 
   object jvm extends CommonModule {
     def moduleDeps = Seq(

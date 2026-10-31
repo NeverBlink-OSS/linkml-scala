@@ -1,0 +1,47 @@
+id: https://linkml.ohi.dev/model/converter/importer/owl
+name: owl-importer
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+  - owl-config
+
+classes:
+  OwlImporterOptions:
+    description: Options of the OWL importer.
+    mixins: [SchemaOutputOptions]
+    slots:
+      - schema_id
+    slot_usage:
+      schema_id:
+        description: >-
+          The `id` of the schema to produce, instead of the `schema_id` of `config`. The default
+          is the ontology IRI.
+    attributes:
+      config:
+        range: OwlImportConfig
+        inlined: true
+        description: >-
+          How to map the ontology: names, prefixes, which annotation properties fill which
+          metaslots, and more. See https://linkml.ohi.dev/docs/owl/.
+      input_format:
+        range: RdfFormat
+        required: true
+        ifabsent: RdfFormat(ttl)
+        description: The RDF syntax of the ontology. Turtle also reads N-Triples.
+      schemas:
+        range: File
+        multivalued: true
+        inlined: true
+        description: >-
+          The LinkML schemas that the `imports` of `config` map `owl:imports` to, from file name to
+          YAML text. By default, they are read from the file system.
+
+functions:
+  from_owl:
+    description: >-
+      Read an OWL ontology or RDFS vocabulary, as Turtle or N-Triples, and produce the LinkML
+      schema it describes. The opposite of `owl`.
+    parameters: OwlImporterOptions
+    returns: ImportResult

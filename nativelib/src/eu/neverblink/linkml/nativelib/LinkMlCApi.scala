@@ -93,20 +93,6 @@ object LinkMlCApi {
   @exported("linkml_init_threads")
   def initThreads(): CInt = Attach.linkml_init_threads_impl()
 
-  /** Read an Apache Ossie ontology and return the LinkML schema it describes.
-    *
-    * Takes a document rather than a schema handle, so it is hand-written here rather than generated
-    * into `LinkMlCGenerators` with the rest.
-    */
-  @exported("linkml_from_ossie")
-  def fromOssie(ontology: CString, options: CString, error: Ptr[CString]): CString =
-    write(error, out => LinkMlNativeApi.fromOssie(string(ontology), string(options), out))
-
-  /** Read an OWL ontology, as Turtle or N-Triples, and return the LinkML schema it describes. */
-  @exported("linkml_from_owl")
-  def fromOwl(ontology: CString, options: CString, error: Ptr[CString]): CString =
-    write(error, out => LinkMlNativeApi.fromOwl(string(ontology), string(options), out))
-
   // Internals
 
   private[nativelib] def document(
@@ -116,6 +102,14 @@ object LinkMlCApi {
       body: (Long, String, OutputStream) => Unit,
   ): CString =
     write(error, out => body(handle, string(options), out))
+
+  private[nativelib] def imported(
+      document: CString,
+      options: CString,
+      error: Ptr[CString],
+      body: (String, String, OutputStream) => Unit,
+  ): CString =
+    write(error, out => body(string(document), string(options), out))
 
   private def write(error: Ptr[CString], body: OutputStream => Unit): CString = {
     clear(error)
