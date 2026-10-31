@@ -140,7 +140,9 @@ class AppSpec extends AnyWordSpec, Matchers {
         err shouldBe empty
         out should include("Usage: ohi <command> [options]")
         out should include("Find and download\n  search")
-        out should include("Local schemas\n  linkml     Validate, create and convert LinkML schemas")
+        out should include(
+          "Local schemas\n  linkml     Validate, create and convert LinkML schemas",
+        )
         out should include("About\n  version")
         out should not include "linkml to"
         out should include("https://ohi.dev/docs/")
