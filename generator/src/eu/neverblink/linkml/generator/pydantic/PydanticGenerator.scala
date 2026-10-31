@@ -425,6 +425,10 @@ final class PydanticGenerator(using sv: SchemaView)
     }
   }
 
+  /** The Python name of a parameter of a function. The method itself already takes `self`. */
+  private def parameterName(attribute: AttributeView): String =
+    PydanticRenamer.attribute(attribute.slotView.baseName, _ == "self")
+
   private def writeFunction(sink: CharSink, fv: FunctionView, ctx: Context)(using
       Options,
   ): Unit = {
@@ -437,7 +441,7 @@ final class PydanticGenerator(using sv: SchemaView)
     var index = 0
     val arguments = attributes.map { attribute =>
       val slot = attribute.slotView
-      val name = PydanticRenamer.method(slot.baseName)
+      val name = parameterName(attribute)
       val tpe = attributeType(attribute, fv.parameters.get, ctx)
       val argument =
         if slot.slot.required then s"$name: $tpe"
@@ -470,7 +474,7 @@ final class PydanticGenerator(using sv: SchemaView)
     sink.append(":\n")
     val tags = attributes.map { attribute =>
       val text = DocLines(attribute.slotView.slot).mkString(" ")
-      s":param ${PydanticRenamer.method(attribute.slotView.baseName)}: $text".strip
+      s":param ${parameterName(attribute)}: $text".strip
     } ++ fv.errors.map { cls =>
       val text = DocLines(cls.cls).mkString(" ")
       s":raises ${errorName(cls)}: ${if text.isEmpty then cls.name else text}"

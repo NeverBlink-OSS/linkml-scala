@@ -94,6 +94,43 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       code should include("def go(self, first: str | None, second: str) -> Result:")
     }
 
+    "rename a parameter that would take the place of self" in {
+      val code = generate(
+        """classes:
+          |  Request:
+          |    attributes:
+          |      self:
+          |        description: What to work on.
+          |        range: string
+          |        required: true
+          |  Outcome:
+          |functions:
+          |  go:
+          |    parameters: Request
+          |    returns: Outcome
+          |""".stripMargin,
+      )
+      code should include("def go(self, self_: str) -> Outcome:")
+      code should include(":param self_: What to work on.")
+    }
+
+    "prefix an error class name that the module already uses" in {
+      val code = generate(
+        """classes:
+          |  Value:
+          |  Thing:
+          |functions:
+          |  go:
+          |    returns: Thing
+          |    errors:
+          |      - Value
+          |""".stripMargin,
+      )
+      // the generated validators raise the builtin ValueError
+      code should include("class _ValueError(Exception):")
+      code should include("class Value(LinkMLModel):")
+    }
+
     "generate no functions Protocol for a schema without functions" in {
       PydanticGenerator(using ModelCatalogue.basic.model).serialize() should
         not include "(Protocol):"
@@ -596,6 +633,12 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |  Decimal:
           |    attributes:
           |      a: {range: string}
+          |  Protocol:
+          |    attributes:
+          |      a: {range: string}
+          |  Exception:
+          |    attributes:
+          |      a: {range: string}
           |  3d:
           |    attributes:
           |      a: {range: string}
@@ -605,6 +648,8 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin,
       )
       py should include("class _Decimal(LinkMLModel):")
+      py should include("class _Protocol(LinkMLModel):")
+      py should include("class _Exception(LinkMLModel):")
       py should include("class _3D(LinkMLModel):")
       py should include("class _None(LinkMLModel):")
     }

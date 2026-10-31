@@ -30,10 +30,10 @@ trait PydanticRenamer extends JsonRenamer {
     * for a schema named `search`.
     */
   def functionsProtocolName(sv: SchemaView): String =
-    identifier(Case.base(sv.root.name)).concat("Functions")
+    unreserved(identifier(Case.base(sv.root.name)).concat("Functions"))
 
   /** The name of the exception class for an error class. */
-  def errorName(el: ClassView): String = className(el).concat("Error")
+  def errorName(el: ClassView): String = unreserved(className(el).concat("Error"))
 }
 
 object PydanticRenamer extends PydanticRenamer {
@@ -87,6 +87,7 @@ object PydanticRenamer extends PydanticRenamer {
     "isinstance",
     "list",
     "str",
+    "Exception",
     "ValueError",
     // imports
     "annotations",
@@ -99,6 +100,7 @@ object PydanticRenamer extends PydanticRenamer {
     "Annotated",
     "Any",
     "Literal",
+    "Protocol",
     "Union",
     "BaseModel",
     "BeforeValidator",
@@ -157,9 +159,13 @@ object PydanticRenamer extends PydanticRenamer {
   def identifier(baseName: String): String = {
     val name = ascii(Case.baseToPascal(baseName))
     if name.isEmpty then "__"
-    else if Case.isNumeric(name.head) || keywords(name) || moduleNames(name) then "_".concat(name)
-    else name
+    else if Case.isNumeric(name.head) then "_".concat(name)
+    else unreserved(name)
   }
+
+  /** A name that the generated module already uses gets an underscore in front. */
+  def unreserved(name: String): String =
+    if keywords(name) || moduleNames(name) then "_".concat(name) else name
 
   /** The Python name of a field with the given JSON key: the key itself if it is a usable
     * identifier. Otherwise other characters become `_`, leading underscores are removed (pydantic
