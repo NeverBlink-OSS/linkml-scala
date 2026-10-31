@@ -1,0 +1,20 @@
+id: https://linkml.ohi.dev/model/converter/generator/rdfs
+name: rdfs
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  RdfsGeneratorOptions:
+    description: Options of the RDFS generator.
+    mixins: [RdfOptions]
+    slots:
+      - only_classes_from_root_schema
+
+functions:
+  rdfs:
+    description: Generate RDFS, serialized as N-Triples or Turtle.
+    parameters: RdfsGeneratorOptions
+    returns: string

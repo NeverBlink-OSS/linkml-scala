@@ -14,19 +14,19 @@ export * from "../generator/npm/build-info.js";
 import type { SchemaStats } from "../generator/npm/schema-stats.js";
 export * from "../generator/npm/schema-stats.js";
 
-// The generators and their options, generated from model/generator-options.yaml.
-import type { GeneratorOptionsFunctions, StatsGeneratorOptions } from "../generator/npm/generator-options.js";
-export type { DocsGeneratorOptions, ErDiagramGeneratorOptions, FrictionlessGeneratorOptions, GeneratedFiles, GraphQlGeneratorOptions, JsonSchemaGeneratorOptions, LinkMlGeneratorOptions, MetadataLanguageOptions, OssieGeneratorOptions, OwlGeneratorOptions, PruningOptions, PydanticGeneratorOptions, RdfOptions, RdfsGeneratorOptions, ScalaGeneratorOptions, ShaclGeneratorOptions, StatsGeneratorOptions, TranslationGeneratorOptions, TypeScriptGeneratorOptions, JsonOutputFormat, OwlMetadataProfile, OwlPermissibleValueKind, RdfFormat, ScalaErrorHandling, TypeScriptErrorHandling, GeneratorOptionsFunctions } from "../generator/npm/generator-options.js";
+// The generators and their options, generated from model/converter/all_generators.yaml.
+import type { GeneratorFunctions, StatsGeneratorOptions } from "../generator/npm/generator-options.js";
+export type { DocsGeneratorOptions, ErDiagramGeneratorOptions, FrictionlessGeneratorOptions, GeneratedFiles, GraphQlGeneratorOptions, JsonSchemaGeneratorOptions, LinkMlGeneratorOptions, MetadataLanguageOptions, OssieGeneratorOptions, OwlGeneratorOptions, PruningOptions, PydanticGeneratorOptions, RdfOptions, RdfsGeneratorOptions, ScalaGeneratorOptions, ShaclGeneratorOptions, StatsGeneratorOptions, TranslationGeneratorOptions, TypeScriptGeneratorOptions, JsonOutputFormat, OwlMetadataProfile, OwlPermissibleValueKind, RdfFormat, ScalaErrorHandling, TypeScriptErrorHandling, GeneratorFunctions } from "../generator/npm/generator-options.js";
 
 /**
  * A loaded, import-resolved LinkML schema, with the generators as its methods. Create one
  * with {@link LinkMLApi.loadFromString} or {@link LinkMLApi.loadFromPath}.
  * Parse a schema once and reuse it, instead of re-parsing the YAML on every call.
  */
-export interface SchemaView extends GeneratorOptionsFunctions {
+export interface SchemaView extends GeneratorFunctions {
   /** @internal Nominal brand – do not access. */
   readonly __linkmlSchemaView: unique symbol;
-  /** {@inheritDoc GeneratorOptionsFunctions.stats} */
+  /** {@inheritDoc GeneratorFunctions.stats} */
   stats(params?: StatsGeneratorOptions): SchemaStats;
 }
 

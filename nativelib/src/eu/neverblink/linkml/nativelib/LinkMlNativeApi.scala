@@ -53,11 +53,11 @@ object LinkMlNativeApi {
     *   - 3: rebuilt with Scala Native. The isolate arguments were removed. `linkml_init_threads`
     *     replaces `graal_create_isolate`. `platform` in `linkml_build_info` is now `SCALA_NATIVE`.
     *     Added `linkml_from_ossie`.
-    *   - 5: the options of the generators follow `model/generator-options.yaml`, so their names are
-    *     in snake case, and a tree root override is a `tree_root` option of its own. The options of
-    *     loading, linting and the importers are in snake case too.
+    *   - 4: the options of the generators follow `model/converter/all_generators.yaml`, so their
+    *     names are in snake case, and a tree root override is a `tree_root` option of its own. The
+    *     options of loading, linting and the importers are in snake case too.
     */
-  final val abiVersion: Int = 5
+  final val abiVersion: Int = 4
 
   private val schemas = new ConcurrentHashMap[java.lang.Long, SchemaView]()
 

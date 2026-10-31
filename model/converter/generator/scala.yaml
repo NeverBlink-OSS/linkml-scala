@@ -1,0 +1,55 @@
+id: https://linkml.ohi.dev/model/converter/generator/scala
+name: scala
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+enums:
+  ScalaErrorHandling:
+    description: How the generated Scala methods report the `errors` of a function.
+    permissible_values:
+      annotation:
+        description: >-
+          Each error class gets an exception class, and the method is annotated with `@throws`
+          for each of them.
+      either:
+        description: >-
+          The method returns `Either[E1 | E2, R]`, with the error classes themselves on the left.
+          No exception classes are generated. A function with no `errors` returns `R` as it is.
+
+classes:
+  ScalaGeneratorOptions:
+    description: Options of the Scala generator.
+    mixins: [MetadataLanguageOptions]
+    attributes:
+      package:
+        range: string
+        required: true
+        ifabsent: 'string("eu.neverblink.linkml.metamodel")'
+        description: The package of the generated classes.
+      generate_emit_prefixes:
+        range: boolean
+        required: true
+        ifabsent: 'true'
+        description: Whether to generate a `Prefixes` object with the schema's `emit_prefixes`.
+      skip_leaf_interfaces:
+        range: boolean
+        required: true
+        ifabsent: 'true'
+        description: >-
+          Whether a concrete class that no other class extends with `is_a` or `mixins` becomes
+          one case class, instead of an interface and an `...Impl` case class. Turn it off when
+          other code has to extend the generated classes.
+      error_handling:
+        range: ScalaErrorHandling
+        required: true
+        ifabsent: ScalaErrorHandling(annotation)
+        description: How the functions of the schema report their `errors`.
+
+functions:
+  scala:
+    description: Generate Scala classes, one file per class, enum and type.
+    parameters: ScalaGeneratorOptions
+    returns: GeneratedFiles

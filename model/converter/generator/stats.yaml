@@ -1,0 +1,24 @@
+id: https://linkml.ohi.dev/model/converter/generator/stats
+name: stats
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  StatsGeneratorOptions:
+    description: Options of the schema statistics generator.
+    mixins: [PruningOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+        description: The elements in scope for the counts.
+
+functions:
+  stats:
+    description: >-
+      Count the elements, their documentation, mappings and languages, and the imports. Returns a
+      `SchemaStats` of `model/schema-stats.yaml`.
+    parameters: StatsGeneratorOptions
+    returns: Any

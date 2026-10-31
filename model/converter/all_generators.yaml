@@ -1,0 +1,25 @@
+id: https://linkml.ohi.dev/model/converter/all_generators
+name: generator
+title: Schema for the ohi LinkML generators and their options
+description: >-
+  API definitions for all ohi LinkML generators, as functions with their options.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - generator/json-schema
+  - generator/shacl
+  - generator/rdfs
+  - generator/linkml
+  - generator/frictionless
+  - generator/graphql
+  - generator/typescript
+  - generator/pydantic
+  - generator/er-diagram
+  - generator/docs
+  - generator/ossie
+  - generator/owl
+  - generator/scala
+  - generator/stats
+  - generator/translation

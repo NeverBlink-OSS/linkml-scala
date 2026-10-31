@@ -19,8 +19,8 @@ private final case class BadRequest(reason: String) extends RuntimeException(rea
 
 /** Reads the options JSON of the C API into the generators' own option types.
   *
-  * The options of the generators follow `model/generator-options.yaml`, so they are read with the
-  * same codec as every other LinkML model. A null or empty string means "all defaults".
+  * The options of the generators follow `model/converter/all_generators.yaml`, so they are read
+  * with the same codec as every other LinkML model. A null or empty string means "all defaults".
   */
 private object Options {
 

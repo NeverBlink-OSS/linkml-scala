@@ -19,7 +19,7 @@ import mill.scalanativelib.api.*
   * Hidden unless `LINKML_NATIVE=1`, like every other Scala Native module.
   */
 object `package` extends Module, NativeOptional {
-  /** Regenerate the C and Python bindings from `model/generator-options.yaml` with
+  /** Regenerate the C and Python bindings from `model/converter/all_generators.yaml` with
    * `generator.optionsgen`, then format the result. Run after adding a generator or an option.
    *
    * Needs `LINKML_NATIVE=1`: the C bindings are Scala Native sources, so formatting them means

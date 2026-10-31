@@ -4,8 +4,8 @@ import mill.*
 import mill.scalalib.*
 import millbuild.*
 
-/** The command line options of the generators, generated from `model/generator-options.yaml` by
-  * `generator.optionsgen`.
+/** The command line options of the generators, generated from
+  * `model/converter/all_generators.yaml` by `generator.optionsgen`.
   */
 object `package` extends Module {
   object jvm extends CommonModule {

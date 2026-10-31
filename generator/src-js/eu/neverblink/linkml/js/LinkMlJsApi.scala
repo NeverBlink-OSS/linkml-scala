@@ -43,9 +43,9 @@ import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
   * then be reused across many generators, instead of re-parsing on every call. Create one with
   * [[LinkMlJsApi.loadFromString]] or [[LinkMlJsApi.loadFromPath]].
   *
-  * Its methods are the functions of model/generator-options.yaml, which also documents them. Each
-  * takes the generator's options as a plain JS object, with their names in snake case. The options
-  * left out take their defaults.
+  * Its methods are the functions of model/converter/all_generators.yaml, which also documents
+  * them. Each takes the generator's options as a plain JS object, with their names in snake case.
+  * The options left out take their defaults.
   */
 @JSExportAll
 final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {

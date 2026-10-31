@@ -1,0 +1,36 @@
+id: https://linkml.ohi.dev/model/converter/generator/linkml
+name: linkml
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  LinkMlGeneratorOptions:
+    description: Options of the generator of derived LinkML schemas.
+    mixins: [PruningOptions]
+    slots:
+      - full_uris
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+    attributes:
+      format:
+        range: JsonOutputFormat
+        required: true
+        ifabsent: JsonOutputFormat(yaml)
+        description: The serialization of the output.
+      skip_class_derivation:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: Whether to copy the classes as they are, instead of deriving them.
+
+functions:
+  linkml:
+    description: >-
+      Materialize a derived LinkML schema: imports resolved, slots pushed into attributes, and the
+      elements out of scope pruned.
+    parameters: LinkMlGeneratorOptions
+    returns: string

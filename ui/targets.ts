@@ -387,7 +387,8 @@ export function importerById(id: string): Importer | undefined {
 }
 
 /** The option values of a generator as its options object, the keys being the names in
- * model/generator-options.yaml. Blank text fields are left out, so they take their defaults. */
+ * model/converter/all_generators.yaml. Blank text fields are left out, so they take their
+ * defaults. */
 function generatorOptions<T>(o: OptionValues): Partial<T> {
   return Object.fromEntries(
     Object.entries(o).filter(([, v]) => !(typeof v === "string" && v.trim() === "")),

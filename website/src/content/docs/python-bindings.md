@@ -90,9 +90,7 @@ schema.translation(target="base")
 ```
 
 All arguments are keyword-only. Their names, values and defaults are the ones in
-[`model/generator-options.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/generator-options.yaml), which the
-command line and the JavaScript API share. `pruning_mode` is one of `"tree_root"`, `"schema"` or
-`"skip"`, and `tree_root` applies only to `"tree_root"`. Every one returns a string, except `scala()`, `frictionless()` and
+[`model/converter`](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/model/converter). Every method returns a string, except `scala()`, `frictionless()` and
 `docs()`, which return a filename-to-content dict, and `stats()`, which returns the
 schema statistics as a dict.
 

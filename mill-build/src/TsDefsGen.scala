@@ -42,8 +42,8 @@ object TsDefsGen {
     ),
     ModelTypes(
       "generator-options",
-      Seq("GeneratorOptionsFunctions", "StatsGeneratorOptions"),
-      "The generators and their options, generated from model/generator-options.yaml.",
+      Seq("GeneratorFunctions", "StatsGeneratorOptions"),
+      "The generators and their options, generated from model/converter/all_generators.yaml.",
     ),
   )
 
@@ -102,10 +102,10 @@ object TsDefsGen {
        | * with {@link ${exportedName}Api.loadFromString} or {@link ${exportedName}Api.loadFromPath}.
        | * Parse a schema once and reuse it, instead of re-parsing the YAML on every call.
        | */
-       |export interface SchemaView extends GeneratorOptionsFunctions {
+       |export interface SchemaView extends GeneratorFunctions {
        |  /** @internal Nominal brand – do not access. */
        |  readonly __linkmlSchemaView: unique symbol;
-       |  /** {@inheritDoc GeneratorOptionsFunctions.stats} */
+       |  /** {@inheritDoc GeneratorFunctions.stats} */
        |  stats(params?: StatsGeneratorOptions): SchemaStats;
        |}
        |

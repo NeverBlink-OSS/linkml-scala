@@ -30,7 +30,7 @@ __all__ = [
 ]
 
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
-_EXPECTED_ABI_VERSION = 5
+_EXPECTED_ABI_VERSION = 4
 
 _LIB_STEM = "libohi_linkml"
 

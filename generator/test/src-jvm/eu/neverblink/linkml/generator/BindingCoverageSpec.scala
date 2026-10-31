@@ -13,8 +13,8 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
   private val repoRoot: Option[os.Path] =
     sys.env.get("MILL_WORKSPACE_ROOT").map(os.Path(_)).filter(os.exists)
 
-  /** Every generator: one with options in `model/generator-options.yaml`. The options are what make
-    * it a public generator rather than an internal helper.
+  /** Every generator: one with options in `model/converter/generator`. The options are what make it
+    * a public generator rather than an internal helper.
     */
   private def generators(root: os.Path): Seq[String] = {
     val dir =
@@ -115,11 +115,12 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
     "be a function of the options schema" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val schema = os.read(root / "model" / "generator-options.yaml")
+      val schema =
+        os.list(root / "model" / "converter" / "generator").map(os.read).mkString
       val missing = generators(root).filterNot(name => schema.contains(s"parameters: ${name}Options"))
       withClue(
-        "add a function to model/generator-options.yaml, then run ./mill regenerate and " +
-          "LINKML_NATIVE=1 ./mill nativelib.bindings: ",
+        "add a file to model/converter/generator and import it in all_generators.yaml, then " +
+          "run ./mill regenerate and LINKML_NATIVE=1 ./mill nativelib.bindings: ",
       )(missing shouldBe empty)
     }
 

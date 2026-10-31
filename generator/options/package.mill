@@ -7,12 +7,12 @@ import millbuild.*
 object `package` extends Module, NativeOptional, LinkMlModelModule {
   def modelGeneratorCli = build.cli.jvm.runner
 
-  def modelSchema = Task { "model/generator-options.yaml" }
+  def modelSchema = Task { "model/converter/all_generators.yaml" }
 
   def modelPackage = "eu.neverblink.linkml.generator.options"
 
   // The functions trait and its return type. The generators don't implement it.
-  override def unusedModelFiles = Seq("GeneratorOptionsFunctions.scala", "GeneratedFiles.scala")
+  override def unusedModelFiles = Seq("GeneratorFunctions.scala", "GeneratedFiles.scala")
 
   // The npm package ships these types, see `TsDefsGen.modelTypes`
   override def otherModelOutputs =

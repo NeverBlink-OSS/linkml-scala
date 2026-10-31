@@ -1,0 +1,33 @@
+id: https://linkml.ohi.dev/model/converter/generator/frictionless
+name: frictionless
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  FrictionlessGeneratorOptions:
+    description: Options of the Frictionless Data Package generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: Which classes become tables.
+    attributes:
+      skip_classes_without_identifier:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether to skip the classes with no identifier slot. The table of such a class has no
+          primary key, and so no references from other tables.
+
+functions:
+  frictionless:
+    description: >-
+      Generate a Frictionless Data Package. Every class becomes a CSV table, described by its own
+      Table Schema, and references between classes become foreign keys between the tables. The files
+      are a `datapackage.json` plus one `schemas/<table>.json` per table.
+    parameters: FrictionlessGeneratorOptions
+    returns: GeneratedFiles

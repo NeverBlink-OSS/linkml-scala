@@ -1,0 +1,30 @@
+id: https://linkml.ohi.dev/model/converter/generator/ossie
+name: ossie
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  OssieGeneratorOptions:
+    description: Options of the Apache Ossie generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: Which elements become concepts.
+    attributes:
+      format:
+        range: JsonOutputFormat
+        required: true
+        ifabsent: JsonOutputFormat(yaml)
+        description: The serialization of the output.
+
+functions:
+  ossie:
+    description: >-
+      Generate an Apache Ossie ontology, serialized as YAML or JSON. Classes become entity types,
+      enums and named types become value types, and slots become relationships.
+    parameters: OssieGeneratorOptions
+    returns: string

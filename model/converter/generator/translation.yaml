@@ -1,0 +1,39 @@
+id: https://linkml.ohi.dev/model/converter/generator/translation
+name: translation
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  TranslationGeneratorOptions:
+    description: Options of the translation dictionary generator.
+    slots:
+      - indentation_step
+    attributes:
+      target:
+        range: string
+        required: true
+        ifabsent: 'string("base")'
+        description: >-
+          The framework of the names in the dictionaries. One of `base`, `uri`,
+          `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`,
+          `pydantic` or `docs`.
+      derived_attributes:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether `classAttributes` also lists inherited slots, mixin slots and the slots in the
+          class's `slots` list. Without it, `classAttributes` lists only the class's own
+          `attributes`.
+
+functions:
+  translation:
+    description: >-
+      Generate translation dictionaries, in JSON, from the names in the schema to the names in the
+      generated outputs. Useful where those names matter, such as in a query against a database that
+      follows the schema.
+    parameters: TranslationGeneratorOptions
+    returns: string

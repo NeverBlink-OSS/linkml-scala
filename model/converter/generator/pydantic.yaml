@@ -1,0 +1,36 @@
+id: https://linkml.ohi.dev/model/converter/generator/pydantic
+name: pydantic
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  PydanticGeneratorOptions:
+    description: Options of the pydantic generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slots:
+      - include_null
+      - open
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: >-
+          The classes and enums in the output. Each class always comes with its ancestors, and a
+          designated union with its members.
+      include_null:
+        description: >-
+          Whether dumps keep null values. Without it, dumps leave out every field with no
+          value.
+      open:
+        description: >-
+          Whether the classes accept and keep properties beyond the ones in the schema.
+
+functions:
+  pydantic:
+    description: >-
+      Generate pydantic classes for the schema's JSON data. Load data with
+      `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.
+    parameters: PydanticGeneratorOptions
+    returns: string

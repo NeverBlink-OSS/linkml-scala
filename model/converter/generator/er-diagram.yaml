@@ -1,0 +1,32 @@
+id: https://linkml.ohi.dev/model/converter/generator/er-diagram
+name: er-diagram
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  ErDiagramGeneratorOptions:
+    description: Options of the Mermaid ER diagram generator.
+    mixins: [PruningOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+    attributes:
+      optional_marker:
+        range: boolean
+        required: true
+        ifabsent: 'true'
+        description: >-
+          Whether to mark optional attributes with a `?` after their type. Mermaid supports this
+          from version 11.16 and rejects the whole diagram in older versions.
+
+functions:
+  er_diagram:
+    description: >-
+      Generate a Mermaid entity relationship diagram. Classes become entities, slots ranging over
+      types and enums become their attributes, and slots ranging over classes become relationship
+      lines.
+    parameters: ErDiagramGeneratorOptions
+    returns: string

@@ -1,0 +1,31 @@
+id: https://linkml.ohi.dev/model/converter/generator/docs
+name: docs
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  DocsGeneratorOptions:
+    description: Options of the Markdown documentation generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+    attributes:
+      single_file:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether to write all pages as sections of one document, `docs.md`, instead of one file
+          for each page.
+
+functions:
+  docs:
+    description: >-
+      Generate Markdown documentation. The files are `index.md` plus a page for each class, slot,
+      enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.
+    parameters: DocsGeneratorOptions
+    returns: GeneratedFiles

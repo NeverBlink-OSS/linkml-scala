@@ -3,7 +3,9 @@ package eu.neverblink.linkml.optionsgen
 import eu.neverblink.linkml.generator.scala.ScalaRenamer
 import eu.neverblink.linkml.schemaview.*
 
-/** The generator options of `model/generator-options.yaml`, as the generated code needs them. */
+/** The generator options of `model/converter/all_generators.yaml`, as the generated code needs
+  * them.
+  */
 final class OptionsSchema(using sv: SchemaView) {
 
   /** The generators, as the functions of the schema. */
@@ -15,8 +17,7 @@ final class OptionsSchema(using sv: SchemaView) {
     functions.map(_.options).sortBy(c => sv.elementOrder(c.cv.cls))
 
   /** Every enum of the schema. */
-  val enums: Seq[EnumView] =
-    sv.enums.values.filter(_.definingSchema eq sv.root).toSeq.sortBy(_.name)
+  val enums: Seq[EnumView] = sv.enums.values.toSeq.sortBy(_.name)
 
   def enumName(ev: EnumView): String = ScalaRenamer.enumName(ev)
 
