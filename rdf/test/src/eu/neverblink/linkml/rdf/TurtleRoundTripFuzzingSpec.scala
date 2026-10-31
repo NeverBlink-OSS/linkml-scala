@@ -13,7 +13,7 @@ class TurtleRoundTripFuzzingSpec extends AnyWordSpec, Matchers, ScalaCheckProper
   import TurtleRoundTripFuzzingSpec.*
 
   implicit override val generatorDrivenConfig: PropertyCheckConfiguration =
-    PropertyCheckConfiguration(minSuccessful = 500)
+    PropertyCheckConfiguration(minSuccessful = NTriplesRoundTripFuzzingSpec.cases)
 
   /** Write with the given prefixes, and read back through a buffer of `bufferSize`. */
   private def roundTrip(

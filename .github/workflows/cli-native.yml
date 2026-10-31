@@ -14,6 +14,11 @@ on:
       - 'mill'
       - 'mill.bat'
       - 'mill-build/**'
+      # The sites have JSON and YAML files too
+      - '!pages/**'
+      - '!ui/**'
+      - '!website/**'
+      - '!ohi/docs/**'
   push:
     branches: [main]
     paths: *paths

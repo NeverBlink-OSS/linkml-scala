@@ -3,8 +3,18 @@ name: Build & test
 on:
   pull_request:
     branches: [ "main" ]
+    # Skip changes to only the sites. The docs pages still count, as some tests read them.
+    paths: &paths
+      - '**'
+      - '!pages/**'
+      - '!ui/**'
+      - '!website/**'
+      - 'website/src/content/docs/**'
+      - '!ohi/docs/**'
+      - '!*.md'
   push:
     branches: [ "main" ]
+    paths: *paths
 
 concurrency:
   group: ${{ github.workflow }}-ci-pr-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.ref }}
