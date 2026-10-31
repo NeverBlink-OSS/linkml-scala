@@ -2332,7 +2332,11 @@ function applyTheme(theme: string): void {
   $themeIconSun.toggleAttribute("hidden", !light);
 }
 
-applyTheme(localStorage.getItem("linkml-ui-theme") === "light" ? "light" : "dark");
+// The saved choice, else the system setting
+applyTheme(
+  localStorage.getItem("linkml-ui-theme") ??
+    (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"),
+);
 
 $themeToggle.addEventListener("click", () => {
   const next = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
