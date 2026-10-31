@@ -216,13 +216,19 @@ class TranslationGeneratorSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec
     val sv = ModelCatalogue.functions.returns.model
     val gen = TranslationGenerator(using sv)
     "target is typescript" in {
-      gen.generate(TranslationGeneratorOptions(target = "typescript")).functions should contain("list_items" -> "listItems")
+      gen.generate(TranslationGeneratorOptions(target = "typescript")).functions should contain(
+        "list_items" -> "listItems",
+      )
     }
     "target is pydantic" in {
-      gen.generate(TranslationGeneratorOptions(target = "pydantic")).functions should contain("list_items" -> "list_items")
+      gen.generate(TranslationGeneratorOptions(target = "pydantic")).functions should contain(
+        "list_items" -> "list_items",
+      )
     }
     "target is scala" in {
-      gen.generate(TranslationGeneratorOptions(target = "scala")).functions should contain("list_items" -> "listItems")
+      gen.generate(TranslationGeneratorOptions(target = "scala")).functions should contain(
+        "list_items" -> "listItems",
+      )
     }
     "target is URI" in {
       gen.generate(TranslationGeneratorOptions(target = "uri")).functions should contain(

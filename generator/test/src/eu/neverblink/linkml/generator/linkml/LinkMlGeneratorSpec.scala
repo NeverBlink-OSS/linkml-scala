@@ -122,7 +122,9 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         ),
       )
       val generated =
-        LinkMlGenerator(using sv).generate(LinkMlGeneratorOptions(pruningMode = PruningMode.TreeRoot))
+        LinkMlGenerator(using sv).generate(
+          LinkMlGeneratorOptions(pruningMode = PruningMode.TreeRoot),
+        )
       generated.functions shouldBe empty
       generated.classes.keys should contain only "Root"
     }

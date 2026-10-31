@@ -117,7 +117,8 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val schema =
         os.list(root / "model" / "converter" / "generator").map(os.read).mkString
-      val missing = generators(root).filterNot(name => schema.contains(s"parameters: ${name}Options"))
+      val missing =
+        generators(root).filterNot(name => schema.contains(s"parameters: ${name}Options"))
       withClue(
         "add a file to model/converter/generator and import it in all_generators.yaml, then " +
           "run ./mill regenerate and LINKML_NATIVE=1 ./mill nativelib.bindings: ",

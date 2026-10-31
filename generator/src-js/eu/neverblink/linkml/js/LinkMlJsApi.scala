@@ -43,9 +43,9 @@ import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
   * then be reused across many generators, instead of re-parsing on every call. Create one with
   * [[LinkMlJsApi.loadFromString]] or [[LinkMlJsApi.loadFromPath]].
   *
-  * Its methods are the functions of model/converter/all_generators.yaml, which also documents
-  * them. Each takes the generator's options as a plain JS object, with their names in snake case.
-  * The options left out take their defaults.
+  * Its methods are the functions of model/converter/all_generators.yaml, which also documents them.
+  * Each takes the generator's options as a plain JS object, with their names in snake case. The
+  * options left out take their defaults.
   */
 @JSExportAll
 final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {
@@ -316,8 +316,8 @@ object LinkMlJsApi {
 
   /** Read an OWL ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[SchemaViewJs.owl]]. Feed the result to [[loadFromString]] if you want to run a generator
-    * over it.
+    * The opposite of [[SchemaViewJs.owl]]. Feed the result to [[loadFromString]] if you want to run
+    * a generator over it.
     *
     * @param ontology
     *   The ontology, as Turtle (or N-Triples, which is Turtle too).
@@ -384,8 +384,8 @@ object LinkMlJsApi {
 
   /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[SchemaViewJs.ossie]]. Feed the result to [[loadFromString]] if you want to run a
-    * generator over it.
+    * The opposite of [[SchemaViewJs.ossie]]. Feed the result to [[loadFromString]] if you want to
+    * run a generator over it.
     *
     * @param ontology
     *   The ontology document, as YAML or JSON.

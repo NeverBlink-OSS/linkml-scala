@@ -402,7 +402,9 @@ final class PydanticGenerator(using sv: SchemaView)
   /** An exception class for a class that a function uses in its `errors`, so that an implementation
     * can raise it. The class itself is a model and cannot also be an exception.
     */
-  private def writeError(sink: CharSink, cls: ClassView, ctx: Context)(using PydanticGeneratorOptions): Unit = {
+  private def writeError(sink: CharSink, cls: ClassView, ctx: Context)(using
+      PydanticGeneratorOptions,
+  ): Unit = {
     sink.append("class ")
     sink.append(errorName(cls))
     sink.append("(Exception):\n")

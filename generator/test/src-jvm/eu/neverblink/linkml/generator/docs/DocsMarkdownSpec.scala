@@ -182,7 +182,9 @@ class DocsMarkdownSpec extends AnyWordSpec, Matchers {
   private lazy val sites: Seq[(String, Map[String, String], Map[String, Document])] =
     for (name, sv) <- schemas; mode <- modes yield {
       val files =
-        DocsGenerator(using sv).generateFiles(DocsGeneratorOptions(pruningMode = mode)).map(_.toTuple).toMap
+        DocsGenerator(using sv).generateFiles(DocsGeneratorOptions(pruningMode = mode)).map(
+          _.toTuple,
+        ).toMap
       (s"$name, $mode: ", files, files.map((path, text) => (path, parse(text))))
     }
 
