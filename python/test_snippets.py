@@ -27,32 +27,32 @@ class DocSnippetsTest(unittest.TestCase):
         self._dir.cleanup()
 
     def test_docs(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             files = schema.docs(single_file=True)
         self.assertTrue(files)
 
     def test_er_diagram(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.er_diagram(pruning_mode="schema")
         self.assertTrue(output)
 
     def test_frictionless(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             files = schema.frictionless(pruning_mode="schema")
         self.assertTrue(files)
 
     def test_from_ossie(self) -> None:
         from pathlib import Path
 
-        import linkml_scala
+        import ohi_linkml
 
-        result = linkml_scala.from_ossie(
+        result = ohi_linkml.from_ossie(
             Path("prov-o.ossie.yaml").read_text(),
             schema_id="https://example.org/prov",
         )
@@ -61,94 +61,94 @@ class DocSnippetsTest(unittest.TestCase):
     def test_from_owl(self) -> None:
         from pathlib import Path
 
-        import linkml_scala
+        import ohi_linkml
 
-        result = linkml_scala.from_owl(
+        result = ohi_linkml.from_owl(
             Path("prov-o.ttl").read_text(),
             schema_id="https://example.org/prov",
         )
         self.assertTrue(result["schema"])
 
     def test_graphql(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.graphql(pruning_mode="schema")
         self.assertTrue(output)
 
     def test_json_schema(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.json_schema(tree_root="Entity")
         self.assertTrue(output)
 
     def test_linkml(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.linkml(full_uris=True)
         self.assertTrue(output)
 
     def test_ossie(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.ossie(format="json")
         self.assertTrue(output)
 
     def test_owl(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.owl(only_root_schema=True)
         self.assertTrue(output)
 
     def test_pydantic(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.pydantic(pruning_mode="schema")
         self.assertTrue(output)
 
     def test_rdfs(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.rdfs(only_classes_from_root_schema=True)
         self.assertTrue(output)
 
     def test_scala(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             files = schema.scala(package="org.example.prov")
         self.assertTrue(files)
 
     def test_shacl(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.shacl(open=True)
         self.assertTrue(output)
 
     def test_stats(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             result = schema.stats(pruning_mode="skip")
         self.assertTrue(result)
 
     def test_translation(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.translation(target="pydantic")
         self.assertTrue(output)
 
     def test_typescript(self) -> None:
-        import linkml_scala
+        import ohi_linkml
 
-        with linkml_scala.load_file("prov-o.linkml.yaml") as schema:
+        with ohi_linkml.load_file("prov-o.linkml.yaml") as schema:
             output = schema.typescript(include_null=True)
         self.assertTrue(output)

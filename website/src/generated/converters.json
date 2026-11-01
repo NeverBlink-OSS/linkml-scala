@@ -17,7 +17,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.docs(single_file=True)"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.docs(single_file=True)"
         },
         {
           "sdk": "JavaScript",
@@ -111,7 +111,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.er_diagram(pruning_mode=\"schema\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.er_diagram(pruning_mode=\"schema\")"
         },
         {
           "sdk": "JavaScript",
@@ -192,7 +192,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.frictionless(pruning_mode=\"schema\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.frictionless(pruning_mode=\"schema\")"
         },
         {
           "sdk": "JavaScript",
@@ -286,7 +286,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "from pathlib import Path\n\nimport linkml_scala\n\nresult = linkml_scala.from_ossie(\n    Path(\"prov-o.ossie.yaml\").read_text(),\n    schema_id=\"https://example.org/prov\",\n)"
+          "code": "from pathlib import Path\n\nimport ohi_linkml\n\nresult = ohi_linkml.from_ossie(\n    Path(\"prov-o.ossie.yaml\").read_text(),\n    schema_id=\"https://example.org/prov\",\n)"
         },
         {
           "sdk": "JavaScript",
@@ -367,7 +367,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "from pathlib import Path\n\nimport linkml_scala\n\nresult = linkml_scala.from_owl(\n    Path(\"prov-o.ttl\").read_text(),\n    schema_id=\"https://example.org/prov\",\n)"
+          "code": "from pathlib import Path\n\nimport ohi_linkml\n\nresult = ohi_linkml.from_owl(\n    Path(\"prov-o.ttl\").read_text(),\n    schema_id=\"https://example.org/prov\",\n)"
         },
         {
           "sdk": "JavaScript",
@@ -496,7 +496,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.graphql(pruning_mode=\"schema\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.graphql(pruning_mode=\"schema\")"
         },
         {
           "sdk": "JavaScript",
@@ -577,7 +577,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.json_schema(tree_root=\"Entity\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.json_schema(tree_root=\"Entity\")"
         },
         {
           "sdk": "JavaScript",
@@ -697,7 +697,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.linkml(full_uris=True)"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.linkml(full_uris=True)"
         },
         {
           "sdk": "JavaScript",
@@ -804,7 +804,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.ossie(format=\"json\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.ossie(format=\"json\")"
         },
         {
           "sdk": "JavaScript",
@@ -898,7 +898,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.owl(only_root_schema=True)"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.owl(only_root_schema=True)"
         },
         {
           "sdk": "JavaScript",
@@ -992,7 +992,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.pydantic(pruning_mode=\"schema\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.pydantic(pruning_mode=\"schema\")"
         },
         {
           "sdk": "JavaScript",
@@ -1099,7 +1099,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.rdfs(only_classes_from_root_schema=True)"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.rdfs(only_classes_from_root_schema=True)"
         },
         {
           "sdk": "JavaScript",
@@ -1167,7 +1167,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.scala(package=\"org.example.prov\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.scala(package=\"org.example.prov\")"
         },
         {
           "sdk": "JavaScript",
@@ -1274,7 +1274,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.shacl(open=True)"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.shacl(open=True)"
         },
         {
           "sdk": "JavaScript",
@@ -1355,7 +1355,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    result = schema.stats(pruning_mode=\"skip\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    result = schema.stats(pruning_mode=\"skip\")"
         },
         {
           "sdk": "JavaScript",
@@ -1423,7 +1423,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.translation(target=\"pydantic\")"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.translation(target=\"pydantic\")"
         },
         {
           "sdk": "JavaScript",
@@ -1504,7 +1504,7 @@
           "sdk": "Python",
           "label": "Python",
           "lang": "python",
-          "code": "import linkml_scala\n\nwith linkml_scala.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.typescript(include_null=True)"
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.typescript(include_null=True)"
         },
         {
           "sdk": "JavaScript",

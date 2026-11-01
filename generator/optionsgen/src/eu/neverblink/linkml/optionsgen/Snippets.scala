@@ -100,23 +100,23 @@ object Snippets {
     val args = examples.map((f, value) => s"${f.name}=${pythonValue(f, value)}")
     if function.isImporter then {
       val call = Code.call(
-        s"result = linkml_scala.${function.name}(",
+        s"result = ohi_linkml.${function.name}(",
         s"""Path("${input(function)}").read_text()""" +: args,
         ")",
         "    ",
       )
       Snippet(
         Sdk.Python,
-        Seq("from pathlib import Path", "", "import linkml_scala"),
+        Seq("from pathlib import Path", "", "import ohi_linkml"),
         call,
         "result",
       )
     } else {
       val result = resultName(function)
       val call = Code.call(s"$result = schema.${function.name}(", args, ")", "    ", "    ")
-      val body = s"""with linkml_scala.load_file("$generatorInput") as schema:
+      val body = s"""with ohi_linkml.load_file("$generatorInput") as schema:
                     |$call""".stripMargin
-      Snippet(Sdk.Python, Seq("import linkml_scala"), body, result)
+      Snippet(Sdk.Python, Seq("import ohi_linkml"), body, result)
     }
   }
 
