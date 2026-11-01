@@ -25,7 +25,7 @@ import eu.neverblink.linkml.schemaview.{FileSystemImporter, SchemaIssues, Schema
       os.remove.all(dir)
       CliGen(schema).foreach((file, content) => os.write(dir / file, content, createFolders = true))
     case "bindings" =>
-      os.write.over(repo / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(schema))
+      os.write.over(repo / "python" / "ohi_linkml" / "_generated.py", PyBindingsGen(schema))
       os.write.over(
         repo / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
           "LinkMlCGenerators.scala",
