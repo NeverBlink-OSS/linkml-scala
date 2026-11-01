@@ -55,7 +55,7 @@ private[cli] object HelpOutput {
     s"${heading("Docs:", colored)} ${code("https://ohi.dev/docs/", colored)}",
   ).mkString("\n\n")
 
-  /** Renders Ohi command guidance, using parser metadata for the complete option reference. */
+  /** Renders ohi command guidance, using parser metadata for the complete option reference. */
   def command(name: String, help: Help[?], full: Boolean, colored: Boolean): String = {
     val purpose = name match {
       case "search" =>

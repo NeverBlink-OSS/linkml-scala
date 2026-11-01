@@ -49,7 +49,7 @@ jobs:
           name: linkml-scala-assembly
           path: linkml-scala.jar
 
-      - name: Upload Ohi JAR
+      - name: Upload ohi JAR
         uses: actions/upload-artifact@v7
         with:
           name: ohi-assembly
@@ -59,13 +59,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.10'
-      - name: Build Ohi Python distributions
+      - name: Build ohi Python distributions
         run: |
           version="${GITHUB_REF_NAME#v}"
           python -m pip install --quiet build twine
           bash cli/package-ohi.sh python "$RUNNER_TEMP/ohi-python" "$version"
           python -m twine check "$RUNNER_TEMP/ohi-python/"*
-      - name: Upload Ohi Python distributions
+      - name: Upload ohi Python distributions
         uses: actions/upload-artifact@v7
         with:
           name: ohi-python
@@ -199,7 +199,7 @@ jobs:
           name: linkml-sdist
           path: wheels
 
-      - name: Download Ohi distributions
+      - name: Download ohi distributions
         uses: actions/download-artifact@v8
         with:
           name: ohi-python
@@ -214,8 +214,8 @@ jobs:
           packages-dir: wheels
           skip-existing: true
 
-      # Separate upload, so a rejected Ohi file cannot stop the LinkML files.
-      - name: Publish Ohi to PyPI
+      # Separate upload, so a rejected ohi file cannot stop the LinkML files.
+      - name: Publish ohi to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: ohi-dist
@@ -277,7 +277,7 @@ jobs:
           npm publish --tag "$TAG"
 
   npm-publish-ohi:
-    name: Publish Ohi TypeScript SDK
+    name: Publish ohi TypeScript SDK
     needs: publish
     runs-on: ubuntu-latest
     permissions:
@@ -306,7 +306,7 @@ jobs:
           npm publish "$RUNNER_TEMP"/ohi-npm/neverblink-ohi-*.tgz --tag "$tag"
 
   verify-ohi-install:
-    name: Verify released Ohi on ${{ matrix.os }}
+    name: Verify released ohi on ${{ matrix.os }}
     needs: publish
     runs-on: ${{ matrix.os }}
     strategy:

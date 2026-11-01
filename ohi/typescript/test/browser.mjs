@@ -21,7 +21,7 @@ test("browser package integration", async (t) => {
       return;
     }
     res.setHeader("Content-Type", req.url === "/bundle.js" ? "text/javascript" : "text/html");
-    res.end(req.url === "/bundle.js" ? bundle.outputFiles[0].contents : "<!doctype html><title>Ohi browser test</title>");
+    res.end(req.url === "/bundle.js" ? bundle.outputFiles[0].contents : "<!doctype html><title>ohi browser test</title>");
   });
   const fixture = await server(t, (req, res) => {
     if (req.url !== "/denied") res.setHeader("Access-Control-Allow-Origin", app.url);

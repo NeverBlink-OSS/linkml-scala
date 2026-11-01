@@ -1,7 +1,7 @@
 {
   "name": "linkml-scala",
   "interface": {
-    "displayName": "Ohi and LinkML"
+    "displayName": "ohi and LinkML"
   },
   "plugins": [
     {

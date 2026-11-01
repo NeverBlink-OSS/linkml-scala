@@ -1,6 +1,6 @@
 {
   "name": "ohi",
-  "description": "Use Ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
+  "description": "Use ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
   "author": {
     "name": "NeverBlink",
     "url": "https://neverblink.eu"
@@ -18,9 +18,9 @@
   ],
   "skills": "./skills",
   "interface": {
-    "displayName": "Ohi + LinkML",
-    "shortDescription": "Acquire ontologies with Ohi and work with LinkML schemas.",
-    "longDescription": "Use Ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
+    "displayName": "ohi + LinkML",
+    "shortDescription": "Acquire ontologies with ohi and work with LinkML schemas.",
+    "longDescription": "Use ohi for ontology discovery, file acquisition and project selections, with LinkML schema authoring and engine guidance.",
     "developerName": "NeverBlink",
     "category": "Development",
     "capabilities": [
@@ -28,7 +28,7 @@
     ],
     "websiteURL": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/ohi",
     "defaultPrompt": [
-      "Find and download an ontology with Ohi",
+      "Find and download an ontology with ohi",
       "Record an ontology selection in my project",
       "Create and validate a LinkML schema"
     ],
