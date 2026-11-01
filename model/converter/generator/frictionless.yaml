@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/frictionless
-name: frictionless
+name: frictionless-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter
@@ -30,4 +30,4 @@ functions:
       Table Schema, and references between classes become foreign keys between the tables. The files
       are a `datapackage.json` plus one `schemas/<table>.json` per table.
     parameters: FrictionlessGeneratorOptions
-    returns: GeneratedFiles
+    returns: Files

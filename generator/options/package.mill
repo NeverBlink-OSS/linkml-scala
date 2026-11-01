@@ -3,23 +3,28 @@ package build.generator.options
 import mill.*
 import millbuild.*
 
-/** The options of the generators, generated into Scala by this project's own Scala generator. */
+/** The options of the generators and the importers, generated into Scala by this project's own
+  * Scala generator.
+  */
 object `package` extends Module, NativeOptional, LinkMlModelModule {
   def modelGeneratorCli = build.cli.jvm.runner
 
-  def modelSchema = Task { "model/converter/all_generators.yaml" }
+  def modelSchema = Task { "model/converter/all_converters.yaml" }
 
   def modelPackage = "eu.neverblink.linkml.generator.options"
 
-  // The functions trait and its return type. The generators don't implement it.
-  override def unusedModelFiles = Seq("GeneratorFunctions.scala", "GeneratedFiles.scala")
+  // The functions trait. The generators and importers don't implement it.
+  override def unusedModelFiles = Seq("ConverterFunctions.scala")
 
   // The npm package ships these types, see `TsDefsGen.modelTypes`
   override def otherModelOutputs =
-    Map(
-      "typescript --optional-defaults" ->
-        build.generator.moduleDir / "npm" / "generator-options.d.ts",
-    )
+    Seq("generator", "importer").map { kind =>
+      ModelOutput(
+        "typescript --optional-defaults",
+        build.generator.moduleDir / "npm" / s"$kind-options.d.ts",
+        Some(s"model/converter/all_${kind}s.yaml"),
+      )
+    }
 
   object jvm extends CommonModule {
     def moduleDeps = Seq(

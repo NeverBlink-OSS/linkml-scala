@@ -4,6 +4,7 @@
 import {
   LinkML,
   type LoadResult,
+  type ImportResult,
   type SchemaConversionError,
   type SchemaIssue,
   type SchemaStats,
@@ -78,6 +79,17 @@ for (const issue of lintIssues) {
   void issue.reference_value;
 }
 
+// An importer takes the document, then its options, and returns the schema with its warnings.
+const owlImport: ImportResult = LinkML.fromOwl("", {
+  format: "json",
+  config: { naming: { slots: "keep" } },
+  schemas: { "other.yaml": "id: https://example.org/o\nname: o" },
+});
+const owlWarnings: string[] = owlImport.warnings;
+const ossieSchema: string = LinkML.fromOssie("{}", { schema_id: "https://example.org/x" }).schema;
+// @ts-expect-error the options follow model/converter, in snake case
+LinkML.fromOssie("{}", { schemaId: "https://example.org/x" });
+
 // A problem with the input is thrown as an Error with a `SchemaConversionError` issue.
 try {
   LinkML.fromOssie("- not\n- an ontology\n");
@@ -88,6 +100,9 @@ try {
 }
 
 void [
+  owlImport,
+  owlWarnings,
+  ossieSchema,
   build,
   buildVersion,
   loadReport,

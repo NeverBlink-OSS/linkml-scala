@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/pydantic
-name: pydantic
+name: pydantic-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter

@@ -95,13 +95,13 @@ generators, their options and the defaults are the functions of
 | `rdfs(options?)` | `string` | RDFS, `ttl` (default) or `nt` |
 | `owl(options?)` | `string` | OWL 2 ontology, `ttl` (default) or `nt` |
 | `linkml(options?)` | `string` | derived/pruned LinkML schema |
-| `scala(options?)` | `GeneratedFiles` | filename → generated Scala |
-| `frictionless(options?)` | `GeneratedFiles` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
+| `scala(options?)` | `Files` | filename → generated Scala |
+| `frictionless(options?)` | `Files` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
 | `graphql(options?)` | `string` | GraphQL |
 | `typescript(options?)` | `string` | TypeScript types for the JSON data (no runtime code) |
 | `pydantic(options?)` | `string` | Python classes (pydantic) that load and dump the JSON data |
 | `erDiagram(options?)` | `string` | Mermaid entity relationship diagram |
-| `docs(options?)` | `GeneratedFiles` | filename → Markdown documentation (`index.md` and a page per element) |
+| `docs(options?)` | `Files` | filename → Markdown documentation (`index.md` and a page per element) |
 | `ossie(options?)` | `string` | Apache Ossie ontology, `yaml` (default) or `json` |
 | `translation(options?)` | `string` | Translation dictionary for generator outputs |
 | `stats(options?)` | `SchemaStats` | counts of the elements, their documentation, mappings, languages and imports |
@@ -114,8 +114,12 @@ The functions of `LinkML`:
 | `loadFromPath(path, imports, inferMessages?, importMap?)`                    | `LoadResult`             | parse from a path in `imports`; cycle-safe for the root                        |
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
-| `fromOssie(ontology, schemaId?, outFormat?, fullUris?)`                      | `string`                 | the LinkML schema from an Apache Ossie ontology                                |
-| `fromOwl(ontology, config?, outFormat?, listNotImported?, imports?, inputFormat?, fullUris?)` | `string`         | the LinkML schema from an OWL ontology in Turtle or N-Triples (see the OWL guide) |
+| `fromOssie(document, options?)`                                              | `ImportResult`           | the LinkML schema from an Apache Ossie ontology                                |
+| `fromOwl(document, options?)`                                                | `ImportResult`           | the LinkML schema from an OWL ontology in Turtle or N-Triples (see the OWL guide) |
+
+The importers, `fromOssie` and `fromOwl`, take the document to import, then an options object like
+the generators, such as `{ format: "json" }`. Their options are in `model/converter` too. Both
+return `{ schema, warnings }`: the schema, and what could not be imported.
 
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind

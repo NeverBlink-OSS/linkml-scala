@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.owl.config.OwlImportConfig
+import eu.neverblink.linkml.generator.options.OwlImportConfig
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.metadataSources
 import eu.neverblink.linkml.metamodel.Annotation as LinkmlAnnotation
 import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Node, XmlSchema}

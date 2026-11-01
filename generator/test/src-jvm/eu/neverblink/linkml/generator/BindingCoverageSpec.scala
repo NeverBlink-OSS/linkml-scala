@@ -156,7 +156,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       // Generated from the options schema, so this catches a stale checked-in copy.
       val exported = "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(generated).size
       withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
-        exported shouldBe generators(root).size,
+        exported shouldBe generators(root).size + importers(root).size,
       )
     }
 
@@ -210,6 +210,29 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val missing =
         importers(root).map(n => "From" + n.stripSuffix("Importer")).filterNot(registered)
       withClue("add a From command and register it in App.scala: ")(missing shouldBe empty)
+    }
+
+    "be a function of the options schema" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val schema = os.list(root / "model" / "converter" / "importer").map(os.read).mkString
+      val missing =
+        importers(root).filterNot(name => schema.contains(s"parameters: ${name}Options"))
+      withClue(
+        "add a file to model/converter/importer and import it in all_importers.yaml, then " +
+          "run ./mill regenerate and LINKML_NATIVE=1 ./mill nativelib.bindings: ",
+      )(missing shouldBe empty)
+    }
+
+    "be exposed by the JavaScript facade" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val facade = os.read(
+        root / "generator" / "src-js" / "eu" / "neverblink" / "linkml" / "js" / "LinkMlJsApi.scala",
+      )
+      val missing =
+        importers(root).filterNot(n => facade.contains(s"def from${n.stripSuffix("Importer")}("))
+      withClue("add a method to LinkMlJsApi in LinkMlJsApi.scala, then run ./mill ui.types: ")(
+        missing shouldBe empty,
+      )
     }
 
     "be listed in the agent skill" in {

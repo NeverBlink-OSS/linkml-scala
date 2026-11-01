@@ -1,6 +1,6 @@
 package eu.neverblink.linkml.generator.ossie
 
-import eu.neverblink.linkml.generator.options.JsonOutputFormat
+import eu.neverblink.linkml.generator.options.OssieImporterOptions
 import eu.neverblink.linkml.generator.SchemaImporter
 import eu.neverblink.linkml.generator.ossie.expression.*
 import eu.neverblink.linkml.metamodel.*
@@ -22,13 +22,16 @@ import java.io.InputStream
 import scala.collection.immutable.VectorMap
 
 /** Reads an Apache Ossie (incubating) ontology and produces a LinkML schema. */
-class OssieImporter extends SchemaImporter[OssieImporter.Options] {
+class OssieImporter extends SchemaImporter[OssieImporterOptions] {
 
   import OssieImporter.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: OssieImporterOptions = OssieImporterOptions()
 
-  override def importSchema(in: InputStream, options: Options = Options()): SchemaDefinition =
+  override def importSchema(
+      in: InputStream,
+      options: OssieImporterOptions = OssieImporterOptions(),
+  ): SchemaDefinition =
     Conversion(decode(readUtf8(in)), options).schema
 
   /** Parse and decode an ontology document. Accepts JSON too, since JSON is YAML.
@@ -49,22 +52,6 @@ class OssieImporter extends SchemaImporter[OssieImporter.Options] {
 }
 
 object OssieImporter {
-
-  /** Options for [[OssieImporter]].
-    *
-    * @param schemaId
-    *   The `id` of the schema to produce. By default it is a placeholder built from the ontology's
-    *   name.
-    * @param outputFormat
-    *   Output serialization format to use.
-    * @param fullUris
-    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-    */
-  final case class Options(
-      schemaId: Option[String] = None,
-      outputFormat: JsonOutputFormat = JsonOutputFormat.Yaml,
-      fullUris: Boolean = false,
-  ) extends SchemaImporter.Options
 
   /** The LinkML type behind each of Ossie's built-in value types. */
   private val linkmlTypes: Map[String, String] = Map(
@@ -90,7 +77,7 @@ object OssieImporter {
   private val uniqueKeyName = "identify_by"
 
   /** One ontology file import. */
-  private final class Conversion(ontology: OssieOntology, options: Options) {
+  private final class Conversion(ontology: OssieOntology, options: OssieImporterOptions) {
 
     /** Concept name to LinkML element name. */
     private val elementNames: Map[String, String] = {

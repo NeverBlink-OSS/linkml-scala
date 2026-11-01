@@ -18,7 +18,6 @@ import threading
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
-from ._generated import DOCUMENT_FUNCTIONS
 
 __all__ = [
     "Runtime",
@@ -397,11 +396,14 @@ class Runtime:
         self._lib.linkml_build_info.argtypes = [chars_out]
         self._lib.linkml_build_info.restype = _Chars
 
-        # Importers take a document instead of a handle, so they do not fit either.
-        self._lib.linkml_from_ossie.argtypes = [ctypes.c_char_p, ctypes.c_char_p, chars_out]
-        self._lib.linkml_from_ossie.restype = _Chars
-        self._lib.linkml_from_owl.argtypes = [ctypes.c_char_p, ctypes.c_char_p, chars_out]
-        self._lib.linkml_from_owl.restype = _Chars
+        # Imported here, since the generated module imports this one.
+        from ._generated import DOCUMENT_FUNCTIONS, IMPORT_FUNCTIONS
+
+        # Importers take a document instead of a handle.
+        for name in IMPORT_FUNCTIONS:
+            function = getattr(self._lib, name)
+            function.argtypes = [ctypes.c_char_p, ctypes.c_char_p, chars_out]
+            function.restype = _Chars
 
         # linkml_lint has the same shape but is not a generator, so it is not in the generated
         # list and gets declared alongside it.

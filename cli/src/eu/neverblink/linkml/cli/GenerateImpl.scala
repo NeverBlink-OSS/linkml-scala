@@ -54,7 +54,7 @@ object Scala extends ManyFilesGenerate[ScalaOptions] {
       options: ScalaOptions,
   )(using SchemaView): Iterable[(String, String)] =
     ScalaGenerator().generate(
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -77,7 +77,7 @@ object JsonSchema extends StreamGenerate[JsonSchemaOptions] {
   ): Unit =
     JsonSchemaGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -100,7 +100,7 @@ object Shacl extends StreamGenerate[ShaclOptions] {
   ): Unit =
     ShaclGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -123,7 +123,7 @@ object Rdfs extends StreamGenerate[RdfsOptions] {
   ): Unit =
     RdfsGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -150,7 +150,7 @@ object Owl extends StreamGenerate[OwlOptions] {
   ): Unit =
     OwlGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -173,7 +173,7 @@ object LinkMl extends StreamGenerate[LinkMlOptions] {
   ): Unit =
     LinkMlGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -201,12 +201,12 @@ object Frictionless extends SplitGenerate[FrictionlessOptions] {
   override protected[cli] def generateSingle(options: FrictionlessOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    FrictionlessGenerator().writeTo(out, options.generator.toGeneratorOptions)
+    FrictionlessGenerator().writeTo(out, options.generator.toOptions)
 
   override protected[cli] def generateFiles(options: FrictionlessOptions)(using
       SchemaView,
   ): Iterable[(String, String)] =
-    FrictionlessGenerator().generateFiles(options.generator.toGeneratorOptions)
+    FrictionlessGenerator().generateFiles(options.generator.toOptions)
 }
 
 // GraphQL
@@ -231,7 +231,7 @@ object GraphQl extends StreamGenerate[GraphQlOptions] {
   ): Unit =
     GraphQlGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -258,7 +258,7 @@ object TypeScript extends StreamGenerate[TypeScriptOptions] {
   ): Unit =
     TypeScriptGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -285,7 +285,7 @@ object Pydantic extends StreamGenerate[PydanticOptions] {
   ): Unit =
     PydanticGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -308,7 +308,7 @@ object Ossie extends StreamGenerate[OssieOptions] {
   ): Unit =
     OssieGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -335,7 +335,7 @@ object ErDiagram extends StreamGenerate[ErDiagramOptions] {
   ): Unit =
     ErDiagramGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
 }
 
@@ -359,7 +359,7 @@ object Translation extends StreamGenerate[TranslationOptions] {
   ): Unit = {
     TranslationGenerator(using sv).writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
     )
   }
 }
@@ -402,12 +402,12 @@ object Docs extends SplitGenerate[DocsOptions] {
   override protected[cli] def generateSingle(options: DocsOptions, out: OutputStream)(using
       SchemaView,
   ): Unit =
-    DocsGenerator().writeTo(out, options.generator.toGeneratorOptions)
+    DocsGenerator().writeTo(out, options.generator.toOptions)
 
   override protected[cli] def generateFiles(options: DocsOptions)(using
       SchemaView,
   ): Iterable[(String, String)] =
-    DocsGenerator().generateFiles(options.generator.toGeneratorOptions).map(_.toTuple)
+    DocsGenerator().generateFiles(options.generator.toOptions).map(_.toTuple)
 }
 
 // Schema statistics
@@ -435,7 +435,7 @@ object Stats extends StreamGenerate[StatsOptions] {
   ): Unit =
     StatsGenerator().writeTo(
       out,
-      options.generator.toGeneratorOptions,
+      options.generator.toOptions,
       options.format,
     )
 }

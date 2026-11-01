@@ -34,7 +34,11 @@ object TsDefsGen {
       "The validation report, generated from model/issue-types.yaml. Each issue's `issue_type`\n" +
         "names its kind, so a `switch` on it narrows the issue to that kind.",
     ),
-    ModelTypes("build-info", Seq("BuildInfo"), "The build info, generated from model/build-info.yaml."),
+    ModelTypes(
+      "build-info",
+      Seq("BuildInfo"),
+      "The build info, generated from model/build-info.yaml.",
+    ),
     ModelTypes(
       "schema-stats",
       Seq("SchemaStats"),
@@ -45,7 +49,21 @@ object TsDefsGen {
       Seq("GeneratorFunctions", "StatsGeneratorOptions"),
       "The generators and their options, generated from model/converter/all_generators.yaml.",
     ),
+    ModelTypes(
+      "importer-options",
+      Seq("ImporterFunctions"),
+      "The importers and their options, generated from model/converter/all_importers.yaml.",
+    ),
   )
+
+  /** The methods of the generated `ImporterFunctions`. */
+  private def importers(modelTypeFiles: String => String): Set[String] = {
+    val body = "(?s)export interface ImporterFunctions \\{(.*?)\\n\\}".r
+      .findFirstMatchIn(modelTypeFiles("importer-options.d.ts"))
+      .getOrElse(sys.error("ImporterFunctions not found"))
+      .group(1)
+    "(?m)^  (\\w+)\\(".r.findAllMatchIn(body).map(_.group(1)).toSet
+  }
 
   /** The names a TypeScript declaration file exports. */
   private def exportedNames(declarations: String): Seq[String] =
@@ -70,9 +88,11 @@ object TsDefsGen {
     val obj = findObject(parsed).getOrElse(sys.error(s"object $objectName not found"))
 
     val nested = collectClasses(obj).flatMap(collectDefs).toSet
+    val importerNames = importers(modelTypeFiles)
     val methods = collectDefs(obj)
       .filterNot(nested.contains)
       .filterNot(_.mods.exists(_.is[Mod.Private]))
+      .filterNot(d => importerNames(d.name.value))
 
     val members = methods.map(renderMethod(scalaSource, _)).mkString("\n\n")
     // A name that an earlier file exports already, such as the `PruningMode` of both the schema
@@ -118,7 +138,14 @@ object TsDefsGen {
        |  readonly report: SchemaValidationReport;
        |}
        |
-       |export interface ${exportedName}Api {
+       |/** Functions that take the document to import before their options. */
+       |type Importers<F> = {
+       |  [K in keyof F]: F[K] extends (...args: infer A) => infer R
+       |    ? (document: string, ...args: A) => R
+       |    : never;
+       |};
+       |
+       |export interface ${exportedName}Api extends Importers<ImporterFunctions> {
        |$members
        |}
        |

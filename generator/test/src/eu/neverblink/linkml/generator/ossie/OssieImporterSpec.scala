@@ -1,6 +1,10 @@
 package eu.neverblink.linkml.generator.ossie
 
-import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OssieGeneratorOptions}
+import eu.neverblink.linkml.generator.options.{
+  JsonOutputFormat,
+  OssieGeneratorOptions,
+  OssieImporterOptions,
+}
 import eu.neverblink.linkml.generator.ossie.OssieCases.*
 import eu.neverblink.linkml.generator.ossie.expression.{Expression, Literal}
 import eu.neverblink.linkml.metamodel.{SchemaDefinition, SlotDefinition}
@@ -90,7 +94,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
           |  - concept: Thing
           |    type: EntityType
           """),
-        OssieImporter.Options(schemaId = Some("https://example.com/mine")),
+        OssieImporterOptions(schemaId = Some("https://example.com/mine")),
       )
       schema.id.original shouldBe "https://example.com/mine"
     }
@@ -137,7 +141,7 @@ class OssieImporterSpec extends AnyWordSpec, Matchers, OssieFixtures {
           |  - concept: Thing
           |    type: EntityType
           """)),
-        OssieImporter.Options(outputFormat = JsonOutputFormat.Json),
+        OssieImporterOptions(format = JsonOutputFormat.Json),
       )
       json should startWith("{")
       json should include("\"name\": \"spec\"")

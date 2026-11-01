@@ -1,11 +1,12 @@
 package eu.neverblink.linkml.generator.owl.config
 
+import eu.neverblink.linkml.generator.options.{NameStyle, OwlImportConfig, SomeValuesFrom}
 import eu.neverblink.linkml.generator.owl.OwlImportNames
 import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import org.virtuslab.yaml.parseYaml
 
-/** Reading [[OwlImportConfig]], which is generated from `model/owl-import-config.yaml`, and the
-  * defaults that depend on code.
+/** Reading [[OwlImportConfig]], which is generated from `model/converter/importer/owl-config.yaml`,
+  * and the defaults that depend on code.
   */
 object OwlImportConfigs {
 

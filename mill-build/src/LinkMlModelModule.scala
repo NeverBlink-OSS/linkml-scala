@@ -26,10 +26,8 @@ trait LinkMlModelModule extends Module {
   /** The package of the generated classes. They are written to its directory under `src`. */
   def modelPackage: String
 
-  /** Other files to generate from [[modelSchema]]: the generator name, with its options if any,
-    * and the file it writes.
-    */
-  def otherModelOutputs: Map[String, os.Path] = Map.empty
+  /** Other files to generate, from [[modelSchema]] unless the output names a schema of its own. */
+  def otherModelOutputs: Seq[ModelOutput] = Seq.empty
 
   /** Files that the Scala generator writes, but this module doesn't need. They are deleted. */
   def unusedModelFiles: Seq[String] = Seq.empty
@@ -45,11 +43,21 @@ trait LinkMlModelModule extends Module {
       workingDir = root,
     )
     unusedModelFiles.foreach(file => os.remove(to / file))
-    otherModelOutputs.foreach { (generator, file) =>
+    otherModelOutputs.foreach { output =>
       cli.run(
-        Seq("generate") ++ generator.split(' ') ++ Seq("--to", file.toString, schema),
+        Seq("generate") ++ output.generator.split(' ') ++
+          Seq("--to", output.file.toString, output.schema.getOrElse(schema)),
         workingDir = root,
       )
     }
   }
 }
+
+/** A file that [[LinkMlModelModule.regenerate]] writes with a generator other than Scala.
+  *
+  * @param generator
+  *   the generator name, with its options if any
+  * @param schema
+  *   the schema, if not the module's own
+  */
+final case class ModelOutput(generator: String, file: os.Path, schema: Option[String] = None)

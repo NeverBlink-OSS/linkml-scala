@@ -51,6 +51,9 @@ slots:
     description: >-
       Whether to write URIs in full, instead of compacting them to CURIEs with the schema's
       prefixes.
+  schema_id:
+    range: string
+    description: The `id` of the schema to produce.
   indentation_step:
     range: integer
     required: true
@@ -95,11 +98,22 @@ classes:
     class_uri: linkml:Any
     description: Any value.
 
-  GeneratedFiles:
-    description: The files a generator wrote, from the path of each to its content.
+  Files:
+    description: Files, from the path of each to its content.
     extra_slots:
       range_expression:
         range: string
+  File:
+    description: A file and its content.
+    attributes:
+      path:
+        identifier: true
+        range: string
+        description: The path of the file.
+      content:
+        required: true
+        range: string
+        description: The content of the file.
 
   MetadataLanguageOptions:
     mixin: true
@@ -128,3 +142,28 @@ classes:
         required: true
         ifabsent: RdfFormat(ttl)
         description: The RDF serialization of the output.
+  SchemaOutputOptions:
+    mixin: true
+    description: Options of the importers, which write a LinkML schema.
+    slots:
+      - full_uris
+    attributes:
+      format:
+        range: JsonOutputFormat
+        required: true
+        ifabsent: JsonOutputFormat(yaml)
+        description: The serialization of the schema.
+
+  ImportResult:
+    description: What an importer produced.
+    attributes:
+      schema:
+        range: string
+        required: true
+        description: The LinkML schema.
+      warnings:
+        range: string
+        multivalued: true
+        required: true
+        description: >-
+          One line for each kind of thing that could not be imported. Empty if everything was.

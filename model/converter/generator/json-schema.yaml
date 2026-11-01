@@ -1,5 +1,5 @@
 id: https://linkml.ohi.dev/model/converter/generator/json-schema
-name: json-schema
+name: json-schema-generator
 prefixes:
   converter: https://linkml.ohi.dev/model/converter#
 default_prefix: converter

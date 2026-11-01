@@ -16,7 +16,7 @@ object `package` extends Module, NativeOptional, LinkMlModelModule {
 
   // The npm package ships these types, see `TsDefsGen.modelTypes`
   override def otherModelOutputs =
-    Map("typescript" -> build.generator.moduleDir / "npm" / "validation-report.d.ts")
+    Seq(ModelOutput("typescript", build.generator.moduleDir / "npm" / "validation-report.d.ts"))
 
   object jvm extends CommonModule {
     def moduleDeps = Seq(

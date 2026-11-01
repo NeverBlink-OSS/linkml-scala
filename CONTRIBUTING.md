@@ -61,13 +61,13 @@ Some source files are generated and committed. CI regenerates them and fails if 
 | `metamodel`                                            | `linkml:meta`                      |
 | `validation`, `generator/npm/validation-report.d.ts`   | `model/issue-types.yaml`           |
 | `schemaview.buildinfo`, `generator/npm/build-info.d.ts` | `model/build-info.yaml`           |
-| `generator.owlconfig`                                  | `model/owl-import-config.yaml`     |
-| `generator.options`, `generator/npm/generator-options.d.ts`, `cli.options` | `model/converter/all_generators.yaml` |
+| `generator.options`, `cli.options`                     | `model/converter/all_converters.yaml` |
+| `generator/npm/generator-options.d.ts`, `generator/npm/importer-options.d.ts` | `model/converter/all_generators.yaml`, `model/converter/all_importers.yaml` |
 | `tests.conformance`                                    | the conformance suite's model.yaml |
 | ohi models in `ohi/` and `cli/ohi/`                    | `ohi/model/schema/`, see [ohi/README.md](ohi/README.md#regenerate-and-test) |
 | Agent skill references in `.agents/skills/linkml/`     | the metamodel, four LinkML docs pages and `tests/resources/models/`, see [.agents/README.md](.agents/README.md#maintenance) |
 | `ui/linkml.d.ts`                                       | `LinkMlJsApi.scala`, with `./mill ui.types` |
-| `python/ohi_linkml/_generated.py`, `LinkMlCGenerators.scala` | `model/converter/all_generators.yaml`, with `LINKML_NATIVE=1 ./mill nativelib.bindings` |
+| `python/ohi_linkml/_generated.py`, `LinkMlCGenerators.scala` | `model/converter/all_converters.yaml`, with `LINKML_NATIVE=1 ./mill nativelib.bindings` |
 
 The model classes are committed because generating them needs the CLI, which depends on them. So `regenerate` only works when the committed classes compile. If they don't, revert them with `git checkout -- <module>/src` and regenerate again.
 
@@ -85,7 +85,7 @@ If you join them with `+`, mill can format the files before they are written.
 
 ### Adding a model
 
-1. Create a `package.mill` for the module, next to the module that uses the classes (like `generator/owlconfig/package.mill`).
+1. Create a `package.mill` for the module, next to the module that uses the classes (like `generator/stats/package.mill`).
 2. Make the module extend `LinkMlModelModule` (in `mill-build/src`), set `modelGeneratorCli` to `build.cli.jvm.runner`, and set `modelSchema` and `modelPackage`. To also run other generators, like `typescript`, set `otherModelOutputs`.
 3. Add the `jvm` module, and `js` and `native` if the classes are needed there, with a dependency on `build.runtime` (or `build.yaml`, if hand-written codecs live next to the classes).
 4. Add the new module to the `moduleDeps` of the modules that use it.

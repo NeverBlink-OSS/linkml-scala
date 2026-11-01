@@ -1,6 +1,11 @@
 package eu.neverblink.linkml.generator.owl
 
-import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OwlGeneratorOptions, RdfFormat}
+import eu.neverblink.linkml.generator.options.{
+  JsonOutputFormat,
+  OwlGeneratorOptions,
+  OwlImporterOptions,
+  RdfFormat,
+}
 import eu.neverblink.linkml.generator.util.JsonUtil
 
 import eu.neverblink.linkml.schemaview.{SchemaCodec, SchemaView}
@@ -61,7 +66,7 @@ class OwlImporterSpec extends AnyWordSpec, Matchers, OwlFixtures {
       val nt = "<https://example.org/library/Book> " +
         "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2002/07/owl#Class> .\n"
       for format <- Seq(RdfFormat.Ttl, RdfFormat.Nt) do
-        OwlImporter().importSchema(stream(nt), OwlImporter.Options(inputFormat = format))
+        OwlImporter().importSchema(stream(nt), OwlImporterOptions(inputFormat = format))
           .classes.keySet shouldBe Set("Book")
     }
   }
@@ -280,7 +285,7 @@ object OwlImporterSpec {
   def reimport(sv: SchemaView, format: RdfFormat = RdfFormat.Ttl): (SchemaView, Seq[String]) = {
     val text = OwlGenerator(using sv).serialize(OwlGeneratorOptions(format = format))
     val result =
-      OwlImporter().importWithWarnings(stream(text), OwlImporter.Options(inputFormat = format))
+      OwlImporter().importWithWarnings(stream(text), OwlImporterOptions(inputFormat = format))
     val yaml = JsonUtil.write(SchemaCodec.encode(result.schema), JsonOutputFormat.Yaml)
     val loaded = SchemaView.loadSchemaViewFromString(yaml) match {
       case Right(view) => view

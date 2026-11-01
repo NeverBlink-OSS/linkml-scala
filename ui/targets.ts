@@ -116,7 +116,7 @@ export const TARGETS: Target[] = [
       TREE_ROOT,
       { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (_, v, o) => v.ossie(generatorOptions(o)),
+    call: (_, v, o) => v.ossie(converterOptions(o)),
   },
   {
     id: "linkml",
@@ -129,7 +129,7 @@ export const TARGETS: Target[] = [
       { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
       { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (_, v, o) => v.linkml(generatorOptions(o)),
+    call: (_, v, o) => v.linkml(converterOptions(o)),
   },
   {
     id: "docs",
@@ -145,7 +145,7 @@ export const TARGETS: Target[] = [
     // Always one document: the page view links its sections with anchors, and a file tab per class
     // would be too many for a real schema.
     call: (_, v, o) =>
-      v.docs({ ...generatorOptions(o), single_file: true })["docs.md"] ?? "",
+      v.docs({ ...converterOptions(o), single_file: true })["docs.md"] ?? "",
   },
   {
     id: "erDiagram",
@@ -165,7 +165,7 @@ export const TARGETS: Target[] = [
         default: true,
       },
     ],
-    call: (_, v, o) => v.erDiagram(generatorOptions(o)),
+    call: (_, v, o) => v.erDiagram(converterOptions(o)),
   },
   {
     id: "frictionless",
@@ -183,7 +183,7 @@ export const TARGETS: Target[] = [
         title: "Skip classes that have no identifier slot",
       },
     ],
-    call: (_, v, o) => v.frictionless(generatorOptions(o)),
+    call: (_, v, o) => v.frictionless(converterOptions(o)),
   },
   {
     id: "graphql",
@@ -193,7 +193,7 @@ export const TARGETS: Target[] = [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "tree_root" },
       TREE_ROOT,
     ],
-    call: (_, v, o) => v.graphql(generatorOptions(o)),
+    call: (_, v, o) => v.graphql(converterOptions(o)),
   },
   {
     id: "jsonSchema",
@@ -203,7 +203,7 @@ export const TARGETS: Target[] = [
       { key: "open", type: "checkbox", label: "Open", title: "Allow additionalProperties" },
       { key: "tree_root", type: "text", label: "Tree root", placeholder: "Class name (optional)" },
     ],
-    call: (_, v, o) => v.jsonSchema(generatorOptions(o)),
+    call: (_, v, o) => v.jsonSchema(converterOptions(o)),
   },
   {
     id: "translation",
@@ -218,7 +218,7 @@ export const TARGETS: Target[] = [
         title: "Also list inherited slots, mixin slots and slots from the class's slots list",
       },
     ],
-    call: (_, v, o) => v.translation(generatorOptions(o)),
+    call: (_, v, o) => v.translation(converterOptions(o)),
   },
   {
     id: "lint",
@@ -239,7 +239,7 @@ export const TARGETS: Target[] = [
       { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "schema" },
       TREE_ROOT,
     ],
-    call: (_, v, o) => v.stats(generatorOptions(o)),
+    call: (_, v, o) => v.stats(converterOptions(o)),
   },
   {
     id: "owl",
@@ -251,7 +251,7 @@ export const TARGETS: Target[] = [
       { key: "permissible_values", type: "select", label: "Permissible values", choices: ["individual", "class"], default: "individual" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (_, v, o) => v.owl(generatorOptions(o)),
+    call: (_, v, o) => v.owl(converterOptions(o)),
   },
   {
     id: "pydantic",
@@ -263,7 +263,7 @@ export const TARGETS: Target[] = [
       { key: "include_null", type: "checkbox", label: "Nulls", title: "Keep nulls when dumping" },
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
     ],
-    call: (_, v, o) => v.pydantic(generatorOptions(o)),
+    call: (_, v, o) => v.pydantic(converterOptions(o)),
   },
   {
     id: "rdfs",
@@ -273,7 +273,7 @@ export const TARGETS: Target[] = [
       { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (_, v, o) => v.rdfs(generatorOptions(o)),
+    call: (_, v, o) => v.rdfs(converterOptions(o)),
   },
   {
     id: "scala",
@@ -290,7 +290,7 @@ export const TARGETS: Target[] = [
         default: "annotation",
       },
     ],
-    call: (_, v, o) => v.scala(generatorOptions(o)),
+    call: (_, v, o) => v.scala(converterOptions(o)),
   },
   {
     id: "shacl",
@@ -302,7 +302,7 @@ export const TARGETS: Target[] = [
       { key: "only_classes_from_root_schema", type: "checkbox", label: "Root schema only" },
       { key: "format", type: "select", label: "Format", choices: ["ttl", "nt"], default: "ttl" },
     ],
-    call: (_, v, o) => v.shacl(generatorOptions(o)),
+    call: (_, v, o) => v.shacl(converterOptions(o)),
   },
   {
     id: "typescript",
@@ -328,7 +328,7 @@ export const TARGETS: Target[] = [
         default: "exception",
       },
     ],
-    call: (_, v, o) => v.typescript(generatorOptions(o)),
+    call: (_, v, o) => v.typescript(converterOptions(o)),
   },
 ];
 
@@ -338,16 +338,15 @@ export const IMPORTERS: Importer[] = [
     label: "Apache Ossie",
     inputLabel: "Ossie ontology (YAML or JSON)",
     reverses: ["ossie"],
-    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    lang: (o) => (o.format === "json" ? "json" : "yaml"),
     example: EXAMPLE_OSSIE,
     ohiFormats: [{ format: "ossie-yaml", label: "Ossie", name: "Ossie" }],
     options: [
-      { key: "schemaId", type: "text", label: "Schema id", placeholder: "https://… (optional)" },
-      { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
-      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+      { key: "schema_id", type: "text", label: "Schema id", placeholder: "https://… (optional)" },
+      { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
+      { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, input, o) =>
-      api.fromOssie(input, blankToUndef(o.schemaId), String(o.outFormat || "yaml"), !!o.fullUris),
+    call: (api, input, o) => api.fromOssie(input, converterOptions(o)).schema,
   },
   {
     id: "owl",
@@ -355,7 +354,7 @@ export const IMPORTERS: Importer[] = [
     inputLabel: "OWL 2 or RDFS ontology (Turtle)",
     reverses: ["owl", "rdfs"],
     inputLang: "turtle",
-    lang: (o) => (o.outFormat === "json" ? "json" : "yaml"),
+    lang: (o) => (o.format === "json" ? "json" : "yaml"),
     example: EXAMPLE_OWL,
     // The importer reads Turtle only, so the RDF/XML files on ohi.dev are not on offer.
     ohiFormats: [
@@ -364,17 +363,22 @@ export const IMPORTERS: Importer[] = [
     ],
     options: [
       {
-        key: "listNotImported",
+        key: "list_not_imported",
         type: "checkbox",
         label: "Not imported",
         title: "List what could not be imported, in comments at the top",
-        showIf: (o) => o.outFormat !== "json",
+        showIf: (o) => o.format !== "json",
       },
-      { key: "fullUris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
-      { key: "outFormat", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
+      { key: "full_uris", type: "checkbox", label: "Full URIs", title: "Write URIs in full, instead of as CURIEs" },
+      { key: "format", type: "select", label: "Format", choices: ["yaml", "json"], default: "yaml" },
     ],
-    call: (api, input, o) =>
-      api.fromOwl(input, undefined, String(o.outFormat || "yaml"), !!o.listNotImported, undefined, undefined, !!o.fullUris),
+    call: (api, input, o) => {
+      // Not an option of the importer, which always returns the warnings.
+      const { list_not_imported, ...options } = o;
+      const { schema, warnings } = api.fromOwl(input, converterOptions(options));
+      if (!list_not_imported || o.format === "json") return schema;
+      return warnings.map((w) => `# Not imported: ${w}\n`).join("") + schema;
+    },
   },
 ];
 
@@ -386,16 +390,10 @@ export function importerById(id: string): Importer | undefined {
   return IMPORTERS.find((i) => i.id === id);
 }
 
-/** The option values of a generator as its options object, the keys being the names in
- * model/converter/all_generators.yaml. Blank text fields are left out, so they take their
- * defaults. */
-function generatorOptions<T>(o: OptionValues): Partial<T> {
+/** The option values of a generator or importer as its options object, the keys being the names
+ * in model/converter. Blank text fields are left out, so they take their defaults. */
+function converterOptions<T>(o: OptionValues): Partial<T> {
   return Object.fromEntries(
     Object.entries(o).filter(([, v]) => !(typeof v === "string" && v.trim() === "")),
   ) as Partial<T>;
-}
-
-function blankToUndef(v: string | number | boolean | undefined): string | undefined {
-  const t = String(v ?? "").trim();
-  return t === "" ? undefined : t;
 }
