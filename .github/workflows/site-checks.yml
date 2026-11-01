@@ -44,8 +44,8 @@ jobs:
       - name: Regenerate UI LinkML types and check they are committed
         run: |
           ./mill --no-server ui.types
-          git diff --exit-code -- ui/linkml.d.ts \
-            || (echo "ui/linkml.d.ts is stale – run ./mill ui.types and commit the result"; exit 1)
+          git diff --exit-code -- ui/src/linkml.d.ts \
+            || (echo "ui/src/linkml.d.ts is stale – run ./mill ui.types and commit the result"; exit 1)
 
       - name: Type-check and bundle the UI
         run: ./mill --no-server ui.check

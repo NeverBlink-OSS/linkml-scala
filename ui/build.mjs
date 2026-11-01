@@ -1,24 +1,27 @@
 // esbuild bundler for the playground UI. Invoked by `npm run build` and by the
-// Mill `ui`/`uiBundle` tasks. Bundles app.ts + CodeMirror into dist/app.js and the
-// generation worker into dist/worker.js, and minifies the (large, separately built)
-// Scala.js bundle into dist/linkml.js.
+// Mill `ui.bundle`, `ui.check`, `ui.site` and `ui.serve` tasks. Bundles src/app.ts + CodeMirror into
+// public/dist/app.js and the generation worker into public/dist/worker.js, and minifies the
+// (large, separately built) Scala.js bundle into public/dist/linkml.js.
 import * as esbuild from "esbuild";
 import { existsSync, rmSync } from "node:fs";
 
 // The Scala.js bundle, emitted by Mill's `generator.js.fullLinkJS`. We run esbuild
 // over it to strip whitespace and rename locals.
-// Loaded at runtime by app.js as a sibling `dist/linkml.js`.
+// Loaded at runtime by app.js as a sibling `public/dist/linkml.js`.
 const SCALA_BUNDLE = "../out/generator/js/fullLinkJS.dest/main.js";
+
+// Everything the browser loads is in public/, served as /playground/ on the site.
+const DIST = "public/dist";
 
 // app.ts is the page; worker.ts is the generation worker it spawns as a sibling
 // dist/worker.js. The ohi.dev SDK goes into its own dist/ohi.js.
 // All three are emitted into dist/ by outdir.
 const appOptions = {
-  entryPoints: { app: "app.ts", worker: "worker.ts", ohi: "@neverblink/ohi" },
+  entryPoints: { app: "src/app.ts", worker: "src/worker.ts", ohi: "@neverblink/ohi" },
   bundle: true,
   format: "esm",
   target: "es2020",
-  outdir: "dist",
+  outdir: DIST,
   sourcemap: true,
   minify: true,
   logLevel: "info",
@@ -31,11 +34,11 @@ const appOptions = {
 // The Markdown renderer for the documentation page view, bundled into dist/markdown/ so that it is
 // loaded only when someone opens that view.
 const markdownOptions = {
-  entryPoints: ["markdown.ts"],
+  entryPoints: ["src/markdown.ts"],
   bundle: true,
   format: "esm",
   target: "es2020",
-  outdir: "dist/markdown",
+  outdir: `${DIST}/markdown`,
   minify: true,
   logLevel: "info",
 };
@@ -54,7 +57,7 @@ const mermaidOptions = {
   splitting: true,
   format: "esm",
   target: "es2020",
-  outdir: "dist/mermaid",
+  outdir: `${DIST}/mermaid`,
   minify: true,
   logLevel: "info",
 };
@@ -62,17 +65,17 @@ const mermaidOptions = {
 /** Chunk names carry a content hash, so a version bump leaves the previous set behind. esbuild does
  * not clean its outdir, so do it here rather than deploy an ever-growing pile of dead chunks. */
 function buildMermaid() {
-  rmSync("dist/mermaid", { recursive: true, force: true });
+  rmSync(`${DIST}/mermaid`, { recursive: true, force: true });
   return esbuild.build(mermaidOptions);
 }
 
 // Minify the Scala.js bundle into dist/linkml.js. Skipped (with a warning) when
 // the bundle hasn't been built yet, so `npm run build`/typecheck still work on
-// their own; the Mill `ui`/`uiBundle`/deploy flows build fullLinkJS first.
+// their own; the Mill tasks build fullLinkJS first.
 async function minifyScalaBundle() {
   if (!existsSync(SCALA_BUNDLE)) {
     console.warn(
-      `Scala.js bundle not found at ${SCALA_BUNDLE}; skipping dist/linkml.js ` +
+      `Scala.js bundle not found at ${SCALA_BUNDLE}; skipping ${DIST}/linkml.js ` +
         "(run `./mill generator.js.fullLinkJS` first).",
     );
     return;
@@ -80,7 +83,7 @@ async function minifyScalaBundle() {
   await esbuild.build({
     entryPoints: [SCALA_BUNDLE],
     format: "esm",
-    outfile: "dist/linkml.js",
+    outfile: `${DIST}/linkml.js`,
     // Bundling for the browser makes esbuild fail on any import a browser cannot load, such as a
     // Node built-in. Without it, such an import only breaks the deployed page.
     bundle: true,
