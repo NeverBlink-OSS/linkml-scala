@@ -168,7 +168,9 @@ final class TypeScriptGenerator(using sv: SchemaView)
         case s: String => stringLiteral(s)
         case v => v.toString
       }
-    case EnumAttributeView(slot, _, ev) => slot.ifAbsent(ev).mapFast(pv => stringLiteral(pv.text))
+    case EnumAttributeView(slot, _, ev) =>
+      // The aliased name, the same as the members of the generated union
+      slot.ifAbsent(ev).mapFast(pv => stringLiteral(permissibleValueName(ev, pv)))
     case _ => None
   }
 

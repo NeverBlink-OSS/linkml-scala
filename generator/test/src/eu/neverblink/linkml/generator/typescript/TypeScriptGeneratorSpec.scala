@@ -158,6 +158,26 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
         include("/** @defaultValue \"en\" */\n  required_language?: string;")
     }
 
+    "take the default of an enum slot from the aliased permissible value" in {
+      val code = generate(
+        """enums:
+          |  Status:
+          |    permissible_values:
+          |      PENDING:
+          |        alias: pending
+          |      DONE:
+          |classes:
+          |  Task:
+          |    attributes:
+          |      status:
+          |        range: Status
+          |        ifabsent: Status(PENDING)
+          |""".stripMargin,
+      )
+      code should include("""  | "pending"""")
+      code should include("/** @defaultValue \"pending\" */")
+    }
+
     "make the parameters optional when all the required ones have defaults, when asked" in {
       val yaml =
         """classes:
