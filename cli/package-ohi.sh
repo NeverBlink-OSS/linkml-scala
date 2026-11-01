@@ -42,7 +42,6 @@ import sys
 
 path = Path(sys.argv[1])
 text = path.read_text()
-text = text.replace("[project]\n", '[project]\nreadme = "README.md"\n', 1)
 if sys.argv[2]:
     old = 'version = "0.0.0"'
     if text.count(old) != 1:
