@@ -19,8 +19,8 @@ private[cli] object HelpOutput {
     lines.map(line => "  " + code(line, colored)).mkString("\n")
 
   def root(colored: Boolean): String = Seq(
-    s"${heading("ohi", colored)}\nFind, download and use ontologies.",
-    section("Usage", commands(Seq("ohi <command> [options]"), colored), colored),
+    s"${heading("ohi", colored)} – Find, download and use ontologies.",
+    s"${heading("Usage:", colored)} ${code("ohi <command> [options]", colored)}",
     section(
       "Find and download",
       s"  ${code("search", colored)}     Find ontologies by name or topic\n" +
@@ -35,7 +35,11 @@ private[cli] object HelpOutput {
         s"  ${code("lock", colored)}       Rebuild ohi.lock.json from ohi.yaml",
       colored,
     ),
-    section("Local schemas", "  " + code("linkml", colored), colored),
+    section(
+      "Local schemas",
+      s"  ${code("linkml", colored)}     Validate, create and convert LinkML schemas",
+      colored,
+    ),
     section("About", s"  ${code("version", colored)}    Print the version of ohi", colored),
     section(
       "Examples",
@@ -48,7 +52,7 @@ private[cli] object HelpOutput {
         s"\n  ${code("-h, --help", colored)}    Show this overview",
       colored,
     ),
-    section("Docs", "  " + code("https://ohi.dev/docs/", colored), colored),
+    s"${heading("Docs:", colored)} ${code("https://ohi.dev/docs/", colored)}",
   ).mkString("\n\n")
 
   /** Renders Ohi command guidance, using parser metadata for the complete option reference. */
