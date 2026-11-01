@@ -7,7 +7,7 @@ verified against every generator on every commit, so when you are unsure how som
 written, read the matching `model.yaml` instead of guessing.
 
 Paths are relative to `tests/resources/models/`:
-<https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models>
+<https://github.com/NeverBlink-OSS/ohi/tree/main/tests/resources/models>
 
 `valid`/`invalid` count the instance-data files shipped with the schema — worked examples
 of what it does and does not accept, and the fastest way to sanity-check a data validator.

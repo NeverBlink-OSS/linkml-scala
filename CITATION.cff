@@ -12,12 +12,12 @@ authors:
     email: contact@neverblink.eu
   - name: ohi LinkML contributors
     website: >-
-      https://github.com/NeverBlink-OSS/linkml-scala/graphs/contributors
+      https://github.com/NeverBlink-OSS/ohi/graphs/contributors
 identifiers:
   - type: doi
     value: 10.48550/arXiv.2607.22335
     description: Preprint DOI
-repository-code: 'https://github.com/NeverBlink-OSS/linkml-scala'
+repository-code: 'https://github.com/NeverBlink-OSS/ohi'
 url: 'https://linkml.ohi.dev'
 abstract: >-
   ohi LinkML is a fast, portable (JS/JVM/native), and

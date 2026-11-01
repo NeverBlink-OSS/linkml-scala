@@ -26,7 +26,7 @@ The benchmarks emulate two different usage patterns:
 - **Cold-start harness:** the [hyperfine](https://github.com/sharkdp/hyperfine) CLI tool, driving the ohi LinkML native binary (Oracle GraalVM Native Image 25.0.1+8.1) and the default LinkML (Python) CLI script.
 - **Warm harness:** the [Java Microbenchmark Harness (JMH)](https://github.com/openjdk/jmh) for ohi LinkML and a plain Python script for LinkML (Python). Both implementations parse schemas and resolve imports in a set-up phase, so all models are in memory before measurement. Each scenario ran 5 warm-up + 10 measurement runs across 5 forks.
 
-[Benchmark code and scripts](https://github.com/NeverBlink-OSS/linkml-scala/tree/dbd4d1eccfad3952c8e8887ebae5a527fed2cb79/benchmark).
+[Benchmark code and scripts](https://github.com/NeverBlink-OSS/ohi/tree/dbd4d1eccfad3952c8e8887ebae5a527fed2cb79/benchmark).
 
 ### Datasets
 

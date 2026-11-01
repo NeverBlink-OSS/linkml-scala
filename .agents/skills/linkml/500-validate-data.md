@@ -161,7 +161,7 @@ schemas — genuinely useful for confirming your pipeline works before trusting 
 A schema plus a file that *should* fail is the best way to prove the validator is actually
 running:
 
-<https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models>
+<https://github.com/NeverBlink-OSS/ohi/tree/main/tests/resources/models>
 
 ## In CI
 

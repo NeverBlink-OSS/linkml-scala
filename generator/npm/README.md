@@ -1,6 +1,6 @@
 # @neverblink/linkml
 
-JavaScript / TypeScript bindings for [ohi LinkML](https://github.com/NeverBlink-OSS/linkml-scala) –
+JavaScript / TypeScript bindings for [ohi LinkML](https://github.com/NeverBlink-OSS/ohi) –
 LinkML schema validation and multi-format code generation (JSON Schema, SHACL, RDFS, Scala).
 
 ## Installation
@@ -86,7 +86,7 @@ const { view: withUnits } = LinkML.loadFromPath(
 Load a schema into a `SchemaView` (see above), then call any generator on it. Every generator
 takes an optional options object, such as `{ pruning_mode: "tree_root", format: "json" }`. The
 generators, their options and the defaults are the functions of
-[`model/converter`](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/model/converter). Their types, such as `LinkMlGeneratorOptions`, are in `index.d.ts`.
+[`model/converter`](https://github.com/NeverBlink-OSS/ohi/tree/main/model/converter). Their types, such as `LinkMlGeneratorOptions`, are in `index.d.ts`.
 
 | Method of `SchemaView` | Returns | Notes |
 |------------------------|---------|-------|

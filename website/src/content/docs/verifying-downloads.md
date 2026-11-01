@@ -7,7 +7,7 @@ LinkML and ohi release downloads include checksums and build provenance:
 
 | Release channel                                                                                                  | Signature type                                                | How to check it           |
 |------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|---------------------------|
-| [GitHub Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases) (native binaries, shared libraries, `linkml-scala.jar`, `ohi.jar`) | `SHA256SUMS` manifest + Sigstore build provenance attestation | [below](#github-releases) |
+| [GitHub Releases](https://github.com/NeverBlink-OSS/ohi/releases) (native binaries, shared libraries, `linkml-scala.jar`, `ohi.jar`) | `SHA256SUMS` manifest + Sigstore build provenance attestation | [below](#github-releases) |
 | npm (`@neverblink/linkml`, `@neverblink/ohi`)                                   | Registry signature + SLSA provenance (npm trusted publishing) | [below](#npm)             |
 | [Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)                                     | PGP signature on every artifact                               | [below](#maven-central)   |
 
@@ -19,7 +19,7 @@ Each release publishes a `SHA256SUMS` file covering its native binaries, compres
 
 ```shell
 VERSION=vX.Y.Z # Replace with the downloaded artifact's release tag.
-curl -fsSLO "https://github.com/NeverBlink-OSS/linkml-scala/releases/download/$VERSION/SHA256SUMS"
+curl -fsSLO "https://github.com/NeverBlink-OSS/ohi/releases/download/$VERSION/SHA256SUMS"
 sha256sum --ignore-missing -c SHA256SUMS
 ```
 
@@ -37,16 +37,19 @@ Use the [GitHub CLI](https://cli.github.com/) to verify which repository commit 
 workflow produced the download:
 
 ```shell
-gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/linkml-scala
+gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/ohi
 ```
 
 `SHA256SUMS` is attested too:
 
 ```shell
-gh attestation verify SHA256SUMS --repo NeverBlink-OSS/linkml-scala
+gh attestation verify SHA256SUMS --repo NeverBlink-OSS/ohi
 ```
 
-Use the downloaded filename in the same commands to verify any other asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/linkml-scala`.
+Releases up to v0.17.2 were made before the repository was renamed, so verify those with
+`--repo NeverBlink-OSS/linkml-scala` instead.
+
+Use the downloaded filename in the same commands to verify any other asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/ohi`.
 
 `install.sh` checks the checksum when a manifest exists and verifies provenance when `gh` is installed. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` and `LINKML_SCALA_REQUIRE_ATTESTATION=1` to require both checks and reject an installation when either cannot be completed.
 
@@ -83,4 +86,4 @@ The signing key fingerprint is:
 
 ## Reporting a problem
 
-If a checksum or signature ever fails to verify, please **don't** run the artifact. Open a [security advisory](https://github.com/NeverBlink-OSS/linkml-scala/security/advisories/new) or reach out at [contact@neverblink.eu](mailto:contact@neverblink.eu).
+If a checksum or signature ever fails to verify, please **don't** run the artifact. Open a [security advisory](https://github.com/NeverBlink-OSS/ohi/security/advisories/new) or reach out at [contact@neverblink.eu](mailto:contact@neverblink.eu).

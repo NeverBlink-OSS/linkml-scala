@@ -28,7 +28,7 @@ session's `PATH` and asks before changing your PowerShell profile. Read them bef
 [install.sh](../install.sh), [install.ps1](../install.ps1).
 
 Native releases support Linux and macOS 14 or later on x86_64 and arm64, plus Windows on x86_64.
-Download other release assets from [GitHub Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases).
+Download other release assets from [GitHub Releases](https://github.com/NeverBlink-OSS/ohi/releases).
 The `ohi.jar` asset runs with Java 17 or later using `java -jar ohi.jar`.
 ohi and LinkML use the same release version.
 See [download verification](https://linkml.ohi.dev/docs/verifying-downloads/) for checksums and build provenance.

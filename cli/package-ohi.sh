@@ -10,10 +10,31 @@ version=${3:-}
 temporary=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ohi-package.XXXXXX")
 trap 'rm -rf "$temporary"' EXIT
 
+cat > "$temporary/README.md" <<'MARKDOWN'
+# ohi SDK
+
+The ohi SDK lets Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
+
+Install on Python 3.10 or later:
+
+```sh
+python -m pip install ohi-sdk
+```
+
+Install for Node 22 or later, or a browser application:
+
+```sh
+npm install @neverblink/ohi
+```
+
+See the [SDK guide](https://github.com/NeverBlink-OSS/ohi/blob/main/ohi/README.md) for usage, browser requirements and API behavior.
+MARKDOWN
+
 case "$kind" in
   python)
     cp -R ohi/python "$temporary/package"
     cp LICENSE "$temporary/package/LICENSE"
+    cp "$temporary/README.md" "$temporary/package/README.md"
     python - "$temporary/package/pyproject.toml" "$version" <<'PY'
 import json
 from pathlib import Path
@@ -32,9 +53,10 @@ PY
     ;;
   npm)
     mkdir "$temporary/package"
-    cp ohi/typescript/package.json ohi/typescript/README.md "$temporary/package/"
+    cp ohi/typescript/package.json "$temporary/package/"
     cp -R ohi/typescript/dist "$temporary/package/dist"
     cp LICENSE "$temporary/package/LICENSE"
+    cp "$temporary/README.md" "$temporary/package/README.md"
     (
       cd "$temporary/package"
       if [ -n "$version" ]; then

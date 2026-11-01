@@ -18,7 +18,7 @@ Works on Linux, macOS and Windows, records the version in a file you commit, and
 `sudo`. Requires [mise](https://mise.jdx.dev/getting-started.html).
 
 ```shell
-mise use --pin 'ubi:NeverBlink-OSS/linkml-scala[matching=ohi,exe=ohi]'
+mise use --pin 'ubi:NeverBlink-OSS/ohi[matching=ohi,exe=ohi]'
 ```
 
 The release carries several binaries, so `matching` picks the `ohi` asset and `exe` names the
@@ -58,14 +58,16 @@ at the cost of not being able to read the script first. `install.sh` works with 
 ## Option 3 — manual download, verified
 
 Assets are at
-<https://github.com/NeverBlink-OSS/linkml-scala/releases/latest>: `ohi-linux-x86_64`,
+<https://github.com/NeverBlink-OSS/ohi/releases/latest>: `ohi-linux-x86_64`,
 `-linux-arm64`, `-macos-arm64`, `-macos-x86_64`, `-windows-x86_64.exe`, each also gzipped, plus
 `ohi.jar`.
 
 ```shell
-gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/linkml-scala
+gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/ohi
 chmod +x ohi-linux-x86_64
 ```
+
+For v0.17.2 and older, use `--repo NeverBlink-OSS/linkml-scala` instead.
 
 Full verification procedure, including checksums and the Maven and npm channels:
 [Verifying downloads](https://linkml.ohi.dev/docs/verifying-downloads/).

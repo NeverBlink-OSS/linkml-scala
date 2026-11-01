@@ -24,7 +24,7 @@ jobs:
   install-script:
     name: install.sh on ${{ matrix.os }}
     # Don't burn scheduled runs on forks, which have no releases to install.
-    if: github.event_name != 'schedule' || github.repository == 'NeverBlink-OSS/linkml-scala'
+    if: github.event_name != 'schedule' || github.repository == 'NeverBlink-OSS/ohi'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -110,7 +110,7 @@ jobs:
 
   install-script-powershell:
     name: install.ps1 on windows-latest
-    if: github.event_name != 'schedule' || github.repository == 'NeverBlink-OSS/linkml-scala'
+    if: github.event_name != 'schedule' || github.repository == 'NeverBlink-OSS/ohi'
     runs-on: windows-latest
     defaults:
       run:

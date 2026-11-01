@@ -2,11 +2,11 @@
 
 [![Playground](https://img.shields.io/badge/playground-try_it_live-8A2BE2?style=flat-square&logo=scala&logoColor=white)](https://linkml.ohi.dev/playground)
 [![Discord](https://img.shields.io/badge/Discord-join_chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/HGksVAJ6ss)
-[![GitHub stars](https://img.shields.io/github/stars/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=stars&color=yellow)](https://github.com/NeverBlink-OSS/linkml-scala/stargazers)
+[![GitHub stars](https://img.shields.io/github/stars/NeverBlink-OSS/ohi?style=flat-square&logo=github&logoColor=white&label=stars&color=yellow)](https://github.com/NeverBlink-OSS/ohi/stargazers)
 [![Maven Central](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3?style=flat-square&logo=apachemaven&logoColor=white&label=maven%20central)](https://central.sonatype.com/namespace/eu.neverblink.linkml)
 [![npm](https://img.shields.io/npm/v/@neverblink/linkml?style=flat-square&logo=npm&logoColor=white&label=npm)](https://www.npmjs.com/package/@neverblink/linkml)
 [![PyPI](https://img.shields.io/pypi/v/neverblink-linkml?style=flat-square&logo=pypi&logoColor=white&label=pypi)](https://pypi.org/project/neverblink-linkml/)
-[![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/linkml-scala?style=flat-square&logo=github&logoColor=white&label=CLI%20release&color=blue)](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest)
+[![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/ohi?style=flat-square&logo=github&logoColor=white&label=CLI%20release&color=blue)](https://github.com/NeverBlink-OSS/ohi/releases/latest)
 
 [![Platforms](https://img.shields.io/badge/platforms-JVM_·_JS_·_native-4B8BBE?style=flat-square)](#cli-tool-installation)
 [![Scala 3](https://img.shields.io/badge/Scala-3.8-DC322F?style=flat-square&logo=scala&logoColor=white)](https://www.scala-lang.org)
@@ -51,7 +51,7 @@ ohi LinkML will tell you exactly what is wrong with your model, and where:
 
 The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
 
-We engineered ohi LinkML to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models).
+We engineered ohi LinkML to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/ohi/tree/main/tests/resources/models).
 
 In some cases, ohi LinkML diverges from the Python implementation. You can find the list of implementation differences [here](https://linkml.ohi.dev/docs/implementation-differences/).
 
@@ -92,13 +92,13 @@ Read the script before running it: [install.sh](cli/install.sh), [install.ps1](c
 You can install `ohi` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html) environment manager:
 
 ```shell
-mise use 'ubi:NeverBlink-OSS/linkml-scala[matching=ohi,exe=ohi]'
+mise use 'ubi:NeverBlink-OSS/ohi[matching=ohi,exe=ohi]'
 ohi version
 ```
 
 ### Method 3: Manual download
 
-Head over to [Releases](https://github.com/NeverBlink-OSS/linkml-scala/releases/latest) and download the `ohi` binary for your specific OS and architecture.
+Head over to [Releases](https://github.com/NeverBlink-OSS/ohi/releases/latest) and download the `ohi` binary for your specific OS and architecture.
 
 *For macOS and Linux:*
 Rename the downloaded file, make it executable, and run it:
@@ -219,7 +219,7 @@ See [the Python bindings guide](https://linkml.ohi.dev/docs/python-bindings/) fo
 
 ## Scala library
 
-The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/src/eu/neverblink/linkml/cli). ohi's Scala modules ship inside its CLI and are not published to Maven Central.
+The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/ohi/tree/main/cli/src/eu/neverblink/linkml/cli). ohi's Scala modules ship inside its CLI and are not published to Maven Central.
 
 ## GitHub Action (CI)
 
@@ -232,7 +232,7 @@ Choose **LinkML** for schema authoring and engine operations, or **ohi + LinkML*
 **Claude Code**
 
 ```
-/plugin marketplace add NeverBlink-OSS/linkml-scala
+/plugin marketplace add NeverBlink-OSS/ohi
 /plugin install linkml@linkml-scala
 ```
 
@@ -241,7 +241,7 @@ Choose `/plugin install ohi@linkml-scala` instead for ohi with LinkML.
 **Codex**
 
 ```shell
-codex plugin marketplace add NeverBlink-OSS/linkml-scala
+codex plugin marketplace add NeverBlink-OSS/ohi
 ```
 
 Install either **linkml** or **ohi** from `/plugins`. If the marketplace is already installed, refresh it with `codex plugin marketplace upgrade linkml-scala`.

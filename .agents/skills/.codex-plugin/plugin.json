@@ -5,8 +5,8 @@
     "name": "NeverBlink",
     "url": "https://neverblink.eu"
   },
-  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/.agents/skills/linkml",
-  "repository": "https://github.com/NeverBlink-OSS/linkml-scala",
+  "homepage": "https://github.com/NeverBlink-OSS/ohi/tree/main/.agents/skills/linkml",
+  "repository": "https://github.com/NeverBlink-OSS/ohi",
   "license": "Apache-2.0",
   "keywords": [
     "linkml",
@@ -28,7 +28,7 @@
     "capabilities": [
       "Skills"
     ],
-    "websiteURL": "https://github.com/NeverBlink-OSS/linkml-scala",
+    "websiteURL": "https://github.com/NeverBlink-OSS/ohi",
     "defaultPrompt": [
       "Create a LinkML schema for this data",
       "Validate and review my LinkML schema",

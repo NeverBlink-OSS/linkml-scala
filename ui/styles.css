@@ -933,6 +933,7 @@ body { background: var(--bg); }
   /* The repo name and its star/fork counts say the same thing in less width. */
   .repo-link { padding: 4px 9px; }
   .repo-icon { display: none; }
+  .repo-owner { display: none; }
 
   /* With Auto on, Generate only repeats what has already happened, so the row is better spent on
      the options. It comes back the moment Auto is switched off, which is when it is the only way

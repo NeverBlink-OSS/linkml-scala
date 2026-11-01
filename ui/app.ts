@@ -2388,7 +2388,7 @@ wireDialog($faqDialog);
 
 // ── GitHub repo stats (mkdocs-material style) ────────────────────────────────
 
-const REPO_SLUG = "NeverBlink-OSS/linkml-scala";
+const REPO_SLUG = "NeverBlink-OSS/ohi";
 const REPO_STATS_KEY = "linkml-ui-repo-stats";
 
 function formatCount(n: number): string {

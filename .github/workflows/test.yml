@@ -122,7 +122,7 @@ jobs:
           fi
 
       - name: Publish Snapshot to Sonatype Central
-        if: matrix.java == 17 && github.ref == 'refs/heads/main' && github.event_name == 'push' && github.repository == 'NeverBlink-OSS/linkml-scala'
+        if: matrix.java == 17 && github.ref == 'refs/heads/main' && github.event_name == 'push' && github.repository == 'NeverBlink-OSS/ohi'
         env:
           MILL_SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
