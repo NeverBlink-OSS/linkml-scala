@@ -13,7 +13,7 @@ const brandFonts = {
   name: 'brand-fonts',
   hooks: {
     'astro:config:setup': () => {
-      const ui = new URL('../../ui/', import.meta.url);
+      const ui = new URL('../../ui/public/', import.meta.url);
       const pub = new URL('./public/', import.meta.url);
       fs.cpSync(new URL('fonts/', ui), new URL('fonts/', pub), { recursive: true });
     },

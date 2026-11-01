@@ -114,7 +114,7 @@ object TsDefsGen {
     }.mkString("\n")
 
     s"""// AUTO-GENERATED from generator/src-js/eu/neverblink/linkml/js/LinkMlJsApi.scala.
-       |// Do not edit by hand – regenerate with ./mill uiTypes (or generator.js.npmPackage).
+       |// Do not edit by hand – regenerate with ./mill ui.types (or generator.js.npmPackage).
        |
        |$imports
        |/**

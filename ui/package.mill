@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets
 
 object `package` extends Module {
   /** Bundle the TypeScript playground UI (app.ts + CodeMirror, plus the generation worker) into
-   * ui/dist via esbuild. Installs npm deps on first run. Requires Node.js and npm on the PATH.
+   * ui/public/dist via esbuild. Installs npm deps on first run. Requires Node.js and npm on the PATH.
    */
   def buildUiBundle(): Unit = {
     val uiDir = mill.api.BuildCtx.workspaceRoot / "ui"
@@ -27,18 +27,18 @@ object `package` extends Module {
     buildUiBundle()
   }
 
-  /** Regenerate ui/linkml.d.ts (the LinkML API types the UI is checked against) from the Scala
+  /** Regenerate ui/src/linkml.d.ts (the LinkML API types the UI is checked against) from the Scala
    * facade. Run after changing LinkMlJsApi.scala.
    */
   def types(args: String*) = Task.Command(exclusive = true) {
     // The same as the package's index.d.ts, except that it takes the types generated from the
     // models straight from generator/npm
     os.write.over(
-      mill.api.BuildCtx.workspaceRoot / "ui" / "linkml.d.ts",
+      mill.api.BuildCtx.workspaceRoot / "ui" / "src" / "linkml.d.ts",
       TsDefsGen(
         os.read(build.generator.js.jsApiSource().path),
         f => os.read(build.generator.js.npmMetadata().path / f),
-        "../generator/npm/",
+        "../../generator/npm/",
       ),
     )
   }
@@ -72,16 +72,16 @@ object `package` extends Module {
    * repo).
    */
   private def siteFiles(root: os.Path): Seq[(String, os.Path)] = {
+    val public = root / "ui" / "public"
     val icons = Seq("favicon.svg", "favicon.ico", "apple-touch-icon.png", "neverblink-logo.svg")
-    val playground = Seq("index.html", "styles.css", "fonts", "dist") ++ icons
     // Starlight writes these into website/dist, but they belong at the root of the site
     val llms = Seq("llms.txt", "llms-full.txt", "llms-small.txt")
-    playground.map(f => s"playground/$f" -> root / "ui" / f) ++
+    ("playground" -> public) +:
       // The landing page uses the icons and the fonts too
-      (icons :+ "fonts").map(f => f -> root / "ui" / f) ++
-      llms.map(f => f -> root / "website" / "dist" / f) :+
-      ("robots.txt" -> root / "pages" / "robots.txt") :+
-      ("docs" -> root / "website" / "dist")
+      ((icons :+ "fonts").map(f => f -> public / f) ++
+        llms.map(f => f -> root / "website" / "dist" / f) :+
+        ("robots.txt" -> root / "pages" / "robots.txt") :+
+        ("docs" -> root / "website" / "dist"))
   }
 
   /** Build the whole site, as it's deployed to https://linkml.ohi.dev/, into out/ui/site.dest.
@@ -138,11 +138,6 @@ object `package` extends Module {
         case Some(file) =>
           val contentType = contentTypes.getOrElse(file.ext, "application/octet-stream")
           respond(exchange, contentType, os.read.bytes(file))
-        // /playground, like GitHub Pages
-        case None if fileAt.contains(s"$path/index.html") =>
-          exchange.getResponseHeaders.set("Location", s"$path/")
-          exchange.sendResponseHeaders(301, -1)
-          exchange.close()
         case None =>
           exchange.sendResponseHeaders(404, -1)
           exchange.close()

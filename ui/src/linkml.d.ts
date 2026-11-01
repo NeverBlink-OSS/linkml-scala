@@ -1,26 +1,26 @@
 // AUTO-GENERATED from generator/src-js/eu/neverblink/linkml/js/LinkMlJsApi.scala.
-// Do not edit by hand – regenerate with ./mill uiTypes (or generator.js.npmPackage).
+// Do not edit by hand – regenerate with ./mill ui.types (or generator.js.npmPackage).
 
 // The validation report, generated from model/issue-types.yaml. Each issue's `issue_type`
 // names its kind, so a `switch` on it narrows the issue to that kind.
-import type { SchemaValidationReport } from "../generator/npm/validation-report.js";
-export * from "../generator/npm/validation-report.js";
+import type { SchemaValidationReport } from "../../generator/npm/validation-report.js";
+export * from "../../generator/npm/validation-report.js";
 
 // The build info, generated from model/build-info.yaml.
-import type { BuildInfo } from "../generator/npm/build-info.js";
-export * from "../generator/npm/build-info.js";
+import type { BuildInfo } from "../../generator/npm/build-info.js";
+export * from "../../generator/npm/build-info.js";
 
 // The schema statistics, generated from model/schema-stats.yaml.
-import type { SchemaStats } from "../generator/npm/schema-stats.js";
-export * from "../generator/npm/schema-stats.js";
+import type { SchemaStats } from "../../generator/npm/schema-stats.js";
+export * from "../../generator/npm/schema-stats.js";
 
 // The generators and their options, generated from model/converter/all_generators.yaml.
-import type { GeneratorFunctions, StatsGeneratorOptions } from "../generator/npm/generator-options.js";
-export type { DocsGeneratorOptions, ErDiagramGeneratorOptions, File, Files, FrictionlessGeneratorOptions, GraphQlGeneratorOptions, ImportResult, JsonSchemaGeneratorOptions, LinkMlGeneratorOptions, MetadataLanguageOptions, OssieGeneratorOptions, OwlGeneratorOptions, PruningOptions, PydanticGeneratorOptions, RdfOptions, RdfsGeneratorOptions, ScalaGeneratorOptions, SchemaOutputOptions, ShaclGeneratorOptions, StatsGeneratorOptions, TranslationGeneratorOptions, TypeScriptGeneratorOptions, JsonOutputFormat, OwlMetadataProfile, OwlPermissibleValueKind, RdfFormat, ScalaErrorHandling, TypeScriptErrorHandling, GeneratorFunctions } from "../generator/npm/generator-options.js";
+import type { GeneratorFunctions, StatsGeneratorOptions } from "../../generator/npm/generator-options.js";
+export type { DocsGeneratorOptions, ErDiagramGeneratorOptions, File, Files, FrictionlessGeneratorOptions, GraphQlGeneratorOptions, ImportResult, JsonSchemaGeneratorOptions, LinkMlGeneratorOptions, MetadataLanguageOptions, OssieGeneratorOptions, OwlGeneratorOptions, PruningOptions, PydanticGeneratorOptions, RdfOptions, RdfsGeneratorOptions, ScalaGeneratorOptions, SchemaOutputOptions, ShaclGeneratorOptions, StatsGeneratorOptions, TranslationGeneratorOptions, TypeScriptGeneratorOptions, JsonOutputFormat, OwlMetadataProfile, OwlPermissibleValueKind, RdfFormat, ScalaErrorHandling, TypeScriptErrorHandling, GeneratorFunctions } from "../../generator/npm/generator-options.js";
 
 // The importers and their options, generated from model/converter/all_importers.yaml.
-import type { ImporterFunctions } from "../generator/npm/importer-options.js";
-export type { DatatypeMapping, ImportMapping, MetadataSources, NamespacePrefix, Naming, OssieImporterOptions, OwlImportConfig, OwlImporterOptions, TermRename, NameStyle, SomeValuesFrom, ImporterFunctions } from "../generator/npm/importer-options.js";
+import type { ImporterFunctions } from "../../generator/npm/importer-options.js";
+export type { DatatypeMapping, ImportMapping, MetadataSources, NamespacePrefix, Naming, OssieImporterOptions, OwlImportConfig, OwlImporterOptions, TermRename, NameStyle, SomeValuesFrom, ImporterFunctions } from "../../generator/npm/importer-options.js";
 
 /**
  * A loaded, import-resolved LinkML schema, with the generators as its methods. Create one

@@ -109,7 +109,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
   /** The generator ids offered by the playground's target list. */
   private def playgroundTargets(root: os.Path): Set[String] =
     "id: \"(\\w+)\"".r
-      .findAllMatchIn(os.read(root / "ui" / "targets.ts"))
+      .findAllMatchIn(os.read(root / "ui" / "src" / "targets.ts"))
       .map(_.group(1))
       .toSet
 
@@ -143,7 +143,9 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val targets = playgroundTargets(root)
       // The playground drives the JS API, so its target ids are the facade's method names.
       val missing = jsMethods(root).filterNot(targets)
-      withClue("add a target to ui/targets.ts, then run ./mill uiCheck: ")(missing shouldBe empty)
+      withClue("add a target to ui/src/targets.ts, then run ./mill ui.check: ")(
+        missing shouldBe empty,
+      )
     }
 
     "be a function of the options schema" in {
