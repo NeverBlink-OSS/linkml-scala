@@ -4,6 +4,7 @@ description: Search ohi.dev, inspect publications and download their files from 
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { PackageManagers } from 'starlight-package-managers';
 
 The ohi SDKs let Scala/JVM, Python and TypeScript applications search publications on
 [ohi.dev](https://ohi.dev), inspect their metadata, download selected files and save file selections.
@@ -11,19 +12,17 @@ The ohi SDKs let Scala/JVM, Python and TypeScript applications search publicatio
 ## Installation
 
 <Tabs syncKey="language">
+  <TabItem label="TypeScript">
+    Node 22 or later, or a browser with Fetch. Browsers need CORS access to the catalog,
+    publication and artifact endpoints.
+
+    <PackageManagers pkg="@neverblink/ohi" />
+  </TabItem>
   <TabItem label="Python">
     Python 3.10 or later:
 
     ```sh
     python -m pip install ohi-sdk
-    ```
-  </TabItem>
-  <TabItem label="TypeScript">
-    Node 22 or later, or a browser with Fetch. Browsers need CORS access to the catalog,
-    publication and artifact endpoints.
-
-    ```sh
-    npm install @neverblink/ohi
     ```
   </TabItem>
   <TabItem label="Scala">

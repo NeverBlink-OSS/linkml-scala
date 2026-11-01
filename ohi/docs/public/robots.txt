@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ohi.dev/docs/sitemap-index.xml

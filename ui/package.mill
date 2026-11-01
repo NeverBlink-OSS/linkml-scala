@@ -70,9 +70,13 @@ object `package` extends Module {
   private def siteFiles(root: os.Path): Seq[(String, os.Path)] = {
     val icons = Seq("favicon.svg", "favicon.ico", "apple-touch-icon.png", "neverblink-logo.svg")
     val playground = Seq("index.html", "styles.css", "fonts", "dist") ++ icons
+    // Starlight writes these into website/dist, but they belong at the root of the site
+    val llms = Seq("llms.txt", "llms-full.txt", "llms-small.txt")
     playground.map(f => s"playground/$f" -> root / "ui" / f) ++
       // The landing page uses the icons and the fonts too
-      (icons :+ "fonts").map(f => f -> root / "ui" / f) :+
+      (icons :+ "fonts").map(f => f -> root / "ui" / f) ++
+      llms.map(f => f -> root / "website" / "dist" / f) :+
+      ("robots.txt" -> root / "pages" / "robots.txt") :+
       ("docs" -> root / "website" / "dist")
   }
 
@@ -112,6 +116,7 @@ object `package` extends Module {
     val contentTypes = Map(
       "html" -> "text/html; charset=utf-8",
       "css" -> "text/css; charset=utf-8",
+      "txt" -> "text/plain; charset=utf-8",
       "svg" -> "image/svg+xml",
       "png" -> "image/png",
       "ico" -> "image/x-icon",
