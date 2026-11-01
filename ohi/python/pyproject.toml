@@ -5,16 +5,30 @@ build-backend = "hatchling.build"
 [project]
 name = "ohi-sdk"
 version = "0.0.0"
-description = "ohi catalog search, publication inspection and artifact retrieval."
+description = "Search ontologies on ohi.dev, inspect their metadata and download their files."
+readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
 authors = [{ name = "NeverBlink" }]
+keywords = ["ohi", "ontology", "owl", "rdf", "linkml", "catalog"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
 dependencies = ["pydantic>=2.12,<3"]
 
 [project.urls]
-Documentation = "https://github.com/NeverBlink-OSS/linkml-scala/blob/main/ohi/README.md"
+Homepage = "https://ohi.dev"
+Documentation = "https://ohi.dev/docs/reference/sdks/"
 Source = "https://github.com/NeverBlink-OSS/linkml-scala"
 Issues = "https://github.com/NeverBlink-OSS/linkml-scala/issues"
+Changelog = "https://github.com/NeverBlink-OSS/linkml-scala/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ohi"]

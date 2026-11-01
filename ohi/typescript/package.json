@@ -1,13 +1,17 @@
 {
   "name": "@neverblink/ohi",
   "version": "0.0.0",
-  "description": "ohi catalog search, publication inspection and artifact retrieval.",
+  "description": "Search ontologies on ohi.dev, inspect their metadata and download their files.",
   "license": "Apache-2.0",
+  "homepage": "https://ohi.dev/docs/reference/sdks/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NeverBlink-OSS/linkml-scala.git",
     "directory": "ohi/typescript"
   },
+  "bugs": { "url": "https://github.com/NeverBlink-OSS/linkml-scala/issues" },
+  "author": "NeverBlink (https://neverblink.eu)",
+  "keywords": ["ohi", "ontology", "owl", "rdf", "linkml", "catalog"],
   "publishConfig": { "access": "public" },
   "engines": { "node": ">=22" },
   "type": "module",
