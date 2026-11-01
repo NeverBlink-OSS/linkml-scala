@@ -153,7 +153,7 @@ ohi linkml to shacl <input-file>
 
 Generate a LinkML model that:
 - Has all imports resolved
-- Has all class slots materialized into attributes (opt out by passing `--skip-derivation`)
+- Has all class slots materialized into attributes (opt out by passing `--skip-class-derivation`)
 - Has all unused elements removed (controlled by `--pruning-mode`)
 
 ```shell
@@ -189,8 +189,8 @@ import { LinkML } from "@neverblink/linkml";
 
 // Parse once into a reusable SchemaView handle. The second argument maps
 // file names to YAML for `imports:`.
-const view = LinkML.loadFromString(mySchemaYaml, {});
-const jsonSchema = LinkML.jsonSchema(view);
+const { view } = LinkML.loadFromString(mySchemaYaml, {});
+const jsonSchema = view?.jsonSchema();
 ```
 
 Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the

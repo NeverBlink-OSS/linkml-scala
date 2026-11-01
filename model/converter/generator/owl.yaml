@@ -1,0 +1,56 @@
+id: https://linkml.ohi.dev/model/converter/generator/owl
+name: owl
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+enums:
+  OwlMetadataProfile:
+    description: The annotation property for descriptions in OWL.
+    permissible_values:
+      rdfs:
+        description: '`rdfs:comment`, shown by most OWL tools.'
+      linkml:
+        description: '`skos:definition`, as in the LinkML metamodel and `gen-owl`.'
+  OwlPermissibleValueKind:
+    description: The kind of OWL entity for the permissible values of an enum.
+    permissible_values:
+      individual:
+        description: Named individuals of the enum's class.
+      class:
+        description: Subclasses of the enum's class, as in `gen-owl`.
+
+classes:
+  OwlGeneratorOptions:
+    description: Options of the OWL generator.
+    mixins: [RdfOptions]
+    attributes:
+      only_root_schema:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether to describe only the root schema, with an `owl:imports` for each of its
+          imports. Without it, the output includes the imported schemas, like `gen-owl
+          --mergeimports`.
+      metadata_profile:
+        range: OwlMetadataProfile
+        required: true
+        ifabsent: OwlMetadataProfile(rdfs)
+        description: The annotation property for descriptions.
+      permissible_values:
+        range: OwlPermissibleValueKind
+        required: true
+        ifabsent: OwlPermissibleValueKind(individual)
+        description: The kind of OWL entity for the permissible values of an enum.
+
+functions:
+  owl:
+    description: >-
+      Generate an OWL 2 ontology, serialized as Turtle or N-Triples. Classes, slots, enums and types
+      become OWL classes, properties, classes of individuals and datatypes, with the same IRIs as in
+      `shacl` and `rdfs`.
+    parameters: OwlGeneratorOptions
+    returns: string

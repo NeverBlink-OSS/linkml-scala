@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.ossie
 
+import eu.neverblink.linkml.generator.options.{OssieGeneratorOptions, PruningMode}
 import eu.neverblink.linkml.generator.ossie.OssieCases.*
-import eu.neverblink.linkml.generator.util.PruningMode
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues, SchemaView}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -371,7 +371,7 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
       val sv = schemaOf(multilingualDescriptions)
       def descriptions(language: String): (Option[String], Option[String]) = {
         val o = OssieGenerator(using sv).generate(
-          OssieGenerator.Options(metadataLanguage = language),
+          OssieGeneratorOptions(metadataLanguage = language),
         )
         val c = concept(o, "Book")
         (c.description, c.relationships.head.description)
@@ -393,11 +393,11 @@ class OssieGeneratorSpec extends AnyWordSpec, Matchers, OssieFixtures {
     "drop the classes that pruning puts out of reach" in {
       val sv = schemaOf(treeRoot)
       def concepts(mode: PruningMode): Seq[String] =
-        OssieGenerator(using sv).generate(OssieGenerator.Options(pruningMode = mode))
+        OssieGenerator(using sv).generate(OssieGeneratorOptions(pruningMode = mode))
           .ontology.map(_.concept)
 
-      concepts(PruningMode.skip) should contain("Orphan")
-      concepts(PruningMode.treeRoot(None)) should not contain "Orphan"
+      concepts(PruningMode.Skip) should contain("Orphan")
+      concepts(PruningMode.TreeRoot) should not contain "Orphan"
     }
 
     "read back into the model it was written from" in {

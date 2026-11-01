@@ -1,0 +1,22 @@
+id: https://linkml.ohi.dev/model/converter/generator/graphql
+name: graphql
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  GraphQlGeneratorOptions:
+    description: Options of the GraphQL generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(schema)
+
+functions:
+  graphql:
+    description: >-
+      Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries.
+    parameters: GraphQlGeneratorOptions
+    returns: string

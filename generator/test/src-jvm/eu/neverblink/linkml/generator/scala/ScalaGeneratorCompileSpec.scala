@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.scala
 
+import eu.neverblink.linkml.generator.options.{ScalaErrorHandling, ScalaGeneratorOptions}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -32,7 +33,7 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
   }
 
   /** Generate [[entry]] with [[options]] and compile the result. */
-  private def compileModel(entry: ModelCatalogue.Entry, options: ScalaGenerator.Options): Unit = {
+  private def compileModel(entry: ModelCatalogue.Entry, options: ScalaGeneratorOptions): Unit = {
     val dir = os.temp.dir(prefix = "linkml-scala-src")
     val sources =
       ScalaGenerator(using entry.model).generate(options).map { (name, content) =>
@@ -55,7 +56,7 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         processSkip(entry.name, "")
         compileModel(
           entry,
-          ScalaGenerator.Options("generated", skipLeafInterfaces = skipLeafInterfaces),
+          ScalaGeneratorOptions(`package` = "generated", skipLeafInterfaces = skipLeafInterfaces),
         )
       }
 
@@ -65,7 +66,7 @@ class ScalaGeneratorCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpe
         processSkip(entry.name, "")
         compileModel(
           entry,
-          ScalaGenerator.Options("generated", errorHandling = ErrorHandling.either),
+          ScalaGeneratorOptions(`package` = "generated", errorHandling = ScalaErrorHandling.Either),
         )
       }
   }

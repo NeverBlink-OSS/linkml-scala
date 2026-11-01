@@ -33,7 +33,10 @@ export interface CyclicReference {
   message?: string;
   /** relation: The metaslots that form the loop, e.g. `is_a/mixins`, `typeof` or `union_of`. */
   relation: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -49,7 +52,10 @@ export interface EmptyName {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
   /** used for: Formatted description of the elements that share the name. */
   transformed_name: string;
@@ -67,7 +73,10 @@ export interface FlankingSeparator {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
 }
 
@@ -81,7 +90,10 @@ export interface InvalidDefaultRange {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -97,7 +109,10 @@ export interface InvalidEqualsString {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
   /** slot name */
   slot_name: string;
@@ -119,7 +134,10 @@ export interface InvalidKeyOrIdSlotType {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
 }
 
@@ -137,7 +155,10 @@ export interface InvalidRange {
   message?: string;
   /** range value */
   range_value: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -153,7 +174,10 @@ export interface InvalidSlotUsage {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
   /** slot names */
   slot_names: string[];
@@ -169,7 +193,10 @@ export interface InvalidUriOrCurie {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
   /** URI or CURIE */
   uri_or_curie: string;
@@ -199,7 +226,10 @@ export interface MissingRecommendedSlot {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
   /** slot name */
   slot_name: string;
@@ -217,7 +247,10 @@ export interface MultipleKeyOrIdSlots {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
   /** slot names */
   slot_names: string[];
@@ -235,7 +268,10 @@ export interface MultipleTreeRoots {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
 }
 
@@ -249,7 +285,10 @@ export interface NoTreeRootClass {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
 }
 
@@ -265,7 +304,10 @@ export interface NonAsciiName {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
 }
 
@@ -283,7 +325,10 @@ export interface NonStandardSeparator {
   message?: string;
   /** Non-standards separators used */
   separators?: string[];
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
 }
 
@@ -299,7 +344,10 @@ export interface NonUniqueName {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
   /** used for: Formatted description of the elements that share the name. */
   transformed_name: string;
@@ -319,7 +367,10 @@ export interface RepeatedSeparator {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
 }
 
@@ -335,7 +386,10 @@ export interface SchemaConversionError {
   message?: string;
   /** reason: Why the schema or ontology can't be converted. */
   reason: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -373,7 +427,10 @@ export interface SchemaIdClash {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -391,7 +448,10 @@ export interface SchemaImportError {
   message?: string;
   /** reason: Verbatim message from whatever failed to supply the schema text. */
   reason: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -440,7 +500,10 @@ export interface SchemaParseError {
   message?: string;
   /** parser message: Verbatim message from the YAML parser or the metamodel decoder. */
   parser_message: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
   /** source URI: URI the schema text came from. Empty when parsing an in-memory string. */
   source_uri: string;
@@ -478,7 +541,10 @@ export interface UndeclaredCuriePrefix {
   message?: string;
   /** prefix */
   prefix: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
   /** URI or CURIE */
   uri_or_curie: string;
@@ -494,7 +560,10 @@ export interface UndefinedDefaultRange {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
 }
 
@@ -510,7 +579,10 @@ export interface UndefinedPrefix {
   message?: string;
   /** prefix */
   prefix: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "ERROR"
+   */
   severity: IssueSeverity;
 }
 
@@ -524,7 +596,10 @@ export interface UnexpandedCurie {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
   /** URI */
   uri: string;
@@ -544,7 +619,10 @@ export interface UnexpectedError {
   message?: string;
   /** reason: Message of the underlying exception. */
   reason: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -560,7 +638,10 @@ export interface UnknownReference {
   message?: string;
   /** reference value */
   reference_value: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -574,7 +655,10 @@ export interface UnknownStringReference {
   location: IssueLocation;
   /** message: Short, human-readable message describing the issue. */
   message?: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "FATAL"
+   */
   severity: IssueSeverity;
 }
 
@@ -590,7 +674,10 @@ export interface UnquotedStringDefault {
   message?: string;
   /** quoted value: The same expression with the value in quotes. */
   quoted_value: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
   /** value: The `ifabsent` expression as written. */
   value: string;
@@ -608,7 +695,10 @@ export interface UnwritableUri {
   message?: string;
   /** prefix */
   prefix: string;
-  /** severity: The severity of the issue. */
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
   severity: IssueSeverity;
   /** URI */
   uri: string;

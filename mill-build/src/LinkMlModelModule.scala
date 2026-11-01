@@ -26,8 +26,13 @@ trait LinkMlModelModule extends Module {
   /** The package of the generated classes. They are written to its directory under `src`. */
   def modelPackage: String
 
-  /** Other files to generate from [[modelSchema]]: the generator name and the file it writes. */
+  /** Other files to generate from [[modelSchema]]: the generator name, with its options if any,
+    * and the file it writes.
+    */
   def otherModelOutputs: Map[String, os.Path] = Map.empty
+
+  /** Files that the Scala generator writes, but this module doesn't need. They are deleted. */
+  def unusedModelFiles: Seq[String] = Seq.empty
 
   /** Generate the classes of this module and the [[otherModelOutputs]] from [[modelSchema]]. */
   def regenerate() = Task.Command {
@@ -39,8 +44,12 @@ trait LinkMlModelModule extends Module {
       Seq("generate", "scala", "--clean", "--to", to.toString, "--package", modelPackage, schema),
       workingDir = root,
     )
+    unusedModelFiles.foreach(file => os.remove(to / file))
     otherModelOutputs.foreach { (generator, file) =>
-      cli.run(Seq("generate", generator, "--to", file.toString, schema), workingDir = root)
+      cli.run(
+        Seq("generate") ++ generator.split(' ') ++ Seq("--to", file.toString, schema),
+        workingDir = root,
+      )
     }
   }
 }

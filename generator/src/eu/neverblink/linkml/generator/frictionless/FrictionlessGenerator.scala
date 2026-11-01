@@ -1,12 +1,14 @@
 package eu.neverblink.linkml.generator.frictionless
 
+import eu.neverblink.linkml.generator.options.FrictionlessGeneratorOptions
 import com.github.plokhotnyuk.jsoniter_scala.core.{JsonValueCodec, WriterConfig, writeToString}
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
 import eu.neverblink.linkml.generator.frictionless.FieldDescriptor.types
-import eu.neverblink.linkml.generator.util.PruningMode
+import eu.neverblink.linkml.generator.util.Pruning
+import eu.neverblink.linkml.generator.util.Pruning.pruning
+import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.HasMetadataLanguage
 
 import scala.collection.mutable
 
@@ -26,17 +28,18 @@ import scala.collection.mutable
   * The CSVs the resources point at do not exist yet.
   */
 class FrictionlessGenerator(using sv: SchemaView)
-    extends JsonDocumentGenerator[FrictionlessGenerator.Options, DataPackageDescriptor],
+    extends JsonDocumentGenerator[FrictionlessGeneratorOptions, DataPackageDescriptor],
       FrictionlessRenamer {
 
   import FrictionlessGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: FrictionlessGeneratorOptions =
+    FrictionlessGeneratorOptions()
 
   override protected def codec: JsonValueCodec[DataPackageDescriptor] =
     DataPackageDescriptor.codec
 
-  override protected def writerConfig(options: Options): WriterConfig =
+  override protected def writerConfig(options: FrictionlessGeneratorOptions): WriterConfig =
     WriterConfig.withIndentionStep(2)
 
   /** Map the [[RuntimeType]] to the appropriate Table Schema (type, format) tuple
@@ -64,10 +67,10 @@ class FrictionlessGenerator(using sv: SchemaView)
   }
 
   /** The classes that will be rendered as tables. */
-  private def tables(options: Options): Seq[Table] = {
-    val query = options.pruningMode.derivedQuery(false, true)
-    val treeRoot = sv.treeRootWithOverride(options.pruningMode match {
-      case PruningMode.treeRoot(o) => o
+  private def tables(options: FrictionlessGeneratorOptions): Seq[Table] = {
+    val query = options.pruning.derivedQuery(false, true)
+    val treeRoot = sv.treeRootWithOverride(options.pruning match {
+      case Pruning.treeRoot(o) => o
       case _ => None
     }).get
 
@@ -99,7 +102,7 @@ class FrictionlessGenerator(using sv: SchemaView)
     *   The Table Schema (Table Descriptor) for [[cv]].
     */
   def tableSchema(cv: ClassView, resources: Map[String, String] = Map.empty)(using
-      options: FrictionlessGenerator.Options,
+      options: FrictionlessGeneratorOptions,
   ): TableDescriptor = {
     val foreignKeys = mutable.ListBuffer.empty[ForeignKey]
 
@@ -199,12 +202,14 @@ class FrictionlessGenerator(using sv: SchemaView)
   /** Generate the data package with every table schema written inline.
     *
     * @param options
-    *   What to generate. See [[FrictionlessGenerator.Options]].
+    *   What to generate. See [[FrictionlessGeneratorOptions]].
     * @return
     *   The whole package as one self-contained descriptor.
     */
-  override def generate(options: Options = Options()): DataPackageDescriptor = {
-    given Options = options
+  override def generate(
+      options: FrictionlessGeneratorOptions = FrictionlessGeneratorOptions(),
+  ): DataPackageDescriptor = {
+    given FrictionlessGeneratorOptions = options
     val ts = tables(options)
     val byName = resources(ts)
     descriptor(ts, t => SchemaRef.Inline(tableSchema(t.cv, byName)))
@@ -214,12 +219,14 @@ class FrictionlessGenerator(using sv: SchemaView)
     * `schemas/<name>.json` per table below it.
     *
     * @param options
-    *   What to generate. See [[FrictionlessGenerator.Options]].
+    *   What to generate. See [[FrictionlessGeneratorOptions]].
     * @return
     *   Pairs of (path relative to the package directory, file content).
     */
-  def generateFiles(options: Options = Options()): Iterable[(String, String)] = {
-    given Options = options
+  def generateFiles(
+      options: FrictionlessGeneratorOptions = FrictionlessGeneratorOptions(),
+  ): Iterable[(String, String)] = {
+    given FrictionlessGeneratorOptions = options
     val ts = tables(options)
     val byName = resources(ts)
     val config = writerConfig(options)
@@ -239,7 +246,7 @@ class FrictionlessGenerator(using sv: SchemaView)
     * split into separate files.
     */
   private def descriptor(ts: Seq[Table], schema: Table => SchemaRef)(using
-      Options,
+      FrictionlessGeneratorOptions,
   ): DataPackageDescriptor = {
     if ts.isEmpty then
       throw RuntimeException(
@@ -274,22 +281,6 @@ object FrictionlessGenerator {
 
   /** A class that was rendered as a table, and the name the for it inside the data package. */
   private final case class Table(cv: ClassView, resource: String)
-
-  /** Options for [[FrictionlessGenerator]].
-    *
-    * @param pruningMode
-    *   Which classes to turn into tables.
-    * @param skipClassesWithoutIdentifier
-    *   Whether to skip classes that have no identifier slot. Such a table gets no primary key and
-    *   nothing can reference it, so it is often not useful.
-    * @param metadataLanguage
-    *   Which language to use for metadata fields (description) in the generated Table Schema.
-    */
-  final case class Options(
-      pruningMode: PruningMode = PruningMode.skip,
-      skipClassesWithoutIdentifier: Boolean = false,
-      metadataLanguage: String = "en",
-  ) extends HasMetadataLanguage
 
   private def schemaPath(resource: String): String = s"schemas/$resource.json"
   private def dataPath(resource: String): String = s"data/$resource.csv"

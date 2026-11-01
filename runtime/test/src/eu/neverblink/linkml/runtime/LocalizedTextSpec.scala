@@ -88,13 +88,5 @@ class LocalizedTextSpec extends AnyWordSpec, Matchers {
       (None: Option[LocalizedText]).localized shouldBe None
       Seq.empty[LocalizedText].localized shouldBe Seq.empty
     }
-
-    "use the metadataLanguage of the options in context" in {
-      case class Options(metadataLanguage: String) extends HasMetadataLanguage
-      given Options = Options("pl")
-      text.localized shouldBe "cześć"
-      Some(text).localized shouldBe Some("cześć")
-      Seq(text).localized shouldBe Seq("cześć")
-    }
   }
 }

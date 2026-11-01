@@ -40,14 +40,32 @@ object TsDefsGen {
       Seq("SchemaStats"),
       "The schema statistics, generated from model/schema-stats.yaml.",
     ),
+    ModelTypes(
+      "generator-options",
+      Seq("GeneratorFunctions", "StatsGeneratorOptions"),
+      "The generators and their options, generated from model/converter/all_generators.yaml.",
+    ),
   )
+
+  /** The names a TypeScript declaration file exports. */
+  private def exportedNames(declarations: String): Seq[String] =
+    "(?m)^export (?:declare )?(?:interface|type|enum|const) (\\w+)".r
+      .findAllMatchIn(declarations)
+      .map(_.group(1))
+      .toSeq
 
   /** @param scalaSource
     *   source of `LinkMlJsApi.scala`
+    * @param modelTypes
+    *   the content of each of the [[modelTypes]] files, by file name
     * @param modelTypesDir
     *   where index.d.ts finds the [[modelTypes]] files: `./` in the package
     */
-  def apply(scalaSource: String, modelTypesDir: String = "./"): String = {
+  def apply(
+      scalaSource: String,
+      modelTypeFiles: String => String,
+      modelTypesDir: String = "./",
+  ): String = {
     val parsed = dialects.Scala3(scalaSource).parse[Source].get
     val obj = findObject(parsed).getOrElse(sys.error(s"object $objectName not found"))
 
@@ -57,12 +75,21 @@ object TsDefsGen {
       .filterNot(_.mods.exists(_.is[Mod.Private]))
 
     val members = methods.map(renderMethod(scalaSource, _)).mkString("\n\n")
+    // A name that an earlier file exports already, such as the `PruningMode` of both the schema
+    // statistics and the generator options, would be ambiguous, so only the others are exported.
+    val exported = collection.mutable.Set.empty[String]
     val imports = modelTypes.map { m =>
       val module = s"$modelTypesDir${m.name}.js"
       val comment = m.comment.linesIterator.map("// ".concat).mkString("\n")
+      val names = exportedNames(modelTypeFiles(m.file))
+      val reexport =
+        if names.exists(exported.contains) then
+          s"export type { ${names.filterNot(exported.contains).mkString(", ")} } from \"$module\";"
+        else s"export * from \"$module\";"
+      exported ++= names
       s"""$comment
          |import type { ${m.uses.mkString(", ")} } from "$module";
-         |export * from "$module";
+         |$reexport
          |""".stripMargin
     }.mkString("\n")
 
@@ -71,13 +98,15 @@ object TsDefsGen {
        |
        |$imports
        |/**
-       | * Opaque handle to a loaded, import-resolved LinkML schema. Create one with
-       | * {@link ${exportedName}Api.load} and pass it to the generator functions. Parse a schema
-       | * once and reuse the handle, instead of re-parsing the YAML on every call.
+       | * A loaded, import-resolved LinkML schema, with the generators as its methods. Create one
+       | * with {@link ${exportedName}Api.loadFromString} or {@link ${exportedName}Api.loadFromPath}.
+       | * Parse a schema once and reuse it, instead of re-parsing the YAML on every call.
        | */
-       |export interface SchemaView {
+       |export interface SchemaView extends GeneratorFunctions {
        |  /** @internal Nominal brand – do not access. */
        |  readonly __linkmlSchemaView: unique symbol;
+       |  /** {@inheritDoc GeneratorFunctions.stats} */
+       |  stats(params?: StatsGeneratorOptions): SchemaStats;
        |}
        |
        |/**
@@ -138,9 +167,8 @@ object TsDefsGen {
     }
 
   private def mapType(scalaType: String): String =
-    innerOf(scalaType, "Option")
-      .orElse(innerOf(scalaType, "js.UndefOr"))
-      .map(mapType)
+    innerOf(scalaType, "Option").map(mapType)
+      .orElse(innerOf(scalaType, "js.UndefOr").map(mapType))
       .getOrElse {
         scalaType match {
           case "String" => "string"

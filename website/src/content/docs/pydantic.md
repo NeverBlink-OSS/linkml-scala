@@ -24,9 +24,9 @@ ohi linkml to pydantic --to model.py schema.yaml
 
 Options:
 
-- `--pruning-mode <treeRoot|schema|skip>`: which classes and enums to generate. Default: `skip`,
+- `--pruning-mode <tree_root|schema|skip>`: which classes and enums to generate. Default: `skip`,
   i.e. all of them. The parents of the included classes are always generated too.
-- `--tree-root <Class>`: with `--pruning-mode treeRoot`, use this class as the tree root.
+- `--tree-root <Class>`: with `--pruning-mode tree_root`, use this class as the tree root.
 - `--include-null`: keep the `null`s that were loaded or set when dumping, which this option of
   the JSON Schema generator allows.
 - `--open`: accept and keep extra properties on every object.

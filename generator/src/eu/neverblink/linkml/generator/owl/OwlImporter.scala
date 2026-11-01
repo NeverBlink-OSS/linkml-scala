@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.owl
 
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, RdfFormat}
 import eu.neverblink.linkml.generator.SchemaImporter
 import eu.neverblink.linkml.generator.owl.Axiom.*
 import eu.neverblink.linkml.generator.owl.ClassExpr.Bound
@@ -15,8 +16,6 @@ import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.{
 }
 import eu.neverblink.linkml.generator.owl.config.{NameStyle, OwlImportConfig, SomeValuesFrom}
 import eu.neverblink.linkml.generator.owl.OwlImportNames.*
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
 import eu.neverblink.linkml.metamodel.{Annotation as _, *}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.*
@@ -62,8 +61,8 @@ class OwlImporter extends SchemaImporter[OwlImporter.Options] {
   def importWithWarnings(in: InputStream, options: Options = Options()): Result = {
     val sink = CollectingRdfSink()
     options.inputFormat match {
-      case RdfFormat.ttl => TurtleParser.parse(in, sink)
-      case RdfFormat.nt => NTriplesParser.parse(in, sink)
+      case RdfFormat.Ttl => TurtleParser.parse(in, sink)
+      case RdfFormat.Nt => NTriplesParser.parse(in, sink)
     }
     val read = OwlRdfReader.read(sink.triples)
     // Document prefixes override those from `sh:declare`. LinkML has no empty prefix, so skip it.
@@ -114,10 +113,10 @@ object OwlImporter {
     */
   final case class Options(
       config: OwlImportConfig = OwlImportConfig(),
-      outputFormat: JsonOutputFormat = JsonOutputFormat.yaml,
+      outputFormat: JsonOutputFormat = JsonOutputFormat.Yaml,
       schemas: Importer = FileSystemImporter,
       base: String = "",
-      inputFormat: RdfFormat = RdfFormat.ttl,
+      inputFormat: RdfFormat = RdfFormat.Ttl,
       fullUris: Boolean = false,
   ) extends SchemaImporter.Options
 

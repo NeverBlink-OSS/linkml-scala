@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.pydantic
 
+import eu.neverblink.linkml.generator.options.{JsonSchemaGeneratorOptions, PydanticGeneratorOptions}
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml.cli.Validate
@@ -101,14 +102,14 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     )
   }
 
-  private val variants: Seq[(String, PydanticGenerator.Options, JsonSchemaGenerator.Options)] = Seq(
-    ("default", PydanticGenerator.Options(), JsonSchemaGenerator.Options()),
+  private val variants: Seq[(String, PydanticGeneratorOptions, JsonSchemaGeneratorOptions)] = Seq(
+    ("default", PydanticGeneratorOptions(), JsonSchemaGeneratorOptions()),
     (
       "includeNull",
-      PydanticGenerator.Options(includeNull = true),
-      JsonSchemaGenerator.Options(includeNull = true),
+      PydanticGeneratorOptions(includeNull = true),
+      JsonSchemaGeneratorOptions(includeNull = true),
     ),
-    ("open", PydanticGenerator.Options(open = true), JsonSchemaGenerator.Options(open = true)),
+    ("open", PydanticGeneratorOptions(open = true), JsonSchemaGeneratorOptions(open = true)),
   )
 
   private lazy val outDir: os.Path = os.temp.dir(prefix = "linkml-pydantic-")

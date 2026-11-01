@@ -485,11 +485,9 @@ class GeneratorTest(unittest.TestCase):
     def test_rdfs_ntriples(self):
         self.assertIn("rdf-schema#Class", self.schema.rdfs(format="nt"))
 
-    def test_rdf_format_aliases(self):
-        # The long spellings the CLI accepts work here too, and the default is Turtle.
+    def test_rdf_format_defaults_to_turtle(self):
         self.assertEqual(self.schema.shacl(), self.schema.shacl(format="ttl"))
-        self.assertEqual(self.schema.shacl(format="ttl"), self.schema.shacl(format="turtle"))
-        self.assertEqual(self.schema.shacl(format="nt"), self.schema.shacl(format="ntriples"))
+        self.assertNotEqual(self.schema.shacl(format="ttl"), self.schema.shacl(format="nt"))
 
     def test_unknown_rdf_format_is_rejected(self):
         for generator in (self.schema.shacl, self.schema.rdfs):
@@ -500,7 +498,7 @@ class GeneratorTest(unittest.TestCase):
     def test_linkml(self):
         # Deriving pushes inherited and referenced slots down into each class' attributes.
         self.assertIn("attributes:", self.schema.linkml())
-        self.assertIn('"attributes"', self.schema.linkml(output_format="json"))
+        self.assertIn('"attributes"', self.schema.linkml(format="json"))
 
     def test_linkml_pruning_drops_unreachable_classes(self):
         unreachable = schema(
@@ -520,7 +518,7 @@ class GeneratorTest(unittest.TestCase):
         )
         with ohi_linkml.load_string(unreachable) as loaded:
             self.assertIn("Orphan", loaded.linkml(pruning_mode="skip"))
-            self.assertNotIn("Orphan", loaded.linkml(pruning_mode="treeRoot"))
+            self.assertNotIn("Orphan", loaded.linkml(pruning_mode="tree_root"))
 
     def test_frictionless(self):
         files = self.schema.frictionless()
@@ -589,7 +587,7 @@ class GeneratorTest(unittest.TestCase):
         self.assertEqual(2, stats["elements"]["classes"]["count"])
         self.assertEqual({"direct": 1, "transitive": 1}, stats["imports"])
         self.assertIn("", stats["languages"])
-        self.assertEqual("tree_root", self.schema.stats(pruning_mode="treeRoot")["pruning_mode"])
+        self.assertEqual("tree_root", self.schema.stats(pruning_mode="tree_root")["pruning_mode"])
 
     def test_ossie(self):
         generated = self.schema.ossie()
@@ -598,13 +596,13 @@ class GeneratorTest(unittest.TestCase):
         self.assertIn("type: EntityType", generated)
         # YAML by default, and the version the Ossie ontology spec pins.
         self.assertIn("version: 0.2.0.dev0", generated)
-        as_json = json.loads(self.schema.ossie(output_format="json"))
+        as_json = json.loads(self.schema.ossie(format="json"))
         self.assertEqual("0.2.0.dev0", as_json["version"])
         self.assertIn("Person", [c["concept"] for c in as_json["ontology"]])
 
     def test_ossie_unknown_output_format_is_rejected(self):
         with self.assertRaises(ohi_linkml.LinkMlError) as raised:
-            self.schema.ossie(output_format="toml")
+            self.schema.ossie(format="toml")
         self.assertIn("toml", str(raised.exception))
 
     def test_scala(self):

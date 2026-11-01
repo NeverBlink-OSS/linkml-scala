@@ -5,21 +5,18 @@ import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
 import eu.neverblink.linkml.generator.graphql.GraphQlGenerator
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
-import eu.neverblink.linkml.generator.typescript.{
-  ErrorHandling as TsErrorHandling,
-  TypeScriptGenerator,
-}
+import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.owl.config.{OwlImportConfig, OwlImportConfigs}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
-import eu.neverblink.linkml.generator.RdfGeneratorBase.RdfFormat
-import eu.neverblink.linkml.generator.scala.{ErrorHandling, ScalaGenerator}
+import eu.neverblink.linkml.generator.scala.ScalaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.translation.TranslationGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.util.{JsonUtil, JsonOutputFormat, PruningMode}
+import eu.neverblink.linkml.generator.options.*
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator
 import eu.neverblink.linkml.schemaview.{
   ImportMapImporter,
@@ -33,6 +30,8 @@ import eu.neverblink.linkml.schemaview.buildinfo.CurrentBuild
 import eu.neverblink.linkml.rdf.RdfParseException
 import eu.neverblink.linkml.runtime.SchemaConversionException
 import eu.neverblink.linkml.validation.{Codec, SchemaFatal, SchemaIssue, SchemaValidationReport}
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
+import org.virtuslab.yaml.parseYaml
 
 import scala.scalajs.js
 import scala.scalajs.js.JSConverters.JSRichMap
@@ -43,8 +42,96 @@ import scala.scalajs.js.annotation.{JSExportAll, JSExportTopLevel}
   * Wraps a Scala [[SchemaView]] so the schema is parsed once (with all `imports:` resolved) and can
   * then be reused across many generators, instead of re-parsing on every call. Create one with
   * [[LinkMlJsApi.loadFromString]] or [[LinkMlJsApi.loadFromPath]].
+  *
+  * Its methods are the functions of model/converter/all_generators.yaml, which also documents them.
+  * Each takes the generator's options as a plain JS object, with their names in snake case. The
+  * options left out take their defaults.
   */
-final class SchemaViewJs private[js] (private[js] val underlying: SchemaView)
+@JSExportAll
+final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {
+  import SchemaViewJs.{*, given}
+  private given SchemaView = underlying
+
+  def jsonSchema(params: Params = js.undefined): String =
+    JsonSchemaGenerator().serialize(decode[JsonSchemaGeneratorOptions](params))
+
+  def shacl(params: Params = js.undefined): String =
+    ShaclGenerator().serialize(decode[ShaclGeneratorOptions](params))
+
+  def rdfs(params: Params = js.undefined): String =
+    RdfsGenerator().serialize(decode[RdfsGeneratorOptions](params))
+
+  def linkml(params: Params = js.undefined): String =
+    LinkMlJsApi.converting(LinkMlGenerator().serialize(decode[LinkMlGeneratorOptions](params)))
+
+  def frictionless(params: Params = js.undefined): js.Dictionary[String] =
+    FrictionlessGenerator().generateFiles(decode[FrictionlessGeneratorOptions](params))
+      .toMap.toJSDictionary
+
+  def graphql(params: Params = js.undefined): String =
+    GraphQlGenerator().serialize(decode[GraphQlGeneratorOptions](params))
+
+  def typescript(params: Params = js.undefined): String =
+    TypeScriptGenerator().serialize(decode[TypeScriptGeneratorOptions](params))
+
+  def pydantic(params: Params = js.undefined): String =
+    PydanticGenerator().serialize(decode[PydanticGeneratorOptions](params))
+
+  def erDiagram(params: Params = js.undefined): String =
+    ErDiagramGenerator().serialize(decode[ErDiagramGeneratorOptions](params))
+
+  def docs(params: Params = js.undefined): js.Dictionary[String] =
+    DocsGenerator().generateFiles(decode[DocsGeneratorOptions](params))
+      .map(_.toTuple).toMap.toJSDictionary
+
+  def ossie(params: Params = js.undefined): String =
+    LinkMlJsApi.converting(OssieGenerator().serialize(decode[OssieGeneratorOptions](params)))
+
+  def owl(params: Params = js.undefined): String =
+    LinkMlJsApi.converting(OwlGenerator().serialize(decode[OwlGeneratorOptions](params)))
+
+  def scala(params: Params = js.undefined): js.Dictionary[String] =
+    ScalaGenerator().generate(decode[ScalaGeneratorOptions](params)).toMap.toJSDictionary
+
+  def stats(params: Params = js.undefined): js.Any = {
+    val stats = StatsGenerator().generate(decode[StatsGeneratorOptions](params))
+    js.JSON.parse(JsonUtil.yamlToJson(StatsGenerator.codec.encode(stats)))
+  }
+
+  def translation(params: Params = js.undefined): String =
+    TranslationGenerator().serialize(decode[TranslationGeneratorOptions](params))
+}
+
+private object SchemaViewJs {
+
+  /** The options of a generator, as a plain JS object. */
+  type Params = js.UndefOr[js.Object]
+
+  /** The options of a generator, from the plain JS object the caller passed. */
+  def decode[T](params: Params)(using codec: LinkmlYamlCodec[T]): T =
+    parseYaml(params.fold("{}")(js.JSON.stringify(_))) match {
+      case Right(node) =>
+        try codec.decode(node)
+        catch { case e: Exception => throw RuntimeException(s"Invalid options: ${e.getMessage}") }
+      case Left(error) => throw RuntimeException(s"Invalid options: ${error.msg}")
+    }
+
+  given LinkmlYamlCodec[JsonSchemaGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[ShaclGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[ScalaGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[RdfsGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[OwlGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[LinkMlGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[FrictionlessGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[GraphQlGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[TypeScriptGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[PydanticGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[ErDiagramGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[StatsGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[DocsGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[TranslationGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[OssieGeneratorOptions] = LinkmlYamlCodec.derived
+}
 
 /** A `SchemaValidationReport` (model/validation-report.yaml) as a plain JS object. Only a name for
   * the TypeScript declarations. In TS it is the type generated from model/issue-types.yaml.
@@ -55,11 +142,6 @@ type SchemaValidationReport = js.Any
   * declarations: there, it is the type generated from model/build-info.yaml.
   */
 type BuildInfo = js.Any
-
-/** A `SchemaStats` (model/schema-stats.yaml) as a plain JS object. Only a name for the TypeScript
-  * declarations: there, it is the type generated from model/schema-stats.yaml.
-  */
-type SchemaStats = js.Any
 
 /** What loading a schema produced: always a validation report, and a usable handle if the schema
   * could be loaded at all.
@@ -115,8 +197,8 @@ object LinkMlJsApi {
     *   CURIE imports are expanded with the prefixes of the schema that contains them before they
     *   are matched.
     * @return
-    *   The validation report, and a handle to pass to the generator functions unless the schema had
-    *   fatal problems.
+    *   The validation report, and a handle with the generators unless the schema had fatal
+    *   problems.
     */
   def loadFromString(
       mainSchema: String,
@@ -156,8 +238,8 @@ object LinkMlJsApi {
     *   CURIE imports are expanded with the prefixes of the schema that contains them before they
     *   are matched.
     * @return
-    *   The validation report, and a handle to pass to the generator functions unless the schema had
-    *   fatal problems.
+    *   The validation report, and a handle with the generators unless the schema had fatal
+    *   problems.
     */
   def loadFromPath(
       path: String,
@@ -221,7 +303,7 @@ object LinkMlJsApi {
     * [[SchemaConversionException]] or an [[RdfParseException]], is thrown as a JS `Error` with a
     * `SchemaConversionError` issue in its `issue` property, so callers can tell it from a bug.
     */
-  private def converting[A](body: => A): A =
+  private[js] def converting[A](body: => A): A =
     try body
     catch {
       case e @ (_: SchemaConversionException | _: RdfParseException) =>
@@ -232,156 +314,10 @@ object LinkMlJsApi {
         throw js.JavaScriptException(error)
     }
 
-  /** Generate JSON Schema from a loaded LinkML schema.
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param open
-    *   Whether the JSON Schema should allow `additionalProperties` for all classes, not only for
-    *   those whose `extra_slots` allows them.
-    * @param treeRootOverride
-    *   Override for the LinkML `tree_root` class which will be at the root of the JSON Schema.
-    * @return
-    *   Serialized JSON Schema
-    */
-  def jsonSchema(
-      schema: SchemaViewJs,
-      open: Boolean = false,
-      treeRootOverride: js.UndefOr[String] = js.undefined,
-  ): String =
-    JsonSchemaGenerator(using schema.underlying).serialize(
-      JsonSchemaGenerator.Options(open = open, treeRoot = treeRootOverride.toOption),
-    )
-
-  /** Generate SHACL shapes from a loaded LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param open
-    *   Whether all SHACL shapes should be open (`_:b sh:closed false .`, allowing additional
-    *   properties), not only those of classes whose `extra_slots` allows them.
-    * @param onlyClassesFromRootSchema
-    *   Whether to include only classes from the root schema (turned off by default). This is useful
-    *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
-    *   the imported classes to be included in the generated SHACL shapes.
-    * @param format
-    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
-    * @return
-    *   SHACL shapes in the requested format
-    */
-  def shacl(
-      schema: SchemaViewJs,
-      open: Boolean = false,
-      onlyClassesFromRootSchema: Boolean = false,
-      format: String = "ttl",
-  ): String =
-    ShaclGenerator(using schema.underlying).serialize(
-      ShaclGenerator.Options(
-        open = open,
-        onlyClassesFromRootSchema = onlyClassesFromRootSchema,
-        format = rdfFormat(format),
-      ),
-    )
-
-  /** Generate Scala code from a loaded LinkML schema. This is primarily used for the metamodel
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param `package`
-    *   Package to generate the classes in
-    * @param errorHandling
-    *   How the functions of the schema report their `errors`. One of: `annotation`, where each
-    *   error class gets an exception class and the method is annotated with `@throws`; or `either`,
-    *   where the method returns `Either[E1 | E2, R]` with the error classes on the left. Default:
-    *   annotation.
-    * @return
-    *   JS dictionary (object) containing a mapping from filename to the generated Scala code.
-    */
-  def scala(
-      schema: SchemaViewJs,
-      `package`: String,
-      errorHandling: String = "annotation",
-  ): js.Dictionary[String] =
-    ScalaGenerator(using schema.underlying)
-      .generate(
-        ScalaGenerator.Options(
-          `package` = `package`,
-          errorHandling = ErrorHandling(errorHandling),
-        ),
-      )
-      .toMap
-      .toJSDictionary
-
-  /** Generate RDFS from a loaded LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param onlyClassesFromRootSchema
-    *   Whether to include only classes from the root schema (turned off by default). This is useful
-    *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
-    *   the imported classes to be included in the generated SHACL shapes.
-    * @param format
-    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
-    * @return
-    *   RDFS in the requested format
-    */
-  def rdfs(
-      schema: SchemaViewJs,
-      onlyClassesFromRootSchema: Boolean = false,
-      format: String = "ttl",
-  ): String =
-    RdfsGenerator(using schema.underlying).serialize(
-      RdfsGenerator.Options(
-        onlyClassesFromRootSchema = onlyClassesFromRootSchema,
-        format = rdfFormat(format),
-      ),
-    )
-
-  /** Generate an OWL 2 ontology from a loaded LinkML schema. Classes, slots, enums and types become
-    * OWL classes, properties, classes of individuals and datatypes, with the same IRIs as [[shacl]]
-    * and [[rdfs]].
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param onlyRootSchema
-    *   Whether to describe only the root schema, with an `owl:imports` for each schema it imports
-    *   (turned off by default, which merges the imported schemas in).
-    * @param metadataProfile
-    *   Which annotation property holds descriptions: `rdfs` for `rdfs:comment` (the default) or
-    *   `linkml` for `skos:definition`, as in the LinkML metamodel.
-    * @param permissibleValues
-    *   What permissible values become: `individual` (the default) or `class`.
-    * @param format
-    *   RDF serialization format: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
-    * @return
-    *   The ontology in the requested format
-    */
-  def owl(
-      schema: SchemaViewJs,
-      onlyRootSchema: Boolean = false,
-      metadataProfile: String = "rdfs",
-      permissibleValues: String = "individual",
-      format: String = "ttl",
-  ): String = {
-    val options = OwlGenerator.Options(
-      onlyRootSchema = onlyRootSchema,
-      metadataProfile = OwlGenerator.MetadataProfile.values.find(_.toString == metadataProfile)
-        .getOrElse(throw RuntimeException(s"Unknown metadata profile: $metadataProfile")),
-      permissibleValues = OwlGenerator.PermissibleValueKind.values.find(
-        _.toString == permissibleValues,
-      )
-        .getOrElse(throw RuntimeException(s"Unknown permissible value kind: $permissibleValues")),
-      format = rdfFormat(format),
-    )
-    converting(OwlGenerator(using schema.underlying).serialize(options))
-  }
-
   /** Read an OWL ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[owl]]. Feed the result to [[loadFromString]] if you want to run a generator
-    * over it.
+    * The opposite of [[SchemaViewJs.owl]]. Feed the result to [[loadFromString]] if you want to run
+    * a generator over it.
     *
     * @param ontology
     *   The ontology, as Turtle (or N-Triples, which is Turtle too).
@@ -426,368 +362,30 @@ object LinkMlJsApi {
       ),
     )
     val schema = converting(importer.serializeSchema(result.schema, format, fullUris))
-    if listNotImported && format == JsonOutputFormat.yaml then
+    if listNotImported && format == JsonOutputFormat.Yaml then
       result.warnings.map(w => s"# Not imported: $w\n").mkString + schema
     else schema
   }
 
-  /** The YAML-or-JSON format the caller named, as the generators spell it. */
-  private def outputFormat(format: String): JsonOutputFormat =
-    JsonOutputFormat.parse(format).getOrElse(
-      throw RuntimeException(JsonOutputFormat.unknownFormat(format)),
-    )
+  /** The YAML-or-JSON format the caller named. */
+  private def outputFormat(format: String): JsonOutputFormat = format.toLowerCase match {
+    case "yaml" | "yml" => JsonOutputFormat.Yaml
+    case "json" => JsonOutputFormat.Json
+    case other =>
+      throw RuntimeException(s"Unknown output format: $other. Supported formats: yaml, json.")
+  }
 
-  /** The RDF format the caller named, as the generators spell it. */
+  /** The RDF format the caller named. */
   private def rdfFormat(format: String): RdfFormat = format.toLowerCase match {
-    case "nt" | "ntriples" => RdfFormat.nt
-    case "ttl" | "turtle" => RdfFormat.ttl
+    case "nt" | "ntriples" => RdfFormat.Nt
+    case "ttl" | "turtle" => RdfFormat.Ttl
     case other => throw RuntimeException(s"Unknown RDF format: $other. Supported formats: nt, ttl.")
-  }
-
-  /** Materialize a derived LinkML schema from a loaded LinkML schema. Derives classes and prunes
-    * unreachable elements.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for removing unused elements (classes, types, enums). One of
-    *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
-    *   schema - remove all elements unreachable from anything defined in the root schema. skip - do
-    *   not remove unused elements. Default: treeRoot
-    * @param skipDerivation
-    *   If true, will not derive classes and instead copy them as-is.
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
-    *   tree root pruning mode.
-    * @param outFormat
-    *   Output serialization format to use. One of yaml|json. Default: yaml
-    * @param fullUris
-    *   Write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.
-    *   Default: false
-    * @return
-    *   The derived [[SchemaDefinition]] serialized in the specified format.
-    */
-  def linkml(
-      schema: SchemaViewJs,
-      pruningMode: String = "treeRoot",
-      skipDerivation: Boolean = false,
-      treeRoot: js.UndefOr[String] = js.undefined,
-      outFormat: String = "yaml",
-      fullUris: Boolean = false,
-  ): String = {
-    val mode = PruningMode(pruningMode, treeRoot.toOption)
-
-    val format = outputFormat(outFormat)
-    val options = LinkMlGenerator.Options(
-      pruningMode = mode,
-      skipClassDerivation = skipDerivation,
-      outputFormat = format,
-      fullUris = fullUris,
-    )
-    converting(LinkMlGenerator(using schema.underlying).serialize(options))
-  }
-
-  /** Generate a Frictionless Data Package from a loaded LinkML schema. Every class becomes a CSV
-    * table, described by its own Table Schema, and references between classes become foreign keys
-    * between the tables.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for choosing which classes become tables. One of treeRoot|schema|skip.
-    *   treeRoot - only classes reachable from the tree_root class. schema - only classes reachable
-    *   from anything defined in the root schema. skip - every class. Default: skip
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
-    *   tree root pruning mode.
-    * @param skipClassesWithoutIdentifier
-    *   Whether to skip classes that have no identifier slot. Such a table gets no primary key and
-    *   nothing can reference it, so it is often not useful. Default: false
-    * @return
-    *   JS dictionary (object) containing a mapping from filename to file content: a
-    *   `datapackage.json` plus one `schemas/<table>.json` per table.
-    */
-  def frictionless(
-      schema: SchemaViewJs,
-      pruningMode: String = "skip",
-      treeRoot: js.UndefOr[String] = js.undefined,
-      skipClassesWithoutIdentifier: Boolean = false,
-  ): js.Dictionary[String] =
-    FrictionlessGenerator(using schema.underlying)
-      .generateFiles(
-        FrictionlessGenerator.Options(
-          pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-          skipClassesWithoutIdentifier = skipClassesWithoutIdentifier,
-        ),
-      )
-      .toMap
-      .toJSDictionary
-
-  /** Generate a GraphQL Schema from a loaded LinkML schema. Only types/interfaces/scalar/enums,
-    * queries must be provided for a specific implementation.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for removing unused elements (classes, types, enums). One of
-    *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
-    *   schema - remove all elements unreachable from anything defined in the root schema. skip - do
-    *   not remove unused elements. Default: treeRoot
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root.
-    * @return
-    *   Table Schema, serialized as a JSON
-    */
-  def graphQl(
-      schema: SchemaViewJs,
-      pruningMode: String = "treeRoot",
-      treeRoot: js.UndefOr[String] = js.undefined,
-  ): String =
-    GraphQlGenerator(using schema.underlying).serialize(
-      GraphQlGenerator.Options(PruningMode(pruningMode, treeRoot.toOption)),
-    )
-
-  /** Generate TypeScript types from a loaded LinkML schema. The types describe the same JSON as
-    * [[jsonSchema]], with no runtime code: load data with `JSON.parse(text) as X` and dump it with
-    * `JSON.stringify(x)`.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip.
-    *   treeRoot - remove all elements unreachable from the tree_root class. schema - remove all
-    *   elements unreachable from anything defined in the root schema. skip - do not remove unused
-    *   elements. Default: skip
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root.
-    * @param includeNull
-    *   Whether optional slots may also be `null`.
-    * @param open
-    *   Whether all interfaces should allow additional properties, not only those of classes whose
-    *   `extra_slots` allows them.
-    * @param errorHandling
-    *   How the functions of the schema report their `errors`. One of: `throw`, where the method
-    *   returns the value and its doc comment gets a `@throws` tag for each error class; or
-    *   `result`, where the method returns `Result<R, Failure<...> | ...>`, the value or one of the
-    *   errors. Default: throw.
-    * @return
-    *   TypeScript source code
-    */
-  def typeScript(
-      schema: SchemaViewJs,
-      pruningMode: String = "skip",
-      treeRoot: js.UndefOr[String] = js.undefined,
-      includeNull: Boolean = false,
-      open: Boolean = false,
-      errorHandling: String = "throw",
-  ): String =
-    TypeScriptGenerator(using schema.underlying).serialize(
-      TypeScriptGenerator.Options(
-        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-        includeNull = includeNull,
-        open = open,
-        errorHandling = TsErrorHandling(errorHandling),
-      ),
-    )
-
-  /** Generate Python classes based on pydantic from a loaded LinkML schema. The classes load and
-    * dump the same JSON as [[jsonSchema]] describes: load data with `X.model_validate_json(text)`
-    * and dump it with `x.model_dump_json()`.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for removing unused classes and enums. One of treeRoot|schema|skip.
-    *   treeRoot - remove all elements unreachable from the tree_root class. schema - remove all
-    *   elements unreachable from anything defined in the root schema. skip - do not remove unused
-    *   elements. Default: skip
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root.
-    * @param includeNull
-    *   Whether dumps keep the nulls that were loaded or set. Otherwise they leave out every field
-    *   without a value.
-    * @param open
-    *   Whether the classes should accept and keep additional properties.
-    * @return
-    *   Python source code
-    */
-  def pydantic(
-      schema: SchemaViewJs,
-      pruningMode: String = "skip",
-      treeRoot: js.UndefOr[String] = js.undefined,
-      includeNull: Boolean = false,
-      open: Boolean = false,
-  ): String =
-    PydanticGenerator(using schema.underlying).serialize(
-      PydanticGenerator.Options(
-        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-        includeNull = includeNull,
-        open = open,
-      ),
-    )
-
-  /** Generate a Mermaid entity relationship diagram from a loaded LinkML schema. Classes become
-    * entities, type- and enum-ranged slots become their attributes, and class-ranged slots become
-    * relationship lines.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for removing unused elements (classes, types, enums). One of
-    *   treeRoot|schema|skip. treeRoot - remove all elements unreachable from the tree_root class.
-    *   schema - remove all elements unreachable from anything defined in the root schema. skip - do
-    *   not remove unused elements. Default: treeRoot
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root.
-    * @param optionalMarker
-    *   Whether to mark optional attributes with a trailing '?' on their type. Mermaid understands
-    *   this from version 11.16 onwards, older renderers throw an error instead. Default: true
-    * @return
-    *   The ER diagram, serialized as Mermaid
-    */
-  def erDiagram(
-      schema: SchemaViewJs,
-      pruningMode: String = "treeRoot",
-      treeRoot: js.UndefOr[String] = js.undefined,
-      optionalMarker: Boolean = true,
-  ): String =
-    ErDiagramGenerator(using schema.underlying).serialize(
-      ErDiagramGenerator.Options(
-        pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-        optionalMarker = optionalMarker,
-      ),
-    )
-
-  /** Statistics about a loaded LinkML schema: how many elements of each kind it has, how many of
-    * them are documented, deprecated or mapped, the strings in each language, and the imports.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Which elements to count. One of treeRoot|schema|skip. treeRoot - the elements reachable from
-    *   the tree_root class. schema - the elements reachable from any of the classes defined in the
-    *   root schema. skip - every element. Default: schema
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root.
-    * @return
-    *   A `SchemaStats` object, as described by https://linkml.ohi.dev/model/schema-stats
-    */
-  def stats(
-      schema: SchemaViewJs,
-      pruningMode: String = "schema",
-      treeRoot: js.UndefOr[String] = js.undefined,
-  ): SchemaStats = {
-    val stats = StatsGenerator(using schema.underlying).generate(
-      StatsGenerator.Options(pruningMode = PruningMode(pruningMode, treeRoot.toOption)),
-    )
-    js.JSON.parse(JsonUtil.yamlToJson(StatsGenerator.codec.encode(stats)))
-  }
-
-  /** Generate Markdown documentation from a loaded LinkML schema: an index page plus a page for
-    * each class, slot, enum and type, which link to each other.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   What to document. One of treeRoot|schema|skip. treeRoot - only what the tree_root class
-    *   reaches. schema - everything defined in the root schema, and what it uses. skip - every
-    *   element. The enums, types and slots a documented class uses are documented with it. Default:
-    *   schema
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
-    *   tree root pruning mode.
-    * @param singleFile
-    *   Whether to write all pages as sections of one `docs.md` document. Default: false
-    * @param metadataLanguage
-    *   Which language to use for titles and descriptions. Default: en
-    * @return
-    *   JS dictionary (object) containing a mapping from filename to file content: `index.md` plus
-    *   `classes/<name>.md`, `slots/<name>.md`, `enums/<name>.md`, `types/<name>.md` and
-    *   `functions/<name>.md`, or only `docs.md` if [[singleFile]] is true.
-    */
-  def docs(
-      schema: SchemaViewJs,
-      pruningMode: String = "schema",
-      treeRoot: js.UndefOr[String] = js.undefined,
-      singleFile: Boolean = false,
-      metadataLanguage: String = "en",
-  ): js.Dictionary[String] = {
-    val options = DocsGenerator.Options(
-      pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-      metadataLanguage = metadataLanguage,
-      singleFile = singleFile,
-    )
-    val files = js.Dictionary.empty[String]
-    DocsGenerator(using schema.underlying).generateFiles(options).foreach(f =>
-      files(f.path) = f.content,
-    )
-    files
-  }
-
-  /** Generate JSON dictionaries that translate the LinkML name to specific frameworks. This is
-    * useful when the framework symbols are significant and must be known, like when constructing a
-    * query that is meant to be executed against a database conformant to a LinkML schema.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param target
-    *   Target framework to generate translations for. One of "base", "uri", "scala", "graphql",
-    *   "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", or "docs".
-    * @param derivedAttributes
-    *   Also list inherited slots, mixin slots and slots from the class's `slots` list in
-    *   classAttributes. Without it, classAttributes lists only the class's own attributes. Default:
-    *   false
-    * @return
-    *   Translation dictionary for translating the linkml names to framework names.
-    */
-  def translation(
-      schema: SchemaViewJs,
-      target: String,
-      derivedAttributes: Boolean = false,
-  ): String =
-    TranslationGenerator(using schema.underlying).serialize(
-      TranslationGenerator.Options(
-        target,
-        derivedAttributes = derivedAttributes,
-      ),
-    )
-
-  /** Generate an Apache Ossie ontology from a loaded LinkML schema. Classes become entity types,
-    * enums and named types become value types, and slots become the relationships grouped under the
-    * concept that plays their first role.
-    *
-    * @param schema
-    *   A [[SchemaView]] handle created with [[loadFromString]] or [[loadFromPath]].
-    * @param pruningMode
-    *   Pruning mode to use for choosing which elements become concepts. One of
-    *   treeRoot|schema|skip. treeRoot - only elements reachable from the tree_root class. schema -
-    *   only elements reachable from anything defined in the root schema. skip - every element.
-    *   Default: skip
-    * @param treeRoot
-    *   Tree root class name to use instead of the schema defined tree_root. Does nothing if not in
-    *   tree root pruning mode.
-    * @param outFormat
-    *   Output serialization format to use. One of yaml|json. Default: yaml
-    * @return
-    *   The ontology, serialized in the specified format.
-    */
-  def ossie(
-      schema: SchemaViewJs,
-      pruningMode: String = "skip",
-      treeRoot: js.UndefOr[String] = js.undefined,
-      outFormat: String = "yaml",
-  ): String = {
-    val options = OssieGenerator.Options(
-      pruningMode = PruningMode(pruningMode, treeRoot.toOption),
-      outputFormat = outputFormat(outFormat),
-    )
-    converting(OssieGenerator(using schema.underlying).serialize(options))
   }
 
   /** Read an Apache Ossie ontology and produce the LinkML schema it describes.
     *
-    * The opposite of [[ossie]]. Feed the result to [[loadFromString]] if you want to run a
-    * generator over it.
+    * The opposite of [[SchemaViewJs.ossie]]. Feed the result to [[loadFromString]] if you want to
+    * run a generator over it.
     *
     * @param ontology
     *   The ontology document, as YAML or JSON.

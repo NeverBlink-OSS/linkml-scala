@@ -1,0 +1,66 @@
+id: https://linkml.ohi.dev/model/converter/generator/typescript
+name: typescript
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+enums:
+  TypeScriptErrorHandling:
+    description: How the generated TypeScript methods report the `errors` of a function.
+    permissible_values:
+      exception:
+        description: >-
+          The method returns the value, and its doc comment gets a `@throws` tag for each error
+          class.
+        aliases: [throw]
+      result:
+        description: >-
+          The method returns `Result<R, Failure<...> | ...>`: the value or one of the errors. A
+          function with no `errors` returns `R` as it is.
+
+classes:
+  TypeScriptGeneratorOptions:
+    description: Options of the TypeScript generator.
+    mixins: [PruningOptions, MetadataLanguageOptions]
+    slots:
+      - include_null
+      - open
+    slot_usage:
+      pruning_mode:
+        ifabsent: PruningMode(skip)
+        description: >-
+          The classes and enums in the output. A designated union always comes with its
+          members.
+      include_null:
+        description: >-
+          Whether optional values and compact dictionary entries with nothing beyond the key may
+          be null, as in the JSON Schema generator.
+      open:
+        description: >-
+          Whether every interface allows properties beyond the ones in the schema, as
+          `additionalProperties` in the JSON Schema generator. Interfaces of classes whose
+          `extra_slots` allows them allow them anyway.
+    attributes:
+      error_handling:
+        range: TypeScriptErrorHandling
+        required: true
+        ifabsent: TypeScriptErrorHandling(exception)
+        description: How the functions of the schema report their `errors`.
+      optional_defaults:
+        range: boolean
+        required: true
+        ifabsent: 'false'
+        description: >-
+          Whether a slot with an `ifabsent` may be left out, for data that a program fills the
+          defaults in, such as options. Without it, such a slot is as required as the schema says,
+          as in the JSON Schema generator.
+
+functions:
+  typescript:
+    description: >-
+      Generate TypeScript types for the schema's JSON data, with no runtime code. Load data with
+      `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`.
+    parameters: TypeScriptGeneratorOptions
+    returns: string

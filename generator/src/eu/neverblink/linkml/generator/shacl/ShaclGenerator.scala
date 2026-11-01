@@ -1,7 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
+import eu.neverblink.linkml.generator.options.ShaclGeneratorOptions
 import eu.neverblink.linkml.generator.RdfGeneratorBase
-import eu.neverblink.linkml.generator.RdfGeneratorBase.{RdfFormat, RdfOptions}
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.metamodel.SlotExpression
 import eu.neverblink.linkml.runtime.FastUtils.*
@@ -12,9 +12,9 @@ import scala.collection.mutable
 
 import ShaclGenerator.Check
 
-class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerator.Options] {
+class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGeneratorOptions] {
 
-  override protected def defaultOptions: ShaclGenerator.Options = ShaclGenerator.Options()
+  override protected def defaultOptions: ShaclGeneratorOptions = ShaclGeneratorOptions()
 
   /** Emit the slot's range on its PropertyShape. A slot without `range` gets the schema's
     * `default_range`.
@@ -540,11 +540,11 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
     * @param sink
     *   The sink that receives namespace declarations and triples.
     * @param options
-    *   What to generate. See [[ShaclGenerator.Options]].
+    *   What to generate. See [[ShaclGeneratorOptions]].
     */
   override final def generate(
       sink: RdfSink,
-      options: ShaclGenerator.Options,
+      options: ShaclGeneratorOptions,
   ): Unit = {
     import options.{onlyClassesFromRootSchema, open}
     addNamespaces(sink, defaultPrefixes)
@@ -605,23 +605,4 @@ object ShaclGenerator {
     case PerValue, PerInstance
   }
 
-  /** Options for [[ShaclGenerator]].
-    *
-    * @param open
-    *   Whether the generated shapes should be open, allowing properties the schema does not mention
-    *   (turned off by default). Shapes of classes whose `extra_slots` allows extra data are open
-    *   anyway.
-    * @param onlyClassesFromRootSchema
-    *   Whether to include only classes from the root schema (turned off by default). This is useful
-    *   if you intend to generate SHACL shapes for each schema file separately, and you don't need
-    *   the imported classes to be included in the generated SHACL shapes.
-    * @param format
-    *   Which RDF serialization to write: `ttl` for Turtle (the default), which is prefixed and
-    *   pretty-printed, or `nt` for N-Triples.
-    */
-  final case class Options(
-      open: Boolean = false,
-      onlyClassesFromRootSchema: Boolean = false,
-      format: RdfFormat = RdfFormat.ttl,
-  ) extends RdfOptions
 }

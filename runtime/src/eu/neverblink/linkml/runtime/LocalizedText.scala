@@ -55,10 +55,6 @@ case class MultilingualText(mapping: Map[LanguageTag, String]) extends Localized
   override def inLanguageOrFallback(tag: LanguageTag): String =
     mapping.getOrElse(tag, plain)
 
-/** Options that say which language to write schema text in. */
-trait HasMetadataLanguage:
-  def metadataLanguage: LanguageTag
-
 /** The language that generators write schema text in. */
 opaque type MetadataLanguage = String
 
@@ -66,10 +62,6 @@ object MetadataLanguage:
   def apply(tag: LanguageTag): MetadataLanguage = tag
 
   extension (language: MetadataLanguage) def tag: LanguageTag = language
-
-  /** The language from the options in context. */
-  given fromOptions(using options: HasMetadataLanguage): MetadataLanguage =
-    options.metadataLanguage
 
 object LocalizedText:
   extension (t: Option[LocalizedText])

@@ -1,14 +1,16 @@
 package eu.neverblink.linkml.generator.jsonschema
 
+import eu.neverblink.linkml.generator.options.JsonSchemaGeneratorOptions
 import com.github.plokhotnyuk.jsoniter_scala.core.*
 import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodecMaker}
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
+import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.metamodel.SlotDefinition
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.{HasMetadataLanguage, LinkmlAny}
+import eu.neverblink.linkml.runtime.LinkmlAny
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -28,29 +30,29 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 class JsonSchemaGenerator(using sv: SchemaView)
-    extends JsonDocumentGenerator[JsonSchemaGenerator.Options, Schema],
+    extends JsonDocumentGenerator[JsonSchemaGeneratorOptions, Schema],
       JsonRenamer {
   import JsonSchemaGenerator.*
 
-  override protected def defaultOptions: Options = Options()
+  override protected def defaultOptions: JsonSchemaGeneratorOptions = JsonSchemaGeneratorOptions()
 
   override protected def codec: JsonValueCodec[Schema] = JsonSchemaGenerator.codec
 
-  override protected def writerConfig(options: Options): WriterConfig =
+  override protected def writerConfig(options: JsonSchemaGeneratorOptions): WriterConfig =
     WriterConfig.withIndentionStep(options.indentationStep)
 
   /** Generate the JSON Schema, but keep it in the [[Schema]] model
     *
     * @param options
-    *   What to generate. See [[JsonSchemaGenerator.Options]].
+    *   What to generate. See [[JsonSchemaGeneratorOptions]].
     * @return
     *   JSON Schema in the [[Schema]] model
     */
   override final def generate(
-      options: JsonSchemaGenerator.Options = JsonSchemaGenerator.Options(),
+      options: JsonSchemaGeneratorOptions = JsonSchemaGeneratorOptions(),
   ): Schema = {
     import options.{open, treeRootInlineType => treeRootInlineTypeOverride}
-    given JsonSchemaGenerator.Options = options
+    given JsonSchemaGeneratorOptions = options
     val maybeTreeRoot = sv.treeRootWithOverride(options.treeRoot) match {
       case Success(value) => value
       case Failure(exception) => throw exception
@@ -278,33 +280,6 @@ class JsonSchemaGenerator(using sv: SchemaView)
 }
 
 object JsonSchemaGenerator {
-
-  /** Options for [[JsonSchemaGenerator]].
-    *
-    * @param open
-    *   Whether the generated JSON Schema should allow `additionalProperties` for all classes.
-    *   Classes whose `extra_slots` allows extra data allow them anyway.
-    * @param treeRoot
-    *   If defined, override the schema `tree_root` class with the one provided.
-    * @param treeRootInlineType
-    *   If defined, override the `tree_root_as` extension of the tree root class with the one
-    *   provided. One of `plain`, `optional`, `list`, `compact_dict`, `simple_dict`.
-    * @param indentationStep
-    *   Number of spaces in pretty print indentation of the serialized JSON Schema.
-    * @param metadataLanguage
-    *   Which language to use for metadata fields (description, title) in the generated JSON Schema.
-    * @param includeNull
-    *   Allows null values for optional slots and compact dictionary entries without required
-    *   content beyond the key. Default: false
-    */
-  final case class Options(
-      open: Boolean = false,
-      treeRoot: Option[String] = None,
-      treeRootInlineType: Option[String] = None,
-      indentationStep: Int = 2,
-      metadataLanguage: String = "en",
-      includeNull: Boolean = false,
-  ) extends HasMetadataLanguage
 
   /** Translate the [[RuntimeType]] of the provided type view into the appropriate JSON Schema.
     * Provides formats for date-times and URI/CURIE. A `union_of` type accepts any of its members. A

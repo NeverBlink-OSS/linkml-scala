@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator
 
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.generator.options.JsonOutputFormat
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.metamodel.SchemaDefinition
 import eu.neverblink.linkml.schemaview.SchemaCodec
 

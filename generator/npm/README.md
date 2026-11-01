@@ -37,11 +37,11 @@ classes:
 const { view, report } = LinkML.loadFromString(schema, {});
 if (!view) throw new Error(JSON.stringify(report, null, 2)); // fatal problems: nothing to generate from
 
-// Then run any generator against the loaded schema.
-const jsonSchema = LinkML.jsonSchema(view);
+// Then run any generator on the loaded schema.
+const jsonSchema = view.jsonSchema();
 console.log(jsonSchema);
 
-const shacl = LinkML.shacl(view);
+const shacl = view.shacl({ format: "nt" });
 console.log(shacl);
 ```
 
@@ -83,27 +83,35 @@ const { view: withUnits } = LinkML.loadFromPath(
 
 ### Available functions
 
-Load a schema into a `SchemaView` handle (see above), then pass that handle to any generator:
+Load a schema into a `SchemaView` (see above), then call any generator on it. Every generator
+takes an optional options object, such as `{ pruning_mode: "tree_root", format: "json" }`. The
+generators, their options and the defaults are the functions of
+[`model/converter`](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/model/converter). Their types, such as `LinkMlGeneratorOptions`, are in `index.d.ts`.
+
+| Method of `SchemaView` | Returns | Notes |
+|------------------------|---------|-------|
+| `jsonSchema(options?)` | `string` | JSON Schema |
+| `shacl(options?)` | `string` | SHACL shapes, `ttl` (default) or `nt` |
+| `rdfs(options?)` | `string` | RDFS, `ttl` (default) or `nt` |
+| `owl(options?)` | `string` | OWL 2 ontology, `ttl` (default) or `nt` |
+| `linkml(options?)` | `string` | derived/pruned LinkML schema |
+| `scala(options?)` | `GeneratedFiles` | filename → generated Scala |
+| `frictionless(options?)` | `GeneratedFiles` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
+| `graphql(options?)` | `string` | GraphQL |
+| `typescript(options?)` | `string` | TypeScript types for the JSON data (no runtime code) |
+| `pydantic(options?)` | `string` | Python classes (pydantic) that load and dump the JSON data |
+| `erDiagram(options?)` | `string` | Mermaid entity relationship diagram |
+| `docs(options?)` | `GeneratedFiles` | filename → Markdown documentation (`index.md` and a page per element) |
+| `ossie(options?)` | `string` | Apache Ossie ontology, `yaml` (default) or `json` |
+| `translation(options?)` | `string` | Translation dictionary for generator outputs |
+| `stats(options?)` | `SchemaStats` | counts of the elements, their documentation, mappings, languages and imports |
+
+The functions of `LinkML`:
 
 | Function                                                                     | Returns                  | Notes                                                                          |
 |------------------------------------------------------------------------------|--------------------------|--------------------------------------------------------------------------------|
 | `loadFromString(schema, imports, inferMessages?, importMap?)`                | `LoadResult`             | parse from YAML text; `{ view?, report }`                                      |
 | `loadFromPath(path, imports, inferMessages?, importMap?)`                    | `LoadResult`             | parse from a path in `imports`; cycle-safe for the root                        |
-| `jsonSchema(view, open?, treeRootOverride?)`                                 | `string`                 | JSON Schema                                                                    |
-| `shacl(view, open?, onlyClassesFromRootSchema?, format?)`                    | `string`                 | SHACL shapes, `ttl` (default) or `nt`                                          |
-| `rdfs(view, onlyClassesFromRootSchema?, format?)`                            | `string`                 | RDFS, `ttl` (default) or `nt`                                                  |
-| `owl(view, onlyRootSchema?, metadataProfile?, permissibleValues?, format?)`  | `string`                 | OWL 2 ontology, `ttl` (default) or `nt`                                        |
-| `linkml(view, pruningMode?, skipDerivation?, treeRoot?, outFormat?, fullUris?)` | `string`                 | derived/pruned LinkML schema                                                   |
-| `scala(view, packageName)`                                                   | `Record<string, string>` | filename → generated Scala                                                     |
-| `frictionless(view, pruningMode?, treeRoot?, skipClassesWithoutIdentifier?)` | `Record<string, string>` | filename → Frictionless data package (`datapackage.json` and `schemas/*.json`) |
-| `graphQl(view, pruningMode?, treeRoot?)`                                     | `string`                 | GraphQL                                                                        |
-| `typeScript(view, pruningMode?, treeRoot?, includeNull?, open?)`             | `string`                 | TypeScript types for the JSON data (no runtime code)                           |
-| `pydantic(view, pruningMode?, treeRoot?, includeNull?, open?)`               | `string`                 | Python classes (pydantic) that load and dump the JSON data                     |
-| `erDiagram(view, pruningMode?, treeRoot?, optionalMarker?)`                  | `string`                 | Mermaid entity relationship diagram                                            |
-| `docs(view, pruningMode?, treeRoot?, singleFile?, metadataLanguage?)`        | `Record<string, string>` | filename → Markdown documentation (`index.md` and a page per element)          |
-| `ossie(view, pruningMode?, treeRoot?, outFormat?)`                           | `string`                 | Apache Ossie ontology, `yaml` (default) or `json`                              |
-| `translation(view, target)`                                                  | `string`                 | Translation dictionary for generator outputs                                   |
-| `stats(view, pruningMode?, treeRoot?)`                                       | `SchemaStats`            | counts of the elements, their documentation, mappings, languages and imports  |
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |
 | `fromOssie(ontology, schemaId?, outFormat?, fullUris?)`                      | `string`                 | the LinkML schema from an Apache Ossie ontology                                |

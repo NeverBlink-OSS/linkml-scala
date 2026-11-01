@@ -1,0 +1,39 @@
+id: https://linkml.ohi.dev/model/converter/generator/json-schema
+name: json-schema
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  JsonSchemaGeneratorOptions:
+    description: Options of the JSON Schema generator.
+    mixins: [MetadataLanguageOptions]
+    slots:
+      - open
+      - tree_root
+      - indentation_step
+      - include_null
+    slot_usage:
+      tree_root:
+        description: >-
+          The class at the root of the JSON Schema, instead of the class with `tree_root: true`
+          in the schema.
+      include_null:
+        description: >-
+          Whether optional values and compact dictionary entries with nothing beyond the key may
+          be null.
+    attributes:
+      tree_root_inline_type:
+        range: string
+        description: >-
+          How the tree root class appears at the root of the JSON Schema, instead of its
+          `tree_root_as` extension. One of `plain`, `optional`, `list`, `compact_dict` or
+          `simple_dict`.
+
+functions:
+  json_schema:
+    description: Generate a JSON Schema.
+    parameters: JsonSchemaGeneratorOptions
+    returns: string

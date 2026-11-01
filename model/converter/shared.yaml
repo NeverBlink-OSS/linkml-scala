@@ -1,0 +1,130 @@
+id: https://linkml.ohi.dev/model/converter/shared
+name: shared
+description: Slots, enums, and mixins used by more than one converter.
+license: https://creativecommons.org/publicdomain/zero/1.0/
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - linkml:types
+
+slots:
+  metadata_language:
+    range: string
+    required: true
+    ifabsent: 'string("en")'
+    description: >-
+      The language of the titles and descriptions in the output, for schemas with text in more
+      than one language.
+  pruning_mode:
+    range: PruningMode
+    required: true
+    description: The elements of the schema to include in the output.
+  tree_root:
+    range: string
+    description: >-
+      The class to use as the tree root, instead of the class with `tree_root: true` in the
+      schema.
+  open:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: >-
+      Whether every class allows properties beyond the ones in the schema. Classes whose
+      `extra_slots` allows them allow them anyway.
+  include_null:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: Whether optional values may be null.
+  only_classes_from_root_schema:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: >-
+      Whether to include only the classes and enums of the root schema. This is useful for one
+      output file per schema file, without the imported classes in each.
+  full_uris:
+    range: boolean
+    required: true
+    ifabsent: 'false'
+    description: >-
+      Whether to write URIs in full, instead of compacting them to CURIEs with the schema's
+      prefixes.
+  indentation_step:
+    range: integer
+    required: true
+    ifabsent: int(2)
+    description: The number of spaces for each level of indentation in the output.
+
+enums:
+  PruningMode:
+    description: The elements of the schema to include in the output.
+    permissible_values:
+      tree_root:
+        description: >-
+          The elements reachable from the tree root class. Without a tree root, the same as
+          `schema`.
+        aliases: [treeRoot]
+      schema:
+        description: >-
+          Everything defined in the root schema, and every element reachable from it. This leaves
+          out the unused parts of imported schemas, such as most of `linkml:types`.
+      skip:
+        description: Every element of the root schema and of all its imports.
+  JsonOutputFormat:
+    description: A serialization for output that can be YAML or JSON.
+    permissible_values:
+      yaml:
+        description: YAML.
+        aliases: [yml]
+      json:
+        description: JSON.
+  RdfFormat:
+    description: An RDF serialization.
+    permissible_values:
+      ttl:
+        description: Turtle, with prefixes and pretty-printed.
+        aliases: [turtle]
+      nt:
+        description: N-Triples, one statement per line.
+        aliases: [ntriples]
+
+classes:
+  Any:
+    class_uri: linkml:Any
+    description: Any value.
+
+  GeneratedFiles:
+    description: The files a generator wrote, from the path of each to its content.
+    extra_slots:
+      range_expression:
+        range: string
+
+  MetadataLanguageOptions:
+    mixin: true
+    description: Options of the generators that write titles and descriptions.
+    slots:
+      - metadata_language
+
+  PruningOptions:
+    mixin: true
+    description: Options of the generators that can leave out unused parts of the schema.
+    slots:
+      - pruning_mode
+      - tree_root
+    slot_usage:
+      tree_root:
+        description: >-
+          The class to use as the tree root, instead of the class with `tree_root: true` in the
+          schema. Only for the `tree_root` pruning mode.
+
+  RdfOptions:
+    mixin: true
+    description: Options of the generators that write RDF.
+    attributes:
+      format:
+        range: RdfFormat
+        required: true
+        ifabsent: RdfFormat(ttl)
+        description: The RDF serialization of the output.

@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.ossie
 
 import com.networknt.schema.InputFormat
 import eu.neverblink.linkml.generator.PythonServer
-import eu.neverblink.linkml.generator.util.JsonOutputFormat
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, OssieGeneratorOptions}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.scalatest.BeforeAndAfterAll
@@ -34,10 +34,10 @@ class OssieIntegrationSpec extends AnyWordSpec, Matchers, BeforeAndAfterAll, Mod
         lazy val generator = OssieGenerator(using entry.model)
 
         lazy val asJson = generator.serialize(
-          OssieGenerator.Options(outputFormat = JsonOutputFormat.json),
+          OssieGeneratorOptions(format = JsonOutputFormat.Json),
         )
         lazy val asYaml = generator.serialize(
-          OssieGenerator.Options(outputFormat = JsonOutputFormat.yaml),
+          OssieGeneratorOptions(format = JsonOutputFormat.Yaml),
         )
 
         "the JSON output validates against the Ossie ontology schema" in {

@@ -1,0 +1,26 @@
+id: https://linkml.ohi.dev/model/converter/generator/shacl
+name: shacl
+prefixes:
+  converter: https://linkml.ohi.dev/model/converter#
+default_prefix: converter
+imports:
+  - ../shared
+
+classes:
+  ShaclGeneratorOptions:
+    description: Options of the SHACL generator.
+    mixins: [RdfOptions]
+    slots:
+      - open
+      - only_classes_from_root_schema
+    slot_usage:
+      open:
+        description: >-
+          Whether every shape is open, allowing properties beyond the ones in the schema. Shapes
+          of classes whose `extra_slots` allows them are open anyway.
+
+functions:
+  shacl:
+    description: Generate SHACL shapes, serialized as N-Triples or Turtle.
+    parameters: ShaclGeneratorOptions
+    returns: string

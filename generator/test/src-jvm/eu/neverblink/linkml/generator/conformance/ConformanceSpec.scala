@@ -1,12 +1,13 @@
 package eu.neverblink.linkml.generator.conformance
 
+import eu.neverblink.linkml.generator.options.{JsonOutputFormat, LinkMlGeneratorOptions}
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
 import com.networknt.schema.{InputFormat, SchemaRegistry}
 import com.networknt.schema.dialect.Dialects
 import eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator
 import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
-import eu.neverblink.linkml.generator.util.{JsonOutputFormat, JsonUtil}
+import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.schemaview.SchemaView
 import io.circe.ACursor
 import org.scalatest.matchers.should.Matchers
@@ -43,7 +44,7 @@ class ConformanceSpec extends AnyWordSpec, Matchers {
         val result = test.action match {
           case _: DeriveAction =>
             LinkMlGenerator(using sv).serialize(
-              LinkMlGenerator.Options(outputFormat = JsonOutputFormat.json),
+              LinkMlGeneratorOptions(format = JsonOutputFormat.Json),
             )
           case _: JsonSchemaGenerate =>
             JsonSchemaGenerator(using sv).serialize()
