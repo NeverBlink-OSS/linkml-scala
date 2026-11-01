@@ -186,7 +186,7 @@ object SkillFiles {
       "verified against every generator on every commit, so when you are unsure how something is",
       "written, read the matching `model.yaml` instead of guessing.\n",
       "Paths are relative to `tests/resources/models/`:",
-      "<https://github.com/NeverBlink-OSS/linkml-scala/tree/main/tests/resources/models>\n",
+      "<https://github.com/NeverBlink-OSS/ohi/tree/main/tests/resources/models>\n",
       "`valid`/`invalid` count the instance-data files shipped with the schema — worked examples",
       "of what it does and does not accept, and the fastest way to sanity-check a data validator.\n",
       "| feature | valid | invalid | notes |",

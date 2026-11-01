@@ -87,7 +87,7 @@ libdir=\${prefix}/lib
 
 Name: ohi-linkml
 Description: LinkML schema validation and multi-format code generation
-URL: https://github.com/NeverBlink-OSS/linkml-scala
+URL: https://github.com/NeverBlink-OSS/ohi
 Version: ${version}
 Cflags: -I\${includedir}
 Libs: -L\${libdir} -lohi_linkml

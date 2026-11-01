@@ -18,14 +18,14 @@ To install from a local checkout, replace the repository argument with its absol
 ### Codex
 
 ```sh
-codex plugin marketplace add NeverBlink-OSS/linkml-scala
+codex plugin marketplace add NeverBlink-OSS/ohi
 codex plugin add ohi@linkml-scala
 ```
 
 ### Claude Code
 
 ```sh
-claude plugin marketplace add NeverBlink-OSS/linkml-scala
+claude plugin marketplace add NeverBlink-OSS/ohi
 claude plugin install ohi@linkml-scala
 ```
 
@@ -54,7 +54,7 @@ Without a plugin, copy complete skill folders, including their references, to th
 For ohi, copy both `linkml` and `ohi`. For example, install both for all Codex projects:
 
 ```sh
-git clone --depth=1 https://github.com/NeverBlink-OSS/linkml-scala ~/src/linkml-scala
+git clone --depth=1 https://github.com/NeverBlink-OSS/ohi ~/src/linkml-scala
 mkdir -p ~/.agents/skills
 cp -r ~/src/linkml-scala/.agents/skills/{linkml,ohi} ~/.agents/skills/
 ```

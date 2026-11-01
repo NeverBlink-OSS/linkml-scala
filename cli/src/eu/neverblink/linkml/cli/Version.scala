@@ -58,7 +58,7 @@ class VersionCommand(displayName: String)
          |Licensed under the Apache License, Version 2.0.
          |For details, see https://www.apache.org/licenses/LICENSE-2.0
          |This software comes with no warranties and is provided 'as-is'.
-         |Documentation and author list: https://github.com/NeverBlink-OSS/linkml-scala
+         |Documentation and author list: https://github.com/NeverBlink-OSS/ohi
          |""".stripMargin,
     )
   }

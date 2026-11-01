@@ -260,7 +260,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         out should include("Runtime")
         out should include(s"Copyright (C) ${Year.now().getValue} NeverBlink and contributors")
         out should include("https://www.apache.org/licenses/LICENSE-2.0")
-        out should include("https://github.com/NeverBlink-OSS/linkml-scala")
+        out should include("https://github.com/NeverBlink-OSS/ohi")
       }
 
       s"describe ohi in $name help with its invoked usage path" in {

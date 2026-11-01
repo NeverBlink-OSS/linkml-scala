@@ -38,7 +38,7 @@ For bash on Windows - Git Bash, MSYS2, Cygwin, WSL - use https://ohi.dev/install
 function Install-LinkmlScalaCli {
     $ErrorActionPreference = 'Stop'
 
-    $repo = 'NeverBlink-OSS/linkml-scala'
+    $repo = 'NeverBlink-OSS/ohi'
     $name = if ($env:LINKML_SCALA_TOOL) { $env:LINKML_SCALA_TOOL } else { 'ohi' }
     if ($name -notin @('ohi', 'linkml-scala')) {
         throw "LINKML_SCALA_TOOL must be ohi or linkml-scala, not '$name'."

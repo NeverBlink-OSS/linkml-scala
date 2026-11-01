@@ -5,8 +5,8 @@
     "name": "NeverBlink",
     "url": "https://neverblink.eu"
   },
-  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/ohi",
-  "repository": "https://github.com/NeverBlink-OSS/linkml-scala",
+  "homepage": "https://github.com/NeverBlink-OSS/ohi/tree/main/cli/ohi",
+  "repository": "https://github.com/NeverBlink-OSS/ohi",
   "license": "Apache-2.0",
   "keywords": [
     "ohi",
@@ -26,7 +26,7 @@
     "capabilities": [
       "Skills"
     ],
-    "websiteURL": "https://github.com/NeverBlink-OSS/linkml-scala/tree/main/cli/ohi",
+    "websiteURL": "https://github.com/NeverBlink-OSS/ohi/tree/main/cli/ohi",
     "defaultPrompt": [
       "Find and download an ontology with ohi",
       "Record an ontology selection in my project",

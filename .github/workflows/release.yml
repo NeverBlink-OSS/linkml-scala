@@ -82,7 +82,7 @@ jobs:
     uses: ./.github/workflows/wheels.yml
 
   publish:
-    if: github.repository == 'NeverBlink-OSS/linkml-scala'
+    if: github.repository == 'NeverBlink-OSS/ohi'
     name: Publish to Maven and GitHub
     runs-on: ubuntu-latest
     env:

@@ -8,7 +8,7 @@ license: Apache-2.0
 
 [LinkML](https://linkml.io) is a YAML data-modelling language: write the model once, generate
 JSON Schema, SHACL, RDFS, Frictionless data packages and code from it. This skill drives
-[ohi LinkML](https://github.com/NeverBlink-OSS/linkml-scala).
+[ohi LinkML](https://github.com/NeverBlink-OSS/ohi).
 
 ## Rules
 
@@ -44,7 +44,7 @@ ohi linkml validate --strict schema.yaml        # warnings too
 ```
 
 `--format json` emits one
-[`SchemaValidationReport`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/validation-report.yaml)
+[`SchemaValidationReport`](https://github.com/NeverBlink-OSS/ohi/blob/main/model/validation-report.yaml)
 per input file. Each issue names the offending element and its JSON path, so act on the message
 rather than guessing. **FATAL** means the schema will not load and every generator refuses;
 **ERROR** fails the command; **WARNING** fails only under `--strict` but usually still wants fixing.

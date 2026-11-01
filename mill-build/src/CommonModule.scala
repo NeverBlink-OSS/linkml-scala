@@ -37,7 +37,7 @@ trait CommonModule extends CommonBuildModule, PublishModule {
     description =
       "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
     organization = "eu.neverblink.linkml",
-    url = "https://github.com/NeverBlink-OSS/linkml-scala",
+    url = "https://github.com/NeverBlink-OSS/ohi",
     licenses = Seq(License.`Apache-2.0`),
     versionControl = VersionControl.github("NeverBlink-OSS", "linkml-scala"),
     Seq(

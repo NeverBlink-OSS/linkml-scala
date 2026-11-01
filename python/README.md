@@ -1,6 +1,6 @@
 # neverblink-linkml
 
-Fast and robust [LinkML](https://linkml.io/) schema validation and code generation for Python, backed by [ohi LinkML](https://github.com/NeverBlink-OSS/linkml-scala) compiled to a native shared library.
+Fast and robust [LinkML](https://linkml.io/) schema validation and code generation for Python, backed by [ohi LinkML](https://github.com/NeverBlink-OSS/ohi) compiled to a native shared library.
 
 ## Install
 
@@ -57,13 +57,13 @@ See [Import maps](https://linkml.ohi.dev/docs/import-maps/).
 
 We provide both sdist (source distribution) and pre-built wheels for popular platforms (Linux, macOS, Windows, x86-64 and ARM64).
 
-To build the package from source (sdist) you must have Java 17+ and Clang installed on your system. Please [open an issue](https://github.com/NeverBlink-OSS/linkml-scala/issues/new) if you encounter any issues with the installation process.
+To build the package from source (sdist) you must have Java 17+ and Clang installed on your system. Please [open an issue](https://github.com/NeverBlink-OSS/ohi/issues/new) if you encounter any issues with the installation process.
 
 ## Documentation
 
 - [Python bindings guide](https://linkml.ohi.dev/docs/python-bindings/)
   – all the options, and how the C ABI underneath works
-- [ohi LinkML README](https://github.com/NeverBlink-OSS/linkml-scala) – the CLI, the JVM library
+- [ohi LinkML README](https://github.com/NeverBlink-OSS/ohi) – the CLI, the JVM library
   and the JavaScript library
 - [Online playground](https://linkml.ohi.dev/playground/)
 

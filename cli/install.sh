@@ -44,7 +44,7 @@ _linkml_scala_sha256() {
 }
 
 _linkml_scala_install() {
-  local repo_base="NeverBlink-OSS/linkml-scala"
+  local repo_base="NeverBlink-OSS/ohi"
   local install_dir="${LINKML_SCALA_INSTALL_DIR:-$HOME/.local/bin}"
   local tag="${LINKML_SCALA_VERSION:-}"
   local name="${LINKML_SCALA_TOOL:-ohi}"

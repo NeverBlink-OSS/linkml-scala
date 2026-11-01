@@ -91,7 +91,7 @@ In the other direction, `--only-root-schema` writes an `owl:imports` for each im
 
 ## Config
 
-`--config` takes the path to a YAML or JSON file. The JS and Python functions take the config itself, as an object or a dict, in their `config` option. The config's format is defined as a LinkML schema in [`model/converter/importer/owl-config.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/converter/importer/owl-config.yaml). Properties and classes can be written as CURIEs over the ontology's prefixes, the config's `prefixes`, or the well-known ones.
+`--config` takes the path to a YAML or JSON file. The JS and Python functions take the config itself, as an object or a dict, in their `config` option. The config's format is defined as a LinkML schema in [`model/converter/importer/owl-config.yaml`](https://github.com/NeverBlink-OSS/ohi/blob/main/model/converter/importer/owl-config.yaml). Properties and classes can be written as CURIEs over the ontology's prefixes, the config's `prefixes`, or the well-known ones.
 
 ```yaml
 schema_id: https://example.org/my-schema   # default: the ontology IRI

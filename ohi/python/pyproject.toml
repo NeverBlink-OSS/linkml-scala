@@ -26,9 +26,9 @@ dependencies = ["pydantic>=2.12,<3"]
 [project.urls]
 Homepage = "https://ohi.dev"
 Documentation = "https://ohi.dev/docs/reference/sdks/"
-Source = "https://github.com/NeverBlink-OSS/linkml-scala"
-Issues = "https://github.com/NeverBlink-OSS/linkml-scala/issues"
-Changelog = "https://github.com/NeverBlink-OSS/linkml-scala/releases"
+Source = "https://github.com/NeverBlink-OSS/ohi"
+Issues = "https://github.com/NeverBlink-OSS/ohi/issues"
+Changelog = "https://github.com/NeverBlink-OSS/ohi/releases"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ohi"]

@@ -52,10 +52,10 @@ while [ "$#" -gt 0 ]; do
 done
 printf '%s\n' "$url" >> "$TEST_REQUESTS"
 case "$url" in
-  https://github.com/NeverBlink-OSS/linkml-scala/releases/latest)
-    printf 'https://github.com/NeverBlink-OSS/linkml-scala/releases/tag/v0.0.1'
+  https://github.com/NeverBlink-OSS/ohi/releases/latest)
+    printf 'https://github.com/NeverBlink-OSS/ohi/releases/tag/v0.0.1'
     ;;
-  https://github.com/NeverBlink-OSS/linkml-scala/releases/download/v0.0.1/*)
+  https://github.com/NeverBlink-OSS/ohi/releases/download/v0.0.1/*)
     file=${url##*/}
     [ -f "$TEST_RELEASE/$file" ] || exit 22
     cp "$TEST_RELEASE/$file" "$output"

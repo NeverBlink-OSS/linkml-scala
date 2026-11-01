@@ -29,13 +29,13 @@ object NpmPackage {
        |    "README.md"
        |  ],
        |  "license": "Apache-2.0",
-       |  "homepage": "https://github.com/NeverBlink-OSS/linkml-scala",
+       |  "homepage": "https://github.com/NeverBlink-OSS/ohi",
        |  "repository": {
        |    "type": "git",
-       |    "url": "git+https://github.com/NeverBlink-OSS/linkml-scala.git"
+       |    "url": "git+https://github.com/NeverBlink-OSS/ohi.git"
        |  },
        |  "bugs": {
-       |    "url": "https://github.com/NeverBlink-OSS/linkml-scala/issues"
+       |    "url": "https://github.com/NeverBlink-OSS/ohi/issues"
        |  },
        |  "author": "NeverBlink (https://neverblink.eu)",
        |  "publishConfig": {

@@ -35,7 +35,7 @@ with ohi_linkml.load_file("model.yaml") as schema:
         print(issue["severity"], issue["message"])
 ```
 
-A schema is parsed once and reused across generators, the same way the [JavaScript bindings](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/generator/npm/README.md) work. All generators are available, plus the schema validator.
+A schema is parsed once and reused across generators, the same way the [JavaScript bindings](https://github.com/NeverBlink-OSS/ohi/blob/main/generator/npm/README.md) work. All generators are available, plus the schema validator.
 
 ## The API
 
@@ -90,7 +90,7 @@ schema.translation(target="base")
 ```
 
 All arguments are keyword-only. Their names, values and defaults are the ones in
-[`model/converter`](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/model/converter). Every method returns a string, except `scala()`, `frictionless()` and
+[`model/converter`](https://github.com/NeverBlink-OSS/ohi/tree/main/model/converter). Every method returns a string, except `scala()`, `frictionless()` and
 `docs()`, which return a filename-to-content dict, and `stats()`, which returns the
 schema statistics as a dict.
 
@@ -108,7 +108,7 @@ ohi_linkml.from_owl(document, config=None, format="yaml", full_uris=False, input
 ```
 
 Like the generators, they take the options of
-[`model/converter`](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/model/converter) as
+[`model/converter`](https://github.com/NeverBlink-OSS/ohi/tree/main/model/converter) as
 keyword arguments. Each returns a dict: the LinkML schema in `"schema"`, and what it could not
 import in `"warnings"`, which is empty if everything was. Pass the schema to `load_string()` to run
 a generator over it. `from_owl()` reads Turtle (and so N-Triples), or N-Triples with its own
@@ -121,7 +121,7 @@ By default those are read from the file system. See [the OWL importer](/docs/imp
 `schema.report` is the report from loading. `schema.lint()` runs the validator again, which is only
 worth doing to get a report with different settings. `schema.issues(severity)` filters by
 `ohi_linkml.FATAL`, `ERROR` or `WARNING`. Both follow the
-[`validation-report.yaml`](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/model/validation-report.yaml) model, the same JSON the CLI's
+[`validation-report.yaml`](https://github.com/NeverBlink-OSS/ohi/blob/main/model/validation-report.yaml) model, the same JSON the CLI's
 `validate --format json` produces.
 
 ### Releasing
@@ -132,7 +132,7 @@ if you are loading many schemas.
 
 ## How fast is it?
 
-Note: these are rough numbers on a Ryzen 7900 workstation. Full benchmark is still pending. See: [benchmark code](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/benchmark/src), [datasets](https://github.com/NeverBlink-OSS/linkml-scala/tree/main/benchmark/resources/schemas).
+Note: these are rough numbers on a Ryzen 7900 workstation. Full benchmark is still pending. See: [benchmark code](https://github.com/NeverBlink-OSS/ohi/tree/main/benchmark/src), [datasets](https://github.com/NeverBlink-OSS/ohi/tree/main/benchmark/resources/schemas).
 
 Here we measured only the time to generate the output, not the time to load the schema. The Python side is LinkML 1.11.1, and the Scala side is ohi LinkML 975f65a, v0.13.1-15-g975f65a.
 
@@ -200,7 +200,7 @@ You need JDK 17+, clang, and Python 3.10 or newer. Then:
 LINKML_NATIVE=1 ./mill nativelib.native.installPythonLib
 ```
 
-Scala Native modules are hidden in the mill project unless `LINKML_NATIVE=1` – see [CONTRIBUTING](https://github.com/NeverBlink-OSS/linkml-scala/blob/main/CONTRIBUTING.md#scala-native). That task links the library and copies it into `python/ohi_linkml/_lib/`, where the Python package looks for it.
+Scala Native modules are hidden in the mill project unless `LINKML_NATIVE=1` – see [CONTRIBUTING](https://github.com/NeverBlink-OSS/ohi/blob/main/CONTRIBUTING.md#scala-native). That task links the library and copies it into `python/ohi_linkml/_lib/`, where the Python package looks for it.
 
 To use the package, put `python/` on your path:
 
