@@ -113,6 +113,22 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       .map(_.group(1))
       .toSet
 
+  /** Every function the shared library exports, from the `@exported` annotations. */
+  private def exportedSymbols(root: os.Path): Set[String] =
+    os.walk(root / "nativelib" / "src")
+      .filter(_.ext == "scala")
+      .flatMap(p => "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(os.read(p)).map(_.group(1)))
+      .toSet
+
+  /** The functions the public C header declares. Anchored at the start of a line, so the prose in
+    * the header's comments cannot stand in for a declaration.
+    */
+  private def headerDeclarations(root: os.Path): Set[String] =
+    "(?m)^(?:char \\*|long long |void |int )(\\w+)\\(".r
+      .findAllMatchIn(os.read(root / "nativelib" / "include" / "linkml_scala.h"))
+      .map(_.group(1))
+      .toSet
+
   "every generator" should {
     "be registered as a CLI command" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
@@ -275,6 +291,20 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       withClue("fix the `Importers:` list in .agents/skills/linkml/SKILL.md: ")(
         skillList(root, "Importers") shouldBe cliNames(root, "From.scala", "formatName"),
       )
+    }
+  }
+
+  "the C header" should {
+    "declare every symbol the library exports" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val missing = exportedSymbols(root) -- headerDeclarations(root)
+      withClue("add it to nativelib/include/linkml_scala.h: ")(missing shouldBe empty)
+    }
+
+    "declare nothing the library does not export" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val extra = headerDeclarations(root) -- exportedSymbols(root)
+      withClue("remove it from nativelib/include/linkml_scala.h: ")(extra shouldBe empty)
     }
   }
 }

@@ -35,7 +35,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_docs(schema, \"{\\\"single_file\\\": true}\", &error);\nlinkml_free(files);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_docs(schema, \"{\\\"single_file\\\": true}\", &error);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -129,7 +129,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_er_diagram(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_er_diagram(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -210,7 +210,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_frictionless(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_frictionless(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -304,7 +304,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\n/* document is the text of prov-o.ossie.yaml. */\n/* The result is an ImportResult in JSON. */\nlinkml_init_threads();\nchar *error = NULL;\nchar *result = linkml_from_ossie(\n    document,\n    \"{\\\"schema_id\\\": \\\"https://example.org/prov\\\"}\",\n    &error\n);\nlinkml_free(result);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\n/* document is the text of prov-o.ossie.yaml. */\n/* The result is an ImportResult in JSON. */\nlinkml_init_threads();\nchar *error = NULL;\nchar *result = linkml_from_ossie(\n    document,\n    \"{\\\"schema_id\\\": \\\"https://example.org/prov\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_free(error);"
         }
       ],
       "options": [
@@ -385,7 +385,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\n/* document is the text of prov-o.ttl. */\n/* The result is an ImportResult in JSON. */\nlinkml_init_threads();\nchar *error = NULL;\nchar *result = linkml_from_owl(\n    document,\n    \"{\\\"schema_id\\\": \\\"https://example.org/prov\\\"}\",\n    &error\n);\nlinkml_free(result);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\n/* document is the text of prov-o.ttl. */\n/* The result is an ImportResult in JSON. */\nlinkml_init_threads();\nchar *error = NULL;\nchar *result = linkml_from_owl(\n    document,\n    \"{\\\"schema_id\\\": \\\"https://example.org/prov\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_free(error);"
         }
       ],
       "options": [
@@ -514,7 +514,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_graphql(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_graphql(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -595,7 +595,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_json_schema(\n    schema,\n    \"{\\\"tree_root\\\": \\\"Entity\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_json_schema(\n    schema,\n    \"{\\\"tree_root\\\": \\\"Entity\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -715,7 +715,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_linkml(schema, \"{\\\"full_uris\\\": true}\", &error);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_linkml(schema, \"{\\\"full_uris\\\": true}\", &error);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -822,7 +822,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_ossie(schema, \"{\\\"format\\\": \\\"json\\\"}\", &error);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_ossie(schema, \"{\\\"format\\\": \\\"json\\\"}\", &error);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -916,7 +916,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_owl(\n    schema,\n    \"{\\\"only_root_schema\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_owl(\n    schema,\n    \"{\\\"only_root_schema\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1010,7 +1010,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_pydantic(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_pydantic(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1117,7 +1117,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_rdfs(\n    schema,\n    \"{\\\"only_classes_from_root_schema\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_rdfs(\n    schema,\n    \"{\\\"only_classes_from_root_schema\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1185,7 +1185,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_scala(\n    schema,\n    \"{\\\"package\\\": \\\"org.example.prov\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_scala(\n    schema,\n    \"{\\\"package\\\": \\\"org.example.prov\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1292,7 +1292,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_shacl(schema, \"{\\\"open\\\": true}\", &error);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_shacl(schema, \"{\\\"open\\\": true}\", &error);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1373,7 +1373,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *result = linkml_stats(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"skip\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *result = linkml_stats(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"skip\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1441,7 +1441,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_translation(\n    schema,\n    \"{\\\"target\\\": \\\"pydantic\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_translation(\n    schema,\n    \"{\\\"target\\\": \\\"pydantic\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [
@@ -1522,7 +1522,7 @@
           "sdk": "C",
           "label": "C",
           "lang": "c",
-          "code": "#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_typescript(\n    schema,\n    \"{\\\"include_null\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_close(schema);"
+          "code": "#include <stddef.h>\n#include \"linkml_scala.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_typescript(\n    schema,\n    \"{\\\"include_null\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
         }
       ],
       "options": [

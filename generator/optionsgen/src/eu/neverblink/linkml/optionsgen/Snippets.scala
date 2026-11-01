@@ -248,8 +248,14 @@ object Snippets {
             "    ",
             trailing = false,
           )}
-           |linkml_free(result);""".stripMargin
-      Snippet(Sdk.C, Seq("#include \"linkml_scala.h\""), body, "result")
+           |linkml_free(result);
+           |linkml_free(error);""".stripMargin
+      Snippet(
+        Sdk.C,
+        Seq("#include <stddef.h>", "#include \"linkml_scala.h\""),
+        body,
+        "result",
+      )
     } else {
       val result = resultName(function)
       val body =
@@ -265,8 +271,15 @@ object Snippets {
             trailing = false,
           )}
            |linkml_free($result);
+           |linkml_free(report);
+           |linkml_free(error);
            |linkml_close(schema);""".stripMargin
-      Snippet(Sdk.C, Seq("#include \"linkml_scala.h\""), body, result)
+      Snippet(
+        Sdk.C,
+        Seq("#include <stddef.h>", "#include \"linkml_scala.h\""),
+        body,
+        result,
+      )
     }
   }
 

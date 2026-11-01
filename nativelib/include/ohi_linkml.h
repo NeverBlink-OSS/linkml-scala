@@ -68,6 +68,7 @@ char *linkml_pydantic(long long handle, const char *options, char **error);
 char *linkml_er_diagram(long long handle, const char *options, char **error);
 char *linkml_ossie(long long handle, const char *options, char **error);
 char *linkml_owl(long long handle, const char *options, char **error);
+char *linkml_translation(long long handle, const char *options, char **error);
 
 /* Statistics about the schema, as a SchemaStats in JSON. */
 char *linkml_stats(long long handle, const char *options, char **error);
@@ -75,6 +76,7 @@ char *linkml_stats(long long handle, const char *options, char **error);
 /* Generators producing several files, returned as a JSON object of filename to content. */
 char *linkml_scala(long long handle, const char *options, char **error);
 char *linkml_frictionless(long long handle, const char *options, char **error);
+char *linkml_docs(long long handle, const char *options, char **error);
 
 /* Importers. Each takes a document and returns the LinkML schema it describes. */
 char *linkml_from_ossie(const char *ontology, const char *options, char **error);
