@@ -39,18 +39,18 @@ Issues = "https://github.com/NeverBlink-OSS/linkml-scala/issues"
 Changelog = "https://github.com/NeverBlink-OSS/linkml-scala/releases"
 
 [tool.hatch.version]
-path = "linkml_scala/_version.py"
+path = "ohi_linkml/_version.py"
 
 [tool.hatch.build.targets.sdist]
 # sdist files: they are staged by `./mill nativelib.native.sdistTree`.
-include = ["linkml_scala", "_native/nir", "_native/linker", "hatch_build.py", "README.md",
+include = ["ohi_linkml", "_native/nir", "_native/linker", "hatch_build.py", "README.md",
            "LICENSE"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["linkml_scala"]
+packages = ["ohi_linkml"]
 # _lib holds the prebuilt shared library, which is gitignored, so it has to be named here or
 # hatchling leaves it out.
-artifacts = ["linkml_scala/_lib/*"]
+artifacts = ["ohi_linkml/_lib/*"]
 
 # Links the library when building from a source distribution, and resolves the platform tag.
 [tool.hatch.build.targets.wheel.hooks.custom]

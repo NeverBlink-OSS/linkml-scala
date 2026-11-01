@@ -43,15 +43,15 @@ object Python {
     val staging = dest / "package"
     val dist = dest / "dist"
 
-    os.makeDir.all(staging / "linkml_scala")
+    os.makeDir.all(staging / "ohi_linkml")
     Seq("pyproject.toml", "README.md", "hatch_build.py")
       .foreach(name => os.copy.into(source / name, staging))
     os.copy.into(license, staging)
-    os.list(source / "linkml_scala")
+    os.list(source / "ohi_linkml")
       .filter(path => os.isFile(path) && (path.ext == "py" || path.last == "py.typed"))
-      .foreach(os.copy.into(_, staging / "linkml_scala"))
+      .foreach(os.copy.into(_, staging / "ohi_linkml"))
 
-    os.write.over(staging / "linkml_scala" / "_version.py", PyPackage.versionFile(version))
+    os.write.over(staging / "ohi_linkml" / "_version.py", PyPackage.versionFile(version))
 
     // Only the library itself: the headers beside it are for C callers, and ctypes has no use for
     // the Windows import library.
@@ -62,8 +62,8 @@ object Python {
       case found =>
         throw new Exception(s"expected one shared library in $built, found ${found.mkString(", ")}")
     }
-    os.makeDir.all(staging / "linkml_scala" / "_lib")
-    os.copy.into(library, staging / "linkml_scala" / "_lib")
+    os.makeDir.all(staging / "ohi_linkml" / "_lib")
+    os.copy.into(library, staging / "ohi_linkml" / "_lib")
 
     println(s"Building the ${PyPackage.name} $version wheel from ${library.last}")
     os.call(
@@ -98,11 +98,11 @@ object Python {
     )
 
     val importedFrom = os.call(
-      (venvPython.toString, "-c", "import linkml_scala; print(linkml_scala.__file__)"),
+      (venvPython.toString, "-c", "import ohi_linkml; print(ohi_linkml.__file__)"),
       cwd = dest,
     ).out.trim()
     if !importedFrom.startsWith(venv.toString) then
-      throw new Exception(s"linkml_scala was imported from $importedFrom, not from $venv")
+      throw new Exception(s"ohi_linkml was imported from $importedFrom, not from $venv")
 
     os.copy.over(source / "test_bindings.py", dest / "test_bindings.py")
     os.call(
@@ -134,9 +134,9 @@ object Python {
     Seq("pyproject.toml", "hatch_build.py", "README.md")
       .foreach(name => os.copy.over(source / name, dest / name, createFolders = true))
     os.copy.over(license, dest / "LICENSE")
-    os.copy.over(source / "linkml_scala", dest / "linkml_scala")
-    os.remove.all(dest / "linkml_scala" / "_lib")
-    os.write.over(dest / "linkml_scala" / "_version.py", PyPackage.versionFile(version))
+    os.copy.over(source / "ohi_linkml", dest / "ohi_linkml")
+    os.remove.all(dest / "ohi_linkml" / "_lib")
+    os.write.over(dest / "ohi_linkml" / "_version.py", PyPackage.versionFile(version))
 
     stageJars(nirJars, dest / "_native" / "nir")
     stageJars(linkerJars, dest / "_native" / "linker")
@@ -186,7 +186,7 @@ object Python {
       stderr = os.Inherit,
     )
 
-    // From a directory with no linkml_scala in it, so the installed package is what gets imported.
+    // From a directory with no ohi_linkml in it, so the installed package is what gets imported.
     os.copy.over(repoRoot / "python" / "test_bindings.py", dest / "test_bindings.py")
     os.call(
       (venvPython.toString, "-m", "unittest", "test_bindings", "-v"),

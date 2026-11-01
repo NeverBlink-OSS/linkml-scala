@@ -32,7 +32,7 @@ __all__ = [
 # Bumped in lockstep with LinkMlNativeApi.abiVersion on the Scala side.
 _EXPECTED_ABI_VERSION = 4
 
-_LIB_STEM = "liblinkml_scala"
+_LIB_STEM = "libohi_linkml"
 
 
 # char*, kept as POINTER(c_char) rather than c_char_p: ctypes turns the latter into bytes and

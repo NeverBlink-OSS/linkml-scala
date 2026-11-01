@@ -7,13 +7,13 @@
  *
  * Exits non-zero if any check fails. Build against an unpacked release archive:
  *
- *   gcc nativelib/smoke.c -o smoke $(PKG_CONFIG_PATH=<prefix> pkg-config --cflags --libs linkml-scala)
+ *   gcc nativelib/smoke.c -o smoke $(PKG_CONFIG_PATH=<prefix> pkg-config --cflags --libs ohi-linkml)
  *   LD_LIBRARY_PATH=<prefix>/lib ./smoke
  *
  * or just run nativelib/smoke.sh <prefix>, which handles the per-platform details.
  */
 
-#include <linkml_scala.h>
+#include <ohi_linkml.h>
 #include <stdio.h>
 #include <string.h>
 

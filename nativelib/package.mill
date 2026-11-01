@@ -40,7 +40,7 @@ object `package` extends Module, NativeOptional {
 
     def read(path: String): String = os.read(root / os.RelPath(path))
 
-    os.write.over(root / "python" / "linkml_scala" / "_generated.py", PyBindingsGen(read))
+    os.write.over(root / "python" / "ohi_linkml" / "_generated.py", PyBindingsGen(read))
     os.write.over(
       root / "nativelib" / "src" / "eu" / "neverblink" / "linkml" / "nativelib" /
         "LinkMlCGenerators.scala",
@@ -117,7 +117,7 @@ object `package` extends Module, NativeOptional {
       super.nativeLinkingOptions() ++ rpath ++ macosTarget :+ "-O3"
     }
 
-    /** `liblinkml_scala.so` and the header, named the way the Python bindings and `package.sh`
+    /** `libohi_linkml.so` and the header, named the way the Python bindings and `package.sh`
       * expect.
       */
     def sharedLibrary = Task {
@@ -135,7 +135,7 @@ object `package` extends Module, NativeOptional {
           )
           .foreach(path => os.copy.into(path, Task.dest, replaceExisting = true))
       }
-      os.copy.over(headerSource().path, Task.dest / "linkml_scala.h")
+      os.copy.over(headerSource().path, Task.dest / "ohi_linkml.h")
       PathRef(Task.dest)
     }
 
@@ -145,7 +145,7 @@ object `package` extends Module, NativeOptional {
       else ".so"
 
     def headerSource =
-      Task.Source(mill.api.BuildCtx.workspaceRoot / "nativelib" / "include" / "linkml_scala.h")
+      Task.Source(mill.api.BuildCtx.workspaceRoot / "nativelib" / "include" / "ohi_linkml.h")
 
     // Python bindings
 
@@ -156,9 +156,9 @@ object `package` extends Module, NativeOptional {
 
     /** Where the Python package looks for the library when it is not told otherwise. */
     private def pythonLibDir =
-      mill.api.BuildCtx.workspaceRoot / "python" / "linkml_scala" / "_lib"
+      mill.api.BuildCtx.workspaceRoot / "python" / "ohi_linkml" / "_lib"
 
-    /** Build the library and install it into the Python package, so `import linkml_scala` works
+    /** Build the library and install it into the Python package, so `import ohi_linkml` works
       * from a source checkout.
       */
     def installPythonLib() = Task.Command(exclusive = true) {

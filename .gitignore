@@ -56,7 +56,7 @@ ui/dist/
 # Python
 __pycache__/
 # The shared library the Python bindings load, put there by `./mill nativelib.installPythonLib`
-/python/linkml_scala/_lib/
+/python/ohi_linkml/_lib/
 # Wheels, if `python -m build` is run in python/ by hand rather than through Mill
 /python/dist/
 

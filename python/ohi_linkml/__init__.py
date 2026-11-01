@@ -5,9 +5,9 @@ implementation of LinkML, no subprocess per schema.
 
 Load a schema once, then run as many generators over it as you like::
 
-    import linkml_scala
+    import ohi_linkml
 
-    with linkml_scala.load_file("model.yaml") as schema:
+    with ohi_linkml.load_file("model.yaml") as schema:
         print(schema.json_schema())
         print(schema.shacl())
 
@@ -162,7 +162,7 @@ class Schema(Generators):
 
     def __repr__(self) -> str:
         state = "closed" if self._handle is None else f"handle={self._handle}"
-        return f"<linkml_scala.Schema {state}, {len(self._report.get('issues', []))} issue(s)>"
+        return f"<ohi_linkml.Schema {state}, {len(self._report.get('issues', []))} issue(s)>"
 
     def _document(self, function: str, **options: Any) -> str:
         """Call a generator that returns a document, by its exported name."""

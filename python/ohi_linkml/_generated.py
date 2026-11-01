@@ -1,6 +1,6 @@
 # AUTO-GENERATED from mill-build/src/Entrypoints.scala and the generators' Options case
 # classes. Do not edit by hand - regenerate with LINKML_NATIVE=1 ./mill bindings.
-"""The generator methods of :class:`linkml_scala.Schema`.
+"""The generator methods of :class:`ohi_linkml.Schema`.
 
 Each one mirrors an ``Options`` case class in the Scala sources, so the keyword arguments,
 their defaults and their documentation are whatever the generator itself declares.
@@ -45,7 +45,7 @@ DOCUMENT_FUNCTIONS = (
 
 
 class Generators:
-    """Mixin holding one method per generator. Mixed into :class:`linkml_scala.Schema`."""
+    """Mixin holding one method per generator. Mixed into :class:`ohi_linkml.Schema`."""
 
     def json_schema(
         self,

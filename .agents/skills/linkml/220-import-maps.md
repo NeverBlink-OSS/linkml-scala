@@ -101,17 +101,17 @@ ohi linkml to json-schema --import-map imports.json model.yaml
 `import_map=` takes a mapping, or the path of a JSON file:
 
 ```python
-schema = linkml_scala.load_file(
+schema = ohi_linkml.load_file(
     "model.yaml",
     import_map={"https://example.org/units/": "deps/units/"},
 )
-schema = linkml_scala.load_file("model.yaml", import_map="imports.json")
+schema = ohi_linkml.load_file("model.yaml", import_map="imports.json")
 ```
 
 `load_string()` and `load_path()` take `import_map=` too. Their locations are keys of the `imports` map:
 
 ```python
-schema = linkml_scala.load_path(
+schema = ohi_linkml.load_path(
     "model.yaml",
     {"model.yaml": model, "deps/units.yaml": units},
     import_map={"https://example.org/units/core": "deps/units.yaml"},

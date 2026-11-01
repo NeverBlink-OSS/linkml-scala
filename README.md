@@ -208,9 +208,9 @@ pip install neverblink-linkml
 ```
 
 ```python
-import linkml_scala
+import ohi_linkml
 
-with linkml_scala.load_file("model.yaml") as schema:
+with ohi_linkml.load_file("model.yaml") as schema:
     print(schema.json_schema())
     print(schema.shacl())
 ```

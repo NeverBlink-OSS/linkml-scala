@@ -58,7 +58,7 @@ MINGW* | MSYS* | CYGWIN* | Windows_NT)
   # An rpath rather than LD_LIBRARY_PATH/DYLD_LIBRARY_PATH: it is baked into the binary, so the
   # program runs from anywhere, and it survives macOS stripping DYLD_* from protected processes.
   cc "${here}/smoke.c" -o "${work}/smoke" \
-    -I"${prefix}/include" -L"${prefix}/lib" -llinkml_scala \
+    -I"${prefix}/include" -L"${prefix}/lib" -lohi_linkml \
     -Wl,-rpath,"${prefix}/lib"
   # Deliberately no library path in the environment: if this runs, the rpath is right.
   (cd / && "${work}/smoke")

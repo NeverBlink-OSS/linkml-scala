@@ -5,9 +5,9 @@ import time
 import sys
 from multiprocessing import Pool
 
-import linkml_scala
+import ohi_linkml
 
-# The linkml_scala counterpart of warm_bench.py: same generators, same output format, so the two
+# The ohi_linkml counterpart of warm_bench.py: same generators, same output format, so the two
 # can be compared line for line.
 #
 # Loads the schemas outside the measured code, as the Python version does. Unlike that one, the
@@ -21,7 +21,7 @@ GENERATORS = {
 
 
 def bench_generator(fn, model: str, warmup: int, iterations: int) -> list[float]:
-    with linkml_scala.load_file(model) as schema:
+    with ohi_linkml.load_file(model) as schema:
         for _ in range(warmup):
             GENERATORS[fn](schema)
 

@@ -52,11 +52,11 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     block.split(',').map(_.trim).filter(_.nonEmpty).toSet
   }
 
-  /** The Python method names on `linkml_scala.Schema`, read from the generated bindings.
+  /** The Python method names on `ohi_linkml.Schema`, read from the generated bindings.
     */
   private def pythonMethods(root: os.Path): Seq[String] =
     "\\n    def (\\w+)\\(".r
-      .findAllMatchIn(os.read(root / "python" / "linkml_scala" / "_generated.py"))
+      .findAllMatchIn(os.read(root / "python" / "ohi_linkml" / "_generated.py"))
       .map(_.group(1))
       .toSeq
 
@@ -157,7 +157,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
 
     "be exposed as a Python method" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
-      val generated = os.read(root / "python" / "linkml_scala" / "_generated.py")
+      val generated = os.read(root / "python" / "ohi_linkml" / "_generated.py")
       val methods = "\\n    def (\\w+)\\(".r.findAllMatchIn(generated).size
       withClue("run LINKML_NATIVE=1 ./mill bindings and commit the result: ")(
         methods shouldBe generators(root).size,
