@@ -1,10 +1,49 @@
-/* The amber of the ohi.dev hand on Starlight's accent variables */
+/* The ohi.dev look (ui/styles.css, from the ohi.dev tokens) on Starlight's variables, with the
+   amber of the ohi.dev hand as the accent. The same tokens as the LinkML docs, which set the
+   accent in blue instead. */
+
+/* The ohi.dev fonts, licensed under the OFL (fonts/OFL.txt), copied from ui/fonts by
+   astro.config.mjs. The ascent and descent overrides centre capitals in the line box, so text sits
+   in the middle of buttons and fields. With the font's own 80/20 split it sits about a pixel and a
+   half high. The paths carry the /docs base: public/ is published at the root of the bucket, which
+   is what /docs/ serves. */
+@font-face { font-family: 'LT Superior'; src: url('/docs/fonts/LTSuperior-Regular.woff2') format('woff2'); font-weight: 400; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'LT Superior'; src: url('/docs/fonts/LTSuperior-Medium.woff2') format('woff2'); font-weight: 500; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'LT Superior'; src: url('/docs/fonts/LTSuperior-SemiBold.woff2') format('woff2'); font-weight: 600; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'LT Superior'; src: url('/docs/fonts/LTSuperior-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; ascent-override: 85%; descent-override: 15%; }
+@font-face { font-family: 'Red Hat Mono'; src: url('/docs/fonts/RedHatMono-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Red Hat Mono'; src: url('/docs/fonts/RedHatMono-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Red Hat Mono'; src: url('/docs/fonts/RedHatMono-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+
+/* Keep showing the old page until the next one is ready, so moving between pages doesn't flash.
+   Pages switch at once, with no animation. */
+@view-transition { navigation: auto; }
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
 
 /* Dark mode */
 :root {
+  --sl-font: 'LT Superior';
+  --sl-font-mono: 'Red Hat Mono';
+
   --sl-color-accent-low: #4a3204;
   --sl-color-accent: #faa700;
   --sl-color-accent-high: #ffca28;
+
+  --sl-color-white: #ffffff;
+  --sl-color-gray-1: #e5e4e4;
+  --sl-color-gray-2: #cdd0d7;
+  --sl-color-gray-3: #a6acb8;
+  --sl-color-gray-4: #6e7585;
+  --sl-color-gray-5: #2c323e;
+  --sl-color-gray-6: #15181e;
+  --sl-color-black: #0a0b0e;
+
+  /* Flat like ohi.dev: the header and sidebar sit on the page color, set apart by a line */
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: #1e222a;
+  --sl-color-hairline: #262b36;
+  --sl-color-hairline-light: #2c323e;
 }
 
 /* Light mode */
@@ -12,4 +51,26 @@
   --sl-color-accent-low: #ffecbf;
   --sl-color-accent: #b55e19;
   --sl-color-accent-high: #7a3e0f;
+
+  --sl-color-white: #13203a;
+  --sl-color-gray-1: #1f2b45;
+  --sl-color-gray-2: #2e3a52;
+  --sl-color-gray-3: #545e73;
+  --sl-color-gray-4: #7a8296;
+  --sl-color-gray-5: #c8cdd8;
+  --sl-color-gray-6: #eceff5;
+  --sl-color-gray-7: #f5f7fb;
+  --sl-color-black: #ffffff;
+
+  --sl-color-bg-nav: var(--sl-color-black);
+  --sl-color-bg-sidebar: var(--sl-color-black);
+  --sl-color-bg-inline-code: #eff2fa;
+  --sl-color-hairline: #e1e5ee;
+  --sl-color-hairline-light: #e1e5ee;
+}
+
+/* Headings set like the landing page */
+.sl-markdown-content :is(h1, h2, h3, h4),
+h1#_top {
+  letter-spacing: -0.02em;
 }

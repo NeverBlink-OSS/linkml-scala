@@ -42,6 +42,7 @@ ui/dist/
 /website/.astro/
 /ohi/docs/dist/
 /ohi/docs/.astro/
+/ohi/docs/public/fonts/
 /ohi/docs/public/install.sh
 /ohi/docs/public/install.ps1
 /ohi/typescript/dist/
