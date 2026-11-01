@@ -143,7 +143,9 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       val targets = playgroundTargets(root)
       // The playground drives the JS API, so its target ids are the facade's method names.
       val missing = jsMethods(root).filterNot(targets)
-      withClue("add a target to ui/src/targets.ts, then run ./mill ui.check: ")(missing shouldBe empty)
+      withClue("add a target to ui/src/targets.ts, then run ./mill ui.check: ")(
+        missing shouldBe empty,
+      )
     }
 
     "be a function of the options schema" in {
