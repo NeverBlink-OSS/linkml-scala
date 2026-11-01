@@ -25,6 +25,8 @@ classes:
     mixins: [MetadataLanguageOptions]
     attributes:
       package:
+        examples:
+          - value: org.example.prov
         range: string
         required: true
         ifabsent: 'string("eu.neverblink.linkml.metamodel")'

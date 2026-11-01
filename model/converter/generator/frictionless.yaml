@@ -14,6 +14,8 @@ classes:
       pruning_mode:
         ifabsent: PruningMode(skip)
         description: Which classes become tables.
+        examples:
+          - value: schema
     attributes:
       skip_classes_without_identifier:
         range: boolean

@@ -15,6 +15,8 @@ classes:
       - schema_id
     slot_usage:
       schema_id:
+        examples:
+          - value: https://example.org/prov
         description: >-
           The `id` of the schema to produce, instead of the `schema_id` of `config`. The default
           is the ontology IRI.
@@ -24,7 +26,7 @@ classes:
         inlined: true
         description: >-
           How to map the ontology: names, prefixes, which annotation properties fill which
-          metaslots, and more. See https://linkml.ohi.dev/docs/owl/.
+          metaslots, and more. See https://linkml.ohi.dev/docs/importers/owl/.
       input_format:
         range: RdfFormat
         required: true

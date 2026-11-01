@@ -1,0 +1,96 @@
+---
+title: Apache Ossie
+description: The Ossie importer, which reads an Apache Ossie ontology into a LinkML schema.
+---
+
+import { Description, Options, Usage } from '../../../components/converter';
+
+<Description name="from_ossie" />
+
+## Usage
+
+<Usage name="from_ossie" />
+
+## Options
+
+<Options name="from_ossie" />
+
+## Mapping Ossie to LinkML
+
+The importer reads [Apache Ossie](https://github.com/apache/ossie) ontologies (`ontology/ontology.json`, version `0.2.0.dev0`). The [Ossie generator](/docs/generators/ossie/) does the reverse.
+
+### Document
+
+| Ossie field         | LinkML                                         |
+|---------------------|------------------------------------------------|
+| `name`              | `name`                                         |
+| `description`       | `description`                                  |
+| `ontology`          | A class, enum, or type per component.          |
+| `ai_context`        | `extensions.ai_context`                        |
+| `prefixes`          | `prefixes`, declared after `linkml`.           |
+
+`version`, `requires` and `ontology_mappings` are not read. See [IRIs](#iris) for how `prefixes` and `iri` are handled.
+
+By default, the importer invents an identifier for the LinkML schema as `https://example.org/` + `name` in snake_case, unless the caller supplies `schema_id`.
+
+### Concept (`OntologyComponent`)
+
+| Ossie field     | LinkML                                                                                                            |
+|-----------------|-------------------------------------------------------------------------------------------------------------------|
+| `concept`       | Element name, with the original spelling in `alias`.                                                              |
+| `type`          | A class for `EntityType`, an enum or a type for `ValueType`.                                                      |
+| `iri`           | `class_uri`, `enum_uri`, or the type's `uri`. See [IRIs](#iris).                                                  |
+| `description`   | `description`                                                                                                     |
+| `extends`       | Last entry is `is_a`, the rest are `mixins`. For a value type it is `typeof`, or `string` if the base is unknown. |
+| `identify_by`   | One entry, `OneToOne`, or scalar range → `identifier`. Otherwise `unique_keys`.                                   |
+| `requires`      | `Concept.relationship` makes the slot required. For enums and types, see [Expressions](#expressions). Any other restriction is ignored. |
+| `relationships` | One attribute each.                                                                                               |
+
+`derived_by` is not read.
+
+### Relationship
+
+| Ossie field            | LinkML                                                                                               |
+|------------------------|------------------------------------------------------------------------------------------------------|
+| `name`                 | Slot name in snake_case, original spelling in `alias`.                                               |
+| `iri`                  | `slot_uri`. See [IRIs](#iris).                                                                       |
+| `verbalizes`           | The phrase becomes the slot `title`, unless it is just the space-cased name. Only the first is read. |
+| `description`          | `description`                                                                                        |
+| `roles`                | The first role's concept is the range. Any others are dropped.                                       |
+| `multiplicity`         | Absent → `multivalued: true`.                                                                        |
+| `requires`             | `minimum_value`, `maximum_value` and `pattern`, from expressions over the role.                      |
+| *(relationship order)* | `rank`                                                                                               |
+
+`derived_by` is not read.
+
+### Ranges
+
+Ossie's built-in concepts map onto LinkML types:
+
+| Ossie      | LinkML                               |
+|------------|--------------------------------------|
+| `String`   | `string`                             |
+| `Integer`  | `integer`                            |
+| `Float`    | `float`                              |
+| `Decimal`  | `decimal`                            |
+| `Boolean`  | `boolean`                            |
+| `Date`     | `date`                               |
+| `DateTime` | `datetime`                           |
+| `Any`      | A class with `class_uri: linkml:Any` |
+
+The generator maps several LinkML types to one Ossie concept, so a round trip changes them: a `uri` comes back as a `string`, and a `double` as a `float`.
+
+### Expressions
+
+| Ossie                   | LinkML                           |
+|-------------------------|----------------------------------|
+| `Concept.relationship`  | `required: true`                 |
+| `Ref IN ('a', 'b')`     | `permissible_values`             |
+| `Ref >= v`, `Ref <= v`  | `minimum_value`, `maximum_value` |
+| `REGEXP_LIKE(Ref, 'p')` | `pattern`                        |
+
+### IRIs
+
+The importer copies the ontology's `prefixes` into the schema, and expands each `iri` that is a QName, as a LinkML schema is read. The schema then writes the URI as a CURIE again, so `iri: foaf:Agent` becomes `class_uri: foaf:Agent`. The one exception is a `linkml` prefix that points anywhere other than `https://w3id.org/linkml/`. The schema needs `linkml` for its own imports, so that prefix is not copied, and any `iri` using it is written out as a full IRI instead.
+
+A QName whose prefix the ontology doesn't declare is expanded with the prefixes of the LinkML metamodel, so `iri: skos:Concept` is `http://www.w3.org/2004/02/skos/core#Concept`. Any other `iri` must be a full IRI, such as `acme:Thing` when `acme` isn't a prefix. The import stops with an error for an `iri`, a schema id or a prefix namespace that isn't a valid IRI, such as `Person` or `John Doe`.

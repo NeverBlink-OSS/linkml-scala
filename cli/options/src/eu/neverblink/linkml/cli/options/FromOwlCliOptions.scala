@@ -12,7 +12,7 @@ import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 /** The command line options of [[OwlImporterOptions]]. */
 final case class FromOwlCliOptions(
     @HelpMessage(
-      "How to map the ontology: names, prefixes, which annotation properties fill which metaslots, and more. See https://linkml.ohi.dev/docs/owl/. The path to a YAML or JSON file with it.",
+      "How to map the ontology: names, prefixes, which annotation properties fill which metaslots, and more. See https://linkml.ohi.dev/docs/importers/owl/. The path to a YAML or JSON file with it.",
     )
     config: Option[String] = None,
     @HelpMessage("The serialization of the schema. Default: yaml")

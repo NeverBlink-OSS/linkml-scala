@@ -1,0 +1,26 @@
+---
+/** The example of a converter in each SDK, as tabs, and a link to try it in the playground. The tab
+ * picked is the same on every page. */
+import { Code, LinkButton, TabItem, Tabs } from '@astrojs/starlight/components';
+import { converter } from './data';
+
+interface Props {
+  name: string;
+}
+
+const { snippets, playground } = converter(Astro.props.name);
+---
+
+<Tabs syncKey="sdk">
+  {
+    snippets.map((snippet) => (
+      <TabItem label={snippet.label}>
+        <Code code={snippet.code} lang={snippet.lang} />
+      </TabItem>
+    ))
+  }
+</Tabs>
+
+<LinkButton href={playground} variant="secondary" icon="external" target="_blank">
+  Try it in the playground, with PROV-O
+</LinkButton>

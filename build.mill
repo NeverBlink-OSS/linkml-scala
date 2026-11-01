@@ -107,6 +107,8 @@ object `package` extends Module {
       "generator.optionsgen.generate cli",
       "cli.options.jvm.fix",
       "cli.options.jvm.reformat",
+      "generator.optionsgen.generate docs",
+      "cli.jvm.test.reformat",
       "agents.generate",
     ) ++ ohiGeneration)*)
 

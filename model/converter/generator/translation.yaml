@@ -13,6 +13,8 @@ classes:
       - indentation_step
     attributes:
       target:
+        examples:
+          - value: pydantic
         range: string
         required: true
         ifabsent: 'string("base")'

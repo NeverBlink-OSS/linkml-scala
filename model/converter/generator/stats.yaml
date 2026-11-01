@@ -12,6 +12,8 @@ classes:
     mixins: [PruningOptions]
     slot_usage:
       pruning_mode:
+        examples:
+          - value: skip
         ifabsent: PruningMode(schema)
         description: The elements in scope for the counts.
 

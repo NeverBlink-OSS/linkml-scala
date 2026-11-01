@@ -89,10 +89,43 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     "`([^`]+)`".r.findAllMatchIn(list).map(_.group(1)).toSet
   }
 
+  /** The functions of the converter schemas in `model/converter/<kind>`, such as `json_schema`. */
+  private def functions(root: os.Path, kind: String): Seq[String] =
+    os.list(root / "model" / "converter" / kind)
+      .flatMap(p => "(?m)^functions:\\n  (\\w+):".r.findAllMatchIn(os.read(p)).map(_.group(1)))
+      .sorted
+
+  /** The functions without a page on the docs site that shows their examples and options, which
+    * `website/src/content/docs/<kind>s/<name>.mdx` does with `<Usage name="<function>" />`.
+    */
+  private def withoutPage(root: os.Path, kind: String, page: String => String): Seq[String] = {
+    val docs = root / "website" / "src" / "content" / "docs" / s"${kind}s"
+    functions(root, kind).filterNot { f =>
+      val path = docs / s"${page(f)}.mdx"
+      os.exists(path) && os.read(path).contains(s"""<Usage name="$f" />""")
+    }
+  }
+
   /** The generator ids offered by the playground's target list. */
   private def playgroundTargets(root: os.Path): Set[String] =
     "id: \"(\\w+)\"".r
       .findAllMatchIn(os.read(root / "ui" / "targets.ts"))
+      .map(_.group(1))
+      .toSet
+
+  /** Every function the shared library exports, from the `@exported` annotations. */
+  private def exportedSymbols(root: os.Path): Set[String] =
+    os.walk(root / "nativelib" / "src")
+      .filter(_.ext == "scala")
+      .flatMap(p => "@exported\\(\"(\\w+)\"\\)".r.findAllMatchIn(os.read(p)).map(_.group(1)))
+      .toSet
+
+  /** The functions the public C header declares. Anchored at the start of a line, so the prose in
+    * the header's comments cannot stand in for a declaration.
+    */
+  private def headerDeclarations(root: os.Path): Set[String] =
+    "(?m)^(?:char \\*|long long |void |int )(\\w+)\\(".r
+      .findAllMatchIn(os.read(root / "nativelib" / "include" / "ohi_linkml.h"))
       .map(_.group(1))
       .toSet
 
@@ -195,6 +228,15 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       withClue("add it to the generator list in python/README.md: ")(missing shouldBe empty)
     }
 
+    "have a page on the docs site" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val missing = withoutPage(root, "generator", _.replace('_', '-'))
+      withClue(
+        "add website/src/content/docs/generators/<name>.mdx with its Usage and Options, add it to " +
+          "the sidebar in website/astro.config.mjs, then run ./mill regenerate: ",
+      )(missing shouldBe empty)
+    }
+
     "be listed in the agent skill" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       withClue("fix the `Generators:` list in .agents/skills/linkml/SKILL.md: ")(
@@ -235,11 +277,34 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "have a page on the docs site" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val missing = withoutPage(root, "importer", _.stripPrefix("from_").replace('_', '-'))
+      withClue(
+        "add website/src/content/docs/importers/<name>.mdx with its Usage and Options, add it to " +
+          "the sidebar in website/astro.config.mjs, then run ./mill regenerate: ",
+      )(missing shouldBe empty)
+    }
+
     "be listed in the agent skill" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       withClue("fix the `Importers:` list in .agents/skills/linkml/SKILL.md: ")(
         skillList(root, "Importers") shouldBe cliNames(root, "From.scala", "formatName"),
       )
+    }
+  }
+
+  "the C header" should {
+    "declare every symbol the library exports" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val missing = exportedSymbols(root) -- headerDeclarations(root)
+      withClue("add it to nativelib/include/ohi_linkml.h: ")(missing shouldBe empty)
+    }
+
+    "declare nothing the library does not export" in {
+      val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
+      val extra = headerDeclarations(root) -- exportedSymbols(root)
+      withClue("remove it from nativelib/include/ohi_linkml.h: ")(extra shouldBe empty)
     }
   }
 }

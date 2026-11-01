@@ -3,6 +3,8 @@ title: Documentation
 description: The documentation generator, which writes Markdown pages for a LinkML schema.
 ---
 
+import { Options, Usage } from '../../../components/converter';
+
 The documentation generator turns a LinkML schema into Markdown pages: an index of the schema plus
 a page for each class, slot, enum and type. The pages link to each other with relative links, so
 they work as they are:
@@ -10,15 +12,11 @@ they work as they are:
 - on GitHub, GitLab and other places that show Markdown files,
 - in static site tools like Docusaurus, MkDocs and VitePress (see [Publishing](#publishing)).
 
-## Generating
+## Usage
 
-From the command line, to a folder:
+<Usage name="docs" />
 
-```shell
-ohi linkml to docs --to docs/schema schema.yaml
-```
-
-This writes:
+With `--to` set to a folder, such as `--to docs/schema`, it writes:
 
 ```
 docs/schema/
@@ -34,31 +32,15 @@ pages of removed elements don't linger. It knows them by the comment they start 
 are kept.
 
 To get one document instead, with the pages as sections that link to each other with anchors, name a
-`.md` file in `--to`, or leave `--to` out to write to stdout:
-
-```shell
-ohi linkml to docs --to schema.md schema.yaml
-```
-
-Options:
-
-- `--pruning-mode <tree_root|schema|skip>`: which classes to document. The enums, types and slots
-  that these classes use are documented with them.
-  - `schema`: the classes defined in the schema, and the classes they use from imported schemas.
-    This is the default, unlike for the other generators.
-  - `tree_root`: only the classes that the tree root class reaches.
-  - `skip`: everything, including all the types from `linkml:types`, whether the schema uses them
-    or not.
-- `--tree-root <Class>`: with `--pruning-mode tree_root`, use this class as the tree root.
-- `--metadata-language <tag>`: which language to use for titles and descriptions that are given
-  in more than one language. Default: `en`.
-
-The generator is also available from JavaScript (`docs()`), Python (`Schema.docs()`) and the C API
-(`linkml_docs`). They return the pages as a map from file name to content. With the `singleFile`
-option (`single_file` in Python), the map has only `docs.md`, with all pages as one document.
+`.md` file in `--to`, or leave `--to` out to write to stdout. The other SDKs return the pages as a
+map from file name to content, which with `single_file` has only `docs.md`.
 
 The [playground](https://linkml.ohi.dev/playground/) has a Documentation target. It shows
 the documentation as one page, as GitHub would show it. The Code tab shows the Markdown.
+
+## Options
+
+<Options name="docs" />
 
 ## What the pages show
 

@@ -109,9 +109,11 @@ jobs:
         if: matrix.java == 25
         run: |
           ./mill --no-server regenerate
-          # The folders of the LinkMlModelModule modules, the npm package's model types and ohi
+          # The folders of the LinkMlModelModule modules, the npm package's model types, ohi, the
+          # CLI options, and the data and example tests of the converter pages of the docs
           models=$(./mill --no-server --ticker false resolve '__:LinkMlModelModule' | tr . /)
-          paths=($models generator/npm ohi cli/ohi)
+          paths=($models generator/npm ohi cli/ohi cli/options website/src/generated \
+            python/test_snippets.py cli/test/src/eu/neverblink/linkml/cli/DocSnippetsSpec.scala)
           if [ -n "$(git status --porcelain -- "${paths[@]}")" ]; then
             git status --short -- "${paths[@]}"
             git diff -- "${paths[@]}"

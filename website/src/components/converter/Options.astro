@@ -1,0 +1,22 @@
+---
+/** The options of a converter, then the classes that its options take as values. */
+import AttributeList from './AttributeList.astro';
+import { anchor, classes, converter, inline } from './data';
+
+interface Props {
+  name: string;
+}
+
+const c = converter(Astro.props.name);
+---
+
+{c.options.length > 0 ? <AttributeList attributes={c.options} /> : <p>It has no options.</p>}
+{
+  c.classes.map((name) => (
+    <>
+      <h3 id={anchor(name)}>{name}</h3>
+      <p set:html={inline(classes[name].description)} />
+      <AttributeList attributes={classes[name].attributes} />
+    </>
+  ))
+}

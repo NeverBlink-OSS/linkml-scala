@@ -1,0 +1,117 @@
+---
+title: Apache Ossie
+description: The Ossie generator, which writes an Apache Ossie ontology for a LinkML schema.
+---
+
+import { Description, Options, Usage } from '../../../components/converter';
+
+<Description name="ossie" />
+
+## Usage
+
+<Usage name="ossie" />
+
+## Options
+
+<Options name="ossie" />
+
+## Mapping LinkML to Ossie
+
+The generator writes [Apache Ossie](https://github.com/apache/ossie) ontologies (`ontology/ontology.json`, version `0.2.0.dev0`). The [Ossie importer](/docs/importers/ossie/) does the reverse.
+
+### Document
+
+| LinkML                                         | Ossie field         |
+|------------------------------------------------|---------------------|
+| Always `0.2.0.dev0`                            | `version`           |
+| `name`                                         | `name`              |
+| `description`                                  | `description`       |
+| One component per class, enum, and named type. | `ontology`          |
+| `extensions.ai_context`                        | `ai_context`        |
+| The root schema's `prefixes` that `iri`s use.  | `prefixes`          |
+
+`requires` and `ontology_mappings` are not written. See [IRIs](#iris) for how `prefixes` and `iri` are handled.
+
+### Concept (`OntologyComponent`)
+
+| LinkML                                                                               | Ossie field     |
+|--------------------------------------------------------------------------------------|-----------------|
+| Element name in PascalCase.                                                          | `concept`       |
+| `EntityType` for classes, `ValueType` for enums and types.                           | `type`          |
+| `class_uri`, `enum_uri`, or the type's `uri`. See [IRIs](#iris).                     | `iri`           |
+| Element `description`, in `metadata_language`.                                       | `description`   |
+| Classes: `is_a` + `mixins`. Enums and types: the built-in value type for their base. | `extends`       |
+| `identifier`, `key`, or `unique_keys`                                                | `identify_by`   |
+| Required slots: `Concept.relationship`. Enums and named types: see [Expressions](#expressions). | `requires` |
+| The class' derived slots, minus the ones stated identically in a supertype.          | `relationships` |
+
+`derived_by` is not written.
+
+Abstract classes and mixins become ordinary concepts – Ossie has no abstract elements.
+
+A subtype only declares what it does not inherit unchanged. If it narrows a slot (a tighter range or `required` where the supertype had it optional), the relationship is declared again on the subtype.
+
+### Relationship
+
+One per derived slot of the class. Identified as `Concept.name`, so names only need to be unique within their concept.
+
+| LinkML                                                                            | Ossie field            |
+|-----------------------------------------------------------------------------------|------------------------|
+| Slot `alias`, else slot name in snake_case.                                       | `name`                 |
+| `slot_uri`. See [IRIs](#iris).                                                    | `iri`                  |
+| `{Concept} <title or space-case name> {Range}`                                    | `verbalizes`           |
+| Slot `description`, in `metadata_language`.                                       | `description`          |
+| Always exactly one, played by the slot's range concept. A union (`any_of`) uses the slot's own range, otherwise `Any`. | `roles` |
+| Single-valued identifier/key slot or `maximum_cardinality: 1` → `OneToOne`. Others → `ManyToOne`. | `multiplicity` |
+| Slot `minimum_value` / `maximum_value` / `pattern`, as expressions over the role. | `requires`             |
+| `rank` of the slot                                                                | *(relationship order)* |
+
+`derived_by` is not written.
+
+A role's `name` is only written when the player would otherwise be ambiguous – i.e. a slot whose
+range is its own class. `Person.parent_of` becomes `roles: [{concept: Person, name: parent_of}]` and verbalizes as `{Person} parent of {Person:parent_of}`, per the spec's disambiguation rule.
+
+### Ranges
+
+Primitive LinkML types map straight onto Ossie's built-in concepts:
+
+| LinkML                                           | Ossie      |
+|--------------------------------------------------|------------|
+| `string`, `uri`, `uriorcurie`, `curie`, `ncname` | `String`   |
+| `integer`                                        | `Integer`  |
+| `float`, `double`                                | `Float`    |
+| `decimal`                                        | `Decimal`  |
+| `boolean`                                        | `Boolean`  |
+| `date`                                           | `Date`     |
+| `datetime`                                       | `DateTime` |
+| `time`                                           | `String`   |
+| localized text                                   | `String`   |
+| `linkml:Any`, unknown base                       | `Any`      |
+
+A non-primitive LinkML type becomes its own `ValueType` concept extending a built-in.
+
+An **enum** becomes a `ValueType` extending `String`, with its permissible values as a `requires` expression. Enum inheritance and dynamic enums are not mapped.
+
+### Expressions
+
+| LinkML                           | Ossie                   |
+|----------------------------------|-------------------------|
+| `required: true`                 | `Concept.relationship`  |
+| `permissible_values`             | `Ref IN ('a', 'b')`     |
+| `minimum_value`, `maximum_value` | `Ref >= v`, `Ref <= v`  |
+| `pattern`                        | `REGEXP_LIKE(Ref, 'p')` |
+
+### IRIs
+
+The generator gives every class, slot, enum and named type an `iri`: its `class_uri`, `slot_uri`, `enum_uri` or `uri`, or the URI LinkML derives when there is none. An IRI is written as a QName (basically, same thing as short IRIs in Turtle) when one of the root schema's `prefixes` covers it, and as a full IRI otherwise. A full IRI that would be read back as a QName, such as the IRI `ex:Person` when `ex` is a declared prefix or a prefix of the LinkML metamodel, can't be written, so the generator fails with an error. Only the prefixes that some `iri` uses go into the ontology's `prefixes`.
+
+### Not mapped
+
+Ossie does not support arbitrary extensions, so the following LinkML features are not mapped:
+
+- Permissible value `meaning`, and the `*_mappings` metaslots
+- `deprecated`, `annotations`, `extensions`, `subsets`, `see_also` and other metadata
+- `unit`, `default` / `ifabsent`, `recommended`
+- Cardinality counts (`minimum_cardinality`, `maximum_cardinality`)
+- `rules`, `any_of` / `all_of` / `none_of` / `exactly_one_of`
+- Type designators, arrays

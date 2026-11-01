@@ -166,15 +166,17 @@ object `package` extends Module, NativeOptional {
       PathRef(dest)
     }
 
-    /** Pack and install the package, then run the README examples and type-check the usage sample
-      * against it. Requires Node.js and npm on the PATH.
+    /** Pack and install the package, then run the README examples and the examples of the docs, and
+      * type-check the usage sample against it. Requires Node.js and npm on the PATH.
       */
     def verifyPackage(args: String*) = Task.Command {
       val pkg = npmPackage().path
       val script = npmMetadata().path / "verify-package.mjs"
       val usageSample = npmMetadata().path / "usage.test.ts"
+      val snippets = npmMetadata().path / "snippets.test.mjs"
+      val examples = mill.api.BuildCtx.workspaceRoot / "model" / "converter" / "examples"
       os.call(
-        ("node", script.toString, pkg.toString, usageSample.toString),
+        ("node", script.toString, pkg.toString, usageSample.toString, snippets, examples),
         stdout = os.Inherit,
         stderr = os.Inherit,
       )

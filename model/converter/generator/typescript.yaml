@@ -34,6 +34,8 @@ classes:
           The classes and enums in the output. A designated union always comes with its
           members.
       include_null:
+        examples:
+          - value: true
         description: >-
           Whether optional values and compact dictionary entries with nothing beyond the key may
           be null, as in the JSON Schema generator.

@@ -1,0 +1,116 @@
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+PREFIX prov: <http://www.w3.org/ns/prov#>
+PREFIX linkml: <https://w3id.org/linkml/>
+PREFIX sh: <http://www.w3.org/ns/shacl#>
+PREFIX vann: <http://purl.org/vocab/vann/>
+
+<http://www.w3.org/ns/prov-o#> a owl:Ontology ;
+  rdfs:label "W3C PROVenance Interchange Ontology (PROV-O)" ;
+  vann:preferredNamespacePrefix "prov" ;
+  vann:preferredNamespaceUri "http://www.w3.org/ns/prov#"^^xsd:anyURI ;
+  sh:declare [
+    sh:prefix "prov" ;
+    sh:namespace "http://www.w3.org/ns/prov#"^^xsd:anyURI
+  ] , [
+    sh:prefix "linkml" ;
+    sh:namespace "https://w3id.org/linkml/"^^xsd:anyURI
+  ] .
+
+prov:Entity a owl:Class ;
+  rdfs:comment "A physical, digital, conceptual, or other kind of thing with some fixed aspects; entities may be real or imaginary." ;
+  rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty prov:wasGeneratedBy ;
+    owl:allValuesFrom prov:Activity
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:wasGeneratedBy ;
+    owl:maxCardinality "1"^^xsd:nonNegativeInteger
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:wasAttributedTo ;
+    owl:allValuesFrom prov:Agent
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:wasAttributedTo ;
+    owl:maxCardinality "1"^^xsd:nonNegativeInteger
+  ] .
+
+prov:Activity a owl:Class ;
+  rdfs:comment "Something that occurs over a period of time and acts upon or with entities." ;
+  rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty prov:startedAtTime ;
+    owl:allValuesFrom xsd:dateTime
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:startedAtTime ;
+    owl:maxCardinality "1"^^xsd:nonNegativeInteger
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:endedAtTime ;
+    owl:allValuesFrom xsd:dateTime
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:endedAtTime ;
+    owl:maxCardinality "1"^^xsd:nonNegativeInteger
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:used ;
+    owl:allValuesFrom prov:Entity
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:wasAssociatedWith ;
+    owl:allValuesFrom prov:Agent
+  ] .
+
+prov:Agent a owl:Class ;
+  rdfs:comment "Something that bears some form of responsibility for an activity taking place, for the existence of an entity, or for another agent's activity." ;
+  rdfs:subClassOf [
+    a owl:Restriction ;
+    owl:onProperty prov:actedOnBehalfOf ;
+    owl:allValuesFrom prov:Agent
+  ] , [
+    a owl:Restriction ;
+    owl:onProperty prov:actedOnBehalfOf ;
+    owl:maxCardinality "1"^^xsd:nonNegativeInteger
+  ] .
+
+prov:wasGeneratedBy a owl:ObjectProperty ;
+  rdfs:range prov:Activity ;
+  a owl:FunctionalProperty .
+
+prov:wasAttributedTo a owl:ObjectProperty ;
+  rdfs:range prov:Agent ;
+  a owl:FunctionalProperty .
+
+prov:startedAtTime a owl:DatatypeProperty ;
+  rdfs:range xsd:dateTime ;
+  a owl:FunctionalProperty .
+
+prov:endedAtTime a owl:DatatypeProperty ;
+  rdfs:range xsd:dateTime ;
+  a owl:FunctionalProperty .
+
+prov:used a owl:ObjectProperty ;
+  rdfs:range prov:Entity .
+
+prov:wasAssociatedWith a owl:ObjectProperty ;
+  rdfs:range prov:Agent .
+
+prov:actedOnBehalfOf a owl:ObjectProperty ;
+  rdfs:range prov:Agent ;
+  a owl:FunctionalProperty .
+
+vann:preferredNamespacePrefix a owl:AnnotationProperty .
+
+vann:preferredNamespaceUri a owl:AnnotationProperty .
+
+sh:declare a owl:AnnotationProperty .
+
+sh:prefix a owl:AnnotationProperty .
+
+sh:namespace a owl:AnnotationProperty .

@@ -1,0 +1,57 @@
+# A small part of PROV-O. It stands in for the file that `ohi get w3c/prov-o` saves, in the tests of
+# the examples on the generator pages of the docs. prov-o.ttl and prov-o.ossie.yaml are made from it.
+id: http://www.w3.org/ns/prov-o#
+name: prov
+title: W3C PROVenance Interchange Ontology (PROV-O)
+prefixes:
+  prov: http://www.w3.org/ns/prov#
+  linkml: https://w3id.org/linkml/
+default_prefix: prov
+default_range: string
+imports:
+  - linkml:types
+
+classes:
+  Entity:
+    description: >-
+      A physical, digital, conceptual, or other kind of thing with some fixed aspects; entities
+      may be real or imaginary.
+    attributes:
+      id:
+        identifier: true
+      was_generated_by:
+        slot_uri: prov:wasGeneratedBy
+        range: Activity
+      was_attributed_to:
+        slot_uri: prov:wasAttributedTo
+        range: Agent
+  Activity:
+    description: >-
+      Something that occurs over a period of time and acts upon or with entities.
+    attributes:
+      id:
+        identifier: true
+      started_at_time:
+        slot_uri: prov:startedAtTime
+        range: datetime
+      ended_at_time:
+        slot_uri: prov:endedAtTime
+        range: datetime
+      used:
+        slot_uri: prov:used
+        range: Entity
+        multivalued: true
+      was_associated_with:
+        slot_uri: prov:wasAssociatedWith
+        range: Agent
+        multivalued: true
+  Agent:
+    description: >-
+      Something that bears some form of responsibility for an activity taking place, for the
+      existence of an entity, or for another agent's activity.
+    attributes:
+      id:
+        identifier: true
+      acted_on_behalf_of:
+        slot_uri: prov:actedOnBehalfOf
+        range: Agent

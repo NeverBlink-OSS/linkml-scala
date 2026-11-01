@@ -14,6 +14,8 @@ classes:
       - schema_id
     slot_usage:
       schema_id:
+        examples:
+          - value: https://example.org/prov
         description: >-
           The `id` of the schema to produce. An Ossie ontology has none of its own, so by default
           it is a placeholder built from the ontology's name.

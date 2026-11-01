@@ -16,6 +16,8 @@ classes:
         description: Which elements become concepts.
     attributes:
       format:
+        examples:
+          - value: json
         range: JsonOutputFormat
         required: true
         ifabsent: JsonOutputFormat(yaml)

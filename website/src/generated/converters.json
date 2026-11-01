@@ -1,0 +1,2105 @@
+{
+  "functions": [
+    {
+      "name": "docs",
+      "kind": "generator",
+      "page": "generators/docs",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=docs",
+      "description": "Generate Markdown documentation. The files are `index.md` plus a page for each class, slot, enum, type and function, such as `classes/<name>.md`, or only `docs.md` with `single_file`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to docs --single-file --to prov-o.md prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.docs(single_file=True)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst files = view.docs({ single_file: true });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.DocsGeneratorOptions\nimport eu.neverblink.linkml.generator.docs.DocsGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval files = DocsGenerator().generateFiles(\n  DocsGeneratorOptions(singleFile = true),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_docs(schema, \"{\\\"single_file\\\": true}\", &error);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "schema",
+          "description": "The elements of the schema to include in the output.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "single_file",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to write all pages as sections of one document, `docs.md`, instead of one file for each page.",
+          "cli": "--single-file",
+          "scala": "singleFile"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "er_diagram",
+      "kind": "generator",
+      "page": "generators/er-diagram",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=erDiagram",
+      "description": "Generate a Mermaid entity relationship diagram. Classes become entities, slots ranging over types and enums become their attributes, and slots ranging over classes become relationship lines.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to er-diagram --pruning-mode schema \\\n  --to prov-o.mmd prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.er_diagram(pruning_mode=\"schema\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.erDiagram({ pruning_mode: \"schema\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = ErDiagramGenerator().serialize(\n  ErDiagramGeneratorOptions(pruningMode = PruningMode.Schema),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_er_diagram(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "optional_marker",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "true",
+          "description": "Whether to mark optional attributes with a `?` after their type. Mermaid supports this from version 11.16 and rejects the whole diagram in older versions.",
+          "cli": "--optional-marker",
+          "scala": "optionalMarker"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "schema",
+          "description": "The elements of the schema to include in the output.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "frictionless",
+      "kind": "generator",
+      "page": "generators/frictionless",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=frictionless",
+      "description": "Generate a Frictionless Data Package. Every class becomes a CSV table, described by its own Table Schema, and references between classes become foreign keys between the tables. The files are a `datapackage.json` plus one `schemas/<table>.json` per table.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to frictionless --pruning-mode schema \\\n  --to datapackage/ prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.frictionless(pruning_mode=\"schema\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst files = view.frictionless({ pruning_mode: \"schema\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.frictionless.FrictionlessGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval files = FrictionlessGenerator().generateFiles(\n  FrictionlessGeneratorOptions(pruningMode = PruningMode.Schema),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_frictionless(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "skip",
+          "description": "Which classes become tables.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "skip_classes_without_identifier",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to skip the classes with no identifier slot. The table of such a class has no primary key, and so no references from other tables.",
+          "cli": "--skip-classes-without-identifier",
+          "scala": "skipClassesWithoutIdentifier"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "from_ossie",
+      "kind": "importer",
+      "page": "importers/ossie",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&input=ossie",
+      "description": "Read an Apache Ossie ontology, as YAML or JSON, and produce the LinkML schema it describes. The opposite of `ossie`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o --format ossie-yaml\nohi linkml from ossie --schema-id https://example.org/prov \\\n  --to prov.yaml prov-o.ossie.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "from pathlib import Path\n\nimport ohi_linkml\n\nresult = ohi_linkml.from_ossie(\n    Path(\"prov-o.ossie.yaml\").read_text(),\n    schema_id=\"https://example.org/prov\",\n)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst result = LinkML.fromOssie(\n  readFileSync(\"prov-o.ossie.yaml\", \"utf8\"),\n  { schema_id: \"https://example.org/prov\" },\n);"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.OssieImporterOptions\nimport eu.neverblink.linkml.generator.ossie.OssieImporter\n\nimport java.nio.file.{Files, Path}\n\nval schema = OssieImporter().serializeFromString(\n  Files.readString(Path.of(\"prov-o.ossie.yaml\")),\n  OssieImporterOptions(schemaId = Some(\"https://example.org/prov\")),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\n/* document is the text of prov-o.ossie.yaml. */\n/* The result is an ImportResult in JSON. */\nlinkml_init_threads();\nchar *error = NULL;\nchar *result = linkml_from_ossie(\n    document,\n    \"{\\\"schema_id\\\": \\\"https://example.org/prov\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_free(error);"
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "JsonOutputFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "yaml",
+          "description": "The serialization of the schema.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "full_uris",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.",
+          "cli": "--full-uris",
+          "scala": "fullUris"
+        },
+        {
+          "name": "schema_id",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The `id` of the schema to produce. An Ossie ontology has none of its own, so by default it is a placeholder built from the ontology's name.",
+          "cli": "--schema-id",
+          "scala": "schemaId"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "from_owl",
+      "kind": "importer",
+      "page": "importers/owl",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&input=owl",
+      "description": "Read an OWL ontology or RDFS vocabulary, as Turtle or N-Triples, and produce the LinkML schema it describes. The opposite of `owl`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o --format owl-turtle\nohi linkml from owl --schema-id https://example.org/prov \\\n  --to prov.yaml prov-o.ttl"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "from pathlib import Path\n\nimport ohi_linkml\n\nresult = ohi_linkml.from_owl(\n    Path(\"prov-o.ttl\").read_text(),\n    schema_id=\"https://example.org/prov\",\n)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst result = LinkML.fromOwl(\n  readFileSync(\"prov-o.ttl\", \"utf8\"),\n  { schema_id: \"https://example.org/prov\" },\n);"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.OwlImporterOptions\nimport eu.neverblink.linkml.generator.owl.OwlImporter\n\nimport java.nio.file.{Files, Path}\n\nval schema = OwlImporter().serializeFromString(\n  Files.readString(Path.of(\"prov-o.ttl\")),\n  OwlImporterOptions(schemaId = Some(\"https://example.org/prov\")),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\n/* document is the text of prov-o.ttl. */\n/* The result is an ImportResult in JSON. */\nlinkml_init_threads();\nchar *error = NULL;\nchar *result = linkml_from_owl(\n    document,\n    \"{\\\"schema_id\\\": \\\"https://example.org/prov\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_free(error);"
+        }
+      ],
+      "options": [
+        {
+          "name": "config",
+          "type": {
+            "kind": "class",
+            "name": "OwlImportConfig",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "How to map the ontology: names, prefixes, which annotation properties fill which metaslots, and more. See https://linkml.ohi.dev/docs/importers/owl/.",
+          "cli": "--config",
+          "scala": "config"
+        },
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "JsonOutputFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "yaml",
+          "description": "The serialization of the schema.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "full_uris",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.",
+          "cli": "--full-uris",
+          "scala": "fullUris"
+        },
+        {
+          "name": "input_format",
+          "type": {
+            "kind": "enum",
+            "name": "RdfFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "ttl",
+          "description": "The RDF syntax of the ontology. Turtle also reads N-Triples.",
+          "cli": "--input-format",
+          "scala": "inputFormat"
+        },
+        {
+          "name": "schema_id",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The `id` of the schema to produce, instead of the `schema_id` of `config`. The default is the ontology IRI.",
+          "cli": "--schema-id",
+          "scala": "schemaId"
+        },
+        {
+          "name": "schemas",
+          "type": {
+            "kind": "class",
+            "name": "File",
+            "collection": "map"
+          },
+          "required": false,
+          "default": null,
+          "description": "The LinkML schemas that the `imports` of `config` map `owl:imports` to, from file name to YAML text. By default, they are read from the file system.",
+          "cli": null,
+          "scala": "schemas"
+        }
+      ],
+      "classes": [
+        "OwlImportConfig",
+        "DatatypeMapping",
+        "ImportMapping",
+        "MetadataSources",
+        "Naming",
+        "NamespacePrefix",
+        "TermRename",
+        "File"
+      ]
+    },
+    {
+      "name": "graphql",
+      "kind": "generator",
+      "page": "generators/graphql",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=graphql",
+      "description": "Generate a GraphQL schema: types, interfaces, scalars and enums, but no queries.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to graphql --pruning-mode schema \\\n  --to prov-o.graphql prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.graphql(pruning_mode=\"schema\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.graphql({ pruning_mode: \"schema\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.graphql.GraphQlGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = GraphQlGenerator().serialize(\n  GraphQlGeneratorOptions(pruningMode = PruningMode.Schema),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_graphql(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "schema",
+          "description": "The elements of the schema to include in the output.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "json_schema",
+      "kind": "generator",
+      "page": "generators/json-schema",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=jsonSchema",
+      "description": "Generate a JSON Schema.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to json-schema --tree-root Entity \\\n  --to prov-o.schema.json prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.json_schema(tree_root=\"Entity\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.jsonSchema({ tree_root: \"Entity\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.JsonSchemaGeneratorOptions\nimport eu.neverblink.linkml.generator.jsonschema.JsonSchemaGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = JsonSchemaGenerator().serialize(\n  JsonSchemaGeneratorOptions(treeRoot = Some(\"Entity\")),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_json_schema(\n    schema,\n    \"{\\\"tree_root\\\": \\\"Entity\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "include_null",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether optional values and compact dictionary entries with nothing beyond the key may be null.",
+          "cli": "--include-null",
+          "scala": "includeNull"
+        },
+        {
+          "name": "indentation_step",
+          "type": {
+            "kind": "type",
+            "name": "integer",
+            "collection": null
+          },
+          "required": false,
+          "default": "2",
+          "description": "The number of spaces for each level of indentation in the output.",
+          "cli": "--indentation-step",
+          "scala": "indentationStep"
+        },
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "open",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether every class allows properties beyond the ones in the schema. Classes whose `extra_slots` allows them allow them anyway.",
+          "cli": "--open",
+          "scala": "open"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class at the root of the JSON Schema, instead of the class with `tree_root: true` in the schema.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        },
+        {
+          "name": "tree_root_inline_type",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "How the tree root class appears at the root of the JSON Schema, instead of its `tree_root_as` extension. One of `plain`, `optional`, `list`, `compact_dict` or `simple_dict`.",
+          "cli": "--tree-root-inline-type",
+          "scala": "treeRootInlineType"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "linkml",
+      "kind": "generator",
+      "page": "generators/linkml",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=linkml",
+      "description": "Materialize a derived LinkML schema: imports resolved, slots pushed into attributes, and the elements out of scope pruned.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to linkml --full-uris \\\n  --to prov-o.derived.yaml prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.linkml(full_uris=True)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.linkml({ full_uris: true });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.LinkMlGeneratorOptions\nimport eu.neverblink.linkml.generator.linkml.LinkMlGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = LinkMlGenerator().serialize(\n  LinkMlGeneratorOptions(fullUris = true),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_linkml(schema, \"{\\\"full_uris\\\": true}\", &error);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "JsonOutputFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "yaml",
+          "description": "The serialization of the output.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "full_uris",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to write URIs in full, instead of compacting them to CURIEs with the schema's prefixes.",
+          "cli": "--full-uris",
+          "scala": "fullUris"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "skip",
+          "description": "The elements of the schema to include in the output.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "skip_class_derivation",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to copy the classes as they are, instead of deriving them.",
+          "cli": "--skip-class-derivation",
+          "scala": "skipClassDerivation"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "ossie",
+      "kind": "generator",
+      "page": "generators/ossie",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=ossie",
+      "description": "Generate an Apache Ossie ontology, serialized as YAML or JSON. Classes become entity types, enums and named types become value types, and slots become relationships.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to ossie --format json \\\n  --to prov-o.ossie.json prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.ossie(format=\"json\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.ossie({ format: \"json\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.ossie.OssieGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = OssieGenerator().serialize(\n  OssieGeneratorOptions(format = JsonOutputFormat.Json),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_ossie(schema, \"{\\\"format\\\": \\\"json\\\"}\", &error);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "JsonOutputFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "yaml",
+          "description": "The serialization of the output.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "skip",
+          "description": "Which elements become concepts.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "owl",
+      "kind": "generator",
+      "page": "generators/owl",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=owl",
+      "description": "Generate an OWL 2 ontology, serialized as Turtle or N-Triples. Classes, slots, enums and types become OWL classes, properties, classes of individuals and datatypes, with the same IRIs as in `shacl` and `rdfs`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to owl --only-root-schema \\\n  --to prov-o.owl.ttl prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.owl(only_root_schema=True)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.owl({ only_root_schema: true });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.OwlGeneratorOptions\nimport eu.neverblink.linkml.generator.owl.OwlGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = OwlGenerator().serialize(\n  OwlGeneratorOptions(onlyRootSchema = true),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_owl(\n    schema,\n    \"{\\\"only_root_schema\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "RdfFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "ttl",
+          "description": "The RDF serialization of the output.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "metadata_profile",
+          "type": {
+            "kind": "enum",
+            "name": "OwlMetadataProfile",
+            "collection": null
+          },
+          "required": false,
+          "default": "rdfs",
+          "description": "The annotation property for descriptions.",
+          "cli": "--metadata-profile",
+          "scala": "metadataProfile"
+        },
+        {
+          "name": "only_root_schema",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to describe only the root schema, with an `owl:imports` for each of its imports. Without it, the output includes the imported schemas, like `gen-owl --mergeimports`.",
+          "cli": "--only-root-schema",
+          "scala": "onlyRootSchema"
+        },
+        {
+          "name": "permissible_values",
+          "type": {
+            "kind": "enum",
+            "name": "OwlPermissibleValueKind",
+            "collection": null
+          },
+          "required": false,
+          "default": "individual",
+          "description": "The kind of OWL entity for the permissible values of an enum.",
+          "cli": "--permissible-values",
+          "scala": "permissibleValues"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "pydantic",
+      "kind": "generator",
+      "page": "generators/pydantic",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=pydantic",
+      "description": "Generate pydantic classes for the schema's JSON data. Load data with `X.model_validate_json(text)` and dump it with `x.model_dump_json()`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to pydantic --pruning-mode schema \\\n  --to prov_o.py prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.pydantic(pruning_mode=\"schema\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.pydantic({ pruning_mode: \"schema\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.pydantic.PydanticGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = PydanticGenerator().serialize(\n  PydanticGeneratorOptions(pruningMode = PruningMode.Schema),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_pydantic(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"schema\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "include_null",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether dumps keep null values. Without it, dumps leave out every field with no value.",
+          "cli": "--include-null",
+          "scala": "includeNull"
+        },
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "open",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether the classes accept and keep properties beyond the ones in the schema.",
+          "cli": "--open",
+          "scala": "open"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "skip",
+          "description": "The classes and enums in the output. Each class always comes with its ancestors, and a designated union with its members.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "rdfs",
+      "kind": "generator",
+      "page": "generators/rdfs",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=rdfs",
+      "description": "Generate RDFS, serialized as N-Triples or Turtle.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to rdfs --only-classes-from-root-schema \\\n  --to prov-o.rdfs.ttl prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.rdfs(only_classes_from_root_schema=True)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.rdfs({ only_classes_from_root_schema: true });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.RdfsGeneratorOptions\nimport eu.neverblink.linkml.generator.rdfs.RdfsGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = RdfsGenerator().serialize(\n  RdfsGeneratorOptions(onlyClassesFromRootSchema = true),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_rdfs(\n    schema,\n    \"{\\\"only_classes_from_root_schema\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "RdfFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "ttl",
+          "description": "The RDF serialization of the output.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "only_classes_from_root_schema",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to include only the classes and enums of the root schema. This is useful for one output file per schema file, without the imported classes in each.",
+          "cli": "--only-classes-from-root-schema",
+          "scala": "onlyClassesFromRootSchema"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "scala",
+      "kind": "generator",
+      "page": "generators/scala",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=scala",
+      "description": "Generate Scala classes, one file per class, enum and type.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to scala --package org.example.prov \\\n  --to src/org/example/prov/ prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.scala(package=\"org.example.prov\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst files = view.scala({ package: \"org.example.prov\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.ScalaGeneratorOptions\nimport eu.neverblink.linkml.generator.scala.ScalaGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval files = ScalaGenerator().generate(\n  ScalaGeneratorOptions(`package` = \"org.example.prov\"),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_scala(\n    schema,\n    \"{\\\"package\\\": \\\"org.example.prov\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "error_handling",
+          "type": {
+            "kind": "enum",
+            "name": "ScalaErrorHandling",
+            "collection": null
+          },
+          "required": false,
+          "default": "annotation",
+          "description": "How the functions of the schema report their `errors`.",
+          "cli": "--error-handling",
+          "scala": "errorHandling"
+        },
+        {
+          "name": "generate_emit_prefixes",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "true",
+          "description": "Whether to generate a `Prefixes` object with the schema's `emit_prefixes`.",
+          "cli": "--generate-emit-prefixes",
+          "scala": "generateEmitPrefixes"
+        },
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "package",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "eu.neverblink.linkml.metamodel",
+          "description": "The package of the generated classes.",
+          "cli": "--package",
+          "scala": "`package`"
+        },
+        {
+          "name": "skip_leaf_interfaces",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "true",
+          "description": "Whether a concrete class that no other class extends with `is_a` or `mixins` becomes one case class, instead of an interface and an `...Impl` case class. Turn it off when other code has to extend the generated classes.",
+          "cli": "--skip-leaf-interfaces",
+          "scala": "skipLeafInterfaces"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "shacl",
+      "kind": "generator",
+      "page": "generators/shacl",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=shacl",
+      "description": "Generate SHACL shapes, serialized as N-Triples or Turtle.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to shacl --open --to prov-o.shacl.ttl prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.shacl(open=True)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.shacl({ open: true });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.ShaclGeneratorOptions\nimport eu.neverblink.linkml.generator.shacl.ShaclGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = ShaclGenerator().serialize(\n  ShaclGeneratorOptions(open = true),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_shacl(schema, \"{\\\"open\\\": true}\", &error);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "format",
+          "type": {
+            "kind": "enum",
+            "name": "RdfFormat",
+            "collection": null
+          },
+          "required": false,
+          "default": "ttl",
+          "description": "The RDF serialization of the output.",
+          "cli": "--format",
+          "scala": "format"
+        },
+        {
+          "name": "only_classes_from_root_schema",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether to include only the classes and enums of the root schema. This is useful for one output file per schema file, without the imported classes in each.",
+          "cli": "--only-classes-from-root-schema",
+          "scala": "onlyClassesFromRootSchema"
+        },
+        {
+          "name": "open",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether every shape is open, allowing properties beyond the ones in the schema. Shapes of classes whose `extra_slots` allows them are open anyway.",
+          "cli": "--open",
+          "scala": "open"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "stats",
+      "kind": "generator",
+      "page": "generators/stats",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=stats",
+      "description": "Count the elements, their documentation, mappings and languages, and the imports. Returns a `SchemaStats` of `model/schema-stats.yaml`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to stats --pruning-mode skip prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    result = schema.stats(pruning_mode=\"skip\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst result = view.stats({ pruning_mode: \"skip\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.stats.StatsGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval result = StatsGenerator().generate(\n  StatsGeneratorOptions(pruningMode = PruningMode.Skip),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *result = linkml_stats(\n    schema,\n    \"{\\\"pruning_mode\\\": \\\"skip\\\"}\",\n    &error\n);\nlinkml_free(result);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "schema",
+          "description": "The elements in scope for the counts.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "translation",
+      "kind": "generator",
+      "page": "generators/translation",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=translation",
+      "description": "Generate translation dictionaries, in JSON, from the names in the schema to the names in the generated outputs. Useful where those names matter, such as in a query against a database that follows the schema.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to translation --target pydantic \\\n  --to prov-o.translation.json prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.translation(target=\"pydantic\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.translation({ target: \"pydantic\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.*\nimport eu.neverblink.linkml.generator.translation.TranslationGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = TranslationGenerator().serialize(\n  TranslationGeneratorOptions(target = \"pydantic\"),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_translation(\n    schema,\n    \"{\\\"target\\\": \\\"pydantic\\\"}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "derived_attributes",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether `classAttributes` also lists inherited slots, mixin slots and the slots in the class's `slots` list. Without it, `classAttributes` lists only the class's own `attributes`.",
+          "cli": "--derived-attributes",
+          "scala": "derivedAttributes"
+        },
+        {
+          "name": "indentation_step",
+          "type": {
+            "kind": "type",
+            "name": "integer",
+            "collection": null
+          },
+          "required": false,
+          "default": "2",
+          "description": "The number of spaces for each level of indentation in the output.",
+          "cli": "--indentation-step",
+          "scala": "indentationStep"
+        },
+        {
+          "name": "target",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "base",
+          "description": "The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic` or `docs`.",
+          "cli": "--target",
+          "scala": "target"
+        }
+      ],
+      "classes": []
+    },
+    {
+      "name": "typescript",
+      "kind": "generator",
+      "page": "generators/typescript",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=typescript",
+      "description": "Generate TypeScript types for the schema's JSON data, with no runtime code. Load data with `JSON.parse(text) as X` and dump it with `JSON.stringify(x)`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to typescript --include-null \\\n  --to prov-o.ts prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    output = schema.typescript(include_null=True)"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst output = view.typescript({ include_null: true });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.TypeScriptGeneratorOptions\nimport eu.neverblink.linkml.generator.typescript.TypeScriptGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval output = TypeScriptGenerator().serialize(\n  TypeScriptGeneratorOptions(includeNull = true),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *output = linkml_typescript(\n    schema,\n    \"{\\\"include_null\\\": true}\",\n    &error\n);\nlinkml_free(output);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "error_handling",
+          "type": {
+            "kind": "enum",
+            "name": "TypeScriptErrorHandling",
+            "collection": null
+          },
+          "required": false,
+          "default": "exception",
+          "description": "How the functions of the schema report their `errors`.",
+          "cli": "--error-handling",
+          "scala": "errorHandling"
+        },
+        {
+          "name": "include_null",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether optional values and compact dictionary entries with nothing beyond the key may be null, as in the JSON Schema generator.",
+          "cli": "--include-null",
+          "scala": "includeNull"
+        },
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "open",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether every interface allows properties beyond the ones in the schema, as `additionalProperties` in the JSON Schema generator. Interfaces of classes whose `extra_slots` allows them allow them anyway.",
+          "cli": "--open",
+          "scala": "open"
+        },
+        {
+          "name": "optional_defaults",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether a slot with an `ifabsent` may be left out, for data that a program fills the defaults in, such as options. Without it, such a slot is as required as the schema says, as in the JSON Schema generator.",
+          "cli": "--optional-defaults",
+          "scala": "optionalDefaults"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "skip",
+          "description": "The classes and enums in the output. A designated union always comes with its members.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    }
+  ],
+  "classes": {
+    "OwlImportConfig": {
+      "description": "Settings for the OWL importer.",
+      "attributes": [
+        {
+          "name": "annotations",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Whether to keep annotations that no metaslot uses, as LinkML `annotations`."
+        },
+        {
+          "name": "datatypes",
+          "type": {
+            "kind": "class",
+            "name": "DatatypeMapping",
+            "collection": "map"
+          },
+          "required": false,
+          "default": null,
+          "description": "LinkML types for datatype IRIs, on top of the built-in XSD and RDF ones."
+        },
+        {
+          "name": "default_prefix",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Prefix of the namespace most of the ontology's terms are in. Detected if not set."
+        },
+        {
+          "name": "enums_from_individuals",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Whether a class that is just a set of named individuals, and is the range of some property, becomes an enum. A class defined with `owl:oneOf` always does."
+        },
+        {
+          "name": "imports",
+          "type": {
+            "kind": "class",
+            "name": "ImportMapping",
+            "collection": "map"
+          },
+          "required": false,
+          "default": null,
+          "description": "LinkML schemas to import instead of `owl:imports`, keyed by ontology IRI. Other `owl:imports` are left out with a warning."
+        },
+        {
+          "name": "metadata",
+          "type": {
+            "kind": "class",
+            "name": "MetadataSources",
+            "collection": "map"
+          },
+          "required": false,
+          "default": null,
+          "description": "Annotation properties to read each metaslot from, in order of preference. Replaces the default list only for the metaslots it lists."
+        },
+        {
+          "name": "multivalued",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Whether slots are multivalued unless the property is functional. On by default, because OWL allows any number of values."
+        },
+        {
+          "name": "name",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The schema `name`. Defaults to the ontology's `rdfs:label` if it is a valid name, else the default prefix."
+        },
+        {
+          "name": "naming",
+          "type": {
+            "kind": "class",
+            "name": "Naming",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "How names are made from IRIs."
+        },
+        {
+          "name": "prefixes",
+          "type": {
+            "kind": "class",
+            "name": "NamespacePrefix",
+            "collection": "map"
+          },
+          "required": false,
+          "default": null,
+          "description": "Extra prefixes, on top of the ones the ontology declares."
+        },
+        {
+          "name": "renames",
+          "type": {
+            "kind": "class",
+            "name": "TermRename",
+            "collection": "map"
+          },
+          "required": false,
+          "default": null,
+          "description": "Fixed names for specific terms, keyed by IRI or CURIE."
+        },
+        {
+          "name": "schema_id",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The schema `id`. Defaults to the ontology IRI."
+        },
+        {
+          "name": "some_values_from",
+          "type": {
+            "kind": "enum",
+            "name": "SomeValuesFrom",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "How to read `owl:someValuesFrom`."
+        }
+      ]
+    },
+    "DatatypeMapping": {
+      "description": "The LinkML type for a datatype IRI.",
+      "attributes": [
+        {
+          "name": "datatype",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        },
+        {
+          "name": "type_name",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        }
+      ]
+    },
+    "ImportMapping": {
+      "description": "The LinkML schema to import instead of an ontology.",
+      "attributes": [
+        {
+          "name": "ontology",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": "The IRI of the imported ontology."
+        },
+        {
+          "name": "schema",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": "Path to the LinkML schema, relative to where the new schema is written."
+        }
+      ]
+    },
+    "MetadataSources": {
+      "description": "The annotation properties a metaslot is read from, in order of preference.",
+      "attributes": [
+        {
+          "name": "metaslot",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        },
+        {
+          "name": "properties",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": "list"
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        }
+      ]
+    },
+    "Naming": {
+      "description": "How names are made from the local part of IRIs.",
+      "attributes": [
+        {
+          "name": "classes",
+          "type": {
+            "kind": "enum",
+            "name": "NameStyle",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Style of class and enum names."
+        },
+        {
+          "name": "permissible_values",
+          "type": {
+            "kind": "enum",
+            "name": "NameStyle",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Style of permissible value names made from individuals."
+        },
+        {
+          "name": "slots",
+          "type": {
+            "kind": "enum",
+            "name": "NameStyle",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "Style of slot names."
+        }
+      ]
+    },
+    "NamespacePrefix": {
+      "description": "A prefix and the namespace it stands for.",
+      "attributes": [
+        {
+          "name": "namespace",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        },
+        {
+          "name": "prefix",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        }
+      ]
+    },
+    "TermRename": {
+      "description": "A fixed name for a term.",
+      "attributes": [
+        {
+          "name": "new_name",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": ""
+        },
+        {
+          "name": "term",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": "The term's IRI or CURIE."
+        }
+      ]
+    },
+    "File": {
+      "description": "A file and its content.",
+      "attributes": [
+        {
+          "name": "content",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": "The content of the file."
+        },
+        {
+          "name": "path",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": true,
+          "default": null,
+          "description": "The path of the file."
+        }
+      ]
+    }
+  },
+  "enums": {
+    "JsonOutputFormat": {
+      "description": "A serialization for output that can be YAML or JSON.",
+      "values": [
+        {
+          "name": "yaml",
+          "description": "YAML."
+        },
+        {
+          "name": "json",
+          "description": "JSON."
+        }
+      ]
+    },
+    "NameStyle": {
+      "description": "How a name is made from the local part of an IRI. In every style, characters that are not allowed in names become underscores.",
+      "values": [
+        {
+          "name": "keep",
+          "description": "As it is."
+        },
+        {
+          "name": "snake",
+          "description": "`has_value`"
+        },
+        {
+          "name": "pascal",
+          "description": "`HasValue`"
+        },
+        {
+          "name": "upper_snake",
+          "description": "`HAS_VALUE`"
+        }
+      ]
+    },
+    "OwlMetadataProfile": {
+      "description": "The annotation property for descriptions in OWL.",
+      "values": [
+        {
+          "name": "rdfs",
+          "description": "`rdfs:comment`, shown by most OWL tools."
+        },
+        {
+          "name": "linkml",
+          "description": "`skos:definition`, as in the LinkML metamodel and `gen-owl`."
+        }
+      ]
+    },
+    "OwlPermissibleValueKind": {
+      "description": "The kind of OWL entity for the permissible values of an enum.",
+      "values": [
+        {
+          "name": "individual",
+          "description": "Named individuals of the enum's class."
+        },
+        {
+          "name": "class",
+          "description": "Subclasses of the enum's class, as in `gen-owl`."
+        }
+      ]
+    },
+    "PruningMode": {
+      "description": "The elements of the schema to include in the output.",
+      "values": [
+        {
+          "name": "tree_root",
+          "description": "The elements reachable from the tree root class. Without a tree root, the same as `schema`."
+        },
+        {
+          "name": "schema",
+          "description": "Everything defined in the root schema, and every element reachable from it. This leaves out the unused parts of imported schemas, such as most of `linkml:types`."
+        },
+        {
+          "name": "skip",
+          "description": "Every element of the root schema and of all its imports."
+        }
+      ]
+    },
+    "RdfFormat": {
+      "description": "An RDF serialization.",
+      "values": [
+        {
+          "name": "ttl",
+          "description": "Turtle, with prefixes and pretty-printed."
+        },
+        {
+          "name": "nt",
+          "description": "N-Triples, one statement per line."
+        }
+      ]
+    },
+    "ScalaErrorHandling": {
+      "description": "How the generated Scala methods report the `errors` of a function.",
+      "values": [
+        {
+          "name": "annotation",
+          "description": "Each error class gets an exception class, and the method is annotated with `@throws` for each of them."
+        },
+        {
+          "name": "either",
+          "description": "The method returns `Either[E1 | E2, R]`, with the error classes themselves on the left. No exception classes are generated. A function with no `errors` returns `R` as it is."
+        }
+      ]
+    },
+    "SomeValuesFrom": {
+      "description": "How to import `C rdfs:subClassOf [ owl:someValuesFrom F ; owl:onProperty p ]`.",
+      "values": [
+        {
+          "name": "required",
+          "description": "Sets `required: true` on `p` in `C`. If `F` is narrower than the range of `p`, also adds `has_member: {range: F}`, which matches the axiom exactly."
+        },
+        {
+          "name": "range",
+          "description": "Sets `required: true` and `range: F`. This is stricter than the axiom, since every value must be an `F`, not just one."
+        }
+      ]
+    },
+    "TypeScriptErrorHandling": {
+      "description": "How the generated TypeScript methods report the `errors` of a function.",
+      "values": [
+        {
+          "name": "exception",
+          "description": "The method returns the value, and its doc comment gets a `@throws` tag for each error class."
+        },
+        {
+          "name": "result",
+          "description": "The method returns `Result<R, Failure<...> | ...>`: the value or one of the errors. A function with no `errors` returns `R` as it is."
+        }
+      ]
+    }
+  }
+}

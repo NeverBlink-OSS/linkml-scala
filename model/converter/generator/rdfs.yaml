@@ -12,6 +12,10 @@ classes:
     mixins: [RdfOptions]
     slots:
       - only_classes_from_root_schema
+    slot_usage:
+      only_classes_from_root_schema:
+        examples:
+          - value: true
 
 functions:
   rdfs:

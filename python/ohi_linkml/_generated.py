@@ -497,7 +497,7 @@ def from_owl(
 
     :param document: The document to import.
     :param config: How to map the ontology: names, prefixes, which annotation properties fill
-        which metaslots, and more. See https://linkml.ohi.dev/docs/owl/.
+        which metaslots, and more. See https://linkml.ohi.dev/docs/importers/owl/.
     :param format: The serialization of the schema.
     :param full_uris: Whether to write URIs in full, instead of compacting them to CURIEs with
         the schema's prefixes.

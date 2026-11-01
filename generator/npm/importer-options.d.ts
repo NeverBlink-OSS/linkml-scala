@@ -136,7 +136,7 @@ export interface OwlImportConfig {
 
 /** Options of the OWL importer. */
 export interface OwlImporterOptions {
-  /** How to map the ontology: names, prefixes, which annotation properties fill which metaslots, and more. See https://linkml.ohi.dev/docs/owl/. */
+  /** How to map the ontology: names, prefixes, which annotation properties fill which metaslots, and more. See https://linkml.ohi.dev/docs/importers/owl/. */
   config?: OwlImportConfig;
   /**
    * The serialization of the schema.

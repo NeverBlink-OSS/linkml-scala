@@ -1,0 +1,110 @@
+---
+/** The options of a converter, or the attributes of a class that an option takes: one block each,
+ * with the name, type and default on one line and the description below. */
+import { type Attribute, anchor, enums, inline } from './data';
+
+interface Props {
+  attributes: Attribute[];
+}
+
+const { attributes } = Astro.props;
+const collections: Record<string, string> = { list: 'list of ', map: 'map of ' };
+---
+
+<div class="attributes">
+  {
+    attributes.map((a) => (
+      <div class="attribute">
+        <div class="head">
+          <code class="name">{a.name}</code>
+          <span class="type">
+            {a.type.collection && collections[a.type.collection]}
+            {a.type.kind === 'class' ? <a href={`#${anchor(a.type.name)}`}>{a.type.name}</a> : a.type.name}
+          </span>
+          {a.required && <span class="required">required</span>}
+          {a.default !== null && (
+            <span class="default">
+              default <code>{a.default}</code>
+            </span>
+          )}
+        </div>
+        {a.cli !== undefined && (
+          <div class="names">
+            {a.cli ? (
+              <span>
+                CLI <code>{a.cli}</code>
+              </span>
+            ) : (
+              <span>not on the command line</span>
+            )}
+            {a.scala && a.scala !== a.name && (
+              <span>
+                Scala <code>{a.scala}</code>
+              </span>
+            )}
+          </div>
+        )}
+        <p class="description" set:html={inline(a.description)} />
+        {a.type.kind === 'enum' && (
+          <ul class="values">
+            {enums[a.type.name].values.map((v) => (
+              <li>
+                <code>{v.name}</code>
+                {v.description && <Fragment set:html={` ${inline(v.description)}`} />}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    ))
+  }
+</div>
+
+<style>
+  .attributes {
+    border-top: 1px solid var(--sl-color-hairline);
+  }
+  .attribute {
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--sl-color-hairline);
+  }
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.75rem;
+  }
+  .name {
+    font-weight: 600;
+    background: none;
+    padding: 0;
+  }
+  .type,
+  .default,
+  .names {
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+  .required {
+    font-size: var(--sl-text-xs);
+    color: var(--sl-color-orange-high);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .names {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 1rem;
+    margin-top: 0.25rem;
+  }
+  .description {
+    margin-top: 0.4rem;
+  }
+  .values {
+    margin-top: 0.4rem;
+    font-size: var(--sl-text-sm);
+  }
+  .values li + li {
+    margin-top: 0.15rem;
+  }
+</style>
