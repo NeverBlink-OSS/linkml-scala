@@ -252,7 +252,7 @@ object Snippets {
            |linkml_free(error);""".stripMargin
       Snippet(
         Sdk.C,
-        Seq("#include <stddef.h>", "#include \"linkml_scala.h\""),
+        Seq("#include <stddef.h>", "#include \"ohi_linkml.h\""),
         body,
         "result",
       )
@@ -276,7 +276,7 @@ object Snippets {
            |linkml_close(schema);""".stripMargin
       Snippet(
         Sdk.C,
-        Seq("#include <stddef.h>", "#include \"linkml_scala.h\""),
+        Seq("#include <stddef.h>", "#include \"ohi_linkml.h\""),
         body,
         result,
       )

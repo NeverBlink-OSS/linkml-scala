@@ -125,7 +125,7 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     */
   private def headerDeclarations(root: os.Path): Set[String] =
     "(?m)^(?:char \\*|long long |void |int )(\\w+)\\(".r
-      .findAllMatchIn(os.read(root / "nativelib" / "include" / "linkml_scala.h"))
+      .findAllMatchIn(os.read(root / "nativelib" / "include" / "ohi_linkml.h"))
       .map(_.group(1))
       .toSet
 
@@ -298,13 +298,13 @@ class BindingCoverageSpec extends AnyWordSpec, Matchers {
     "declare every symbol the library exports" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val missing = exportedSymbols(root) -- headerDeclarations(root)
-      withClue("add it to nativelib/include/linkml_scala.h: ")(missing shouldBe empty)
+      withClue("add it to nativelib/include/ohi_linkml.h: ")(missing shouldBe empty)
     }
 
     "declare nothing the library does not export" in {
       val root = repoRoot.getOrElse(cancel("MILL_WORKSPACE_ROOT is not set"))
       val extra = headerDeclarations(root) -- exportedSymbols(root)
-      withClue("remove it from nativelib/include/linkml_scala.h: ")(extra shouldBe empty)
+      withClue("remove it from nativelib/include/ohi_linkml.h: ")(extra shouldBe empty)
     }
   }
 }
