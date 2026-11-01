@@ -56,13 +56,12 @@ object `package` extends Module, NativeOptional {
       Task.env.get("LINKML_SCALA_TARGET")
     }
 
-    /** No LTO: with multithreading, thin and full LTO both crash in the library constructor when
-      * Python loads the library (seen on Linux aarch64, Scala Native 0.5.13 nightly). Costs about
-      * 15% on one thread. Once fixed, go back to thin LTO, and full LTO on macOS, which has no thin
-      * LTO.
-      */
+    /** Link-time optimisation. Thin LTO is not supported on macOS. */
     override def nativeLTO = Task {
-      LTO.None
+      val isMac = nativeTarget()
+        .map(t => t.contains("apple") || t.contains("darwin"))
+        .getOrElse(_root_.scala.util.Properties.isMac)
+      if isMac then LTO.Full else LTO.Thin
     }
 
     override def nativeBaseName = Task {

@@ -10,7 +10,7 @@ object Version {
     * Nightlies come from [[ScalaNativeNightly.repository]] and are deleted after about three
     * months, so move to the next release, or a newer nightly, before then.
     */
-  val scalaNative = "0.5.13-20261029-75d9113-SNAPSHOT"
+  val scalaNative = "0.5.13-20261031-4e8508c-SNAPSHOT"
   val rdf4j = "6.1.0"
   val markdown = "0.4.9"
 }
