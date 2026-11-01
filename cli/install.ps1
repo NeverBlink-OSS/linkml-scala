@@ -141,9 +141,11 @@ function Install-LinkmlScalaCli {
         # Best effort: Sigstore-backed proof that these bytes came out of the release
         # workflow. gh exits 1 for every problem alike, so branch on what it actually said.
         if (Get-Command gh -ErrorAction SilentlyContinue) {
+            # Releases up to v0.17.2 were signed before the repository was renamed from linkml-scala.
+            $signerRepo = if ($tag -match '^v0\.([0-9]|1[0-6])\.|^v0\.17\.[0-2]$') { 'NeverBlink-OSS/linkml-scala' } else { $repo }
             $attestation = & {
                 $ErrorActionPreference = 'Continue'
-                & gh attestation verify $binary --repo $repo 2>&1 | Out-String
+                & gh attestation verify $binary --repo $signerRepo 2>&1 | Out-String
             }
             $verified = $LASTEXITCODE -eq 0
             # gh's exit code must not outlive this check. A caller that reads
@@ -162,7 +164,7 @@ function Install-LinkmlScalaCli {
                                    "This is most often an out-of-date gh that cannot read the current " +
                                    "Sigstore trust root; upgrading gh usually fixes it. To check the " +
                                    "provenance itself, re-run:`n" +
-                                   "  gh attestation verify <file> --repo $repo")
+                                   "  gh attestation verify <file> --repo $signerRepo")
                 }
                 if ($env:LINKML_SCALA_REQUIRE_ATTESTATION -eq '1') {
                     throw ("LINKML_SCALA_REQUIRE_ATTESTATION=1 was set, so an unverified build " +

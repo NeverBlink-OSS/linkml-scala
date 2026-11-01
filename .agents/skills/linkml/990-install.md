@@ -67,6 +67,8 @@ gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/ohi
 chmod +x ohi-linux-x86_64
 ```
 
+For v0.17.2 and older, use `--repo NeverBlink-OSS/linkml-scala` instead.
+
 Full verification procedure, including checksums and the Maven and npm channels:
 [Verifying downloads](https://linkml.ohi.dev/docs/verifying-downloads/).
 

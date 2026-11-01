@@ -49,7 +49,7 @@ _linkml_scala_install() {
   local tag="${LINKML_SCALA_VERSION:-}"
   local name="${LINKML_SCALA_TOOL:-ohi}"
   local tool os arch arch_suffix ext binary_name asset release_url tmp_dir
-  local latest_url expected actual attestation profile path_line answer
+  local latest_url expected actual attestation signer_repo profile path_line answer
 
   case "$name" in
     ohi | linkml-scala) ;;
@@ -180,7 +180,12 @@ _linkml_scala_install() {
   # parse the Sigstore trust root, no auth, a genuine mismatch - so branch on what it
   # actually said. Reporting all of those as "no provenance" hides the ones that matter.
   if command -v gh >/dev/null 2>&1; then
-    if attestation=$(gh attestation verify "$tmp_dir/$asset.gz" --repo "$repo_base" 2>&1); then
+    # Releases up to v0.17.2 were signed before the repository was renamed from linkml-scala.
+    case "$tag" in
+      v0.[0-9].* | v0.1[0-6].* | v0.17.[0-2]) signer_repo="NeverBlink-OSS/linkml-scala" ;;
+      *) signer_repo="$repo_base" ;;
+    esac
+    if attestation=$(gh attestation verify "$tmp_dir/$asset.gz" --repo "$signer_repo" 2>&1); then
       echo "Build provenance verified with gh attestation."
     else
       case "$attestation" in
@@ -194,7 +199,7 @@ _linkml_scala_install() {
           echo "This is most often an out-of-date gh that cannot read the current Sigstore" >&2
           echo "trust root; upgrading gh usually fixes it. The checksum above still matched," >&2
           echo "but to check the provenance itself, re-run:" >&2
-          echo "  gh attestation verify <file> --repo $repo_base" >&2
+          echo "  gh attestation verify <file> --repo $signer_repo" >&2
           ;;
       esac
       if [ "${LINKML_SCALA_REQUIRE_ATTESTATION:-}" = "1" ]; then

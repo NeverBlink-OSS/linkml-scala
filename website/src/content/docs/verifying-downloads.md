@@ -46,6 +46,9 @@ gh attestation verify ohi-linux-x86_64 --repo NeverBlink-OSS/ohi
 gh attestation verify SHA256SUMS --repo NeverBlink-OSS/ohi
 ```
 
+Releases up to v0.17.2 were made before the repository was renamed, so verify those with
+`--repo NeverBlink-OSS/linkml-scala` instead.
+
 Use the downloaded filename in the same commands to verify any other asset. On Windows, compare `(Get-FileHash .\ohi-windows-x86_64.exe -Algorithm SHA256).Hash` with its entry in `SHA256SUMS`, then run `gh attestation verify .\ohi-windows-x86_64.exe --repo NeverBlink-OSS/ohi`.
 
 `install.sh` checks the checksum when a manifest exists and verifies provenance when `gh` is installed. Set `LINKML_SCALA_REQUIRE_CHECKSUM=1` and `LINKML_SCALA_REQUIRE_ATTESTATION=1` to require both checks and reject an installation when either cannot be completed.
