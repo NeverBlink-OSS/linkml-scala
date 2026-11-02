@@ -46,7 +46,7 @@ final class OhiApp private[cli] (
     case command: Generate[?] =>
       Seq(new PrefixedCommand(command, "to"), new PrefixedCommand(command, "generate", true))
     case command => Seq(new PrefixedCommand(command))
-  } ++ Seq(Search, Inspect, Get, Init, Add, Lock)
+  } ++ Seq(Search, Inspect, Get, Init, Add, Lock, Sync)
 
   override def main(args: Array[String]): Unit = {
     val words = args.toList

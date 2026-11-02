@@ -7,8 +7,11 @@ import eu.neverblink.linkml.runtime.*
 
 /** @param declarationChanged
   *   Whether the command wrote ohi.yaml.
-  * @param delivery
-  *   Artifact file saved by ADD.
+  * @param declarationCreated
+  *   Whether the command successfully wrote a previously absent ohi.yaml. Implies
+  *   declaration_changed.
+  * @param files
+  *   Completed outputs in first-occurrence lock order.
   * @param lockChanged
   *   Whether the command wrote ohi.lock.json.
   * @param operation
@@ -21,7 +24,9 @@ import eu.neverblink.linkml.runtime.*
 final case class ProjectResult(
     @named("declaration_changed")
     declarationChanged: Boolean,
-    delivery: Option[DeliveryResult] = None,
+    @named("declaration_created")
+    declarationCreated: Boolean,
+    files: Seq[LockFileResult],
     @named("lock_changed")
     lockChanged: Boolean,
     operation: ProjectOperation,

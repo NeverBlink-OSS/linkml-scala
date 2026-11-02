@@ -8,10 +8,11 @@ Run `ohi --help` for the command overview, or `ohi <command> --help` for a comma
 | Command | Purpose |
 | --- | --- |
 | [`search`](#search) | Find ontologies by name or topic. |
-| [`inspect`](#inspect) | Show a publication's files and dependencies. |
-| [`get`](#get) | Download a file or all files in a lock. |
+| [`inspect`](#inspect) | Show a release's files and dependencies. |
+| [`get`](#get) | Download one ontology file. |
 | [`init`](#init) | Create `ohi.yaml`. |
-| [`add`](#add) | Download a file and record it in a project. |
+| [`add`](#add) | Add an ontology to a project and download its dependencies. |
+| [`sync`](#sync) | Download and verify project ontologies. |
 | [`lock`](#lock) | Rebuild `ohi.lock.json` from `ohi.yaml`. |
 | [`linkml`](#linkml) | Work with local schemas. |
 | [`version`](#version) | Print the installed version. |
@@ -21,30 +22,28 @@ Run `ohi --help` for the command overview, or `ohi <command> --help` for a comma
 | Option | Available on | Effect |
 | --- | --- | --- |
 | `-h`, `--help` | All commands | Show help. |
-| `--json` | `search`, `inspect`, `get`, `init`, `add`, `lock` | Write JSON output. |
-| `--timeout-ms <number>` | `search`, `inspect`, `get` | Positive request timeout in milliseconds. Default `30000`. |
+| `--json` | `search`, `inspect`, `get`, `init`, `add`, `sync`, `lock` | Write JSON output. |
+| `--timeout-ms <number>` | `search`, `inspect`, `get`, `sync` | Positive request timeout in milliseconds. Default `30000`. |
 
 ## Ontology references and formats
 
 `inspect`, `get` and `add` accept `namespace/name[@version]` from ohi.dev, such as
 `w3c/prov-o@2013`. Without `@version`, they select the most recently published release.
 
-Without `--format`, `get` and `add` prefer the format shared by all selections in `ohi.yaml`,
-falling back to `linkml-yaml`. `get` reads `ohi.yaml` in the current directory. `add` uses its
-`--project` directory.
+`get` and `add` use `default_format` from `ohi.yaml`, or `linkml-yaml` if there is no project.
+If the preferred format is unavailable, they try `linkml-yaml`. Use `--format` to require a
+specific format:
 
-Use `--format` to require one of these values:
+| Value | Language | Syntax | Filename suffix |
+| --- | --- | --- | --- |
+| `owl-turtle` | OWL | Turtle | `.owl.ttl` |
+| `owl-rdfxml` | OWL | RDF/XML | `.owl` |
+| `rdfs-turtle` | RDFS | Turtle | `.rdfs.ttl` |
+| `linkml-yaml` | LinkML | YAML | `.linkml.yaml` |
+| `ossie-yaml` | Apache Ossie | YAML | `.ossie.yaml` |
 
-| Value | Language | Syntax |
-| --- | --- | --- |
-| `owl-turtle` | OWL | Turtle |
-| `owl-rdfxml` | OWL | RDF/XML |
-| `rdfs-turtle` | RDFS | Turtle |
-| `linkml-yaml` | LinkML | YAML |
-| `ossie-yaml` | Apache Ossie | YAML |
-
-The selected publication must contain exactly one file in that format. If it has several,
-choose a file by URL. ohi does not fall back to an older publication.
+The release must provide exactly one file in the requested format. Ohi does not search older
+releases when a format is unavailable.
 
 ## search
 
@@ -78,53 +77,56 @@ ohi inspect <namespace/name[@version]> [options]
 ohi inspect <release-url> [options]
 ```
 
-Shows a publication's metadata, all files, formats and dependency URLs.
+Shows a release's metadata, all files, formats and dependency URLs.
 
 ```sh
 ohi inspect w3c/prov-o@2013
 ohi inspect https://api.ohi.dev/files/packages/w3c/prov-o/2013/
 ```
 
-Inspection does not save ontology files. See [Shared options](#shared-options) for JSON output
-and the request timeout.
-
 ## get
 
 ```text
 ohi get <namespace/name[@version]> [--format <format>] [options]
 ohi get <file-url> [options]
-ohi get --lock <file> [options]
 ```
 
-Downloads one file, or every file recorded in a lock, including dependencies.
+Downloads one ontology file from a reference or Hub file URL.
 
 ```sh
-ohi get w3c/prov-o@2013 --format owl-turtle --to ./ontologies
+ohi get w3c/prov-o@2013 --format owl-turtle
 ```
 
 | Option | Effect |
 | --- | --- |
-| `--format <format>` | Require a format for an ontology reference. Omit with a file URL or `--lock`. |
-| `--to <directory>` | Download directory. Default is the current directory. Created if needed. |
-| `--lock <file>` | Download from a version-2 lock. Use without a reference or file URL. |
+| `--format <format>` | Require a format for an ontology reference. Omit with a file URL. |
+| `--to <directory>` | Choose a download folder for this command. Relative paths start at the current directory. |
 
-Files keep the filename from their download URL. Existing files are never overwritten.
-With `--lock`, ohi checks SHA-256 checksums and reuses existing regular files that match.
-A failed download stops the command and leaves completed files in place.
+Downloads go into `download_dir` from the current directory's `ohi.yaml`, or `.ohi/` if there
+is no project. With the default folder, this example saves `.ohi/w3c/prov-o/2013/prov-o.owl.ttl`.
+See [Downloaded files](/docs/reference/project-files/#downloaded-files) for naming and Git settings.
 
-See [Find and inspect ontologies](/docs/guides/search/) for a search-to-download example.
+Files are verified using SHA-256 checksums. Matching local files are reused. If a local file has
+changed, ohi stops and reports its path. Move or delete that file, then retry.
 
 ## init
 
-`ohi init [directory] [--json]`
+`ohi init [directory] [--default_format <format>] [--to <directory>] [--json]`
 
-Creates `ohi.yaml` with an empty selection list. The directory defaults to the current directory.
-An explicit directory is created with its parents when needed. An existing valid `ohi.yaml`
-is kept unchanged.
+Creates [`ohi.yaml`](/docs/reference/project-files/#ohiyaml) with an empty dependency list.
+The project directory defaults to the current directory.
 
 ```sh
-ohi init my-project
+ohi init my-project --to ontologies
 ```
+
+| Option | Effect |
+| --- | --- |
+| `--default_format <format>` | Set the preferred format. Default `linkml-yaml`. |
+| `--to <directory>` | Set the download subfolder. Default `.ohi`. |
+
+The example sets the download folder to `my-project/ontologies/`. You can edit both settings
+later in `ohi.yaml`.
 
 ## add
 
@@ -133,11 +135,11 @@ ohi add <namespace/name[@version]> [--format <format>] [options]
 ohi add <release-url> --artifact <file-url> [options]
 ```
 
-Records a selection in `ohi.yaml`, rebuilds `ohi.lock.json` and downloads the selected file.
-The lock includes dependencies, but `add` downloads only the selected file.
+Adds the ontology's version and format to `ohi.yaml`, updates `ohi.lock.json`, and downloads
+the project's ontologies and dependencies.
 
 ```sh
-ohi add w3c/prov-o@2013 --format owl-turtle --to ./ontologies
+ohi add w3c/prov-o@2013 --format owl-turtle
 ```
 
 | Option | Effect |
@@ -145,28 +147,47 @@ ohi add w3c/prov-o@2013 --format owl-turtle --to ./ontologies
 | `--format <format>` | Require a format for an ontology reference. Omit with a release URL. |
 | `--artifact <file-url>` | Required with a release URL. Select a file listed by `inspect`. |
 | `--project <directory>` | Existing project directory. Default is the current directory. |
-| `--to <directory>` | Download directory. Default is the current directory. Created if needed. |
 
-`add` creates `ohi.yaml` if needed. Existing downloaded files are never overwritten.
-`--project` and `--to` are independent. Relative paths are resolved from the directory where
-you run the command.
+Downloads use the project's `download_dir`. If needed, `add` creates `ohi.yaml` with
+`default_format: linkml-yaml` and `download_dir: .ohi`.
 
-To download the dependencies too, use `ohi get --lock ohi.lock.json --to ./ontologies`.
+For the URL form, use the release and file URLs shown by `ohi inspect <reference>`.
+
 See [Manage ontology projects](/docs/guides/projects/) for the complete workflow.
+
+## sync
+
+`ohi sync [--project <directory>] [--init] [options]`
+
+Downloads missing files and verifies existing files using `ohi.lock.json`. If you changed the
+dependencies in `ohi.yaml`, or there is no lock yet, sync updates the lock before downloading.
+If a local file has changed, move or delete the reported file, then rerun `ohi sync`.
+
+```sh
+ohi sync --project ./my-project
+```
+
+| Option | Effect |
+| --- | --- |
+| `--project <directory>` | Directory containing `ohi.yaml`, `ohi.lock.json`, or both. Default is the current directory. |
+| `--init` | Create `ohi.yaml` from a shared lock if it is missing. |
+| `--color <auto\|never>` | Color terminal output. Default `auto`. |
+
+Downloads use `download_dir` from `ohi.yaml`. With only a lockfile, they go into `.ohi/`.
+A new `ohi.yaml` keeps the selected versions and formats, with `default_format: linkml-yaml`
+and `download_dir: .ohi`. If neither project file exists, start with `ohi init` or `ohi add`.
 
 ## lock
 
 `ohi lock [--project <directory>] [--json]`
 
-Rebuilds `ohi.lock.json` from `ohi.yaml` without downloading files. It keeps the exact
-publications selected in `ohi.yaml`, including when newer releases are available.
+Rebuilds `ohi.lock.json` using the versions and formats in `ohi.yaml`, without downloading files.
 
 ```sh
 ohi lock --project ./my-project
 ```
 
-`--project` defaults to the current directory. See [Project files](/docs/reference/project-files/)
-for the file formats and how dependency files are selected.
+`--project` defaults to the current directory.
 
 ## linkml
 

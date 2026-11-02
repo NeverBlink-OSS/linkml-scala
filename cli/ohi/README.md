@@ -1,5 +1,7 @@
 # ohi CLI
 
+<!-- Last updated: 2026-11-03. -->
+
 ohi lets command-line users find ontology publications, download files, track the publications a project depends on, and run LinkML engine commands.
 
 ## Install
@@ -35,12 +37,12 @@ See [download verification](https://linkml.ohi.dev/docs/verifying-downloads/) fo
 
 ```sh
 ohi search provenance
-ohi inspect https://hub.example/publications/prov-o-2013 --json
-ohi get https://hub.example/files/prov-o.ttl --to ./ontologies
+ohi inspect w3c/prov-o@2013 --json
+ohi get https://api.ohi.dev/files/packages/w3c/prov-o/2013/prov-o.ttl --to ./ontologies
 ```
 
-Search uses the ohi.dev catalog. The inspection and file addresses above are illustrative.
-These commands require no ohi project and do not read or write `ohi.yaml` or a lockfile.
+Search uses the ohi.dev catalog. These commands require no ohi project and leave project records
+unchanged. The download example saves `ontologies/w3c/prov-o/2013/prov-o.owl.ttl`.
 
 Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, check its `format`, then pass that entry's `url` to `get`.
 
@@ -53,8 +55,9 @@ ohi get namespace/name@version --format owl-turtle --to ./ontologies
 ```
 
 Omit `@version` for the latest published release. Without `--format`, `get` and `add`
-prefer the format shared by all ontologies in `ohi.yaml`, falling back to `linkml-yaml`.
-Use `--format` to require a specific format.
+use `default_format` from `ohi.yaml`, or `linkml-yaml` without a project.
+If the publication lacks the preferred format, they fall back to `linkml-yaml`.
+Use `--format` to require a specific format without changing the project default.
 
 ## Catalog commands
 
@@ -70,73 +73,116 @@ Supplying only one fails.
 `inspect` accepts an ontology reference or an exact publication URL. It reports publication metadata,
 all artifacts and dependency publication URLs, without requiring a format.
 
-`get` saves the file under its URL filename in the current directory. Use `--to` to choose another
-directory, which is created if needed. Existing files are not overwritten. Move the existing file or choose another directory
-before retrying. The result reports the saved path. If a failure leaves an incomplete file,
-the error tells you which file to remove.
+`get` uses `download_dir` from `ohi.yaml` in the current directory, or `.ohi/` there without a
+declaration. It does not search parent directories. Use `--to` for a one-off destination, with
+relative paths resolved from the current directory. A file is saved under
+`<root>/<namespace>/<name>/<version>/<name>.<format-suffix>`, such as
+`.ohi/w3c/prov-o/2013/prov-o.owl.ttl`. Different versions and formats have separate paths.
+
+Hub file URLs are checked against their publication metadata. All downloads verify SHA-256
+checksums and reuse matching regular files. Different contents cause an error without overwrite.
+Success output reports downloaded and verified counts. JSON includes saved absolute paths.
+If a failure leaves an incomplete file, the error identifies it for cleanup.
 
 Use `--json` for scripts. Successful results go to stdout with exit status 0. Failures go to stderr
 with exit status 1. The result fields are
 defined in [SearchResult](../../model/ohi/search.yaml), [Publication](../../model/ohi/package.yaml)
-and [DeliveryResult](schema/cli-delivery.yaml).
+and [DeliveryResult](../../model/ohi/cli/cli-delivery.yaml).
 
 Use `--timeout-ms` to override the default 30000 ms timeout. Download dependency files individually
-with `get <file-url>` or [from a lock](#download-a-lock).
+with `get <file-url>` or [with sync](#synchronize-downloads).
 
 ## Project commands
 
-A project is a directory with two files. You edit [`ohi.yaml`](../../model/ohi/cli/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. ohi writes [`ohi.lock.json`](../../model/ohi/lock.yaml), which lists the files those selections resolve to, including dependencies.
+A project is a directory containing [`ohi.yaml`](../../model/ohi/cli/declaration.yaml), which you edit to list ontology references, versions and formats. ohi writes [`ohi.lock.json`](../../model/ohi/lock.yaml), which lists the selected files and their dependency files.
 
 ```sh
-ohi init ./project
+ohi init ./project --to ontologies
 ohi add namespace/name --format owl-turtle --project ./project
-ohi add https://hub.example/publications/prov-o-2013 --artifact https://hub.example/files/prov-o.ttl --to ./ontologies --project ./project
-ohi lock --project ./project
+ohi add https://api.ohi.dev/files/packages/w3c/prov-o/2013/ --artifact https://api.ohi.dev/files/packages/w3c/prov-o/2013/prov-o.ttl --project ./project
+ohi sync --project ./project
 ```
 
 | Command | Effect |
 | --- | --- |
-| `init [directory]` | Creates the directory if needed and an `ohi.yaml` with no selections. Keeps an existing `ohi.yaml`. |
-| `add <namespace/name[@version]> [--format <format>]` | Records the selected release and file URLs in `ohi.yaml`, rebuilds `ohi.lock.json` and downloads the file. |
-| `add <base-url> --artifact <url>` | Records and downloads the exact URL pair. |
-| `lock` | Rebuilds `ohi.lock.json` from `ohi.yaml`. Downloads nothing. |
+| `init [directory] [--default_format <format>] [--to <directory>]` | Creates the directory and `ohi.yaml` when needed. New declarations default to `linkml-yaml`, `.ohi` and an empty dependency list. Preserves an existing valid declaration. |
+| `add <namespace/name[@version]> [--format <format>]` | Records the complete reference and selected format, rebuilds `ohi.lock.json` and installs all locked files. |
+| `add <base-url> --artifact <url>` | Adds the reference and format if the catalog resolves them to that exact URL pair, then installs all locked files. |
+| `sync [--init]` | Installs locked files, updating the lock when dependencies change. `--init` creates a missing declaration from a shared lock. |
+| `lock` | Rebuilds `ohi.lock.json` from `ohi.yaml` without downloading. |
 
 `add` accepts the same ontology references and formats as `get`. Use `--artifact` only with a
-publication URL, and omit `--format` for that form. Project records keep the resolved URLs, so
-`lock` does not select a newer release.
+publication URL, and omit `--format` for that form. Use standalone `get <file-url>` for files
+that cannot be selected through the catalog. Saved references include the version, so `lock`
+does not select a newer release.
 
-`add` and `lock` take `--project`, which defaults to the current directory. Downloads default to
-the invocation directory even when `--project` points elsewhere. Use `--to` to change the download directory.
+When `init`, `add` or `sync --init` creates `ohi.yaml`, it reports the project directory, the editable
+file and the [project guide](https://ohi.dev/docs/guides/projects/).
 
-To reorder, replace or remove selections, edit `ohi.yaml` and run `lock`:
+`add`, `sync` and `lock` take `--project`, defaulting to the current directory. `add` and `sync` use
+the selected project's `download_dir` and have no `--to` option. `init --to ontologies` stores a
+project-relative setting, so the example above installs into `project/ontologies/`.
+Neither `init` nor `lock` creates the download directory.
+
+To change a dependency, edit `ohi.yaml` and run `sync`:
 
 ```yaml
-format_version: 1
-selections:
-  - base_url: https://hub.example/publications/prov-o-2013
-    url: https://hub.example/files/prov-o.ttl
+format_version: 2
+default_format: linkml-yaml
+download_dir: ontologies
+dependencies:
+  - ontology: w3c/prov-o@2013
+    format: owl-turtle
 ```
 
-Removing a selection does not delete its downloaded file. Adding a new selection rewrites `ohi.yaml` and drops its comments and formatting.
+Edit `default_format` to change the project's preference for future `get` and `add` commands.
+Existing dependency formats remain unchanged. Removing a dependency does not delete its downloaded file.
+Adding a new dependency rewrites `ohi.yaml` and drops its comments and formatting.
 
-For each selection, the lock also lists one artifact from each dependency of the selected publication, in the format of the selected artifact. `add` and `lock` fail when a dependency has no artifact or several artifacts in that format. These commands do not download dependency artifacts.
+All four top-level declaration fields are required. `download_dir` must be a nonempty relative path
+strictly beneath the project, separate from its records. Editing it changes future downloads without
+moving or deleting existing files. Repeating an addition preserves declaration bytes and refreshes
+the lock. `add` and `sync` verify matching files and download missing ones. Use `lock` for a refresh
+without installation. None of these commands upgrades pinned versions.
 
-`--json` prints a [ProjectResult](schema/project-result.yaml) on stdout and uses [ProjectError](schema/project-error.yaml) for project failures on stderr. When a command fails after writing some files, its error message lists the commands that finish the work.
+For each selection, the lock also lists one artifact from each dependency publication in the same
+format. Lock construction fails when a dependency has no artifact or several artifacts in that
+format. `add` and `sync` install the complete lock, leaving obsolete or unrelated local files in place.
 
-## Download a lock
+Keep both project records in Git and user-authored ontology files outside the download directory.
+A nonempty installation creates `.gitignore` in the configured directory containing `*` and a newline
+if absent. Existing ignore contents are preserved. This policy also applies to `get` without `--to`.
+Explicit `get --to` destinations receive no ignore edits. Edit the directory's ignore policy to
+version downloads. Existing tracked files remain tracked.
 
-Download every file in a lock, including dependencies:
+`--json` prints a [ProjectResult](../../model/ohi/cli/project-result.yaml) on stdout and uses
+[ProjectError](../../model/ohi/cli/project-error.yaml) on stderr. Both report completed files.
+When a command fails after writing some files, follow its recovery command. Completed records
+and downloads remain in place.
+
+## Synchronize downloads
+
+After cloning a project or receiving `ohi.lock.json`, run:
 
 ```sh
-ohi get --lock ./ohi.lock.json --to ./ontologies
+ohi sync
 ```
 
-Each file is saved under the filename from its download URL. The command verifies downloaded files using
-the SHA-256 checksums recorded in the lock. Files already in the destination are not downloaded again if
-their checksums match. The command stops on failure and keeps completed files.
+Sync downloads missing files and verifies existing files against the lock's checksums. It rebuilds
+the lock only when missing or when the dependencies in `ohi.yaml` differ. A reused lock needs no
+catalog or publication-metadata requests. Changing project defaults or dependency order keeps it unchanged.
+
+With only a lock, downloads go into `.ohi/`. To also create an editable `ohi.yaml`, run
+`ohi sync --init`. The new declaration retains direct selections, versions and formats, with
+`default_format: linkml-yaml` and `download_dir: .ohi`. Existing YAML is preserved. If neither
+record exists, start with `ohi init` or `ohi add`.
+
+Downloads preserve the published bytes and embedded imports. A LinkML schema at the project root
+can import `.ohi/w3c/dcat/3/dcat.linkml` when that file is installed under the default root. Use the
+configured directory and a path relative to the importing schema. Ohi does not rewrite imports or
+generate import maps, so installation alone does not guarantee offline loading.
 
 Rebuild older project locks with `ohi lock --project <directory>` first.
-Use `--json` for [structured results and errors](schema/cli-lock-download.yaml).
 
 ## LinkML commands
 

@@ -8,7 +8,7 @@ prefixes:
 default_prefix: ohi
 imports:
 - project-fields
-- cli-delivery
+- cli-download-fields
 classes:
   ProjectResult:
     tree_root: true
@@ -16,9 +16,6 @@ classes:
     - operation
     - project_directory
     - declaration_changed
+    - declaration_created
     - lock_changed
-    attributes:
-      delivery:
-        description: Artifact file saved by ADD.
-        range: DeliveryResult
-        inlined: true
+    - files

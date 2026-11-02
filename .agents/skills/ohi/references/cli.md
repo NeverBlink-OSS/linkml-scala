@@ -13,60 +13,95 @@ Retrieval supplies a prepared published file. To convert local edits, use suppor
 ## Retrieve a selected file
 
 `get` and `add` resolve `namespace/name[@version]` through ohi.dev with an optional `--format`.
-Use exact URLs for other catalogs. Use exact namespace, name and version values from search.
+Use exact namespace, name and version values from search.
 Omitting the version selects the release most recently
 published to the Hub. Supported formats are
 `owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml` and `ossie-yaml`.
 
-Without `--format`, ohi infers the common format from `ohi.yaml`, falling back to `linkml-yaml`.
-An explicit `--format` requires that format.
+Without `--format`, ohi reads `default_format` from `ohi.yaml`, or uses `linkml-yaml` without a declaration.
+If the publication lacks the preferred format, it falls back to `linkml-yaml`.
+An explicit `--format` requires that format without changing the project default.
 
-`get` reads the declaration in the current directory. `add` uses its `--project` directory.
-`--to` does not affect format selection. A malformed declaration or failed inspection produces an
-error. Explicit `--format` skips default inference. `get` leaves project records unchanged.
+Exact URL forms are `get <Hub-file-url>` and `add <base-url> --artifact <file-url>`, without
+`--format`. URL-based `add` requires the catalog to resolve the publication's complete reference
+and file format to the supplied exact URL pair. Use standalone `get` for unindexed publications or
+files that cannot be selected uniquely by reference and format.
 
-Exact URL forms remain `get <file-url>` and `add <base-url> --artifact <file-url>`, without
-`--format`. `add` records the resolved publication and artifact URLs.
+A Hub file URL is checked against its owning publication's metadata. The CLI verifies the advertised
+SHA-256 before saving. Matching existing regular files are verified and reused without downloading.
+Different contents or non-regular targets cause an error without overwrite.
 
-ohi derives the filename from the artifact URL and returns the saved absolute `path`. Existing targets, including symlinks, are refused. Use separate destination directories for files sharing a basename.
+Files use `<root>/<namespace>/<name>/<version>/<name>.<format-suffix>`, such as
+`.ohi/w3c/dcat/3/dcat.linkml.yaml`. Use the saved absolute `path` in JSON. See
+[downloaded files](https://ohi.dev/docs/reference/project-files/#downloaded-files) for naming and Git-ignore behavior.
 
-Compare the saved byte length and SHA-256 with the inspected artifact's `size_bytes` and `sha256` before loading it. Single-URL downloads do not perform this comparison. On mismatch, preserve the expected and observed values and investigate before using the file. A direct file URL can be retrieved without metadata, but its advertised integrity and dependency requirements remain unchecked.
+All `get` forms use `download_dir` in cwd's `ohi.yaml`, or cwd's `.ohi` without a declaration.
+`--to` overrides that root, resolving relative paths from cwd. `get` reads the declaration only
+when it needs the default format or directory. Supplying both `--format` and `--to` skips it.
+A malformed required declaration or failed inspection produces an error. `get` never searches
+parent directories or changes project records.
 
-## Download a lock
+## Synchronize downloads
 
-`ohi get --lock <file> --to <directory>` downloads every recorded file, including dependencies.
-Each file is saved under the filename from its download URL. The command verifies downloaded files using
-the SHA-256 checksums recorded in the lock. Files already in the destination are not downloaded again if
-their checksums match. The command stops on failure and keeps completed files.
+`ohi sync [--project <directory>]` installs all files from `ohi.lock.json`, using its exact URLs and
+SHA-256 checksums. It updates the lock only when missing or when the declared dependencies differ.
+A matching lock needs no catalog or publication-metadata requests. Existing files are verified and
+reused, and completed downloads remain after a failure.
 
-Rebuild older project locks with `ohi lock --project <directory>` first.
+With only a lock, sync uses `.ohi/` and creates no declaration. Add `--init` to create `ohi.yaml`
+from the lock's direct selections, retaining their versions and formats. New settings are
+`default_format: linkml-yaml` and `download_dir: .ohi`. Existing YAML is preserved. If neither record
+exists, use `ohi init` or `ohi add`. Downloads require lock version 2.
 
 ## Dependencies
 
-Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`, or [download the complete lock](#download-a-lock) when one exists. ohi does not derive download URLs from namespace prefixes or configure an application's loader.
+Publication `dependencies` contain publication URLs in `base_url`. The list is complete and flat. Inspect those publications, select advertised artifacts and download required files explicitly with `get`, or [sync the complete lock](#synchronize-downloads) when one exists. ohi does not derive download URLs from namespace prefixes or configure an application's loader.
 
 ## Project records
 
-`--project` and `--to` default to the invocation directory. ohi does not search parent directories. Relative paths, including `--to`, resolve against the invocation directory even when another project directory is selected.
+`add`, `sync` and `lock` use `--project`, defaulting to cwd, without searching parent directories.
+Relative project paths start at cwd. `add` and `sync` install all locked files into that project's
+`download_dir` and have no `--to` option.
 
-`init` leaves an existing valid declaration unchanged and creates no lock. `add` requires an existing project directory and can create a missing declaration, so initialization is optional for that directory.
+`init [directory] [--default_format <format>] [--to <directory>]` sets the format and project-relative
+download directory for a new declaration. Defaults are `linkml-yaml` and `.ohi`. It preserves an
+existing valid declaration and creates no lock or download directory. `add` requires an existing
+project directory, validates its records and creates a missing declaration with those defaults.
 
-The editable `ohi.yaml` requires `format_version: 1` and a `selections` list of exact `base_url` and `url` pairs. Use `selections: []` for an empty project. Preserve unrelated selections. Appending through `add` rewrites YAML comments and formatting. A successful repeat of an existing selection preserves its position and declaration bytes, rebuilds the lock and downloads the file. An existing download target causes failure before record writes.
+Edit [`ohi.yaml`](https://ohi.dev/docs/reference/project-files/#ohiyaml) to change defaults,
+the project-relative download directory or dependencies. It requires `format_version: 2`,
+`default_format`, `download_dir` and `dependencies` containing `ontology`/`format` pairs.
+Use `dependencies: []` for an empty project.
 
-To replace, reorder or remove selections, edit the declaration and run `lock`. It preserves declaration bytes and downloads nothing. Removing a selection does not delete files. Generate `ohi.lock.json` through the CLI rather than editing it by hand.
+Preserve unrelated dependencies. Appending through `add` rewrites YAML comments and formatting.
+A repeated addition preserves declaration bytes, rebuilds the lock and installs its files.
 
-Both `add` and `lock` inspect selected publications and their complete dependency lists. Each dependency must advertise exactly one artifact matching its direct artifact's format. Missing or ambiguous matches fail before record writes. `add` downloads only the requested direct artifact. Neither command downloads dependencies. A lock records file choices without confirming downloads or compatibility between releases.
+After editing dependencies, run `sync` to update the lock and install its files. Use `lock` for
+an explicit refresh without downloading. Both preserve existing YAML and pinned versions.
+Generate `ohi.lock.json` through the CLI rather than editing it by hand.
+
+When building a lock, ohi resolves declared references using recorded formats without fallback,
+then inspects publications and their complete dependency lists. Each dependency
+must advertise exactly one artifact matching its direct artifact's format. Missing or ambiguous
+matches fail before record writes. An empty declaration produces an empty lock and no downloads.
+A lock alone confirms neither downloads nor compatibility between releases.
+
+Keep project records in version control and authored files outside the download directory.
+See the [project guide](https://ohi.dev/docs/guides/projects/) for directory changes and LinkML imports.
 
 ## Failures and recovery
 
 Catalog and project operations write successful results to stdout and failures to stderr. Network requests do not follow redirects or retry automatically. Preserve HTTP and metadata errors rather than treating them as empty search results. For a redirect, obtain the final resource URL.
 
-Project results and errors report `declaration_changed` and `lock_changed`. Writes complete in declaration, lock, download order. Completed earlier writes remain after a later failure. Follow the error's recovery instructions:
+Project JSON results and errors report `declaration_created`, `declaration_changed`, `lock_changed`
+and completed outputs in `files`. Writes complete in declaration, lock, download order. Completed
+earlier writes remain after a later failure. Follow the reported recovery command:
 
 | Failure stage | Recovery after correcting the cause |
 | --- | --- |
 | Before any record write | Rerun the requested operation |
-| Lock replacement | Run `lock`, then use `get` if the original request included a download |
-| Download after records were written | Use `get` for the requested file |
+| Project-record or ignore-file write | Rerun the original command with its original project and selection arguments |
+| Project download | Use the reported `ohi sync --project <directory>` command |
+| Standalone `get` | Rerun the original command |
 
 For a refused existing target, choose another destination or preserve the file elsewhere before retrying. If cleanup failed, handle the specific incomplete path reported by the error. Do not infer that a failed download rolled back project records.

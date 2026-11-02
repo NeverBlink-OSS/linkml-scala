@@ -25,14 +25,15 @@ private[cli] object HelpOutput {
       "Find and download",
       s"  ${code("search", colored)}     Find ontologies by name or topic\n" +
         s"  ${code("inspect", colored)}    Show a release's files and dependencies\n" +
-        s"  ${code("get", colored)}        Download an ontology file or every file in a lock",
+        s"  ${code("get", colored)}        Download an ontology file",
       colored,
     ),
     section(
       "Project",
       s"  ${code("init", colored)}       Create ohi.yaml\n" +
-        s"  ${code("add", colored)}        Download a file and record the project selection\n" +
-        s"  ${code("lock", colored)}       Rebuild ohi.lock.json from ohi.yaml",
+        s"  ${code("add", colored)}        Record a selection and install all locked files\n" +
+        s"  ${code("sync", colored)}       Install project ontologies from ohi.lock.json\n" +
+        s"  ${code("lock", colored)}       Rebuild ohi.lock.json without downloading",
       colored,
     ),
     section(
@@ -61,12 +62,14 @@ private[cli] object HelpOutput {
       case "search" =>
         "Find ontologies by name or topic." + (if full then " Returns one page of matches." else "")
       case "inspect" => "Show one ontology release, its files and dependencies."
-      case "get" => "Download an ontology file or every file in a lock."
-      case "init" => "Create ohi.yaml with an empty list of ontology selections."
+      case "get" => "Download an ontology file."
+      case "init" =>
+        "Create ohi.yaml with a default format, download directory and empty dependency list."
       case "add" =>
         if full then
-          "Download one file, record the selection in ohi.yaml and rebuild\nohi.lock.json with its dependencies."
-        else "Download one file and record it in ohi.yaml and ohi.lock.json."
+          "Record the selection in ohi.yaml, rebuild ohi.lock.json and install all locked files."
+        else "Record an ontology selection and install all locked files."
+      case "sync" => "Install ontology files, updating the lock when dependencies change."
       case "lock" =>
         "Rebuild ohi.lock.json from ohi.yaml without downloading"
     }
@@ -77,7 +80,6 @@ private[cli] object HelpOutput {
         Seq(
           "<namespace>/<name>[@version] [--format <format>] [options]",
           "<file-url> [options]",
-          "--lock <file> [options]",
         )
       case "init" => Seq("[directory] [options]")
       case "add" =>
@@ -85,7 +87,7 @@ private[cli] object HelpOutput {
           "<namespace>/<name>[@version] [--format <format>] [options]",
           "<release-url> --artifact <file-url> [options]",
         )
-      case "lock" => Seq("[options]")
+      case "lock" | "sync" => Seq("[options]")
     }
     val input = name match {
       case "inspect" if full =>
@@ -98,18 +100,23 @@ private[cli] object HelpOutput {
       case "inspect" => "A release URL is the metadata URL shown by search."
       case "get" | "add" if full =>
         "Without @version, selects the most recently published release.\n" +
-          "Without --format, tries the common format in ohi.yaml, then linkml-yaml.\n" +
+          "Without --format, tries default_format from ohi.yaml, then linkml-yaml.\n" +
           (if name == "get" then
-             "Reads ohi.yaml in the current directory. File URLs select the file directly."
-           else "Reads ohi.yaml in --project. Release URLs require --artifact.") +
+             "Uses download_dir in the current directory's ohi.yaml, otherwise .ohi.\n" +
+               "An explicit --to overrides the directory. Hub file URLs must be advertised by their release."
+           else "Uses download_dir from ohi.yaml in --project. Release URLs require --artifact.") +
           "\n\n" + CliFormatting.formatsHelp(colored)
+      case "sync" if full =>
+        "Uses ohi.yaml and ohi.lock.json from the current directory or --project.\n" +
+          "With only a lock, downloads into .ohi. Add --init to create ohi.yaml from that lock."
       case "init" =>
         section(
           "Directory",
           "  Defaults to the current directory.\n" +
             "  An explicit directory is created with its parents when needed.\n" +
             "  An existing valid ohi.yaml is kept unchanged.\n" +
-            "  Creates no lock and downloads no files.",
+            "  --to stores a project-relative download directory. The default is .ohi.\n" +
+            "  Creates no lock or download directory.",
           colored,
         )
       case _ => ""
@@ -118,36 +125,34 @@ private[cli] object HelpOutput {
       case "search" =>
         Seq("ohi search \"provenance\"", "ohi search \"provenance\" --page 2 --per-page 10")
       case "inspect" =>
-        Seq("ohi inspect w3c/prov-o@2013", "ohi inspect https://hub.example/releases/prov-o/2013")
+        Seq(
+          "ohi inspect w3c/prov-o@2013",
+          "ohi inspect https://hub.example/files/packages/w3c/prov-o/2013/",
+        )
       case "get" =>
         Seq(
           "ohi get w3c/prov-o --format owl-turtle",
           "ohi get w3c/prov-o@2013 --format owl-turtle --to ./ontologies",
-          "ohi get https://hub.example/files/prov-o.ttl --to ./ontologies",
-          "ohi get --lock ./ohi.lock.json --to ./ontologies",
+          "ohi get https://hub.example/files/packages/w3c/prov-o/2013/prov-o.ttl --to ./ontologies",
         )
-      case "init" => Seq("ohi init", "ohi init ./study")
+      case "init" => Seq("ohi init", "ohi init ./study --to ontologies")
       case "add" =>
         Seq(
           "ohi add w3c/prov-o --format owl-turtle",
-          "ohi add w3c/prov-o@2013 --format owl-turtle --to ./ontologies",
-          "ohi add w3c/prov-o --format owl-turtle --project ./study --to ./files",
-          "ohi add https://hub.example/releases/prov-o/2013 \\\n    --artifact https://hub.example/files/prov-o.ttl",
+          "ohi add w3c/prov-o@2013 --format owl-turtle --project ./study",
+          "ohi add https://hub.example/files/packages/w3c/prov-o/2013/ \\\n    --artifact https://hub.example/files/packages/w3c/prov-o/2013/prov-o.ttl",
         )
       case "lock" => Seq("ohi lock", "ohi lock --project ./study")
+      case "sync" => Seq("ohi sync", "ohi sync --init", "ohi sync --project ./study")
     }
     val shownExamples = if full then examples else examples.take(1)
-    val exampleBody = commands(shownExamples, colored) +
-      (if full && name == "add" then
-         "\n\n  Download dependencies from the current project's lock:\n" +
-           commands(Seq("ohi get --lock ./ohi.lock.json --to ./ontologies"), colored)
-       else "")
+    val exampleBody = commands(shownExamples, colored)
     val next = name match {
       case "init" => section("Next", commands(Seq("ohi add --help"), colored), colored)
       case "lock" =>
         section(
           "Download the recorded files",
-          commands(Seq("ohi get --lock ./ohi.lock.json --to ./ontologies"), colored),
+          commands(Seq("ohi sync"), colored),
           colored,
         )
       case _ => ""
@@ -184,10 +189,11 @@ private[cli] object HelpOutput {
           "color",
         )
       case "inspect" => Seq("timeoutMs", "json")
-      case "get" => Seq("format", "to", "lock", "timeoutMs", "json")
-      case "init" => Seq("json")
-      case "add" => Seq("format", "artifact", "to", "project", "json")
+      case "get" => Seq("format", "to", "timeoutMs", "json")
+      case "init" => Seq("defaultFormat", "to", "json")
+      case "add" => Seq("format", "artifact", "project", "json")
       case "lock" => Seq("project", "json")
+      case "sync" => Seq("project", "init", "timeoutMs", "json", "color")
     }
     val args = help.args.filterNot(arg => arg.noHelp || arg.group.exists(_.name == "Help"))
       .sortBy(arg => order.indexOf(arg.name.name))

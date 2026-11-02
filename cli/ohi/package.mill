@@ -18,7 +18,6 @@ object `package` extends Module {
       build.ohi.catalog.jvm,
       build.cli.ohi.delivery.jvm,
       build.cli.ohi.fileerror.jvm,
-      build.cli.ohi.lockdownload.jvm,
       build.cli.ohi.declaration.jvm,
       build.cli.ohi.projectresult.jvm,
       build.cli.ohi.projecterror.jvm,

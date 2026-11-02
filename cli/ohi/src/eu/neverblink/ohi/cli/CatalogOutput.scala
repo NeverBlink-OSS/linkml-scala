@@ -8,9 +8,10 @@ import eu.neverblink.ohi.cli.generated.fileerror.CliFileError
 import eu.neverblink.ohi.model.generated.{ArtifactOrigin, Publication}
 import eu.neverblink.ohi.model.generated.search.SearchResult
 
+import java.net.URI
 import scala.collection.mutable.ArrayBuffer
 
-import CliFormatting.{action, clean, styled}
+import CliFormatting.{clean, styled}
 
 private[cli] object CatalogOutput {
   private val searchCodec: LinkmlYamlCodec[SearchResult] = LinkmlYamlCodec.derived
@@ -50,9 +51,12 @@ private[cli] object CatalogOutput {
       result.artifacts.zipWithIndex.foreach { (artifact, index) =>
         if index > 0 then output += ""
         val url = artifact.url.original
-        val name = try FileDelivery.filename(url, "")
-        catch { case _: CliFileException => url }
-        output += "  " + styled(name, "1", colored)
+        val name = try
+          Option(URI.create(url).getPath).map(_.split("/", -1).last).filter(_.nonEmpty).getOrElse(
+            url,
+          )
+        catch { case _: IllegalArgumentException => url }
+        output += "  " + styled(clean(name), "1", colored)
         field(
           "Format",
           s"${CliFormatting.formats.toMap.apply(artifact.format)} · ${stringify(artifact.format)}",
@@ -97,12 +101,8 @@ private[cli] object CatalogOutput {
       output.mkString("\n")
     }
 
-  def delivery(result: DeliveryResult, json: Boolean, colored: Boolean = false): String =
-    if json then
-      JsonUtil.yamlToJson(
-        deliveryCodec.encode(result),
-      )
-    else action("Saved", result.path, colored)
+  def delivery(result: DeliveryResult): String =
+    JsonUtil.yamlToJson(deliveryCodec.encode(result))
 
   def fileError(error: CliFileError): String =
     JsonUtil.yamlToJson(fileErrorCodec.encode(error))

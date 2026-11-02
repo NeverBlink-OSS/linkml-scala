@@ -1,26 +1,20 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.model.generated.Format
-import eu.neverblink.ohi.model.generated.lock
-import java.nio.file.{Files, Path}
-import java.nio.file.LinkOption.NOFOLLOW_LINKS
+import eu.neverblink.linkml.yaml.LinkmlYamlCodec
+import eu.neverblink.ohi.cli.generated.declaration
+import eu.neverblink.ohi.model.generated.{Format, lock}
 
 private[cli] object ProjectFormat {
+  private val declared: LinkmlYamlCodec[declaration.Format] = LinkmlYamlCodec.derived
+  private val published: LinkmlYamlCodec[Format] = LinkmlYamlCodec.derived
+  private val locked: LinkmlYamlCodec[lock.Format] = LinkmlYamlCodec.derived
 
-  /** Returns the common format of the declaration's exact direct selections, or no preference for a
-    * missing, empty or mixed declaration. Invalid declarations and metadata failures propagate.
-    */
-  def infer(directory: Path, metadata: ProjectLock.Inspection): Option[Format] = {
-    val path = directory.resolve("ohi.yaml")
-    if Files.notExists(path, NOFOLLOW_LINKS) then None
-    else {
-      val selections = DeclarationFiles.read(path).selections.map(value =>
-        lock.ArtifactSelectionImpl(value.baseUrl, value.url),
-      )
-      metadata.selected(selections).map(_._2.format).distinct match {
-        case Seq(format) => Some(format)
-        case _ => None
-      }
-    }
-  }
+  /** Converts formats between generated roots that import the same LinkML enum. */
+  def toModel(format: declaration.Format): Format = published.decode(declared.encode(format))
+
+  def toDeclaration(format: Format): declaration.Format = declared.decode(published.encode(format))
+
+  def toDeclaration(format: lock.Format): declaration.Format =
+    declared.decode(locked.encode(format))
+
 }

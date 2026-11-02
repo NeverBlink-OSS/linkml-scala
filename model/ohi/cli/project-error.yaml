@@ -11,6 +11,7 @@ imports:
 - ../catalog-error
 - ../lock-error
 - cli-file-error
+- cli-download-fields
 classes:
   ProjectError:
     tree_root: true
@@ -19,7 +20,9 @@ classes:
     - operation
     - project_directory
     - declaration_changed
+    - declaration_created
     - lock_changed
+    - files
     attributes:
       code:
         range: ProjectErrorCode

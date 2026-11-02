@@ -97,6 +97,7 @@ class AppSpec extends AnyWordSpec, Matchers {
           "init",
           "add",
           "lock",
+          "sync",
         ))
     }
 
@@ -227,11 +228,10 @@ class AppSpec extends AnyWordSpec, Matchers {
 
     for (name, command, usage, options) <- Seq(
         ("search", Search, "<query>", Seq("--page", "--per-page", "--color", "--query-by")),
-        ("inspect", Inspect, "<namespace>/<name>[@version]", Seq("--timeout-ms", "--json")),
-        ("get", Get, "<file-url>", Seq("--format", "--to", "--lock")),
-        ("init", Init, "[directory]", Seq("--json")),
-        ("add", Add, "<release-url>", Seq("--format", "--artifact", "--to", "--project")),
+        ("get", Get, "<file-url>", Seq("--format", "--to")),
+        ("add", Add, "<release-url>", Seq("--format", "--artifact", "--project")),
         ("lock", Lock, "[options]", Seq("--project", "--json")),
+        ("sync", Sync, "[options]", Seq("--project", "--init", "--json", "--timeout-ms", "--color")),
       )
     do
       s"show complete $name help with supported input and options" in {
@@ -240,13 +240,43 @@ class AppSpec extends AnyWordSpec, Matchers {
         err shouldBe empty
         out should startWith(s"ohi $name\n")
         out should include(s"ohi $name $usage")
-        if name == "inspect" then out should include("ohi inspect <release-url>")
         options.foreach(option => out should include(s"  $option"))
         out should include("  -h, --help\n    Show complete help")
         out should include("https://ohi.dev/docs/")
         out should not include "[<"
         out should not include "\u001b"
       }
+
+    "show complete inspect help with reference and release URL inputs" in {
+      val (out, err, code) = runApp(List("inspect", "--help"), _ => Inspect)
+      code shouldBe 0
+      err shouldBe empty
+      out should startWith("ohi inspect\n")
+      out should include("ohi inspect <namespace>/<name>[@version]")
+      out should include("ohi inspect <release-url>")
+      out should include("  --timeout-ms")
+      out should include("  --json")
+      out should include("  -h, --help\n    Show complete help")
+      out should include("https://ohi.dev/docs/")
+      out should not include "[<"
+      out should not include "\u001b"
+    }
+
+    "show complete init help with directory input and both default-format option spellings" in {
+      val (out, err, code) = runApp(List("init", "--help"), _ => Init)
+      code shouldBe 0
+      err shouldBe empty
+      out should startWith("ohi init\n")
+      out should include("ohi init [directory]")
+      out should include("--default-format, --default_format <format>")
+      out should include("  --json")
+      out should include("  --to")
+      out should include("  --default-format")
+      out should include("  -h, --help\n    Show complete help")
+      out should include("https://ohi.dev/docs/")
+      out should not include "[<"
+      out should not include "\u001b"
+    }
   }
 
   "ohi version" should {

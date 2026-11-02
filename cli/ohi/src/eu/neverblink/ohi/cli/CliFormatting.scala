@@ -5,6 +5,7 @@ import eu.neverblink.linkml.cli.TerminalOutput
 import eu.neverblink.ohi.model.generated.Format
 
 import java.io.PrintStream
+import java.nio.file.Path
 
 private[cli] object CliFormatting {
   val formats: Seq[(Format, String)] = Seq(
@@ -29,6 +30,16 @@ private[cli] object CliFormatting {
 
   def action(verb: String, path: String, colored: Boolean): String =
     styled(verb, "32", colored) + " " + styled(path, "36", colored)
+
+  /** Displays paths relative to cwd when their filesystem roots permit it. */
+  def displayPath(path: Path): String = {
+    val current = Path.of("").toAbsolutePath.normalize()
+    val absolute = path.toAbsolutePath.normalize()
+    // Windows paths on different drives cannot be relativized.
+    val display = if absolute.getRoot == current.getRoot then current.relativize(absolute).toString
+    else absolute.toString
+    if display.isEmpty then "." else display
+  }
 
   /** Normalize untrusted display fields without changing stored or structured values. */
   def clean(value: String): String =

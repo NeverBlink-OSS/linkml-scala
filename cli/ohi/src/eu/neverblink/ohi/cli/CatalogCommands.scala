@@ -4,13 +4,12 @@ import caseapp.*
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.{Uri, stringify}
 import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException}
-import eu.neverblink.ohi.model.{LockException, LockFiles}
+import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.{CatalogError, CatalogErrorCode, CatalogOperation}
-import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 
-import java.nio.file.{InvalidPathException, Path}
+import java.nio.file.Path
 
 final case class CatalogOptions(
     @HelpMessage("Write JSON output")
@@ -83,7 +82,8 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Oh
               timeoutOption = true,
               colored = errorColored,
             )
-            s"$diagnostic\n\n$recovery"
+            s"$diagnostic\n\n$recovery" +
+              (if commandName == "get" then "\n  " + example(invocation()) else "")
           },
         )
       case failure: CliFileException =>
@@ -100,7 +100,8 @@ abstract class CatalogCommand[T <: HasCatalogOptions: {Parser, Help}] extends Oh
               error.partialPath,
               errorColored,
             )
-            s"$diagnostic\n\n$recovery"
+            s"$diagnostic\n\n$recovery" +
+              (if commandName == "get" then "\n  " + example(invocation()) else "")
           },
         )
     }
@@ -228,127 +229,81 @@ private[cli] class InspectCommand extends CatalogCommand[InspectOptions] {
 object Inspect extends InspectCommand
 
 @HelpMessage(
-  "Download an ontology file or all files in a lock\n" +
+  "Download an ontology file\n" +
     "Existing entries in the directory are never overwritten.",
 )
-@ArgsName("[ontology-or-file-url]")
+@ArgsName("<ontology-or-file-url>")
 final case class GetOptions(
     @Recurse
     common: CatalogOptions,
     @HelpMessage(
-      "Override the project format and LinkML fallback\nCannot be combined with a file URL or --lock",
+      "Override the project format and LinkML fallback\nCannot be combined with a file URL",
     )
     @ValueDescription("<format>")
     format: Option[String] = None,
     @HelpMessage(
-      "Download directory. Default: current directory.\nExisting files are never overwritten.",
+      "Download directory override, relative to the current directory.\nDefault: download_dir in cwd ohi.yaml, otherwise .ohi.",
     )
     @ValueDescription("<directory>")
-    to: String = ".",
-    @HelpMessage(
-      "Download all files in a version-2 lock, including dependencies.\nReuse existing regular files whose SHA-256 matches the lock.",
-    )
-    @ValueDescription("<file>")
-    lock: Option[String] = None,
+    to: Option[String] = None,
 ) extends HasCatalogOptions
 
 private[cli] class GetCommand extends CatalogCommand[GetOptions] {
   override protected def commandName: String = "get"
   override protected def argumentName: String = "ontology reference or file URL"
 
-  override def run(options: GetOptions, remainingArgs: RemainingArgs): Unit = options.lock match {
-    case None => super.run(options, remainingArgs)
-    case Some(suppliedPath) =>
-      if remainingArgs.all.nonEmpty then
-        correction(
-          "Use either an ontology reference, a file URL or --lock, without extra arguments.",
-          s"Received ${remainingArgs.all.map(CliFormatting.quote(_)).mkString(", ")} and --lock ${CliFormatting.quote(suppliedPath)}.",
-        )
-      if options.format.nonEmpty then
-        correction(
-          "--format cannot be used with --lock.",
-          "The lock already records its files:\n  " + example(invocation(Seq("--format" -> None))),
-        )
-      val path = try Path.of(suppliedPath)
-      catch {
-        case cause: InvalidPathException =>
-          correction(s"Invalid lock path: ${cause.getMessage}.")
-      }
-      try {
-        val client = new CatalogClient(config(options))
-        val lock = LockFiles.read(path)
-        if lock.formatVersion != 2 then {
-          if !options.common.json then
-            err(
-              s"${CliFormatting.styled("Error:", "1;31", errorColored)} Lock downloads require format version 2.\n" +
-                s"Lock: ${CliFormatting.styled(suppliedPath, "36", errorColored)}\n\n" +
-                "For a project lock, run 'ohi lock --project <project-directory>'.\n" +
-                "For a standalone lock, regenerate it with the application that created it.\n" +
-                "Then repeat the download command.",
-            )
-          throw new LockException(
-            LockError(
-              code = LockErrorCode.UnsupportedVersion,
-              operation = LockOperation.Read,
-              path = Some(suppliedPath),
-              message = s"Lock '$suppliedPath' requires format version 2 for downloads. " +
-                "Rebuild a project lock with 'ohi lock --project <directory>'. " +
-                "Regenerate a standalone lock with its originating application.",
-            ),
-          )
-        }
-        LockDownload.download(lock.files, options.to, client.get) match {
-          case Right(result) =>
-            printLine(LockDownloadOutput.result(result, options.common.json, colored))
-          case Left(error) =>
-            err(
-              LockDownloadOutput.error(error, options.common.json, errorColored, Some(invocation())),
-            )
-        }
-      } catch {
-        case cause: (CatalogException | LockException) =>
-          err(
-            LockDownloadOutput.error(
-              LockDownloadOutput.failure(Seq.empty, cause),
-              options.common.json,
-              errorColored,
-              Some(invocation()),
-            ),
-          )
-      }
-  }
-
   override protected def execute(
       options: GetOptions,
       input: String,
       client: CatalogClient,
   ): String = {
-    val url = if OntologyReference.isUrl(input) then {
-      if options.format.nonEmpty then
-        correction(
-          "--format cannot be used with a file URL.",
-          "The URL already selects the file:\n  " + example(invocation(Seq("--format" -> None))),
+    if OntologyReference.isUrl(input) && options.format.nonEmpty then
+      correction(
+        "--format cannot be used with a file URL.",
+        "The URL already selects the file:\n  " + example(invocation(Seq("--format" -> None))),
+      )
+    try {
+      val cwd = Path.of(".")
+      lazy val declaration = DeclarationFiles.readIfPresent(cwd)
+      val destination = options.to.map(DownloadDestination(_, managed = false)).getOrElse {
+        declaration.fold(DownloadDestination.standalone(cwd))(
+          DownloadDestination.fromProject(cwd, _),
         )
-      input
-    } else {
+      }
       val metadata = new ProjectLock.Inspection(client.inspect)
-      try
+      val (publication, artifact) = if OntologyReference.isUrl(input) then {
+        val owner = HubArtifactPath.artifact(input, destination.directory)
+        metadata.selected(
+          Seq(
+            eu.neverblink.ohi.model.generated.lock.ArtifactSelectionImpl(
+              Uri(owner.baseUrl),
+              Uri(input),
+            ),
+          ),
+        ).head
+      } else {
         reference(
           input,
           options.format,
           client,
           metadata,
-          ProjectFormat.infer(Path.of("."), metadata),
-        )._2.url.original
-      catch {
-        case failure: ProjectException => correction(failure.getMessage)
+          declaration.map(value => ProjectFormat.toModel(value.defaultFormat)),
+        )
       }
+      val plan = LockDownload.prepare(
+        Seq(ProjectLock.file(publication, artifact)),
+        destination.directory,
+        destination.managed,
+      )
+      LockDownload.ensureIgnore(plan)
+      val files = LockDownload.install(plan, client.get)
+      if options.common.json then
+        CatalogOutput.delivery(DeliveryResult(files.head.path, files.head.url))
+      else LockDownloadOutput.summary(files, colored, options.to)
+    } catch {
+      case failure: ProjectException => correction(failure.getMessage)
+      case failure: LockDownload.InstallationException => throw failure.cause
     }
-    CatalogOutput.delivery(
-      FileDelivery.save(url, options.to, client.get),
-      options.common.json,
-      colored,
-    )
   }
 }
 

@@ -21,6 +21,10 @@ slots:
     description: Whether the command wrote ohi.yaml.
     range: boolean
     required: true
+  declaration_created:
+    description: Whether the command successfully wrote a previously absent ohi.yaml. Implies declaration_changed.
+    range: boolean
+    required: true
   lock_changed:
     description: Whether the command wrote ohi.lock.json.
     range: boolean
@@ -31,3 +35,4 @@ enums:
       INIT:
       ADD:
       LOCK:
+      SYNC:

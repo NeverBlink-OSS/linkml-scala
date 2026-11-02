@@ -3,12 +3,7 @@ package eu.neverblink.ohi.cli
 import com.sun.net.httpserver.{HttpExchange, HttpServer}
 import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.ohi.cli.generated.fileerror.{CliFileError, CliFileErrorCode}
-import eu.neverblink.ohi.cli.generated.lockdownload.{
-  LockDownloadResult,
-  LockFileResult,
-  LockFileStatus,
-}
+
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
@@ -59,7 +54,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       check: (String, ConcurrentLinkedQueue[String]) => Unit,
   ): Unit = withServerBytes(response.getBytes(UTF_8), status)(check)
 
-  private def withServerBytes(bytes: Array[Byte], status: Int = 200)(
+  private def withServerBytes(bytes: Array[Byte], status: Int)(
       check: (String, ConcurrentLinkedQueue[String]) => Unit,
   ): Unit = withServerResponses(_ => _ => status -> bytes)(check)
 
@@ -175,26 +170,62 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
 
   private def withDirectory(check: os.Path => Unit): Unit = {
     val directory = os.temp.dir(prefix = "ohi lock download ")
-    try check(directory)
+    try check(os.Path(directory.toNIO.toRealPath()))
     finally os.remove.all(directory)
   }
 
   private def writeLock(
       directory: os.Path,
-      entries: Seq[(String, String)] = Seq.empty,
-      version: Int = 2,
+      entries: Seq[(String, String)],
   ): os.Path = {
-    val files = entries.zipWithIndex.map { case ((url, digest), index) =>
-      s"""{"base_url":"https://example.org/publication/$index","url":"$url",
+    val files = entries.map { case (url, digest) =>
+      val baseUrl = url.take(url.lastIndexOf('/') + 1)
+      s"""{"base_url":"$baseUrl","url":"$url",
          |"format":"owl-turtle","sha256":"$digest"}""".stripMargin
     }.mkString(",")
     val selection = entries.headOption.map { case (url, _) =>
-      s"""{"base_url":"https://example.org/publication/0","url":"$url"}"""
+      val baseUrl = url.take(url.lastIndexOf('/') + 1)
+      s"""{"base_url":"$baseUrl","url":"$url"}"""
     }.getOrElse("")
     val path = directory / "ohi.lock.json"
-    os.write(path, s"""{"format_version":$version,"selections":[$selection],"files":[$files]}""")
+    os.write(path, s"""{"format_version":2,"selections":[$selection],"files":[$files]}""")
     path
   }
+
+  private val hub = "/files/packages/example/z/2.0/"
+  private val binary = Array[Byte](0, -1, 65, -128)
+
+  private def acquisitionPublication(base: String, format: String): String = {
+    val metadata = json(publication)
+    metadata("base_url") = base + hub
+    metadata("artifacts")(0)("url") = base + hub + "original"
+    metadata("artifacts")(0)("format") = format
+    metadata("artifacts")(0)("sha256") =
+      "ac7fa209c616517439d0e93add6855a02d7c4340f990084224ea290315ee3bd1"
+    metadata("dependencies") = ujson.Arr()
+    metadata.toString
+  }
+
+  private def withAcquisition(format: String = "owl-turtle")(
+      check: (String, ConcurrentLinkedQueue[String]) => Unit,
+  ): Unit = withServerResponses { base =>
+    val selectedHits = hits.replace("https://example.org/z?revision=2", base + hub)
+    val search = s"""{"hits":$selectedHits,"found":2,"page":1,
+      "request_params":{"per_page":250},"search_cutoff":false}"""
+    request =>
+      new URI(request).getPath match {
+        case "/search" => 200 -> search.getBytes(UTF_8)
+        case `hub` => 200 -> acquisitionPublication(base, format).getBytes(UTF_8)
+        case path if path == hub + "original" => 200 -> binary
+        case _ => 404 -> "Unexpected request".getBytes(UTF_8)
+      }
+  }(check)
+
+  private val configuredDeclaration = """format_version: 2
+    |default_format: owl-turtle
+    |download_dir: ontologies
+    |dependencies: []
+    |""".stripMargin
 
   "catalog search" should {
     "forward every supplied option once and preserve all JSON fields and backend order" in {
@@ -375,29 +406,38 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "catalog inspection" should {
-    for jsonOutput <- Seq(false, true) do
-      s"resolve a versioned reference and show every file with JSON output $jsonOutput" in {
-        withInspection { (base, requests) =>
-          val options = if jsonOutput then Seq("--json") else Seq.empty
-          val (out, err, code) = inspectReference(base, (Seq("example/z@2.0") ++ options)*)
-          code shouldBe 0
-          err shouldBe empty
-          if jsonOutput then json(out) shouldBe inspectionPublication(base)
-          else
-            Seq(
-              "Ontology: example/z",
-              "Version: 2.0",
-              base + "/publication",
-              base + "/first.ttl",
-              base + "/second.ttl",
-              "https://example.org/dependency/",
-            ).foreach(out should include(_))
-          val recorded = requests.asScala.toSeq
-          recorded.map(value => new URI(value).getPath) shouldBe Seq("/search", "/publication")
-          query(recorded.head)("filter_by") shouldBe
-            "namespace:=example && name:=z && version:=2.0"
-        }
+    "resolve a versioned reference and show every file in human output" in {
+      withInspection { (base, requests) =>
+        val (out, err, code) = inspectReference(base, "example/z@2.0")
+        code shouldBe 0
+        err shouldBe empty
+        Seq(
+          "Ontology: example/z",
+          "Version: 2.0",
+          base + "/publication",
+          base + "/first.ttl",
+          base + "/second.ttl",
+          "https://example.org/dependency/",
+        ).foreach(out should include(_))
+        val recorded = requests.asScala.toSeq
+        recorded.map(value => new URI(value).getPath) shouldBe Seq("/search", "/publication")
+        query(recorded.head)("filter_by") shouldBe
+          "namespace:=example && name:=z && version:=2.0"
       }
+    }
+
+    "resolve a versioned reference and preserve every publication field in JSON output" in {
+      withInspection { (base, requests) =>
+        val (out, err, code) = inspectReference(base, "example/z@2.0", "--json")
+        code shouldBe 0
+        err shouldBe empty
+        json(out) shouldBe inspectionPublication(base)
+        val recorded = requests.asScala.toSeq
+        recorded.map(value => new URI(value).getPath) shouldBe Seq("/search", "/publication")
+        query(recorded.head)("filter_by") shouldBe
+          "namespace:=example && name:=z && version:=2.0"
+      }
+    }
 
     "report a missing reference as text even when JSON is requested" in {
       withServer("""{"hits":[],"found":0,"page":1,
@@ -510,407 +550,351 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "catalog file delivery" should {
-    for name <- Seq("get", "add") do
-      s"offer actual file choices for $name without writes or selecting one implicitly" in {
-        withDirectory { directory =>
-          val destination = directory / "files here"
-          withInspection { (base, requests) =>
-            val config =
+    "reject an ambiguous get reference with recovery guidance and no writes" in {
+      withDirectory { directory =>
+        val destination = directory / "files here"
+        withInspection { (base, requests) =>
+          val command = new GetCommand {
+            override protected def config(options: GetOptions): CatalogConfig =
               CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
-            val command = if name == "get" then
-              new GetCommand {
-                override protected def config(options: GetOptions): CatalogConfig =
-                  CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
-              }
-            else
-              new AddCommand {
-                override protected def client() =
-                  new eu.neverblink.ohi.catalog.CatalogClient(config)
-              }
-            val extra = if name == "add" then List("--project", directory.toString) else Nil
-            val (out, err, code) = command.runTestCommandWithExitCode(
-              List(
-                "example/z@2.0",
-                "--format",
-                "owl-turtle",
-                "--to",
-                destination.toString,
-              ) ++ extra,
-              args => command.main(s"ohi $name", args),
-            )
-            code shouldBe 1
-            out shouldBe empty
-            err should startWith("example/z@2.0 has more than one file in owl-turtle format.")
-            err should include(s"Files\n  $base/first.ttl\n  $base/second.ttl")
-            val selection = if name == "get" then s"$base/first.ttl"
-            else s"$base/publication --artifact $base/first.ttl"
-            err should include(s"ohi $name $selection --to '$destination'")
-            if name == "add" then err should include(s"--project '$directory'")
-            err should not include "Error:"
-            requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
-              "/search",
-              "/publication",
-            )
-            os.exists(destination) shouldBe false
-            os.list(directory) shouldBe empty
           }
+          val (out, err, code) = command.runTestCommandWithExitCode(
+            List("example/z@2.0", "--format", "owl-turtle", "--to", destination.toString),
+            args => command.main("ohi get", args),
+          )
+          code shouldBe 1
+          out shouldBe empty
+          err should startWith("example/z@2.0 has more than one file in owl-turtle format.")
+          err should include(s"Files\n  $base/first.ttl\n  $base/second.ttl")
+          err should include(s"ohi get $base/first.ttl --to '$destination'")
+          err should not include "Error:"
+          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
+            "/search",
+            "/publication",
+          )
+          os.exists(destination) shouldBe false
+          os.list(directory) shouldBe empty
         }
       }
-
-    "default a versioned reference to LinkML without project records" in {
-      val directory = os.temp.dir(prefix = "ohi reference get ")
-      val bytes = Array[Byte](0, -1, 65, -128)
-      try
-        withServerResponses { base =>
-          val selectedHits = hits.replace("https://example.org/z?revision=2", base + "/publication")
-          val search = s"""{"hits":$selectedHits,"found":2,"page":1,
-            "request_params":{"per_page":250},"search_cutoff":false}"""
-          val metadata = publication
-            .replace("https://example.org/publications/z?revision=2", base + "/publication")
-            .replace("https://example.org/file.ttl?revision=2", base + "/file.yaml")
-            .replace("\"format\":\"owl-turtle\"", "\"format\":\"linkml-yaml\"")
-          (request: String) =>
-            new URI(request).getPath match {
-              case "/search" => 200 -> search.getBytes(UTF_8)
-              case "/publication" => 200 -> metadata.getBytes(UTF_8)
-              case "/file.yaml" => 200 -> bytes
-              case _ => 404 -> Array.emptyByteArray
-            }
-        } { (base, requests) =>
-          val (out, err, code) = runReference(
-            directory,
-            base,
-            "ConfiguredGet",
-            "example/z@2.0",
-            "--to",
-            directory.toString,
-            "--json",
-          )
-          code shouldBe 0
-          err shouldBe empty
-          json(out) shouldBe json(s"""{"url":"$base/file.yaml","path":"$directory/file.yaml"}""")
-          os.read.bytes(directory / "file.yaml").toSeq shouldBe bytes.toSeq
-          os.list(directory).map(_.last) shouldBe Seq("file.yaml")
-          val calls = requests.asScala.toSeq
-          calls.map(value => new URI(value).getPath) shouldBe
-            Seq("/search", "/publication", "/file.yaml")
-          query(calls.head)("filter_by") shouldBe "namespace:=example && name:=z && version:=2.0"
-        }
-      finally os.remove.all(directory)
     }
 
-    for (explicit, behavior) <- Seq(
-        false -> "infer the current directory's format independently of the download directory",
-        true -> "bypass a malformed declaration when the format is explicit",
-      )
-    do
-      s"$behavior and preserve both project records" in {
-        withDirectory { directory =>
-          val destination = directory / "downloads"
-          os.makeDir(destination)
-          os.write(destination / "ohi.yaml", "unrelated declaration")
-          val staleLock = "stale lock bytes\n"
-          os.write(directory / "ohi.lock.json", staleLock)
-          withServerResponses { base =>
-            val selectedHits =
-              hits.replace("https://example.org/z?revision=2", base + "/publication")
-            val search = s"""{"hits":$selectedHits,"found":2,"page":1,
-              "request_params":{"per_page":250},"search_cutoff":false}"""
-            val selected = publication
-              .replace("https://example.org/publications/z?revision=2", base + "/publication")
-              .replace("https://example.org/file.ttl?revision=2", base + "/file.ttl")
-            val existing = publication
-              .replace("https://example.org/publications/z?revision=2", base + "/existing")
-              .replace("https://example.org/file.ttl?revision=2", base + "/selected.yaml")
-            (request: String) =>
-              new URI(request).getPath match {
-                case "/existing" => 200 -> existing.getBytes(UTF_8)
-                case "/search" => 200 -> search.getBytes(UTF_8)
-                case "/publication" => 200 -> selected.getBytes(UTF_8)
-                case "/file.ttl" => 200 -> "selected bytes\n".getBytes(UTF_8)
-                case _ => 404 -> Array.emptyByteArray
-              }
-          } { (base, requests) =>
-            val declaration = if explicit then "invalid declaration\n"
-            else s"""format_version: 1
-              |selections:
-              |  - base_url: $base/existing
-              |    url: $base/selected.yaml
-              |""".stripMargin
-            os.write(directory / "ohi.yaml", declaration)
-            val format = if explicit then Seq("--format", "owl-turtle") else Seq.empty
-            val (out, err, code) = runReference(
-              directory,
-              base,
-              "ConfiguredGet",
-              (Seq("example/z", "--to", destination.toString, "--json") ++ format)*,
-            )
-            code shouldBe 0
-            err shouldBe empty
-            json(out) shouldBe json(s"""{"url":"$base/file.ttl","path":"$destination/file.ttl"}""")
-            os.read(destination / "file.ttl") shouldBe "selected bytes\n"
-            os.read(directory / "ohi.yaml") shouldBe declaration
-            os.read(directory / "ohi.lock.json") shouldBe staleLock
-            os.read(destination / "ohi.yaml") shouldBe "unrelated declaration"
-            requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe
-              (if explicit then Seq("/search", "/publication", "/file.ttl")
-               else Seq("/existing", "/search", "/publication", "/file.ttl"))
+    "reject an ambiguous add reference with recovery guidance and no writes" in {
+      withDirectory { directory =>
+        val destination = directory / "files here"
+        withInspection { (base, requests) =>
+          val config =
+            CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
+          val command = new AddCommand {
+            override protected def client() =
+              new eu.neverblink.ohi.catalog.CatalogClient(config)
           }
+          val (out, err, code) = command.runTestCommandWithExitCode(
+            List("example/z@2.0", "--format", "owl-turtle", "--project", directory.toString),
+            args => command.main("ohi add", args),
+          )
+          code shouldBe 1
+          out shouldBe empty
+          err should startWith("Error: Could not update the project.")
+          err should include("example/z@2.0 has more than one file in owl-turtle format.")
+          err should include("standalone ohi get for an exact file URL")
+          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
+            "/search",
+            "/publication",
+          )
+          os.exists(destination) shouldBe false
+          os.list(directory) shouldBe empty
         }
       }
+    }
 
-    "report a malformed cwd declaration before any request even with JSON output" in {
-      withDirectory { directory =>
-        val invalid = "format_version: 99\nselections: []\n"
-        os.write(directory / "ohi.yaml", invalid)
-        val destination = directory / "downloads"
-        withServer("unexpected") { (base, requests) =>
+    "default a reference to cwd .ohi without consulting an ancestor declaration" in {
+      withDirectory { parent =>
+        val cwd = parent / "child"
+        os.makeDir(cwd)
+        os.write(parent / "ohi.yaml", "invalid ancestor declaration")
+        withAcquisition("linkml-yaml") { (base, requests) =>
+          val (out, err, code) = runReference(cwd, base, "ConfiguredGet", "example/z@2.0", "--json")
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          json(out) shouldBe json(
+            s"""{"url":"$base${hub}original","path":"$cwd/.ohi/example/z/2.0/z.linkml.yaml"}""",
+          )
+          os.read.bytes(
+            cwd / ".ohi" / "example" / "z" / "2.0" / "z.linkml.yaml",
+          ).toSeq shouldBe binary.toSeq
+          os.read(cwd / ".ohi" / ".gitignore") shouldBe "*\n"
+          os.list(cwd).map(_.last) shouldBe Seq(".ohi")
+          val calls = requests.asScala.toSeq
+          calls.map(value => new URI(value).getPath) shouldBe Seq("/search", hub, hub + "original")
+          query(calls.head)("filter_by") shouldBe "namespace:=example && name:=z && version:=2.0"
+        }
+      }
+    }
+
+    "use the same cwd declaration's format and configured destination without changing records" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", configuredDeclaration)
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) = runReference(cwd, base, "ConfiguredGet", "example/z", "--json")
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          json(out)("path").str shouldBe s"$cwd/ontologies/example/z/2.0/z.owl.ttl"
+          os.read.bytes(
+            cwd / "ontologies" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe binary.toSeq
+          os.read(cwd / "ontologies" / ".gitignore") shouldBe "*\n"
+          os.read(cwd / "ohi.yaml") shouldBe configuredDeclaration
+          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
+            "/search",
+            hub,
+            hub + "original",
+          )
+        }
+      }
+    }
+
+    "read the cwd format with an explicit relative destination and preserve project records" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", configuredDeclaration)
+        os.write(cwd / "ohi.lock.json", "stale lock bytes")
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) =
+            runReference(cwd, base, "ConfiguredGet", "example/z", "--to", "restored", "--json")
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          json(out)("path").str shouldBe s"$cwd/restored/example/z/2.0/z.owl.ttl"
+          os.read.bytes(
+            cwd / "restored" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe binary.toSeq
+          os.exists(cwd / "restored" / ".gitignore") shouldBe false
+          os.exists(cwd / "ontologies") shouldBe false
+          os.read(cwd / "ohi.yaml") shouldBe configuredDeclaration
+          os.read(cwd / "ohi.lock.json") shouldBe "stale lock bytes"
+          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
+            "/search",
+            hub,
+            hub + "original",
+          )
+        }
+      }
+    }
+
+    "bypass a malformed cwd declaration when reference format and destination are explicit" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", "invalid declaration")
+        withAcquisition() { (base, requests) =>
           val (out, err, code) = runReference(
-            directory,
+            cwd,
             base,
             "ConfiguredGet",
             "example/z",
+            "--format",
+            "owl-turtle",
             "--to",
-            destination.toString,
+            ".ohi",
+            "--json",
+          )
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          json(out)("path").str shouldBe s"$cwd/.ohi/example/z/2.0/z.owl.ttl"
+          os.read.bytes(
+            cwd / ".ohi" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe binary.toSeq
+          os.exists(cwd / ".ohi" / ".gitignore") shouldBe false
+          os.read(cwd / "ohi.yaml") shouldBe "invalid declaration"
+          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
+            "/search",
+            hub,
+            hub + "original",
+          )
+        }
+      }
+    }
+
+    "reject a malformed cwd declaration before resolving a reference with implicit format and destination" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", "invalid declaration")
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) = runReference(cwd, base, "ConfiguredGet", "example/z", "--json")
+          code shouldBe 1
+          out shouldBe empty
+          err should include("Invalid declaration")
+          err should include("ohi get --help")
+          requests shouldBe empty
+          os.read(cwd / "ohi.yaml") shouldBe "invalid declaration"
+          os.exists(cwd / ".ohi") shouldBe false
+        }
+      }
+    }
+
+    "reject a malformed cwd declaration before resolving a reference with explicit format and implicit destination" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", "invalid declaration")
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) = runReference(
+            cwd,
+            base,
+            "ConfiguredGet",
+            "example/z",
+            "--format",
+            "owl-turtle",
             "--json",
           )
           code shouldBe 1
           out shouldBe empty
-          err should startWith("Error: Invalid declaration '")
-          err should include("ohi.yaml")
+          err should include("Invalid declaration")
           err should include("ohi get --help")
           requests shouldBe empty
-          os.read(directory / "ohi.yaml") shouldBe invalid
-          os.exists(destination) shouldBe false
+          os.read(cwd / "ohi.yaml") shouldBe "invalid declaration"
+          os.exists(cwd / ".ohi") shouldBe false
         }
       }
     }
 
-    for lockMode <- Seq(false, true) do
-      s"default a ${if lockMode then "lock" else "URL"} download to the invocation directory" in {
-        val directory = os.temp.dir(prefix = "ohi get cwd ")
-        try
-          withServer("abc") { (url, requests) =>
-            os.write(directory / "ohi.yaml", "invalid declaration")
-            val arguments = if lockMode then {
-              val path = writeLock(
-                directory,
-                Seq(
-                  (url + "/file.ttl") ->
-                    "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-                ),
-              )
-              Seq("--lock", path.toString)
-            } else Seq(url.replace("http://", "HTTP://") + "/file.ttl")
-            val result = os.proc(
-              os.Path(System.getProperty("java.home")) / "bin" / "java",
-              "-cp",
-              System.getProperty("java.class.path"),
-              "eu.neverblink.ohi.cli.Main",
-              "get",
-              arguments,
-              "--json",
-            ).call(cwd = directory, check = false, stderr = os.Pipe, timeout = 10000)
-            result.exitCode shouldBe 0
-            result.err.text() shouldBe empty
-            val output = json(result.out.text())
-            val receipt = if lockMode then {
-              output("files").arr.size shouldBe 1
-              output("files")(0)("status").str shouldBe "DOWNLOADED"
-              output("files")(0)
-            } else output
-            receipt("path").str shouldBe
-              directory.toNIO.toRealPath().resolve("file.ttl").toString
-            os.read(directory / "file.ttl") shouldBe "abc"
-            os.read(directory / "ohi.yaml") shouldBe "invalid declaration"
-            requests.asScala.toSeq shouldBe Seq("/file.ttl")
-          }
-        finally os.remove.all(directory)
-      }
-
-    "bind the directory flag, save exact bytes and emit a receipt without changing project records" in {
-      val directory = os.temp.dir(prefix = "ohi cli get ")
-      try {
-        os.write(directory / "ohi.yaml", "unchanged declaration\n")
-        os.write(directory / "ohi.lock.json", "unchanged lock\n")
-        val bytes = Array[Byte](0, -1, 65, -128)
-        withServerBytes(bytes) { (url, requests) =>
-          val targetUrl = url + "/energy%20model+v2.ttl?revision=2"
-          val out = successful(Get, "get", targetUrl, "--to", directory.toString, "--json")
-          val receipt = json(out)
-          keys(receipt) shouldBe Set("url", "path")
-          receipt("url").str shouldBe targetUrl
-          receipt("path").str shouldBe (directory / "energy model+v2.ttl").toString
-          os.read.bytes(directory / "energy model+v2.ttl").toSeq shouldBe bytes.toSeq
-          requests.asScala.toSeq shouldBe Seq("/energy%20model+v2.ttl?revision=2")
-          os.read(directory / "ohi.yaml") shouldBe "unchanged declaration\n"
-          os.read(directory / "ohi.lock.json") shouldBe "unchanged lock\n"
-          os.list(directory).map(_.last).toSet shouldBe Set(
-            "ohi.yaml",
-            "ohi.lock.json",
-            "energy model+v2.ttl",
-          )
-        }
-      } finally os.remove.all(directory)
-    }
-
-    "print the completed absolute path for a human delivery" in {
-      val directory = os.temp.dir(prefix = "ohi cli get")
-      try
-        withServerBytes(Array.emptyByteArray) { (url, _) =>
-          val out = successful(Get, "get", url + "/empty.ttl", "--to", directory.toString)
-          out shouldBe s"Saved ${directory / "empty.ttl"}\n"
-          os.read.bytes(directory / "empty.ttl") shouldBe empty
-        }
-      finally os.remove.all(directory)
-    }
-
-    "report local collisions only on stderr and leave the selected destination unchanged" in {
-      val directory = os.temp.dir(prefix = "ohi cli collision")
-      try {
-        os.write(directory / "file.ttl", "sentinel")
-        withServer("must not be retrieved") { (url, requests) =>
-          val error =
-            json(failed(Get, "get", url + "/file.ttl", "--to", directory.toString, "--json"))
-          keys(error) shouldBe Set("code", "message", "url", "directory", "path")
-          error("code").str shouldBe "DESTINATION_EXISTS"
-          error("url").str shouldBe url + "/file.ttl"
-          error("directory").str shouldBe directory.toString
-          error("path").str shouldBe (directory / "file.ttl").toString
-          error("message").str should not be empty
+    "reject a malformed cwd declaration before requesting a URL with an implicit destination" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", "invalid declaration")
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) =
+            runReference(cwd, base, "ConfiguredGet", base + hub + "original", "--json")
+          code shouldBe 1
+          out shouldBe empty
+          err should include("Invalid declaration")
+          err should include("ohi get --help")
           requests shouldBe empty
-          os.read(directory / "file.ttl") shouldBe "sentinel"
-          os.list(directory).map(_.last) shouldBe Seq("file.ttl")
+          os.read(cwd / "ohi.yaml") shouldBe "invalid declaration"
+          os.exists(cwd / ".ohi") shouldBe false
         }
-      } finally os.remove.all(directory)
+      }
+    }
+
+    "use cwd settings for URL get without reading an unrelated declaration" in {
+      withDirectory { root =>
+        val cwd = root / "cwd"
+        val elsewhere = root / "elsewhere"
+        os.makeDir(cwd)
+        os.makeDir(elsewhere)
+        os.write(cwd / "ohi.yaml", configuredDeclaration)
+        os.write(elsewhere / "ohi.yaml", "invalid unrelated declaration")
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) =
+            runReference(cwd, base, "ConfiguredGet", base + hub + "original", "--json")
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          val receipt = json(out)
+          receipt("path").str shouldBe s"$cwd/ontologies/example/z/2.0/z.owl.ttl"
+          receipt("url").str shouldBe base + hub + "original"
+          os.read.bytes(
+            cwd / "ontologies" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe binary.toSeq
+          os.read(cwd / "ontologies" / ".gitignore") shouldBe "*\n"
+          os.read(cwd / "ohi.yaml") shouldBe configuredDeclaration
+          requests.asScala.toSeq shouldBe Seq(hub, hub + "original")
+        }
+      }
+    }
+
+    "bypass malformed cwd settings for URL get with an explicit destination" in {
+      withDirectory { cwd =>
+        os.write(cwd / "ohi.yaml", "invalid declaration")
+        withAcquisition() { (base, requests) =>
+          val (out, err, code) = runReference(
+            cwd,
+            base,
+            "ConfiguredGet",
+            base + hub + "original",
+            "--to",
+            "restored",
+            "--json",
+          )
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          val receipt = json(out)
+          receipt("path").str shouldBe s"$cwd/restored/example/z/2.0/z.owl.ttl"
+          os.read.bytes(
+            cwd / "restored" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe binary.toSeq
+          os.exists(cwd / "restored" / ".gitignore") shouldBe false
+          os.read(cwd / "ohi.yaml") shouldBe "invalid declaration"
+          requests.asScala.toSeq shouldBe Seq(hub, hub + "original")
+        }
+      }
+    }
+
+    "require exact advertised URL membership before installing a raw Hub file URL" in {
+      withDirectory { directory =>
+        withAcquisition() { (base, requests) =>
+          val error =
+            failed(Get, "get", base + hub + "unadvertised", "--to", directory.toString, "--json")
+          error should include("does not advertise artifact")
+          requests.asScala.toSeq shouldBe Seq(hub)
+          os.list(directory) shouldBe empty
+        }
+      }
+    }
+
+    "reject a generic file URL without requesting it or creating a fallback destination" in {
+      withDirectory { directory =>
+        withServer("unexpected") { (base, requests) =>
+          val error =
+            json(failed(Get, "get", base + "/file.ttl", "--to", directory.toString, "--json"))
+          error("code").str shouldBe "UNSUPPORTED_FILENAME"
+          error("url").str shouldBe base + "/file.ttl"
+          requests shouldBe empty
+          os.list(directory) shouldBe empty
+        }
+      }
+    }
+
+    "summarize a single download and verification while preserving delivery JSON and exact bytes" in {
+      withDirectory { cwd =>
+        withAcquisition() { (base, requests) =>
+          val args = Seq(base + hub + "original", "--to", "restored")
+          val first = runReference(cwd, base, "ConfiguredGet", args*)
+          first shouldBe (("Downloaded 1 ontology file to restored/.\n", "", 0))
+          os.read.bytes(
+            cwd / "restored" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe binary.toSeq
+          requests.clear()
+          val repeated = runReference(cwd, base, "ConfiguredGet", args*)
+          repeated shouldBe (("Verified 1 existing ontology file in restored/.\n", "", 0))
+          requests.asScala.toSeq shouldBe Seq(hub)
+          requests.clear()
+          val (out, err, code) = runReference(cwd, base, "ConfiguredGet", (args :+ "--json")*)
+          withClue(err) { code shouldBe 0 }
+          err shouldBe empty
+          json(out) shouldBe json(s"""{
+            "url":"$base${hub}original","path":"$cwd/restored/example/z/2.0/z.owl.ttl"}
+          """)
+          requests.asScala.toSeq shouldBe Seq(hub)
+        }
+      }
+    }
+
+    "report a local hash conflict through the existing file-error shape without artifact requests" in {
+      withDirectory { directory =>
+        val path = directory / "example" / "z" / "2.0" / "z.owl.ttl"
+        os.write(path, "sentinel", createFolders = true)
+        withAcquisition() { (base, requests) =>
+          val error =
+            json(failed(Get, "get", base + hub + "original", "--to", directory.toString, "--json"))
+          keys(error) shouldBe Set("code", "message", "url", "directory", "path")
+          error("code").str shouldBe "HASH_MISMATCH"
+          error("url").str shouldBe base + hub + "original"
+          error("directory").str shouldBe directory.toString
+          error("path").str shouldBe path.toString
+          requests.asScala.toSeq shouldBe Seq(hub)
+          os.read(path) shouldBe "sentinel"
+        }
+      }
     }
   }
 
-  "locked file delivery" should {
-    for (mode, arguments, expected) <- Seq(
-        ("URL", Seq("https://example.org/file.ttl"), "a file URL or --lock"),
-        ("reference", Seq("test/example"), "an ontology reference"),
-        ("format", Seq("--format", "owl-turtle"), "--format cannot be used with --lock"),
-      )
-    do
-      s"reject mixed lock and $mode modes before configuration" in {
-        val error = failed(
-          Get,
-          (Seq("get") ++ arguments ++ Seq(
-            "--lock",
-            "missing.json",
-            "--to",
-            ".",
-            "--timeout-ms",
-            "0",
-            "--json",
-          ))*,
-        )
-        error should include(expected)
-        error should include("ohi get --help")
-        error.trim should not startWith "{"
-      }
-
-    "reject a provider-invalid lock argument before timeout configuration" in {
-      // The harness accepts NUL arguments that an OS process launcher rejects.
-      val error = failed(
-        Get,
-        "get",
-        "--lock",
-        "bad\u0000lock",
-        "--to",
-        ".",
-        "--timeout-ms",
-        "0",
-        "--json",
-      )
-      error should include("Invalid lock path")
+  "sync from a shared lock" should {
+    "reject the removed get lock option" in {
+      val error = failed(Get, "get", "--lock", "ohi.lock.json")
+      error should include("--lock")
       error should include("ohi get --help")
-      error.trim should not startWith "{"
-    }
-
-    "return an empty result without interpreting the destination of an empty version-2 lock" in {
-      withDirectory { directory =>
-        val path = writeLock(directory)
-        val args = Seq("get", "--lock", path.toString, "--to", "bad\u0000destination")
-        json(successful(Get, (args :+ "--json")*)) shouldBe json("""{"files":[]}""")
-        successful(Get, args*) shouldBe "No files in lock.\n"
-        os.list(directory).map(_.last) shouldBe Seq("ohi.lock.json")
-      }
-    }
-
-    "refuse an empty legacy lock with its supplied path and regeneration guidance" in {
-      withDirectory { directory =>
-        val path = writeLock(directory, version = 1)
-        val error = json(
-          failed(
-            Get,
-            "get",
-            "--lock",
-            path.toString,
-            "--to",
-            (directory / "out").toString,
-            "--json",
-          ),
-        )
-        keys(error) shouldBe Set("files", "lock_error")
-        error("files") shouldBe json("[]")
-        val cause = error("lock_error")
-        keys(cause) shouldBe Set("code", "operation", "path", "message")
-        cause("code").str shouldBe "UNSUPPORTED_VERSION"
-        cause("operation").str shouldBe "READ"
-        cause("path").str shouldBe path.toString
-        cause("message").str should include("ohi lock --project <directory>")
-        cause("message").str should include("originating application")
-        os.exists(directory / "out") shouldBe false
-      }
-    }
-
-    "wrap a lock read failure before accessing the destination" in {
-      withDirectory { directory =>
-        val path = directory / "missing.json"
-        val error = json(
-          failed(
-            Get,
-            "get",
-            "--lock",
-            path.toString,
-            "--to",
-            "bad\u0000destination",
-            "--json",
-          ),
-        )
-        keys(error) shouldBe Set("files", "lock_error")
-        error("files") shouldBe json("[]")
-        val cause = error("lock_error")
-        cause("code").str shouldBe "STORAGE_ERROR"
-        cause("operation").str shouldBe "READ"
-        cause("path").str shouldBe path.toString
-        os.list(directory) shouldBe empty
-      }
-    }
-
-    "serialize a file failure with its target and no inactive causes" in {
-      val failure = new CliFileException(
-        CliFileError(
-          code = CliFileErrorCode.HashMismatch,
-          directory = "/out",
-          message = "Hash mismatch",
-          path = Some("/out/file.ttl"),
-          url = "https://example.org/file.ttl",
-        ),
-      )
-      val error = json(
-        LockDownloadOutput.error(LockDownloadOutput.failure(Seq.empty, failure), json = true),
-      )
-      keys(error) shouldBe Set("files", "file_error")
-      error("files") shouldBe json("[]")
-      val cause = error("file_error")
-      keys(cause) shouldBe Set("code", "message", "directory", "path", "url")
-      cause("code").str shouldBe "HASH_MISMATCH"
-      cause("directory").str shouldBe "/out"
-      cause("path").str shouldBe "/out/file.ttl"
-      cause("url").str shouldBe "https://example.org/file.ttl"
     }
 
     "report only the completed prefix on failure and resume the same command in lock order" in {
@@ -919,111 +903,114 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         val unavailable = new java.util.concurrent.atomic.AtomicBoolean(true)
         val serverError = """{"error":{"reason":null,"retry":true},"attempt":2,"delay":1.25}"""
         withServerResponses(_ => {
-          case "/z.ttl?revision=2" => 200 -> zBytes
-          case "/a.ttl" if unavailable.get() => 503 -> serverError.getBytes(UTF_8)
-          case "/a.ttl" => 200 -> "abc".getBytes(UTF_8)
-          case "/b.ttl" => 200 -> Array.emptyByteArray
+          case "/files/packages/example/z/2.0/source.ttl" => 200 -> zBytes
+          case "/files/packages/example/a/2.0/source.ttl" if unavailable.get() =>
+            503 -> serverError.getBytes(UTF_8)
+          case "/files/packages/example/a/2.0/source.ttl" => 200 -> "abc".getBytes(UTF_8)
+          case "/files/packages/example/b/2.0/source.ttl" => 200 -> Array.emptyByteArray
           case _ => 404 -> "Unexpected request".getBytes(UTF_8)
         }) { (base, requests) =>
           val path = writeLock(
             directory,
             Seq(
-              (base + "/z.ttl?revision=2") ->
+              (base + "/files/packages/example/z/2.0/source.ttl") ->
                 "ac7fa209c616517439d0e93add6855a02d7c4340f990084224ea290315ee3bd1",
-              (base + "/a.ttl") ->
+              (base + "/files/packages/example/a/2.0/source.ttl") ->
                 "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
-              (base + "/b.ttl") ->
+              (base + "/files/packages/example/b/2.0/source.ttl") ->
                 "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-              (base + "/m.ttl") ->
+              (base + "/files/packages/example/m/2.0/source.ttl") ->
                 "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
             ),
           )
           val lockBytes = os.read.bytes(path).toSeq
-          os.write(directory / "ohi.yaml", "unchanged declaration\n")
-          os.write(directory / "m.ttl", "hello")
-          val mTime = Files.getLastModifiedTime((directory / "m.ttl").toNIO)
-          val args = Seq("get", "--lock", path.toString, "--to", directory.toString, "--json")
-          val error = json(failed(Get, args*))
-          keys(error) shouldBe Set("files", "catalog_error")
+          os.write(
+            directory / ".ohi" / "example" / "m" / "2.0" / "m.owl.ttl",
+            "hello",
+            createFolders = true,
+          )
+          val mTime =
+            Files.getLastModifiedTime(
+              (directory / ".ohi" / "example" / "m" / "2.0" / "m.owl.ttl").toNIO,
+            )
+          val args = Seq("sync", "--project", directory.toString, "--json")
+          val error = json(failed(Sync, args*))
+          keys(error) shouldBe Set(
+            "code",
+            "operation",
+            "project_directory",
+            "declaration_changed",
+            "declaration_created",
+            "lock_changed",
+            "files",
+            "message",
+            "catalog_error",
+          )
+          error("operation").str shouldBe "SYNC"
+          error("declaration_changed").bool shouldBe false
+          error("declaration_created").bool shouldBe false
+          error("lock_changed").bool shouldBe false
+          error("message").str should include(s"ohi sync --project '$directory'")
           error("files") shouldBe json(s"""[
-            {"url":"$base/z.ttl?revision=2","path":"$directory/z.ttl","status":"DOWNLOADED"}
+            {"url":"$base/files/packages/example/z/2.0/source.ttl","path":"$directory/.ohi/example/z/2.0/z.owl.ttl","status":"DOWNLOADED"}
           ]""")
           val cause = error("catalog_error")
           keys(cause) shouldBe Set("code", "message", "operation", "url", "status", "response_json")
           cause("code").str shouldBe "HTTP_ERROR"
           cause("operation").str shouldBe "GET"
-          cause("url").str shouldBe base + "/a.ttl"
+          cause("url").str shouldBe base + "/files/packages/example/a/2.0/source.ttl"
           cause("status").num.toInt shouldBe 503
           cause("response_json") shouldBe json(serverError)
-          requests.asScala.toSeq shouldBe Seq("/z.ttl?revision=2", "/a.ttl")
-          os.read.bytes(directory / "z.ttl").toSeq shouldBe zBytes.toSeq
-          os.read(directory / "m.ttl") shouldBe "hello"
-          Files.getLastModifiedTime((directory / "m.ttl").toNIO) shouldBe mTime
-          os.exists(directory / "a.ttl") shouldBe false
-          os.exists(directory / "b.ttl") shouldBe false
+          requests.asScala.toSeq shouldBe Seq(
+            "/files/packages/example/z/2.0/source.ttl",
+            "/files/packages/example/a/2.0/source.ttl",
+          )
+          os.read.bytes(
+            directory / ".ohi" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe zBytes.toSeq
+          os.read(directory / ".ohi" / "example" / "m" / "2.0" / "m.owl.ttl") shouldBe "hello"
+          Files.getLastModifiedTime(
+            (directory / ".ohi" / "example" / "m" / "2.0" / "m.owl.ttl").toNIO,
+          ) shouldBe mTime
+          os.exists(directory / ".ohi" / "example" / "a" / "2.0" / "a.owl.ttl") shouldBe false
+          os.exists(directory / ".ohi" / "example" / "b" / "2.0" / "b.owl.ttl") shouldBe false
           os.read.bytes(path).toSeq shouldBe lockBytes
-          os.read(directory / "ohi.yaml") shouldBe "unchanged declaration\n"
+          os.exists(directory / "ohi.yaml") shouldBe false
 
-          val zTime = Files.getLastModifiedTime((directory / "z.ttl").toNIO)
+          val zTime =
+            Files.getLastModifiedTime(
+              (directory / ".ohi" / "example" / "z" / "2.0" / "z.owl.ttl").toNIO,
+            )
           unavailable.set(false)
           requests.clear()
-          json(successful(Get, args*)) shouldBe json(s"""{"files":[
-            {"url":"$base/z.ttl?revision=2","path":"$directory/z.ttl","status":"VERIFIED"},
-            {"url":"$base/a.ttl","path":"$directory/a.ttl","status":"DOWNLOADED"},
-            {"url":"$base/b.ttl","path":"$directory/b.ttl","status":"DOWNLOADED"},
-            {"url":"$base/m.ttl","path":"$directory/m.ttl","status":"VERIFIED"}
-          ]}""")
-          requests.asScala.toSeq shouldBe Seq("/a.ttl", "/b.ttl")
-          os.read.bytes(directory / "z.ttl").toSeq shouldBe zBytes.toSeq
-          Files.getLastModifiedTime((directory / "z.ttl").toNIO) shouldBe zTime
-          os.read(directory / "a.ttl") shouldBe "abc"
-          os.read.bytes(directory / "b.ttl") shouldBe empty
-          os.read(directory / "m.ttl") shouldBe "hello"
-          Files.getLastModifiedTime((directory / "m.ttl").toNIO) shouldBe mTime
+          json(successful(Sync, args*))("files") shouldBe json(s"""[
+            {"url":"$base/files/packages/example/z/2.0/source.ttl","path":"$directory/.ohi/example/z/2.0/z.owl.ttl","status":"VERIFIED"},
+            {"url":"$base/files/packages/example/a/2.0/source.ttl","path":"$directory/.ohi/example/a/2.0/a.owl.ttl","status":"DOWNLOADED"},
+            {"url":"$base/files/packages/example/b/2.0/source.ttl","path":"$directory/.ohi/example/b/2.0/b.owl.ttl","status":"DOWNLOADED"},
+            {"url":"$base/files/packages/example/m/2.0/source.ttl","path":"$directory/.ohi/example/m/2.0/m.owl.ttl","status":"VERIFIED"}
+          ]""")
+          requests.asScala.toSeq shouldBe Seq(
+            "/files/packages/example/a/2.0/source.ttl",
+            "/files/packages/example/b/2.0/source.ttl",
+          )
+          os.read.bytes(
+            directory / ".ohi" / "example" / "z" / "2.0" / "z.owl.ttl",
+          ).toSeq shouldBe zBytes.toSeq
+          Files.getLastModifiedTime(
+            (directory / ".ohi" / "example" / "z" / "2.0" / "z.owl.ttl").toNIO,
+          ) shouldBe zTime
+          os.read(directory / ".ohi" / "example" / "a" / "2.0" / "a.owl.ttl") shouldBe "abc"
+          os.read.bytes(directory / ".ohi" / "example" / "b" / "2.0" / "b.owl.ttl") shouldBe empty
+          os.read(directory / ".ohi" / "example" / "m" / "2.0" / "m.owl.ttl") shouldBe "hello"
+          Files.getLastModifiedTime(
+            (directory / ".ohi" / "example" / "m" / "2.0" / "m.owl.ttl").toNIO,
+          ) shouldBe mTime
           os.read.bytes(path).toSeq shouldBe lockBytes
-          os.read(directory / "ohi.yaml") shouldBe "unchanged declaration\n"
+          os.exists(directory / "ohi.yaml") shouldBe false
         }
       }
     }
 
-    "render downloaded and verified human receipts in supplied order" in {
-      val result = LockDownloadResult(
-        Seq(
-          LockFileResult("/out/z.ttl", LockFileStatus.Downloaded, Uri("https://example.org/z.ttl")),
-          LockFileResult("/out/a.ttl", LockFileStatus.Verified, Uri("https://example.org/a.ttl")),
-        ),
-      )
-      LockDownloadOutput.result(
-        result,
-        json = false,
-      ) shouldBe "Saved /out/z.ttl\nVerified /out/a.ttl"
-    }
-
-    "render the reached prefix, retained partial file and retry guidance on a human failure" in {
-      val failure = new CliFileException(
-        CliFileError(
-          code = CliFileErrorCode.FileWriteFailed,
-          directory = "/out",
-          message =
-            "Cannot finish writing '/out/a.ttl'. Remove the incomplete file before retrying.",
-          partialPath = Some("/out/a.ttl"),
-          path = Some("/out/a.ttl"),
-          url = "https://example.org/a.ttl",
-        ),
-      )
-      val error = LockDownloadOutput.failure(
-        Seq(
-          LockFileResult("/out/z.ttl", LockFileStatus.Downloaded, Uri("https://example.org/z.ttl")),
-        ),
-        failure,
-      )
-      LockDownloadOutput.error(error, json = false) shouldBe
-        "Saved /out/z.ttl\n\n" +
-        "Error: Could not finish writing the downloaded file.\nPath: /out/a.ttl\n" +
-        "Details: Cannot finish writing '/out/a.ttl'. Remove the incomplete file before retrying.\n" +
-        "Incomplete file retained: /out/a.ttl\n\n" +
-        "Completed files were kept. Correct the storage problem and remove the incomplete file before retrying."
-    }
   }
 
   "catalog command errors" should {

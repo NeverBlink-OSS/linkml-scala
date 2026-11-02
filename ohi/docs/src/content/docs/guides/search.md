@@ -3,6 +3,8 @@ title: Find and inspect ontologies
 description: Search ohi.dev, check a publication's files and download the format you need.
 ---
 
+<!-- Last updated: 2026-11-03. -->
+
 Use `ohi search` to find an ontology, then `ohi inspect` to see its files and dependencies.
 
 ## Search by name or topic
@@ -50,8 +52,9 @@ Use the ontology name and version from the result, with your chosen format:
 ohi get w3c/dcat@3 --format owl-turtle
 ```
 
-This saves `dcat3.owl.ttl` in your current directory. Add `--to ./ontologies` to save it elsewhere.
-Omit `@3` to select the most recently published release.
+Without a project in the current directory, this saves `.ohi/w3c/dcat/3/dcat.owl.ttl`.
+If `ohi.yaml` is present there, `get` uses its `download_dir`. Add `--to ./ontologies` to save
+`ontologies/w3c/dcat/3/dcat.owl.ttl` instead. Omit `@3` to select the most recently published release.
 
 To record this choice in a project and download its dependencies, follow
 [Manage ontology projects](/docs/guides/projects/).

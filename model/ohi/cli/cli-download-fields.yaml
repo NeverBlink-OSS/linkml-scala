@@ -1,16 +1,12 @@
-id: https://ohi.neverblink.eu/contracts/cli-lock-download
-name: ohi_cli_lock_download
-title: CLI locked file download
-description: Results of downloading files from a lock.
+id: https://ohi.neverblink.eu/contracts/cli-download-fields
+name: ohi_cli_download_fields
+title: CLI verified file outputs
+description: Completed ontology files shared by download and project results.
 prefixes:
   ohi: https://ohi.neverblink.eu/contracts/
-  linkml: https://w3id.org/linkml/
 default_prefix: ohi
 imports:
 - cli-delivery
-- cli-file-error
-- ../catalog-error
-- ../lock-error
 slots:
   files:
     description: Completed outputs in first-occurrence lock order.
@@ -21,7 +17,7 @@ slots:
     inlined_as_list: true
 classes:
   LockFileResult:
-    description: A file matching its locked SHA-256.
+    description: A file matching its recorded SHA-256.
     is_a: DeliveryResult
     slot_usage:
       url:
@@ -30,24 +26,6 @@ classes:
       status:
         range: LockFileStatus
         required: true
-  LockDownloadResult:
-    tree_root: true
-    slots:
-    - files
-  LockDownloadError:
-    description: Completed outputs and exactly one error.
-    slots:
-    - files
-    attributes:
-      lock_error:
-        range: LockError
-        inlined: true
-      catalog_error:
-        range: CatalogError
-        inlined: true
-      file_error:
-        range: CliFileError
-        inlined: true
 enums:
   LockFileStatus:
     permissible_values:

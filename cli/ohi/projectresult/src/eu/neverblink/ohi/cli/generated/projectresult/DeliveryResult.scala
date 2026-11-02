@@ -5,17 +5,37 @@ package eu.neverblink.ohi.cli.generated.projectresult
 
 import eu.neverblink.linkml.runtime.*
 
-/** @param path
-  *   Absolute normalized local target path.
-  * @param url
-  *   Exact URL supplied for retrieval. No publication or immutability claim is implied.
-  * @see
-  *   From schema: https://ohi.neverblink.eu/contracts/cli-delivery
+/** Base implementation of the [[DeliveryResult]] LinkML class
+  *
+  * @inheritdoc
   */
-final case class DeliveryResult(
+final case class DeliveryResultImpl(
     path: String,
     url: Uri,
-) {
+) extends DeliveryResult {
+
+  override def infer(): DeliveryResultImpl =
+    this
+}
+
+/** @see
+  *   From schema: https://ohi.neverblink.eu/contracts/cli-delivery
+  */
+abstract class DeliveryResult {
+
+  /** Absolute normalized local target path.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/operation-fields
+    */
+  def path: String
+
+  /** Exact URL supplied for retrieval. No publication or immutability claim is implied.
+    *
+    * @see
+    *   From schema: https://ohi.neverblink.eu/contracts/cli-delivery
+    */
+  def url: Uri
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
@@ -24,6 +44,5 @@ final case class DeliveryResult(
     *   if a slot's value contradicts the value inferred for it, or if an expression references a
     *   slot that has no value
     */
-  def infer(): DeliveryResult =
-    this
+  def infer(): DeliveryResult
 }

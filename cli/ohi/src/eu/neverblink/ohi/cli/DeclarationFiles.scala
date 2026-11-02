@@ -14,6 +14,12 @@ import scala.util.control.NonFatal
 
 private[cli] object DeclarationFiles {
 
+  /** Reads this directory's declaration, returning None only when its entry is absent. */
+  def readIfPresent(directory: Path): Option[Declaration] = {
+    val path = directory.resolve("ohi.yaml")
+    if Files.notExists(path, NOFOLLOW_LINKS) then None else Some(read(path))
+  }
+
   /** Reads the declaration in the UTF-8 YAML file at `path`, following symbolic links.
     *
     * @return

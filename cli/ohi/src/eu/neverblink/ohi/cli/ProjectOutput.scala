@@ -12,20 +12,25 @@ import eu.neverblink.ohi.model.LockException
 
 import java.nio.file.Path
 
-import CliFormatting.{action, styled}
+import CliFormatting.{displayPath, styled}
 
 private[cli] object ProjectOutput {
   private val resultCodec: LinkmlYamlCodec[ProjectResult] = LinkmlYamlCodec.derived
   private val errorCodec: LinkmlYamlCodec[ProjectError] = LinkmlYamlCodec.derived
   private given catalogError: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
   private given lockError: LinkmlYamlCodec[LockError] = LinkmlYamlCodec.derived
+  private given downloadedFile: LinkmlYamlCodec[generated.projectresult.LockFileResult] =
+    LinkmlYamlCodec.derived
+  private given projectFile: LinkmlYamlCodec[LockFileResult] = LinkmlYamlCodec.derived
   private given fileError: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
   def failure(
       operation: ProjectOperation,
       directory: String,
       declarationChanged: Boolean,
+      declarationCreated: Boolean,
       lockChanged: Boolean,
+      files: Seq[generated.projectresult.LockFileResult],
       cause: Throwable,
       recovery: String,
   ): ProjectError = {
@@ -34,7 +39,9 @@ private[cli] object ProjectOutput {
       operation = operation,
       projectDirectory = directory,
       declarationChanged = declarationChanged,
+      declarationCreated = declarationCreated,
       lockChanged = lockChanged,
+      files = files.map(_.as[LockFileResult]),
       message = s"${cause.getMessage}\n$recovery",
     )
     cause match {
@@ -52,22 +59,41 @@ private[cli] object ProjectOutput {
     }
   }
 
-  def result(result: ProjectResult, json: Boolean, colored: Boolean = false): String =
+  def result(
+      result: ProjectResult,
+      json: Boolean,
+      colored: Boolean = false,
+      downloadDirectory: Option[Path] = None,
+      added: Option[generated.declaration.ProjectDependency] = None,
+  ): String =
     if json then JsonUtil.yamlToJson(resultCodec.encode(result))
     else {
       val directory = Path.of(result.projectDirectory)
-      val declaration = directory.resolve("ohi.yaml").toString
-      if result.operation == generated.projectresult.ProjectOperation.Init then
-        if result.declarationChanged then
-          action("Created", declaration, colored) +
-            "\n\nNext: ohi add --help\nDocs: " + styled("https://ohi.dev/docs/", "36", colored)
-        else styled(declaration, "36", colored) + " already exists. No changes made."
-      else
-        (Option.when(result.declarationChanged)(action("Saved", declaration, colored)).toSeq ++
-          Option.when(result.lockChanged)(
-            action("Saved", directory.resolve("ohi.lock.json").toString, colored),
-          ) ++
-          result.delivery.map(delivery => action("Saved", delivery.path, colored))).mkString("\n")
+      val declaration = displayPath(directory.resolve("ohi.yaml"))
+      result.operation match {
+        case generated.projectresult.ProjectOperation.Init =>
+          if result.declarationCreated then
+            creationNotice(directory, downloadDirectory, colored) + "\n\nNext: ohi add --help"
+          else styled(declaration, "36", colored) + " already exists. No changes made."
+        case generated.projectresult.ProjectOperation.Lock => "Updated ohi.lock.json."
+        case _ =>
+          val location = downloadDirectory.filter(_ =>
+            !result.declarationCreated && directory != Path.of("").toAbsolutePath.normalize(),
+          ).map(_.toString)
+          val completed = LockDownloadOutput.summary(
+            result.files,
+            colored,
+            location,
+          )
+          val addition = added.map { dependency =>
+            val action = if result.declarationChanged then "Added" else "Already exists:"
+            s"${styled(action, "32", colored)} ${styled(dependency.ontology, "36", colored)} (${stringify(dependency.format)})"
+          }
+          val receipt = (addition.toSeq :+ completed).mkString("\n")
+          if result.declarationCreated then
+            creationNotice(directory, downloadDirectory, colored) + "\n\n" + receipt
+          else receipt
+      }
     }
 
   def error(
@@ -75,14 +101,15 @@ private[cli] object ProjectOutput {
       json: Boolean,
       colored: Boolean = false,
       causeMessage: Option[String] = None,
-      recoveryCommands: Seq[String] = Nil,
+      recoveryCommand: Option[String] = None,
+      downloadDirectory: Option[Path] = None,
   ): String =
     if json then {
       JsonUtil.yamlToJson(errorCodec.encode(error))
     } else {
-      val directory = java.nio.file.Path.of(error.projectDirectory)
-      val declaration = directory.resolve("ohi.yaml").toString
-      val lock = directory.resolve("ohi.lock.json").toString
+      val directory = Path.of(error.projectDirectory)
+      val declaration = displayPath(directory.resolve("ohi.yaml"))
+      val lock = displayPath(directory.resolve("ohi.lock.json"))
       val (diagnostic, recovery) = error.catalogError.map { cause =>
         val summary =
           if error.lockChanged then
@@ -97,7 +124,7 @@ private[cli] object ProjectOutput {
           cause.url,
           cause.status,
           cause.responseJson,
-          timeoutOption = false,
+          timeoutOption = error.operation == ProjectOperation.Sync,
           colored = colored,
           summaryOverride = summary,
         )
@@ -126,14 +153,16 @@ private[cli] object ProjectOutput {
           case ProjectOperation.Init => "Could not initialize the project."
           case ProjectOperation.Add => "Could not update the project."
           case ProjectOperation.Lock => "Could not rebuild the lock."
+          case ProjectOperation.Sync => "Could not synchronize the project."
         }
         val location = if error.code == ProjectErrorCode.InvalidDeclaration then declaration
-        else error.projectDirectory
+        else displayPath(directory)
         (s"${CliFormatting.styled("Error:", "1;31", colored)} $summary\n" +
           s"Path: ${CliFormatting.styled(location, "36", colored)}\n" +
           s"Details: ${TerminalOutput.withoutAnsi(causeMessage.getOrElse(error.message))}") ->
           (if error.operation == ProjectOperation.Init && error.code == ProjectErrorCode.InvalidDeclaration
-           then "Correct ohi.yaml using format_version: 1 and exact selection URLs, then run:"
+           then
+             "Correct ohi.yaml using format_version: 2, default_format, download_dir and dependencies, then run:"
            else "Correct the reported cause and retry.")
       }
       val effects =
@@ -147,29 +176,52 @@ private[cli] object ProjectOutput {
           def record(changed: Boolean, path: String, unchanged: String): String =
             "  " + (if changed then CliFormatting.action("Saved", path, colored)
                     else s"$unchanged ${CliFormatting.styled(path, "36", colored)}")
-          val download = if error.operation != ProjectOperation.Add then Nil
-          else
-            error.fileError.flatMap(_.partialPath) match {
-              case Some(path) =>
-                Seq(
-                  s"  Incomplete ontology file retained: ${CliFormatting.styled(path, "36", colored)}",
-                )
-              case None => Seq("  The ontology file was not downloaded.")
-            }
+          val download =
+            if error.operation != ProjectOperation.Add && error.operation != ProjectOperation.Sync
+            then Nil
+            else
+              error.fileError.flatMap(_.partialPath) match {
+                case Some(path) =>
+                  Seq(
+                    s"  Incomplete ontology file retained: ${CliFormatting.styled(displayPath(Path.of(path)), "36", colored)}",
+                  )
+                case None => Nil
+              }
           (Seq(
             CliFormatting.styled("Project files", "1", colored),
             record(error.declarationChanged, declaration, "Unchanged"),
             record(error.lockChanged, lock, "Not written"),
           ) ++ download).mkString("\n")
         }
-      val commands = if recoveryCommands.isEmpty then ""
-      else
-        "\n" + recoveryCommands.map(command =>
-          s"  ${CliFormatting.styled(command, "36", colored)}",
-        ).mkString("\n")
+      val command =
+        recoveryCommand.fold("")(value => s"\n  ${CliFormatting.styled(value, "36", colored)}")
       val docs = if error.operation == ProjectOperation.Init then
-        "\n\nDocumentation: https://ohi.dev/docs/"
+        "\n\nDocumentation: https://ohi.dev/docs/guides/projects/"
       else ""
-      Seq(diagnostic, effects, recovery + commands + docs).filter(_.nonEmpty).mkString("\n\n")
+      (Seq(diagnostic) ++
+        Option.when(error.declarationCreated)(
+          creationNotice(directory, downloadDirectory, colored),
+        ) ++
+        Option.when(error.files.nonEmpty) {
+          val downloaded = error.files.count(_.status == LockFileStatus.Downloaded)
+          LockDownloadOutput.summary(downloaded, error.files.size - downloaded, colored, None)
+        } ++
+        Seq(effects, recovery + command + docs)).filter(_.nonEmpty).mkString("\n\n")
     }
+
+  private def creationNotice(
+      directory: Path,
+      downloadDirectory: Option[Path],
+      colored: Boolean,
+  ): String = {
+    val location = displayPath(directory)
+    val created = if location == "." then "Created an Ohi project."
+    else s"Created an Ohi project in ${styled(location, "36", colored)}."
+    created + "\n" +
+      s"You can edit ${styled(displayPath(directory.resolve("ohi.yaml")), "36", colored)} to manage your ontologies and project settings.\n" +
+      s"Downloaded ontologies go in ${styled(displayPath(downloadDirectory.getOrElse(directory.resolve(".ohi"))), "36", colored)}/.\n\n" +
+      "New to ohi? Check out the guide on how to manage ontology projects:\n  " +
+      styled("https://ohi.dev/docs/guides/projects/", "36", colored)
+  }
+
 }

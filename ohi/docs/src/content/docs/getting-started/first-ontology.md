@@ -3,6 +3,8 @@ title: Download your first ontology
 description: Find FOAF and download its OWL file in Turtle syntax.
 ---
 
+<!-- Last updated: 2026-11-03. -->
+
 We'll download [FOAF](https://ohi.dev/o/foaf/foaf@2014-01-14), an ontology for people and their
 relationships. You'll need [ohi installed](/docs/getting-started/install/).
 
@@ -17,11 +19,13 @@ Look for `foaf/foaf` at version `2014-01-14`. The result lists its available for
 ## Download it
 
 ```sh
-ohi get foaf/foaf@2014-01-14 --format owl-turtle --to ontologies
+ohi get foaf/foaf@2014-01-14 --format owl-turtle
 ```
 
-This saves `20140114.owl.ttl` in an `ontologies` folder, creating the folder if needed.
+Without a project in the current directory, this saves `.ohi/foaf/foaf/2014-01-14/foaf.owl.ttl`.
+If `ohi.yaml` is present there, it uses that project's `download_dir` instead of `.ohi`.
 `owl-turtle` selects OWL in Turtle syntax. Open the file in a text editor to see its definitions.
+Use `--to ontologies` for a separate destination, such as `ontologies/foaf/foaf/2014-01-14/foaf.owl.ttl`.
 
 To record ontology choices in a project and download their dependencies, continue with
 [Manage ontology projects](/docs/guides/projects/).

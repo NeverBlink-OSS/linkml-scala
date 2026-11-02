@@ -26,4 +26,9 @@ object ProjectOperation {
     *   From schema: https://ohi.neverblink.eu/contracts/project-fields
     */
   @named("LOCK") case object Lock extends ProjectOperation
+
+  /** @see
+    *   From schema: https://ohi.neverblink.eu/contracts/project-fields
+    */
+  @named("SYNC") case object Sync extends ProjectOperation
 }
