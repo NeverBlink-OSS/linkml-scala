@@ -315,6 +315,11 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
             entry.name != "importedOverride" && entry.name != "mixinFacets",
             "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost",
           )
+          assume(
+            entry.name != "anyOfEnums",
+            "OWL 2 DL can't have a property that takes both literals and links, so `xsd:integer` " +
+              "from SHACL is not in the OWL (not a bug)",
+          )
           given SchemaView = entry.model
           val owl = OwlGenerator().ontology()
           val declared = owl.axioms.collect { case Declaration(kind, iri, _) => iri -> kind }

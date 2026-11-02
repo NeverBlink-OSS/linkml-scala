@@ -1,0 +1,19 @@
+id: https://neverblink.eu/linkml/tests/anyOfMultivalued/
+name: anyOfMultivalued
+description: A multivalued slot with an `any_of` list, so each value must match one of the members
+
+imports:
+  - linkml:types
+
+classes:
+  Bag:
+    tree_root: true
+    slots:
+      - values
+
+slots:
+  values:
+    multivalued: true
+    any_of:
+      - range: integer
+      - range: boolean

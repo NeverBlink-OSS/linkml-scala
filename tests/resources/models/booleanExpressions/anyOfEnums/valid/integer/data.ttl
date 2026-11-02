@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/anyOfEnums/> .
+
+_:b a :Shirt;
+    :size 42 .

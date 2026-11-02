@@ -1,0 +1,10 @@
+{
+  "messages": [
+    {
+      "command": "stop"
+    },
+    {
+      "report": "battery"
+    }
+  ]
+}

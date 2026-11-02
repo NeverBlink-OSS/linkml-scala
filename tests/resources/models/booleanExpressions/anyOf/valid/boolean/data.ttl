@@ -1,0 +1,4 @@
+@prefix : <https://neverblink.eu/linkml/tests/anyOf/> .
+
+_:b a :Item;
+    :value true .

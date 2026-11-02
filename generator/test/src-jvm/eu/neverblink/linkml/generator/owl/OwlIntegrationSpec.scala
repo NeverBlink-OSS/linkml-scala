@@ -66,6 +66,10 @@ object OwlIntegrationSpec {
     "OWL does not assume that different IRIs name different things, so an IRI outside the enum " +
       "may still be one of its values (not a bug)"
 
+  private val literalOrLink =
+    "OWL 2 DL can't have a property that takes both literals and links, so the OWL keeps only " +
+      "the links (not a bug)"
+
   private val anyLiteral =
     "BUG: A slot with range Any takes literals as well as links, and an OWL property cannot take both"
 
@@ -125,6 +129,11 @@ object OwlIntegrationSpec {
     "allOfNoneOfChain" -> "failsChildNoneOf" -> "Not yet implemented: `none_of`",
     "allOfNoneOfChain" -> "failsGrandchildNoneOf" -> "Not yet implemented: `none_of`",
     "nestedExpressions" -> "largeInteger" -> "Not yet implemented: `none_of` in `any_of` members",
+    "anyOfEnums" -> "integer" -> literalOrLink,
+    "anyOfEnums" -> "unknownValue" -> noUniqueNames,
+    "anyOfTypeOrClass" -> "string" -> literalOrLink,
+    "anyOfTypeOrClass" -> "objectWithoutName" -> openWorld,
+    "anyOfInlinedList" -> "emptyObject" -> openWorld,
     "memberCardinality" -> "oneInteger" -> openWorld,
     "memberCardinality" -> "integerAndString" ->
       "Not yet implemented: cardinality in `any_of` members",

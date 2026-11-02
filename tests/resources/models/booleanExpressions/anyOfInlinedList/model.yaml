@@ -1,0 +1,28 @@
+id: https://neverblink.eu/linkml/tests/anyOfInlinedList/
+name: anyOfInlinedList
+description: A list of inlined objects with an `any_of` list of classes, so each object must match one of the classes
+
+imports:
+  - linkml:types
+
+classes:
+  Command:
+    attributes:
+      command:
+        required: true
+  Report:
+    attributes:
+      report:
+        required: true
+  Robot:
+    tree_root: true
+    slots:
+      - messages
+
+slots:
+  messages:
+    multivalued: true
+    inlined_as_list: true
+    any_of:
+      - range: Command
+      - range: Report

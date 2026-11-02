@@ -91,11 +91,19 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "anyOfClassRanges" -> "command" -> anyOfRanges,
     "memberCardinality" -> "twoIntegers" -> anyOfRanges,
     "nestedExpressions" -> "smallInteger" -> anyOfRanges,
+    "anyOf" -> "integer" -> anyOfRanges,
+    "anyOf" -> "boolean" -> anyOfRanges,
+    "anyOfEnums" -> "integer" -> anyOfRanges,
+    "anyOfTypeOrClass" -> "object" -> anyOfRanges,
+    "anyOfMultivalued" -> "mixed" -> anyOfRanges,
+    "anyOfInlinedList" -> "both" -> anyOfRanges,
     // Invalid instances with a string, which the default range accepts
     "anyOfNarrowing" -> "stringFromBase" -> anyOfRanges,
     "anyOfWidening" -> "stringNotInSlotUsage" -> anyOfRanges,
     "anyOfMixins" -> "stringNotInMixin" -> anyOfRanges,
     "anyOfChain" -> "stringNotInChild" -> anyOfRanges,
+    "anyOf" -> "string" -> anyOfRanges,
+    "anyOfEnums" -> "unknownValue" -> anyOfRanges,
   )
 
   /** Generated files of one model, by file name relative to the output directory. */
