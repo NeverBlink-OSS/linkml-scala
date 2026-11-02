@@ -36,7 +36,7 @@ import scala.util.Using
   *   - `*FromSchemaView` reuses a [[SchemaView]] parsed once in [[setup]].
   */
 class GeneratorBench extends CommonParams {
-  @Param(Array("cgmes-core.yml", "cgmes-dynamics.yml", "TC57CIM.yml"))
+  @Param(Array("cgmes-core.yml", "cgmes-dynamics.yml", "TC57CIM.yml", "fibo-quickstart.yml"))
   var schema: String = uninitialized
 
   private var yaml: String = uninitialized
