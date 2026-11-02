@@ -123,7 +123,8 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       val attribute = SlotDefinition(name = "slot1", description = Some(PlainText("Attribute")))
       val mixin = ClassDefinition(name = "mixin", mixin = true, attributes = Map(attribute.compact))
       val base = ClassDefinition(name = "base", mixins = Seq(mixin.reference))
-      val child = ClassDefinition(name = "child", isA = Some(base.reference), slots = Seq(slot.reference))
+      val child =
+        ClassDefinition(name = "child", isA = Some(base.reference), slots = Seq(slot.reference))
       val other = ClassDefinition(name = "other", slots = Seq(slot.reference))
 
       val sv = schemaView(Seq(slot), Seq(mixin, base, child, other))
@@ -132,6 +133,28 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       inChild.identifier shouldBe false
       inChild.description shouldBe Some(PlainText("Attribute"))
       sv.classes("other").derivedAttributes("slot1").slot.identifier shouldBe true
+    }
+
+    "share a slot between the classes that do not change it" in {
+      val slot = SlotDefinition(name = "slot1", description = Some(PlainText("Slot")))
+      val base = ClassDefinition(name = "base", slots = Seq(slot.reference))
+      val child = ClassDefinition(name = "child", isA = Some(base.reference))
+      val other = ClassDefinition(name = "other", slots = Seq(slot.reference))
+      val changed = ClassDefinition(
+        name = "changed",
+        isA = Some(base.reference),
+        slotUsage = Map(SlotDefinition(name = "slot1", required = true).compact),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(base, child, other, changed))
+
+      val inBase = sv.classes("base").derivedAttributes("slot1")
+      sv.classes("child").derivedAttributes("slot1") should be theSameInstanceAs inBase
+      sv.classes("other").derivedAttributes("slot1") should be theSameInstanceAs inBase
+      val inChanged = sv.classes("changed").derivedAttributes("slot1")
+      inChanged.slot.required shouldBe true
+      inChanged.slot.description shouldBe Some(PlainText("Slot"))
+      inBase.slot.required shouldBe false
     }
 
     "override is_a with mixins" in {
@@ -177,10 +200,12 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "apply slot_usage of all ancestors: the class first, then each mixin in order, then is_a" in {
-      def usage(note: String) = Map(SlotDefinition(name = "slot1", notes = Seq(PlainText(note))).compact)
+      def usage(note: String) =
+        Map(SlotDefinition(name = "slot1", notes = Seq(PlainText(note))).compact)
       val slot = SlotDefinition(name = "slot1", notes = Seq(PlainText("slot")))
       val grand = ClassDefinition(name = "grand", slotUsage = usage("grand"))
-      val base = ClassDefinition(name = "base", isA = Some(grand.reference), slots = Seq(slot.reference))
+      val base =
+        ClassDefinition(name = "base", isA = Some(grand.reference), slots = Seq(slot.reference))
       val mixin1 = ClassDefinition(name = "mixin1", mixin = true, slotUsage = usage("mixin1"))
       val mixin2 = ClassDefinition(name = "mixin2", mixin = true, slotUsage = usage("mixin2"))
       val child = ClassDefinition(
@@ -197,7 +222,8 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
     }
 
     "apply slot_usage of an ancestor once for each path that reaches it" in {
-      def usage(note: String) = Map(SlotDefinition(name = "slot1", notes = Seq(PlainText(note))).compact)
+      def usage(note: String) =
+        Map(SlotDefinition(name = "slot1", notes = Seq(PlainText(note))).compact)
       val slot = SlotDefinition(name = "slot1")
       val shared = ClassDefinition(name = "shared", mixin = true, slotUsage = usage("shared"))
       val base = ClassDefinition(
