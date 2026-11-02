@@ -46,6 +46,13 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
   ): Either[String, (Publication, Artifact)] =
     OntologyReference.resolve(input, format, search, inspect, preference).left.map(_.message)
 
+  private def resolvePublication(
+      input: String,
+      search: SearchRequest => SearchResult,
+      inspect: String => Publication,
+  ): Either[String, Publication] =
+    OntologyReference.resolvePublication(input, search, inspect).left.map(_.message)
+
   "ontology reference classification" should {
     "recognize HTTP(S) prefixes without treating a colon-bearing namespace as a URL" in {
       OntologyReference.isUrl("HTTP://example.org/file") shouldBe true
@@ -123,12 +130,55 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
         _ => metadata,
         fail("Explicit format must not read the project"),
       )
-      result.map(_._2.url.original) shouldBe Right("https://Files.example/advertised%2F.ttl")
+      result.map { (publication, artifact) =>
+        publication.baseUrl.original -> artifact.url.original
+      } shouldBe Right(
+        "https://Catalog.example/releases/exact?key=%2F" ->
+          "https://Files.example/advertised%2F.ttl",
+      )
     }
 
     "reject an unknown format before searching" in {
       resolve("w3c/prov-o", Some("owl-jsonld"), noSearch, noInspect) shouldBe
         Left("Invalid format 'owl-jsonld'.")
+    }
+
+    "inspect a publication without a LinkML artifact" in {
+      val result = resolvePublication(
+        "w3c/prov-o",
+        _ => page(Seq(hit), 1),
+        _ => metadata.copy(artifacts = Seq(metadata.artifacts.last)),
+      )
+      result.map(p => (p.baseUrl.original, p.version, p.artifacts.map(_.url.original))) shouldBe
+        Right(
+          (
+            "https://Catalog.example/releases/exact?key=%2F",
+            "1",
+            Seq("https://Files.example/advertised%2F.ttl"),
+          ),
+        )
+    }
+
+    "inspect all artifacts when multiple LinkML files are available" in {
+      val result = resolvePublication(
+        "w3c/prov-o",
+        _ => page(Seq(hit), 1),
+        _ =>
+          metadata.copy(artifacts =
+            Seq(
+              metadata.artifacts.head,
+              metadata.artifacts.head.copy(url = Uri("https://files.example/second.yaml")),
+            ),
+          ),
+      )
+      result.map(p => (p.baseUrl.original, p.version, p.artifacts.map(_.url.original))) shouldBe
+        Right(
+          (
+            "https://Catalog.example/releases/exact?key=%2F",
+            "1",
+            Seq("https://files.example/linkml.yaml", "https://files.example/second.yaml"),
+          ),
+        )
     }
 
     for (input, defect) <- Seq(
@@ -145,7 +195,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       )
     do
       s"reject $defect before searching" in {
-        resolve(input, Some("owl-turtle"), noSearch, noInspect) shouldBe
+        resolvePublication(input, noSearch, noInspect) shouldBe
           Left(
             s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
           )
@@ -159,9 +209,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       behavior in {
         val searches = ArrayBuffer.empty[SearchRequest]
         val inspections = ArrayBuffer.empty[String]
-        val result = resolve(
+        val result = resolvePublication(
           "w3c/prov-o",
-          Some("owl-turtle"),
           request => {
             searches += request
             page(Seq(hit, hit.copy(version = "9", publishedAt = LinkmlDateTime(timestamp))), 2)
@@ -181,8 +230,12 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
           ),
         )
         inspections.toSeq shouldBe Seq("https://Catalog.example/releases/exact?key=%2F")
-        result.map { (publication, artifact) =>
-          (publication.baseUrl.original, publication.version, artifact.url.original)
+        result.map { publication =>
+          (
+            publication.baseUrl.original,
+            publication.version,
+            publication.artifacts.last.url.original,
+          )
         } shouldBe Right(
           (
             "https://Catalog.example/releases/exact?key=%2F",
@@ -195,9 +248,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     "quote opaque components and select the exact namespace, name and explicit version" in {
       val exact = hit.copy(namespace = "https:team", name = "Model+%2F", version = "v:1")
       val searches = ArrayBuffer.empty[SearchRequest]
-      val result = resolve(
+      val result = resolvePublication(
         "https:team/Model+%2F@v:1",
-        Some("owl-turtle"),
         request => {
           searches += request
           page(
@@ -217,8 +269,13 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       )
       searches.map(_.filterBy).toSeq shouldBe
         Seq(Some("namespace:=`https:team` && name:=`Model+%2F` && version:=`v:1`"))
-      result.map { (publication, artifact) =>
-        (publication.namespace, publication.name, publication.version, artifact.url.original)
+      result.map { publication =>
+        (
+          publication.namespace,
+          publication.name,
+          publication.version,
+          publication.artifacts.last.url.original,
+        )
       } shouldBe Right(
         (
           "https:team",
@@ -231,9 +288,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
 
     "continue past a full page of near-matches to the next exact match" in {
       val pages = ArrayBuffer.empty[Option[Int]]
-      val result = resolve(
+      val result = resolvePublication(
         "w3c/prov-o",
-        Some("owl-turtle"),
         request => {
           pages += request.page
           request.page match {
@@ -248,15 +304,14 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
         },
       )
       pages.toSeq shouldBe Seq(Some(1), Some(2))
-      result.map { (publication, artifact) =>
-        (publication.version, artifact.url.original)
+      result.map { publication =>
+        (publication.version, publication.artifacts.last.url.original)
       } shouldBe Right(("1", "https://Files.example/advertised%2F.ttl"))
     }
 
     "report no release when search has no hits" in {
-      resolve(
+      resolvePublication(
         "w3c/prov-o",
-        Some("owl-turtle"),
         _ => page(Seq.empty, 0),
         noInspect,
       ) shouldBe Left(
@@ -266,9 +321,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
 
     "report exhaustion for a complete final page of near-matches" in {
       val pages = ArrayBuffer.empty[Option[Int]]
-      resolve(
+      resolvePublication(
         "w3c/prov-o",
-        Some("owl-turtle"),
         request => {
           pages += request.page
           request.page match {
@@ -285,9 +339,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     }
 
     "reject cutoff before inspecting an exact hit" in {
-      resolve(
+      resolvePublication(
         "w3c/prov-o",
-        Some("owl-turtle"),
         _ => page(Seq(hit), 1).copy(searchCutoff = true),
         noInspect,
       ) shouldBe Left(
@@ -296,9 +349,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     }
 
     "reject an empty unfinished page before inspecting" in {
-      resolve(
+      resolvePublication(
         "w3c/prov-o",
-        Some("owl-turtle"),
         _ => page(Seq.empty, 251),
         noInspect,
       ) shouldBe Left(
@@ -307,9 +359,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
     }
 
     "reject a nonempty short page before inspecting" in {
-      resolve(
+      resolvePublication(
         "w3c/prov-o",
-        Some("owl-turtle"),
         _ => page(nearMatches.take(1), 251),
         noInspect,
       ) shouldBe Left(
@@ -327,9 +378,8 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       )
     do
       s"reject an inspected $field that differs from the selected hit" in {
-        resolve(
+        resolvePublication(
           "w3c/prov-o",
-          Some("owl-turtle"),
           _ => page(Seq(hit), 1),
           url => {
             url shouldBe "https://Catalog.example/releases/exact?key=%2F"

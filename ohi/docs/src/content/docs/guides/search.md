@@ -29,11 +29,14 @@ ohi search '*' --per-page 5 --page 2
 
 ## Inspect a publication
 
-Copy the URL from a search result and pass it to `inspect`:
+Use the ontology name and version from a search result:
 
 ```sh
-ohi inspect https://api.ohi.dev/files/packages/w3c/dcat/3/
+ohi inspect w3c/dcat@3
 ```
+
+Omit `@3` to inspect the most recently published release. You can also pass the publication URL
+shown by `search`.
 
 Under **Files**, you'll find each artifact's filename, format and download URL. For example,
 `dcat3.owl.ttl` contains OWL in Turtle (`owl-turtle`). Under **Dependencies**, you'll see

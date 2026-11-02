@@ -70,9 +70,11 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
       output should include("ohi get w3c/prov-o --format owl-turtle")
     }
 
-    "retain a dash-prefixed inspect input as search text" in {
+    "explain the reference grammar for a dash-prefixed malformed inspect input" in {
       val output = rejected(Inspect, "inspect", "--", "-sensor")
-      output should include("ohi search -- -sensor")
+      output should include("Invalid ontology reference '-sensor'.")
+      output should include("Expected namespace/name[@version] without backticks.")
+      output should include("ohi inspect --help")
     }
 
     "explain the URL rule for an unsupported inspect scheme" in {

@@ -6,7 +6,7 @@ Search defaults to ohi.dev. To use another catalog, supply both its search endpo
 
 ## Publication metadata
 
-Inspection returns publication metadata. Check that its `base_url` equals the exact requested publication URL before choosing an artifact. Retrieve an advertised artifact to read its definitions. Check the artifact's format, origin, roots and reuse terms before selecting its URL. A format combines language and syntax, such as `owl-turtle`.
+`inspect` accepts a publication URL or an ohi.dev reference, `namespace/name[@version]`. Without `@version`, it selects the most recently published release. For URL input, check that the returned `base_url` equals it before choosing an artifact. Retrieve an advertised artifact to read its definitions. Check the artifact's format, origin, roots and reuse terms before selecting its URL. A format combines language and syntax, such as `owl-turtle`.
 
 Retrieval supplies a prepared published file. To convert local edits, use supported local engine tools. A conversion can omit constraints that its target format cannot express.
 

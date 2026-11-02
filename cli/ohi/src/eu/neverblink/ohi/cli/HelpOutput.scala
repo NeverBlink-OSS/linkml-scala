@@ -72,7 +72,7 @@ private[cli] object HelpOutput {
     }
     val usage = name match {
       case "search" => Seq("<query> [options]")
-      case "inspect" => Seq("<release-url> [options]")
+      case "inspect" => Seq("<namespace>/<name>[@version] [options]", "<release-url> [options]")
       case "get" =>
         Seq(
           "<namespace>/<name>[@version] [--format <format>] [options]",
@@ -91,8 +91,8 @@ private[cli] object HelpOutput {
       case "inspect" if full =>
         section(
           "Input",
-          "  A release URL is the metadata URL shown by search.\n" +
-            "  Copy that exact URL. Inspection does not download ontology files.",
+          "  References use ohi.dev. Without @version, selects the most recently published release.\n" +
+            "  A release URL is the metadata URL shown by search. No format is needed.",
           colored,
         )
       case "inspect" => "A release URL is the metadata URL shown by search."
@@ -117,7 +117,8 @@ private[cli] object HelpOutput {
     val examples = name match {
       case "search" =>
         Seq("ohi search \"provenance\"", "ohi search \"provenance\" --page 2 --per-page 10")
-      case "inspect" => Seq("ohi inspect https://hub.example/releases/prov-o/2013")
+      case "inspect" =>
+        Seq("ohi inspect w3c/prov-o@2013", "ohi inspect https://hub.example/releases/prov-o/2013")
       case "get" =>
         Seq(
           "ohi get w3c/prov-o --format owl-turtle",

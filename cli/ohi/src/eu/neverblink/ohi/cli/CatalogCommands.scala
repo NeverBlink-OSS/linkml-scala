@@ -201,31 +201,31 @@ object Search extends CatalogCommand[SearchOptions] {
 }
 
 @HelpMessage("Show a release's files and dependencies")
-@ArgsName("<release-url>")
+@ArgsName("<ontology-or-release-url>")
 final case class InspectOptions(
     @Recurse
     common: CatalogOptions,
 ) extends HasCatalogOptions
 
-object Inspect extends CatalogCommand[InspectOptions] {
+private[cli] class InspectCommand extends CatalogCommand[InspectOptions] {
   override protected def commandName: String = "inspect"
-  override protected def argumentName: String = "release URL"
+  override protected def argumentName: String = "ontology reference or release URL"
 
   override protected def execute(
       options: InspectOptions,
       input: String,
       client: CatalogClient,
   ): String = {
-    if !options.common.json && !OntologyReference.isUrl(input) && !input.contains("://") then
-      correction(
-        s"Inspect requires a release URL. Received '${CliFormatting.clean(input)}'.",
-        "Copy the URL shown by search:\n  " + example(
-          s"ohi search ${if input.startsWith("-") then "-- " else ""}${CliFormatting.quote(input)}",
-        ) + "\n\nThen run 'ohi inspect <release-url>'.",
-      )
-    CatalogOutput.publication(client.inspect(input), options.common.json, colored)
+    val publication = if OntologyReference.isUrl(input) || input.contains("://") then
+      client.inspect(input)
+    else
+      OntologyReference.resolvePublication(input, client.search, client.inspect)
+        .fold(problem => correction(problem.message), identity)
+    CatalogOutput.publication(publication, options.common.json, colored)
   }
 }
+
+object Inspect extends InspectCommand
 
 @HelpMessage(
   "Download an ontology file or all files in a lock\n" +
