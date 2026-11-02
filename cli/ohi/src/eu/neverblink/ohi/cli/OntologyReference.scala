@@ -44,104 +44,115 @@ private[cli] object OntologyReference {
             .map(Seq(_))
         case None => Right((preferredFormat.toSeq :+ Format.LinkmlYaml).distinct)
       }
-      selection <- input match {
-        case Reference(namespace, name, version) =>
-          val requestedVersion = Option(version)
-          val filter = (Seq("namespace" -> namespace, "name" -> name) ++
-            requestedVersion.map("version" -> _)).map { (field, value) =>
-            val quoted = if bareFilterValue.matches(value) then value else s"`$value`"
-            s"$field:=$quoted"
-          }.mkString(" && ")
-
-          @tailrec
-          def find(page: Int): Either[Problem, SearchHit] = {
-            val result = search(
-              SearchRequest(
-                q = "*",
-                page = Some(page),
-                perPage = Some(250),
-                filterBy = Some(filter),
-                sortBy = Some("published_at:desc"),
+      publication <- resolvePublication(input, search, inspect)
+      artifact <- {
+        val selectedFormat = preferences.find(value =>
+          publication.artifacts.exists(_.format == value),
+        ).getOrElse(preferences.head)
+        val label = stringify(selectedFormat)
+        publication.artifacts.filter(_.format == selectedFormat) match {
+          case Seq(artifact) => Right(artifact)
+          case Seq() =>
+            val unavailable = if preferences.size == 1 then s"Format '$label' is"
+            else
+              s"Formats ${preferences.map(value => s"'${stringify(value)}'").mkString(" or ")} are"
+            Left(
+              Problem.Unavailable(
+                s"$unavailable unavailable for ontology reference '$input': ${publication.baseUrl.original}",
+                publication,
               ),
             )
-            if result.searchCutoff then
-              Left(
-                Problem.Invalid(
-                  s"Search stopped early for ontology reference '$input'. Try the same command again.",
-                ),
-              )
-            else
-              result.hits.find(hit =>
-                hit.namespace == namespace && hit.name == name &&
-                  requestedVersion.forall(_ == hit.version),
-              ) match {
-                case Some(hit) => Right(hit)
-                case None =>
-                  val offset = (result.page.toLong - 1) * result.perPage.toLong
-                  val expected =
-                    math.min(result.perPage.toLong, math.max(0L, result.total.toLong - offset))
-                  if result.hits.size.toLong < expected then
-                    Left(
-                      Problem.Invalid(
-                        s"Incomplete search for ontology reference '$input' on page ${result.page}. Try the same command again.",
-                      ),
-                    )
-                  else if offset + result.perPage.toLong < result.total.toLong then
-                    find(result.page + 1)
-                  else
-                    Left(
-                      Problem.Invalid(
-                        s"No matching release for ontology reference '$input'. Check its namespace, name and version with 'ohi search'.",
-                      ),
-                    )
-              }
-          }
+          case files =>
+            Left(
+              Problem.Ambiguous(
+                s"$input has more than one file in $label format.",
+                publication,
+                files,
+              ),
+            )
+        }
+      }
+    } yield publication -> artifact
 
-          find(1).flatMap { hit =>
-            val publication = inspect(hit.baseUrl.original)
-            if publication.baseUrl.original != hit.baseUrl.original ||
-              publication.namespace != hit.namespace || publication.name != hit.name ||
-              publication.version != hit.version
-            then
-              Left(
-                Problem.Invalid(
-                  s"Release metadata does not match ontology reference '$input': ${publication.baseUrl.original}. Report the inconsistent metadata to the catalog operator.",
-                ),
-              )
-            else {
-              val selectedFormat = preferences.find(value =>
-                publication.artifacts.exists(_.format == value),
-              ).getOrElse(preferences.head)
-              val label = stringify(selectedFormat)
-              publication.artifacts.filter(_.format == selectedFormat) match {
-                case Seq(artifact) => Right(publication -> artifact)
-                case Seq() =>
-                  val unavailable = if preferences.size == 1 then s"Format '$label' is"
-                  else
-                    s"Formats ${preferences.map(value => s"'${stringify(value)}'").mkString(" or ")} are"
-                  Left(
-                    Problem.Unavailable(
-                      s"$unavailable unavailable for ontology reference '$input': ${hit.baseUrl.original}",
-                      publication,
-                    ),
-                  )
-                case files =>
-                  Left(
-                    Problem.Ambiguous(
-                      s"$input has more than one file in $label format.",
-                      publication,
-                      files,
-                    ),
-                  )
-              }
-            }
-          }
-        case _ =>
-          Left(
-            Problem.Invalid(
-              s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
+  /** Looks up namespace/name[@version] and inspects its advertised URL, checking publication
+    * identity without selecting an artifact. Catalog failures propagate to the caller.
+    */
+  def resolvePublication(
+      input: String,
+      search: SearchRequest => SearchResult,
+      inspect: String => Publication,
+  ): Either[Problem.Invalid, Publication] =
+    input match {
+      case Reference(namespace, name, version) =>
+        val requestedVersion = Option(version)
+        val filter = (Seq("namespace" -> namespace, "name" -> name) ++
+          requestedVersion.map("version" -> _)).map { (field, value) =>
+          val quoted = if bareFilterValue.matches(value) then value else s"`$value`"
+          s"$field:=$quoted"
+        }.mkString(" && ")
+
+        @tailrec
+        def find(page: Int): Either[Problem.Invalid, SearchHit] = {
+          val result = search(
+            SearchRequest(
+              q = "*",
+              page = Some(page),
+              perPage = Some(250),
+              filterBy = Some(filter),
+              sortBy = Some("published_at:desc"),
             ),
           )
-      }
-    } yield selection
+          if result.searchCutoff then
+            Left(
+              Problem.Invalid(
+                s"Search stopped early for ontology reference '$input'. Try the same command again.",
+              ),
+            )
+          else
+            result.hits.find(hit =>
+              hit.namespace == namespace && hit.name == name &&
+                requestedVersion.forall(_ == hit.version),
+            ) match {
+              case Some(hit) => Right(hit)
+              case None =>
+                val offset = (result.page.toLong - 1) * result.perPage.toLong
+                val expected =
+                  math.min(result.perPage.toLong, math.max(0L, result.total.toLong - offset))
+                if result.hits.size.toLong < expected then
+                  Left(
+                    Problem.Invalid(
+                      s"Incomplete search for ontology reference '$input' on page ${result.page}. Try the same command again.",
+                    ),
+                  )
+                else if offset + result.perPage.toLong < result.total.toLong then
+                  find(result.page + 1)
+                else
+                  Left(
+                    Problem.Invalid(
+                      s"No matching release for ontology reference '$input'. Check its namespace, name and version with 'ohi search'.",
+                    ),
+                  )
+            }
+        }
+
+        find(1).flatMap { hit =>
+          val publication = inspect(hit.baseUrl.original)
+          if publication.baseUrl.original != hit.baseUrl.original ||
+            publication.namespace != hit.namespace || publication.name != hit.name ||
+            publication.version != hit.version
+          then
+            Left(
+              Problem.Invalid(
+                s"Release metadata does not match ontology reference '$input': ${publication.baseUrl.original}. Report the inconsistent metadata to the catalog operator.",
+              ),
+            )
+          else Right(publication)
+        }
+      case _ =>
+        Left(
+          Problem.Invalid(
+            s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
+          ),
+        )
+    }
 }

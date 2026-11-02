@@ -104,12 +104,17 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   // Fork to test actual cwd lookup while overriding only the catalog endpoint.
-  private def runReference(cwd: os.Path, base: String, args: String*): (String, String, Int) = {
+  private def runReference(
+      cwd: os.Path,
+      base: String,
+      entryPoint: String,
+      args: String*,
+  ): (String, String, Int) = {
     val result = os.proc(
       os.Path(System.getProperty("java.home")) / "bin" / "java",
       "-cp",
       System.getProperty("java.class.path"),
-      "eu.neverblink.ohi.cli.ConfiguredGet",
+      s"eu.neverblink.ohi.cli.$entryPoint",
       base + "/search",
       args,
     ).call(cwd = cwd, check = false, stderr = os.Pipe, timeout = 10000)
@@ -138,6 +143,35 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       val pair = parameter.split("=", 2)
       URLDecoder.decode(pair(0), UTF_8) -> URLDecoder.decode(pair(1), UTF_8)
     }.toMap
+
+  private def inspectionPublication(base: String): ujson.Value = {
+    val metadata = json(publication)
+    metadata("base_url") = base + "/publication"
+    val files = metadata("artifacts").arr
+    files(0)("url") = base + "/first.ttl"
+    files += ujson.copy(files(0))
+    files(1)("url") = base + "/second.ttl"
+    metadata
+  }
+
+  private def withInspection(check: (String, ConcurrentLinkedQueue[String]) => Unit): Unit =
+    withServerResponses { base =>
+      val selectedHits = hits.replace("https://example.org/z?revision=2", base + "/publication")
+      val search = s"""{"hits":$selectedHits,"found":2,"page":1,
+        "request_params":{"per_page":250},"search_cutoff":false}"""
+      val metadata = inspectionPublication(base).toString
+      request =>
+        new URI(request).getPath match {
+          case "/search" => 200 -> search.getBytes(UTF_8)
+          case "/publication" => 200 -> metadata.getBytes(UTF_8)
+          case _ => 404 -> Array.emptyByteArray
+        }
+    }(check)
+
+  private def inspectReference(base: String, args: String*): (String, String, Int) = {
+    val command = ConfiguredInspect.command(base + "/search")
+    command.runTestCommandWithExitCode(args.toList, args => command.main("ohi inspect", args))
+  }
 
   private def withDirectory(check: os.Path => Unit): Unit = {
     val directory = os.temp.dir(prefix = "ohi lock download ")
@@ -341,6 +375,73 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   }
 
   "catalog inspection" should {
+    for jsonOutput <- Seq(false, true) do
+      s"resolve a versioned reference and show every file with JSON output $jsonOutput" in {
+        withInspection { (base, requests) =>
+          val options = if jsonOutput then Seq("--json") else Seq.empty
+          val (out, err, code) = inspectReference(base, (Seq("example/z@2.0") ++ options)*)
+          code shouldBe 0
+          err shouldBe empty
+          if jsonOutput then json(out) shouldBe inspectionPublication(base)
+          else
+            Seq(
+              "Ontology: example/z",
+              "Version: 2.0",
+              base + "/publication",
+              base + "/first.ttl",
+              base + "/second.ttl",
+              "https://example.org/dependency/",
+            ).foreach(out should include(_))
+          val recorded = requests.asScala.toSeq
+          recorded.map(value => new URI(value).getPath) shouldBe Seq("/search", "/publication")
+          query(recorded.head)("filter_by") shouldBe
+            "namespace:=example && name:=z && version:=2.0"
+        }
+      }
+
+    "report a missing reference as text even when JSON is requested" in {
+      withServer("""{"hits":[],"found":0,"page":1,
+        "request_params":{"per_page":250},"search_cutoff":false}""") { (base, requests) =>
+        val (out, err, code) = inspectReference(base, "example/missing", "--json")
+        code shouldBe 1
+        out shouldBe empty
+        err should startWith("Error: No matching release for ontology reference 'example/missing'.")
+        err should include("ohi inspect --help")
+        requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq("/search")
+      }
+    }
+
+    "reject a malformed reference before making a request" in {
+      withServer(publication) { (base, requests) =>
+        val (out, err, code) = inspectReference(base, "example/z@", "--json")
+        code shouldBe 1
+        out shouldBe empty
+        err should include("Invalid ontology reference 'example/z@'.")
+        requests shouldBe empty
+      }
+    }
+
+    "inspect a reference without reading or changing project records in the working directory" in {
+      withDirectory { directory =>
+        val declaration = "not a valid declaration: ["
+        val lock = "sentinel lock bytes"
+        os.write(directory / "ohi.yaml", declaration)
+        os.write(directory / "ohi.lock.json", lock)
+        withInspection { (base, requests) =>
+          val (out, err, code) =
+            runReference(directory, base, "ConfiguredInspect", "example/z", "--json")
+          code shouldBe 0
+          err shouldBe empty
+          json(out) shouldBe inspectionPublication(base)
+          os.read(directory / "ohi.yaml") shouldBe declaration
+          os.read(directory / "ohi.lock.json") shouldBe lock
+          os.list(directory).map(_.last).toSet shouldBe Set("ohi.yaml", "ohi.lock.json")
+          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe
+            Seq("/search", "/publication")
+        }
+      }
+    }
+
     "GET the exact publication URL and serialize every declared field with ordered nested records" in {
       withServer(publication) { (url, requests) =>
         val (out, err, code) = runProcess("inspect", url + "/publication?revision=2", "--json")
@@ -413,25 +514,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       s"offer actual file choices for $name without writes or selecting one implicitly" in {
         withDirectory { directory =>
           val destination = directory / "files here"
-          withServerResponses { base =>
-            val selectedHits =
-              hits.replace("https://example.org/z?revision=2", base + "/publication")
-            val search = s"""{"hits":$selectedHits,"found":2,"page":1,
-              "request_params":{"per_page":250},"search_cutoff":false}"""
-            val metadata = json(
-              publication.replace(
-                "https://example.org/publications/z?revision=2",
-                base + "/publication",
-              ),
-            )
-            val files = metadata("artifacts").arr
-            files(0)("url") = base + "/first.ttl"
-            files += ujson.copy(files(0))
-            files(1)("url") = base + "/second.ttl"
-            (request: String) =>
-              if new URI(request).getPath == "/search" then 200 -> search.getBytes(UTF_8)
-              else 200 -> metadata.toString.getBytes(UTF_8)
-          } { (base, requests) =>
+          withInspection { (base, requests) =>
             val config =
               CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
             val command = if name == "get" then
@@ -497,6 +580,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           val (out, err, code) = runReference(
             directory,
             base,
+            "ConfiguredGet",
             "example/z@2.0",
             "--to",
             directory.toString,
@@ -558,6 +642,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
             val (out, err, code) = runReference(
               directory,
               base,
+              "ConfiguredGet",
               (Seq("example/z", "--to", destination.toString, "--json") ++ format)*,
             )
             code shouldBe 0
@@ -583,6 +668,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           val (out, err, code) = runReference(
             directory,
             base,
+            "ConfiguredGet",
             "example/z",
             "--to",
             destination.toString,
@@ -1042,4 +1128,15 @@ private[cli] object ConfiguredGet {
     }
     command.main("ohi get", args.drop(1))
   }
+}
+
+// The child process retains production inspect routing with a local test catalog endpoint.
+private[cli] object ConfiguredInspect {
+  def command(searchUrl: String): InspectCommand = new InspectCommand {
+    override protected def config(options: InspectOptions): CatalogConfig =
+      super.config(options).copy(searchUrl = Some(Uri(searchUrl)), queryBy = Some("name"))
+  }
+
+  def main(args: Array[String]): Unit =
+    command(args.head).main("ohi inspect", args.drop(1))
 }

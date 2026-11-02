@@ -15,7 +15,7 @@ Use a CLI from the same checkout or release as this skill. Check `ohi <command> 
 | Task | Operation |
 | --- | --- |
 | Find publications from search terms | `ohi search` defaults to ohi.dev when both search settings are omitted. Supply both `--search-url` and `--query-by` to use another catalog |
-| Examine a known publication | `ohi inspect` with its exact `base_url` |
+| Examine a publication | `ohi inspect namespace/name[@version]` or `ohi inspect <base-url>` |
 | Download an ontology without project tracking | `ohi get namespace/name[@version] [--format <format>]` or `ohi get <file-url>`. Use `--to` to change the current-directory destination |
 | Download the files in a lock | [`ohi get --lock <file> --to <directory>`](references/cli.md#download-a-lock) |
 | Create an empty project declaration | `ohi init` with the intended project directory |
@@ -24,9 +24,9 @@ Use a CLI from the same checkout or release as this skill. Check `ohi <command> 
 
 Read the relevant section of [CLI behavior and recovery](references/cli.md) when interpreting search results, checking downloads or changing project records. Use only the operations the task needs. A supplied publication or artifact URL can skip search. Catalog commands require no project and leave project records unchanged.
 
-Without `--format`, ontology references use the common format in `ohi.yaml`, then fall back to
-`linkml-yaml`. See [format selection](references/cli.md#retrieve-a-selected-file) for project locations
-and failure behavior. Supply `--format` when the task requires a particular format.
+For ontology references, `get` and `add` use the common format in `ohi.yaml` when `--format` is omitted,
+then fall back to `linkml-yaml`. See [format selection](references/cli.md#retrieve-a-selected-file) for
+project locations and failure behavior. Supply `--format` when the task requires a particular format.
 
 ## Preserve references and state
 

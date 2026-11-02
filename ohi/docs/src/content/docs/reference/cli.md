@@ -26,11 +26,12 @@ Run `ohi --help` for the command overview, or `ohi <command> --help` for a comma
 
 ## Ontology references and formats
 
-`get` and `add` accept `namespace/name[@version]` from ohi.dev, such as
+`inspect`, `get` and `add` accept `namespace/name[@version]` from ohi.dev, such as
 `w3c/prov-o@2013`. Without `@version`, they select the most recently published release.
 
-Without `--format`, ohi prefers the format shared by all selections in `ohi.yaml`, falling back
-to `linkml-yaml`. `get` reads `ohi.yaml` in the current directory. `add` uses its `--project` directory.
+Without `--format`, `get` and `add` prefer the format shared by all selections in `ohi.yaml`,
+falling back to `linkml-yaml`. `get` reads `ohi.yaml` in the current directory. `add` uses its
+`--project` directory.
 
 Use `--format` to require one of these values:
 
@@ -72,11 +73,15 @@ the results or counts may be incomplete.
 
 ## inspect
 
-`ohi inspect <release-url> [options]`
+```text
+ohi inspect <namespace/name[@version]> [options]
+ohi inspect <release-url> [options]
+```
 
-Shows a publication's metadata, files, formats and dependency URLs. Use the URL shown by `search`.
+Shows a publication's metadata, all files, formats and dependency URLs.
 
 ```sh
+ohi inspect w3c/prov-o@2013
 ohi inspect https://api.ohi.dev/files/packages/w3c/prov-o/2013/
 ```
 

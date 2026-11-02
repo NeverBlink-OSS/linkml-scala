@@ -227,7 +227,7 @@ class AppSpec extends AnyWordSpec, Matchers {
 
     for (name, command, usage, options) <- Seq(
         ("search", Search, "<query>", Seq("--page", "--per-page", "--color", "--query-by")),
-        ("inspect", Inspect, "<release-url>", Seq("--timeout-ms", "--json")),
+        ("inspect", Inspect, "<namespace>/<name>[@version]", Seq("--timeout-ms", "--json")),
         ("get", Get, "<file-url>", Seq("--format", "--to", "--lock")),
         ("init", Init, "[directory]", Seq("--json")),
         ("add", Add, "<release-url>", Seq("--format", "--artifact", "--to", "--project")),
@@ -240,6 +240,7 @@ class AppSpec extends AnyWordSpec, Matchers {
         err shouldBe empty
         out should startWith(s"ohi $name\n")
         out should include(s"ohi $name $usage")
+        if name == "inspect" then out should include("ohi inspect <release-url>")
         options.foreach(option => out should include(s"  $option"))
         out should include("  -h, --help\n    Show complete help")
         out should include("https://ohi.dev/docs/")

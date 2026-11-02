@@ -44,9 +44,10 @@ These commands require no ohi project and do not read or write `ohi.yaml` or a l
 
 Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, check its `format`, then pass that entry's `url` to `get`.
 
-Download from ohi.dev using the namespace and name shown by `search`:
+Inspect or download from ohi.dev using the namespace and name shown by `search`:
 
 ```sh
+ohi inspect namespace/name@version
 ohi get namespace/name
 ohi get namespace/name@version --format owl-turtle --to ./ontologies
 ```
@@ -66,7 +67,8 @@ Search uses color in a terminal. Use `--color=never` to disable it.
 To select another catalog, supply both `--search-url` and `--query-by`. Omitting both uses ohi.dev.
 Supplying only one fails.
 
-`inspect` retrieves the exact publication URL supplied. It reports publication metadata, artifacts and dependency publication URLs.
+`inspect` accepts an ontology reference or an exact publication URL. It reports publication metadata,
+all artifacts and dependency publication URLs, without requiring a format.
 
 `get` saves the file under its URL filename in the current directory. Use `--to` to choose another
 directory, which is created if needed. Existing files are not overwritten. Move the existing file or choose another directory
