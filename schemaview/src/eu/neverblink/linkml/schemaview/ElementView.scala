@@ -177,28 +177,25 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   /** Derived attribute views for this class. Generators should prefer using these bundles if
     * possible.
     */
-  lazy val attributeViews: Map[String, AttributeView] = {
-    derivedAttributes.map((k, slot) =>
-      (
-        k,
-        slot.derivedRange.resolve.get match {
-          case classView: ClassView =>
-            if classView.isAny then new AnyView(slot, this)
-            else if !slot.derivedInlined then
-              new ClassReferenceAttributeView(
-                slot,
-                this,
-                classView,
-                classView.identifierView.get,
-              )
-            else new ClassInlineAttributeView(slot, this, classView, InlineType(slot))
-          case tv: TypeView => new TypeAttributeView(slot, this, tv)
-          case ev: EnumView => new EnumAttributeView(slot, this, ev)
-          case x => throw RuntimeException(s"Invalid range: ${cls.name}.${slot.name} -> ${x.name}")
-        },
-      ),
-    )
-  }
+  lazy val attributeViews: Map[String, AttributeView] =
+    derivedAttributes.map((k, slot) => (k, attributeViewOf(slot)))
+
+  private[schemaview] def attributeViewOf(slot: SlotView): AttributeView =
+    slot.derivedRange.resolve.get match {
+      case classView: ClassView =>
+        if classView.isAny then new AnyView(slot, this)
+        else if !slot.derivedInlined then
+          new ClassReferenceAttributeView(
+            slot,
+            this,
+            classView,
+            classView.identifierView.get,
+          )
+        else new ClassInlineAttributeView(slot, this, classView, InlineType(slot))
+      case tv: TypeView => new TypeAttributeView(slot, this, tv)
+      case ev: EnumView => new EnumAttributeView(slot, this, ev)
+      case x => throw RuntimeException(s"Invalid range: ${cls.name}.${slot.name} -> ${x.name}")
+    }
 
   /** Values of the [[attributeViews]] map, with the common sorting.
     */

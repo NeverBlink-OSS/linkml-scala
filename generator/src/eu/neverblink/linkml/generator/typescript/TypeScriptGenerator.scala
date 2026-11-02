@@ -78,6 +78,16 @@ final class TypeScriptGenerator(using sv: SchemaView)
 
   /** TS type of an attribute, without the `| null` added for optional slots. */
   private def attributeType(attribute: AttributeView, owner: ClassView, ctx: Context): String = {
+    val alternatives = attribute.rangeAlternatives
+    if alternatives.isEmpty then rangeType(attribute, owner, ctx)
+    else
+      arrayOfIf(
+        attribute.slotView.slot.multivalued,
+        alternatives.map(rangeType(_, owner, ctx)).distinct.mkString(" | "),
+      )
+  }
+
+  private def rangeType(attribute: AttributeView, owner: ClassView, ctx: Context): String = {
     val multivalued = attribute.slotView.slot.multivalued
     attribute match {
       case _: AnyView => arrayOfIf(multivalued, "unknown")
@@ -102,6 +112,14 @@ final class TypeScriptGenerator(using sv: SchemaView)
     val tpe = attributeType(attribute, owner, ctx)
     if ctx.options.includeNull && !attribute.slotView.slot.required then tpe.concat(" | null")
     else tpe
+  }
+
+  private def referenceDoc(attribute: AttributeView): Option[String] = {
+    val alternatives = attribute.rangeAlternatives
+    val classes = (if alternatives.isEmpty then Seq(attribute) else alternatives).collect {
+      case ref: ClassReferenceAttributeView => className(ref.classView)
+    }
+    Option.when(classes.nonEmpty)(classes.mkString("Reference to ", " or ", ""))
   }
 
   private def writeDoc(sink: CharSink, lines: Seq[String], indent: String): Unit =
@@ -134,10 +152,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
     cls.sortedAttributeViews.foreach { attribute =>
       val slot = attribute.slotView
       val default = defaultValue(attribute)
-      val doc = DocLines(slot.slot) ++ (attribute match {
-        case ref: ClassReferenceAttributeView => Seq(s"Reference to ${className(ref.classView)}")
-        case _ => Nil
-      }) ++ default.map("@defaultValue ".concat)
+      val doc =
+        DocLines(slot.slot) ++ referenceDoc(attribute) ++ default.map("@defaultValue ".concat)
       writeDoc(sink, doc, "  ")
       sink.append("  ")
       sink.append(propertyKey(slotName(slot)))

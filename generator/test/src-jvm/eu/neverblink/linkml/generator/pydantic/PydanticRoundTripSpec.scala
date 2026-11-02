@@ -36,45 +36,22 @@ class PydanticRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     )(python)
   }
 
-  override val skipModels: Map[String, String] = Map(
-    "unionRange" -> "Not yet implemented: LNK-100",
-  )
-
-  private val defaultRangeWithAnyOf =
-    "BUG: The default range `string` is added next to the ranges of `any_of` members"
-
   override val skipInstances: Map[(String, String), String] = Map(
-    "anyOfNarrowing" -> "integer" -> defaultRangeWithAnyOf,
-    "anyOfNarrowing" -> "boolean" -> defaultRangeWithAnyOf,
-    "anyOfNarrowing" -> "stringFromBase" -> defaultRangeWithAnyOf,
-    "nestedExpressions" -> "smallInteger" -> defaultRangeWithAnyOf,
-    "memberCardinality" -> "twoIntegers" -> defaultRangeWithAnyOf,
     "memberCardinality" -> "twoStrings" -> "Not yet implemented: cardinality in `any_of` members",
+    "memberCardinality" -> "integerAndString" ->
+      "Not yet implemented: cardinality in `any_of` members",
+    "memberCardinality" -> "oneInteger" -> "Not yet implemented: cardinality in `any_of` members",
+    "nestedExpressions" -> "largeInteger" -> "Not yet implemented: `none_of` in `any_of` members",
     "allOf" -> "matchesFirstOnly" -> "Not yet implemented: `all_of`",
     "exactlyOneOf" -> "matchesBoth" -> "Not yet implemented: `exactly_one_of`",
     "exactlyOneOf" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
     "noneOf" -> "matchesMember" -> "Not yet implemented: `none_of`",
-    "anyOfWidening" -> "integer" -> defaultRangeWithAnyOf,
-    "anyOfWidening" -> "stringNotInSlotUsage" -> defaultRangeWithAnyOf,
-    "anyOfMixins" -> "integer" -> defaultRangeWithAnyOf,
-    "anyOfMixins" -> "stringNotInMixin" -> defaultRangeWithAnyOf,
     "allOfInheritance" -> "failsBase" -> "Not yet implemented: `all_of`",
     "allOfInheritance" -> "failsSlotUsage" -> "Not yet implemented: `all_of`",
     "exactlyOneOfInheritance" -> "matchesBothInBase" -> "Not yet implemented: `exactly_one_of`",
     "exactlyOneOfInheritance" -> "matchesNone" -> "Not yet implemented: `exactly_one_of`",
     "noneOfInheritance" -> "matchesBase" -> "Not yet implemented: `none_of`",
     "noneOfInheritance" -> "matchesSlotUsage" -> "Not yet implemented: `none_of`",
-    "anyOfChain" -> "integer" -> defaultRangeWithAnyOf,
-    "anyOfChain" -> "stringNotInChild" -> defaultRangeWithAnyOf,
-    "anyOfClassRanges" -> "command" -> defaultRangeWithAnyOf,
-    "anyOf" -> "integer" -> defaultRangeWithAnyOf,
-    "anyOf" -> "boolean" -> defaultRangeWithAnyOf,
-    "anyOf" -> "string" -> defaultRangeWithAnyOf,
-    "anyOfEnums" -> "integer" -> defaultRangeWithAnyOf,
-    "anyOfEnums" -> "unknownValue" -> defaultRangeWithAnyOf,
-    "anyOfTypeOrClass" -> "object" -> defaultRangeWithAnyOf,
-    "anyOfMultivalued" -> "mixed" -> defaultRangeWithAnyOf,
-    "anyOfInlinedList" -> "both" -> defaultRangeWithAnyOf,
     "allOfMixins" -> "failsBase" -> "Not yet implemented: `all_of`",
     "allOfMixins" -> "failsMixin" -> "Not yet implemented: `all_of`",
     "noneOfMixins" -> "matchesBase" -> "Not yet implemented: `none_of`",

@@ -28,14 +28,8 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
 
   val inCi: Boolean = Option(System.getenv("CI")).exists(_.nonEmpty)
 
-  override val skipModels: Map[String, String] = Map(
-    "unionRange" -> "Not yet implemented: LNK-100",
-  )
-
   private val bounds = "TypeScript types cannot express minimum_value/maximum_value"
   private val pattern = "TypeScript types cannot express patterns"
-  private val anyOfRanges =
-    "Not yet implemented: the ranges of `any_of` members, the default range `string` is used instead"
   private val memberCardinality = "TypeScript types cannot express cardinality in `any_of` members"
 
   /** Invalid instances whose problem the types cannot catch, and valid ones they reject. */
@@ -82,28 +76,10 @@ class TypeScriptCompileSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     "allOfNoneOfChain" -> "failsChildNoneOf" -> bounds,
     "allOfNoneOfChain" -> "failsGrandchildNoneOf" -> bounds,
     "memberCardinality" -> "twoStrings" -> memberCardinality,
-    // Valid instances
-    "anyOfNarrowing" -> "integer" -> anyOfRanges,
-    "anyOfNarrowing" -> "boolean" -> anyOfRanges,
-    "anyOfWidening" -> "integer" -> anyOfRanges,
-    "anyOfMixins" -> "integer" -> anyOfRanges,
-    "anyOfChain" -> "integer" -> anyOfRanges,
-    "anyOfClassRanges" -> "command" -> anyOfRanges,
-    "memberCardinality" -> "twoIntegers" -> anyOfRanges,
-    "nestedExpressions" -> "smallInteger" -> anyOfRanges,
-    "anyOf" -> "integer" -> anyOfRanges,
-    "anyOf" -> "boolean" -> anyOfRanges,
-    "anyOfEnums" -> "integer" -> anyOfRanges,
-    "anyOfTypeOrClass" -> "object" -> anyOfRanges,
-    "anyOfMultivalued" -> "mixed" -> anyOfRanges,
-    "anyOfInlinedList" -> "both" -> anyOfRanges,
-    // Invalid instances with a string, which the default range accepts
-    "anyOfNarrowing" -> "stringFromBase" -> anyOfRanges,
-    "anyOfWidening" -> "stringNotInSlotUsage" -> anyOfRanges,
-    "anyOfMixins" -> "stringNotInMixin" -> anyOfRanges,
-    "anyOfChain" -> "stringNotInChild" -> anyOfRanges,
-    "anyOf" -> "string" -> anyOfRanges,
-    "anyOfEnums" -> "unknownValue" -> anyOfRanges,
+    "memberCardinality" -> "integerAndString" -> memberCardinality,
+    "memberCardinality" -> "oneInteger" -> memberCardinality,
+    "nestedExpressions" -> "largeInteger" -> bounds,
+    "unionRange" -> "float" -> "TypeScript types cannot tell integers from other numbers",
   )
 
   /** Generated files of one model, by file name relative to the output directory. */
