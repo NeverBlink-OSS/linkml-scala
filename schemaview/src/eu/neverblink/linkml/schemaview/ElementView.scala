@@ -8,6 +8,7 @@ import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Element views provide a rich interface for working with schema elements. They require an
@@ -330,6 +331,34 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     slots.toList
   }
 
+  /** The `slot_usage` and `attributes` entries of this class and its ancestors, keyed by slot name,
+    * in the order they are merged into a slot:
+    *   - this class: its `slot_usage`, then its `attributes`
+    *   - then each class in [[parents]] (mixins in order, then `is_a`), with its own entries
+    *
+    * An ancestor reached by more than one path is listed once for each path.
+    *
+    * A class without entries of its own and with at most one parent shares the map of that parent.
+    *
+    * @see
+    *   `ApplySlotUsage` from
+    *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
+    */
+  private lazy val slotChanges: collection.Map[String, collection.Seq[SlotDefinition]] = {
+    val ps = parents
+    if (cls.slotUsage.isEmpty && cls.attributes.isEmpty && ps.lengthCompare(1) <= 0) {
+      if (ps.isEmpty) Map.empty else ps.head.slotChanges
+    } else {
+      val changes = mutable.HashMap.empty[String, mutable.ArrayBuffer[SlotDefinition]]
+      def changesOf(name: String): mutable.ArrayBuffer[SlotDefinition] =
+        changes.getOrElseUpdate(name, new mutable.ArrayBuffer[SlotDefinition](2))
+      cls.slotUsage.foreach((name, s) => changesOf(name).addOne(s))
+      cls.attributes.foreach((name, s) => changesOf(name).addOne(s))
+      ps.foreach(p => p.slotChanges.foreach((name, slots) => changesOf(name).addAll(slots)))
+      changes
+    }
+  }
+
   /** Test whether the class or its ancestors have this slot defined as an attribute.
     *
     * This is needed so that attribute names can shadow top-level slot definitions.
@@ -370,7 +399,9 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   ): SlotView = {
     // Use empty slot base here to avoid an extra allocation
     var currentSlot = ClassView.emptySlotDef
-    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls)
+    slotChanges.get(slotRef.value).foreachFast { changes =>
+      changes.foreach(s => currentSlot = currentSlot.combineWith(s, sv.combineRange))
+    }
     sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]).foreachFast { (resolved: SlotView) =>
       // Note this is a bit off-spec, but it's a pretty reasonable
       if (!isSlotFromAttributes(slotRef)) {

@@ -160,6 +160,54 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       result.description shouldBe Some(PlainText("Mixin description"))
     }
 
+    "apply slot_usage of all ancestors: the class first, then each mixin in order, then is_a" in {
+      def usage(note: String) = Map(SlotDefinition(name = "slot1", notes = Seq(PlainText(note))).compact)
+      val slot = SlotDefinition(name = "slot1", notes = Seq(PlainText("slot")))
+      val grand = ClassDefinition(name = "grand", slotUsage = usage("grand"))
+      val base = ClassDefinition(name = "base", isA = Some(grand.reference), slots = Seq(slot.reference))
+      val mixin1 = ClassDefinition(name = "mixin1", mixin = true, slotUsage = usage("mixin1"))
+      val mixin2 = ClassDefinition(name = "mixin2", mixin = true, slotUsage = usage("mixin2"))
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        mixins = Seq(mixin1.reference, mixin2.reference),
+        slotUsage = usage("child"),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(grand, base, mixin1, mixin2, child))
+
+      sv.classes("child").derivedAttributes("slot1").slot.notes shouldBe
+        Seq("child", "mixin1", "mixin2", "grand", "slot").map(PlainText(_))
+    }
+
+    "apply slot_usage of an ancestor once for each path that reaches it" in {
+      def usage(note: String) = Map(SlotDefinition(name = "slot1", notes = Seq(PlainText(note))).compact)
+      val slot = SlotDefinition(name = "slot1")
+      val shared = ClassDefinition(name = "shared", mixin = true, slotUsage = usage("shared"))
+      val base = ClassDefinition(
+        name = "base",
+        mixins = Seq(shared.reference),
+        slots = Seq(slot.reference),
+        slotUsage = usage("base"),
+      )
+      val mixin = ClassDefinition(
+        name = "mixin",
+        mixin = true,
+        mixins = Seq(shared.reference),
+        slotUsage = usage("mixin"),
+      )
+      val child = ClassDefinition(
+        name = "child",
+        isA = Some(base.reference),
+        mixins = Seq(mixin.reference),
+      )
+
+      val sv = schemaView(Seq(slot), Seq(shared, base, mixin, child))
+
+      sv.classes("child").derivedAttributes("slot1").slot.notes shouldBe
+        Seq("mixin", "shared", "base", "shared").map(PlainText(_))
+    }
+
     "override attributes with slot_usage" in {
       val base = ClassDefinition(
         name = "base",
