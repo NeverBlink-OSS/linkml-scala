@@ -1799,8 +1799,9 @@ const $ohiStatus = $("ohiStatus");
 const $ohiResults = $("ohiResults");
 const $ohiError = $("ohiError");
 
-/** How many hits one search shows. There is no paging: past this, a narrower query is the answer. */
-const OHI_PAGE = 25;
+/** How many hits one search fetches. They are then grouped by version, so the actual number of cards
+ * will be much smaller. There is no paging: past this, a narrower query is the answer. */
+const OHI_PAGE = 100;
 const LINKML_OHI: OhiChoice[] = [{ format: "linkml-yaml", label: "LinkML", name: "LinkML" }];
 
 let ohiClientPromise: Promise<CatalogClient> | null = null;
@@ -1920,21 +1921,51 @@ function showOhiError(message: string): void {
 function renderOhiResults(): void {
   if (!ohiResult) return;
   const { query, hits, total } = ohiResult;
-  const what = query ? (total === 1 ? "match" : "matches") : total === 1 ? "ontology" : "ontologies";
+  const groups = groupHits(hits);
+  const count = groups.length;
+  const what = query ? (count === 1 ? "match" : "matches") : count === 1 ? "ontology" : "ontologies";
   $ohiStatus.textContent =
     total === 0 ? `Nothing on ohi.dev matches “${query}”.`
-    : hits.length < total ? `Showing ${hits.length} of ${total} ${what}.${query ? "" : " Type to search."}`
-    : `${total} ${what}.`;
+    : hits.length < total ? `Showing the first ${count} ${what}. Type to narrow it down.`
+    : `${count} ${what}.`;
   const choice = ohiChoice();
-  $ohiResults.replaceChildren(...hits.map((hit) => ohiHitItem(hit, choice)));
+  $ohiResults.replaceChildren(...groups.map((group) => ohiGroupItem(group, choice)));
 }
+
+/** The releases of one ontology among the hits, latest first. */
+interface OhiGroup {
+  key: string;
+  versions: SearchHit[];
+}
+
+/** One group per `namespace/name`, in the order the search ranked them. "Latest" is the highest
+ * version label rather than the last one published: older releases can be indexed later. */
+function groupHits(hits: SearchHit[]): OhiGroup[] {
+  const groups = new Map<string, SearchHit[]>();
+  for (const hit of hits) {
+    const key = `${hit.namespace}/${hit.name}`;
+    const versions = groups.get(key);
+    if (versions) versions.push(hit);
+    else groups.set(key, [hit]);
+  }
+  return [...groups].map(([key, versions]) => ({
+    key,
+    versions: versions.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true })),
+  }));
+}
+
+/** The version picked on each ontology's dropdown, by `namespace/name`. Absent means the latest. */
+const ohiVersionPicked: Record<string, string> = {};
 
 const EXTERNAL_LINK_ICON =
   '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
   'stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/>' +
   '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>';
 
-function ohiHitItem(hit: SearchHit, choice: OhiChoice): HTMLLIElement {
+function ohiGroupItem(group: OhiGroup, choice: OhiChoice): HTMLLIElement {
+  // The card is described by the latest release, and loads the one picked on the dropdown.
+  const latest = group.versions[0]!;
+  const hit = group.versions.find((v) => v.version === ohiVersionPicked[group.key]) ?? latest;
   const has = hit.formats.includes(choice.format);
   const btn = document.createElement("button");
   btn.type = "button";
@@ -1945,9 +1976,9 @@ function ohiHitItem(hit: SearchHit, choice: OhiChoice): HTMLLIElement {
     el.textContent = text;
     btn.append(el);
   };
-  line("ohi-hit-title", hit.title);
-  line("ohi-hit-meta", `${hit.namespace}/${hit.name} · ${hit.version}`);
-  if (hit.description) line("ohi-hit-desc", hit.description);
+  line("ohi-hit-title", latest.title);
+  line("ohi-hit-meta", group.versions.length > 1 ? group.key : `${group.key} · ${latest.version}`);
+  if (latest.description) line("ohi-hit-desc", latest.description);
   if (has) {
     btn.addEventListener("click", () => void pickOhi(hit, choice, btn));
   } else {
@@ -1955,20 +1986,38 @@ function ohiHitItem(hit: SearchHit, choice: OhiChoice): HTMLLIElement {
     // is greyed out can still be reached and read out.
     btn.setAttribute("aria-disabled", "true");
     btn.classList.add("ohi-hit--missing");
-    line("ohi-hit-note", `No ${choice.name} file on ohi.dev.`);
+    line("ohi-hit-note", `No ${choice.name} file on ohi.dev for ${hit.version}.`);
   }
-  // Beside the button rather than in it: a link inside a button is not valid HTML.
+  const li = document.createElement("li");
+  li.className = "ohi-item";
+  li.append(btn);
+  // Beside the button rather than in it: a select or a link inside a button is not valid HTML.
+  if (group.versions.length > 1) {
+    li.classList.add("ohi-item--versions");
+    const select = document.createElement("select");
+    select.className = "ohi-version";
+    select.setAttribute("aria-label", `Version of ${latest.title}`);
+    select.append(
+      ...group.versions.map((v, i) => new Option(i === 0 ? `${v.version} (latest)` : v.version, v.version)),
+    );
+    select.value = hit.version;
+    select.addEventListener("change", () => {
+      ohiVersionPicked[group.key] = select.value;
+      const next = ohiGroupItem(group, choice);
+      li.replaceWith(next);
+      next.querySelector<HTMLSelectElement>(".ohi-version")!.focus();
+    });
+    li.append(select);
+  }
   const view = document.createElement("a");
   view.className = "ohi-view icon-btn";
-  view.href = `https://ohi.dev/${encodeURIComponent(hit.namespace)}/${encodeURIComponent(hit.name)}`;
+  view.href = `https://ohi.dev/${encodeURIComponent(latest.namespace)}/${encodeURIComponent(latest.name)}`;
   view.target = "_blank";
   view.rel = "noopener";
   view.title = "View on ohi.dev";
-  view.setAttribute("aria-label", `View ${hit.title} on ohi.dev (opens in a new tab)`);
+  view.setAttribute("aria-label", `View ${latest.title} on ohi.dev (opens in a new tab)`);
   view.innerHTML = EXTERNAL_LINK_ICON;
-  const li = document.createElement("li");
-  li.className = "ohi-item";
-  li.append(btn, view);
+  li.append(view);
   return li;
 }
 
