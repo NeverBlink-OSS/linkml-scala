@@ -33,11 +33,17 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
 
   def append(s: String): Unit =
     if (inRow) {
+      val len = s.length
+      var n = backslashes
       var i = 0
-      while (i < s.length) {
-        append(s.charAt(i))
+      while (i < len) {
+        val c = s.charAt(i)
+        if (c == '|' && (n & 1) == 0) sink.append('\\')
+        n = if (c == '\\') n + 1 else 0
+        sink.append(c)
         i += 1
       }
+      backslashes = n
     } else sink.append(s)
 
   // Blocks
@@ -216,26 +222,34 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     */
   def text(value: String): Unit = {
     val len = value.length
+    // The backslashes in a row at the end of what is written, as [[append]] counts them
+    var n = backslashes
     var i = 0
     while (i < len) {
       val c = value.charAt(i)
       c match {
         case '\\' | '`' | '*' | '[' | ']' | '<' | '>' | '{' | '}' | '#' | '~' | '&' =>
-          append('\\')
-          append(c)
+          sink.append('\\')
+          sink.append(c)
+          n = if (c == '\\') n + 2 else 0
         case '_' =>
           val inWord = i > 0 && i < len - 1 &&
             Character.isLetterOrDigit(value.charAt(i - 1)) &&
             Character.isLetterOrDigit(value.charAt(i + 1))
-          if (!inWord) append('\\')
-          append(c)
+          if (!inWord) sink.append('\\')
+          sink.append(c)
+          n = 0
         case '\n' | '\r' =>
-          append(' ')
+          sink.append(' ')
+          n = 0
         case _ =>
-          append(c)
+          if (c == '|' && inRow && (n & 1) == 0) sink.append('\\')
+          sink.append(c)
+          n = 0
       }
       i += 1
     }
+    backslashes = n
   }
 
   /** Markdown text from the schema, such as a description, written on one line, as a table cell or
@@ -256,6 +270,8 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     var started = false
     var space = false
     var newlines = 0
+    // The backslashes in a row at the end of what is written, as [[append]] counts them
+    var n = backslashes
     var i = 0
     while (i < text.length && (allParagraphs || newlines < 2)) {
       val c = text.charAt(i)
@@ -266,14 +282,20 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
         // A line of spaces between two line breaks still ends the paragraph.
         space = started
       } else {
-        if (space) append(if (newlines >= 2) "<br><br>" else " ")
-        append(c)
+        if (space) {
+          sink.append(if (newlines >= 2) "<br><br>" else " ")
+          n = 0
+        }
+        if (c == '|' && inRow && (n & 1) == 0) sink.append('\\')
+        n = if (c == '\\') n + 1 else 0
+        sink.append(c)
         started = true
         space = false
         newlines = 0
       }
       i += 1
     }
+    backslashes = n
   }
 
   /** [[text]] as an inline code span, on one line. */
@@ -284,32 +306,44 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     // A space between the fence and a backtick at either end keeps them apart.
     val pad = text.startsWith("`") || text.endsWith("`")
     backticks(longest + 1)
-    if (pad) append(' ')
+    if (pad) sink.append(' ')
+    // The backslashes in a row at the end of what is written, as [[append]] counts them
+    var n = 0
     var i = 0
     while (i < text.length) {
       val c = text.charAt(i)
       // Markdown ends a line at `\n`, `\r` or `\r\n`, so each of them becomes one space.
       if (c == '\r') {
         if (i + 1 < text.length && text.charAt(i + 1) == '\n') i += 1
-        append(' ')
-      } else append(if (c == '\n') ' ' else c)
+        sink.append(' ')
+        n = 0
+      } else if (c == '\n') {
+        sink.append(' ')
+        n = 0
+      } else {
+        if (c == '|' && inRow && (n & 1) == 0) sink.append('\\')
+        n = if (c == '\\') n + 1 else 0
+        sink.append(c)
+      }
       i += 1
     }
-    if (pad) append(' ')
+    if (pad) sink.append(' ')
     backticks(longest + 1)
   }
 
   /** [[n]] in decimal digits. */
-  def number(n: Int): Unit =
+  def number(n: Int): Unit = {
     if (n < 0) {
-      append('-')
+      sink.append('-')
       // Through Long, as -Int.MinValue does not fit in an Int.
       digits(-n.toLong)
     } else digits(n.toLong)
+    backslashes = 0
+  }
 
   private def digits(n: Long): Unit = {
     if (n >= 10) digits(n / 10)
-    append(('0' + (n % 10)).toChar)
+    sink.append(('0' + (n % 10)).toChar)
   }
 
   /** The length of the longest run of backticks in [[text]]. */
@@ -327,12 +361,14 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     longest
   }
 
+  /** Write [[count]] backticks. */
   private def backticks(count: Int): Unit = {
     var i = count
     while (i > 0) {
-      append('`')
+      sink.append('`')
       i -= 1
     }
+    backslashes = 0
   }
 }
 

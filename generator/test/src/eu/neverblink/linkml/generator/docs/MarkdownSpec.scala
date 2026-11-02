@@ -134,10 +134,13 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
       inCell(_.append("a|b")) shouldBe "a\\|b"
       inCell(_.code("x|y")) shouldBe "`x\\|y`"
       inCell(_.oneLine("x | y")) shouldBe "x \\| y"
+      inCell(_.text("a|b")) shouldBe "a\\|b"
     }
 
     "not escape a pipe twice" in {
       inCell(_.append("a\\|b")) shouldBe "a\\|b"
+      inCell(_.oneLine("a\\|b")) shouldBe "a\\|b"
+      inCell(_.code("a\\|b")) shouldBe "`a\\|b`"
     }
 
     "count the backslashes before a pipe across writes" in {
