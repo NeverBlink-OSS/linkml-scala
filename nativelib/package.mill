@@ -177,7 +177,10 @@ object `package` extends Module, NativeOptional {
     /** Scala Native's linker, as a standalone tool. */
     def linkerClasspath = Task {
       defaultResolver().classpath(
-        Seq(mvn"org.scala-native::scala-native-cli:${Version.scalaNative}"),
+        Seq(
+          mvn"org.scala-native::scala-native-cli:${Version.scalaNativeCli}",
+          mvn"org.scala-native::tools:${Version.scalaNative}",
+        ),
       )
     }
 
