@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.docs
 import eu.neverblink.linkml.generator.options.{
   DocsGeneratorOptions,
   ErDiagramGeneratorOptions,
+  PydanticGeneratorOptions,
   PruningMode,
 }
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
@@ -560,6 +561,39 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
       // All the names are the same, so there is nothing more to show.
       pages("enums/gender.md") should include("# Enum: Gender\n\n- **URI:**")
+    }
+
+    "know every name of a Python module that a field can't take" in {
+      ModelCatalogue.all.foreach { entry =>
+        val possible = DocsGenerator.possiblePythonNames(entry.model)
+        Seq(PruningMode.TreeRoot, PruningMode.Schema, PruningMode.Skip).foreach { mode =>
+          withClue(s"${entry.name}, $mode: ") {
+            PydanticGenerator(using entry.model)
+              .moduleNames(PydanticGeneratorOptions(pruningMode = mode))
+              .diff(possible) shouldBe empty
+          }
+        }
+      }
+    }
+
+    "keep the Python name of a field that has the name of a pruned class" in {
+      val sv = schemaOf(
+        """classes:
+          |  Container:
+          |    tree_root: true
+          |    slots: [Unused]
+          |  Unused: {}
+          |slots:
+          |  Unused: {}
+          |""".stripMargin,
+      )
+      val page =
+        files(sv, DocsGeneratorOptions(pruningMode = PruningMode.TreeRoot))("slots/unused.md")
+      page should include("- **Names in code:** ")
+      page should not include "Unused_"
+      val pruned =
+        files(sv, DocsGeneratorOptions(pruningMode = PruningMode.Skip))("slots/unused.md")
+      pruned should include("`Unused_` (Python)")
     }
 
     "show only the names that the code generators give" in {

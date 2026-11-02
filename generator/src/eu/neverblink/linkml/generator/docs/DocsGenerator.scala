@@ -731,7 +731,7 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         codeTargets.map { t =>
           // Python fields are named after the slot's name in data, made a valid identifier.
           if (t.renamer eq PydanticRenamer)
-            (t.language, PydanticRenamer.attribute(s.aliasedName, pythonNames))
+            (t.language, PydanticRenamer.attribute(s.aliasedName, isPythonName))
           else (t.language, t.renamer.slotName(s))
         }
       case fv: FunctionView => codeTargets.map(t => (t.language, t.renamer.functionName(fv)))
@@ -745,6 +745,14 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       PydanticGenerator().moduleNames(
         PydanticGeneratorOptions(pruningMode = options.pruningMode, treeRoot = options.treeRoot),
       )
+
+    private lazy val possiblePythonNames: Set[String] = DocsGenerator.possiblePythonNames(sv)
+
+    /** Whether a Python field can't take [[name]]. [[possiblePythonNames]] is checked first, as it
+      * needs no reachability pass, and most field names are not in it.
+      */
+    private def isPythonName(name: String): Boolean =
+      possiblePythonNames(name) && pythonNames(name)
 
     /** List items for the metadata that every element can have. */
     private def metadataItems(md: Markdown, el: ElementView[?, ?]): Unit = {
@@ -904,6 +912,23 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 }
 
 object DocsGenerator {
+
+  /** All names that the Python generator can give its classes, class unions, document types,
+    * errors, enums and functions `Protocol` for [[sv]], whatever is pruned.
+    */
+  private[docs] def possiblePythonNames(sv: SchemaView): Set[String] = {
+    val names = Set.newBuilder[String]
+    sv.classes.values.foreach { cv =>
+      val name = PydanticRenamer.className(cv)
+      names.addOne(name)
+      names.addOne("Any".concat(name))
+      names.addOne(name.concat("Document"))
+      names.addOne(PydanticRenamer.errorName(cv))
+    }
+    sv.enums.values.foreach(ev => names.addOne(PydanticRenamer.enumName(ev)))
+    names.addOne(PydanticRenamer.functionsProtocolName(sv))
+    names.result()
+  }
 
   /** A code generator whose names element pages show.
     *
