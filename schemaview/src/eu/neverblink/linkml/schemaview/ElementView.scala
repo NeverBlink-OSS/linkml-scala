@@ -369,10 +369,24 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   True if the slot comes from class attributes, false otherwise
     */
   def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean =
-    ancestorsWithSelf.exists {
-      val name = slotRef.value
-      anc => anc.cls.attributes.contains(name)
+    attributeNames.contains(slotRef.value)
+
+  /** The names of the `attributes` of this class and its ancestors.
+    *
+    * A class without attributes of its own and with at most one parent shares the set of that
+    * parent.
+    */
+  private lazy val attributeNames: collection.Set[String] = {
+    val ps = parents
+    if (cls.attributes.isEmpty && ps.lengthCompare(1) <= 0) {
+      if (ps.isEmpty) Set.empty else ps.head.attributeNames
+    } else {
+      val names = mutable.HashSet.empty[String]
+      names.addAll(cls.attributes.keysIterator)
+      ps.foreach(p => names.addAll(p.attributeNames))
+      names
     }
+  }
 
   /** Derive a slot for a class, taking into account the `slotUsage` and `attributes` for the class
     * and its ancestors, as well as the schema top-level slots and its ancestors.

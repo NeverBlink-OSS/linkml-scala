@@ -118,6 +118,22 @@ class SlotDerivationSpec extends AnyWordSpec, Matchers {
       result.description shouldBe Some(PlainText("Attribute description"))
     }
 
+    "ignore schema-level slots if an ancestor has the slot as an attribute" in {
+      val slot = SlotDefinition(name = "slot1", identifier = true)
+      val attribute = SlotDefinition(name = "slot1", description = Some(PlainText("Attribute")))
+      val mixin = ClassDefinition(name = "mixin", mixin = true, attributes = Map(attribute.compact))
+      val base = ClassDefinition(name = "base", mixins = Seq(mixin.reference))
+      val child = ClassDefinition(name = "child", isA = Some(base.reference), slots = Seq(slot.reference))
+      val other = ClassDefinition(name = "other", slots = Seq(slot.reference))
+
+      val sv = schemaView(Seq(slot), Seq(mixin, base, child, other))
+
+      val inChild = sv.classes("child").derivedAttributes("slot1").slot
+      inChild.identifier shouldBe false
+      inChild.description shouldBe Some(PlainText("Attribute"))
+      sv.classes("other").derivedAttributes("slot1").slot.identifier shouldBe true
+    }
+
     "override is_a with mixins" in {
       val base = ClassDefinition(
         name = "base",
