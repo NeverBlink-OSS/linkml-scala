@@ -65,19 +65,29 @@ final class DocsSite private[docs] (pruning: Pruning, singleFile: Boolean)(using
     )
   }
 
+  /** The rows of the slot table of each documented class, keyed by the class name. */
+  private val slotRows = mutable.HashMap.empty[String, Seq[SlotRow]]
+
   classes.foreach { cv =>
     cv.cls.isA.foreachFast(parent => add(children, parent.value, cv))
     cv.cls.mixins.foreach(mixin => add(mixinUsers, mixin.value, cv))
+    val declarers = declarersOf(cv)
+    val rows = Vector.newBuilder[SlotRow]
     cv.sortedAttributeViews.foreach { av =>
       val name = av.slotView.name
       val topLevel = isTopLevelSlot(cv, name)
       if (topLevel) usedSlots.add(name)
-      if (declares(cv, name)) {
+      val declarer = declarers.getOrElse(name, null)
+      if ((declarer eq cv) || cv.cls.slotUsage.contains(name)) {
         val usage = Usage(cv, av)
         if (topLevel) add(slotUsages, name, usage)
         addRangeUsage(av.slotView, usage)
       }
+      rows.addOne(
+        SlotRow(av, topLevel, if ((declarer eq null) || (declarer eq cv)) None else Some(declarer)),
+      )
     }
+    slotRows.update(cv.name, rows.result())
   }
 
   /** The documented top-level slots: all of them if nothing is pruned, otherwise the ones that a
@@ -105,6 +115,9 @@ final class DocsSite private[docs] (pruning: Pruning, singleFile: Boolean)(using
 
   /** The page about the top-level slot named [[name]], if it is documented. */
   private[docs] def slotPage(name: String): Option[Page] = slotPages.get(name)
+
+  /** The rows of the slot table of [[cv]], a documented class, in the common order. */
+  def slotRowsOf(cv: ClassView): Seq[SlotRow] = slotRows.getOrElse(cv.name, Nil)
 
   /** Write the link from the page [[from]] to [[to]]. `None` stands for the index page. */
   private[docs] def appendHref(out: CharSink, from: Option[Page], to: Page): Unit =
@@ -150,26 +163,23 @@ final class DocsSite private[docs] (pruning: Pruning, singleFile: Boolean)(using
   def functionUsagesOf(el: ElementView[?, ?]): Seq[FunctionUsage] =
     functionUsages.get(el.name).foldFast(Nil)(_.toList)
 
-  /** The nearest ancestor of [[cv]] that declares the slot [[name]], or `None` if [[cv]] declares
-    * it itself.
+  /** For each slot that [[cv]] or its ancestors list in `slots` or `attributes`, the first class in
+    * [[ClassView.ancestorsWithSelf]] that lists it.
     */
-  def inheritedFrom(cv: ClassView, name: String): Option[ClassView] =
-    if (declaresInSlots(cv, name)) None
-    else cv.ancestorsWithSelf.find(anc => (anc ne cv) && declaresInSlots(anc, name))
+  private def declarersOf(cv: ClassView): mutable.HashMap[String, ClassView] = {
+    val declarers = mutable.HashMap.empty[String, ClassView]
+    cv.ancestorsWithSelf.foreach { anc =>
+      anc.cls.attributes.keysIterator.foreach(name => declarers.getOrElseUpdate(name, anc))
+      anc.cls.slots.foreach(ref => declarers.getOrElseUpdate(ref.value, anc))
+    }
+    declarers
+  }
 
   /** Whether the slot [[name]] of [[cv]] is a top-level slot, rather than an attribute. */
   private[docs] def isTopLevelSlot(cv: ClassView, name: String): Boolean =
     sv.slotDefinitions.contains(name) && !cv.isSlotFromAttributes(
       new Reference[SlotDefinition](name),
     )
-
-  /** Whether [[cv]] lists the slot [[name]] in its `slots` or `attributes`. */
-  private def declaresInSlots(cv: ClassView, name: String): Boolean =
-    cv.cls.attributes.contains(name) || cv.cls.slots.exists(_.value == name)
-
-  /** Whether [[cv]] declares the slot [[name]], or changes it with `slot_usage`. */
-  private def declares(cv: ClassView, name: String): Boolean =
-    declaresInSlots(cv, name) || cv.cls.slotUsage.contains(name)
 
   /** Record [[usage]] for the range of [[slot]], and for each range in its `any_of`,
     * `exactly_one_of` and `all_of`.
@@ -266,6 +276,22 @@ object DocsSite {
       out.append(kind.anchorPrefix)
       out.append(stem)
     }
+
+  /** A row of the slot table of a class.
+    *
+    * @param attribute
+    *   The slot as it is in the class
+    * @param topLevel
+    *   Whether it is a top-level slot, rather than an attribute
+    * @param inheritedFrom
+    *   The nearest ancestor that lists the slot in its `slots` or `attributes`, or `None` if the
+    *   class lists it itself
+    */
+  final case class SlotRow(
+      attribute: AttributeView,
+      topLevel: Boolean,
+      inheritedFrom: Option[ClassView],
+  )
 
   /** A class that declares a slot or changes it with `slot_usage`.
     *

@@ -178,6 +178,35 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       page should include("| id (identifier) | [string](../types/string.md) | 1 |  |  |\n")
     }
 
+    "show the slot as each class has it, after the slot_usage of the class" in {
+      val sv = schemaOf(
+        """classes:
+          |  Base:
+          |    slots: [size]
+          |  Child:
+          |    is_a: Base
+          |  Strict:
+          |    is_a: Base
+          |    slot_usage:
+          |      size:
+          |        required: true
+          |        description: The size, which must be given
+          |slots:
+          |  size:
+          |    description: The size
+          |""".stripMargin,
+      )
+      val pages = files(sv)
+      val inherited =
+        "| [size](../slots/size.md) | [string](../types/string.md) | 0..1 | The size |"
+      pages("classes/base.md") should include(inherited + "  |\n")
+      pages("classes/child.md") should include(inherited + " [Base](base.md) |\n")
+      pages("classes/strict.md") should include(
+        "| [size](../slots/size.md) | [string](../types/string.md) | 1 | " +
+          "The size, which must be given | [Base](base.md) |\n",
+      )
+    }
+
     "keep an attribute unlinked in subclasses when a top-level slot has its name" in {
       val sv = schemaOf(
         """classes:
