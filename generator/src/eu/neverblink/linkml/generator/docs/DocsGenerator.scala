@@ -43,7 +43,7 @@ import scala.collection.mutable
   */
 class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGeneratorOptions] {
   import DocsGenerator.*
-  import DocsSite.Page
+  import DocsSite.{Page, SlotRow}
 
   override protected def defaultOptions: DocsGeneratorOptions = DocsGeneratorOptions()
 
@@ -274,23 +274,15 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
 
       inheritance(md, cv, children, from)
 
-      val attributes = cv.sortedAttributeViews
-      if (attributes.nonEmpty) {
+      val rows = site.slotRowsOf(cv)
+      if (rows.nonEmpty) {
         md.heading(2, "Slots")
         md.tableHeader("Name", "Range", "Cardinality", "Description", "Inherited from")
-        attributes.foreach { av =>
-          val slot = av.slotView.slot
+        rows.foreach { row =>
           md.startRow()
-          slotName(md, cv, av, from)
-          md.append(slotMarker(slot))
+          slotCells(md, row, from)
           md.nextCell()
-          range(md, av, from)
-          md.nextCell()
-          cardinality(md, slot)
-          md.nextCell()
-          summary(md, slot)
-          md.nextCell()
-          site.inheritedFrom(cv, slot.name).foreachFast(anc => link(md, anc, from))
+          row.inheritedFrom.foreachFast(anc => link(md, anc, from))
           md.endRow()
         }
         md.endList()
@@ -852,6 +844,21 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
       group("all of ", slot.allOf, ", ")
     }
 
+    /** The Name, Range, Cardinality and Description cells of [[row]] on a class page. */
+    private def slotCells(md: Markdown, row: SlotRow, from: Option[Page]): Unit = {
+      val av = row.attribute
+      val slot = av.slotView.slot
+      val page = if (row.topLevel) site.slotPage(slot.name) else None
+      slotNameIn(md, av, page, from)
+      md.append(slotMarker(slot))
+      md.nextCell()
+      range(md, av, from)
+      md.nextCell()
+      cardinality(md, slot)
+      md.nextCell()
+      summary(md, slot)
+    }
+
     /** The name of a slot of [[cv]], linked to the slot's page if it is a documented top-level
       * slot, and its name in data if it has an `alias`.
       */
@@ -861,9 +868,22 @@ class DocsGenerator(using sv: SchemaView) extends CharDocumentGenerator[DocsGene
         av: AttributeView,
         from: Option[Page],
     ): Unit = {
+      val name = av.slotView.name
+      val page = if (site.isTopLevelSlot(cv, name)) site.slotPage(name) else None
+      slotNameIn(md, av, page, from)
+    }
+
+    /** The name of the slot [[av]], linked to [[page]] if it is given, and its name in data if it
+      * has an `alias`.
+      */
+    private def slotNameIn(
+        md: Markdown,
+        av: AttributeView,
+        page: Option[Page],
+        from: Option[Page],
+    ): Unit = {
       val slot = av.slotView
       val name = slot.name
-      val page = if (site.isTopLevelSlot(cv, name)) site.slotPage(name) else None
       page.foldFast(md.text(name))(p => pageLink(md, name, from, p))
       if (slot.aliasedName != name) {
         md.append(" (")
