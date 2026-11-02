@@ -36,6 +36,7 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
       written(_.text("{x}")) shouldBe "\\{x\\}"
       written(_.text("`c`")) shouldBe "\\`c\\`"
       written(_.text("a\\b")) shouldBe "a\\\\b"
+      written(_.text("a&b#c~d")) shouldBe "a\\&b\\#c\\~d"
     }
 
     "escape an underscore only where it can start or end emphasis" in {
@@ -46,6 +47,7 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
 
     "keep a name on one line" in {
       written(_.text("a\nb")) shouldBe "a b"
+      written(_.text("a\rb")) shouldBe "a b"
     }
   }
 
@@ -61,6 +63,15 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
 
     "leave out the whitespace at either end" in {
       written(_.oneLine("  \n Text. \n")) shouldBe "Text."
+    }
+
+    "write a text on one line as it is" in {
+      written(_.oneLine("A plain description.")) shouldBe "A plain description."
+    }
+
+    "join a run of spaces or tabs into one space" in {
+      written(_.oneLine("a  b")) shouldBe "a b"
+      written(_.oneLine("a  b\tc \t d")) shouldBe "a b c d"
     }
 
     "keep Markdown in the text" in {
@@ -127,6 +138,22 @@ class MarkdownSpec extends AnyWordSpec, Matchers {
 
     "not escape a pipe twice" in {
       inCell(_.append("a\\|b")) shouldBe "a\\|b"
+    }
+
+    "count the backslashes before a pipe across writes" in {
+      inCell { md =>
+        md.append("a\\")
+        md.append("|b")
+      } shouldBe "a\\|b"
+      inCell { md =>
+        md.append("a\\\\")
+        md.append("|b")
+      } shouldBe "a\\\\\\|b"
+      inCell { md =>
+        md.append("\\")
+        md.append("x")
+        md.append("|")
+      } shouldBe "\\x\\|"
     }
 
     "escape a pipe that follows an escaped backslash" in {
