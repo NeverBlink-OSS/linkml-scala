@@ -35,6 +35,7 @@ target/
 # Node.js
 node_modules/
 ui/public/dist/
+ui/dist/
 # Docs site: copied from ui/public/ by website/astro.config.mjs
 /website/public/favicon.svg
 /website/public/fonts/

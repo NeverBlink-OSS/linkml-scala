@@ -297,6 +297,25 @@ body { background: var(--bg); }
   width: 28px;
   height: 28px;
 }
+/* Left of the View on ohi.dev link, and like it at full strength on a greyed-out card: another
+   version may have the format this one lacks. */
+.ohi-item--versions .ohi-hit { padding-right: 150px; }
+.ohi-version {
+  position: absolute;
+  top: 7px;
+  right: 38px;
+  max-width: 108px;
+  font-family: var(--code-font);
+  font-size: 11.5px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+.ohi-version:focus { border-color: var(--accent); }
 .ohi-view:focus-visible { background: var(--accent-soft); color: var(--text); }
 .ohi-view .ic { width: 15px; height: 15px; }
 .ohi-hit-title { font-size: 13px; font-weight: 600; }
