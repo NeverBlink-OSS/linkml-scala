@@ -8,6 +8,7 @@ import {
   type TargetResult,
 } from "./targets.js";
 import type { LinkMLApi, LoadResult } from "./linkml";
+import { renderMarkdown } from "./markdown.js";
 
 const LINKML_BUNDLE_URL = "./linkml.js";
 
@@ -49,6 +50,10 @@ export type ConvertResponse =
        * which has no schema to parse. */
       loadMs: number | null;
       genMs: number;
+      /** For a `page`, the HTML for the Markdown in `result` (see markdown.ts), and the time spent
+       * making it. */
+      html?: string;
+      htmlMs?: number;
       /** Set when the schema failed to load at all, so the report is a failure rather than a result. */
       fatal?: true;
     }
@@ -136,6 +141,13 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
       : typeof result === "object"
       ? "files"
       : "text";
+    if (kind === "page") {
+      const t2 = performance.now();
+      const html = renderMarkdown(result as string);
+      const htmlMs = Math.round(performance.now() - t2);
+      reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs, html, htmlMs });
+      return;
+    }
     reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs });
   } catch (err) {
     reply({ id, ok: false, error: err instanceof Error ? err.toString() : String(err) });

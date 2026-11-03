@@ -1,64 +1,53 @@
-// Turns Markdown into HTML for the playground's page view. Bundled into dist/markdown by build.mjs
-// and imported by app.ts on first use only, like Mermaid.
-import DOMPurify from "dompurify";
-import { Marked } from "marked";
+// Turns the Markdown of the Docs target into HTML for the playground's page view. It runs in the
+// generation worker (see worker.ts), so the page only has to check and show the HTML.
+import { Marked, type Renderer, type Tokens } from "marked";
 
 // GitHub-flavoured Markdown, so tables and fenced code read as they do on GitHub.
-const marked = new Marked({ gfm: true });
-
-// Every link that doesn't go to a section of the page opens in a new tab, so the playground keeps
-// the schema being edited. This includes relative links in descriptions, such as `spec.md`, which
-// would otherwise replace the playground. Links to sections start with `#`, and app.ts scrolls to
-// them.
-DOMPurify.addHook("afterSanitizeAttributes", (node) => {
-  const href = node.tagName === "A" ? node.getAttribute("href") : null;
-  if (href !== null && !href.startsWith("#")) {
-    node.setAttribute("target", "_blank");
-    node.setAttribute("rel", "noopener");
-  }
+const marked = new Marked({
+  gfm: true,
+  renderer: {
+    // The same HTML as marked's own table, except for the first cell of each row of the body.
+    table(token) {
+      let header = "";
+      for (const cell of token.header) header += this.tablecell(cell);
+      let body = "";
+      for (const row of token.rows) {
+        let cells = "";
+        for (const cell of row) cells += cells === "" ? nameCell(this, cell) : this.tablecell(cell);
+        body += this.tablerow({ text: cells });
+      }
+      if (body !== "") body = `<tbody>${body}</tbody>`;
+      return `<table>\n<thead>\n${this.tablerow({ text: header })}</thead>\n${body}</table>\n`;
+    },
+  },
 });
 
-/** The page for `markdown`, with anything that could run code removed.
+/** The HTML for `markdown`.
  *
- * Schema descriptions are copied into the documentation as they are, and Markdown allows raw HTML.
- * A shared playground link can carry any schema, so a description could hold a `<script>` or an
- * `onerror` attribute. DOMPurify keeps only plain markup, as GitHub does.
- *
- * DOMPurify returns the nodes it has checked, rather than turning them back into HTML, which the
- * page would then have to parse a second time.
- *
- * The content of each first-column cell, which is usually an element name, is put in a
- * `<span class="md-name">` with `<wbr>` between its words (see `.md-name` in styles.css). */
-export function renderMarkdown(markdown: string): DocumentFragment {
-  const html = marked.parse(markdown, { async: false });
-  const page = DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
-  for (const cell of page.querySelectorAll("td:first-child")) {
-    addWordBreaks(cell);
-    const name = document.createElement("span");
-    name.className = "md-name";
-    name.append(...cell.childNodes);
-    cell.append(name);
-  }
-  return page;
+ * The content of the first cell of each table row, which is usually an element name, is put in a
+ * `<span class="md-name">`, with `<wbr>` between its words (see `.md-name` in styles.css). */
+export function renderMarkdown(markdown: string): string {
+  return marked.parse(markdown, { async: false });
+}
+
+/** The HTML for `cell`, the first cell of a table row. */
+function nameCell(renderer: Renderer, cell: Tokens.TableCell): string {
+  const name = addWordBreaks(renderer.parser.parseInline(cell.tokens));
+  const td = cell.align ? `<td align="${cell.align}">` : "<td>";
+  return `${td}<span class="md-name">${name}</span></td>\n`;
 }
 
 // Where a name can go onto the next line: before a capital letter that follows a small letter or
 // a digit, as in `RegisteredShare`, and after `_`, as in `share_class`.
-const WORD_START = /(?<=[a-z0-9])(?=[A-Z])|(?<=_)(?=.)/;
+const WORD_START = /(?<=[a-z0-9])(?=[A-Z])|(?<=_)(?=.)/g;
 
-/** Adds a `<wbr>` between the words of each name in `cell`, where the browser can start a new line. */
-function addWordBreaks(cell: Element): void {
-  const texts: Text[] = [];
-  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node as Text);
-  for (const text of texts) {
-    const words = text.data.split(WORD_START);
-    if (words.length < 2) continue;
-    const parts: Node[] = [];
-    for (const word of words) {
-      if (parts.length > 0) parts.push(document.createElement("wbr"));
-      parts.push(document.createTextNode(word));
-    }
-    text.replaceWith(...parts);
-  }
+// A tag or a character reference, such as `&amp;`, which must stay as it is.
+const MARKUP = /(<[^>]*>|&[#0-9A-Za-z]+;)/;
+
+/** `html` with a `<wbr>` between the words of its text, where the browser can start a new line. */
+export function addWordBreaks(html: string): string {
+  const parts = html.split(MARKUP);
+  // `split` puts the text at the even indexes, and the markup between them at the odd ones.
+  for (let i = 0; i < parts.length; i += 2) parts[i] = parts[i]!.replace(WORD_START, "<wbr>");
+  return parts.join("");
 }
