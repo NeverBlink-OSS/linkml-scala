@@ -547,50 +547,55 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
     val classInfo = getClassInfo(tpe)
     val fields = classInfo.fields
 
-    // The results of the fields from `fields` on, added to `acc`, the results of the fields before
-    // them. Each result is bound to a value, so a field is validated once, and its path is added only
-    // to a result with a problem.
-    def genValidateFields(
-        fields: List[FieldInfo],
-        acc: Expr[ValidatorResult],
-        vc: Expr[ValidatorContext],
-    )(using Quotes): Expr[ValidatorResult] = fields match {
-      case Nil => acc
-      case fieldInfo :: rest =>
-        val fTpe = fieldInfo.resolvedTpe
-        val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
-        val path = Expr(fieldInfo.mappedName + "/")
-        fTpe.asType match {
-          case '[ft] =>
-            val encodeVal = genValidator[ft](
-              fTpe,
-              getter.asInstanceOf[Expr[ft]],
-              sv,
-              fieldInfo.mappedName match {
-                case "range" => '{ $vc.asRange }
-                case "returns" => '{ $vc.asOptionalRange }
-                case "imports" => '{ $vc.asImport }
-                // LinkML scopes these to the enclosing class, they may reference its attributes.
-                case "unique_key_slots" | "defining_slots" | "slot_group" =>
-                  '{ $vc.asLocalSlotRef }
-                case _ => vc
-              },
-            )
-            '{
-              val res = $encodeVal
-              val next = if (res.isEmpty) $acc else $acc + res.prependedPath($path)
-              ${ genValidateFields(rest, 'next, vc) }
-            }
-        }
+    // The validation of the field `fieldInfo` of `x`, in the context `vc`
+    def genValidateField(fieldInfo: FieldInfo, vc: Expr[ValidatorContext])(using
+        Quotes,
+    ): Expr[ValidatorResult] = {
+      val fTpe = fieldInfo.resolvedTpe
+      val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
+      fTpe.asType match {
+        case '[ft] =>
+          genValidator[ft](
+            fTpe,
+            getter.asInstanceOf[Expr[ft]],
+            sv,
+            fieldInfo.mappedName match {
+              case "range" => '{ $vc.asRange }
+              case "returns" => '{ $vc.asOptionalRange }
+              case "imports" => '{ $vc.asImport }
+              // LinkML scopes these to the enclosing class, they may reference its attributes.
+              case "unique_key_slots" | "defining_slots" | "slot_group" =>
+                '{ $vc.asLocalSlotRef }
+              case _ => vc
+            },
+          )
+      }
     }
     // Class-scoped slot references nested anywhere under this class resolve against its attributes
     val enterScope =
       if (tpe <:< classDefinitionTpe)
         '{ $vc.withClassScope(${ x.asInstanceOf[Expr[ClassDefinition]] }.name) }
       else vc
+    // One statement for each field, which adds the result of the field to `acc`. Each result is bound
+    // to a value, so a field is validated once, and its path is added only to a result with a
+    // problem. The statements are not nested, so a class with many fields doesn't make a deep tree
+    // for the compiler.
     '{
       val fieldVc = $enterScope
-      ${ genValidateFields(fields.toList, '{ ValidatorResult.ok }, 'fieldVc) }
+      var acc = ValidatorResult.ok
+      ${
+        Block(
+          fields.map { fieldInfo =>
+            val path = Expr(fieldInfo.mappedName + "/")
+            '{
+              val res = ${ genValidateField(fieldInfo, 'fieldVc) }
+              if (!res.isEmpty) acc = acc + res.prependedPath($path)
+            }.asTerm
+          },
+          '{ () }.asTerm,
+        ).asExprOf[Unit]
+      }
+      acc
     }
   }
 
