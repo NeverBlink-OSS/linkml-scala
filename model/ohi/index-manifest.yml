@@ -1,0 +1,79 @@
+id: https://ohi.dev/model/index-manifest
+name: index-manifest
+description: |
+  The ohi-package.yaml in each ohi-index ontology folder.
+
+imports:
+  - linkml:types
+  - ./common
+
+classes:
+  IndexManifest:
+    tree_root: true
+    mixins:
+      - PackageInfo
+    attributes:
+      syntax:
+        description: One syntax for all ontology files of the package
+        range: Syntax
+        required: true
+      base:
+        description: >-
+          Base IRI for the root's relative IRIs, for an OWL or RDFS ontology in Turtle or
+          RDF/XML that uses them without declaring a base. The hub adds it to the root
+          (@base in Turtle, xml:base in RDF/XML) and publishes the root with it. A base the
+          file declares itself still wins.
+        range: string
+        pattern: ^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"{}|\\^`]*(?![\s\S])
+      patch:
+        description: >-
+          A JSON Patch (RFC 6902) file in the package folder, in JSON or YAML, applied to the
+          root before anything is derived from it. Only for LinkML packages. It is published
+          as it is, next to the other files.
+        range: string
+      sources:
+        description: >-
+          Remote files that belong to this package. They will be fetched and validated. 
+          These are treated as if they were present next to ohi-package.yaml.
+        range: Source
+        multivalued: true
+        inlined_as_list: true
+
+  Source:
+    description: One file of the package from outside ohi-index, see sources.
+    attributes:
+      url:
+        description: >-
+          Location of the file. Github links are routed through the API. Any
+          other https URL is fetched with a plain GET. It must have status 200 OK. 
+          Redirects are not followed.
+        range: string
+        required: true
+        pattern: ^https://[^\s#/]+/[^\s#]*(?![\s\S])
+        examples:
+          - value: https://github.com/nicholsn/lokf/blob/v0.8.0/lokf.yaml
+          - value: https://raw.githubusercontent.com/nicholsn/lokf/v0.8.0/LICENSE
+        notes:
+          - Github links cannot point to branches with "/" in their name
+      name:
+        description: >-
+          Name of the file in the package. Defaults to the last segment of the URL's path,
+          and is required when that is empty or not a valid name. Letters, digits, '.', '_'
+          and '-', starting with a letter or digit, at most 255 characters.
+        range: string
+        # Same rule as validName in buildPackage, which also checks names taken from the URL
+        pattern: ^[A-Za-z0-9][A-Za-z0-9._-]{0,254}(?![\s\S])
+      sha256:
+        description: >-
+          SHA-256 of the file, as 64 lowercase hex characters.
+        range: string
+        required: true
+        pattern: ^[0-9a-f]{64}(?![\s\S])
+      size:
+        description: Size of the file in bytes.
+        range: integer
+        required: true
+        minimum_value: 0
+        unit:
+          ucum_code: By
+          descriptive_name: bytes

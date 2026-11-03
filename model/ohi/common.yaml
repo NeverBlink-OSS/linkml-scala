@@ -1,0 +1,154 @@
+id: https://ohi.neverblink.eu/contracts/backend-common
+name: backend-common
+
+description: Types, slots and the PackageInfo mixin shared by indexManifest and package metadata. 
+  No tree_root, only ever imported.
+
+imports:
+  - linkml:types
+
+types:
+  NameSegment:
+    typeof: string
+    description: One namespace or name component, as NameSegment in the client's design contracts
+    pattern: ^[^/@\s]+(?![\s\S])
+  VersionLabel:
+    typeof: string
+    description: Exact release label, as VersionLabel in the client's design contracts
+    # no +, which breaks bucket keys (S3 can read it as a space)
+    pattern: ^[^/@\s+]+(?![\s\S])
+  PackageReference:
+    typeof: string
+    description: One release of a package, as namespace/name@version, such as saref/saref-core@v4.1.1
+    pattern: ^[^/@\s]+/[^/@\s]+@[^/@\s+]+(?![\s\S])
+  Keyword:
+    typeof: string
+    description: One search keyword, such as power-systems
+    pattern: ^\S(.*\S)?(?![\s\S])
+  LicenseName:
+    typeof: string
+    description: One license, as its SPDX identifier such as Apache-2.0 where it has one, else its name
+    pattern: ^\S(.*\S)?(?![\s\S])
+
+classes:
+  PackageInfo:
+    description: Typical info about a package, shared by the manifest and the package metadata
+    mixin: true
+    slots:
+      - namespace
+      - name
+      - version
+      - language
+      - roots
+      - licenses
+      - licenseFiles
+      - dependencies
+      - title
+      - publisher
+      - description
+      - keywords
+
+slots:
+  namespace:
+    range: NameSegment
+    required: true
+  name:
+    range: NameSegment
+    required: true
+  version:
+    description: Stated in the manifest because many ontology files carry no usable version
+    range: VersionLabel
+    required: true
+  language:
+    range: Language
+    required: true
+  roots:
+    description: The entry files, relative to the package folder. A list that always holds exactly one file, the only ontology file allowed. No other file of the folder may have an extension of the syntax.
+    range: string
+    multivalued: true
+    required: true
+  licenses:
+    description: The licenses of the package, at least one.
+    range: LicenseName
+    multivalued: true
+    required: true
+  licenseFiles:
+    description: The files with the full license texts, relative to the package folder. At least one.
+    range: string
+    multivalued: true
+    required: true
+  dependencies:
+    description: The packages the ontology imports, as namespace/name@version. Can be empty.
+    range: PackageReference
+    multivalued: true
+    required: true
+  title:
+    description: Human readable name of the package
+    range: string
+    pattern: ^\S(.*\S)?(?![\s\S])
+    required: true
+  publisher:
+    description: Name of the person or organization that publishes the ontology upstream
+    range: string
+    pattern: ^\S(.*\S)?(?![\s\S])
+    required: true
+  description:
+    description: A few sentences about the package
+    range: string
+    pattern: \S
+    required: true
+  keywords:
+    range: Keyword
+    multivalued: true
+    required: true
+
+enums:
+  Language:
+    description: Ontology language of a package. Decides which conversions run.
+    permissible_values:
+      owl:
+        description: OWL
+      rdfs:
+        description: RDF Schema
+      linkml:
+        description: LinkML
+      ossie:
+        description: Apache Ossie
+
+  Syntax:
+    description: Serialisation of a package's ontology files, as DocumentInterpretation.syntax in the client's design contracts
+    permissible_values:
+      turtle:
+        description: Turtle
+      rdfxml:
+        description: RDF/XML
+      ntriples:
+        description: N-Triples
+      jsonld:
+        description: JSON-LD
+      yaml:
+        description: YAML, for LinkML and Ossie
+
+  Format:
+    description: Language and syntax of an artifact, as <language>-<syntax>.
+    permissible_values:
+      owl-rdfxml:
+        description: OWL in RDF/XML format
+      owl-turtle:
+        description: OWL in Turtle format
+      owl-ntriples:
+        description: OWL in N-Triples format
+      rdfs-turtle:
+        description: RDFS in Turtle format
+      rdfs-rdfxml:
+        description: RDFS in RDF/XML format
+      rdfs-ntriples:
+        description: RDFS in N-Triples format
+      shacl-turtle:
+        description: SHACL in Turtle format
+      linkml-yaml:
+        description: A single LinkML YAML file
+      ossie-yaml:
+        description: Apache Ossie in YAML format
+      other:
+        description: Any other file of the package, such as a README or a license, uploaded as it is

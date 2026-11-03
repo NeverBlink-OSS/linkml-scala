@@ -1,0 +1,105 @@
+id: https://ohi.dev/model/index-package
+name: index-package
+
+imports:
+  - linkml:types
+  - ./common
+
+classes:
+  Package:
+    description: The ontology's package metadata. The hub builds it from an ohi-package.yaml and its folder.
+    tree_root: true
+    mixins:
+      - PackageInfo
+    attributes:
+      commit:
+        description: Commit sha of ohi-index the package was read at
+        range: string
+        required: true
+      folder:
+        description: Path of the package's folder in ohi-index, such as ontologies/gist/gist-core/14.1.0. Index artifact paths are relative to it.
+        range: string
+        required: true
+      publishedAt:
+        description: When the hub started publishing this version, in UTC
+        range: datetime
+        required: true
+      base:
+        description: Base IRI added to the root, if the manifest set one
+        range: string
+        pattern: ^[A-Za-z][A-Za-z0-9+.-]*:[^\s<>"{}|\\^`]*(?![\s\S])
+      patch:
+        description: File of the package whose JSON Patch was applied to the root, if any. The root is published patched.
+        range: string
+      indexArtifacts:
+        range: IndexArtifact
+        multivalued: true
+      urlArtifacts:
+        range: UrlArtifact
+        multivalued: true
+      derivedArtifacts:
+        range: DerivedArtifact
+        multivalued: true
+  Artifact:
+    abstract: true
+    attributes:
+      name:
+        description: Name of the artifact in the output bucket
+        range: string
+        required: true
+      format:
+        description: Language and syntax of the artifact
+        range: Format
+        required: true
+  IndexArtifact:
+    description: Artifact that is a file in the package folder in ohi-index
+    is_a: Artifact
+    attributes:
+      path:
+        description: Path of the file, relative to the package folder
+        range: string
+        required: true
+  UrlArtifact:
+    description: Artifact that is read from a URL defined in ohi-package.yaml
+    is_a: Artifact
+    attributes:
+      url:
+        description: Where the file was read from
+        range: string
+        required: true
+      sha256:
+        description: Declared SHA-256 of the file
+        range: string
+        required: true
+      size:
+        description: Declared size of the file
+        range: integer
+        required: true
+        unit:
+          ucum_code: By
+          descriptive_name: bytes
+  DerivedArtifact:
+    description: Artifact that is created by ohi.dev
+    is_a: Artifact
+    attributes:
+      from:
+        description: Name of the artifact that this artifact is derived from
+        range: string
+        required: true
+      using:
+        description: Name of the tool to use to derive this artifact
+        range: DerivationTool
+        required: true
+
+
+enums:
+  DerivationTool:
+    permissible_values:
+      linkml_scala:
+        description: Using the ohi LinkML engine
+      rdf_convert:
+        description: Convert between RDF formats
+      original:
+        description: >-
+          The root as it was read, before the patching. Uploaded for provenance.
+
