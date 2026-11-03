@@ -88,6 +88,10 @@ apiPromise
 // text actually changes.
 let cachedSchema: { text: string; loaded: LoadResult } | null = null;
 
+// The last Markdown of the Docs target and its HTML, so that the same Markdown, as after a change
+// to a comment in the schema, is not turned into HTML again.
+let cachedPage: { markdown: string; html: string } | null = null;
+
 self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
   const { id, direction, input: schema, stepId, options } = e.data;
   try {
@@ -142,8 +146,10 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
       ? "files"
       : "text";
     if (kind === "page") {
+      const markdown = result as string;
       const t2 = performance.now();
-      const html = renderMarkdown(result as string);
+      if (cachedPage?.markdown !== markdown) cachedPage = { markdown, html: renderMarkdown(markdown) };
+      const html = cachedPage.html;
       const htmlMs = Math.round(performance.now() - t2);
       reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs, html, htmlMs });
       return;
