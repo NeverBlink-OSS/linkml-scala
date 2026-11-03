@@ -88,7 +88,7 @@ object `package` extends Module {
 
     def moduleDeps = Seq(build.schemaview.jvm)
 
-    override def mvnDeps = Seq(mvn"com.lihaoyi::os-lib:0.11.8")
+    override def mvnDeps = Seq(mvn"com.lihaoyi::os-lib:0.11.10")
 
     def generate() = Task.Command {
       runner().run(Seq(mill.api.BuildCtx.workspaceRoot.toString))
