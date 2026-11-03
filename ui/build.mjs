@@ -26,19 +26,19 @@ const appOptions = {
   minify: true,
   logLevel: "info",
   // Loaded at runtime from dist/linkml.js (see minifyScalaBundle), dist/mermaid/mermaid.js (see
-  // mermaidOptions), dist/markdown/markdown.js (see markdownOptions) and dist/ohi.js (above); keep
+  // mermaidOptions), dist/sanitize/sanitize.js (see sanitizeOptions) and dist/ohi.js (above); keep
   // esbuild from inlining any of them.
-  external: ["./linkml.js", "./mermaid/mermaid.js", "./markdown/markdown.js", "./ohi.js"],
+  external: ["./linkml.js", "./mermaid/mermaid.js", "./sanitize/sanitize.js", "./ohi.js"],
 };
 
-// The Markdown renderer for the documentation page view, bundled into dist/markdown/ so that it is
-// loaded only when someone opens that view.
-const markdownOptions = {
-  entryPoints: ["src/markdown.ts"],
+// DOMPurify, which checks the HTML of the documentation page view, bundled into dist/sanitize/ so
+// that it is loaded only when someone opens that view.
+const sanitizeOptions = {
+  entryPoints: ["src/sanitize.ts"],
   bundle: true,
   format: "esm",
   target: "es2020",
-  outdir: `${DIST}/markdown`,
+  outdir: `${DIST}/sanitize`,
   minify: true,
   logLevel: "info",
 };
@@ -96,7 +96,7 @@ async function minifyScalaBundle() {
 }
 
 if (process.argv.includes("--watch")) {
-  await Promise.all([minifyScalaBundle(), buildMermaid(), esbuild.build(markdownOptions)]);
+  await Promise.all([minifyScalaBundle(), buildMermaid(), esbuild.build(sanitizeOptions)]);
   const ctx = await esbuild.context(appOptions);
   await ctx.watch();
   console.log("esbuild watching…");
@@ -104,7 +104,7 @@ if (process.argv.includes("--watch")) {
   await Promise.all([
     esbuild.build(appOptions),
     buildMermaid(),
-    esbuild.build(markdownOptions),
+    esbuild.build(sanitizeOptions),
     minifyScalaBundle(),
   ]);
 }

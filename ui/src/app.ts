@@ -44,9 +44,9 @@ const MERMAID_URL = "./mermaid/mermaid.js";
 // The ohi.dev SDK, bundled into dist/ohi.js by build.mjs. Imported the first time the load dialog
 // opens, for the same reason as Mermaid.
 const OHI_URL = "./ohi.js";
-// The Markdown renderer for the documentation page view, bundled into dist/markdown by build.mjs and
-// imported on first use only, like Mermaid.
-const MARKDOWN_URL = "./markdown/markdown.js";
+// DOMPurify, which checks the HTML of the documentation page view, bundled into dist/sanitize by
+// build.mjs and imported on first use only, like Mermaid.
+const SANITIZE_URL = "./sanitize/sanitize.js";
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -109,6 +109,8 @@ let diagramSource: string | null = null;
 let pageTab: "page" | "code" = "page";
 // The Markdown currently on screen. Non-null exactly while the page view is up.
 let pageSource: string | null = null;
+// The HTML for `pageSource`, made in the worker (see markdown.ts).
+let pageHtml = "";
 // The Markdown the page view was last rendered from. The rendered page is kept while the Code tab
 // is showing, so going back to the Page tab does not render it again.
 let pageRendered: string | null = null;
@@ -851,16 +853,16 @@ async function renderDiagram(text: string): Promise<void> {
 
 // ── Documentation page view ─────────────────────────────────────────────────
 
-/** The module built from markdown.ts. */
-interface MarkdownApi {
-  renderMarkdown(markdown: string): DocumentFragment;
+/** The module built from sanitize.ts. */
+interface SanitizeApi {
+  sanitize(html: string): DocumentFragment;
 }
 
-let markdownPromise: Promise<MarkdownApi> | null = null;
+let sanitizePromise: Promise<SanitizeApi> | null = null;
 
-function loadMarkdown(): Promise<MarkdownApi> {
-  markdownPromise ??= import(MARKDOWN_URL) as Promise<MarkdownApi>;
-  return markdownPromise;
+function loadSanitize(): Promise<SanitizeApi> {
+  sanitizePromise ??= import(SANITIZE_URL) as Promise<SanitizeApi>;
+  return sanitizePromise;
 }
 
 /** Only the newest page render may reach the DOM, as for diagrams. */
@@ -870,14 +872,16 @@ function hidePage(): void {
   $pageView.hidden = true;
   $pageView.innerHTML = "";
   pageSource = null;
+  pageHtml = "";
   pageRendered = null;
   pageScrollTop = 0;
   pageOutputBehind = false;
   $outputEditorHost.hidden = false;
 }
 
-/** Show the Markdown as a page, behind a Page/Code tab pair sharing the file tab bar. */
-function showPage(text: string): void {
+/** Show the Markdown `text` as a page, behind a Page/Code tab pair sharing the file tab bar. `html`
+ * is the HTML for `text`. */
+function showPage(text: string, html: string): void {
   hideReport();
   hideDiagram();
   hideStats();
@@ -901,6 +905,7 @@ function showPage(text: string): void {
   // A new schema starts at the top. The same schema regenerated, as while typing, keeps its place.
   if (pageSource !== null && !$pageView.hidden) pageScrollTop = $pageView.scrollTop;
   pageSource = text;
+  pageHtml = html;
   pageOutputBehind = true;
   showPageTab();
 }
@@ -923,16 +928,17 @@ function showPageTab(): void {
   $outputEditorHost.hidden = true;
   $pageView.hidden = false;
   if (pageRendered === text) $pageView.scrollTop = pageScrollTop;
-  else void renderPage(text, pageScrollTop);
+  else void renderPage(text, pageHtml, pageScrollTop);
 }
 
-async function renderPage(text: string, scrollTop: number): Promise<void> {
+/** Show `html`, the HTML for the Markdown `text`, in the page view, scrolled to `scrollTop`. */
+async function renderPage(text: string, html: string, scrollTop: number): Promise<void> {
   const token = ++pageToken;
   try {
-    const { renderMarkdown } = await loadMarkdown();
+    const { sanitize } = await loadSanitize();
     if (token !== pageToken || $pageView.hidden) return;
-    // Links that don't go to a section of the page already open in a new tab (see markdown.ts).
-    $pageView.replaceChildren(renderMarkdown(text));
+    // Links that don't go to a section of the page already open in a new tab (see sanitize.ts).
+    $pageView.replaceChildren(sanitize(html));
     pageRendered = text;
     $pageView.scrollTop = scrollTop;
   } catch (err) {
@@ -1507,7 +1513,7 @@ function onResult(res: ConvertResponse): void {
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else if (res.kind === "page") {
-    showPage(res.result as string);
+    showPage(res.result as string, res.html ?? "");
   } else if (res.kind === "stats") {
     showStats(res.result as SchemaStats);
   } else {
@@ -1533,6 +1539,7 @@ function breakdown(res: Extract<ConvertResponse, { ok: true }>, displayMs: numbe
   } else {
     parts.push(res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`);
     if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+    if (res.htmlMs !== undefined) parts.push(`HTML ${res.htmlMs}ms`);
   }
   parts.push(`display ${displayMs}ms`);
   return parts.join(" · ");
