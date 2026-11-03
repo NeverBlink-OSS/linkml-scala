@@ -1040,31 +1040,53 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       val files = ScalaGenerator().generate(splitOptions).toMap
 
       val code = files("MySlotDef.scala")
+      // Each field is combined once, into a local value. `this` is returned as it is if none of
+      // them changed, and copied with them otherwise.
       Seq(
         "def combineWith(",
-        "boolSlot = combineBoolean(this.boolSlot, other.boolSlot)",
-        "pattern = combineOption(this.pattern, other.pattern, combinePattern)",
-        "seqSlot = combineSeq(this.seqSlot, other.seqSlot)",
-        "mapSlot = combineOption(this.mapSlot, other.mapSlot, combineFallback)",
-        "maximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax)",
-        "range = combineOption(this.range, other.range, combineRange)",
-        "inheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)",
-        "optionSlot = combineOption(this.optionSlot, other.optionSlot, combineFallback)",
-        "fallbackSlot = combineFallback(this.fallbackSlot, other.fallbackSlot)",
-        "minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)",
-        "anyOf = combineNonEmpty(this.anyOf, other.anyOf)",
-        "exactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf)",
-        "noneOf = combineDistinct(this.noneOf, other.noneOf)",
+        "val combinedBoolSlot = combineBoolean(this.boolSlot, other.boolSlot)",
+        "val combinedPattern = combineOption(this.pattern, other.pattern, combinePattern)",
+        "val combinedSeqSlot = combineSeq(this.seqSlot, other.seqSlot)",
+        "val combinedMapSlot = combineOption(this.mapSlot, other.mapSlot, combineFallback)",
+        "val combinedMaximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax)",
+        "val combinedRange = combineOption(this.range, other.range, combineRange)",
+        "val combinedInheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)",
+        "val combinedOptionSlot = combineOption(this.optionSlot, other.optionSlot, combineFallback)",
+        "val combinedFallbackSlot = combineFallback(this.fallbackSlot, other.fallbackSlot)",
+        "val combinedMinimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)",
+        "val combinedAnyOf = combineNonEmpty(this.anyOf, other.anyOf)",
+        "val combinedExactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf)",
+        "val combinedNoneOf = combineDistinct(this.noneOf, other.noneOf)",
         // `anyOf` and `exactlyOneOf` keep only the subclass's list. The parent's lists are added
         // to `allOf`, so values must match them too.
-        "allOf = combineDistinct(combineDistinct(combineDistinct(this.allOf, other.allOf), " +
+        "val combinedAllOf = combineDistinct(combineDistinct(combineDistinct(this.allOf, other.allOf), " +
           "wrapIfNotSubset(this.anyOf, other.anyOf, v => MyExpressionImpl(anyOf = v))), " +
           "wrapIfDifferent(this.exactlyOneOf, other.exactlyOneOf, " +
           "v => MyExpressionImpl(exactlyOneOf = v)))",
-        "def combineInherited(other: MySlotDefImpl, combineRange: (Reference[Element], Reference[Element]) => Reference[Element]): MySlotDefImpl =\n    copy(\n      inheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)\n    )",
+        // A primitive value is compared with `==`, any other with `same`, which is `eq`.
+        "combinedBoolSlot == this.boolSlot",
+        "same(combinedSeqSlot, this.seqSlot)",
+        ") this",
+        "boolSlot = combinedBoolSlot,",
+        "allOf = combinedAllOf",
       ).foreach { snippet =>
         code should include(snippet)
       }
+      // Each combine function is called once.
+      java.util.regex.Pattern
+        .quote("combineBoolean(this.boolSlot, other.boolSlot)")
+        .r
+        .findAllMatchIn(code)
+        .size shouldBe 1
+      // Only the inherited fields are combined by `combineInherited`.
+      val inheritedStart = code.indexOf("def combineInherited(")
+      val inherited = code.substring(inheritedStart, code.indexOf("def infer()", inheritedStart))
+      inherited should include(
+        "val combinedInheritedSlot = combineFallback(this.inheritedSlot, other.inheritedSlot)",
+      )
+      inherited should include("same(combinedInheritedSlot, this.inheritedSlot)")
+      inherited should include("inheritedSlot = combinedInheritedSlot")
+      inherited should not include "boolSlot"
     }
 
     "generate in the correct package" in {
