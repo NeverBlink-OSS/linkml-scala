@@ -1,12 +1,10 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{NcName, PlainText, PrefixMap, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import eu.neverblink.linkml.validation.*
-import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import org.virtuslab.yaml.Node
 
 import java.{lang, util}
 import scala.collection.mutable
@@ -186,97 +184,91 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val missingRecommendedSlots: Seq[SchemaWarning] = {
     val warnings = Vector.newBuilder[SchemaWarning]
     val schemaId = sv.root.id
+    // For each metamodel class, the recommended slots and the indexes of their fields in its case
+    // class, found from the first element of the class
+    val fieldsOfType = new util.HashMap[String, Array[(slotName: String, index: Int)]]
 
-    def fieldsOf(node: Node): util.HashMap[String, Node] = node match {
-      case m: Node.MappingNode => LinkmlYamlCodec.getFields(m)
-      case _ => new util.HashMap[String, Node]
-    }
-
-    // An empty value, such as `description: ""`, is considered a missing value
-    def hasNoValue(node: Node): Boolean = node match {
-      case null => true
-      case s: Node.ScalarNode => s.value.isEmpty
-      case s: Node.SequenceNode => s.nodes.isEmpty
-      case m: Node.MappingNode => m.mappings.isEmpty
-      case _ => false
+    def recommendedFields(
+        element: Product,
+        elementType: String,
+    ): Array[(slotName: String, index: Int)] = {
+      var fields = fieldsOfType.get(elementType)
+      if (fields eq null) {
+        val found = Array.newBuilder[(slotName: String, index: Int)]
+        val slotNames = SchemaValidator.recommendedSlots.get(elementType)
+        if (slotNames ne null) {
+          slotNames.foreach { slotName =>
+            val index = SchemaValidator.fieldIndex(element, slotName)
+            if (index >= 0) found.addOne((slotName = slotName, index = index))
+          }
+        }
+        fields = found.result()
+        fieldsOfType.put(elementType, fields)
+      }
+      fields
     }
 
     def check(
-        fields: util.HashMap[String, Node],
+        element: Product,
         elementType: String,
         elementName: String,
-        location: IssueLocation,
+        location: => IssueLocation,
     ): Unit = {
-      val slotNames = SchemaValidator.recommendedSlots.get(elementType)
-      if (slotNames ne null) {
-        slotNames.foreach { slotName =>
-          if (hasNoValue(fields.get(slotName))) {
-            warnings.addOne(
-              new MissingRecommendedSlot(
-                location = location,
-                elementName = elementName,
-                elementType = elementType,
-                slotName = slotName,
-              ),
-            )
-          }
+      val fields = recommendedFields(element, elementType)
+      var i = 0
+      while (i < fields.length) {
+        val field = fields(i)
+        if (SchemaValidator.hasNoValue(element.productElement(field.index))) {
+          warnings.addOne(
+            new MissingRecommendedSlot(
+              location = location,
+              elementName = elementName,
+              elementType = elementType,
+              slotName = field.slotName,
+            ),
+          )
         }
+        i += 1
       }
     }
 
-    // Calls `f` with the name and the value of each entry of the mapping at `key`
-    def elements(fields: util.HashMap[String, Node], key: String)(f: (String, Node) => Unit): Unit =
-      fields.get(key) match {
-        case m: Node.MappingNode =>
-          m.mappings.foreachEntry { (k, v) =>
-            k match {
-              case s: Node.ScalarNode => f(s.value, v)
-              case _ =>
-            }
-          }
-        case _ =>
-      }
-
-    // Encoded without prefixes, so the URIs are kept as they are and encoding can't fail on them
-    val root = fieldsOf(eu.neverblink.linkml.metamodel.Codec.codec.encode(sv.root))
-    check(root, "schema_definition", sv.root.name, rootLocation)
-    elements(root, "classes") { (className, node) =>
-      val cls = fieldsOf(node)
-      val pointer = "/classes/" + className
+    val root = sv.root
+    check(root, "schema_definition", root.name, rootLocation)
+    root.classes.foreachEntry { (className, cls) =>
+      val pointer = "/classes/".concat(className)
       check(cls, "class_definition", className, at(pointer, schemaId))
-      elements(cls, "attributes") { (slotName, node) =>
+      cls.attributes.foreachEntry { (slotName, slot) =>
         check(
-          fieldsOf(node),
+          slot,
           "slot_definition",
           className + "." + slotName,
           at(pointer + "/attributes/" + slotName, schemaId),
         )
       }
     }
-    elements(root, "slots") { (name, node) =>
-      check(fieldsOf(node), "slot_definition", name, at("/slots/" + name, schemaId))
+    root.slotDefinitions.foreachEntry { (name, slot) =>
+      check(slot, "slot_definition", name, at("/slots/".concat(name), schemaId))
     }
-    elements(root, "enums") { (enumName, node) =>
-      val en = fieldsOf(node)
-      val pointer = "/enums/" + enumName
+    root.enums.foreachEntry { (enumName, en) =>
+      val pointer = "/enums/".concat(enumName)
       check(en, "enum_definition", enumName, at(pointer, schemaId))
-      elements(en, "permissible_values") { (text, node) =>
+      en.permissibleValues.foreachEntry { (text, pv) =>
         check(
-          fieldsOf(node),
+          pv,
           "permissible_value",
           enumName + "." + text,
           at(pointer + "/permissible_values/" + text, schemaId),
         )
       }
     }
-    elements(root, "types") { (name, node) =>
-      check(fieldsOf(node), "type_definition", name, at("/types/" + name, schemaId))
+    root.types.foreachEntry { (name, tpe) =>
+      check(tpe, "type_definition", name, at("/types/".concat(name), schemaId))
     }
-    elements(root, "subsets") { (name, node) =>
-      check(fieldsOf(node), "subset_definition", name, at("/subsets/" + name, schemaId))
+    root.subsets.foreachEntry { (name, subset) =>
+      check(subset, "subset_definition", name, at("/subsets/".concat(name), schemaId))
     }
-    elements(root, "functions") { (name, node) =>
-      check(fieldsOf(node), "function_definition", name, at("/functions/" + name, schemaId))
+    root.functions.foreachEntry { (name, function) =>
+      check(function, "function_definition", name, at("/functions/".concat(name), schemaId))
     }
     warnings.result()
   }
@@ -824,6 +816,33 @@ object SchemaValidator {
       if (result.nonEmpty) slots.put(cv.cls.name, result)
     }
     slots
+  }
+
+  /** The index of the field of [[element]] for the slot [[slotName]], such as `description` or
+    * `alias_predicate`, or -1 if it has none. Field names are the slot names in camel case, so the
+    * names are compared without case and without `_`.
+    */
+  private def fieldIndex(element: Product, slotName: String): Int = {
+    val wanted = slotName.replace("_", "").toLowerCase
+    var i = 0
+    var found = -1
+    while (found < 0 && i < element.productArity) {
+      if (element.productElementName(i).toLowerCase == wanted) found = i
+      i += 1
+    }
+    found
+  }
+
+  /** Whether [[value]], the value of a field of an element, is missing or empty, as
+    * `description: ""` is.
+    */
+  private def hasNoValue(value: Any): Boolean = value match {
+    case None => true
+    case Some(v) => hasNoValue(v)
+    case s: String => s.isEmpty
+    case t: PlainText => t.value.isEmpty
+    case i: Iterable[?] => i.isEmpty
+    case _ => false
   }
 
   /** Find the loops in a relation between elements with a depth-first search, in O(V + E) time for

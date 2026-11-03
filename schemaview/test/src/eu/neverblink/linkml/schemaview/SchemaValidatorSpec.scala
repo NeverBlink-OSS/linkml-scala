@@ -1087,6 +1087,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |      name:
           |        description: The full name
           |      age: {}
+          |  Place:
+          |    description:
+          |      en: A place
+          |      pl: Miejsce
           |slots:
           |  id: {}
           |  code:
@@ -1112,7 +1116,8 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         ),
       )
 
-      // The class from the imported schema isn't reported
+      // The class from the imported schema isn't reported, nor `Place`, whose description is in
+      // more than one language.
       sv.lintProblems.collect { case p: MissingRecommendedSlot =>
         p.location.jsonPointer.getOrElse("(schema)") + ": " + p.infer().message.get
       } shouldBe Seq(
