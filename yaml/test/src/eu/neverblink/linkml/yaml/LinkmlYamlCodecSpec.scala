@@ -332,6 +332,39 @@ class LinkmlYamlCodecSpec extends AnyWordSpec, Matchers, ScalaCheckPropertyCheck
           |^""".stripMargin,
       )
     }
+    "decode block scalars with an indentation indicator in nested case classes" in {
+      case class Slot(description: String, range: String) derives LinkmlYamlCodec
+      case class Slots(x: Slot, y: Slot) derives LinkmlYamlCodec
+      case class MyClass(a: Slots, b: Int) derives LinkmlYamlCodec
+
+      // The indentation indicator is relative to the indentation of the parent node.
+      def check(header: String, content: String, description: String): Unit =
+        decode[MyClass](
+          s"""a:
+             |  x:
+             |    description: $header
+             |$content
+             |    range: R
+             |  y:
+             |    description: abc
+             |    range: Q
+             |b: 1
+             |""".stripMargin,
+          MyClass(Slots(Slot(description, "R"), Slot("abc", "Q")), 1),
+        )
+
+      check("|2", "        two leading spaces", "  two leading spaces\n")
+      check(">2", "        two leading spaces", "  two leading spaces\n")
+      check("|2-", "        two leading spaces", "  two leading spaces")
+      check("|-2", "        two leading spaces", "  two leading spaces")
+      check(">2-", "        two leading spaces", "  two leading spaces")
+      check("|+2", "        two leading spaces\n", "  two leading spaces\n\n")
+      check("|1", "      first\n       second", " first\n  second\n")
+      check("|2 # comment", "        two leading spaces", "  two leading spaces\n")
+      // At the top level, the indentation indicator is counted from column 0.
+      case class TopLevel(a: String, b: Int) derives LinkmlYamlCodec
+      decode[TopLevel]("a: |1\n  one leading space\nb: 1\n", TopLevel(" one leading space\n", 1))
+    }
     "reject unknown and non-string fields of case classes by default" in {
       case class MyClass(@named("x") a: String, b: Option[Int] = None) derives LinkmlYamlCodec
 
