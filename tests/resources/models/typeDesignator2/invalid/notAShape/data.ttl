@@ -1,0 +1,9 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
+
+# A Container is not one of the classes a Shape can be.
+_:c a :Container;
+  :name "outer";
+  :shapes [
+    a :Container;
+    :name "inner"
+  ] .

@@ -1038,6 +1038,22 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       )
     }
 
+    "use rdf:type for type designators, with no PropertyShape for the designator slot" in {
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.typeDesignator2.model).generate(_))
+      turtle should not include "typeDesignator2/shape_type"
+    }
+
+    "accept the classes a type designator allows as values of a slot" in {
+      val turtle =
+        RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.typeDesignator2.model).generate(_))
+      val prefix = "https://neverblink.eu/linkml/tests/typeDesignator2"
+      // Shape is abstract, so only its concrete descendants are members
+      turtle should include regex
+        s"""sh:or \\(\\s*\\[\\s*sh:class <$prefix/Circle>\\s*]\\s*\\[\\s*sh:class <$prefix/Rectangle>\\s*]\\s*\\)"""
+      turtle should not include s"sh:class <$prefix/Shape>"
+    }
+
     "generate sh:or for any_of" in {
       val turtle =
         RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.unionRange.model).generate(_))
@@ -1504,8 +1520,5 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
 }
 
 object ShaclGeneratorSpec {
-  val skipModels: Map[String, String] = Map(
-    "typeDesignator" -> "Not yet implemented: LNK-102",
-    "typeDesignator2" -> "Not yet implemented: LNK-102",
-  )
+  val skipModels: Map[String, String] = Map.empty
 }

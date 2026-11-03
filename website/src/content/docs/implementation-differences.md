@@ -13,7 +13,9 @@ The following features are not yet supported or are partially supported in ohi L
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
 - Partial support for type designators (`designates_type`)
-  - Supported in the Scala, TypeScript, Pydantic and JSON Schema generators and in YAML/JSON serialization. Not yet in SHACL.
+  - Supported in the Scala, TypeScript, Pydantic, JSON Schema and SHACL generators and in YAML/JSON serialization.
+  - In RDF, `rdf:type` holds the type designator, so the SHACL generator emits no property shape for the designator slot.
+    A slot whose range has a type designator accepts any class that the designator allows, without `rdfs:subClassOf` triples in the data.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Rules (`rules`)
 

@@ -1,6 +1,5 @@
 @prefix : <https://neverblink.eu/linkml/tests/typeDesignator/> .
 
+# In RDF, `rdf:type` holds the type designator.
 _:b a :StringThing;
-  # TODO LNK-102: Do we include the designator here too?
-  # :type :StringThing;
   :value 123 .

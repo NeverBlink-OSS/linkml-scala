@@ -97,6 +97,10 @@ object OwlIntegrationSpec {
     "basic" -> "empty" -> openWorld,
     "anything" -> "missing" -> openWorld,
     "typeDesignator2" -> "wrongSlotForType" -> s"$openWorld, and $unknownProperty",
+    "typeDesignator" -> "designatorTriple" ->
+      "The OWL describes the type designator slot as a property, so it allows its values (not a bug)",
+    "typeDesignator2" -> "notAShape" ->
+      "OWL infers that a value is of the range's class rather than rejecting one not said to be",
     "aliases" -> "slotNameInsteadOfUri" -> unknownProperty,
     "unionRangeReference" -> "baseOnly" ->
       "OWL infers that a value is of the range's class rather than rejecting one not said to be",

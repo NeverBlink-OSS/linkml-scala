@@ -51,6 +51,11 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
 
   /** Emit `sh:datatype`, `sh:class` or `sh:in` for a range.
     *
+    * A class with a type designator gets `sh:or ( [ sh:class A ] [ sh:class B ] ... )`, with one
+    * member for each class that its instances can be: the class itself, if it is concrete, and its
+    * concrete descendants. `sh:class` only follows `rdfs:subClassOf` triples in the data, and RDF
+    * data usually types an instance with its own class only, such as `a :Circle` for a `Shape`.
+    *
     * A `LocalizedText` range, such as `langstring`, gets `sh:or ( [ sh:datatype xsd:string ] [
     * sh:datatype rdf:langString ] )`: a plain string is an `xsd:string` literal, and a text in a
     * language is an `rdf:langString` literal.
@@ -77,7 +82,15 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
         } else sink.triple(subject, Shacl.nodeKind, Shacl.IRI)
       case classView: ClassView =>
         if (!classView.isAny) {
-          sink.triple(subject, Shacl.`class`, Iri(classView.uriStr))
+          if (classView.isTypeDesignatorUnion) {
+            sink.beginList(subject, Shacl.or)
+            classView.typeDesignatorMembers.foreach { member =>
+              val shape = inlineBlankNode()
+              sink.listMember(shape)
+              sink.triple(shape, Shacl.`class`, Iri(member.uriStr))
+            }
+            sink.endList()
+          } else sink.triple(subject, Shacl.`class`, Iri(classView.uriStr))
           sink.triple(subject, Shacl.nodeKind, Shacl.BlankNodeOrIRI)
         }
       case enumView: EnumView =>
@@ -573,11 +586,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       var order = 0
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
-        if (!slot.identifier) slot.rank.foreachFast(r => if (r >= order) order = r + 1)
+        if (!slot.identifier && !slot.designatesType)
+          slot.rank.foreachFast(r => if (r >= order) order = r + 1)
       }
+      // The type designator gets no PropertyShape: in RDF, the class of an instance is its
+      // `rdf:type`, which is in sh:ignoredProperties.
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
-        if (!slot.identifier) {
+        if (!slot.identifier && !slot.designatesType) {
           processSlot(sink, av, order, classNameIri, groups)
           if (slot.rank.isEmpty) order += 1
         }
