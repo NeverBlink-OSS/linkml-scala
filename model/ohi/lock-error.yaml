@@ -1,0 +1,40 @@
+id: https://ohi.neverblink.eu/contracts/lock-error
+name: ohi_lock_error
+title: Lock operation error
+description: Invalid supplied lock data, unsupported revisions and file storage failures.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- operation-fields
+classes:
+  LockError:
+    tree_root: true
+    slots:
+    - message
+    attributes:
+      code:
+        range: LockErrorCode
+        required: true
+      operation:
+        range: LockOperation
+        required: true
+      path:
+        description: Explicit path supplied to a file operation. Absent for text operations.
+        range: string
+enums:
+  LockErrorCode:
+    permissible_values:
+      INVALID_LOCK:
+        description: Malformed JSON or invalid lock structure, values or references.
+      UNSUPPORTED_VERSION:
+        description: The supplied integer format_version is not supported.
+      STORAGE_ERROR:
+        description: File reading, staging or safe replacement failed.
+  LockOperation:
+    permissible_values:
+      DECODE:
+      ENCODE:
+      READ:
+      WRITE:

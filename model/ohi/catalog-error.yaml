@@ -1,0 +1,55 @@
+id: https://ohi.neverblink.eu/contracts/catalog-error
+name: ohi_catalog_error
+title: Catalog operation error
+description: Failure category, operation and available HTTP response information.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+  linkml: https://w3id.org/linkml/
+default_prefix: ohi
+imports:
+- operation-fields
+classes:
+  CatalogError:
+    tree_root: true
+    slots:
+    - message
+    - url
+    attributes:
+      code:
+        description: Stable SDK failure category.
+        range: CatalogErrorCode
+        required: true
+      operation:
+        description: Client construction or operation that failed.
+        range: CatalogOperation
+        required: true
+      status:
+        description: HTTP response status when visible to the client.
+        range: integer
+        minimum_value: 100
+        maximum_value: 599
+      response_json:
+        description: Parsed JSON object from an HTTP failure, preserving nested server fields.
+        range: JsonValue
+        inlined: true
+  JsonValue:
+    class_uri: linkml:Any
+enums:
+  CatalogErrorCode:
+    permissible_values:
+      INVALID_INPUT:
+        description: Connection settings or operation arguments are invalid or unsupported.
+      HTTP_ERROR:
+        description: A visible HTTP response did not have the required status 200.
+      CONNECTION_ERROR:
+        description: The connection or body transfer failed without a known timeout.
+      TIMEOUT:
+        description: A configured native timeout interrupted the request or body transfer.
+      INVALID_RESPONSE:
+        description: A successful search or publication response, or HTTP content coding, cannot be decoded.
+  CatalogOperation:
+    permissible_values:
+      CONFIGURE:
+      SEARCH:
+      INSPECT:
+      GET:

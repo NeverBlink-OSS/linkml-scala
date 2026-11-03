@@ -138,6 +138,8 @@ class UriOrCurieSpec extends AnyWordSpec, Matchers {
         "http://ex\u00e4mple.org/a",
         "http://example.org/a?q=\u00e9#f\u00e9",
         "http://example.org/\ud83d\ude00",
+        "http://dh.aks.ac.kr/ontologies/ekc#3D_\ubaa8\ub378",
+        "http://purl.org/ctic/empleo/oferta#requisito-inform\u00e1tica",
       ).foreach(s => withClue(s)(UriCurieValidator.isValidUri(s) shouldBe true))
     }
     "reject invalid URIs" in {

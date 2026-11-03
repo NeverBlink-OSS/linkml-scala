@@ -1,0 +1,24 @@
+id: https://ohi.neverblink.eu/contracts/selection
+name: ohi_selection
+title: Exact artifact selection
+description: Direct selection of an artifact advertised by one immutable publication.
+prefixes:
+  ohi: https://ohi.neverblink.eu/contracts/
+default_prefix: ohi
+imports:
+- publication-fields
+slots:
+  selections:
+    description: Direct publication and artifact selections in supplied order.
+    range: ArtifactSelection
+    required: true
+    multivalued: true
+    inlined: true
+    inlined_as_list: true
+    list_elements_ordered: true
+classes:
+  ArtifactSelection:
+    description: Exact publication identity and artifact download URL, compared without normalization.
+    slots:
+    - base_url
+    - url

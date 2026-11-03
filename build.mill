@@ -78,10 +78,11 @@ object `package` extends Module {
           "cli.jvm.run generate scala --clean " +
             s"--to cli/ohi/src/eu/neverblink/ohi/cli/generated/$scalaPackage/ " +
             s"--package eu.neverblink.ohi.cli.generated.$scalaPackage $schema",
-        ) ++ (if (name == "declaration") Seq(
-                s"cli.jvm.run generate json-schema --to cli/ohi/resources/$name.schema.json $schema",
-                "pruneOhiDeclaration",
-              )
+        ) ++ (if (name == "declaration")
+                Seq(
+                  s"cli.jvm.run generate json-schema --to cli/ohi/resources/$name.schema.json $schema",
+                  "pruneOhiDeclaration",
+                )
               else Seq.empty)
       } ++ Seq(
         "ohi.model.jvm.fix",
@@ -100,17 +101,19 @@ object `package` extends Module {
     }
 
     /** Regenerate every checked-in source generated from a LinkML model. */
-    def regenerate: Seq[String] = alias((Seq(
-      "__:LinkMlModelModule.regenerate",
-      "__:LinkMlModelModule.jvm.fix",
-      "__:LinkMlModelModule.jvm.reformat",
-      "generator.optionsgen.generate cli",
-      "cli.options.jvm.fix",
-      "cli.options.jvm.reformat",
-      "generator.optionsgen.generate docs",
-      "cli.jvm.test.reformat",
-      "agents.generate",
-    ) ++ ohiGeneration)*)
+    def regenerate: Seq[String] = alias(
+      (Seq(
+        "__:LinkMlModelModule.regenerate",
+        "__:LinkMlModelModule.jvm.fix",
+        "__:LinkMlModelModule.jvm.reformat",
+        "generator.optionsgen.generate cli",
+        "cli.options.jvm.fix",
+        "cli.options.jvm.reformat",
+        "generator.optionsgen.generate docs",
+        "cli.jvm.test.reformat",
+        "agents.generate",
+      ) ++ ohiGeneration)*,
+    )
 
     def regenerateBindings: Seq[String] = alias(
       "generator.optionsgen.generate bindings",
