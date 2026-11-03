@@ -42,57 +42,6 @@ object `package` extends Module {
     */
 
   object LinkMlAliases extends Aliases {
-    private def ohiGeneration: Seq[String] = {
-      val schemas = Seq(
-        ("package", "generated", "generated"),
-        ("search-request", "generated.searchrequest", "generated_search_request"),
-        ("search", "generated.search", "generated_search"),
-        ("catalog-config", "generated.config", "generated_config"),
-        ("catalog-error", "generated.error", "generated_error"),
-        ("lock", "generated.lock", "generated_lock"),
-        ("lock-error", "generated.lockerror", "generated_lock_error"),
-      )
-      schemas.flatMap { case (name, scalaPackage, module) =>
-        val schema = s"ohi/model/schema/$name.yaml"
-        Seq(
-          s"cli.jvm.run validate $schema",
-          "cli.jvm.run generate scala --clean " +
-            s"--to ohi/model/src/eu/neverblink/ohi/model/${scalaPackage.replace('.', '/')}/ " +
-            s"--package eu.neverblink.ohi.model.$scalaPackage $schema",
-          s"cli.jvm.run generate pydantic --to ohi/python/src/ohi/$module.py $schema",
-          s"cli.jvm.run generate typescript --to ohi/typescript/src/$module.ts $schema",
-        ) ++ Option.when(!name.endsWith("-error"))(
-          s"cli.jvm.run generate json-schema --to ohi/model/resources/$name.schema.json $schema",
-        )
-      } ++ Seq(
-        "cli-delivery" -> "delivery",
-        "cli-file-error" -> "fileerror",
-        "cli-lock-download" -> "lockdownload",
-        "declaration" -> "declaration",
-        "project-result" -> "projectresult",
-        "project-error" -> "projecterror",
-      ).flatMap { case (name, scalaPackage) =>
-        val schema = s"cli/ohi/schema/$name.yaml"
-        Seq(
-          s"cli.jvm.run validate $schema",
-          "cli.jvm.run generate scala --clean " +
-            s"--to cli/ohi/src/eu/neverblink/ohi/cli/generated/$scalaPackage/ " +
-            s"--package eu.neverblink.ohi.cli.generated.$scalaPackage $schema",
-        ) ++ (if (name == "declaration") Seq(
-                s"cli.jvm.run generate json-schema --to cli/ohi/resources/$name.schema.json $schema",
-                "pruneOhiDeclaration",
-              )
-              else Seq.empty)
-      } ++ Seq(
-        "ohi.model.jvm.fix",
-        "ohi.model.jvm.reformat",
-        "cli.ohi.jvm.fix",
-        "cli.ohi.jvm.reformat",
-      )
-    }
-
-    def regenerateOhi: Seq[String] = alias(ohiGeneration*)
-
     def lint: Seq[String] = {
       val platforms =
         Seq("__.jvm.__", "__.js.__") ++ Option.when(NativeOptional.nativeEnabled)("__.native.__")
@@ -100,7 +49,7 @@ object `package` extends Module {
     }
 
     /** Regenerate every checked-in source generated from a LinkML model. */
-    def regenerate: Seq[String] = alias((Seq(
+    def regenerate: Seq[String] = alias(
       "__:LinkMlModelModule.regenerate",
       "__:LinkMlModelModule.jvm.fix",
       "__:LinkMlModelModule.jvm.reformat",
@@ -110,7 +59,7 @@ object `package` extends Module {
       "generator.optionsgen.generate docs",
       "cli.jvm.test.reformat",
       "agents.generate",
-    ) ++ ohiGeneration)*)
+    )
 
     def regenerateBindings: Seq[String] = alias(
       "generator.optionsgen.generate bindings",
@@ -125,22 +74,6 @@ object `package` extends Module {
 
   def regenerate(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
     AliasesModule.run(ev, "regenerate")
-  }
-
-  def regenerateOhi(ev: Evaluator, args: String*) = Task.Command(exclusive = true) {
-    AliasesModule.run(ev, "regenerateOhi")
-  }
-
-  /** Remove the unused Format enum imported through selection. Both generators retain imported
-    * enums even when no declaration field uses them.
-    */
-  def pruneOhiDeclaration() = Task.Command {
-    val root = mill.api.BuildCtx.workspaceRoot / "cli" / "ohi"
-    os.remove(root / os.SubPath("src/eu/neverblink/ohi/cli/generated/declaration/Format.scala"))
-    val path = root / "resources" / "declaration.schema.json"
-    val schema = ujson.read(os.read(path))
-    schema("$defs").obj.remove("Format")
-    os.write.over(path, ujson.write(schema, indent = 2) + "\n")
   }
 
   /** Generates the derived files of the agent skills in `.agents/`, and checks the skills. Not
