@@ -35,3 +35,12 @@ test("word breaks leave tags and character references as they are", () => {
     '<a href="#aB">foo<wbr>Bar</a> &amp;Copy &ApplyFunction;',
   );
 });
+
+test("a link to a section stays in the page, and other links open in a new tab", () => {
+  assert.equal(renderMarkdown("[a](#a)"), '<p><a href="#a">a</a></p>\n');
+  assert.equal(
+    renderMarkdown("[a](https://w3id.org/linkml) [b](spec.md)"),
+    '<p><a target="_blank" rel="noopener" href="https://w3id.org/linkml">a</a> ' +
+      '<a target="_blank" rel="noopener" href="spec.md">b</a></p>\n',
+  );
+});

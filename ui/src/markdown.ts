@@ -1,11 +1,18 @@
 // Turns the Markdown of the Docs target into HTML for the playground's page view. It runs in the
-// generation worker (see worker.ts), so the page only has to check and show the HTML.
-import { Marked, type Renderer, type Tokens } from "marked";
+// generation worker (see worker.ts), so the page only has to show the HTML.
+import { Marked, Renderer, type Tokens } from "marked";
 
 // GitHub-flavoured Markdown, so tables and fenced code read as they do on GitHub.
 const marked = new Marked({
   gfm: true,
   renderer: {
+    link(token) {
+      const html = Renderer.prototype.link.call(this, token);
+      // Links to sections start with `#`, and app.ts scrolls to them. Every other link opens in a
+      // new tab, so the playground keeps the schema being edited. This includes relative links in
+      // descriptions, such as `spec.md`, which would otherwise replace the playground.
+      return token.href.startsWith("#") ? html : html.replace("<a ", '<a target="_blank" rel="noopener" ');
+    },
     // The same HTML as marked's own table, except for the first cell of each row of the body.
     table(token) {
       let header = "";
@@ -22,7 +29,10 @@ const marked = new Marked({
   },
 });
 
-/** The HTML for `markdown`.
+/** The HTML for `markdown`, which the Docs generator writes.
+ *
+ * The HTML can be shown as it is: the Docs generator writes the Markdown from the schema so that it
+ * cannot add tags or links that run code (see Markdown.scala), and marked escapes the rest.
  *
  * The content of the first cell of each table row, which is usually an element name, is put in a
  * `<span class="md-name">`, with `<wbr>` between its words (see `.md-name` in styles.css). */
