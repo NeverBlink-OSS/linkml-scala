@@ -93,6 +93,13 @@ inline def combinePattern(v1: String, @unused v2: String): String = v1
   */
 inline def combineBoolean(v1: Boolean, v2: Boolean): Boolean = v1 || v2
 
+/** Whether a combined value is `v`, the value that it was combined from. The combine functions give
+  * back their first value as it is when they don't change it, so the same object means no change.
+  * Generated slot combining methods use it to return the slot as it is when nothing changes.
+  */
+inline def same(combined: Any, v: Any): Boolean =
+  combined.asInstanceOf[AnyRef] eq v.asInstanceOf[AnyRef]
+
 /** Fallback combine function that simply returns the first value
   */
 inline def combineFallback[T](v1: T, @unused v2: T): T = v1
