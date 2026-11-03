@@ -61,3 +61,80 @@ export function addWordBreaks(html: string): string {
   for (let i = 0; i < parts.length; i += 2) parts[i] = parts[i]!.replace(WORD_START, "<wbr>");
   return parts.join("");
 }
+
+/** The documentation as sections, for the page view to update only the sections that changed.
+ *
+ * In one document, the Docs generator starts the page of each element with a line `<a id="…">`, its
+ * anchor. Markdown from the schema cannot start such a line, as the Docs generator writes a
+ * zero-width space after its `<` (see Markdown.scala). So the document splits into the index, before
+ * the first anchor, and one section for each element, keyed by its anchor. Each section starts after
+ * a blank line, and the Docs generator closes any code block that it opens, so each section is
+ * Markdown of its own. */
+export interface PagePatch {
+  /** The key of each section, in order. The index has the key "". */
+  keys: string[];
+  /** The revision of each section, in the order of `keys`. */
+  revs: number[];
+  /** The HTML of each section whose revision is newer than the one that the page asked with. */
+  html: Map<string, string>;
+  /** The number of lines of Markdown of each section in `html`, for the height that the page view
+   * gives it until it is laid out. */
+  lines: Map<string, number>;
+  /** The newest revision of any section, which the page asks with once it shows this patch. */
+  rev: number;
+}
+
+/** The sections of the last document, which `update` compares the next one with. */
+export class PageSections {
+  private sections = new Map<string, Section>();
+  private rev = 0;
+
+  /** The patch from the sections that the page shows, up to revision `known`, to the sections of
+   * `markdown`. A section gets a new revision when its Markdown changes, and only then is it turned
+   * into HTML. `known` is 0 for a page that shows nothing. */
+  update(markdown: string, known: number): PagePatch {
+    const next = new Map<string, Section>();
+    const keys: string[] = [];
+    const revs: number[] = [];
+    const html = new Map<string, string>();
+    const lines = new Map<string, number>();
+    let start = 0;
+    while (start < markdown.length || keys.length === 0) {
+      const anchor = markdown.indexOf('\n<a id="', start);
+      const end = anchor < 0 ? markdown.length : anchor + 1;
+      const text = markdown.slice(start, end);
+      let key = text.startsWith('<a id="') ? text.slice(7, text.indexOf('"', 7)) : "";
+      // Anchors are unique, but a key is kept unique even if they were not.
+      if (next.has(key)) key = `${key}\u0000${keys.length}`;
+      let section = this.sections.get(key);
+      if (section?.markdown !== text) {
+        section = { markdown: text, html: renderMarkdown(text), lines: countLines(text), rev: ++this.rev };
+      }
+      next.set(key, section);
+      keys.push(key);
+      revs.push(section.rev);
+      if (section.rev > known) {
+        html.set(key, section.html);
+        lines.set(key, section.lines);
+      }
+      start = end;
+    }
+    this.sections = next;
+    return { keys, revs, html, lines, rev: this.rev };
+  }
+}
+
+/** A section of the last document, with its HTML and the revision it got when it last changed. */
+interface Section {
+  markdown: string;
+  html: string;
+  lines: number;
+  rev: number;
+}
+
+/** The number of lines of `text`. */
+function countLines(text: string): number {
+  let lines = 1;
+  for (let i = text.indexOf("\n"); i >= 0; i = text.indexOf("\n", i + 1)) lines++;
+  return lines;
+}

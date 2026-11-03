@@ -8,7 +8,7 @@ import {
   type TargetResult,
 } from "./targets.js";
 import type { LinkMLApi, LoadResult } from "./linkml";
-import { renderMarkdown } from "./markdown.js";
+import { PageSections, type PagePatch } from "./markdown.js";
 
 const LINKML_BUNDLE_URL = "./linkml.js";
 
@@ -31,6 +31,9 @@ export interface ConvertRequest {
   /** Target id for `fromLinkml`, importer id for `toLinkml`. The two sets overlap. */
   stepId: string;
   options: OptionValues;
+  /** For the Docs target, the newest revision of the sections that the page view shows, or 0 (see
+   * `PagePatch`). */
+  pageRev?: number;
 }
 
 /** How the UI should render `result`: as editor text, as the Scala file tabs, as the report view, as
@@ -50,9 +53,9 @@ export type ConvertResponse =
        * which has no schema to parse. */
       loadMs: number | null;
       genMs: number;
-      /** For a `page`, the HTML for the Markdown in `result` (see markdown.ts), and the time spent
-       * making it. */
-      html?: string;
+      /** For a `page`, the sections of the Markdown in `result` that the page view needs (see
+       * markdown.ts), and the time spent making their HTML. */
+      page?: PagePatch;
       htmlMs?: number;
       /** Set when the schema failed to load at all, so the report is a failure rather than a result. */
       fatal?: true;
@@ -88,12 +91,12 @@ apiPromise
 // text actually changes.
 let cachedSchema: { text: string; loaded: LoadResult } | null = null;
 
-// The last Markdown of the Docs target and its HTML, so that the same Markdown, as after a change
-// to a comment in the schema, is not turned into HTML again.
-let cachedPage: { markdown: string; html: string } | null = null;
+// The sections of the last Markdown of the Docs target, so that only the sections that change are
+// turned into HTML again.
+const pageSections = new PageSections();
 
 self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
-  const { id, direction, input: schema, stepId, options } = e.data;
+  const { id, direction, input: schema, stepId, options, pageRev } = e.data;
   try {
     const api = await apiPromise;
 
@@ -146,12 +149,10 @@ self.onmessage = async (e: MessageEvent<ConvertRequest>) => {
       ? "files"
       : "text";
     if (kind === "page") {
-      const markdown = result as string;
       const t2 = performance.now();
-      if (cachedPage?.markdown !== markdown) cachedPage = { markdown, html: renderMarkdown(markdown) };
-      const html = cachedPage.html;
+      const page = pageSections.update(result as string, pageRev ?? 0);
       const htmlMs = Math.round(performance.now() - t2);
-      reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs, html, htmlMs });
+      reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs, page, htmlMs });
       return;
     }
     reply({ id, ok: true, direction, stepId, kind, result, loadMs, genMs });
