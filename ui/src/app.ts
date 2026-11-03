@@ -44,9 +44,6 @@ const MERMAID_URL = "./mermaid/mermaid.js";
 // The ohi.dev SDK, bundled into dist/ohi.js by build.mjs. Imported the first time the load dialog
 // opens, for the same reason as Mermaid.
 const OHI_URL = "./ohi.js";
-// DOMPurify, which checks the HTML of the documentation page view, bundled into dist/sanitize by
-// build.mjs and imported on first use only, like Mermaid.
-const SANITIZE_URL = "./sanitize/sanitize.js";
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -109,7 +106,7 @@ let diagramSource: string | null = null;
 let pageTab: "page" | "code" = "page";
 // The Markdown currently on screen. Non-null exactly while the page view is up.
 let pageSource: string | null = null;
-// The HTML for `pageSource`, made in the worker (see markdown.ts).
+// The HTML for `pageSource`, made in the worker by markdown.ts.
 let pageHtml = "";
 // The Markdown the page view was last rendered from. The rendered page is kept while the Code tab
 // is showing, so going back to the Page tab does not render it again.
@@ -853,21 +850,6 @@ async function renderDiagram(text: string): Promise<void> {
 
 // ── Documentation page view ─────────────────────────────────────────────────
 
-/** The module built from sanitize.ts. */
-interface SanitizeApi {
-  sanitize(html: string): DocumentFragment;
-}
-
-let sanitizePromise: Promise<SanitizeApi> | null = null;
-
-function loadSanitize(): Promise<SanitizeApi> {
-  sanitizePromise ??= import(SANITIZE_URL) as Promise<SanitizeApi>;
-  return sanitizePromise;
-}
-
-/** Only the newest page render may reach the DOM, as for diagrams. */
-let pageToken = 0;
-
 function hidePage(): void {
   $pageView.hidden = true;
   $pageView.innerHTML = "";
@@ -928,26 +910,15 @@ function showPageTab(): void {
   $outputEditorHost.hidden = true;
   $pageView.hidden = false;
   if (pageRendered === text) $pageView.scrollTop = pageScrollTop;
-  else void renderPage(text, pageHtml, pageScrollTop);
+  else renderPage(text, pageHtml, pageScrollTop);
 }
 
 /** Show `html`, the HTML for the Markdown `text`, in the page view, scrolled to `scrollTop`. */
-async function renderPage(text: string, html: string, scrollTop: number): Promise<void> {
-  const token = ++pageToken;
-  try {
-    const { sanitize } = await loadSanitize();
-    if (token !== pageToken || $pageView.hidden) return;
-    // Links that don't go to a section of the page already open in a new tab (see sanitize.ts).
-    $pageView.replaceChildren(sanitize(html));
-    pageRendered = text;
-    $pageView.scrollTop = scrollTop;
-  } catch (err) {
-    if (token !== pageToken || $pageView.hidden) return;
-    pageRendered = null;
-    $pageView.replaceChildren(
-      errorNotice("Could not show this page", err instanceof Error ? err.message : String(err)),
-    );
-  }
+function renderPage(text: string, html: string, scrollTop: number): void {
+  // The HTML is safe to show as it is (see markdown.ts).
+  $pageView.innerHTML = html;
+  pageRendered = text;
+  $pageView.scrollTop = scrollTop;
 }
 
 // Links between sections are anchors. Scroll the panel to them, rather than letting the browser
