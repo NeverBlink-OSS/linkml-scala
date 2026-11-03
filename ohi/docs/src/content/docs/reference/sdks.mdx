@@ -92,7 +92,7 @@ The CLI, the Python package and the TypeScript package share the ohi LinkML rele
 
 Search uses ohi.dev by default. Each call returns one page. Use `page` to request the next page,
 `per_page` to request up to 250 results, and `q="*"` to browse. See the
-[search options](https://github.com/NeverBlink-OSS/ohi/blob/main/ohi/model/schema/search-request.yaml)
+[search options](https://github.com/NeverBlink-OSS/ohi/blob/main/model/ohi/search-request.yaml)
 for filtering, sorting and facets.
 
 When a search reports `search_cutoff: true`, its results or counts may be incomplete.
@@ -191,7 +191,7 @@ The URLs and hash below are illustrative.
 
 [Version-1 locks](https://github.com/NeverBlink-OSS/ohi/blob/main/ohi/examples/selection.lock.json)
 omit hashes and remain supported. See the
-[lock schema](https://github.com/NeverBlink-OSS/ohi/blob/main/ohi/model/schema/lock.yaml).
+[lock schema](https://github.com/NeverBlink-OSS/ohi/blob/main/model/ohi/lock.yaml).
 
 Create the parent directory before writing a lock. Writes replace an existing lock and preserve its
 contents on failure.
@@ -199,7 +199,7 @@ contents on failure.
 ## Metadata
 
 The ohi SDKs accept
-[revision 2 publication metadata](https://github.com/NeverBlink-OSS/ohi/blob/main/ohi/model/schema/package.yaml),
+[revision 2 publication metadata](https://github.com/NeverBlink-OSS/ohi/blob/main/model/ohi/package.yaml),
 illustrated by the synthetic
 [Sensors example](https://github.com/NeverBlink-OSS/ohi/blob/main/ohi/examples/sensors-package.json).
 Check the publication's licenses and each artifact's format and loading roots. Verify downloaded
@@ -209,7 +209,7 @@ bytes against its `size_bytes` and `sha256` if needed. `get` does not perform th
 
 Catalog failures raise `CatalogException`. Lock validation and file failures raise `LockException`.
 Both expose an `.error` record with a `code` and explanatory `message`. See the
-[error schemas](https://github.com/NeverBlink-OSS/ohi/tree/main/ohi/model/schema) for
+[error schemas](https://github.com/NeverBlink-OSS/ohi/tree/main/model/ohi) for
 additional fields.
 
 ## HTTP behavior

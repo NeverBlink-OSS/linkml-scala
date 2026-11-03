@@ -118,7 +118,7 @@ and `sha256` if needed. `get` does not perform that check.
 
 Catalog failures raise `CatalogException`. Lock validation and file failures raise `LockException`.
 Both expose an `.error` record with a `code` and explanatory `message`.
-See the [error schemas](model/schema/) for additional fields.
+See the [error schemas](../model/ohi/) for additional fields.
 
 Use the final HTTP(S) URL for publications and files. Requests do not follow redirects or retry.
 Set `CatalogConfig.timeout_ms` to override the default 30000 ms timeout.
@@ -129,7 +129,7 @@ When a search reports `search_cutoff: true`, its results or counts may be incomp
 For SDK development, run from the repository root:
 
 ```sh
-./mill --no-server regenerateOhi
+./mill --no-server regenerate
 python -m pip install ./ohi/python
 npm --prefix ohi/typescript ci
 ./mill --no-server 'ohi.{model,catalog}.jvm.test.testForked'

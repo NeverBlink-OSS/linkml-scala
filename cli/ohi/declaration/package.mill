@@ -1,0 +1,32 @@
+package build.cli.ohi.declaration
+
+import mill.*
+import millbuild.*
+
+/** The ohi project declaration (ohi.yaml) model, generated into Scala by this project's own Scala generator. */
+object `package` extends Module, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
+  def modelSchema = Task { "model/ohi/cli/declaration.yaml" }
+
+  def modelPackage = "eu.neverblink.ohi.cli.generated.declaration"
+
+  private def jsonSchema = build.cli.ohi.moduleDir / "resources" / "declaration.schema.json"
+
+  override def otherModelOutputs = Seq(ModelOutput("json-schema", jsonSchema))
+
+  // The Format enum comes in through the selection import, but no declaration field uses it.
+  // Both generators keep imported enums, so remove it from their output.
+  override def unusedModelFiles = Seq("Format.scala")
+
+  override def regenerate() = Task.Command {
+    super.regenerate()()
+    val schema = ujson.read(os.read(jsonSchema))
+    schema("$defs").obj.remove("Format")
+    os.write.over(jsonSchema, ujson.write(schema, indent = 2) + "\n")
+  }
+
+  object jvm extends CommonBuildModule {
+    def moduleDeps = Seq(build.runtime.jvm)
+  }
+}

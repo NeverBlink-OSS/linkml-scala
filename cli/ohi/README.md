@@ -75,7 +75,7 @@ the error tells you which file to remove.
 
 Use `--json` for scripts. Successful results go to stdout with exit status 0. Failures go to stderr
 with exit status 1. The result fields are
-defined in [SearchResult](../../ohi/model/schema/search.yaml), [Publication](../../ohi/model/schema/package.yaml)
+defined in [SearchResult](../../model/ohi/search.yaml), [Publication](../../model/ohi/package.yaml)
 and [DeliveryResult](schema/cli-delivery.yaml).
 
 Use `--timeout-ms` to override the default 30000 ms timeout. Download dependency files individually
@@ -83,7 +83,7 @@ with `get <file-url>` or [from a lock](#download-a-lock).
 
 ## Project commands
 
-A project is a directory with two files. You edit [`ohi.yaml`](schema/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. ohi writes [`ohi.lock.json`](../../ohi/model/schema/lock.yaml), which lists the files those selections resolve to, including dependencies.
+A project is a directory with two files. You edit [`ohi.yaml`](../../model/ohi/cli/declaration.yaml), which lists the publications the project depends on and, for each, the artifact it uses. ohi writes [`ohi.lock.json`](../../model/ohi/lock.yaml), which lists the files those selections resolve to, including dependencies.
 
 ```sh
 ohi init ./project

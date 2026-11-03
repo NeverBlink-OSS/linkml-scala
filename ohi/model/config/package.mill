@@ -1,0 +1,22 @@
+package build.ohi.model.config
+
+import mill.*
+import millbuild.*
+
+/** The ohi catalog client configuration model, generated into Scala by this project's own Scala generator. */
+object `package` extends Module, LinkMlModelModule {
+  def modelGeneratorCli = build.cli.jvm.runner
+
+  def modelSchema = Task { "model/ohi/catalog-config.yaml" }
+
+  def modelPackage = "eu.neverblink.ohi.model.generated.config"
+
+  override def otherModelOutputs = Seq(
+    ModelOutput("pydantic", build.ohi.moduleDir / "python" / "src" / "ohi" / "generated_config.py"),
+    ModelOutput("typescript", build.ohi.moduleDir / "typescript" / "src" / "generated_config.ts"),
+  )
+
+  object jvm extends CommonBuildModule {
+    def moduleDeps = Seq(build.runtime.jvm)
+  }
+}

@@ -13,7 +13,16 @@ object `package` extends Module {
     override def nativeImageOptions =
       super.nativeImageOptions() :+ "--enable-url-protocols=http,https"
 
-    override def moduleDeps = Seq(build.cli.jvm, build.ohi.catalog.jvm)
+    override def moduleDeps = Seq(
+      build.cli.jvm,
+      build.ohi.catalog.jvm,
+      build.cli.ohi.delivery.jvm,
+      build.cli.ohi.fileerror.jvm,
+      build.cli.ohi.lockdownload.jvm,
+      build.cli.ohi.declaration.jvm,
+      build.cli.ohi.projectresult.jvm,
+      build.cli.ohi.projecterror.jvm,
+    )
 
     object test extends ScalaTests, CommonTestModule, UjsonTests {
       override def moduleDeps = super.moduleDeps :+ build.tests.jvm
