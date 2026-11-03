@@ -252,7 +252,7 @@ The [skill guide](.agents/README.md) covers installing from a checkout, switchin
 
 This project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md), adapted from the Mozilla Community Participation Guidelines.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, common mill tasks, and how to contribute.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, common mill tasks, and how to contribute. Contributors need to sign our [Contributor License Agreement](CLA.md).
 
 Have a question, an idea, or just want to say hi? **[Join our Discord](https://discord.gg/HGksVAJ6ss)** – we're happy to help.
 

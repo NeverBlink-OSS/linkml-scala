@@ -1,0 +1,19 @@
+{
+    "name": {
+        "title": "Full name",
+        "type": "string",
+        "githubKey": "name",
+        "required": true
+    },
+    "email": {
+        "title": "Email",
+        "type": "string",
+        "githubKey": "email",
+        "required": true
+    },
+    "address": {
+        "title": "Postal address",
+        "type": "string",
+        "required": true
+    }
+}

@@ -1,8 +1,24 @@
 # Contributing to ohi LinkML
 
-Issues and pull requests are welcome. We don't have a Contributor License Agreement (CLA) yet, so we can't merge large external contributions in the code. If you plan something big, [email us](mailto:contact@neverblink.eu) first.
+Issues and pull requests are welcome. If you plan something big, open an issue or ask on Discord first.
 
 Questions and ideas: **[Discord](https://discord.gg/HGksVAJ6ss)**. The project follows our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Contributor License Agreement
+
+Before we can merge your pull request, you need to sign our [Contributor License Agreement](CLA.md) (CLA)
+
+You only sign once, and it covers all your later pull requests to this repository:
+
+1. Open a pull request. The [CLA assistant](https://cla-assistant.io/) bot comments on it with a link.
+2. Follow the link, sign in with GitHub, read the CLA and accept it.
+3. The bot records your GitHub username and the time of signing, and the `license/cla` check on the pull request turns green. If it doesn't, use the "recheck" link in the bot's comment.
+
+You can also sign before opening a pull request, at [cla-assistant.io/NeverBlink-OSS/ohi](https://cla-assistant.io/NeverBlink-OSS/ohi).
+
+Every author of a commit in the pull request must sign, so make sure your commits are linked to your GitHub account (the commit email is one of your account's emails).
+
+**Contributing for a company.** If you made the contribution as part of your job, your employer may own the copyright. In that case, your employer should sign the [CLA](CLA.md) and email it to [contact@neverblink.eu](mailto:contact@neverblink.eu) with the GitHub usernames of the people who will contribute. We'll then add them to the list of people who don't need to sign themselves.
 
 ## Setup
 
