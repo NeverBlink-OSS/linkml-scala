@@ -18,6 +18,7 @@ import {
   type SchemaStats,
   type SchemaValidationReport,
 } from "./targets.js";
+import type { PagePatch } from "./markdown.js";
 import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
 import type { CatalogClient, Format as OhiFormat, SearchHit } from "@neverblink/ohi";
 
@@ -106,11 +107,12 @@ let diagramSource: string | null = null;
 let pageTab: "page" | "code" = "page";
 // The Markdown currently on screen. Non-null exactly while the page view is up.
 let pageSource: string | null = null;
-// The HTML for `pageSource`, made in the worker by markdown.ts.
-let pageHtml = "";
-// The Markdown the page view was last rendered from. The rendered page is kept while the Code tab
-// is showing, so going back to the Page tab does not render it again.
-let pageRendered: string | null = null;
+// The sections that the page view shows, by key, with the revision of each (see `PagePatch`). They
+// are kept while the Code tab is showing, so going back to the Page tab does not render them again.
+let pageSections = new Map<string, { el: HTMLElement; rev: number }>();
+// The newest revision of `pageSections`, which the next request for the Docs target asks with, so
+// that the worker sends only the sections that are newer.
+let pageRev = 0;
 // Where the page view is scrolled to, and where to scroll it when it is shown again. It is kept up
 // to date by the `scroll` listener of the page view, because reading `scrollTop` when the page has
 // changed makes the browser lay out the page first.
@@ -856,16 +858,16 @@ function hidePage(): void {
   $pageView.hidden = true;
   $pageView.innerHTML = "";
   pageSource = null;
-  pageHtml = "";
-  pageRendered = null;
+  pageSections = new Map();
+  pageRev = 0;
   pageScrollTop = 0;
   pageOutputBehind = false;
   $outputEditorHost.hidden = false;
 }
 
-/** Show the Markdown `text` as a page, behind a Page/Code tab pair sharing the file tab bar. `html`
- * is the HTML for `text`. */
-function showPage(text: string, html: string): void {
+/** Show the Markdown `text` as a page, behind a Page/Code tab pair sharing the file tab bar. `patch`
+ * has the sections of `text` that the page view does not show yet. */
+function showPage(text: string, patch: PagePatch): void {
   hideReport();
   hideDiagram();
   hideStats();
@@ -889,37 +891,67 @@ function showPage(text: string, html: string): void {
   // A new schema starts at the top, as `hidePage` sets `pageScrollTop` to 0. The same schema
   // regenerated, as while typing, keeps its place.
   pageSource = text;
-  pageHtml = html;
   pageOutputBehind = true;
+  // Also while the Code tab is showing, as the hidden page is not laid out.
+  if (!applyPage(patch)) return;
   showPageTab();
+}
+
+/** Make the page view show the sections of `patch`, in its order. Each section that is new, or has
+ * a newer revision, gets its HTML from `patch`. Returns false if `patch` lacks the HTML of one of
+ * them, which should not happen: then the page is emptied, and the whole page asked for again. */
+function applyPage(patch: PagePatch): boolean {
+  const next = new Map<string, { el: HTMLElement; rev: number }>();
+  // The section that the next one goes after, or null for the first one
+  let previous: HTMLElement | null = null;
+  for (let i = 0; i < patch.keys.length; i++) {
+    const key = patch.keys[i]!;
+    const rev = patch.revs[i]!;
+    let section = pageSections.get(key);
+    if (section?.rev !== rev) {
+      const html = patch.html.get(key);
+      if (html === undefined) {
+        hidePage();
+        scheduleGenerate(0);
+        return false;
+      }
+      const el = section?.el ?? document.createElement("section");
+      el.className = "md-section";
+      // The height that the section is laid out with until it is shown (see styles.css)
+      el.style.setProperty("--md-lines", String(patch.lines.get(key) ?? 1));
+      // The HTML is safe to show as it is (see markdown.ts).
+      el.innerHTML = html;
+      section = { el, rev };
+    }
+    next.set(key, section);
+    const at: ChildNode | null = previous === null ? $pageView.firstChild : previous.nextSibling;
+    if (section.el !== at) $pageView.insertBefore(section.el, at);
+    previous = section.el;
+  }
+  for (const [key, section] of pageSections) if (!next.has(key)) section.el.remove();
+  pageSections = next;
+  pageRev = patch.rev;
+  return true;
 }
 
 /** Show the half of the page view that `pageTab` names, for `pageSource`. */
 function showPageTab(): void {
-  const text = pageSource!;
   if (pageTab === "code") {
     // Hide the page first, so the editor update below does not lay it out.
     $pageView.hidden = true;
     $outputEditorHost.hidden = false;
     if (pageOutputBehind) {
-      setOutput(outputView, text, "text");
+      setOutput(outputView, pageSource!, "text");
       pageOutputBehind = false;
     }
     return;
   }
 
   $outputEditorHost.hidden = true;
+  if (!$pageView.hidden) return;
   $pageView.hidden = false;
-  if (pageRendered === text) $pageView.scrollTop = pageScrollTop;
-  else renderPage(text, pageHtml, pageScrollTop);
-}
-
-/** Show `html`, the HTML for the Markdown `text`, in the page view, scrolled to `scrollTop`. */
-function renderPage(text: string, html: string, scrollTop: number): void {
-  // The HTML is safe to show as it is (see markdown.ts).
-  $pageView.innerHTML = html;
-  pageRendered = text;
-  $pageView.scrollTop = scrollTop;
+  // A hidden element loses where it was scrolled to.
+  if (pageScrollTop > 0) $pageView.scrollTop = pageScrollTop;
 }
 
 $pageView.addEventListener(
@@ -945,8 +977,8 @@ $pageView.addEventListener("click", (e) => {
 
 /** Scrolls the page view to `target`.
  *
- * The browser lays out only the blocks near the visible part of the page (see `.md-page > *` in
- * styles.css). So once it has scrolled, the blocks around `target` are laid out, and those above it
+ * The browser lays out only the sections near the visible part of the page (see `.md-section` in
+ * styles.css). So once it has scrolled, the sections around `target` are laid out, and those above it
  * can grow and push it down, which in Chrome happens two or three frames later. Scroll to it again
  * until it stays in place for five frames, unless the user scrolls first. */
 function scrollPageTo(target: Element): void {
@@ -1466,7 +1498,14 @@ function runGenerate(): void {
   const id = ++requestId;
   pendingId = id;
   setBusy(true);
-  const request: ConvertRequest = { id, direction, input, stepId: step.id, options: optionValues[activeKey()]! };
+  const request: ConvertRequest = {
+    id,
+    direction,
+    input,
+    stepId: step.id,
+    options: optionValues[activeKey()]!,
+    pageRev,
+  };
   getWorker().postMessage(request);
 }
 
@@ -1493,7 +1532,7 @@ function onResult(res: ConvertResponse): void {
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else if (res.kind === "page") {
-    showPage(res.result as string, res.html ?? "");
+    showPage(res.result as string, res.page!);
   } else if (res.kind === "stats") {
     showStats(res.result as SchemaStats);
   } else {
