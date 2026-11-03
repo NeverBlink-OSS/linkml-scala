@@ -180,6 +180,16 @@ final class PydanticGenerator(using sv: SchemaView)
 
   /** Python type of an attribute, without `| None` for optional slots. */
   private def attributeType(attribute: AttributeView, owner: ClassView, ctx: Context): String = {
+    val alternatives = attribute.rangeAlternatives
+    if alternatives.isEmpty then rangeType(attribute, owner, ctx)
+    else
+      listIf(
+        attribute.slotView.slot.multivalued,
+        alternatives.map(rangeType(_, owner, ctx)).distinct.mkString(" | "),
+      )
+  }
+
+  private def rangeType(attribute: AttributeView, owner: ClassView, ctx: Context): String = {
     val multivalued = attribute.slotView.slot.multivalued
     val tpe = attribute match {
       case _: AnyView =>
@@ -212,7 +222,10 @@ final class PydanticGenerator(using sv: SchemaView)
     if tav.slotView.slot.designatesType && owner.isConcrete then owner.typeDesignatorValues
     else Nil
 
-  private def isAny(attribute: AttributeView): Boolean = attribute match {
+  private def isAny(attribute: AttributeView): Boolean =
+    attribute.rangeAlternatives.isEmpty && isAnyRange(attribute)
+
+  private def isAnyRange(attribute: AttributeView): Boolean = attribute match {
     case _: AnyView => !attribute.slotView.slot.multivalued
     case tav: TypeAttributeView =>
       !tav.slotView.slot.multivalued && !tav.typeView.isUnion &&
@@ -262,10 +275,7 @@ final class PydanticGenerator(using sv: SchemaView)
       }
     }
     sink.append('\n')
-    val doc = DocLines(slot) ++ (attribute match {
-      case ref: ClassReferenceAttributeView => Seq(s"Reference to ${className(ref.classView)}")
-      case _ => Nil
-    })
+    val doc = DocLines(slot) ++ referenceDoc(attribute)
     writeDoc(sink, doc, "    ")
   }
 
@@ -694,6 +704,14 @@ final class PydanticGenerator(using sv: SchemaView)
           |        return {k: v for k, v in handler(self).items() if v is not None}
           |""".stripMargin,
       )
+  }
+
+  private def referenceDoc(attribute: AttributeView): Option[String] = {
+    val alternatives = attribute.rangeAlternatives
+    val classes = (if alternatives.isEmpty then Seq(attribute) else alternatives).collect {
+      case ref: ClassReferenceAttributeView => className(ref.classView)
+    }
+    Option.when(classes.nonEmpty)(classes.mkString("Reference to ", " or ", ""))
   }
 
   private def writeDoc(sink: CharSink, lines: Seq[String], indent: String): Unit =

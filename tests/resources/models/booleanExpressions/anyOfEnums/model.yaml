@@ -1,0 +1,25 @@
+id: https://neverblink.eu/linkml/tests/anyOfEnums/
+name: anyOfEnums
+description: An `any_of` list with an enum and a type, so a value can be a permissible value or a number
+
+imports:
+  - linkml:types
+
+enums:
+  Size:
+    permissible_values:
+      SMALL:
+      LARGE:
+
+classes:
+  Shirt:
+    tree_root: true
+    slots:
+      - size
+
+slots:
+  size:
+    required: true
+    any_of:
+      - range: Size
+      - range: integer

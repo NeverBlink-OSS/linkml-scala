@@ -751,6 +751,46 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py should include("    choice: StrictBool | str | StrictInt | None = None\n")
     }
 
+    "map the ranges of any_of members to unions" in {
+      val py = generate(
+        """enums:
+          |  Size:
+          |    permissible_values:
+          |      SMALL:
+          |classes:
+          |  Person:
+          |    attributes:
+          |      name: {required: true}
+          |  Thing:
+          |    attributes:
+          |      id: {identifier: true}
+          |  C:
+          |    attributes:
+          |      value:
+          |        required: true
+          |        any_of:
+          |          - range: integer
+          |          - range: boolean
+          |      mixed:
+          |        multivalued: true
+          |        inlined_as_list: true
+          |        any_of:
+          |          - range: string
+          |          - range: Person
+          |          - range: Size
+          |      refs:
+          |        any_of:
+          |          - range: Thing
+          |          - range: integer
+          |""".stripMargin,
+      )
+      py should include("    value: StrictInt | StrictBool\n")
+      py should include("    mixed: list[str | Person | Size] | None = None\n")
+      py should include(
+        "    refs: str | StrictInt | None = None\n    \"\"\"Reference to Thing\"\"\"\n",
+      )
+    }
+
     "generate all catalogue models without errors" when {
       for entry <- ModelCatalogue.allOptIn do
         s"model '${entry.name}'" in {

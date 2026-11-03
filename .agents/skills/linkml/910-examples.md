@@ -23,10 +23,15 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `booleanExpressions/allOfInheritance` | 3 | 6 | A `slot_usage` with an `all_of` list. A value must match th… |
 | `booleanExpressions/allOfMixins` | 3 | 6 | A class gets `all_of` lists for one slot from a mixin and f… |
 | `booleanExpressions/allOfNoneOfChain` | 3 | 12 | `all_of` and `none_of` lists from three levels of inheritan… |
+| `booleanExpressions/anyOf` | 9 | 3 | A value must match at least one member of `any_of` |
 | `booleanExpressions/anyOfChain` | 3 | 6 | `any_of` lists from three levels of inheritance. A value mu… |
 | `booleanExpressions/anyOfClassRanges` | 3 | 3 | A `slot_usage` with an `any_of` list of classes that has on… |
+| `booleanExpressions/anyOfEnums` | 6 | 6 | An `any_of` list with an enum and a type, so a value can be… |
+| `booleanExpressions/anyOfInlinedList` | 3 | 3 | A list of inlined objects with an `any_of` list of classes,… |
 | `booleanExpressions/anyOfMixins` | 3 | 6 | A class gets `any_of` lists for one slot from a mixin and f… |
+| `booleanExpressions/anyOfMultivalued` | 3 | 3 | A multivalued slot with an `any_of` list, so each value mus… |
 | `booleanExpressions/anyOfNarrowing` | 6 | 3 | A `slot_usage` with an `any_of` list that has only some of… |
+| `booleanExpressions/anyOfTypeOrClass` | 6 | 6 | An `any_of` list with a type and an inlined class, so a val… |
 | `booleanExpressions/anyOfWidening` | 3 | 6 | A `slot_usage` with an `any_of` list that has a range not i… |
 | `booleanExpressions/exactlyOneOf` | 6 | 6 | A value must match exactly one member of `exactly_one_of` |
 | `booleanExpressions/exactlyOneOfInheritance` | 3 | 6 | A `slot_usage` with an `exactly_one_of` list that has fewer… |
@@ -106,7 +111,7 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `typed` | 8 | 19 |  |
 | `unionOf` | 4 | 6 |  |
 | `unionRange` | 6 | 3 |  |
-| `unionRangeReference` | 8 | 3 |  |
+| `unionRangeReference` | 8 | 5 |  |
 | `uri` | 14 | 0 |  |
 | `uriImports` | 0 | 0 |  |
 | `uriOrCurie` | 22 | 0 |  |

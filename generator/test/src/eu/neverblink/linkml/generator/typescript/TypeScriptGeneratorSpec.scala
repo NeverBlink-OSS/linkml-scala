@@ -267,6 +267,44 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
       ts should include("  number?: number;\n")
     }
 
+    "map the ranges of any_of members to unions" in {
+      val ts = generate(
+        """enums:
+          |  Size:
+          |    permissible_values:
+          |      SMALL:
+          |classes:
+          |  Person:
+          |    attributes:
+          |      name: {required: true}
+          |  Thing:
+          |    attributes:
+          |      id: {identifier: true}
+          |  C:
+          |    attributes:
+          |      value:
+          |        required: true
+          |        any_of:
+          |          - range: integer
+          |          - range: boolean
+          |      mixed:
+          |        multivalued: true
+          |        inlined_as_list: true
+          |        any_of:
+          |          - range: string
+          |          - range: Person
+          |          - range: Size
+          |      refs:
+          |        any_of:
+          |          - range: Thing
+          |          - range: integer
+          |""".stripMargin,
+      )
+      ts should include("  value: number | boolean;\n")
+      ts should include("  mixed?: (string | Person | Size)[];\n")
+      ts should include("  /** Reference to Thing */\n  refs?: string | number;\n")
+    }
+
     "keep the declared order of union members, with nested unions in place" in {
       val ts = generate(
         """types:

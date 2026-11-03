@@ -210,4 +210,100 @@ class AttributeViewSpec extends AnyWordSpec, Matchers {
       b.equalsExpression shouldBe None
     }
   }
+
+  "AttributeView.rangeAlternatives" should {
+    val schema =
+      """id: urn:test
+        |name: test
+        |imports:
+        |  - linkml:types
+        |  - linkml:extended_types
+        |classes:
+        |  Person:
+        |    attributes:
+        |      name:
+        |        required: true
+        |  Thing:
+        |    attributes:
+        |      id:
+        |        identifier: true
+        |  Part:
+        |    is_a: Thing
+        |  Base:
+        |    attributes:
+        |      plain:
+        |      typed:
+        |        range: Any
+        |        any_of:
+        |          - range: integer
+        |          - range: string
+        |      mixed:
+        |        multivalued: true
+        |        inlined_as_list: true
+        |        any_of:
+        |          - range: string
+        |          - range: Person
+        |          - range: Thing
+        |      constrained:
+        |        any_of:
+        |          - range: integer
+        |          - pattern: "^a"
+        |    slots:
+        |      value
+        |  Narrowed:
+        |    is_a: Base
+        |    slot_usage:
+        |      value:
+        |        any_of:
+        |          - range: integer
+        |          - range: boolean
+        |  Subclass:
+        |    is_a: Base
+        |    slot_usage:
+        |      mixed:
+        |        any_of:
+        |          - range: Part
+        |slots:
+        |  value:
+        |    any_of:
+        |      - range: integer
+        |      - range: string
+        |""".stripMargin
+
+    lazy val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
+    def alternatives(cls: String, slot: String): Seq[AttributeView] =
+      sv.classes(cls).attributeViews(slot).rangeAlternatives
+
+    "be empty without any_of" in {
+      alternatives("Base", "plain") shouldBe empty
+    }
+
+    "be empty if a member has no range" in {
+      alternatives("Base", "constrained") shouldBe empty
+    }
+
+    "replace the slot's own range" in {
+      alternatives("Base", "typed").map(_.shouldBeA[TypeAttributeView].typeView.name) shouldBe
+        Seq("integer", "string")
+    }
+
+    "have single values, inlined if the slot is inlined as a list" in {
+      val Seq(text, person, thing) = alternatives("Base", "mixed")
+      text.shouldBeA[TypeAttributeView].slotView.slot.multivalued shouldBe false
+      person.shouldBeA[ClassInlineAttributeView].inlineType shouldBe InlineType.optional
+      thing.shouldBeA[ClassInlineAttributeView].classView.name shouldBe "Thing"
+    }
+
+    "keep the ranges that the lists of all levels allow" in {
+      alternatives("Narrowed", "value").map(_.shouldBeA[TypeAttributeView].typeView.name) shouldBe
+        Seq("integer")
+    }
+
+    "keep a descendant of a range from another level" in {
+      alternatives("Subclass", "mixed").map(
+        _.shouldBeA[ClassInlineAttributeView].classView.name,
+      ) shouldBe
+        Seq("Part")
+    }
+  }
 }

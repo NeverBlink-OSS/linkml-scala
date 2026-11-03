@@ -1,0 +1,24 @@
+id: https://neverblink.eu/linkml/tests/anyOfTypeOrClass/
+name: anyOfTypeOrClass
+description: An `any_of` list with a type and an inlined class, so a value can be a string or an object
+
+imports:
+  - linkml:types
+
+classes:
+  Person:
+    attributes:
+      name:
+        required: true
+  Book:
+    tree_root: true
+    slots:
+      - author
+
+slots:
+  author:
+    required: true
+    inlined: true
+    any_of:
+      - range: string
+      - range: Person

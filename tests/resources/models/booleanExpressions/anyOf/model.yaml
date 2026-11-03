@@ -1,0 +1,18 @@
+id: https://neverblink.eu/linkml/tests/anyOf/
+name: anyOf
+description: A value must match at least one member of `any_of`
+
+imports:
+  - linkml:types
+
+classes:
+  Item:
+    tree_root: true
+    slots:
+      - value
+
+slots:
+  value:
+    any_of:
+      - range: integer
+      - range: boolean

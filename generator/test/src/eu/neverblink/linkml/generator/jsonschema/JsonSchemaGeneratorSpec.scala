@@ -54,6 +54,72 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
       c.required should contain("some_other_slot")
     }
 
+    "generate anyOf for the ranges of any_of members" in {
+      def property(model: SchemaView, cls: String, slot: String): Schema =
+        given SchemaView = model
+        JsonSchemaGenerator().generate().$defs.get(cls).asInstanceOf[Schema].properties(slot)
+          .asInstanceOf[Schema]
+          .copy(title = None)
+      def tpe(t: SchemaType) = Schema(t)
+
+      property(ModelCatalogue.unionRange.model, "Union", "string_or_int_slot") shouldBe
+        Schema(anyOf = List(tpe(SchemaType.Integer), tpe(SchemaType.String)))
+      // Only the ranges that all the lists of the class and its ancestors allow
+      property(ModelCatalogue.booleanExpressions.anyOfWidening.model, "Widened", "value") shouldBe
+        tpe(SchemaType.Integer)
+      property(
+        ModelCatalogue.booleanExpressions.anyOfInlinedList.model,
+        "Robot",
+        "messages",
+      ) shouldBe Schema(SchemaType.Array).copy(items =
+        Some(
+          Schema(anyOf =
+            List(Schema($ref = Some("#/$defs/Command")), Schema($ref = Some("#/$defs/Report"))),
+          ),
+        ),
+      )
+      // Members with constraints are written out in full
+      property(ModelCatalogue.booleanExpressions.nestedExpressions.model, "Item", "size") shouldBe
+        Schema(anyOf =
+          List(
+            tpe(SchemaType.Integer).copy(not = Some(Schema(minimum = Some(BigDecimal(10))))),
+            tpe(SchemaType.String),
+          ),
+        )
+      // Members with cardinality check all values of the slot together
+      property(ModelCatalogue.booleanExpressions.memberCardinality.model, "Bag", "values") shouldBe
+        Schema(SchemaType.Array).copy(anyOf =
+          List(
+            Schema(SchemaType.Array).copy(
+              minItems = Some(2),
+              maxItems = Some(2),
+              items = Some(tpe(SchemaType.Integer)),
+            ),
+            Schema(SchemaType.Array).copy(maxItems = Some(1), items = Some(tpe(SchemaType.String))),
+          ),
+        )
+    }
+
+    "generate allOf, oneOf and not for the other boolean slots" in {
+      def property(model: SchemaView, cls: String, slot: String): Schema =
+        given SchemaView = model
+        JsonSchemaGenerator().generate().$defs.get(cls).asInstanceOf[Schema].properties(slot)
+          .asInstanceOf[Schema]
+          .copy(title = None)
+
+      property(ModelCatalogue.booleanExpressions.allOf.model, "Code", "code").allOf shouldBe List(
+        Schema(pattern = Some(Pattern("^A"))),
+        Schema(pattern = Some(Pattern("Z$"))),
+      )
+      property(ModelCatalogue.booleanExpressions.noneOf.model, "Fruit", "label") shouldBe
+        Schema(SchemaType.String).copy(not = Some(Schema(pattern = Some(Pattern("^bad")))))
+      property(ModelCatalogue.booleanExpressions.exactlyOneOf.model, "Measurement", "level")
+        .oneOf shouldBe List(
+        Schema(minimum = Some(BigDecimal(0)), maximum = Some(BigDecimal(10))),
+        Schema(minimum = Some(BigDecimal(5)), maximum = Some(BigDecimal(20))),
+      )
+    }
+
     "generate anyOf alternatives for a type with union_of" in {
       given SchemaView = ModelCatalogue.unionOf.model
 
@@ -1210,7 +1276,5 @@ class JsonSchemaGeneratorSpec extends AnyWordSpec, Matchers {
 }
 
 object JsonSchemaGeneratorSpec {
-  val skipModels: Map[String, String] = Map(
-    "unionRange" -> "Not yet implemented: LNK-100",
-  )
+  val skipModels: Map[String, String] = Map()
 }

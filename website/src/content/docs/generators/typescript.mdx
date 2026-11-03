@@ -160,6 +160,7 @@ quoted, e.g. `"odd-name"?: string`.
 | `boolean`                                                      | `boolean`           |
 | `linkml:Any`                                                   | `unknown`           |
 | a type with `union_of`                                         | a union of its members' types, e.g. `string \| number` |
+| `any_of` or `exactly_one_of` members with ranges               | a union of the ranges' types, e.g. `number \| Person` |
 | an enum                                                        | the enum's type     |
 | a class, not inlined                                           | the type of the class's identifier, with a "Reference to X" comment |
 | a class, inlined                                               | the class's type    |

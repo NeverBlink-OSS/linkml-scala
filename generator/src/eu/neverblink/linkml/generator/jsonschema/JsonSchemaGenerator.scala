@@ -6,11 +6,11 @@ import com.github.plokhotnyuk.jsoniter_scala.macros.{CodecMakerConfig, JsonCodec
 import eu.neverblink.linkml
 import eu.neverblink.linkml.generator.JsonDocumentGenerator
 import eu.neverblink.linkml.generator.util.metadataLanguage
-import eu.neverblink.linkml.metamodel.SlotDefinition
+import eu.neverblink.linkml.metamodel.{Element, SlotDefinition, SlotExpression}
 import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.*
 import eu.neverblink.linkml.runtime.FastUtils.*
-import eu.neverblink.linkml.runtime.LinkmlAny
+import eu.neverblink.linkml.runtime.{LinkmlAny, Reference}
 import sttp.apispec.{
   AnySchema,
   ExampleMultipleValue,
@@ -121,10 +121,112 @@ class JsonSchemaGenerator(using sv: SchemaView)
       }
     }
 
+    // A member checked against each value
+    def memberValueSchema(attribute: AttributeView, member: SlotExpression, owner: ClassView) =
+      merged(
+        member.range.foldFast(Schema.Empty)(r => attributeSchema(attribute.singleValue(r), owner)),
+        Schema(
+          pattern = member.pattern.mapFast(p => new Pattern(p)),
+          minimum = toBigDecimalOpt(member.minimumValue),
+          maximum = toBigDecimalOpt(member.maximumValue),
+        ),
+        booleanSchema(attribute, member, owner, perInstance = false, skipRangeOnly = false),
+      )
+
+    // A member checked against all values of a multivalued slot together
+    def memberInstanceSchema(attribute: AttributeView, member: SlotExpression, owner: ClassView) = {
+      val value = memberValueSchema(attribute, member, owner)
+      val min = member.minimumCardinality.orElseFast(member.exactCardinality)
+      merged(
+        arraySchema.copy(
+          minItems = if member.required then min.orElseFast(Some(1)) else min,
+          maxItems = member.maximumCardinality.orElseFast(member.exactCardinality),
+          items = Option.when(value != Schema.Empty)(value),
+        ),
+        booleanSchema(attribute, member, owner, perInstance = true, skipRangeOnly = false),
+      )
+    }
+
+    // With `skipRangeOnly`, range-only members are left out, as the range alternatives check them
+    def booleanSchema(
+        attribute: AttributeView,
+        expression: SlotExpression,
+        owner: ClassView,
+        perInstance: Boolean,
+        skipRangeOnly: Boolean,
+    ): Schema = {
+      def schemas(members: Seq[SlotExpression]): List[SchemaLike] =
+        if members.isEmpty || isPerInstance(members) != perInstance then Nil
+        else
+          members.map { m =>
+            if perInstance then memberInstanceSchema(attribute, m, owner)
+            else memberValueSchema(attribute, m, owner)
+          }.toList
+      def unlessRangeOnly(members: Seq[SlotExpression]) =
+        if skipRangeOnly && members.forall(isRangeOnly) then Nil else schemas(members)
+      Schema(
+        anyOf = unlessRangeOnly(expression.anyOf),
+        oneOf = unlessRangeOnly(expression.exactlyOneOf),
+        allOf = schemas(
+          if skipRangeOnly then expression.allOf.filterNot(isRangeOnly) else expression.allOf,
+        ),
+        not = schemas(expression.noneOf) match {
+          case Nil => None
+          case one :: Nil => Some(one)
+          case all => Some(Schema(anyOf = all))
+        },
+      )
+    }
+
     // Generate a Schema for a specific attribute of the `owner` class, which maps to a JSON Schema
     // property
     def generateSlotSchema(attribute: AttributeView, owner: ClassView): Schema = {
-      val slotSchema = attribute match {
+      val slot = attribute.slotView.slot
+      val alternatives = attribute.rangeAlternatives
+      val slotSchema =
+        if alternatives.isEmpty && !hasBooleanSlots(slot) then attributeSchema(attribute, owner)
+        else {
+          // Member ranges replace the slot's range, as in SHACL
+          val skip = alternatives.nonEmpty && (
+            slot.anyOf.nonEmpty && slot.anyOf.forall(isRangeOnly) ||
+              slot.exactlyOneOf.nonEmpty && slot.exactlyOneOf.forall(isRangeOnly) ||
+              slot.allOf.exists(isRangeOnly)
+          )
+          val membersSetRange =
+            slot.anyOf.exists(_.range.isDefined) || slot.exactlyOneOf.exists(_.range.isDefined)
+          val value =
+            if skip then anyOfOrOne(alternatives.map(attributeSchema(_, owner)))
+            else if alternatives.nonEmpty || membersSetRange then Schema.Empty
+            else {
+              val range = attribute.slotView.derivedRange.asInstanceOf[Reference[Element]]
+              attributeSchema(attribute.singleValue(range), owner)
+            }
+          val perValue =
+            merged(value, booleanSchema(attribute, slot, owner, perInstance = false, skip))
+          if slot.multivalued then
+            merged(
+              if perValue == Schema.Empty then arraySchema else perValue.arrayOf,
+              booleanSchema(attribute, slot, owner, perInstance = true, skip),
+            )
+          else perValue
+        }
+      val sv = attribute.slotView
+      // withCardinality inspects the schema's direct type
+      val constrainedSchema = withCardinality(slotSchema, sv.slot)
+
+      val valueSchema =
+        if (options.includeNull && !sv.slot.required)
+          new Schema(anyOf = List(constrainedSchema, Schema.Null))
+        else constrainedSchema
+
+      valueSchema.copy(
+        title = sv.slot.title.localized.orElseFast(Some(sv.slot.name)),
+        description = sv.slot.description.localized,
+      )
+    }
+
+    def attributeSchema(attribute: AttributeView, owner: ClassView): Schema =
+      attribute match {
         case _: AnyView => Schema.Empty
         case ClassInlineAttributeView(_, _, classView, inlineType) =>
           inlineType match {
@@ -173,21 +275,6 @@ class JsonSchemaGenerator(using sv: SchemaView)
             $ref = new Some("#/$defs/".concat(enumName(enumView))),
           ).arrayOfIf(slotView.slot.multivalued)
       }
-      val sv = attribute.slotView
-      // withCardinality inspects the schema's direct type
-      val constrainedSchema = withCardinality(slotSchema, sv.slot)
-
-      val valueSchema =
-        if (options.includeNull && !sv.slot.required)
-          new Schema(anyOf = List(constrainedSchema, Schema.Null))
-        else constrainedSchema
-
-      valueSchema.copy(
-        title = sv.slot.title.localized.orElseFast(Some(sv.slot.name)),
-        description = sv.slot.description.localized,
-      )
-
-    }
 
     // Accumulator of all schema definitions, reused to search definition for
     // keyless classes and value definitions
@@ -342,6 +429,61 @@ object JsonSchemaGenerator {
           }
         case _ => schema
       }
+  }
+
+  private def hasBooleanSlots(slot: SlotExpression): Boolean =
+    slot.anyOf.nonEmpty || slot.exactlyOneOf.nonEmpty || slot.allOf.nonEmpty || slot.noneOf.nonEmpty
+
+  private def isRangeOnly(member: SlotExpression): Boolean =
+    member.pattern.isEmpty && member.minimumValue.isEmpty && member.maximumValue.isEmpty &&
+      !hasCardinality(member) && member.exactlyOneOf.isEmpty && member.noneOf.isEmpty &&
+      member.anyOf.forall(isRangeOnly) && member.allOf.forall(isRangeOnly)
+
+  private def hasCardinality(member: SlotExpression): Boolean =
+    member.required || member.minimumCardinality.isDefined ||
+      member.maximumCardinality.isDefined || member.exactCardinality.isDefined ||
+      member.anyOf.exists(hasCardinality) || member.exactlyOneOf.exists(hasCardinality) ||
+      member.allOf.exists(hasCardinality) || member.noneOf.exists(hasCardinality)
+
+  /** Members with cardinality are checked against all values together, not each value. */
+  private def isPerInstance(members: Seq[SlotExpression]): Boolean = members.exists(hasCardinality)
+
+  private def anyOfOrOne(schemas: Seq[Schema]): Schema =
+    if schemas.sizeIs == 1 then schemas.head else Schema(anyOf = schemas.toList)
+
+  /** Joins the schemas into one, or into `allOf` if their keywords clash. */
+  private def merged(schemas: Schema*): Schema = {
+    val nonEmpty = schemas.filter(_ != Schema.Empty)
+    def keywords(s: Schema): Seq[String] = Seq(
+      Option.when(s.$ref.isDefined)("$ref"),
+      Option.when(s.`type`.isDefined)("type"),
+      Option.when(s.pattern.isDefined)("pattern"),
+      Option.when(s.minimum.isDefined)("minimum"),
+      Option.when(s.maximum.isDefined)("maximum"),
+      Option.when(s.anyOf.nonEmpty)("anyOf"),
+      Option.when(s.oneOf.nonEmpty)("oneOf"),
+      Option.when(s.allOf.nonEmpty)("allOf"),
+      Option.when(s.not.isDefined)("not"),
+    ).flatten
+    nonEmpty match {
+      case Seq() => Schema.Empty
+      case Seq(one) => one
+      case Seq(first, rest*)
+          if rest.forall(r => keywords(r).forall(k => k != "$ref" && k != "type")) &&
+            nonEmpty.flatMap(keywords).distinct.sizeIs == nonEmpty.map(keywords(_).size).sum =>
+        rest.foldLeft(first) { (a, b) =>
+          a.copy(
+            pattern = a.pattern.orElse(b.pattern),
+            minimum = a.minimum.orElse(b.minimum),
+            maximum = a.maximum.orElse(b.maximum),
+            anyOf = a.anyOf ++ b.anyOf,
+            oneOf = a.oneOf ++ b.oneOf,
+            allOf = a.allOf ++ b.allOf,
+            not = a.not.orElse(b.not),
+          )
+        }
+      case _ => Schema(allOf = nonEmpty.toList)
+    }
   }
 
   type MappedClassName = String

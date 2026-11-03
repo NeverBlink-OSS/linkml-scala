@@ -31,6 +31,71 @@ sealed trait AttributeView:
       StringInterpolationExpression.parse(expr)(using this)
     }
 
+  /** One value of this slot per range that its `any_of` and `exactly_one_of` lists allow, from all
+    * levels of inheritance. Other constraints of the members are ignored.
+    */
+  final lazy val rangeAlternatives: Seq[AttributeView] =
+    AttributeView.rangesOf(slotView.slot, false)(using slotView.sv)
+      .foldFast(Nil)(_.map(singleValue))
+
+  /** One value of this slot, with another range. */
+  final def singleValue(range: Reference[Element]): AttributeView = {
+    val slot = slotView.slot
+    val single = slot.copy(
+      range = new Some(range),
+      multivalued = false,
+      inlined = slot.inlined || slot.inlinedAsList,
+      inlinedAsList = false,
+      anyOf = Nil,
+      exactlyOneOf = Nil,
+      noneOf = Nil,
+      allOf = Nil,
+      minimumCardinality = None,
+      maximumCardinality = None,
+      exactCardinality = None,
+    )
+    definingClassView.attributeViewOf(SlotView(single, slotView.definingSchema)(using slotView.sv))
+  }
+
+private object AttributeView:
+  private type Ranges = Option[Seq[Reference[Element]]]
+
+  /** The ranges allowed by an expression, or None if it doesn't limit them.
+    *
+    * @param withOwn
+    *   Whether the expression's own `range` counts
+    */
+  def rangesOf(expression: SlotExpression, withOwn: Boolean)(using SchemaView): Ranges = {
+    var result: Ranges = if withOwn then expression.range.mapFast(_ :: Nil) else None
+    def narrow(other: Ranges): Unit = other.foreachFast { o =>
+      result = new Some(result.foldFast(o)(intersect(_, o)))
+    }
+    narrow(unionOf(expression.anyOf))
+    narrow(unionOf(expression.exactlyOneOf))
+    expression.allOf.foreach(m => narrow(rangesOf(m, true)))
+    result.filter(_.nonEmpty)
+  }
+
+  /** The ranges allowed by any of the members, or None if a member doesn't limit them. */
+  private def unionOf(members: Seq[SlotExpression])(using SchemaView): Ranges =
+    if members.isEmpty then None
+    else {
+      val each = members.map(rangesOf(_, true))
+      if each.exists(_.isEmpty) then None else new Some(each.flatMap(_.get).distinctBy(_.value))
+    }
+
+  /** Ranges in both, where a descendant counts as being in its ancestor. */
+  private def intersect(a: Seq[Reference[Element]], b: Seq[Reference[Element]])(using
+      sv: SchemaView,
+  ): Seq[Reference[Element]] = {
+    def within(x: Reference[Element], y: Reference[Element]): Boolean =
+      x.value == y.value ||
+        sv.classes.get(x.value).exists(_.ancestorsWithSelf.exists(_.name == y.value)) ||
+        sv.types.get(x.value).exists(_.ancestorsWithSelf.exists(_.name == y.value))
+    a.filter(x => b.exists(within(x, _))) ++
+      b.filter(y => !a.exists(_.value == y.value) && a.exists(within(y, _)))
+  }
+
 /** Slot's range is `linkml:Any` - validator generators should emit an "accept all" schema if
   * possible.
   */
