@@ -27,7 +27,6 @@ import eu.neverblink.linkml.schemaview.{
   ImportMapImporter,
   Importer,
   SchemaIssues,
-  SchemaValidator,
   SchemaView,
   StringImporter,
 }
@@ -268,7 +267,8 @@ object LinkMlNativeApi {
     val sv = view(handle)
     JsonUtil.writeJson(
       reportNode(
-        SchemaValidator(using sv).lintProblems,
+        // The linter of the schema view reuses the fatal checks that loading ran.
+        sv.lintProblems,
         None,
         Options.load(optionsJson).inferMessages,
       ),

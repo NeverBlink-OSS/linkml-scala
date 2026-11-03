@@ -2,7 +2,7 @@ package eu.neverblink.linkml.cli
 
 import caseapp.*
 import eu.neverblink.linkml.cli.ValidationReport.Format
-import eu.neverblink.linkml.schemaview.{Importer, SchemaValidator, SchemaView}
+import eu.neverblink.linkml.schemaview.{Importer, SchemaView}
 import eu.neverblink.linkml.validation.{
   IssueLocation,
   IssueSeverity,
@@ -63,12 +63,12 @@ object Validate extends BaseCommand[ValidateOptions] {
     *
     * Fatal problems can't be recovered into a [[SchemaView]] (its constructor refuses to build a
     * schema with fatal problems), so loading returns them as a Left. Errors and warnings come from
-    * the linter on the successfully-built view.
+    * the linter of the view, which reuses the fatal checks that loading ran.
     */
   private def collectIssues(inputName: String, importer: Importer): Seq[SchemaIssue] =
     try
       SchemaView.loadSchemaViewFromUri(inputName, importer) match {
-        case Right(sv) => SchemaValidator(using sv).lintProblems
+        case Right(sv) => sv.lintProblems
         case Left(problems) => problems
       }
     catch

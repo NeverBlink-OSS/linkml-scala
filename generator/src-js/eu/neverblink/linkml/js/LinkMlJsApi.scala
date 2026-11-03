@@ -22,7 +22,6 @@ import eu.neverblink.linkml.schemaview.{
   ImportMapImporter,
   Importer,
   SchemaIssues,
-  SchemaValidator,
   SchemaView,
   StringImporter,
 }
@@ -350,5 +349,6 @@ object LinkMlJsApi {
     *   A `SchemaValidationReport` as a plain JS object. `issues` is empty if the schema is clean.
     */
   def lint(schema: SchemaViewJs, inferMessages: Boolean = true): SchemaValidationReport =
-    reportJson(SchemaValidator(using schema.underlying).lintProblems, None, inferMessages)
+    // The linter of the schema view reuses the fatal checks that loading ran.
+    reportJson(schema.underlying.lintProblems, None, inferMessages)
 }
