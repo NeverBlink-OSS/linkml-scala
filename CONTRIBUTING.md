@@ -64,7 +64,7 @@ Some source files are generated and committed. CI regenerates them and fails if 
 | `generator.options`, `cli.options`                     | `model/converter/all_converters.yaml` |
 | `generator/npm/generator-options.d.ts`, `generator/npm/importer-options.d.ts` | `model/converter/all_generators.yaml`, `model/converter/all_importers.yaml` |
 | `tests.conformance`                                    | the conformance suite's model.yaml |
-| `ohi.model.*`, `cli.ohi.*`, `ohi/python/src/ohi/generated*.py`, `ohi/typescript/src/generated*.ts`, `cli/ohi/resources/declaration.schema.json` | `model/ohi/`, `model/ohi/cli/` |
+| `ohi.model.*`, `cli.ohi.*`, `ohi/python/src/ohi/generated*.py`, `ohi/typescript/src/generated*.ts` | `model/ohi/`, `model/ohi/cli/` |
 | Agent skill references in `.agents/skills/linkml/`     | the metamodel, four LinkML docs pages and `tests/resources/models/`, see [.agents/README.md](.agents/README.md#maintenance) |
 | `ui/src/linkml.d.ts`                                   | `LinkMlJsApi.scala`, with `./mill ui.types` |
 | `python/ohi_linkml/_generated.py`, `LinkMlCGenerators.scala` | `model/converter/all_converters.yaml`, with `LINKML_NATIVE=1 ./mill nativelib.bindings` |
