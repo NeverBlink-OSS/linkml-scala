@@ -111,7 +111,9 @@ let pageHtml = "";
 // The Markdown the page view was last rendered from. The rendered page is kept while the Code tab
 // is showing, so going back to the Page tab does not render it again.
 let pageRendered: string | null = null;
-// Where to scroll the page view when it is shown again.
+// Where the page view is scrolled to, and where to scroll it when it is shown again. It is kept up
+// to date by the `scroll` listener of the page view, because reading `scrollTop` when the page has
+// changed makes the browser lay out the page first.
 let pageScrollTop = 0;
 // Whether the output editor holds older text than `pageSource`. The editor is updated only when the
 // Code tab is opened: an update makes the editor read the selection, and if the page is showing,
@@ -884,8 +886,8 @@ function showPage(text: string, html: string): void {
     $fileTabs.appendChild(btn);
   }
 
-  // A new schema starts at the top. The same schema regenerated, as while typing, keeps its place.
-  if (pageSource !== null && !$pageView.hidden) pageScrollTop = $pageView.scrollTop;
+  // A new schema starts at the top, as `hidePage` sets `pageScrollTop` to 0. The same schema
+  // regenerated, as while typing, keeps its place.
   pageSource = text;
   pageHtml = html;
   pageOutputBehind = true;
@@ -896,7 +898,6 @@ function showPage(text: string, html: string): void {
 function showPageTab(): void {
   const text = pageSource!;
   if (pageTab === "code") {
-    if (!$pageView.hidden) pageScrollTop = $pageView.scrollTop;
     // Hide the page first, so the editor update below does not lay it out.
     $pageView.hidden = true;
     $outputEditorHost.hidden = false;
@@ -920,6 +921,14 @@ function renderPage(text: string, html: string, scrollTop: number): void {
   pageRendered = text;
   $pageView.scrollTop = scrollTop;
 }
+
+$pageView.addEventListener(
+  "scroll",
+  () => {
+    pageScrollTop = $pageView.scrollTop;
+  },
+  { passive: true },
+);
 
 // Links between sections are anchors. Scroll the panel to them, rather than letting the browser
 // change the playground's own address.
