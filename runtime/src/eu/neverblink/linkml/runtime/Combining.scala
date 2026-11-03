@@ -12,17 +12,22 @@ import eu.neverblink.linkml.runtime.FastUtils.*
   *   The combined optional value
   */
 def combineOption[T](o1: Option[T], o2: Option[T], combineSome: (T, T) => T): Option[T] =
-  o1.foldFast(o2) { v1 =>
-    o2.foldFast(o1) { v2 =>
-      if (v1 != v2) new Some(combineSome(v1, v2))
-      else o1
-    }
+  if (o1 eq None) o2
+  else if (o2 eq None) o1
+  else {
+    val v1 = o1.get
+    val v2 = o2.get
+    // Most handlers, such as [[combineFallback]], keep `v1`, and then `o1` is the result as it is,
+    // without comparing the values.
+    val combined = combineSome(v1, v2)
+    if ((combined.asInstanceOf[AnyRef] eq v1.asInstanceOf[AnyRef]) || v1 == v2) o1
+    else new Some(combined)
   }
 
 /** Combine two [[Seq]]s if they're distinct
   */
 def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
-  if v2.isEmpty || v1 == v2 then v1 else v1.appendedAll(v2)
+  if v2.isEmpty || v1 == v2 then v1 else if v1.isEmpty then v2 else v1.appendedAll(v2)
 
 /** Returns the first non-empty list.
   *
