@@ -146,7 +146,8 @@ type SchemaValidationReport = js.Any
 type BuildInfo = js.Any
 
 /** What loading a schema produced: always a validation report, and a usable handle if the schema
-  * could be loaded at all.
+  * could be loaded at all. Loading checks only for fatal problems, so the report of a schema that
+  * loaded has no issues. Use `lint` for its errors and warnings.
   */
 @JSExportAll
 final class LoadResult private[js] (
@@ -274,8 +275,8 @@ object LinkMlJsApi {
       case Left(issue) => new Left(Seq(issue))
     }
 
-  /** Turn a load outcome into a [[LoadResult]]. A schema that loaded is linted straight away, so
-    * that the report covers errors and warnings too - not just the fatals that blocked loading.
+  /** Turn a load outcome into a [[LoadResult]]. A schema that loaded had no fatal problems, so its
+    * report has no issues. Linting it for errors and warnings is left to [[lint]].
     */
   private def loadResult(
       loaded: Either[Seq[SchemaFatal], SchemaView],
@@ -284,8 +285,7 @@ object LinkMlJsApi {
   ): LoadResult =
     loaded match {
       case Right(sv) =>
-        val issues = SchemaValidator(using sv).lintProblems
-        new LoadResult(new SchemaViewJs(sv), reportJson(issues, runId, inferMessages))
+        new LoadResult(new SchemaViewJs(sv), reportJson(Nil, runId, inferMessages))
       case Left(problems) =>
         new LoadResult(js.undefined, reportJson(problems, runId, inferMessages))
     }

@@ -110,7 +110,7 @@ The functions of `LinkML`:
 
 | Function                                                                     | Returns                  | Notes                                                                          |
 |------------------------------------------------------------------------------|--------------------------|--------------------------------------------------------------------------------|
-| `loadFromString(schema, imports, inferMessages?, importMap?)`                | `LoadResult`             | parse from YAML text; `{ view?, report }`                                      |
+| `loadFromString(schema, imports, inferMessages?, importMap?)`                | `LoadResult`             | parse from YAML text; `{ view?, report }`, with fatal problems only                                      |
 | `loadFromPath(path, imports, inferMessages?, importMap?)`                    | `LoadResult`             | parse from a path in `imports`; cycle-safe for the root                        |
 | `lint(view, inferMessages?)`                                                 | `SchemaValidationReport` | validation report, typed by issue kind (see below)                             |
 | `buildInfo()`                                                                | `object`                 | `BuildInfo` (JSON) – version and build metadata                                |

@@ -118,9 +118,10 @@ By default those are read from the file system. See [the OWL importer](/docs/imp
 
 ### Validating
 
-`schema.report` is the report from loading. `schema.lint()` runs the validator again, which is only
-worth doing to get a report with different settings. `schema.issues(severity)` filters by
-`ohi_linkml.FATAL`, `ERROR` or `WARNING`. Both follow the
+`schema.report` is the report from loading. Loading checks only for fatal problems, so for a schema
+that loaded it has no issues. `schema.lint()` checks the schema for errors and warnings too, and
+`schema.issues(severity)` gives the issues it finds, only those of `ohi_linkml.FATAL`, `ERROR` or
+`WARNING` if given. Both follow the
 [`validation-report.yaml`](https://github.com/NeverBlink-OSS/ohi/blob/main/model/validation-report.yaml) model, the same JSON the CLI's
 `validate --format json` produces.
 

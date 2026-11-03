@@ -694,11 +694,11 @@ class LintTest(unittest.TestCase):
             """,
         )
         with ohi_linkml.load_string(rootless) as loaded:
+            # Loading checks only for fatal problems, so its report has no issues.
+            self.assertEqual([], loaded.report["issues"])
             warnings = loaded.issues(ohi_linkml.WARNING)
             self.assertTrue(warnings, "expected a warning about the missing tree root")
             self.assertTrue(all("message" in warning for warning in warnings))
-            # Loading lints as it goes, so the report is already there.
-            self.assertEqual(loaded.report, loaded.lint())
 
     def test_infer_messages_off_leaves_messages_out(self):
         rootless = schema(
@@ -711,9 +711,10 @@ class LintTest(unittest.TestCase):
                     range: string
             """,
         )
-        with ohi_linkml.load_string(rootless, infer_messages=False) as loaded:
-            self.assertTrue(loaded.report["issues"])
-            self.assertFalse(any("message" in issue for issue in loaded.report["issues"]))
+        with ohi_linkml.load_string(rootless) as loaded:
+            issues = loaded.lint(infer_messages=False)["issues"]
+            self.assertTrue(issues)
+            self.assertFalse(any("message" in issue for issue in issues))
 
 
 class HandleTest(unittest.TestCase):
