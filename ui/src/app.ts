@@ -934,15 +934,32 @@ function applyPage(patch: PagePatch): boolean {
   return true;
 }
 
+/** Call `then` once the output editor is in view, or after 30 frames if it isn't by then.
+ *
+ * The editor draws only the lines that can be seen. While it is not in view, as after being hidden,
+ * it draws all of them, and for a large schema that takes seconds. It finds out that it is in view
+ * a few frames after being shown. */
+function whenOutputInView(then: () => void): void {
+  let frames = 0;
+  const check = () => {
+    if (outputView.inView || ++frames >= 30) then();
+    else requestAnimationFrame(check);
+  };
+  check();
+}
+
 /** Show the half of the page view that `pageTab` names, for `pageSource`. */
 function showPageTab(): void {
   if (pageTab === "code") {
-    // Hide the page first, so the editor update below does not lay it out.
     $pageView.hidden = true;
     $outputEditorHost.hidden = false;
     if (pageOutputBehind) {
-      setOutput(outputView, pageSource!, "text");
       pageOutputBehind = false;
+      setOutput(outputView, "", "text");
+      whenOutputInView(() => {
+        if (pageSource !== null && pageTab === "code") setOutput(outputView, pageSource, "text");
+        else pageOutputBehind = pageSource !== null;
+      });
     }
     return;
   }
