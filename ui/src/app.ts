@@ -109,6 +109,15 @@ let diagramSource: string | null = null;
 let pageTab: "page" | "code" = "page";
 // The Markdown currently on screen. Non-null exactly while the page view is up.
 let pageSource: string | null = null;
+// The Markdown the page view was last rendered from. The rendered page is kept while the Code tab
+// is showing, so going back to the Page tab does not render it again.
+let pageRendered: string | null = null;
+// Where to scroll the page view when it is shown again.
+let pageScrollTop = 0;
+// Whether the output editor holds older text than `pageSource`. The editor is updated only when the
+// Code tab is opened: an update makes the editor read the selection, and if the page is showing,
+// the browser then has to lay out the whole page, which takes seconds for a large schema.
+let pageOutputBehind = false;
 // Which half of the statistics target is showing, sticky like `diagramTab`.
 let statsTab: "stats" | "code" = "stats";
 // The statistics currently on screen. Non-null exactly while the statistics view is up.
@@ -861,6 +870,9 @@ function hidePage(): void {
   $pageView.hidden = true;
   $pageView.innerHTML = "";
   pageSource = null;
+  pageRendered = null;
+  pageScrollTop = 0;
+  pageOutputBehind = false;
   $outputEditorHost.hidden = false;
 }
 
@@ -870,8 +882,6 @@ function showPage(text: string): void {
   hideDiagram();
   hideStats();
   outputView.dom.classList.remove("cm-output--error");
-  // Keep the editor in sync while it is hidden, so Code is instant and Copy gives the Markdown.
-  setOutput(outputView, text, "text");
 
   $fileTabs.hidden = false;
   $fileTabs.innerHTML = "";
@@ -882,24 +892,38 @@ function showPage(text: string): void {
     btn.addEventListener("click", () => {
       if (pageTab === tab) return;
       pageTab = tab;
-      if (pageSource !== null) showPage(pageSource);
+      for (const other of $fileTabs.children) other.classList.toggle("file-tab--active", other === btn);
+      showPageTab();
     });
     $fileTabs.appendChild(btn);
   }
 
   // A new schema starts at the top. The same schema regenerated, as while typing, keeps its place.
-  const sameDocument = pageSource !== null && !$pageView.hidden;
+  if (pageSource !== null && !$pageView.hidden) pageScrollTop = $pageView.scrollTop;
   pageSource = text;
+  pageOutputBehind = true;
+  showPageTab();
+}
 
+/** Show the half of the page view that `pageTab` names, for `pageSource`. */
+function showPageTab(): void {
+  const text = pageSource!;
   if (pageTab === "code") {
+    if (!$pageView.hidden) pageScrollTop = $pageView.scrollTop;
+    // Hide the page first, so the editor update below does not lay it out.
     $pageView.hidden = true;
     $outputEditorHost.hidden = false;
+    if (pageOutputBehind) {
+      setOutput(outputView, text, "text");
+      pageOutputBehind = false;
+    }
     return;
   }
 
   $outputEditorHost.hidden = true;
   $pageView.hidden = false;
-  void renderPage(text, sameDocument ? $pageView.scrollTop : 0);
+  if (pageRendered === text) $pageView.scrollTop = pageScrollTop;
+  else void renderPage(text, pageScrollTop);
 }
 
 async function renderPage(text: string, scrollTop: number): Promise<void> {
@@ -909,9 +933,11 @@ async function renderPage(text: string, scrollTop: number): Promise<void> {
     if (token !== pageToken || $pageView.hidden) return;
     // Links that don't go to a section of the page already open in a new tab (see markdown.ts).
     $pageView.replaceChildren(renderMarkdown(text));
+    pageRendered = text;
     $pageView.scrollTop = scrollTop;
   } catch (err) {
     if (token !== pageToken || $pageView.hidden) return;
+    pageRendered = null;
     $pageView.replaceChildren(
       errorNotice("Could not show this page", err instanceof Error ? err.message : String(err)),
     );
@@ -1598,7 +1624,8 @@ function wireDialog(dialog: HTMLDialogElement, ...closeSelectors: string[]): voi
 $copyOutput.addEventListener("click", async () => {
   // While the report is shown the output editor is hidden and still holds the previously
   // generated target's text, so copying it would hand back content from another tab.
-  const text = reportText ?? outputView.state.doc.toString();
+  // While the page is showing, the output editor may still hold older text (see `pageOutputBehind`).
+  const text = reportText ?? pageSource ?? outputView.state.doc.toString();
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
