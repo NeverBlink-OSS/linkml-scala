@@ -128,15 +128,15 @@ private object ClassView:
   )(using sv: SchemaView): SlotView = {
     var currentSlot = start
     inherited.foreachFast { resolved =>
-      resolved.ancestorsWithSelf.foreach {
-        var i = 0
-        ancestorSlotView =>
-          currentSlot =
-            val slotDef = ancestorSlotView.slot
-            if (i > 0) currentSlot.combineInherited(slotDef, sv.combineRange)
-            else currentSlot.combineWith(slotDef, sv.combineRange)
-          i += 1
-      }
+      val ancestors = resolved.ancestorsWithSelf.iterator
+      // The slot itself, then its ancestors
+      val slotDef = ancestors.next().slot
+      // Merging into the empty start gives the slot itself, but for its name, which is set below.
+      currentSlot =
+        if (currentSlot eq emptySlotDef) slotDef
+        else currentSlot.combineWith(slotDef, sv.combineRangeFunction)
+      while (ancestors.hasNext)
+        currentSlot = currentSlot.combineInherited(ancestors.next().slot, sv.combineRangeFunction)
     }
     val finalSlot = currentSlot.copy(
       name = name,
@@ -470,7 +470,12 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
       // Use empty slot base here to avoid an extra allocation
       var currentSlot = ClassView.emptySlotDef
       changes.foreachFast { slots =>
-        slots.foreach(s => currentSlot = currentSlot.combineWith(s, sv.combineRange))
+        slots.foreach { s =>
+          // Merging into the empty start gives `s` itself, but for its name, which is set later.
+          currentSlot =
+            if (currentSlot eq ClassView.emptySlotDef) s
+            else currentSlot.combineWith(s, sv.combineRangeFunction)
+        }
       }
       // Note this is a bit off-spec, but it's a pretty reasonable
       ClassView.derived(

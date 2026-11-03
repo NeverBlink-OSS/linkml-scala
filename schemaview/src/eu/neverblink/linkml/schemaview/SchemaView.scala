@@ -339,6 +339,11 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       @unused v2: Reference[Element],
   ): Reference[Element] = v1
 
+  /** [[combineRange]] as a function, made once rather than for each slot that is combined. */
+  private[schemaview] val combineRangeFunction
+      : (Reference[Element], Reference[Element]) => Reference[Element] =
+    combineRange
+
   /** The prefixes of the root schema */
   val rootPrefixes: PrefixMap = SchemaCodec.prefixMap(root)
   private val validator = new SchemaValidator()
