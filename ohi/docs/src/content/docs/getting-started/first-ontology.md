@@ -3,7 +3,7 @@ title: Download your first ontology
 description: Find FOAF and download its OWL file in Turtle syntax.
 ---
 
-We'll download [FOAF](https://ohi.dev/foaf/foaf@2014-01-14), an ontology for people and their
+We'll download [FOAF](https://ohi.dev/o/foaf/foaf@2014-01-14), an ontology for people and their
 relationships. You'll need [ohi installed](/docs/getting-started/install/).
 
 ## Find the ontology

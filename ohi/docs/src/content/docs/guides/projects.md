@@ -4,7 +4,7 @@ description: Record your ontology choices and download the same files and depend
 ---
 
 Use `ohi add` to keep track of the ontologies your project uses. Here we'll add
-[DCAT 3](https://ohi.dev/w3c/dcat@3), which describes data catalogs, and download its dependencies.
+[DCAT 3](https://ohi.dev/o/w3c/dcat@3), which describes data catalogs, and download its dependencies.
 
 ## Create a project
 

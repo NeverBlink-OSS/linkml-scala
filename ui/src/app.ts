@@ -2011,7 +2011,7 @@ function ohiGroupItem(group: OhiGroup, choice: OhiChoice): HTMLLIElement {
   }
   const view = document.createElement("a");
   view.className = "ohi-view icon-btn";
-  view.href = `https://ohi.dev/${encodeURIComponent(latest.namespace)}/${encodeURIComponent(latest.name)}`;
+  view.href = `https://ohi.dev/o/${encodeURIComponent(latest.namespace)}/${encodeURIComponent(latest.name)}`;
   view.target = "_blank";
   view.rel = "noopener";
   view.title = "View on ohi.dev";
