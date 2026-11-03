@@ -8,7 +8,6 @@ import eu.neverblink.linkml.validation.*
 
 import java.{lang, util}
 import scala.collection.mutable
-import scala.util.matching.Regex
 
 /** Performs validation for a [[SchemaView]], most importantly checking whether all references are
   * correct.
@@ -343,18 +342,31 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val identifierAndKey: Seq[SchemaError] = {
     val errors = Seq.newBuilder[SchemaError]
     sv.classes.values.foreach { derivedCls =>
-      val keyOrId = derivedCls.derivedAttributes.values
-        .collect { case s if s.slot.identifier || s.slot.key => s.slot }
-      if (keyOrId.size > 1) {
+      // The first identifier or key slot, and how many there are, without a collection of them
+      var first: SlotDefinition = null
+      var count = 0
+      val slots = derivedCls.derivedAttributes.valuesIterator
+      while (slots.hasNext) {
+        val s = slots.next().slot
+        if (s.identifier || s.key) {
+          if (first eq null) first = s
+          count += 1
+        }
+      }
+      if (count > 1) {
+        val names = Seq.newBuilder[String]
+        derivedCls.derivedAttributes.valuesIterator.foreach { s =>
+          if (s.slot.identifier || s.slot.key) names.addOne(s.slot.name)
+        }
         errors.addOne(
           new MultipleKeyOrIdSlots(
             location = locationOf(derivedCls),
             className = derivedCls.cls.name,
-            slotNames = keyOrId.toSeq.map(_.name),
+            slotNames = names.result(),
           ),
         )
-      } else if (keyOrId.size == 1) {
-        keyOrId.head.range.flatMapFast(sv.resolve).orElseFast(sv.schemas.collectFirst {
+      } else if (count == 1) {
+        first.range.flatMapFast(sv.resolve).orElseFast(sv.schemas.collectFirst {
           case s if s.defaultRange.isDefined => sv.resolve(s.defaultRange.get)
         }.flatten).orNullFast match {
           case _: TypeDefinition | null =>
@@ -555,30 +567,40 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Ensure that any declared slot usages are refining some applicable slot (top level slot or
     * attribute)
     */
-  private lazy val invalidSlotUsage: Seq[SchemaWarning] =
-    sv.classes.values.foldLeft(Seq.newBuilder[SchemaWarning]) { (acc, cls) =>
-      // Collect all slot names that are applicable to this class definition.
-      val applicableSlotNames = new util.HashSet[String]
-      cls.ancestorsWithSelf.foreach { anc =>
-        val keys = anc.cls.attributes.keysIterator
-        while (keys.hasNext) applicableSlotNames.add(keys.next())
-        val slots = anc.cls.slots.iterator
-        while (slots.hasNext) applicableSlotNames.add(slots.next().value)
+  private lazy val invalidSlotUsage: Seq[SchemaWarning] = {
+    val warnings = Seq.newBuilder[SchemaWarning]
+    sv.classes.values.foreach { cls =>
+      // Most classes have no `slot_usage`, and need no set of the slot names that apply to them.
+      if (cls.cls.slotUsage.nonEmpty) {
+        // Collect all slot names that are applicable to this class definition.
+        val applicableSlotNames = new util.HashSet[String]
+        cls.ancestorsWithSelf.foreach { anc =>
+          val keys = anc.cls.attributes.keysIterator
+          while (keys.hasNext) applicableSlotNames.add(keys.next())
+          val slots = anc.cls.slots.iterator
+          while (slots.hasNext) applicableSlotNames.add(slots.next().value)
+        }
+        // Filter problematic slots for the warning per class
+        val problemSlots = Seq.newBuilder[String]
+        val usages = cls.cls.slotUsage.keysIterator
+        while (usages.hasNext) {
+          val name = usages.next()
+          if (!applicableSlotNames.contains(name)) problemSlots.addOne(name)
+        }
+        val names = problemSlots.result()
+        if (names.nonEmpty) {
+          warnings.addOne(
+            new InvalidSlotUsage(
+              location = locationOf(cls),
+              className = cls.cls.name,
+              slotNames = names,
+            ),
+          )
+        }
       }
-      // Filter problematic slots for the warning per class
-      val problemSlots = cls.cls.slotUsage.keys
-        .filter(x => !applicableSlotNames.contains(x))
-      if (problemSlots.nonEmpty) {
-        acc.addOne(
-          new InvalidSlotUsage(
-            location = locationOf(cls),
-            className = cls.cls.name,
-            slotNames = problemSlots.toSeq,
-          ),
-        )
-      }
-      acc
-    }.result()
+    }
+    warnings.result()
+  }
 
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
     UndefinedPrefix(location = at(position, schemaId), prefix = prefix)
@@ -649,85 +671,85 @@ final class SchemaValidator(using sv: SchemaView) {
       )
   }
 
-  private val repeatedSeparatorRegex: Regex = "[^A-Za-z0-9]{2,}".r.unanchored
-
+  /** Add the issues with the name [[name]] of an element at [[location]] to [[builder]]. The
+    * location is made only for an issue.
+    */
   private def checkNaming(
       builder: mutable.Builder[SchemaIssue, Seq[SchemaIssue]],
       name: String,
-      baseName: String,
-      location: IssueLocation,
-  ): Unit = {
-    if name.isEmpty then
-      builder.addOne(
-        EmptyName(elementName = name, transformedName = baseName, location = location),
-      )
-    else {
+      location: => IssueLocation,
+  ): Unit =
+    if (name.isEmpty) {
+      builder.addOne(EmptyName(elementName = name, transformedName = "", location = location))
+    } else {
+      // What the checks below need, from one pass over the characters of the name
+      var nonAscii = false
+      var alphanumeric = false
+      var repeatedSeparator = false
+      // The characters that are not letters, digits or `_`
+      val separators = Seq.newBuilder[String]
+      var nonStandard = false
+      var previousSeparator = false
+      var i = 0
+      while (i < name.length) {
+        val c = name.charAt(i)
+        if (!Case.isAllowedAscii(c)) nonAscii = true
+        val separator = !Case.isAlphanumeric(c)
+        if (separator) {
+          if (previousSeparator) repeatedSeparator = true
+          if (!Case.isStandard(c)) {
+            nonStandard = true
+            separators.addOne(c.toString)
+          }
+        } else alphanumeric = true
+        previousSeparator = separator
+        i += 1
+      }
       // chain of complaining: complain about non-ASCII first, then about empty transformed name, then about non-standard separators
-      if name.exists(!Case.isAllowedAscii(_)) then
-        builder.addOne(
-          NonAsciiName(
-            elementName = name,
-            location = location,
-          ),
-        )
-      else if baseName.isEmpty then
-        builder.addOne(
-          EmptyName(elementName = name, transformedName = baseName, location = location),
-        )
-      else if name.exists(!Case.isStandard(_)) then
+      if (nonAscii) builder.addOne(NonAsciiName(elementName = name, location = location))
+      // The base name of an element has the letters and digits of its name, so it is empty if the
+      // name has none, and the name doesn't have to be turned into its base name to check that.
+      else if (!alphanumeric) {
+        builder.addOne(EmptyName(elementName = name, transformedName = "", location = location))
+      } else if (nonStandard) {
         builder.addOne(
           NonStandardSeparator(
             elementName = name,
             location = location,
-            separators = name.collect {
-              case c if !Case.isStandard(c) => c.toString
-            },
+            separators = separators.result(),
           ),
         )
-
-      if !Case.isAlphanumeric(name.head) || !Case.isAlphanumeric(name.last) then
-        builder.addOne(
-          FlankingSeparator(
-            elementName = name,
-            location = location,
-          ),
-        )
-
-      if repeatedSeparatorRegex.matches(name) then
-        builder.addOne(
-          RepeatedSeparator(
-            elementName = name,
-            location = location,
-          ),
-        )
+      }
+      if (
+        !Case.isAlphanumeric(name.charAt(0)) || !Case.isAlphanumeric(name.charAt(name.length - 1))
+      ) {
+        builder.addOne(FlankingSeparator(elementName = name, location = location))
+      }
+      if (repeatedSeparator)
+        builder.addOne(RepeatedSeparator(elementName = name, location = location))
     }
-  }
 
   private lazy val namingIssues: Seq[SchemaIssue] = {
     val builder = Seq.newBuilder[SchemaIssue]
-    sv.elements.values.foreach { el =>
-      checkNaming(builder, el.name, el.baseName, locationOf(el))
-    }
+    sv.elements.values.foreach(el => checkNaming(builder, el.name, locationOf(el)))
     sv.classes.values.foreach { cls =>
       cls.cls.attributes.values.foreach { attr =>
-        val classLocation = locationOf(cls)
-        val location =
-          classLocation.copy(jsonPointer = classLocation.jsonPointer.map(_ + "/" + attr.name))
-
-        checkNaming(builder, attr.name, Case.base(attr.name), location)
+        checkNaming(builder, attr.name, withName(locationOf(cls), attr.name))
       }
     }
-
-    sv.enums.values.flatMap(enumView => enumView.derivedValues.map(enumView -> _.pv)).foreach {
-      (enumView, pv) =>
-        val enumLocation = locationOf(enumView)
-        val location =
-          enumLocation.copy(jsonPointer = enumLocation.jsonPointer.map(_ + "/" + pv.text))
-        checkNaming(builder, pv.text, Case.base(pv.text), location)
+    sv.enums.values.foreach { enumView =>
+      enumView.derivedValues.foreach { value =>
+        val text = value.pv.text
+        checkNaming(builder, text, withName(locationOf(enumView), text))
+      }
     }
-
     builder.result()
   }
+
+  /** [[location]] with [[name]] added to its JSON pointer, for an attribute or a permissible value.
+    */
+  private def withName(location: IssueLocation, name: String): IssueLocation =
+    location.copy(jsonPointer = location.jsonPointer.mapFast(_ + "/" + name))
 
   /** Any fatal problems that block further processing / validation, if any. */
   lazy val fatalProblems: Seq[SchemaFatal] = {
@@ -823,14 +845,32 @@ object SchemaValidator {
     * names are compared without case and without `_`.
     */
   private def fieldIndex(element: Product, slotName: String): Int = {
-    val wanted = slotName.replace("_", "").toLowerCase
     var i = 0
     var found = -1
     while (found < 0 && i < element.productArity) {
-      if (element.productElementName(i).toLowerCase == wanted) found = i
+      if (isFieldOf(element.productElementName(i), slotName)) found = i
       i += 1
     }
     found
+  }
+
+  /** Whether [[fieldName]] is the name of the field for the slot [[slotName]], as `aliasPredicate`
+    * is for `alias_predicate`: the same letters and digits, in any case, without the `_`.
+    */
+  private def isFieldOf(fieldName: String, slotName: String): Boolean = {
+    var i = 0
+    var j = 0
+    var same = true
+    while (same && (i < fieldName.length || j < slotName.length)) {
+      if (j < slotName.length && slotName.charAt(j) == '_') j += 1
+      else if (i < fieldName.length && j < slotName.length) {
+        same =
+          Character.toLowerCase(fieldName.charAt(i)) == Character.toLowerCase(slotName.charAt(j))
+        i += 1
+        j += 1
+      } else same = false
+    }
+    same
   }
 
   /** Whether [[value]], the value of a field of an element, is missing or empty, as
