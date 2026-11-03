@@ -875,6 +875,13 @@ body { background: var(--bg); }
 }
 .md-page[hidden] { display: none; }
 .md-page > :first-child { margin-top: 0; }
+/* The browser lays out only the blocks near the visible part of the page. For a large schema the
+   page has hundreds of thousands of elements, and laying them all out takes seconds. A block that
+   has not been laid out yet takes 2em, or the height it had when it was last shown. */
+.md-page > * {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 2em;
+}
 .md-page h1,
 .md-page h2,
 .md-page h3,
