@@ -1,23 +1,53 @@
 id: https://ohi.neverblink.eu/contracts/declaration
 name: ohi_declaration
-title: Editable project declaration
-description: Ontology publications a project depends on, with the chosen artifact of each.
+title: Editable project dependencies
+description: Direct ontology requirements and their selected artifact formats.
 prefixes:
   ohi: https://ohi.neverblink.eu/contracts/
-  linkml: https://w3id.org/linkml/
 default_prefix: ohi
 imports:
-- ../selection
+- ../publication-fields
 classes:
   Declaration:
     tree_root: true
-    description: Contents of ohi.yaml. Each selection names a publication and the one artifact of it the project uses. ohi.lock.json lists the resolved files, including dependencies.
-    slots:
-    - selections
+    description: Contents of ohi.yaml. Exact resolved file identities belong in ohi.lock.json.
     attributes:
       format_version:
-        description: Version of the declaration format.
+        rank: 0
+        description: Declaration revision. Only revision 1 is supported.
         range: integer
         required: true
         minimum_value: 1
         maximum_value: 1
+      default_format:
+        rank: 1
+        description: Preferred artifact format for future reference selections without an explicit format. Existing dependency formats remain fixed.
+        range: Format
+        required: true
+      download_dir:
+        rank: 2
+        description: Dedicated project-relative directory for downloaded ontologies. Its normalized path must remain strictly beneath the project directory and separate from project records.
+        range: string
+        required: true
+      dependencies:
+        rank: 3
+        description: Ordered direct requirements, unique by ontology and format.
+        range: ProjectDependency
+        required: true
+        multivalued: true
+        inlined: true
+        inlined_as_list: true
+        list_elements_ordered: true
+  ProjectDependency:
+    description: One version-qualified ontology reference and the artifact format required by the project.
+    slots:
+    - format
+    slot_usage:
+      format:
+        rank: 1
+    attributes:
+      ontology:
+        rank: 0
+        description: Complete case-sensitive namespace/name@version reference, validated by the CLI reference parser.
+        range: string
+        required: true

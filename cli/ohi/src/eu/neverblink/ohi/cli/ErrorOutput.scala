@@ -6,6 +6,7 @@ import eu.neverblink.ohi.cli.generated.fileerror.CliFileError
 import eu.neverblink.ohi.model.generated.error.CatalogError
 import eu.neverblink.ohi.model.generated.lockerror.LockError
 import org.virtuslab.yaml.{Node, Tag, parseYaml}
+import java.nio.file.Path
 
 private[cli] object ErrorOutput {
   given catalogErrorCodec: LinkmlYamlCodec[CatalogError] = LinkmlYamlCodec.derived
@@ -106,9 +107,9 @@ private[cli] object ErrorOutput {
     val (summary, recovery) = code match {
       case "DESTINATION_EXISTS" =>
         "Destination already exists." ->
-          "Choose another --to directory or move the existing entry, then retry."
+          "Move the existing entry or choose another download directory, then retry."
       case "UNSUPPORTED_FILENAME" =>
-        "The URL does not name a usable file." -> "Use a URL ending in one usable filename."
+        "Cannot determine the Hub artifact path." -> "Use a canonical Hub publication and its advertised file URL."
       case "INVALID_DESTINATION" =>
         "Cannot use the destination directory." -> "Correct the directory path or its permissions, then retry."
       case "FILE_WRITE_FAILED" =>
@@ -125,12 +126,14 @@ private[cli] object ErrorOutput {
     }
     val location = if code == "UNSUPPORTED_FILENAME" then Seq(field("URL", url, colored))
     else
-      path.map(field("Path", _, colored)).toSeq ++
+      path.map(value => field("Path", CliFormatting.displayPath(Path.of(value)), colored)).toSeq ++
         (if code == "INVALID_DESTINATION" then Seq(field("Directory", directory, colored)) else Nil)
-    val details = if code == "DESTINATION_EXISTS" || code == "UNSUPPORTED_FILENAME" then Nil
+    val details = if code == "DESTINATION_EXISTS" then Nil
     else Seq(s"Details: ${CliFormatting.clean(message)}")
     (Seq(heading(summary, colored)) ++ location ++ details ++
-      partialPath.map(field("Incomplete file retained", _, colored))).mkString("\n") -> recovery
+      partialPath.map(value =>
+        field("Incomplete file retained", CliFormatting.displayPath(Path.of(value)), colored),
+      )).mkString("\n") -> recovery
   }
 
   def lock(

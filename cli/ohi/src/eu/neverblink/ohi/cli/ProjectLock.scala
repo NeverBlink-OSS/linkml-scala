@@ -1,6 +1,7 @@
 package eu.neverblink.ohi.cli
 
 import eu.neverblink.linkml.runtime.stringify
+import eu.neverblink.ohi.cli.generated.declaration.ProjectDependency
 import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
 import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
 import eu.neverblink.ohi.model.generated.lock
@@ -8,15 +9,28 @@ import scala.collection.mutable
 
 private[cli] object ProjectLock {
 
-  /** Builds a version-2 lock for selections and same-format dependencies. Calls `inspect` once per
-    * publication and propagates its failures. Throws [[ProjectException]] for invalid selections or
-    * missing or ambiguous dependency artifacts.
+  /** Reconstructs direct requirements in selection order from a validated lock, without metadata
+    * requests. Hub identities must be canonical. Declaration validation remains the caller's job.
+    */
+  def requirements(complete: lock.Lock): Seq[ProjectDependency] = {
+    val files = complete.files.map(file => (file.baseUrl, file.url) -> file).toMap
+    complete.selections.map { selection =>
+      val identity = HubArtifactPath.publication(selection.baseUrl.original, ".")
+      ProjectDependency(
+        format = ProjectFormat.toDeclaration(files((selection.baseUrl, selection.url)).format),
+        ontology = s"${identity.namespace}/${identity.name}@${identity.version}",
+      )
+    }
+  }
+
+  /** Builds a version-2 lock for selections and same-format dependencies using cached metadata.
+    * Propagates inspection failures. Throws [[ProjectException]] for invalid selections or missing
+    * or ambiguous dependency artifacts, including invalid Hub URLs.
     */
   def build(
       selections: Seq[lock.ArtifactSelectionImpl],
-      inspect: String => Publication,
+      metadata: Inspection,
   ): lock.Lock = {
-    val metadata = new Inspection(inspect)
     val direct = metadata.selected(selections)
     direct.foreach { (result, _) =>
       result.dependencies.foreach(dependency => metadata.publication(dependency.baseUrl.original))
@@ -36,18 +50,42 @@ private[cli] object ProjectLock {
     }.distinctBy { (result, artifact) =>
       (result.baseUrl.original, artifact.url.original)
     }.map { (result, artifact) =>
-      lock.LockedFile(
-        result.baseUrl,
-        lockFormat(artifact.format),
-        artifact.url,
-        Some(artifact.sha256),
-      )
+      file(result, artifact)
     }
     lock.Lock(files = files, formatVersion = 2, selections = selections)
   }
 
+  /** Requires an artifact selected from `publication.artifacts`. Validates Hub identity and URL
+    * ancestry, retaining its URL and checksum. Throws [[ProjectException]] for invalid URLs or
+    * metadata disagreement, preserving URL failures.
+    */
+  def file(publication: Publication, artifact: Artifact): lock.LockedFile = try {
+    val identity = HubArtifactPath.publication(publication.baseUrl.original, ".")
+    if identity.namespace != publication.namespace || identity.name != publication.name ||
+      identity.version != publication.version
+    then
+      throw new ProjectException(
+        ProjectErrorCode.InvalidSelection,
+        s"Publication '${publication.baseUrl.original}' does not match its namespace, name and version. Correct the publication metadata and retry.",
+      )
+    if HubArtifactPath.artifact(artifact.url.original, ".") != identity then
+      throw new ProjectException(
+        ProjectErrorCode.InvalidSelection,
+        s"Artifact '${artifact.url.original}' is outside publication '${publication.baseUrl.original}'. Choose an advertised artifact beneath its publication URL.",
+      )
+    lock.LockedFile(
+      publication.baseUrl,
+      lockFormat(artifact.format),
+      artifact.url,
+      Some(artifact.sha256),
+    )
+  } catch {
+    case cause: CliFileException =>
+      throw new ProjectException(ProjectErrorCode.InvalidSelection, cause.getMessage, Some(cause))
+  }
+
   /** Caches publication metadata and validates exact direct selections. Reuse one instance across
-    * format inference, reference resolution and lock construction to avoid repeated HTTP requests.
+    * reference resolution and lock construction to avoid repeated HTTP requests.
     */
   final class Inspection(inspect: String => Publication) extends (String => Publication) {
     private val publications = mutable.Map.empty[String, Publication]

@@ -13,32 +13,47 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
   }
 
   "focused corrections" should {
-    for (name, command) <- Seq("get" -> Get, "add" -> Add) do
-      s"retain $name version and destination when correcting an invalid format before writing files" in {
-        val root = os.temp.dir(prefix = "ohi guidance ")
-        try {
-          val destination = root / "a friend's files"
-          val project = if name == "add" then Seq("--project", root.toString) else Seq.empty
-          val output = rejected(
-            command,
-            (Seq(
-              name,
-              "w3c/prov-o@2013",
-              "--format",
-              "turtle",
-              "--to",
-              destination.toString,
-            ) ++ project)*,
-          )
-          output should startWith("Error: Unsupported format 'turtle'.\n\nSupported formats\n")
-          output should include(
-            s"ohi $name w3c/prov-o@2013 --format owl-turtle --to '$root/a friend'\\''s files'",
-          )
-          if name == "add" then output should include(s"--project '$root'")
-          os.exists(destination) shouldBe false
-          os.list(root) shouldBe empty
-        } finally os.remove.all(root)
-      }
+    "retain get version and destination when correcting an invalid format before writing files" in {
+      val root = os.temp.dir(prefix = "ohi guidance ")
+      try {
+        val destination = root / "a friend's files"
+        val output = rejected(
+          Get,
+          "get",
+          "w3c/prov-o@2013",
+          "--format",
+          "turtle",
+          "--to",
+          destination.toString,
+        )
+        output should startWith("Error: Unsupported format 'turtle'.\n\nSupported formats\n")
+        output should include("ohi get w3c/prov-o@2013 --format owl-turtle")
+        output should include(s"--to '$root/a friend'\\''s files'")
+        os.exists(destination) shouldBe false
+        os.list(root) shouldBe empty
+      } finally os.remove.all(root)
+    }
+
+    "retain add version and project when correcting an invalid format before writing files" in {
+      val root = os.temp.dir(prefix = "ohi guidance ")
+      try {
+        val destination = root / "a friend's files"
+        val output = rejected(
+          Add,
+          "add",
+          "w3c/prov-o@2013",
+          "--format",
+          "turtle",
+          "--project",
+          root.toString,
+        )
+        output should startWith("Error: Unsupported format 'turtle'.\n\nSupported formats\n")
+        output should include("ohi add w3c/prov-o@2013 --format owl-turtle")
+        output should include(s"--project '$root'")
+        os.exists(destination) shouldBe false
+        os.list(root) shouldBe empty
+      } finally os.remove.all(root)
+    }
 
     "remove an equals-form conflicting selector without dropping the destination or timeout" in {
       val output = rejected(
@@ -73,7 +88,7 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
     "explain the reference grammar for a dash-prefixed malformed inspect input" in {
       val output = rejected(Inspect, "inspect", "--", "-sensor")
       output should include("Invalid ontology reference '-sensor'.")
-      output should include("Expected namespace/name[@version] without backticks.")
+      output should include("Expected namespace/name[@version].")
       output should include("ohi inspect --help")
     }
 

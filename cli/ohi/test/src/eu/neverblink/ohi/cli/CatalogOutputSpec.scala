@@ -104,14 +104,16 @@ class CatalogOutputSpec extends AnyWordSpec, Matchers {
       output should include(s"  Release URL: $url\n")
     }
 
-    "preserve an artifact URL when it cannot name a local download file" in {
-      val url = "https://example.org/files/"
-      val output = CatalogOutput.publication(
-        base.copy(artifacts = Seq(base.artifacts.head.copy(url = Uri(url), roots = Seq(Uri(url))))),
-        json = false,
-      )
-      output should include(s"\nFiles\n  $url\n")
-      output should include(s"    URL: $url\n")
-    }
+    for url <- Seq("https://example.org/files/", "urn:example:artifact", "https://example.org/%") do
+      s"preserve the metadata URL '$url' when it has no usable display name" in {
+        val output = CatalogOutput.publication(
+          base.copy(artifacts =
+            Seq(base.artifacts.head.copy(url = Uri(url), roots = Seq(Uri(url)))),
+          ),
+          json = false,
+        )
+        output should include(s"\nFiles\n  $url\n")
+        output should include(s"    URL: $url\n")
+      }
   }
 }

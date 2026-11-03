@@ -10,6 +10,11 @@ import org.scalatest.wordspec.AnyWordSpec
 import scala.collection.mutable.ArrayBuffer
 
 class ProjectLockSpec extends AnyWordSpec, Matchers {
+  private def build(
+      selections: Seq[lock.ArtifactSelectionImpl],
+      inspect: String => Publication,
+  ): lock.Lock = ProjectLock.build(selections, new ProjectLock.Inspection(inspect))
+
   private def selection(baseUrl: String, url: String): lock.ArtifactSelectionImpl =
     lock.ArtifactSelectionImpl(Uri(baseUrl), Uri(url))
 
@@ -22,15 +27,22 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
   ): (ProjectException, Seq[String]) = {
     val requests = ArrayBuffer.empty[String]
     val failure = intercept[ProjectException] {
-      ProjectLock.build(
-        Seq(selection("https://example.org/source", "https://files.example/source.ttl")),
+      build(
+        Seq(
+          selection(
+            "https://example.org/files/packages/test/source/1/",
+            "https://example.org/files/packages/test/source/1/source.ttl",
+          ),
+        ),
         url => {
           requests += url
-          if url == "https://example.org/source" then
+          if url == "https://example.org/files/packages/test/source/1/" then
             publication(
               url,
-              Seq("https://files.example/source.ttl" -> Format.OwlTurtle),
-              Seq("https://example.org/dependency"),
+              Seq(
+                "https://example.org/files/packages/test/source/1/source.ttl" -> Format.OwlTurtle,
+              ),
+              Seq("https://example.org/files/packages/test/dependency/1/"),
             )
           else publication(url, artifacts)
         },
@@ -41,9 +53,15 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
 
   // Locks one selected artifact of `format` and returns its only locked file.
   private def lockedFile(format: Format): (String, String, lock.Format) = {
-    val result = ProjectLock.build(
-      Seq(selection("https://example.org/source", "https://files.example/artifact")),
-      url => publication(url, Seq("https://files.example/artifact" -> format)),
+    val result = build(
+      Seq(
+        selection(
+          "https://example.org/files/packages/test/source/1/",
+          "https://example.org/files/packages/test/source/1/artifact",
+        ),
+      ),
+      url =>
+        publication(url, Seq("https://example.org/files/packages/test/source/1/artifact" -> format)),
     )
     fileValues(result) match {
       case Seq(file) => file
@@ -53,7 +71,7 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
 
   "ProjectLock.build" should {
     "return an empty revision-two lock without inspection for no selections" in {
-      val result = ProjectLock.build(Seq.empty, url => fail(s"Unexpected inspection of $url"))
+      val result = build(Seq.empty, url => fail(s"Unexpected inspection of $url"))
       result.formatVersion shouldBe 2
       result.selections shouldBe empty
       result.files shouldBe empty
@@ -61,15 +79,18 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
 
     "inspect direct publications before flat dependencies and preserve file-pair order and hashes" in {
       val metadata = Map(
-        "https://Hub.example/z/?v=%2F" -> {
+        "https://Hub.example/files/packages/test/z%2F/1/" -> {
           val direct = publication(
-            "https://Hub.example/z/?v=%2F",
+            "https://Hub.example/files/packages/test/z%2F/1/",
             Seq(
-              "https://files.example/unselected.yaml" -> Format.LinkmlYaml,
-              "https://Files.example/z%2F.ttl#first" -> Format.OwlTurtle,
-              "https://files.example/z-second.ttl" -> Format.OwlTurtle,
+              "https://Hub.example/files/packages/test/z%2F/1/unselected.yaml" -> Format.LinkmlYaml,
+              "https://Hub.example/files/packages/test/z%2F/1/z%2F.ttl" -> Format.OwlTurtle,
+              "https://Hub.example/files/packages/test/z%2F/1/z-second.ttl" -> Format.OwlTurtle,
             ),
-            Seq("https://example.org/a", "https://example.org/b"),
+            Seq(
+              "https://example.org/files/packages/test/a/1/",
+              "https://example.org/files/packages/test/b/1/",
+            ),
           )
           direct.copy(artifacts =
             direct.artifacts.updated(
@@ -80,35 +101,49 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
             ),
           )
         },
-        "https://example.org/b" -> publication(
-          "https://example.org/b",
-          Seq("https://files.example/b.ttl" -> Format.OwlTurtle),
-          Seq("https://example.org/a", "https://example.org/c"),
-        ),
-        "https://example.org/a" -> publication(
-          "https://example.org/a",
+        "https://example.org/files/packages/test/b/1/" -> publication(
+          "https://example.org/files/packages/test/b/1/",
+          Seq("https://example.org/files/packages/test/b/1/b.ttl" -> Format.OwlTurtle),
           Seq(
-            "https://files.example/a.yaml" -> Format.LinkmlYaml,
-            "https://files.example/a.ttl" -> Format.OwlTurtle,
+            "https://example.org/files/packages/test/a/1/",
+            "https://example.org/files/packages/test/c/1/",
           ),
-          Seq("https://example.org/not-recursed"),
+        ),
+        "https://example.org/files/packages/test/a/1/" -> publication(
+          "https://example.org/files/packages/test/a/1/",
+          Seq(
+            "https://example.org/files/packages/test/a/1/a.yaml" -> Format.LinkmlYaml,
+            "https://example.org/files/packages/test/a/1/a.ttl" -> Format.OwlTurtle,
+          ),
+          Seq("https://example.org/files/packages/test/not-recursed/1/"),
           sha256 = "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
         ),
-        "https://example.org/c" -> publication(
-          "https://example.org/c",
-          Seq("https://files.example/c.ttl" -> Format.OwlTurtle),
+        "https://example.org/files/packages/test/c/1/" -> publication(
+          "https://example.org/files/packages/test/c/1/",
+          Seq("https://example.org/files/packages/test/c/1/c.ttl" -> Format.OwlTurtle),
         ),
-        "https://example.org/not-recursed" -> publication(
-          "https://example.org/not-recursed",
-          Seq("https://files.example/not-recursed.ttl" -> Format.OwlTurtle),
+        "https://example.org/files/packages/test/not-recursed/1/" -> publication(
+          "https://example.org/files/packages/test/not-recursed/1/",
+          Seq(
+            "https://example.org/files/packages/test/not-recursed/1/not-recursed.ttl" -> Format.OwlTurtle,
+          ),
         ),
       )
       val requests = ArrayBuffer.empty[String]
-      val result = ProjectLock.build(
+      val result = build(
         Seq(
-          selection("https://Hub.example/z/?v=%2F", "https://Files.example/z%2F.ttl#first"),
-          selection("https://example.org/b", "https://files.example/b.ttl"),
-          selection("https://Hub.example/z/?v=%2F", "https://files.example/z-second.ttl"),
+          selection(
+            "https://Hub.example/files/packages/test/z%2F/1/",
+            "https://Hub.example/files/packages/test/z%2F/1/z%2F.ttl",
+          ),
+          selection(
+            "https://example.org/files/packages/test/b/1/",
+            "https://example.org/files/packages/test/b/1/b.ttl",
+          ),
+          selection(
+            "https://Hub.example/files/packages/test/z%2F/1/",
+            "https://Hub.example/files/packages/test/z%2F/1/z-second.ttl",
+          ),
         ),
         url => {
           requests += url
@@ -116,29 +151,50 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
         },
       )
       requests.toSeq shouldBe Seq(
-        "https://Hub.example/z/?v=%2F",
-        "https://example.org/b",
-        "https://example.org/a",
-        "https://example.org/c",
+        "https://Hub.example/files/packages/test/z%2F/1/",
+        "https://example.org/files/packages/test/b/1/",
+        "https://example.org/files/packages/test/a/1/",
+        "https://example.org/files/packages/test/c/1/",
       )
       result.formatVersion shouldBe 2
       result.selections.map(s => (s.baseUrl.original, s.url.original)) shouldBe Seq(
-        ("https://Hub.example/z/?v=%2F", "https://Files.example/z%2F.ttl#first"),
-        ("https://example.org/b", "https://files.example/b.ttl"),
-        ("https://Hub.example/z/?v=%2F", "https://files.example/z-second.ttl"),
+        (
+          "https://Hub.example/files/packages/test/z%2F/1/",
+          "https://Hub.example/files/packages/test/z%2F/1/z%2F.ttl",
+        ),
+        (
+          "https://example.org/files/packages/test/b/1/",
+          "https://example.org/files/packages/test/b/1/b.ttl",
+        ),
+        (
+          "https://Hub.example/files/packages/test/z%2F/1/",
+          "https://Hub.example/files/packages/test/z%2F/1/z-second.ttl",
+        ),
       )
       fileValues(result) shouldBe Seq(
         (
-          "https://Hub.example/z/?v=%2F",
-          "https://Files.example/z%2F.ttl#first",
+          "https://Hub.example/files/packages/test/z%2F/1/",
+          "https://Hub.example/files/packages/test/z%2F/1/z%2F.ttl",
           lock.Format.OwlTurtle,
         ),
-        ("https://example.org/a", "https://files.example/a.ttl", lock.Format.OwlTurtle),
-        ("https://example.org/b", "https://files.example/b.ttl", lock.Format.OwlTurtle),
-        ("https://example.org/c", "https://files.example/c.ttl", lock.Format.OwlTurtle),
         (
-          "https://Hub.example/z/?v=%2F",
-          "https://files.example/z-second.ttl",
+          "https://example.org/files/packages/test/a/1/",
+          "https://example.org/files/packages/test/a/1/a.ttl",
+          lock.Format.OwlTurtle,
+        ),
+        (
+          "https://example.org/files/packages/test/b/1/",
+          "https://example.org/files/packages/test/b/1/b.ttl",
+          lock.Format.OwlTurtle,
+        ),
+        (
+          "https://example.org/files/packages/test/c/1/",
+          "https://example.org/files/packages/test/c/1/c.ttl",
+          lock.Format.OwlTurtle,
+        ),
+        (
+          "https://Hub.example/files/packages/test/z%2F/1/",
+          "https://Hub.example/files/packages/test/z%2F/1/z-second.ttl",
           lock.Format.OwlTurtle,
         ),
       )
@@ -153,45 +209,62 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
 
     "retain dependency files in every required format" in {
       val metadata = Map(
-        "https://example.org/source" -> publication(
-          "https://example.org/source",
+        "https://example.org/files/packages/test/source/1/" -> publication(
+          "https://example.org/files/packages/test/source/1/",
           Seq(
-            "https://files.example/source.ttl" -> Format.OwlTurtle,
-            "https://files.example/source.yaml" -> Format.LinkmlYaml,
+            "https://example.org/files/packages/test/source/1/source.ttl" -> Format.OwlTurtle,
+            "https://example.org/files/packages/test/source/1/source.yaml" -> Format.LinkmlYaml,
           ),
-          Seq("https://example.org/dependency"),
+          Seq("https://example.org/files/packages/test/dependency/1/"),
         ),
-        "https://example.org/dependency" -> publication(
-          "https://example.org/dependency",
+        "https://example.org/files/packages/test/dependency/1/" -> publication(
+          "https://example.org/files/packages/test/dependency/1/",
           Seq(
-            "https://files.example/dependency.yaml" -> Format.LinkmlYaml,
-            "https://files.example/dependency.ttl" -> Format.OwlTurtle,
+            "https://example.org/files/packages/test/dependency/1/dependency.yaml" -> Format.LinkmlYaml,
+            "https://example.org/files/packages/test/dependency/1/dependency.ttl" -> Format.OwlTurtle,
           ),
         ),
       )
       val requests = ArrayBuffer.empty[String]
-      val result = ProjectLock.build(
+      val result = build(
         Seq(
-          selection("https://example.org/source", "https://files.example/source.ttl"),
-          selection("https://example.org/source", "https://files.example/source.yaml"),
+          selection(
+            "https://example.org/files/packages/test/source/1/",
+            "https://example.org/files/packages/test/source/1/source.ttl",
+          ),
+          selection(
+            "https://example.org/files/packages/test/source/1/",
+            "https://example.org/files/packages/test/source/1/source.yaml",
+          ),
         ),
         url => {
           requests += url
           metadata(url)
         },
       )
-      requests.toSeq shouldBe Seq("https://example.org/source", "https://example.org/dependency")
+      requests.toSeq shouldBe Seq(
+        "https://example.org/files/packages/test/source/1/",
+        "https://example.org/files/packages/test/dependency/1/",
+      )
       fileValues(result) shouldBe Seq(
-        ("https://example.org/source", "https://files.example/source.ttl", lock.Format.OwlTurtle),
         (
-          "https://example.org/dependency",
-          "https://files.example/dependency.ttl",
+          "https://example.org/files/packages/test/source/1/",
+          "https://example.org/files/packages/test/source/1/source.ttl",
           lock.Format.OwlTurtle,
         ),
-        ("https://example.org/source", "https://files.example/source.yaml", lock.Format.LinkmlYaml),
         (
-          "https://example.org/dependency",
-          "https://files.example/dependency.yaml",
+          "https://example.org/files/packages/test/dependency/1/",
+          "https://example.org/files/packages/test/dependency/1/dependency.ttl",
+          lock.Format.OwlTurtle,
+        ),
+        (
+          "https://example.org/files/packages/test/source/1/",
+          "https://example.org/files/packages/test/source/1/source.yaml",
+          lock.Format.LinkmlYaml,
+        ),
+        (
+          "https://example.org/files/packages/test/dependency/1/",
+          "https://example.org/files/packages/test/dependency/1/dependency.yaml",
           lock.Format.LinkmlYaml,
         ),
       )
@@ -199,93 +272,185 @@ class ProjectLockSpec extends AnyWordSpec, Matchers {
 
     "reject a dependency with no artifact in the selected format" in {
       val (failure, requests) = buildWithDependencyArtifacts(
-        Seq("https://files.example/dependency.yaml" -> Format.LinkmlYaml),
+        Seq(
+          "https://example.org/files/packages/test/dependency/1/dependency.yaml" -> Format.LinkmlYaml,
+        ),
       )
       failure.code shouldBe ProjectErrorCode.InvalidSelection
       failure.getMessage should include(
-        "https://example.org/dependency has 0 artifacts in format owl-turtle required by " +
-          "https://files.example/source.ttl",
+        "https://example.org/files/packages/test/dependency/1/ has 0 artifacts in format owl-turtle required by " +
+          "https://example.org/files/packages/test/source/1/source.ttl",
       )
-      requests shouldBe Seq("https://example.org/source", "https://example.org/dependency")
+      requests shouldBe Seq(
+        "https://example.org/files/packages/test/source/1/",
+        "https://example.org/files/packages/test/dependency/1/",
+      )
     }
 
     "reject a dependency with two artifacts in the selected format" in {
       val (failure, requests) = buildWithDependencyArtifacts(
         Seq(
-          "https://files.example/dependency-first.ttl" -> Format.OwlTurtle,
-          "https://files.example/dependency-second.ttl" -> Format.OwlTurtle,
+          "https://example.org/files/packages/test/dependency/1/dependency-first.ttl" -> Format.OwlTurtle,
+          "https://example.org/files/packages/test/dependency/1/dependency-second.ttl" -> Format.OwlTurtle,
         ),
       )
       failure.code shouldBe ProjectErrorCode.InvalidSelection
       failure.getMessage should include(
-        "https://example.org/dependency has 2 artifacts in format owl-turtle required by " +
-          "https://files.example/source.ttl",
+        "https://example.org/files/packages/test/dependency/1/ has 2 artifacts in format owl-turtle required by " +
+          "https://example.org/files/packages/test/source/1/source.ttl",
       )
-      requests shouldBe Seq("https://example.org/source", "https://example.org/dependency")
+      requests shouldBe Seq(
+        "https://example.org/files/packages/test/source/1/",
+        "https://example.org/files/packages/test/dependency/1/",
+      )
     }
 
     "reject a dependency publication whose exact response identity differs from its request" in {
       val requests = ArrayBuffer.empty[String]
       val failure = intercept[ProjectException] {
-        ProjectLock.build(
-          Seq(selection("https://example.org/source", "https://files.example/source.ttl")),
+        build(
+          Seq(
+            selection(
+              "https://example.org/files/packages/test/source/1/",
+              "https://example.org/files/packages/test/source/1/source.ttl",
+            ),
+          ),
           url => {
             requests += url
-            if url == "https://example.org/dependency" then
-              publication(url + "/", Seq("https://files.example/source.ttl" -> Format.OwlTurtle))
+            if url == "https://example.org/files/packages/test/dependency/1/" then
+              publication(
+                url + "/",
+                Seq(
+                  "https://example.org/files/packages/test/source/1/source.ttl" -> Format.OwlTurtle,
+                ),
+              )
             else
               publication(
                 url,
-                Seq("https://files.example/source.ttl" -> Format.OwlTurtle),
-                Seq("https://example.org/dependency"),
+                Seq(
+                  "https://example.org/files/packages/test/source/1/source.ttl" -> Format.OwlTurtle,
+                ),
+                Seq("https://example.org/files/packages/test/dependency/1/"),
               )
           },
         )
       }
       failure.code shouldBe ProjectErrorCode.InvalidSelection
-      requests.toSeq shouldBe Seq("https://example.org/source", "https://example.org/dependency")
+      requests.toSeq shouldBe Seq(
+        "https://example.org/files/packages/test/source/1/",
+        "https://example.org/files/packages/test/dependency/1/",
+      )
       failure.getMessage should include(
-        "https://example.org/dependency returned identity https://example.org/dependency/",
+        "https://example.org/files/packages/test/dependency/1/ returned identity https://example.org/files/packages/test/dependency/1//",
       )
     }
 
     "reject an unadvertised exact direct artifact before inspecting dependencies" in {
       val requests = ArrayBuffer.empty[String]
       val failure = intercept[ProjectException] {
-        ProjectLock.build(
+        build(
           Seq(
-            selection("https://example.org/source", "https://files.example/source.ttl?revision=2"),
+            selection(
+              "https://example.org/files/packages/test/source/1/",
+              "https://example.org/files/packages/test/source/1/source.ttl?revision=2",
+            ),
           ),
           url => {
             requests += url
             publication(
               url,
-              Seq("https://files.example/source.ttl" -> Format.OwlTurtle),
-              if url == "https://example.org/source" then Seq("https://example.org/dependency")
+              Seq(
+                "https://example.org/files/packages/test/source/1/source.ttl" -> Format.OwlTurtle,
+              ),
+              if url == "https://example.org/files/packages/test/source/1/" then
+                Seq("https://example.org/files/packages/test/dependency/1/")
               else Seq.empty,
             )
           },
         )
       }
       failure.code shouldBe ProjectErrorCode.InvalidSelection
-      failure.getMessage should include("https://example.org/source")
-      failure.getMessage should include("https://files.example/source.ttl?revision=2")
-      requests.toSeq shouldBe Seq("https://example.org/source")
+      failure.getMessage should include("https://example.org/files/packages/test/source/1/")
+      failure.getMessage should include(
+        "https://example.org/files/packages/test/source/1/source.ttl?revision=2",
+      )
+      requests.toSeq shouldBe Seq("https://example.org/files/packages/test/source/1/")
     }
 
     "lock an OWL RDF/XML artifact as OWL RDF/XML" in {
       lockedFile(Format.OwlRdfxml) shouldBe
-        ("https://example.org/source", "https://files.example/artifact", lock.Format.OwlRdfxml)
+        (
+          "https://example.org/files/packages/test/source/1/",
+          "https://example.org/files/packages/test/source/1/artifact",
+          lock.Format.OwlRdfxml,
+        )
     }
 
     "lock an RDFS Turtle artifact as RDFS Turtle" in {
       lockedFile(Format.RdfsTurtle) shouldBe
-        ("https://example.org/source", "https://files.example/artifact", lock.Format.RdfsTurtle)
+        (
+          "https://example.org/files/packages/test/source/1/",
+          "https://example.org/files/packages/test/source/1/artifact",
+          lock.Format.RdfsTurtle,
+        )
     }
 
     "lock an Ossie YAML artifact as Ossie YAML" in {
       lockedFile(Format.OssieYaml) shouldBe
-        ("https://example.org/source", "https://files.example/artifact", lock.Format.OssieYaml)
+        (
+          "https://example.org/files/packages/test/source/1/",
+          "https://example.org/files/packages/test/source/1/artifact",
+          lock.Format.OssieYaml,
+        )
     }
+
+    "reject URL identity that disagrees with publication metadata" in {
+      val metadata = publication(
+        "https://example.org/files/packages/test/a%41/1/",
+        Seq("https://example.org/files/packages/test/a%41/1/source.yaml" -> Format.LinkmlYaml),
+      )
+      val accepted = ProjectLock.file(metadata, metadata.artifacts.head)
+      accepted.baseUrl.original shouldBe "https://example.org/files/packages/test/a%41/1/"
+      accepted.url.original shouldBe "https://example.org/files/packages/test/a%41/1/source.yaml"
+      accepted.sha256 shouldBe Some(
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+      )
+      val failure = intercept[ProjectException] {
+        ProjectLock.file(metadata.copy(name = "aA"), metadata.artifacts.head)
+      }
+      failure.code shouldBe ProjectErrorCode.InvalidSelection
+      failure.getMessage should include("does not match its namespace, name and version")
+    }
+
+    "reject an advertised artifact beneath a different Hub publication" in {
+      val metadata = publication(
+        "https://example.org/files/packages/test/source/1/",
+        Seq("https://example.org/files/packages/test/other/1/source.yaml" -> Format.LinkmlYaml),
+      )
+      val failure = intercept[ProjectException] {
+        build(
+          Seq(selection(metadata.baseUrl.original, metadata.artifacts.head.url.original)),
+          _ => metadata,
+        )
+      }
+      failure.code shouldBe ProjectErrorCode.InvalidSelection
+      failure.getMessage should include("is outside publication")
+    }
+
+    "report malformed metadata URLs as selection errors while preserving the URL failure" in {
+      val metadata = publication(
+        "https://example.org/publication",
+        Seq("https://example.org/file.yaml" -> Format.LinkmlYaml),
+      )
+      val failure = intercept[ProjectException] {
+        ProjectLock.file(metadata, metadata.artifacts.head)
+      }
+      failure.code shouldBe ProjectErrorCode.InvalidSelection
+      failure.getMessage should include("https://example.org/publication")
+      val cause = failure.getCause.asInstanceOf[CliFileException]
+      cause.error.code shouldBe generated.fileerror.CliFileErrorCode.UnsupportedFilename
+      cause.getMessage shouldBe failure.getMessage
+    }
+
   }
 }

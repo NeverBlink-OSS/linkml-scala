@@ -1,6 +1,6 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.declaration.Declaration
+import eu.neverblink.ohi.cli.generated.declaration.{Declaration, Format}
 import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
 import java.io.{FilterOutputStream, IOException, OutputStream}
 import java.nio.charset.StandardCharsets.UTF_8
@@ -10,8 +10,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class DeclarationFilesSpec extends AnyWordSpec, Matchers {
-  private val emptyDeclaration = Declaration(1, Seq.empty)
-  private val yaml = "format_version: 1\nselections: []\n"
+  private val emptyDeclaration = Declaration(1, Format.LinkmlYaml, ".ohi", Seq.empty)
+  private val yaml =
+    "format_version: 1\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
   private val previous = Array[Byte](71, 72, 0, -1)
 
   private def withDirectory(test: Path => Unit): Unit = {
@@ -106,7 +107,7 @@ class DeclarationFilesSpec extends AnyWordSpec, Matchers {
               target shouldBe path
               Files.readString(
                 stage,
-              ) shouldBe "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/\n" + yaml
+              ) shouldBe "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/guides/projects/\n" + yaml
               Files.readAllBytes(path).toSeq shouldBe Seq[Byte](71, 72, 0, -1)
               throw primary
             },

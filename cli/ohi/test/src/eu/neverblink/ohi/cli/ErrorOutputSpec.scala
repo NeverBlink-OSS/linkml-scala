@@ -1,11 +1,78 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.linkml.runtime.LinkmlAny
+import eu.neverblink.linkml.runtime.{LinkmlAny, Uri}
 import eu.neverblink.ohi.cli.generated.projecterror.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class ErrorOutputSpec extends AnyWordSpec, Matchers {
+  "human project results" should {
+    "separate project guidance from the install summary while retaining absolute JSON paths" in {
+      val directory = os.pwd.toString
+      val result = generated.projectresult.ProjectResult(
+        operation = generated.projectresult.ProjectOperation.Add,
+        projectDirectory = directory,
+        declarationChanged = true,
+        declarationCreated = true,
+        lockChanged = true,
+        files = Seq(
+          generated.projectresult.LockFileResult(
+            path = (os.pwd / ".ohi" / "w3c" / "dcat" / "3" / "dcat.linkml.yaml").toString,
+            url = Uri("https://example.org/dcat.yaml"),
+            status = generated.projectresult.LockFileStatus.Downloaded,
+          ),
+        ),
+      )
+      val added = generated.declaration.ProjectDependency(
+        "w3c/dcat@3",
+        generated.declaration.Format.LinkmlYaml,
+      )
+      ProjectOutput.result(result, json = false, added = Some(added)) shouldBe
+        "Created an ohi project.\n" +
+        "You can edit ohi.yaml to manage your ontologies and project settings.\n" +
+        "Downloaded ontologies go in .ohi/.\n\n" +
+        "New to ohi? Check out the guide on how to manage ontology projects:\n" +
+        "  https://ohi.dev/docs/guides/projects/\n\n" +
+        "Added w3c/dcat@3 (linkml-yaml)\nDownloaded 1 ontology file."
+      val json = ujson.read(ProjectOutput.result(result, json = true))
+      json("project_directory").str shouldBe directory
+      json("files")(0)(
+        "path",
+      ).str shouldBe (os.pwd / ".ohi" / "w3c" / "dcat" / "3" / "dcat.linkml.yaml").toString
+      json("files")(0)("status").str shouldBe "DOWNLOADED"
+      json.obj.contains("delivery") shouldBe false
+    }
+
+    "report an existing selection while retaining downloaded and verified repair counts" in {
+      val result = generated.projectresult.ProjectResult(
+        operation = generated.projectresult.ProjectOperation.Add,
+        projectDirectory = os.pwd.toString,
+        declarationChanged = false,
+        declarationCreated = false,
+        lockChanged = true,
+        files = Seq(
+          generated.projectresult.LockFileResult(
+            path = (os.pwd / ".ohi" / "test" / "example" / "1" / "example.owl.ttl").toString,
+            url = Uri("https://example.org/example.ttl"),
+            status = generated.projectresult.LockFileStatus.Downloaded,
+          ),
+          generated.projectresult.LockFileResult(
+            path = (os.pwd / ".ohi" / "test" / "dependency" / "1" / "dependency.owl.ttl").toString,
+            url = Uri("https://example.org/dependency.ttl"),
+            status = generated.projectresult.LockFileStatus.Verified,
+          ),
+        ),
+      )
+      val added = generated.declaration.ProjectDependency(
+        "test/example@1",
+        generated.declaration.Format.OwlTurtle,
+      )
+      ProjectOutput.result(result, json = false, added = Some(added)) shouldBe
+        "Already exists: test/example@1 (owl-turtle)\n" +
+        "Downloaded 1 ontology file. Verified 1 existing ontology file."
+    }
+  }
+
   "human catalog failures" should {
     Seq(
       (
@@ -84,19 +151,89 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
   }
 
   "human project failures" should {
-    "show a saved declaration and unwritten lock before the resolved recovery commands" in {
+    "report an incomplete file and completed downloads when sync reuses the lock" in {
+      val error = ProjectError(
+        code = ProjectErrorCode.OperationFailed,
+        operation = ProjectOperation.Sync,
+        projectDirectory = (os.pwd / "study").toString,
+        declarationChanged = false,
+        declarationCreated = false,
+        lockChanged = false,
+        files = Seq(
+          LockFileResult(
+            path = (os.pwd / "study" / ".ohi" / "completed.ttl").toString,
+            status = LockFileStatus.Downloaded,
+            url = Uri("https://example.org/completed.ttl"),
+          ),
+        ),
+        fileError = Some(
+          CliFileError(
+            code = CliFileErrorCode.FileWriteFailed,
+            directory = (os.pwd / "study" / ".ohi").toString,
+            message = "Disk full. The incomplete file could not be removed.",
+            path = Some((os.pwd / "study" / ".ohi" / "partial.ttl").toString),
+            partialPath = Some((os.pwd / "study" / ".ohi" / "partial.ttl").toString),
+            url = "https://example.org/partial.ttl",
+          ),
+        ),
+        message = "Download failed",
+      )
+      val text = ProjectOutput.error(
+        error,
+        json = false,
+        recoveryCommand = Some("ohi sync --project study"),
+      )
+      text should include("Error: Could not finish writing the downloaded file.")
+      text should include("Incomplete file retained: study/.ohi/partial.ttl")
+      text should include("Downloaded 1 ontology file.")
+      text should include("No project files were written.")
+      text should endWith(
+        "Correct the storage problem and remove the incomplete file before retrying.\n" +
+          "  ohi sync --project study",
+      )
+    }
+
+    "offer the timeout option after a sync download fails without changing project records" in {
+      val error = ProjectError(
+        code = ProjectErrorCode.OperationFailed,
+        operation = ProjectOperation.Sync,
+        projectDirectory = (os.pwd / "study").toString,
+        declarationChanged = false,
+        declarationCreated = false,
+        lockChanged = false,
+        files = Seq.empty,
+        catalogError = Some(
+          CatalogError(
+            CatalogErrorCode.Timeout,
+            "request timed out",
+            CatalogOperation.Get,
+            url = Some("https://example.org/file.ttl"),
+          ),
+        ),
+        message = "request timed out",
+      )
+      val text = ProjectOutput.error(error, json = false)
+      text should include("No project files were written.")
+      text should endWith(
+        "Check connectivity and try again. If the service needs more time, increase --timeout-ms.",
+      )
+    }
+
+    "show a saved declaration and unwritten lock before the original add retry" in {
       val error = ProjectError(
         code = ProjectErrorCode.OperationFailed,
         operation = ProjectOperation.Add,
-        projectDirectory = "/work/study",
+        projectDirectory = (os.pwd / "study").toString,
         declarationChanged = true,
+        declarationCreated = true,
         lockChanged = false,
+        files = Seq.empty,
         lockError = Some(
           LockError(
             LockErrorCode.StorageError,
             "Permission denied",
             LockOperation.Write,
-            Some("/work/study/ohi.lock.json"),
+            Some((os.pwd / "study" / "ohi.lock.json").toString),
           ),
         ),
         message = "Legacy JSON message",
@@ -104,31 +241,44 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
       val text = ProjectOutput.error(
         error,
         json = false,
-        recoveryCommands = Seq(
-          "ohi lock --project /work/study",
-          "ohi get https://example.org/file.ttl --to ./ontologies",
-        ),
+        recoveryCommand = Some("ohi add w3c/dcat@3 --project study"),
       )
       text should include("Error: Could not write the project lock.")
+      text should include("Created an ohi project in study.")
+      text should include(
+        "You can edit study/ohi.yaml to manage your ontologies and project settings.",
+      )
+      text should include("https://ohi.dev/docs/guides/projects/")
       text should include("Details: Permission denied")
       text should include(
-        "Project files\n  Saved /work/study/ohi.yaml\n  Not written /work/study/ohi.lock.json\n  The ontology file was not downloaded.",
+        "Project files\n  Saved study/ohi.yaml\n  Not written study/ohi.lock.json",
       )
       text should endWith(
-        "  ohi lock --project /work/study\n  ohi get https://example.org/file.ttl --to ./ontologies",
+        "  ohi add w3c/dcat@3 --project study",
       )
       ujson.read(ProjectOutput.error(error, json = true))(
         "message",
       ).str shouldBe "Legacy JSON message"
+      ujson.read(ProjectOutput.error(error, json = true))("declaration_created").bool shouldBe true
+      ujson.read(ProjectOutput.error(error, json = true))("project_directory").str shouldBe
+        (os.pwd / "study").toString
     }
 
     "retain both completed records when the download service fails" in {
       val error = ProjectError(
         code = ProjectErrorCode.OperationFailed,
         operation = ProjectOperation.Add,
-        projectDirectory = "/work/study",
+        projectDirectory = (os.pwd / "study").toString,
         declarationChanged = true,
+        declarationCreated = false,
         lockChanged = true,
+        files = Seq(
+          LockFileResult(
+            url = Uri("https://example.org/completed.ttl"),
+            path = (os.pwd / "study" / ".ohi" / "completed.ttl").toString,
+            status = LockFileStatus.Downloaded,
+          ),
+        ),
         catalogError = Some(
           CatalogError(
             CatalogErrorCode.HttpError,
@@ -143,15 +293,16 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
       val text = ProjectOutput.error(
         error,
         json = false,
-        recoveryCommands = Seq("ohi get https://example.org/file.ttl --to ./ontologies"),
+        recoveryCommand = Some("ohi sync --project study"),
       )
       text should include("Error: The project was updated, but the ontology download failed.")
       text should include("Cause: The download service is unavailable.")
-      text should include("  Saved /work/study/ohi.yaml\n  Saved /work/study/ohi.lock.json")
-      text should include("The ontology file was not downloaded.")
+      text should include("  Saved study/ohi.yaml\n  Saved study/ohi.lock.json")
+      text should include("Downloaded 1 ontology file.")
       text should not include "HTTP"
       text should not include "ohi lock --project"
       text should not include "--timeout-ms"
+      text should not include "Created an ohi project"
     }
   }
 }

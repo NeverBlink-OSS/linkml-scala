@@ -5,20 +5,29 @@ package eu.neverblink.ohi.cli.generated.declaration
 
 import eu.neverblink.linkml.runtime.*
 
-/** Contents of ohi.yaml. Each selection names a publication and the one artifact of it the project
-  * uses. ohi.lock.json lists the resolved files, including dependencies.
+/** Contents of ohi.yaml. Exact resolved file identities belong in ohi.lock.json.
   *
   * @param formatVersion
-  *   Version of the declaration format.
-  * @param selections
-  *   Direct publication and artifact selections in supplied order.
+  *   Declaration revision. Only revision 1 is supported.
+  * @param defaultFormat
+  *   Preferred artifact format for future reference selections without an explicit format. Existing
+  *   dependency formats remain fixed.
+  * @param downloadDir
+  *   Dedicated project-relative directory for downloaded ontologies. Its normalized path must
+  *   remain strictly beneath the project directory and separate from project records.
+  * @param dependencies
+  *   Ordered direct requirements, unique by ontology and format.
   * @see
   *   From schema: https://ohi.neverblink.eu/contracts/declaration
   */
 final case class Declaration(
     @named("format_version")
     formatVersion: Int,
-    selections: Seq[ArtifactSelection],
+    @named("default_format")
+    defaultFormat: Format,
+    @named("download_dir")
+    downloadDir: String,
+    dependencies: Seq[ProjectDependency],
 ) {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that

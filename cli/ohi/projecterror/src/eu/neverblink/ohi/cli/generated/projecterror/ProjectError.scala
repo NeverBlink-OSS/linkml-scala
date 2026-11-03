@@ -9,8 +9,13 @@ import eu.neverblink.linkml.runtime.*
   *   Catalog error that caused OPERATION_FAILED.
   * @param declarationChanged
   *   Whether the command wrote ohi.yaml.
+  * @param declarationCreated
+  *   Whether the command successfully wrote a previously absent ohi.yaml. Implies
+  *   declaration_changed.
   * @param fileError
   *   Download error that caused OPERATION_FAILED.
+  * @param files
+  *   Completed outputs in first-occurrence lock order.
   * @param lockChanged
   *   Whether the command wrote ohi.lock.json.
   * @param lockError
@@ -30,8 +35,11 @@ final case class ProjectError(
     code: ProjectErrorCode,
     @named("declaration_changed")
     declarationChanged: Boolean,
+    @named("declaration_created")
+    declarationCreated: Boolean,
     @named("file_error")
     fileError: Option[CliFileError] = None,
+    files: Seq[LockFileResult],
     @named("lock_changed")
     lockChanged: Boolean,
     @named("lock_error")

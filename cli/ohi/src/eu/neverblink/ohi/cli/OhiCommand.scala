@@ -82,6 +82,14 @@ abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
     (Seq("ohi", commandName) ++ words).map(CliFormatting.quote(_)).mkString(" ")
   }
 
+  /** Reports an invalid `--format` with supported values and a corrected invocation, then exits. */
+  protected def formatCorrection(format: String): Nothing =
+    correction(
+      s"Unsupported format '${CliFormatting.clean(format)}'.",
+      CliFormatting.formatsHelp(errorColored) + "\n\nExample with OWL (Turtle):\n  " +
+        example(invocation(Seq("--format" -> Some("owl-turtle")))),
+    )
+
   protected def reference(
       input: String,
       format: Option[String],
@@ -89,18 +97,10 @@ abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
       inspect: String => Publication,
       preferredFormat: => Option[Format],
   ): (Publication, Artifact) = {
-    def formatCorrection(): Nothing = {
-      val message = s"Unsupported format '${CliFormatting.clean(format.get)}'."
-      correction(
-        message,
-        CliFormatting.formatsHelp(errorColored) + "\n\nExample with OWL (Turtle):\n  " +
-          example(invocation(Seq("--format" -> Some("owl-turtle")))),
-      )
-    }
     OntologyReference.resolve(input, format, client.search, inspect, preferredFormat).fold(
       {
         case _: OntologyReference.Problem.InvalidFormat =>
-          formatCorrection()
+          formatCorrection(format.get)
         case OntologyReference.Problem.Invalid(message) => correction(message)
         case OntologyReference.Problem.Unavailable(message, publication) =>
           correction(
@@ -108,16 +108,12 @@ abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
             "Available formats\n" + publication.artifacts.map(a => stringify(a.format)).distinct
               .map("  " + _).mkString("\n"),
           )
-        case OntologyReference.Problem.Ambiguous(message, publication, files) =>
-          val changes = Seq("--format" -> None) ++
-            Option.when(commandName == "add")("--artifact" -> Some(files.head.url.original))
-          val selected =
-            if commandName == "add" then publication.baseUrl.original else files.head.url.original
+        case OntologyReference.Problem.Ambiguous(message, _, files) =>
           correction(
             message,
             "Files\n" + files.map(a => "  " + a.url.original).mkString("\n") +
               "\n\nChoose a file URL, without --format. For example:\n  " +
-              example(invocation(changes, Some(Seq(selected)))),
+              example(invocation(Seq("--format" -> None), Some(Seq(files.head.url.original)))),
             invalid = false,
           )
       },

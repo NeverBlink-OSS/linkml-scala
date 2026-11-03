@@ -1,7 +1,11 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.ohi.cli.generated.declaration.{ArtifactSelection, Declaration}
-import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
+import eu.neverblink.ohi.cli.generated.declaration.{
+  Declaration,
+  Format as DeclarationFormat,
+  ProjectDependency,
+}
+import eu.neverblink.ohi.cli.generated.projectresult.LockFileResult
 import eu.neverblink.ohi.cli.generated.projecterror.{
   ProjectError,
   ProjectErrorCode,
@@ -9,15 +13,15 @@ import eu.neverblink.ohi.cli.generated.projecterror.{
 }
 import eu.neverblink.ohi.cli.generated.projectresult
 import eu.neverblink.ohi.model.{LockException, LockFiles, LockJson}
-import eu.neverblink.ohi.model.generated.Publication
+import eu.neverblink.ohi.model.generated.{Artifact, Publication}
+import eu.neverblink.ohi.model.generated.search.SearchResult
+import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import eu.neverblink.ohi.model.generated.lock
-import eu.neverblink.ohi.model.generated.lockerror.LockOperation
-import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
+import eu.neverblink.linkml.runtime.stringify
 
-import java.nio.file.{Files, NoSuchFileException, Path}
+import java.nio.file.{Files, Path}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
-import java.util.Locale
-import scala.util.Try
 import scala.util.control.NonFatal
 
 /** The ohi project in `directory` with command effects and recovery information. Use a new instance
@@ -29,160 +33,320 @@ private[cli] final class Project(
     createDeclaration: (Path, Declaration) => Unit = DeclarationFiles.create,
     writeDeclaration: (Path, Declaration) => Unit = DeclarationFiles.write,
     writeLock: (Path, lock.Lock) => Unit = LockFiles.write,
-    resolveProbe: Path => Path = _.toRealPath(),
-    deleteProbe: Path => Unit = path => Files.delete(path),
 ) {
   private val declarationPath = directory.resolve("ohi.yaml")
   private val lockPath = directory.resolve("ohi.lock.json")
   private var declarationChanged = false
+  private var declarationCreated = false
   private var lockChanged = false
-  private var download: Option[(String, String)] = None
+  private var destination: Option[DownloadDestination] = None
+  private var added: Option[ProjectDependency] = None
 
-  def init(createParents: Boolean): projectresult.ProjectResult = {
+  def downloadDirectory: Option[Path] = destination.map(value => Path.of(value.directory))
+  def addedDependency: Option[ProjectDependency] = added
+
+  /** Creates an empty declaration with the supplied defaults, preserving an existing valid file.
+    * `downloadDir` must be project-relative. Does not create the download directory.
+    */
+  def init(
+      createParents: Boolean,
+      defaultFormat: DeclarationFormat = DeclarationFormat.LinkmlYaml,
+      downloadDir: String = ".ohi",
+  ): projectresult.ProjectResult = {
     if createParents then
       storage(s"Cannot create project directory '$directory'") {
         Files.createDirectories(directory)
       }
     requireDirectory()
     refuseSymlink(declarationPath)
-    if exists(declarationPath) then DeclarationFiles.read(declarationPath)
+    val declaration = if exists(declarationPath) then DeclarationFiles.read(declarationPath)
     else {
-      createDeclaration(declarationPath, Declaration(1, Seq.empty))
+      val declaration = Declaration(
+        defaultFormat = defaultFormat,
+        downloadDir = downloadDir,
+        dependencies = Seq.empty,
+        formatVersion = 1,
+      )
+      createDeclaration(declarationPath, declaration)
       declarationChanged = true
+      declarationCreated = true
+      declaration
     }
+    destination = Some(DownloadDestination.fromProject(directory, declaration))
     result()
   }
 
+  /** Resolves and preflights all files before saving the declaration and lock, then installs the
+    * complete graph. The caller validates mutually exclusive selector options. Failures retain
+    * completed writes and expose recovery through [[failure]]. An artifact URL requires publication
+    * URL input and an exact pair reproducible through its catalog reference and format.
+    */
   def add(
-      baseUrl: String,
-      url: String,
-      destination: String,
+      input: String,
+      artifact: Option[String],
+      format: Option[String],
+      search: SearchRequest => SearchResult,
       inspect: String => Publication,
       fetch: String => Array[Byte],
   ): projectresult.ProjectResult = {
-    download = Some(url -> destination)
     val previous = read(allowMissing = true)
-    val target = FileDelivery.target(url, destination)
-    val canonicalTarget = canonical(target)
-    if Seq(declarationPath, lockPath).exists(path => conflicts(canonicalTarget, path)) then
-      throw new ProjectException(
-        ProjectErrorCode.InvalidProject,
-        s"Download '$target' conflicts with a project record. Choose another download directory.",
-      )
-    val pair = ArtifactSelection(Uri(baseUrl), Uri(url))
-    val changed = !exists(declarationPath) || !previous.selections.contains(pair)
+    val missing = !exists(declarationPath)
+    val metadata = new ProjectLock.Inspection(inspect)
+    val (requirement, publication, selected) = artifact match {
+      case Some(url) =>
+        val publication = metadata(input)
+        val selected = publication.artifacts.find(_.url.original == url).getOrElse {
+          invalidSelection(s"Publication '$input' does not advertise artifact '$url'.")
+        }
+        val requirement = dependency(publication, selected)
+        val resolved =
+          resolve(requirement.ontology, Some(stringify(selected.format)), search, metadata)
+        if resolved._1.baseUrl.original != input || resolved._2.url.original != url then
+          invalidSelection(
+            s"Requirement '${requirement.ontology}' in ${stringify(selected.format)} does not select the supplied publication and file URLs.",
+          )
+        (requirement, resolved._1, resolved._2)
+      case None =>
+        val resolved = resolve(
+          input,
+          format,
+          search,
+          metadata,
+          Some(ProjectFormat.toModel(previous.defaultFormat)),
+        )
+        (dependency(resolved._1, resolved._2), resolved._1, resolved._2)
+    }
+    added = Some(requirement)
+    val changed = !previous.dependencies.contains(requirement)
     val declaration =
-      if previous.selections.contains(pair) then previous
-      else previous.copy(selections = previous.selections :+ pair)
-    // Validate caller input before inspection. Existing declaration input was already validated.
-    if changed then DeclarationYaml.encode(declaration)
-    val complete = build(declaration, inspect)
+      if changed then previous.copy(dependencies = previous.dependencies :+ requirement)
+      else previous
+    val pair = lock.ArtifactSelectionImpl(publication.baseUrl, selected.url)
+    val complete = build(declaration, search, metadata, Some(requirement -> pair))
+    val plan = prepare(DownloadDestination.fromProject(directory, declaration), complete)
     if changed then {
       writeDeclaration(declarationPath, declaration)
       declarationChanged = true
+      declarationCreated = missing
     }
     writeLock(lockPath, complete)
     lockChanged = true
-    result(Some(FileDelivery.save(url, destination, fetch)))
+    LockDownload.ensureIgnore(plan)
+    result(LockDownload.install(plan, fetch))
   }
 
-  def refresh(inspect: String => Publication): projectresult.ProjectResult = {
+  /** Resolves the recorded formats strictly and replaces the lock without editing the declaration
+    * or downloading files. Invalid existing records fail before catalog requests.
+    */
+  def refresh(
+      search: SearchRequest => SearchResult,
+      inspect: String => Publication,
+  ): projectresult.ProjectResult = {
     val declaration = read(allowMissing = false)
-    val complete = build(declaration, inspect)
+    val complete = build(declaration, search, new ProjectLock.Inspection(inspect))
     writeLock(lockPath, complete)
     lockChanged = true
     result()
   }
 
-  /** Converts `cause` into this command's error record.
-    *
-    * @return
-    *   the error, stating which project files this command wrote and the commands that complete the
-    *   interrupted work
+  /** Installs a valid revision-2 lock, resolving only missing or changed direct requirements.
+    * Preserves existing declaration and reused lock bytes. `init` creates a missing declaration
+    * from direct selections after preflight. Reports completed writes and files through
+    * [[failure]].
     */
-  def failure(cause: Throwable): ProjectError = {
-    def quoted(value: String): String = CliFormatting.quote(value, always = true)
-    val get = download.map { (url, destination) =>
-      s"ohi get ${quoted(url)} --to ${quoted(destination)}"
+  def sync(
+      search: SearchRequest => SearchResult,
+      inspect: String => Publication,
+      fetch: String => Array[Byte],
+      init: Boolean = false,
+  ): projectresult.ProjectResult = {
+    val (declaration, existing) = readRecords()
+    existing.foreach { complete =>
+      if complete.formatVersion != 2 then
+        throw new LockException(
+          LockError(
+            code = LockErrorCode.UnsupportedVersion,
+            operation = LockOperation.Read,
+            path = Some(lockPath.toString),
+            message = s"Lock '$lockPath' requires format version 2 for sync. " +
+              s"Rebuild it with 'ohi lock --project ${CliFormatting.quote(directory.toString)}' when ohi.yaml exists, or regenerate it with its originating application.",
+          ),
+        )
     }
-    val recovery =
-      if lockChanged then s"Correct the reported cause, then run ${get.get}."
-      else if needsLock(cause) then
-        s"Lock refresh did not complete. Correct the reported cause, then run ohi lock --project ${quoted(directory.toString)}" +
-          get.fold(".")(command => s", then $command.")
-      else s"Correct the reported cause and rerun ohi ${operation.toString.toLowerCase}."
+    val current = declaration match {
+      case Some(value) =>
+        existing.filter { complete =>
+          ProjectLock.requirements(complete).sortBy(dependency =>
+            (dependency.ontology, stringify(dependency.format)),
+          ) == value.dependencies.sortBy(dependency =>
+            (dependency.ontology, stringify(dependency.format)),
+          )
+        }
+      case None => existing
+    }
+    val complete = current.getOrElse {
+      val requirements = declaration.getOrElse {
+        throw new ProjectException(
+          ProjectErrorCode.InvalidProject,
+          s"Project '$directory' has neither ohi.yaml nor ohi.lock.json. Run ohi init or ohi add to start a project.",
+        )
+      }
+      build(requirements, search, new ProjectLock.Inspection(inspect))
+    }
+    val selected = declaration
+      .map(DownloadDestination.fromProject(directory, _))
+      .getOrElse(DownloadDestination.standalone(directory))
+    val plan = prepare(selected, complete)
+    if init && declaration.isEmpty then {
+      createDeclaration(
+        declarationPath,
+        Declaration(
+          defaultFormat = DeclarationFormat.LinkmlYaml,
+          downloadDir = ".ohi",
+          dependencies = ProjectLock.requirements(complete),
+          formatVersion = 1,
+        ),
+      )
+      declarationChanged = true
+      declarationCreated = true
+    }
+    if current.isEmpty then {
+      writeLock(lockPath, complete)
+      lockChanged = true
+    }
+    LockDownload.ensureIgnore(plan)
+    result(LockDownload.install(plan, fetch))
+  }
+
+  private def prepare(selected: DownloadDestination, complete: lock.Lock): LockDownload.Plan = {
+    destination = Some(selected)
+    LockDownload.prepare(complete.files, selected.directory, selected.managed)
+  }
+
+  private def dependency(publication: Publication, artifact: Artifact): ProjectDependency = {
+    val reference = s"${publication.namespace}/${publication.name}@${publication.version}"
+    OntologyReference.parse(reference) match {
+      case Right((_, _, Some(_))) =>
+        ProjectDependency(
+          format = ProjectFormat.toDeclaration(artifact.format),
+          ontology = reference,
+        )
+      case _ =>
+        invalidSelection(
+          s"Publication '${publication.baseUrl.original}' has no representable complete ontology reference.",
+        )
+    }
+  }
+
+  private def resolve(
+      reference: String,
+      format: Option[String],
+      search: SearchRequest => SearchResult,
+      inspect: String => Publication,
+      preferredFormat: Option[eu.neverblink.ohi.model.generated.Format] = None,
+  ): (Publication, Artifact) =
+    OntologyReference.resolve(reference, format, search, inspect, preferredFormat)
+      .fold(problem => invalidSelection(problem.message), identity)
+
+  private def invalidSelection(message: String): Nothing =
+    throw new ProjectException(
+      ProjectErrorCode.InvalidSelection,
+      s"$message Correct the catalog reference or format, or use standalone ohi get for an exact file URL.",
+    )
+
+  /** Reports completed project writes and installation files, retaining the original failure. */
+  def failure(cause: Throwable, retry: String): ProjectError = {
+    val (original, files) = cause match {
+      case failure: LockDownload.InstallationException => failure.cause -> failure.files
+      case _ => cause -> Seq.empty
+    }
     ProjectOutput.failure(
-      operation,
-      directory.toString,
-      declarationChanged,
-      lockChanged,
-      cause,
-      recovery,
+      operation = operation,
+      directory = directory.toString,
+      declarationChanged = declarationChanged,
+      declarationCreated = declarationCreated,
+      lockChanged = lockChanged,
+      files = files,
+      cause = original,
+      recovery = s"Correct the reported cause, then run ${recoveryCommand(cause, retry)}.",
     )
   }
 
-  /** Commands that complete interrupted writes, retaining the resolved download URL and
-    * destination.
+  /** Retries the original invocation until records and ignore handling succeed. Artifact failures
+    * recover from the saved complete lock at the resolved installation directory.
     */
-  def recoveryCommands(cause: Throwable): Seq[String] = {
-    val get = download.map { (url, destination) =>
-      s"ohi get ${CliFormatting.quote(url)} --to ${CliFormatting.quote(destination)}"
-    }.toSeq
-    if lockChanged then get
-    else if needsLock(cause) then
-      Seq(s"ohi lock --project ${CliFormatting.quote(directory.toString)}") ++ get
-    else if operation == ProjectOperation.Init then
-      Seq(s"ohi init ${CliFormatting.quote(directory.toString)}")
-    else Nil
+  def recoveryCommand(cause: Throwable, retry: String): String = cause match {
+    case _: LockDownload.InstallationException =>
+      s"ohi sync --project ${CliFormatting.quote(directory.toString)}"
+    case _ => retry
   }
 
-  private def needsLock(cause: Throwable): Boolean =
-    declarationChanged || operation == ProjectOperation.Lock || (cause match {
-      case failure: LockException => failure.error.operation == LockOperation.Write
-      case _ => false
-    })
-
   private def read(allowMissing: Boolean): Declaration = {
-    requireDirectory()
-    refuseSymlink(declarationPath)
-    refuseSymlink(lockPath)
-    if allowMissing && !exists(declarationPath) && exists(lockPath) then
+    val (declaration, complete) = readRecords()
+    if allowMissing && declaration.isEmpty && complete.nonEmpty then
       throw new ProjectException(
         ProjectErrorCode.InvalidProject,
         s"Lock '$lockPath' has no declaration. Restore or author '$declarationPath' before continuing.",
       )
-    if !allowMissing && !exists(declarationPath) then
+    if !allowMissing && declaration.isEmpty then
       throw new ProjectException(
         ProjectErrorCode.InvalidDeclaration,
         s"Declaration '$declarationPath' is missing. Restore or author it before refreshing the lock.",
       )
-    val declaration =
-      if allowMissing && !exists(declarationPath) then Declaration(1, Seq.empty)
-      else DeclarationFiles.read(declarationPath)
-    if exists(lockPath) then LockFiles.read(lockPath)
-    declaration
+    declaration.getOrElse(
+      Declaration(
+        defaultFormat = DeclarationFormat.LinkmlYaml,
+        downloadDir = ".ohi",
+        dependencies = Seq.empty,
+        formatVersion = 1,
+      ),
+    )
   }
 
-  private def build(declaration: Declaration, inspect: String => Publication): lock.Lock = {
-    val complete = ProjectLock.build(
-      declaration.selections.map(value => lock.ArtifactSelectionImpl(value.baseUrl, value.url)),
-      inspect,
-    )
+  private def readRecords(): (Option[Declaration], Option[lock.Lock]) = {
+    requireDirectory()
+    refuseSymlink(declarationPath)
+    refuseSymlink(lockPath)
+    val declaration = DeclarationFiles.readIfPresent(directory)
+    val complete = if exists(lockPath) then Some(LockFiles.read(lockPath)) else None
+    declaration -> complete
+  }
+
+  private def build(
+      declaration: Declaration,
+      search: SearchRequest => SearchResult,
+      metadata: ProjectLock.Inspection,
+      requested: Option[(ProjectDependency, lock.ArtifactSelectionImpl)] = None,
+  ): lock.Lock = {
+    val selections = declaration.dependencies.map { requirement =>
+      requested.filter(_._1 == requirement).map(_._2).getOrElse {
+        val (publication, artifact) = resolve(
+          requirement.ontology,
+          Some(stringify(requirement.format)),
+          search,
+          metadata,
+        )
+        lock.ArtifactSelectionImpl(publication.baseUrl, artifact.url)
+      }
+    }
+    val complete = ProjectLock.build(selections, metadata)
     LockJson.encode(complete)
     complete
   }
 
-  private def result(delivery: Option[DeliveryResult] = None): projectresult.ProjectResult =
+  private def result(files: Seq[LockFileResult] = Seq.empty): projectresult.ProjectResult =
     projectresult.ProjectResult(
       operation = operation match {
         case ProjectOperation.Init => projectresult.ProjectOperation.Init
         case ProjectOperation.Add => projectresult.ProjectOperation.Add
         case ProjectOperation.Lock => projectresult.ProjectOperation.Lock
+        case ProjectOperation.Sync => projectresult.ProjectOperation.Sync
       },
       projectDirectory = directory.toString,
       declarationChanged = declarationChanged,
+      declarationCreated = declarationCreated,
       lockChanged = lockChanged,
-      delivery = delivery.map(value => projectresult.DeliveryResult(value.path, value.url)),
+      files = files,
     )
 
   private def exists(path: Path): Boolean = Files.exists(path, NOFOLLOW_LINKS)
@@ -202,61 +366,6 @@ private[cli] final class Project(
         ProjectErrorCode.InvalidProject,
         s"Project record '$path' is a symbolic link. Replace it with a regular record before continuing.",
       )
-
-  private def conflicts(target: Path, record: Path): Boolean = {
-    val resolved = canonical(record)
-    val depth = resolved.getNameCount - 1
-    // Compare actual ancestor spellings, including case-sensitive Windows directories.
-    val sameParent = target.getNameCount > depth &&
-      target.getRoot.toString == resolved.getRoot.toString &&
-      (0 until depth).forall(index =>
-        target.getName(index).toString == resolved.getName(index).toString,
-      )
-    if !sameParent then false
-    else {
-      val name = target.getName(depth).toString
-      val reserved = resolved.getFileName.toString
-      name == reserved || (name.forall(_ <= 127) && name.equalsIgnoreCase(reserved) &&
-        !exists(record) && caseInsensitive(resolved.getParent))
-    }
-  }
-
-  // Probe this directory because case sensitivity can vary within one filesystem.
-  private def caseInsensitive(parent: Path): Boolean =
-    storage(s"Cannot check filename case in '$parent'") {
-      val probe = Files.createTempFile(parent, ".ohi-case-", ".tmp")
-      val outcome = Try {
-        val alternate = probe.resolveSibling(probe.getFileName.toString.toUpperCase(Locale.ROOT))
-        try resolveProbe(alternate).toString == resolveProbe(probe).toString
-        catch {
-          case _: NoSuchFileException => false
-        }
-      }
-      try deleteProbe(probe)
-      catch {
-        case NonFatal(cleanup) =>
-          val cause = outcome.fold(
-            failure => {
-              failure.addSuppressed(cleanup)
-              failure
-            },
-            _ => cleanup,
-          )
-          throw new ProjectException(
-            ProjectErrorCode.StorageError,
-            s"Filesystem case check failed: ${cause.getMessage}. " +
-              s"Cannot remove temporary file '$probe': ${cleanup.getMessage}",
-            Some(cause),
-          )
-      }
-      outcome.get
-    }
-
-  // Resolve stable directory aliases even when a planned record or download does not exist yet.
-  private def canonical(path: Path): Path = storage(s"Cannot resolve '$path'") {
-    if exists(path) then path.toRealPath()
-    else canonical(path.getParent).resolve(path.getFileName)
-  }
 
   private def storage[T](message: String)(action: => T): T =
     try action

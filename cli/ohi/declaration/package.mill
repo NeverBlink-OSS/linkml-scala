@@ -11,10 +11,6 @@ object `package` extends Module, LinkMlModelModule {
 
   def modelPackage = "eu.neverblink.ohi.cli.generated.declaration"
 
-  // The Format enum comes in through the selection import, but no declaration field uses it.
-  // The Scala generator keeps imported enums, so remove it.
-  override def unusedModelFiles = Seq("Format.scala")
-
   object jvm extends CommonBuildModule {
     def moduleDeps = Seq(build.runtime.jvm)
   }

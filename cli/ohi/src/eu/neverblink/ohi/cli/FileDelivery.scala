@@ -1,71 +1,22 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.linkml.runtime.Uri
-import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
 import eu.neverblink.ohi.cli.generated.fileerror.{CliFileErrorCode, CliFileError}
 
 import java.io.OutputStream
-import java.net.{URI, URLDecoder}
-import java.nio.charset.StandardCharsets.UTF_8
-import java.nio.file.{FileAlreadyExistsException, Files, Path}
+import java.nio.file.{FileAlreadyExistsException, Files, NoSuchFileException, Path}
 import java.nio.file.LinkOption.NOFOLLOW_LINKS
 import java.nio.file.StandardOpenOption.{CREATE_NEW, WRITE}
+import java.nio.file.attribute.BasicFileAttributes
+import scala.jdk.CollectionConverters.*
 import scala.util.Using
 import scala.util.control.NonFatal
 
 private[cli] object FileDelivery {
 
-  /** Returns an absolute normalized path without reserving it. Throws [[CliFileException]] for
-    * invalid or occupied targets.
+  /** Resolves a relative output beneath the selected root without writing. Rejects symlinks and
+    * non-directory ancestors from that root downward through [[CliFileException]].
     */
-  def target(url: String, directory: String): Path = {
-    val path = resolve(url, directory, filename(url, directory))
-    if Files.exists(path, NOFOLLOW_LINKS) then throw exists(url, directory, path)
-    path
-  }
-
-  /** Returns the decoded URL filename or throws [[CliFileException]] if unusable.
-    */
-  def filename(url: String, directory: String): String =
-    try {
-      val rawPath = Option(URI.create(url).getRawPath).getOrElse("")
-      val segment = rawPath.substring(rawPath.lastIndexOf('/') + 1)
-      // URLDecoder handles forms, so protect a literal '+' from becoming a space.
-      val name = URLDecoder.decode(segment.replace("+", "%2B"), UTF_8)
-      if name.isEmpty || name == "." || name == ".." ||
-        name.exists(c => c == '/' || c == '\\' || c == '\u0000')
-      then throw new IllegalArgumentException("The URL does not name one local file")
-      name
-    } catch {
-      case NonFatal(cause) =>
-        throw failure(
-          CliFileErrorCode.UnsupportedFilename,
-          s"Cannot derive a local filename from '$url'. Choose a URL ending in a usable filename.",
-          url,
-          directory,
-          cause = Some(cause),
-        )
-    }
-
-  /** Resolves a name from [[filename]] to an absolute normalized path, allowing existing targets.
-    * Throws [[CliFileException]] for invalid paths.
-    */
-  def resolve(url: String, directory: String, filename: String): Path = {
-    val name = try {
-      val path = Path.of(filename)
-      if path.getRoot != null || path.getNameCount != 1 || path.getFileName.toString != filename
-      then throw new IllegalArgumentException("The URL does not name one local file")
-      path
-    } catch {
-      case NonFatal(cause) =>
-        throw failure(
-          CliFileErrorCode.UnsupportedFilename,
-          s"Cannot derive a local filename from '$url'. Choose a URL ending in a usable filename.",
-          url,
-          directory,
-          cause = Some(cause),
-        )
-    }
+  def resolve(url: String, directory: String, relative: Path): Path = {
     val destination = try Path.of(directory).toAbsolutePath.normalize()
     catch {
       case NonFatal(cause) =>
@@ -77,25 +28,60 @@ private[cli] object FileDelivery {
           cause = Some(cause),
         )
     }
-    val path = destination.resolve(name)
-    if Files.exists(destination, NOFOLLOW_LINKS) && !Files.isDirectory(destination) then
+    val path = destination.resolve(relative).normalize()
+    if relative.isAbsolute || !path.startsWith(destination) || path == destination then
       throw failure(
-        CliFileErrorCode.InvalidDestination,
-        s"Destination '$directory' is not a directory. Choose another directory.",
+        CliFileErrorCode.UnsupportedFilename,
+        s"Output '$relative' is outside destination '$directory'. Choose a relative artifact path within the destination.",
         url,
         directory,
         Some(path),
       )
+    checkParents(url, directory, destination, path)
     path
+  }
+
+  private def checkParents(url: String, directory: String, root: Path, path: Path): Unit = {
+    val parents = root.relativize(path.getParent).iterator().asScala.scanLeft(root)(_.resolve(_))
+    parents.foreach { parent =>
+      val attributes = try
+        Some(Files.readAttributes(parent, classOf[BasicFileAttributes], NOFOLLOW_LINKS))
+      catch {
+        case _: NoSuchFileException => None
+        case NonFatal(cause) =>
+          throw failure(
+            CliFileErrorCode.InvalidDestination,
+            s"Cannot inspect destination ancestor '$parent': ${cause.getMessage}. Check its parent paths and permissions.",
+            url,
+            directory,
+            Some(path),
+            cause = Some(cause),
+          )
+      }
+      if attributes.exists(value => !value.isDirectory) then
+        throw failure(
+          CliFileErrorCode.InvalidDestination,
+          s"Destination ancestor '$parent' is not a regular directory. Remove the symlink or non-directory entry before retrying.",
+          url,
+          directory,
+          Some(path),
+        )
+    }
   }
 
   /** Fetches before creating files or directories. Never overwrites. Reports `partial_path` if
     * failed-write cleanup fails. Fetch failures propagate.
     */
-  def save(url: String, directory: String, fetch: String => Array[Byte]): DeliveryResult =
+  def save(
+      url: String,
+      directory: String,
+      relative: Path,
+      fetch: String => Array[Byte],
+  ): Unit =
     save(
       url,
       directory,
+      relative,
       fetch,
       path => Files.newOutputStream(path, CREATE_NEW, WRITE),
       path => Files.delete(path),
@@ -104,12 +90,16 @@ private[cli] object FileDelivery {
   private[cli] def save(
       url: String,
       directory: String,
+      relative: Path,
       fetch: String => Array[Byte],
       open: Path => OutputStream,
       delete: Path => Unit,
-  ): DeliveryResult = {
-    val path = target(url, directory)
+  ): Unit = {
+    val path = resolve(url, directory, relative)
+    if Files.exists(path, NOFOLLOW_LINKS) then throw exists(url, directory, path)
     val bytes = fetch(url)
+    // Fetching can take time. Recheck ancestors before creating directories or opening the file.
+    resolve(url, directory, relative)
     try Files.createDirectories(path.getParent)
     catch {
       case NonFatal(cause) =>
@@ -159,7 +149,6 @@ private[cli] object FileDelivery {
           Some(cause),
         )
     }
-    DeliveryResult(url = Uri(url), path = path.toString)
   }
 
   private[cli] def exists(

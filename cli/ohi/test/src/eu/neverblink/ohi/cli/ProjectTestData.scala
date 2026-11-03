@@ -10,28 +10,32 @@ private[cli] object ProjectTestData {
       artifacts: Seq[(String, Format)],
       dependencies: Seq[String] = Seq.empty,
       sha256: String = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-  ): Publication = Publication(
-    artifacts = artifacts.map { (url, format) =>
-      Artifact(
-        format = format,
-        origin = ArtifactOrigin.Upstream,
-        roots = Seq(Uri("https://example.org/entry-root")),
-        sha256 = sha256,
-        sizeBytes = 4,
-        url = Uri(url),
-      )
-    },
-    baseUrl = Uri(baseUrl),
-    dependencies = dependencies.map(url => Dependency(Uri(url))),
-    description = "Synthetic selection metadata",
-    keywords = Seq.empty,
-    licenses = Seq.empty,
-    name = "example",
-    namespace = "test",
-    publishedAt = LinkmlDateTime("2026-10-15T00:00:00Z"),
-    publisher = "Example publisher",
-    schemaVersion = 2,
-    title = "Example ontology",
-    version = "1",
-  )
+  ): Publication = {
+    val identity = java.net.URI.create(baseUrl).getRawPath.split("/", -1).toSeq
+    val hub = identity.take(3) == Seq("", "files", "packages") && identity.size >= 6
+    Publication(
+      artifacts = artifacts.map { (url, format) =>
+        Artifact(
+          format = format,
+          origin = ArtifactOrigin.Upstream,
+          roots = Seq(Uri("https://example.org/entry-root")),
+          sha256 = sha256,
+          sizeBytes = 4,
+          url = Uri(url),
+        )
+      },
+      baseUrl = Uri(baseUrl),
+      dependencies = dependencies.map(url => Dependency(Uri(url))),
+      description = "Synthetic selection metadata",
+      keywords = Seq.empty,
+      licenses = Seq.empty,
+      name = if hub then identity(4) else "example",
+      namespace = if hub then identity(3) else "test",
+      publishedAt = LinkmlDateTime("2026-10-15T00:00:00Z"),
+      publisher = "Example publisher",
+      schemaVersion = 2,
+      title = "Example ontology",
+      version = if hub then identity(5) else "1",
+    )
+  }
 }

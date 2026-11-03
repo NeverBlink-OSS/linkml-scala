@@ -25,7 +25,7 @@ if page.hits:
 
 Search uses ohi.dev by default. Each call returns one page. Use `page` to request the next page,
 `per_page` to request up to 250 results, and `q="*"` to browse. See the
-[search options](model/schema/search-request.yaml) for filtering, sorting and facets.
+[search options](../model/ohi/search-request.yaml) for filtering, sorting and facets.
 
 Pass a hit's `base_url` to `inspect`, choose an artifact in the format you need, then pass its
 `url` to `get`. The example retrieves the first artifact. `get` returns the file's bytes for your
@@ -95,7 +95,7 @@ saved = read_lock("ohi.lock.json")
 ```
 
 The URLs and hash are illustrative. [Version-1 locks](examples/selection.lock.json) omit hashes
-and remain supported. See the [lock schema](model/schema/lock.yaml).
+and remain supported. See the [lock schema](../model/ohi/lock.yaml).
 
 | Binding | JSON text | Explicit file path |
 | --- | --- | --- |
@@ -109,7 +109,7 @@ storage. File operations are available through the TypeScript `/node` entry.
 
 ## Metadata
 
-The SDK accepts [revision 2 publication metadata](model/schema/package.yaml), illustrated by
+The SDK accepts [revision 2 publication metadata](../model/ohi/package.yaml), illustrated by
 the synthetic [Sensors example](examples/sensors-package.json). Check the publication's licenses
 and each artifact's format and loading roots. Verify downloaded bytes against its `size_bytes`
 and `sha256` if needed. `get` does not perform that check.

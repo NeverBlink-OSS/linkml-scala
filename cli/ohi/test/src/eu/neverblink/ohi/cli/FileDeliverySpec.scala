@@ -27,64 +27,14 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
     "resolve relative directories without creating them during preflight" in {
       withDirectory { root =>
         val directory = Path.of("").toAbsolutePath.relativize(root.resolve("unused/../nested"))
-        FileDelivery.target(url, directory.toString) shouldBe root.resolve("nested/model.ttl")
+        FileDelivery.resolve(url, directory.toString, Path.of("model.ttl")) shouldBe root.resolve(
+          "nested/model.ttl",
+        )
         Files.exists(root.resolve("nested")) shouldBe false
         Files.exists(root.resolve("unused")) shouldBe false
       }
     }
 
-    for (segment, filename, behavior) <- Seq(
-        (
-          "energy%20model.ttl?revision=2#other.ttl",
-          "energy model.ttl",
-          "ignore query and fragment",
-        ),
-        ("caf%C3%A9+%252F.ttl", "café+%2F.ttl", "preserve plus and decode UTF-8 exactly once"),
-      )
-    do
-      s"$behavior when deriving the decoded basename" in {
-        withDirectory { root =>
-          val supplied = s"https://files.example/$segment"
-          val result = FileDelivery.save(
-            supplied,
-            root.toString,
-            actual => {
-              actual shouldBe supplied
-              Array[Byte](42)
-            },
-          )
-          result.url.original shouldBe supplied
-          result.path shouldBe root.resolve(filename).toString
-          Files.readAllBytes(root.resolve(filename)).toSeq shouldBe Seq[Byte](42)
-        }
-      }
-
-    for (supplied, behavior) <- Seq(
-        ("https://files.example/?id=123", "query-only URL"),
-        ("https://files.example/.", "dot filename"),
-        ("https://files.example/%2E%2E", "decoded parent filename"),
-        ("https://files.example/one%2Ftwo.ttl", "encoded slash"),
-        ("https://files.example/one%5Ctwo.ttl", "encoded backslash"),
-        ("https://files.example/one%00two.ttl", "encoded NUL"),
-        ("https://files.example/%zz", "unparseable URL"),
-        ("urn:filename", "URL without a hierarchical path"),
-      )
-    do
-      s"reject a $behavior before fetching or creating directories" in {
-        withDirectory { root =>
-          val directory = root.resolve("not-created")
-          val error = intercept[CliFileException] {
-            FileDelivery.save(supplied, directory.toString, _ => fail("fetch must not run"))
-          }.error
-          error.code shouldBe CliFileErrorCode.UnsupportedFilename
-          error.url shouldBe supplied
-          error.directory shouldBe directory.toString
-          error.path shouldBe None
-          error.partialPath shouldBe None
-          Files.exists(directory) shouldBe false
-          os.list(os.Path(root)) shouldBe empty
-        }
-      }
   }
 
   "file delivery" should {
@@ -92,9 +42,10 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
       withDirectory { root =>
         val directory = root.resolve("nested/output.ttl")
         var requests = Vector.empty[String]
-        val result = FileDelivery.save(
+        FileDelivery.save(
           url,
           directory.toString,
+          Path.of("model.ttl"),
           actual => {
             requests :+= actual
             Files.exists(root.resolve("nested")) shouldBe false
@@ -102,8 +53,6 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
           },
         )
         requests shouldBe Vector("https://files.example/model.ttl?revision=2")
-        result.url.original shouldBe "https://files.example/model.ttl?revision=2"
-        result.path shouldBe directory.resolve("model.ttl").toString
         Files.readAllBytes(directory.resolve("model.ttl")).toSeq shouldBe
           Seq[Byte](0, -1, 13, 10, -128, 42)
       }
@@ -111,9 +60,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
 
     "create an empty file instead of treating an empty payload as a failed fetch" in {
       withDirectory { root =>
-        val result = FileDelivery.save(url, root.toString, _ => Array.emptyByteArray)
-        result.url.original shouldBe "https://files.example/model.ttl?revision=2"
-        result.path shouldBe root.resolve("model.ttl").toString
+        FileDelivery.save(url, root.toString, Path.of("model.ttl"), _ => Array.emptyByteArray)
         Files.isRegularFile(root.resolve("model.ttl")) shouldBe true
         Files.size(root.resolve("model.ttl")) shouldBe 0L
       }
@@ -124,7 +71,12 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
         val directory = root.resolve("existing-file")
         Files.write(directory, Array[Byte](71, 72))
         val error = intercept[CliFileException] {
-          FileDelivery.save(url, directory.toString, _ => fail("fetch must not run"))
+          FileDelivery.save(
+            url,
+            directory.toString,
+            Path.of("model.ttl"),
+            _ => fail("fetch must not run"),
+          )
         }.error
         error.code shouldBe CliFileErrorCode.InvalidDestination
         error.directory shouldBe directory.toString
@@ -134,28 +86,62 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
       }
     }
 
-    for entry <- Seq("file", "directory", "dangling symbolic link") do
-      s"refuse an existing target $entry before fetching without changing the entry" in {
-        withDirectory { root =>
-          val path = root.resolve("model.ttl")
-          entry match {
-            case "file" => Files.write(path, Array[Byte](71, 72))
-            case "directory" => Files.createDirectory(path)
-            case _ => Files.createSymbolicLink(path, Path.of("missing-target"))
-          }
-          val error = intercept[CliFileException] {
-            FileDelivery.save(url, root.toString, _ => fail("fetch must not run"))
-          }.error
-          error.code shouldBe CliFileErrorCode.DestinationExists
-          error.path shouldBe Some(path.toString)
-          error.partialPath shouldBe None
-          entry match {
-            case "file" => Files.readAllBytes(path).toSeq shouldBe Seq[Byte](71, 72)
-            case "directory" => Files.isDirectory(path) shouldBe true
-            case _ => Files.readSymbolicLink(path) shouldBe Path.of("missing-target")
-          }
-        }
+    "refuse an existing target file before fetching without changing the entry" in {
+      withDirectory { root =>
+        val path = root.resolve("model.ttl")
+        Files.write(path, Array[Byte](71, 72))
+        val error = intercept[CliFileException] {
+          FileDelivery.save(
+            url,
+            root.toString,
+            Path.of("model.ttl"),
+            _ => fail("fetch must not run"),
+          )
+        }.error
+        error.code shouldBe CliFileErrorCode.DestinationExists
+        error.path shouldBe Some(path.toString)
+        error.partialPath shouldBe None
+        Files.readAllBytes(path).toSeq shouldBe Seq[Byte](71, 72)
       }
+    }
+
+    "refuse an existing target directory before fetching without changing the entry" in {
+      withDirectory { root =>
+        val path = root.resolve("model.ttl")
+        Files.createDirectory(path)
+        val error = intercept[CliFileException] {
+          FileDelivery.save(
+            url,
+            root.toString,
+            Path.of("model.ttl"),
+            _ => fail("fetch must not run"),
+          )
+        }.error
+        error.code shouldBe CliFileErrorCode.DestinationExists
+        error.path shouldBe Some(path.toString)
+        error.partialPath shouldBe None
+        Files.isDirectory(path) shouldBe true
+      }
+    }
+
+    "refuse an existing target dangling symbolic link before fetching without changing the entry" in {
+      withDirectory { root =>
+        val path = root.resolve("model.ttl")
+        Files.createSymbolicLink(path, Path.of("missing-target"))
+        val error = intercept[CliFileException] {
+          FileDelivery.save(
+            url,
+            root.toString,
+            Path.of("model.ttl"),
+            _ => fail("fetch must not run"),
+          )
+        }.error
+        error.code shouldBe CliFileErrorCode.DestinationExists
+        error.path shouldBe Some(path.toString)
+        error.partialPath shouldBe None
+        Files.readSymbolicLink(path) shouldBe Path.of("missing-target")
+      }
+    }
 
     "preserve a real competing target created after preflight instead of overwriting it" in {
       withDirectory { root =>
@@ -164,6 +150,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
           FileDelivery.save(
             url,
             root.toString,
+            Path.of("model.ttl"),
             _ => {
               Files.write(path, Array[Byte](71, 72))
               Array[Byte](1, 2, 3)
@@ -190,7 +177,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
           ),
         )
         val actual = intercept[CatalogException] {
-          FileDelivery.save(url, directory.toString, _ => throw expected)
+          FileDelivery.save(url, directory.toString, Path.of("model.ttl"), _ => throw expected)
         }
         actual should be theSameInstanceAs expected
         actual.error.code shouldBe CatalogErrorCode.HttpError
@@ -209,6 +196,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
           FileDelivery.save(
             url,
             directory.toString,
+            Path.of("model.ttl"),
             _ => {
               Files.write(parent, Array[Byte](71, 72))
               Array[Byte](1)
@@ -223,6 +211,28 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "refuse an ancestor replaced by a symlink during retrieval before writing outside the root" in {
+      withDirectory { root =>
+        val directory = Files.createDirectory(root.resolve("managed"))
+        val outside = Files.createDirectory(root.resolve("outside"))
+        val error = intercept[CliFileException] {
+          FileDelivery.save(
+            url,
+            directory.toString,
+            Path.of("nested/model.ttl"),
+            _ => {
+              Files.createSymbolicLink(directory.resolve("nested"), outside)
+              Array[Byte](1)
+            },
+          )
+        }.error
+        error.code shouldBe CliFileErrorCode.InvalidDestination
+        error.path shouldBe Some(directory.resolve("nested/model.ttl").toString)
+        Files.readSymbolicLink(directory.resolve("nested")) shouldBe outside
+        os.list(os.Path(outside)) shouldBe empty
+      }
+    }
+
     "report target creation failure without attempting to delete an unowned file" in {
       withDirectory { root =>
         val primary = new IOException("Cannot open target")
@@ -230,6 +240,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
           FileDelivery.save(
             url,
             root.toString,
+            Path.of("model.ttl"),
             _ => Array[Byte](1),
             _ => throw primary,
             _ => fail("delete must not run before creation"),
@@ -243,39 +254,71 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
       }
     }
 
-    for phase <- Seq("write", "close") do
-      s"close and remove its own new file after a $phase failure without reporting success" in {
-        withDirectory { root =>
-          val primary = new IOException(s"$phase failed")
-          var closed = false
-          val failure = intercept[CliFileException] {
-            FileDelivery.save(
-              url,
-              root.toString,
-              _ => Array[Byte](1, 2, 3),
-              path =>
-                new FilterOutputStream(openFile(path)) {
-                  override def write(bytes: Array[Byte]): Unit = {
-                    out.write(bytes, 0, 1)
-                    if phase == "write" then throw primary
-                  }
-                  override def close(): Unit = {
-                    super.close()
-                    closed = true
-                    if phase == "close" then throw primary
-                  }
-                },
-              path => Files.delete(path),
-            )
-          }
-          failure.error.code shouldBe CliFileErrorCode.FileWriteFailed
-          failure.error.path shouldBe Some(root.resolve("model.ttl").toString)
-          failure.error.partialPath shouldBe None
-          failure.getCause should be theSameInstanceAs primary
-          closed shouldBe true
-          Files.exists(root.resolve("model.ttl"), NOFOLLOW_LINKS) shouldBe false
+    "close and remove its own new file after a write failure without reporting success" in {
+      withDirectory { root =>
+        val primary = new IOException("write failed")
+        var closed = false
+        val failure = intercept[CliFileException] {
+          FileDelivery.save(
+            url,
+            root.toString,
+            Path.of("model.ttl"),
+            _ => Array[Byte](1, 2, 3),
+            path =>
+              new FilterOutputStream(openFile(path)) {
+                override def write(bytes: Array[Byte]): Unit = {
+                  out.write(bytes, 0, 1)
+                  throw primary
+                }
+                override def close(): Unit = {
+                  super.close()
+                  closed = true
+                }
+              },
+            path => Files.delete(path),
+          )
         }
+        failure.error.code shouldBe CliFileErrorCode.FileWriteFailed
+        failure.error.path shouldBe Some(root.resolve("model.ttl").toString)
+        failure.error.partialPath shouldBe None
+        failure.getCause should be theSameInstanceAs primary
+        closed shouldBe true
+        Files.exists(root.resolve("model.ttl"), NOFOLLOW_LINKS) shouldBe false
       }
+    }
+
+    "close and remove its own new file after a close failure without reporting success" in {
+      withDirectory { root =>
+        val primary = new IOException("close failed")
+        var closed = false
+        val failure = intercept[CliFileException] {
+          FileDelivery.save(
+            url,
+            root.toString,
+            Path.of("model.ttl"),
+            _ => Array[Byte](1, 2, 3),
+            path =>
+              new FilterOutputStream(openFile(path)) {
+                override def write(bytes: Array[Byte]): Unit = {
+                  out.write(bytes, 0, 1)
+                }
+                override def close(): Unit = {
+                  super.close()
+                  closed = true
+                  throw primary
+                }
+              },
+            path => Files.delete(path),
+          )
+        }
+        failure.error.code shouldBe CliFileErrorCode.FileWriteFailed
+        failure.error.path shouldBe Some(root.resolve("model.ttl").toString)
+        failure.error.partialPath shouldBe None
+        failure.getCause should be theSameInstanceAs primary
+        closed shouldBe true
+        Files.exists(root.resolve("model.ttl"), NOFOLLOW_LINKS) shouldBe false
+      }
+    }
 
     "retain the primary write failure and partial path when closing and deletion also fail" in {
       withDirectory { root =>
@@ -286,6 +329,7 @@ class FileDeliverySpec extends AnyWordSpec, Matchers {
           FileDelivery.save(
             url,
             root.toString,
+            Path.of("model.ttl"),
             _ => Array[Byte](1, 2, 3),
             path =>
               new FilterOutputStream(openFile(path)) {

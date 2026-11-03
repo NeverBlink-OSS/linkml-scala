@@ -3,94 +3,75 @@ title: Project files
 description: The fields and behavior of ohi.yaml and ohi.lock.json.
 ---
 
-An ohi project uses two files. Keep both in version control.
+Keep both project files in version control:
 
-| File | Contents | Updated by |
-| --- | --- | --- |
-| `ohi.yaml` | The publications and files you selected. | You, `ohi init` and `ohi add`. |
-| `ohi.lock.json` | Exact files and checksums, including dependencies. | `ohi add` and `ohi lock`. |
+| File | Contents |
+| --- | --- |
+| `ohi.yaml` | Your ontologies, their versions and formats, and project settings. |
+| `ohi.lock.json` | Download URLs and checksums for those ontologies and their dependencies. |
 
 For a walkthrough, see [Manage ontology projects](/docs/guides/projects/).
 
 ## ohi.yaml
 
-This example selects PROV-O as OWL in Turtle:
+This project uses PROV-O in Turtle format:
 
 ```yaml
 format_version: 1
-selections:
-  - base_url: https://api.ohi.dev/files/packages/w3c/prov-o/2013/
-    url: https://api.ohi.dev/files/packages/w3c/prov-o/2013/prov-o.ttl
+default_format: linkml-yaml
+download_dir: .ohi
+dependencies:
+  - ontology: w3c/prov-o@2013
+    format: owl-turtle
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `format_version` | Declaration format version. Must be `1`. |
-| `selections` | List of directly selected files. Use `[]` for an empty project. |
-| `selections[].base_url` | Exact publication URL shown by `search`. |
-| `selections[].url` | Exact URL of a file listed by `inspect` for that publication. |
+| `format_version` | Project file version. Must be `1`. |
+| `default_format` | Preferred format for `get` and `add` when you omit `--format`. |
+| `download_dir` | Subfolder of the project directory where ontologies are downloaded. |
+| `dependencies` | Ontologies added to the project. Use `[]` for an empty project. |
+| `dependencies[].ontology` | Complete `namespace/name@version` reference. |
+| `dependencies[].format` | The dependency's [file format](/docs/reference/cli/#ontology-references-and-formats). |
 
-All fields are required. Copy URLs exactly, including trailing slashes. Each pair of URLs
-can appear only once in the selection list.
+All fields are required. You can include several versions or formats of an ontology, but each
+reference and format pair must be unique.
 
-Edit this file to remove or replace a selection, then run `ohi lock`. Removing a selection
-does not delete downloaded files. Adding a selection with `ohi add` rewrites this file,
-so custom comments and formatting are not preserved.
+After editing a dependency, run `ohi sync` to update the lock and downloads. Changing
+`default_format` affects future `get` and `add` commands, leaving the listed formats unchanged.
+
+Adding a new entry with `ohi add` removes custom comments and resets formatting.
 
 ## ohi.lock.json
 
-The lock records the files needed to reproduce your selections. For the PROV-O selection above,
-which has no dependencies:
-
-```json
-{
-  "format_version": 2,
-  "selections": [
-    {
-      "base_url": "https://api.ohi.dev/files/packages/w3c/prov-o/2013/",
-      "url": "https://api.ohi.dev/files/packages/w3c/prov-o/2013/prov-o.ttl"
-    }
-  ],
-  "files": [
-    {
-      "base_url": "https://api.ohi.dev/files/packages/w3c/prov-o/2013/",
-      "url": "https://api.ohi.dev/files/packages/w3c/prov-o/2013/prov-o.ttl",
-      "format": "owl-turtle",
-      "sha256": "7d203989f67b38bca572253942acc5a1bf24ce3ccfece16f072dcb4be2b79a96"
-    }
-  ]
-}
-```
+`ohi add` updates the lock automatically. `ohi sync` uses it to restore downloads and updates it
+when the dependencies in `ohi.yaml` change.
 
 | Field | Meaning |
 | --- | --- |
-| `format_version` | Current CLI lock format. Must be `2` for downloads. |
-| `selections` | Direct selections from `ohi.yaml`, with the same URL fields. |
-| `files` | Selected files and their dependency files. |
-| `files[].base_url` | Publication that contains the file. |
-| `files[].url` | Exact download URL. |
-| `files[].format` | [File format](/docs/reference/cli/#ontology-references-and-formats), such as `owl-turtle`. |
-| `files[].sha256` | SHA-256 checksum used to verify the file. |
+| `format_version` | Lock format. Must be `2`. |
+| `selections` | Release and file URLs for the ontologies you added directly. |
+| `files` | All files to download, including dependencies. |
 
-All fields shown are required in a version-2 lock. Every selection has a matching entry in
-`files`. Download directories are not stored in either project file.
+Each file entry records its release URL (`base_url`), download URL (`url`), `format` and
+SHA-256 checksum (`sha256`).
 
-Update the lock with `ohi add` or `ohi lock`. To replace an older version-1 project lock,
-run `ohi lock` in its project directory.
+Dependencies use the same format as the ontology you selected. For example, DCAT 3 in Turtle
+also requires Turtle files for Dublin Core Terms, SKOS and PROV-O.
 
-## Dependency files
+Use [`ohi sync`](/docs/reference/cli/#sync) after cloning a project or receiving a shared lockfile.
 
-The lock includes each selected file and one file in the same format from each required
-dependency publication. For example, selecting DCAT 3 in `owl-turtle` also records
-the Turtle files for Dublin Core Terms, SKOS and PROV-O in the lock.
+## Downloaded files
 
-Each dependency must provide exactly one file in that format. If a dependency has none or more
-than one, lock creation fails. Rebuilding the lock keeps the exact publications in `ohi.yaml`.
+Downloads are grouped by namespace, ontology and version. For example, DCAT 3 in two formats:
 
-Download the recorded files with:
-
-```sh
-ohi get --lock ohi.lock.json --to ./ontologies
+```text
+.ohi/w3c/dcat/3/dcat.linkml.yaml
+.ohi/w3c/dcat/3/dcat.owl.ttl
 ```
 
-ohi verifies each file against its recorded checksum and reuses files that already match.
+The [format table](/docs/reference/cli/#ontology-references-and-formats) lists filename suffixes.
+
+ohi creates a `.gitignore` inside the download folder to keep downloads out of Git, unless that
+file already exists. Edit it if you want to commit the downloads too. Keep files you write
+yourself outside this folder. `get --to` leaves ignore files unchanged.
