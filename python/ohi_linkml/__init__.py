@@ -111,28 +111,25 @@ class Schema(Generators):
 
     @property
     def report(self) -> Report:
-        """What linting the schema found while loading it.
+        """The report from loading the schema.
 
-        Loading only fails on fatal problems, so a schema can load and still have errors and
-        warnings against it. This is exactly what :meth:`lint` returns for the same schema.
+        Loading checks only for fatal problems, and fails on them, so the report of a schema that
+        loaded has no issues. Use :meth:`lint` or :meth:`issues` for its errors and warnings.
         """
         return self._report
 
     def issues(self, severity: str | None = None) -> list[dict[str, Any]]:
-        """The issues from :attr:`report`, optionally only those of one severity.
+        """The issues that :meth:`lint` finds, optionally only those of one severity.
 
         :param severity: :data:`FATAL`, :data:`ERROR` or :data:`WARNING`; all of them if omitted.
         """
-        issues = self._report.get("issues", [])
+        issues = self.lint().get("issues", [])
         if severity is None:
             return issues
         return [issue for issue in issues if issue.get("severity") == severity]
 
     def lint(self, *, infer_messages: bool = True) -> Report:
-        """Lint the schema again, and return the report.
-
-        The same thing :attr:`report` already holds, so this is only worth calling to get a report
-        with different settings.
+        """Lint the schema for errors and warnings, and return the report.
 
         :param infer_messages: fill in each issue's human-readable ``message`` and ``details``. Turn
             it off for only the structured fields, which is a little faster.
