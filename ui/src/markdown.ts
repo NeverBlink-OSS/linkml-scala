@@ -18,12 +18,15 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
   }
 });
 
-/** The HTML for `markdown`, with anything that could run code removed.
+/** The page for `markdown`, with anything that could run code removed.
  *
  * Schema descriptions are copied into the documentation as they are, and Markdown allows raw HTML.
  * A shared playground link can carry any schema, so a description could hold a `<script>` or an
- * `onerror` attribute. DOMPurify keeps only plain markup, as GitHub does. */
-export function renderMarkdown(markdown: string): string {
+ * `onerror` attribute. DOMPurify keeps only plain markup, as GitHub does.
+ *
+ * DOMPurify returns the nodes it has checked, rather than turning them back into HTML, which the
+ * page would then have to parse a second time. */
+export function renderMarkdown(markdown: string): DocumentFragment {
   const html = marked.parse(markdown, { async: false });
-  return DOMPurify.sanitize(html);
+  return DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
 }

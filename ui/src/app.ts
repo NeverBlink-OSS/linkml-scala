@@ -844,7 +844,7 @@ async function renderDiagram(text: string): Promise<void> {
 
 /** The module built from markdown.ts. */
 interface MarkdownApi {
-  renderMarkdown(markdown: string): string;
+  renderMarkdown(markdown: string): DocumentFragment;
 }
 
 let markdownPromise: Promise<MarkdownApi> | null = null;
@@ -908,7 +908,7 @@ async function renderPage(text: string, scrollTop: number): Promise<void> {
     const { renderMarkdown } = await loadMarkdown();
     if (token !== pageToken || $pageView.hidden) return;
     // Links that don't go to a section of the page already open in a new tab (see markdown.ts).
-    $pageView.innerHTML = renderMarkdown(text);
+    $pageView.replaceChildren(renderMarkdown(text));
     $pageView.scrollTop = scrollTop;
   } catch (err) {
     if (token !== pageToken || $pageView.hidden) return;
@@ -927,9 +927,41 @@ $pageView.addEventListener("click", (e) => {
   e.preventDefault();
   const id = decodeURIComponent(href.slice(1));
   const target = id ? $pageView.querySelector(`[id="${CSS.escape(id)}"]`) : null;
-  if (target) target.scrollIntoView({ block: "start" });
+  if (target) scrollPageTo(target);
   else $pageView.scrollTop = 0;
 });
+
+/** Scrolls the page view to `target`.
+ *
+ * The browser lays out only the blocks near the visible part of the page (see `.md-page > *` in
+ * styles.css). So once it has scrolled, the blocks around `target` are laid out, and those above it
+ * can grow and push it down, which in Chrome happens two or three frames later. Scroll to it again
+ * until it stays in place for five frames, unless the user scrolls first. */
+function scrollPageTo(target: Element): void {
+  target.scrollIntoView({ block: "start" });
+  let top = target.getBoundingClientRect().top;
+  let stillFrames = 0;
+  let frames = 0;
+  let userScrolled = false;
+  const stop = () => {
+    userScrolled = true;
+  };
+  const inputs = ["wheel", "touchstart", "keydown", "pointerdown"];
+  for (const input of inputs) $pageView.addEventListener(input, stop, { once: true, passive: true });
+  const check = () => {
+    if (userScrolled) return;
+    const now = target.getBoundingClientRect().top;
+    if (now === top) stillFrames++;
+    else {
+      stillFrames = 0;
+      target.scrollIntoView({ block: "start" });
+      top = target.getBoundingClientRect().top;
+    }
+    if (stillFrames < 5 && ++frames < 60) requestAnimationFrame(check);
+    else for (const input of inputs) $pageView.removeEventListener(input, stop);
+  };
+  requestAnimationFrame(check);
+}
 
 // ── Statistics view ─────────────────────────────────────────────────────────
 
