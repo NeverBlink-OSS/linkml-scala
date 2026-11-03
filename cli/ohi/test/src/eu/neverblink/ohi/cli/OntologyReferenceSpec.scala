@@ -197,7 +197,7 @@ class OntologyReferenceSpec extends AnyWordSpec, Matchers {
       s"reject $defect before searching" in {
         resolvePublication(input, noSearch, noInspect) shouldBe
           Left(
-            s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
+            s"Invalid ontology reference '$input'. Expected namespace/name[@version].",
           )
       }
 

@@ -10,9 +10,9 @@ import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
 class DeclarationFilesSpec extends AnyWordSpec, Matchers {
-  private val emptyDeclaration = Declaration(2, Format.LinkmlYaml, ".ohi", Seq.empty)
+  private val emptyDeclaration = Declaration(1, Format.LinkmlYaml, ".ohi", Seq.empty)
   private val yaml =
-    "format_version: 2\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
+    "format_version: 1\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
   private val previous = Array[Byte](71, 72, 0, -1)
 
   private def withDirectory(test: Path => Unit): Unit = {

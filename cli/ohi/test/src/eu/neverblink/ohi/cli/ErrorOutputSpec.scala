@@ -28,7 +28,7 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
         generated.declaration.Format.LinkmlYaml,
       )
       ProjectOutput.result(result, json = false, added = Some(added)) shouldBe
-        "Created an Ohi project.\n" +
+        "Created an ohi project.\n" +
         "You can edit ohi.yaml to manage your ontologies and project settings.\n" +
         "Downloaded ontologies go in .ohi/.\n\n" +
         "New to ohi? Check out the guide on how to manage ontology projects:\n" +
@@ -244,7 +244,7 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
         recoveryCommand = Some("ohi add w3c/dcat@3 --project study"),
       )
       text should include("Error: Could not write the project lock.")
-      text should include("Created an Ohi project in study.")
+      text should include("Created an ohi project in study.")
       text should include(
         "You can edit study/ohi.yaml to manage your ontologies and project settings.",
       )
@@ -302,7 +302,7 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
       text should not include "HTTP"
       text should not include "ohi lock --project"
       text should not include "--timeout-ms"
-      text should not include "Created an Ohi project"
+      text should not include "Created an ohi project"
     }
   }
 }

@@ -1,7 +1,5 @@
 # ohi CLI
 
-<!-- Last updated: 2026-11-03. -->
-
 ohi lets command-line users find ontology publications, download files, track the publications a project depends on, and run LinkML engine commands.
 
 ## Install
@@ -38,13 +36,11 @@ See [download verification](https://linkml.ohi.dev/docs/verifying-downloads/) fo
 ```sh
 ohi search provenance
 ohi inspect w3c/prov-o@2013 --json
-ohi get https://api.ohi.dev/files/packages/w3c/prov-o/2013/prov-o.ttl --to ./ontologies
+ohi get w3c/prov-o@2013 --format owl-turtle --to ./ontologies
 ```
 
 Search uses the ohi.dev catalog. These commands require no ohi project and leave project records
 unchanged. The download example saves `ontologies/w3c/prov-o/2013/prov-o.owl.ttl`.
-
-Pass a search hit's `base_url` to `inspect`. Select an entry from `artifacts`, check its `format`, then pass that entry's `url` to `get`.
 
 Inspect or download from ohi.dev using the namespace and name shown by `search`:
 
@@ -127,7 +123,7 @@ Neither `init` nor `lock` creates the download directory.
 To change a dependency, edit `ohi.yaml` and run `sync`:
 
 ```yaml
-format_version: 2
+format_version: 1
 default_format: linkml-yaml
 download_dir: ontologies
 dependencies:
@@ -179,7 +175,7 @@ record exists, start with `ohi init` or `ohi add`.
 
 Downloads preserve the published bytes and embedded imports. A LinkML schema at the project root
 can import `.ohi/w3c/dcat/3/dcat.linkml` when that file is installed under the default root. Use the
-configured directory and a path relative to the importing schema. Ohi does not rewrite imports or
+configured directory and a path relative to the importing schema. ohi does not rewrite imports or
 generate import maps, so installation alone does not guarantee offline loading.
 
 Rebuild older project locks with `ohi lock --project <directory>` first.

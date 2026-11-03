@@ -69,7 +69,9 @@ private[cli] object HelpOutput {
         if full then
           "Record the selection in ohi.yaml, rebuild ohi.lock.json and install all locked files."
         else "Record an ontology selection and install all locked files."
-      case "sync" => "Install ontology files, updating the lock when dependencies change."
+      case "sync" =>
+        "Install files from ohi.lock.json.\n" +
+          "Update the lock only if it is missing or ohi.yaml dependencies have changed."
       case "lock" =>
         "Rebuild ohi.lock.json from ohi.yaml without downloading"
     }

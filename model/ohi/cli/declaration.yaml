@@ -14,11 +14,11 @@ classes:
     attributes:
       format_version:
         rank: 0
-        description: Declaration revision. Only revision 2 is supported.
+        description: Declaration revision. Only revision 1 is supported.
         range: integer
         required: true
-        minimum_value: 2
-        maximum_value: 2
+        minimum_value: 1
+        maximum_value: 1
       default_format:
         rank: 1
         description: Preferred artifact format for future reference selections without an explicit format. Existing dependency formats remain fixed.

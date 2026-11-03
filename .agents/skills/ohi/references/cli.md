@@ -69,7 +69,7 @@ existing valid declaration and creates no lock or download directory. `add` requ
 project directory, validates its records and creates a missing declaration with those defaults.
 
 Edit [`ohi.yaml`](https://ohi.dev/docs/reference/project-files/#ohiyaml) to change defaults,
-the project-relative download directory or dependencies. It requires `format_version: 2`,
+the project-relative download directory or dependencies. It requires `format_version: 1`,
 `default_format`, `download_dir` and `dependencies` containing `ontology`/`format` pairs.
 Use `dependencies: []` for an empty project.
 

@@ -20,7 +20,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
 
   private def keys(node: ujson.Value): Set[String] = node.obj.keySet.toSet
   private val emptyDeclaration =
-    "format_version: 2\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
+    "format_version: 1\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
 
   private def withDirectory(check: os.Path => Unit): Unit = {
     val directory = os.temp.dir(prefix = "ohi project commands ")
@@ -251,7 +251,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           declarationCreated = true,
         )
         declaration(project / "ohi.yaml") shouldBe json(
-          """{"format_version":2,"default_format":"linkml-yaml","download_dir":".ohi","dependencies":[]}""",
+          """{"format_version":1,"default_format":"linkml-yaml","download_dir":".ohi","dependencies":[]}""",
         )
         os.read(project / "ohi.lock.json") shouldBe supplied
         os.exists(project / ".ohi") shouldBe false
@@ -296,7 +296,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             declarationCreated = true,
           )
           declaration(project / "ohi.yaml") shouldBe json("""{
-            "format_version":2,"default_format":"linkml-yaml","download_dir":".ohi",
+            "format_version":1,"default_format":"linkml-yaml","download_dir":".ohi",
             "dependencies":[{"ontology":"test/example@1","format":"owl-turtle"}]
           }""")
           json(os.read(project / "ohi.lock.json")) shouldBe json(s"""{
@@ -434,7 +434,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         }""",
         )
         val edited = """# edited by the user
-          |format_version: 2
+          |format_version: 1
           |default_format: linkml-yaml
           |download_dir: ontologies
           |dependencies:
@@ -533,7 +533,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           declarationCreated = true,
         )
         declaration(project / "ohi.yaml") shouldBe json("""{
-          "format_version":2,"default_format":"linkml-yaml","download_dir":".ohi","dependencies":[]}
+          "format_version":1,"default_format":"linkml-yaml","download_dir":".ohi","dependencies":[]}
         """)
         os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
       }
@@ -564,7 +564,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           declarationCreated = true,
         )
         declaration(project / "ohi.yaml") shouldBe json("""{
-          "format_version":2,"default_format":"owl-turtle","download_dir":"ontologies","dependencies":[]}
+          "format_version":1,"default_format":"owl-turtle","download_dir":"ontologies","dependencies":[]}
         """)
         val original = os.read(project / "ohi.yaml")
         os.write(project / "ohi.lock.json", "malformed lock sentinel")
@@ -649,7 +649,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "reject an old declaration before searching even when add supplies an explicit format" in {
+    "reject a selections-only declaration before searching even when add supplies an explicit format" in {
       withDirectory { project =>
         val invalid = "format_version: 1\nselections: []\n"
         os.write(project / "ohi.yaml", invalid)

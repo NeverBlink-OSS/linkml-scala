@@ -5,7 +5,7 @@ import eu.neverblink.ohi.cli.generated.projecterror.ProjectErrorCode
 
 import java.nio.file.{InvalidPathException, Path}
 
-/** The selected download root and whether Ohi creates its missing ignore file. */
+/** The selected download root and whether ohi creates its missing ignore file. */
 private[cli] final case class DownloadDestination(directory: String, managed: Boolean)
 
 private[cli] object DownloadDestination {

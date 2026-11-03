@@ -6,8 +6,6 @@ license: Apache-2.0
 
 # Use the ohi CLI
 
-<!-- Last updated: 2026-11-03. -->
-
 ohi searches ontology publications, retrieves their metadata and files, and records exact selections for projects. A publication is one immutable ontology release. An artifact is one advertised file in a particular format.
 
 Use a CLI from the same checkout or release as this skill. Check `ohi <command> --help` for the installed command's options. Prefer `--json` for catalog and project results, and check the exit status before parsing output.

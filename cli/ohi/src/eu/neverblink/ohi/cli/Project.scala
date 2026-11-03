@@ -65,7 +65,7 @@ private[cli] final class Project(
         defaultFormat = defaultFormat,
         downloadDir = downloadDir,
         dependencies = Seq.empty,
-        formatVersion = 2,
+        formatVersion = 1,
       )
       createDeclaration(declarationPath, declaration)
       declarationChanged = true
@@ -204,7 +204,7 @@ private[cli] final class Project(
           defaultFormat = DeclarationFormat.LinkmlYaml,
           downloadDir = ".ohi",
           dependencies = ProjectLock.requirements(complete),
-          formatVersion = 2,
+          formatVersion = 1,
         ),
       )
       declarationChanged = true
@@ -298,7 +298,7 @@ private[cli] final class Project(
         defaultFormat = DeclarationFormat.LinkmlYaml,
         downloadDir = ".ohi",
         dependencies = Seq.empty,
-        formatVersion = 2,
+        formatVersion = 1,
       ),
     )
   }

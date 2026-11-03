@@ -221,7 +221,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       }
   }(check)
 
-  private val configuredDeclaration = """format_version: 2
+  private val configuredDeclaration = """format_version: 1
     |default_format: owl-turtle
     |download_dir: ontologies
     |dependencies: []

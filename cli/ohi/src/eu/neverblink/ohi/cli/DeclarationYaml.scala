@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
 private[cli] object DeclarationYaml {
   private val codec: LinkmlYamlCodec[Declaration] = LinkmlYamlCodec.derived
 
-  /** Parses a revision-2 declaration and validates complete references and unique requirements.
+  /** Parses a revision-1 declaration and validates complete references and unique requirements.
     *
     * @return
     *   the declaration, with dependencies in the order they appear in `text`
@@ -35,7 +35,7 @@ private[cli] object DeclarationYaml {
       case NonFatal(cause) =>
         throw new ProjectException(
           ProjectErrorCode.InvalidDeclaration,
-          s"Cannot parse ohi.yaml: ${cause.getMessage}. Use format_version: 2, default_format, download_dir and dependencies with ontology and format. See https://ohi.dev/docs/guides/projects/.",
+          s"Cannot parse ohi.yaml: ${cause.getMessage}. Use format_version: 1, default_format, download_dir and dependencies with ontology and format. See https://ohi.dev/docs/guides/projects/.",
           Some(cause),
         )
     }
@@ -63,10 +63,10 @@ private[cli] object DeclarationYaml {
 
   private def check(declaration: Declaration): Unit = {
     DownloadDestination.validate(declaration.downloadDir)
-    if declaration.formatVersion != 2 then
+    if declaration.formatVersion != 1 then
       throw new ProjectException(
         ProjectErrorCode.InvalidDeclaration,
-        s"Declaration revision ${declaration.formatVersion} is unsupported. Use format_version: 2, default_format, download_dir and dependencies with ontology and format in ohi.yaml. See https://ohi.dev/docs/guides/projects/.",
+        s"Declaration revision ${declaration.formatVersion} is unsupported. Use format_version: 1, default_format, download_dir and dependencies with ontology and format in ohi.yaml. See https://ohi.dev/docs/guides/projects/.",
       )
     declaration.dependencies.foreach { dependency =>
       if !OntologyReference.parse(dependency.ontology).exists(_._3.nonEmpty) then

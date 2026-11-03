@@ -221,7 +221,10 @@ private[cli] class LockCommand extends ProjectCommand[LockOptions] {
 
 object Lock extends LockCommand
 
-@HelpMessage("Install the project lock, updating it when declared dependencies change")
+@HelpMessage(
+  "Install files from ohi.lock.json\n" +
+    "Update the lock if it is missing or ohi.yaml dependencies have changed.",
+)
 final case class SyncOptions(
     @HelpMessage("Directory containing ohi.yaml or ohi.lock.json\nDefault: current directory")
     @ValueDescription("<directory>")

@@ -8,7 +8,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.parseYaml
 
 class DeclarationYamlSpec extends AnyWordSpec, Matchers {
-  private val header = "format_version: 2\ndefault_format: linkml-yaml\ndownload_dir: .ohi\n"
+  private val header = "format_version: 1\ndefault_format: linkml-yaml\ndownload_dir: .ohi\n"
   private val dependency = "- ontology: w3c/dcat@2\n  format: linkml-yaml\n"
 
   private def rejected(yaml: String): ProjectException = {
@@ -21,10 +21,10 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
   "DeclarationYaml.decode" should {
     "read the explicit default and preserve the supplied dependency order" in {
       val declaration = DeclarationYaml.decode(
-        "format_version: 2\ndefault_format: rdfs-turtle\ndownload_dir: .ohi\ndependencies:\n" +
+        "format_version: 1\ndefault_format: rdfs-turtle\ndownload_dir: .ohi\ndependencies:\n" +
           "- ontology: w3c/dcat@3\n  format: owl-turtle\n" + dependency,
       )
-      declaration.formatVersion shouldBe 2
+      declaration.formatVersion shouldBe 1
       declaration.defaultFormat shouldBe Format.RdfsTurtle
       declaration.downloadDir shouldBe ".ohi"
       declaration.dependencies shouldBe Seq(
@@ -33,9 +33,9 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
       )
     }
 
-    "reject old URL declarations with replacement guidance" in {
+    "reject a selections-only declaration with required-field guidance" in {
       val message = rejected("format_version: 1\nselections: []\n").getMessage
-      message should include("format_version: 2")
+      message should include("format_version: 1")
       message should include("default_format")
       message should include("dependencies")
       message should include("https://ohi.dev/docs/guides/projects/")
@@ -43,8 +43,8 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
 
     "reject an unsupported declaration revision" in {
       rejected(
-        "format_version: 99\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n",
-      )
+        "format_version: 2\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n",
+      ).getMessage should startWith("Declaration revision 2 is unsupported.")
     }
 
     for (label, value) <- Seq(
@@ -54,7 +54,7 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
       )
     do
       s"reject a $label default" in {
-        rejected(s"format_version: 2\n${value}download_dir: .ohi\ndependencies: []\n")
+        rejected(s"format_version: 1\n${value}download_dir: .ohi\ndependencies: []\n")
       }
 
     for value <- Seq(
@@ -109,13 +109,13 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
 
   "DeclarationYaml.encode" should {
     "include the default and explicit empty list in a new declaration" in {
-      DeclarationYaml.encode(Declaration(2, Format.RdfsTurtle, ".ohi", Seq.empty)) shouldBe
+      DeclarationYaml.encode(Declaration(1, Format.RdfsTurtle, ".ohi", Seq.empty)) shouldBe
         "# Ontologies used by this project.\n# Docs: https://ohi.dev/docs/guides/projects/\n" +
-        "format_version: 2\ndefault_format: rdfs-turtle\ndownload_dir: .ohi\ndependencies: []\n"
+        "format_version: 1\ndefault_format: rdfs-turtle\ndownload_dir: .ohi\ndependencies: []\n"
     }
 
     "quote a configured directory without changing its contents" in {
-      val declaration = Declaration(2, Format.LinkmlYaml, "vocab #1", Seq.empty)
+      val declaration = Declaration(1, Format.LinkmlYaml, "vocab #1", Seq.empty)
       val encoded = DeclarationYaml.encode(declaration)
       val data = ujson.read(JsonUtil.yamlToJson(parseYaml(encoded).toOption.get))
       data("download_dir").str shouldBe "vocab #1"
@@ -124,7 +124,7 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
 
     "preserve supplied order, distinct formats and distinct versions in deterministic YAML" in {
       val declaration = Declaration(
-        formatVersion = 2,
+        formatVersion = 1,
         defaultFormat = Format.LinkmlYaml,
         downloadDir = ".ohi",
         dependencies = Seq(
@@ -143,7 +143,7 @@ class DeclarationYamlSpec extends AnyWordSpec, Matchers {
       encoded.indexOf("ontology:") should be < encoded.indexOf("format: owl-turtle")
       val data = ujson.read(JsonUtil.yamlToJson(parseYaml(encoded).toOption.get))
       data shouldBe ujson.read(
-        """{"format_version":2,"default_format":"linkml-yaml","download_dir":".ohi","dependencies":[
+        """{"format_version":1,"default_format":"linkml-yaml","download_dir":".ohi","dependencies":[
         {"ontology":"w3c/dcat@3","format":"owl-turtle"},
         {"ontology":"w3c/dcat@2","format":"linkml-yaml"},
         {"ontology":"w3c/dcat@2","format":"owl-turtle"}]}""",

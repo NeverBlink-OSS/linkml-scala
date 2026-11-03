@@ -88,7 +88,7 @@ class GuidanceSpec extends AnyWordSpec, Matchers {
     "explain the reference grammar for a dash-prefixed malformed inspect input" in {
       val output = rejected(Inspect, "inspect", "--", "-sensor")
       output should include("Invalid ontology reference '-sensor'.")
-      output should include("Expected namespace/name[@version] without backticks.")
+      output should include("Expected namespace/name[@version].")
       output should include("ohi inspect --help")
     }
 

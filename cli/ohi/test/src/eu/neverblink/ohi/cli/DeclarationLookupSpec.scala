@@ -27,7 +27,7 @@ class DeclarationLookupSpec extends AnyWordSpec, Matchers {
       s"read the declared default with $label dependencies without inspecting metadata or the lock" in {
         withDirectory { directory =>
           val declaration =
-            s"format_version: 2\ndefault_format: owl-turtle\ndownload_dir: vendor/ontologies\ndependencies: $dependencies"
+            s"format_version: 1\ndefault_format: owl-turtle\ndownload_dir: vendor/ontologies\ndependencies: $dependencies"
           os.write(directory / "ohi.yaml", declaration)
           os.write(directory / "ohi.lock.json", "not a lock")
           val settings = DeclarationFiles.readIfPresent(directory.toNIO).get
@@ -40,7 +40,7 @@ class DeclarationLookupSpec extends AnyWordSpec, Matchers {
 
     "report an invalid declaration instead of substituting a default" in {
       withDirectory { directory =>
-        val declaration = "format_version: 2\ndependencies: []\n"
+        val declaration = "format_version: 1\ndependencies: []\n"
         os.write(directory / "ohi.yaml", declaration)
         val failure = intercept[ProjectException](DeclarationFiles.readIfPresent(directory.toNIO))
         failure.code shouldBe ProjectErrorCode.InvalidDeclaration

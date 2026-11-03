@@ -8,7 +8,7 @@ import eu.neverblink.linkml.runtime.*
 /** Contents of ohi.yaml. Exact resolved file identities belong in ohi.lock.json.
   *
   * @param formatVersion
-  *   Declaration revision. Only revision 2 is supported.
+  *   Declaration revision. Only revision 1 is supported.
   * @param defaultFormat
   *   Preferred artifact format for future reference selections without an explicit format. Existing
   *   dependency formats remain fixed.

@@ -162,7 +162,7 @@ private[cli] object ProjectOutput {
           s"Details: ${TerminalOutput.withoutAnsi(causeMessage.getOrElse(error.message))}") ->
           (if error.operation == ProjectOperation.Init && error.code == ProjectErrorCode.InvalidDeclaration
            then
-             "Correct ohi.yaml using format_version: 2, default_format, download_dir and dependencies, then run:"
+             "Correct ohi.yaml using format_version: 1, default_format, download_dir and dependencies, then run:"
            else "Correct the reported cause and retry.")
       }
       val effects =
@@ -215,8 +215,8 @@ private[cli] object ProjectOutput {
       colored: Boolean,
   ): String = {
     val location = displayPath(directory)
-    val created = if location == "." then "Created an Ohi project."
-    else s"Created an Ohi project in ${styled(location, "36", colored)}."
+    val created = if location == "." then "Created an ohi project."
+    else s"Created an ohi project in ${styled(location, "36", colored)}."
     created + "\n" +
       s"You can edit ${styled(displayPath(directory.resolve("ohi.yaml")), "36", colored)} to manage your ontologies and project settings.\n" +
       s"Downloaded ontologies go in ${styled(displayPath(downloadDirectory.getOrElse(directory.resolve(".ohi"))), "36", colored)}/.\n\n" +

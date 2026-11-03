@@ -3,8 +3,6 @@ title: Find and inspect ontologies
 description: Search ohi.dev, check a publication's files and download the format you need.
 ---
 
-<!-- Last updated: 2026-11-03. -->
-
 Use `ohi search` to find an ontology, then `ohi inspect` to see its files and dependencies.
 
 ## Search by name or topic

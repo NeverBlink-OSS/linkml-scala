@@ -20,7 +20,7 @@ import scala.collection.mutable.ArrayBuffer
 
 class ProjectSpec extends AnyWordSpec, Matchers {
   private val emptyDeclaration =
-    "# preserve this comment\nformat_version: 2\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
+    "# preserve this comment\nformat_version: 1\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n"
   private val selectedDeclaration = emptyDeclaration.replace(
     "dependencies: []",
     "dependencies:\n  - ontology: test/example@1\n    format: owl-turtle",
@@ -226,7 +226,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.exists(directory / "ohi.lock.json") shouldBe false
         os.exists(directory / ".ohi") shouldBe false
         val human = ProjectOutput.error(project.failure(failure, retry), json = false)
-        human should include("Created an Ohi project in ")
+        human should include("Created an ohi project in ")
         human should include("https://ohi.dev/docs/guides/projects/")
         val savedDeclaration = os.read(directory / "ohi.yaml")
         val resumedRequests = ArrayBuffer.empty[String]
@@ -281,7 +281,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.read(directory / "ohi.lock.json") shouldBe oldLock
         os.exists(directory / ".ohi") shouldBe false
         val human = ProjectOutput.error(project.failure(failure, retry), json = false)
-        human should not include "Created an Ohi project"
+        human should not include "Created an ohi project"
         val savedDeclaration = os.read(directory / "ohi.yaml")
         val resumedRequests = ArrayBuffer.empty[String]
         val resumed = new Project(directory.toNIO, ProjectOperation.Add)
@@ -544,7 +544,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
     "reuse exact lock bytes after dependency reordering and preference edits without metadata" in {
       withDirectory { directory =>
         val declaration = """# retained user formatting
-          |format_version: 2
+          |format_version: 1
           |default_format: ossie-yaml
           |download_dir: ontologies
           |dependencies:
@@ -646,7 +646,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.read(directory / "ohi.yaml") shouldBe
           """# Ontologies used by this project.
             |# Docs: https://ohi.dev/docs/guides/projects/
-            |format_version: 2
+            |format_version: 1
             |default_format: linkml-yaml
             |download_dir: .ohi
             |dependencies:
@@ -684,7 +684,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         result.lockChanged shouldBe false
         result.files shouldBe empty
         os.read(directory / "ohi.yaml") should endWith(
-          "format_version: 2\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n",
+          "format_version: 1\ndefault_format: linkml-yaml\ndownload_dir: .ohi\ndependencies: []\n",
         )
         os.read(directory / "ohi.lock.json") shouldBe emptyLock
         os.exists(directory / ".ohi") shouldBe false

@@ -3,8 +3,6 @@ title: Manage ontology projects
 description: Record your ontology choices and download the same files and dependencies again.
 ---
 
-<!-- Last updated: 2026-11-03. -->
-
 Use `ohi add` to keep track of the ontologies your project uses. Here we'll add
 [DCAT 3](https://ohi.dev/o/w3c/dcat@3), which describes data catalogs, and download its dependencies.
 
@@ -27,19 +25,14 @@ ohi add w3c/dcat@3
 
 You'll find DCAT at `.ohi/w3c/dcat/3/dcat.owl.ttl`. Its dependencies, Dublin Core Terms,
 SKOS and PROV-O, are downloaded into their own folders under `.ohi/`.
-Ohi records your choice in `ohi.yaml` and the exact files and checksums in `ohi.lock.json`.
+ohi records your choice in `ohi.yaml` and the exact files and checksums in `ohi.lock.json`.
 
-Omit `@3` to choose the most recently published release on ohi.dev. Ohi saves the resolved version
-in `ohi.yaml` so you can keep using it until you decide to change it.
+Run `ohi add` again to add more ontologies. Leave out `@3` to choose the most recently published
+release. ohi saves that version in `ohi.yaml`.
 
-Here, `add` uses the format we chose during initialization. You can request another format with
-`--format`, such as `--format linkml-yaml`. When you leave out `--format`, ohi tries the project
-default first, then LinkML YAML if that default isn't available.
-
-Run `ohi add` again to add more ontologies. Each time, ohi checks existing downloads against the
-Hub's SHA-256 checksums. It reuses files that match and downloads any missing project files.
-If a local file has been edited or damaged, ohi stops and shows its path. Move that file elsewhere
-if you want to keep it, or delete it, then rerun the command to download a fresh copy.
+Use `--format linkml-yaml` to choose LinkML YAML for an addition. The
+[CLI reference](/docs/reference/cli/#ontology-references-and-formats) lists the available formats
+and defaults.
 
 ## Restore a project on another machine
 
@@ -50,7 +43,7 @@ machine, run this from the folder containing those files:
 ohi sync
 ```
 
-Ohi downloads the files recorded in `ohi.lock.json` into the project's download folder, `.ohi/`
+ohi downloads the files recorded in `ohi.lock.json` into the project's download folder, `.ohi/`
 by default. Files already present are checked against the saved checksums and reused.
 
 If someone shares only `ohi.lock.json`, the same command downloads its files into `.ohi/`.
@@ -60,7 +53,7 @@ To also create an editable `ohi.yaml` from that lock, run:
 ohi sync --init
 ```
 
-Ohi creates `.ohi/.gitignore` to keep downloads out of Git. Edit that file if you want to commit
+ohi creates `.ohi/.gitignore` to keep downloads out of Git. Edit that file if you want to commit
 the downloads too. Keep schemas you write yourself outside `.ohi/`.
 
 ## Change an ontology's format
@@ -76,7 +69,7 @@ use that value in your project. Open `ohi.yaml` and change DCAT's `format` from 
 to `linkml-yaml`:
 
 ```yaml
-format_version: 2
+format_version: 1
 default_format: owl-turtle
 download_dir: .ohi
 dependencies:

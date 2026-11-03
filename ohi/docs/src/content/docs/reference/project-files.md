@@ -3,8 +3,6 @@ title: Project files
 description: The fields and behavior of ohi.yaml and ohi.lock.json.
 ---
 
-<!-- Last updated: 2026-11-03. -->
-
 Keep both project files in version control:
 
 | File | Contents |
@@ -19,7 +17,7 @@ For a walkthrough, see [Manage ontology projects](/docs/guides/projects/).
 This project uses PROV-O in Turtle format:
 
 ```yaml
-format_version: 2
+format_version: 1
 default_format: linkml-yaml
 download_dir: .ohi
 dependencies:
@@ -29,7 +27,7 @@ dependencies:
 
 | Field | Meaning |
 | --- | --- |
-| `format_version` | Project file version. Must be `2`. |
+| `format_version` | Project file version. Must be `1`. |
 | `default_format` | Preferred format for `get` and `add` when you omit `--format`. |
 | `download_dir` | Subfolder of the project directory where ontologies are downloaded. |
 | `dependencies` | Ontologies added to the project. Use `[]` for an empty project. |
@@ -74,6 +72,6 @@ Downloads are grouped by namespace, ontology and version. For example, DCAT 3 in
 
 The [format table](/docs/reference/cli/#ontology-references-and-formats) lists filename suffixes.
 
-Ohi creates a `.gitignore` inside the download folder to keep downloads out of Git, unless that
+ohi creates a `.gitignore` inside the download folder to keep downloads out of Git, unless that
 file already exists. Edit it if you want to commit the downloads too. Keep files you write
 yourself outside this folder. `get --to` leaves ignore files unchanged.

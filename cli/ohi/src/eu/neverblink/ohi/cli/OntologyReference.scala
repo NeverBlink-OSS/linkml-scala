@@ -35,7 +35,7 @@ private[cli] object OntologyReference {
       case _ =>
         Left(
           Problem.Invalid(
-            s"Invalid ontology reference '$input'. Expected namespace/name[@version] without backticks.",
+            s"Invalid ontology reference '$input'. Expected namespace/name[@version].",
           ),
         )
     }
