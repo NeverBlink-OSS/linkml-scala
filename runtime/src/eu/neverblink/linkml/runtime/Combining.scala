@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.runtime
 
 import scala.annotation.unused
-import eu.neverblink.linkml.runtime.FastUtils.*
 
 /** Combine two optional values into one with a handler for combining them if both are defined and
   * are not identical

@@ -9,10 +9,16 @@ import eu.neverblink.linkml.metamodel.{
   SchemaDefinition,
 }
 import eu.neverblink.linkml.runtime.{Curie, LinkmlAny, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.FastUtils.*
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{
+  EmptyName,
+  FlankingSeparator,
   MissingRecommendedSlot,
+  NonAsciiName,
+  NonStandardSeparator,
+  RepeatedSeparator,
   SchemaError,
   SchemaFatal,
   UndeclaredCuriePrefix,
@@ -677,6 +683,104 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
            |    mixins: [A]
            |""".stripMargin) shouldBe
         "Cyclic is_a/mixins reference at /classes/A: A -> B -> M -> A. An element cannot refer back to itself through is_a/mixins."
+    }
+
+    "report each kind of problem with the names of classes, attributes and permissible values" in {
+      val sv = load(s"""$schemaShared
+           |imports: [linkml:types]
+           |enums:
+           |  Status:
+           |    permissible_values:
+           |      ok: {}
+           |      a--b: {}
+           |classes:
+           |  Good_Name:
+           |    attributes:
+           |      _hidden: {}
+           |      a.b: {}
+           |      "--": {}
+           |  Wąż: {}
+           |""".stripMargin)
+      sv.lintProblems.collect {
+        case i: EmptyName => s"EmptyName ${i.elementName}"
+        case i: NonAsciiName => s"NonAsciiName ${i.elementName}"
+        case i: NonStandardSeparator =>
+          s"NonStandardSeparator ${i.elementName} ${i.separators.mkString}"
+        case i: FlankingSeparator => s"FlankingSeparator ${i.elementName}"
+        case i: RepeatedSeparator => s"RepeatedSeparator ${i.elementName}"
+      } shouldBe Seq(
+        // Errors first, then warnings. `ą` and `ż` are not ASCII letters, so `Wąż` also ends with
+        // a separator, and has two of them in a row.
+        "NonAsciiName Wąż",
+        "EmptyName --",
+        "FlankingSeparator Wąż",
+        "RepeatedSeparator Wąż",
+        "FlankingSeparator _hidden",
+        "NonStandardSeparator a.b .",
+        "FlankingSeparator --",
+        "RepeatedSeparator --",
+        "NonStandardSeparator a--b --",
+        "RepeatedSeparator a--b",
+      )
+    }
+
+    "report problems with the names of slots, enums, types and subsets, where they are" in {
+      val sv = load(s"""$schemaShared
+           |imports: [linkml:types]
+           |slots:
+           |  a.b-c: {}
+           |  "123": {}
+           |  has_part: {}
+           |enums:
+           |  Bad.Enum:
+           |    permissible_values:
+           |      "x y": {}
+           |types:
+           |  T-: 
+           |    typeof: string
+           |subsets:
+           |  "-S": {}
+           |classes:
+           |  C:
+           |    attributes:
+           |      ok_name: {}
+           |      "x--": {}
+           |""".stripMargin)
+      sv.lintProblems.collect {
+        case i: NonStandardSeparator =>
+          s"NonStandardSeparator ${i.elementName} ${i.separators.mkString} ${i.location.jsonPointer.orNullFast}"
+        case i: FlankingSeparator =>
+          s"FlankingSeparator ${i.elementName} ${i.location.jsonPointer.orNullFast}"
+        case i: RepeatedSeparator =>
+          s"RepeatedSeparator ${i.elementName} ${i.location.jsonPointer.orNullFast}"
+        case i: EmptyName => s"EmptyName ${i.elementName}"
+        case i: NonAsciiName => s"NonAsciiName ${i.elementName}"
+      }.sorted shouldBe Seq(
+        "FlankingSeparator -S /subsets/-S",
+        "FlankingSeparator T- /types/T-",
+        "FlankingSeparator x-- /classes/C/x--",
+        "NonStandardSeparator Bad.Enum . /enums/Bad.Enum",
+        "NonStandardSeparator T- - /types/T-",
+        "NonStandardSeparator a.b-c .- null",
+        "NonStandardSeparator x y   /enums/Bad.Enum/x y",
+        "NonStandardSeparator x-- -- /classes/C/x--",
+        "NonStandardSeparator -S - /subsets/-S",
+        "RepeatedSeparator x-- /classes/C/x--",
+      ).sorted
+    }
+
+    "report an empty name" in {
+      val sv = load(s"""$schemaShared
+           |imports: [linkml:types]
+           |classes:
+           |  C:
+           |    attributes:
+           |      "": {}
+           |""".stripMargin)
+      sv.lintProblems.collect { case i: EmptyName =>
+        s"'${i.elementName}' '${i.transformedName}'"
+      } shouldBe
+        Seq("'' ''")
     }
 
     "report a loop from the element with the first name, whatever the order of the schema" in {
