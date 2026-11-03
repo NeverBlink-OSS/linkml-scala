@@ -10,10 +10,5 @@
         "type": "string",
         "githubKey": "email",
         "required": true
-    },
-    "address": {
-        "title": "Postal address",
-        "type": "string",
-        "required": true
     }
 }
