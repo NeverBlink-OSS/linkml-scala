@@ -25,8 +25,40 @@ DOMPurify.addHook("afterSanitizeAttributes", (node) => {
  * `onerror` attribute. DOMPurify keeps only plain markup, as GitHub does.
  *
  * DOMPurify returns the nodes it has checked, rather than turning them back into HTML, which the
- * page would then have to parse a second time. */
+ * page would then have to parse a second time.
+ *
+ * The content of each first-column cell, which is usually an element name, is put in a
+ * `<span class="md-name">` with `<wbr>` between its words (see `.md-name` in styles.css). */
 export function renderMarkdown(markdown: string): DocumentFragment {
   const html = marked.parse(markdown, { async: false });
-  return DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
+  const page = DOMPurify.sanitize(html, { RETURN_DOM_FRAGMENT: true });
+  for (const cell of page.querySelectorAll("td:first-child")) {
+    addWordBreaks(cell);
+    const name = document.createElement("span");
+    name.className = "md-name";
+    name.append(...cell.childNodes);
+    cell.append(name);
+  }
+  return page;
+}
+
+// Where a name can go onto the next line: before a capital letter that follows a small letter or
+// a digit, as in `RegisteredShare`, and after `_`, as in `share_class`.
+const WORD_START = /(?<=[a-z0-9])(?=[A-Z])|(?<=_)(?=.)/;
+
+/** Adds a `<wbr>` between the words of each name in `cell`, where the browser can start a new line. */
+function addWordBreaks(cell: Element): void {
+  const texts: Text[] = [];
+  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) texts.push(node as Text);
+  for (const text of texts) {
+    const words = text.data.split(WORD_START);
+    if (words.length < 2) continue;
+    const parts: Node[] = [];
+    for (const word of words) {
+      if (parts.length > 0) parts.push(document.createElement("wbr"));
+      parts.push(document.createTextNode(word));
+    }
+    text.replaceWith(...parts);
+  }
 }
