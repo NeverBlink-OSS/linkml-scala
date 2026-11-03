@@ -679,6 +679,19 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "Cyclic is_a/mixins reference at /classes/A: A -> B -> M -> A. An element cannot refer back to itself through is_a/mixins."
     }
 
+    "report a loop from the element with the first name, whatever the order of the schema" in {
+      loadFailure(s"""$schemaShared
+           |classes:
+           |  C:
+           |    is_a: B
+           |  B:
+           |    is_a: A
+           |  A:
+           |    is_a: C
+           |""".stripMargin) shouldBe
+        "Cyclic is_a/mixins reference at /classes/A: A -> C -> B -> A. An element cannot refer back to itself through is_a/mixins."
+    }
+
     "find is_a/mixins loops in slots" in {
       loadFailure(s"""$schemaShared
            |default_range: S

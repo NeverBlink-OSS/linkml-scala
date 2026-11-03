@@ -826,8 +826,12 @@ object SchemaValidator {
     slots
   }
 
-  /** Find the loops in a relation between elements with a depth-first search, in O(V log V + E)
-    * time for V elements and E references between them.
+  /** Find the loops in a relation between elements with a depth-first search, in O(V + E) time for
+    * V elements and E references between them, or O(V log V + E) if there are loops.
+    *
+    * A search from the elements in any order finds a loop if there is one. Only then are they
+    * sorted by their keys, and searched again, so that the same loops are reported from the same
+    * elements whatever the order of the collection.
     *
     * @param elements
     *   Elements to start from. They are visited in the order of their keys, so that the result does
@@ -844,18 +848,23 @@ object SchemaValidator {
       key: E => String,
       next: E => Iterable[E],
   ): List[List[E]] = {
-    val sorted = elements.toArray[AnyRef]
-    util.Arrays.sort(
-      sorted,
-      (x: AnyRef, y: AnyRef) => key(x.asInstanceOf[E]).compareTo(key(y.asInstanceOf[E])),
-    )
-    val finder = new CycleFinder[E](key, next, sorted.length)
-    var i = 0
-    while (i < sorted.length) {
-      finder(sorted(i).asInstanceOf[E])
-      i += 1
+    val unsorted = new CycleFinder[E](key, next, elements.size)
+    elements.foreach(unsorted)
+    if (unsorted.cycles.isEmpty) Nil
+    else {
+      val sorted = elements.toArray[AnyRef]
+      util.Arrays.sort(
+        sorted,
+        (x: AnyRef, y: AnyRef) => key(x.asInstanceOf[E]).compareTo(key(y.asInstanceOf[E])),
+      )
+      val finder = new CycleFinder[E](key, next, sorted.length)
+      var i = 0
+      while (i < sorted.length) {
+        finder(sorted(i).asInstanceOf[E])
+        i += 1
+      }
+      finder.cycles.toList
     }
-    finder.cycles.toList
   }
 
   /** State of [[findCycles]]. It is the function that visits an element, so that it can be passed
