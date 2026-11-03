@@ -53,7 +53,7 @@ export default defineConfig({
         },
         {
           label: 'Guides',
-          items: ['guides/search', 'guides/projects', 'guides/ai-agents'],
+          items: ['guides/search', 'guides/projects'],
         },
         {
           label: 'Reference',
