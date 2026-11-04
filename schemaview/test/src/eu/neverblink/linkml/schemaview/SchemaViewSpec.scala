@@ -628,6 +628,31 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       inlinedOnly.reachable(sv.classes("Ref")) shouldBe false
     }
 
+    "not reach top-level slots in the derived query" in {
+      val schema =
+        """id: https://example.org/derived-slots/
+          |name: derived_slots
+          |imports:
+          |  - linkml:types
+          |slots:
+          |  base_slot:
+          |    range: string
+          |  group:
+          |classes:
+          |  Root:
+          |    attributes:
+          |      name:
+          |        is_a: base_slot
+          |        slot_group: group
+          |""".stripMargin
+
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
+
+      val derived = sv.derivedReachabilityQuery(Seq(sv.classes("Root")), false, true)
+      derived.reachable(sv.slotDefinitions("base_slot")) shouldBe false
+      derived.reachable(sv.slotDefinitions("group")) shouldBe false
+    }
+
     "recognize the tree_root inline mode from the extension" in {
       val model =
         """id: http://example.com/c

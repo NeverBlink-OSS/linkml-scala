@@ -115,7 +115,8 @@ final class DerivedReachabilityQuery(
         }
       }
     } else collectOtherRefs(current, result)
-    result
+    // Derived classes have attributes instead of slots, so top-level slots are not reachable
+    result.filterInPlace(_.tag ne slotDef)
   }
 }
 
