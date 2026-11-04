@@ -1,10 +1,10 @@
 # VHS tape for the `validate` command demo GIF.
 # Regenerate with: website/screenshots/generate.sh
-# (that script builds the CLI, puts a `linkml-scala` launcher on PATH, and runs vhs)
+# (that script builds the CLI, puts `ohi` on PATH, and runs vhs)
 
 Output website/src/assets/validate.gif
 
-Require linkml-scala
+Require ohi
 
 Set Shell bash
 Set FontFamily "JetBrains Mono"
@@ -26,7 +26,7 @@ Type "clear" Enter
 Show
 
 Sleep 600ms
-Type "linkml-scala validate with_errors.yaml"
+Type "ohi linkml validate with_errors.yaml"
 Sleep 700ms
 Enter
 

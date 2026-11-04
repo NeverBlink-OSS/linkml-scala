@@ -1,12 +1,30 @@
-id: https://neverblink.eu/linkml/test
-name: test
-classes:
-  Class1:
-    class_uri: http://example.org/class1>
+id: https://neverblink.eu/linkml/pets
+name: pets
+description: Pets and their owners.
+prefixes:
+  linkml: https://w3id.org/linkml/
+imports:
+  - linkml:types
 
-  Cat:
+classes:
+  Person:
+    description: Someone who owns pets.
+    class_uri: schema:Person
     attributes:
       id:
+        description: The person's identifier.
+        identifier: true
+      email:
+        description: The person's email address.
+        identifier: true
+  Cat:
+    description: A cat.
+    attributes:
+      id:
+        description: The cat's identifier.
         range: Name
         identifier: true
+      owner:
+        range: Person
   Name:
+    description: A name.

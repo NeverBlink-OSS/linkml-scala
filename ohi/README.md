@@ -1,140 +1,41 @@
 # ohi SDK
 
-The ohi SDK lets Scala/JVM, Python and TypeScript applications search publications, inspect metadata, download selected files and save supplied file selections.
+The ohi SDK lets Scala/JVM, Python and TypeScript applications search ontology publications,
+inspect their metadata, download files and save file selections.
 
-The documentation is at [ohi.dev/docs](https://ohi.dev/docs/).
+**The documentation is at [ohi.dev/docs/reference/sdks](https://ohi.dev/docs/reference/sdks/).**
 
-## Search, inspect and retrieve
-
-Install the Python SDK on Python 3.10 or later:
+## Install
 
 ```sh
-python -m pip install ohi-sdk
+python -m pip install ohi-sdk   # Python 3.10 or later
+npm install @neverblink/ohi     # Node 22+ or browsers
 ```
+
+The Scala modules are built into the [ohi CLI](../cli/ohi/README.md) and are not published to Maven Central.
+
+## Quick start
 
 ```python
 from ohi import CatalogClient, SearchRequest
 
 client = CatalogClient()
-page = client.search(SearchRequest(q="sensors", page=1, per_page=10))
+page = client.search(SearchRequest(q="sensors"))
 if page.hits:
     publication = client.inspect(page.hits[0].base_url)
-    artifact = publication.artifacts[0]
-    content = client.get(artifact.url)
+    content = client.get(publication.artifacts[0].url)
 ```
 
-Search uses ohi.dev by default. Each call returns one page. Use `page` to request the next page,
-`per_page` to request up to 250 results, and `q="*"` to browse. See the
-[search options](../model/ohi/search-request.yaml) for filtering, sorting and facets.
+## What's in this directory
 
-Pass a hit's `base_url` to `inspect`, choose an artifact in the format you need, then pass its
-`url` to `get`. The example retrieves the first artifact. `get` returns the file's bytes for your
-application to save or load. Dependency files must be selected and retrieved separately.
+| Directory | Contents |
+| --- | --- |
+| [`model/`](model/) | Scala classes generated from the data models |
+| [`catalog/`](catalog/) | Scala catalog client |
+| [`python/`](python/) | Python package `ohi-sdk` |
+| [`typescript/`](typescript/) | npm package `@neverblink/ohi` |
+| [`docs/`](docs/) | Sources of [ohi.dev/docs](https://ohi.dev/docs/) |
+| [`examples/`](examples/) | Example publication metadata and lock files |
 
-To use another catalog, supply both `search_url` and `query_by`:
-
-```python
-from ohi import CatalogClient, CatalogConfig
-
-client = CatalogClient(CatalogConfig(
-    search_url="https://catalog.example/search/collections/packages/documents/search",
-    query_by="title,name",
-))
-```
-
-Replace the example endpoint and indexed fields with your catalog's values. Omitting both
-selects ohi.dev. Supplying only one is an error. A known publication or artifact URL can be
-passed directly to `inspect` or `get`, without searching first.
-
-## Language bindings
-
-| Language | Client | Operation results |
-| --- | --- | --- |
-| Scala/JVM | `eu.neverblink.ohi.catalog.CatalogClient` in `ohi.catalog.jvm` | Synchronous `SearchResult`, `Publication`, `Array[Byte]` |
-| Python | `ohi.CatalogClient` | Synchronous `SearchResult`, `Publication`, `bytes` |
-| TypeScript | `CatalogClient` from the package entry point | Promises of `SearchResult`, `Publication`, `Uint8Array` |
-
-TypeScript supports Node 22+ and browsers with Fetch. Browsers need CORS access to the catalog,
-publication and artifact endpoints.
-
-```sh
-npm install @neverblink/ohi
-```
-
-```typescript
-import { CatalogClient } from "@neverblink/ohi";
-
-const page = await new CatalogClient().search({ q: "sensors" });
-```
-
-For another catalog, pass the fields directly: `new CatalogClient({ search_url, query_by })`.
-
-Scala modules are built from source and included in the CLI. They are not published separately to
-Maven Central. The CLI, Python package and TypeScript package share the ohi LinkML release version.
-
-## Save and reload file selections
-
-Supply all selected and dependency files with their hashes from publication metadata.
-
-```python
-from ohi import ArtifactSelection, Lock, LockedFile, read_lock, write_lock
-
-selected = LockedFile(
-    base_url="https://hub.example/releases/energy/2/",
-    url="https://files.example/energy.ttl",
-    format="owl-turtle",
-    sha256="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-)
-lock = Lock(
-    format_version=2,
-    selections=[ArtifactSelection(base_url=selected.base_url, url=selected.url)],
-    files=[selected],
-)
-write_lock("ohi.lock.json", lock)
-saved = read_lock("ohi.lock.json")
-```
-
-The URLs and hash are illustrative. [Version-1 locks](examples/selection.lock.json) omit hashes
-and remain supported. See the [lock schema](../model/ohi/lock.yaml).
-
-| Binding | JSON text | Explicit file path |
-| --- | --- | --- |
-| Scala/JVM, `eu.neverblink.ohi.model` | `LockJson.decode`, `LockJson.encode` | `LockFiles.read`, `LockFiles.write`, using `java.nio.file.Path` |
-| Python, `ohi` | `decode_lock`, `encode_lock` | `read_lock`, `write_lock`, using a string or path-like object |
-| TypeScript, `@neverblink/ohi` | `decodeLock`, `encodeLock` | `readLock`, `writeLock` from `@neverblink/ohi/node`, returning promises |
-
-Create the parent directory before writing a lock. Writes replace an existing lock and preserve
-its contents on failure. Browser applications use `encodeLock` and `decodeLock` with their own
-storage. File operations are available through the TypeScript `/node` entry.
-
-## Metadata
-
-The SDK accepts [revision 2 publication metadata](../model/ohi/package.yaml), illustrated by
-the synthetic [Sensors example](examples/sensors-package.json). Check the publication's licenses
-and each artifact's format and loading roots. Verify downloaded bytes against its `size_bytes`
-and `sha256` if needed. `get` does not perform that check.
-
-## Failures and HTTP behavior
-
-Catalog failures raise `CatalogException`. Lock validation and file failures raise `LockException`.
-Both expose an `.error` record with a `code` and explanatory `message`.
-See the [error schemas](../model/ohi/) for additional fields.
-
-Use the final HTTP(S) URL for publications and files. Requests do not follow redirects or retry.
-Set `CatalogConfig.timeout_ms` to override the default 30000 ms timeout.
-When a search reports `search_cutoff: true`, its results or counts may be incomplete.
-
-## Regenerate and test
-
-For SDK development, run from the repository root:
-
-```sh
-./mill --no-server regenerate
-python -m pip install ./ohi/python
-npm --prefix ohi/typescript ci
-./mill --no-server 'ohi.{model,catalog}.jvm.test.testForked'
-python -m unittest discover -s ohi/python/tests -v
-npm --prefix ohi/typescript test
-```
-
-Run `npm --prefix ohi/typescript run test:browser` for browser checks using Chrome.
+The data models are in [`model/ohi/`](../model/ohi/). See [CONTRIBUTING.md](../CONTRIBUTING.md#ohi-sdks)
+for how to regenerate and test the SDKs.

@@ -1,4 +1,4 @@
-# Contributing to ohi LinkML
+# Contributing to ohi
 
 Issues and pull requests are welcome. If you plan something big, open an issue or ask on Discord first.
 
@@ -130,6 +130,20 @@ The CLI executables are GraalVM native images. Mill downloads GraalVM.
 ```shell
 ./mill cli.jvm.nativeImage       # out/cli/jvm/nativeImage.dest/linkml-scala
 ./mill cli.ohi.jvm.nativeImage   # out/cli/ohi/jvm/nativeImage.dest/ohi
+```
+
+### ohi SDKs
+
+The Scala, Python and TypeScript SDKs live in [`ohi/`](ohi/). To test them, run from the repository root:
+
+```shell
+./mill --no-server regenerate
+python -m pip install ./ohi/python
+npm --prefix ohi/typescript ci
+./mill --no-server 'ohi.{model,catalog}.jvm.test.testForked'
+python -m unittest discover -s ohi/python/tests -v
+npm --prefix ohi/typescript test
+npm --prefix ohi/typescript run test:browser   # browser checks, needs Chrome
 ```
 
 ### npm package

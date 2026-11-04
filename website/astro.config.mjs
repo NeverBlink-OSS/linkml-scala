@@ -22,7 +22,7 @@ const sidebar = [
     ],
   },
   { label: 'Importers', items: ['importers', 'importers/owl', 'importers/ossie'] },
-  { label: 'Schemas', items: ['curies', 'import-maps', 'slot-usage-inheritance'] },
+  { label: 'Schemas', items: ['validation', 'curies', 'import-maps', 'slot-usage-inheritance'] },
   { label: 'Using ohi LinkML', items: ['python-bindings', 'verifying-downloads'] },
   { label: 'Reference', items: ['implementation-differences', 'benchmarks'] },
   { label: 'Playground', link: 'https://linkml.ohi.dev/playground/', attrs: { target: '_blank' } },

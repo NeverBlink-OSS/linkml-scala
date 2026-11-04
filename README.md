@@ -1,77 +1,28 @@
 <div align="center">
 
-[![Playground](https://img.shields.io/badge/playground-try_it_live-8A2BE2?style=flat-square&logo=scala&logoColor=white)](https://linkml.ohi.dev/playground)
+[![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/ohi?style=flat-square&logo=github&logoColor=white&label=release&color=blue)](https://github.com/NeverBlink-OSS/ohi/releases/latest)
 [![Discord](https://img.shields.io/badge/Discord-join_chat-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/HGksVAJ6ss)
 [![GitHub stars](https://img.shields.io/github/stars/NeverBlink-OSS/ohi?style=flat-square&logo=github&logoColor=white&label=stars&color=yellow)](https://github.com/NeverBlink-OSS/ohi/stargazers)
-[![Maven Central](https://img.shields.io/maven-central/v/eu.neverblink.linkml/generator_3?style=flat-square&logo=apachemaven&logoColor=white&label=maven%20central)](https://central.sonatype.com/namespace/eu.neverblink.linkml)
-[![npm](https://img.shields.io/npm/v/@neverblink/linkml?style=flat-square&logo=npm&logoColor=white&label=npm)](https://www.npmjs.com/package/@neverblink/linkml)
-[![PyPI](https://img.shields.io/pypi/v/neverblink-linkml?style=flat-square&logo=pypi&logoColor=white&label=pypi)](https://pypi.org/project/neverblink-linkml/)
-[![CLI release](https://img.shields.io/github/v/release/NeverBlink-OSS/ohi?style=flat-square&logo=github&logoColor=white&label=CLI%20release&color=blue)](https://github.com/NeverBlink-OSS/ohi/releases/latest)
-
-[![Platforms](https://img.shields.io/badge/platforms-JVM_·_JS_·_native-4B8BBE?style=flat-square)](#cli-tool-installation)
-[![Scala 3](https://img.shields.io/badge/Scala-3.8-DC322F?style=flat-square&logo=scala&logoColor=white)](https://www.scala-lang.org)
-[![Scala.js](https://img.shields.io/badge/Scala.js-1.22-blue?style=flat-square&logo=scala&logoColor=white)](https://www.scala-js.org)
-[![JDK 17+](https://img.shields.io/badge/JDK-17+-f89820?style=flat-square&logo=openjdk&logoColor=white)](https://adoptium.net)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue?style=flat-square&logo=apache&logoColor=white)](LICENSE)
 
 </div>
 
-# ohi LinkML
+# ohi
 
-**[LinkML](https://linkml.io/) is an open framework that simplifies authoring, validating, and sharing data.** You write your data model once in a simple YAML format. LinkML then generates code, schemas, and validation rules for multiple languages and formats, such as JSON Schema, CSV, RDFS/SHACL...
+**ohi helps you find, download, and manage ontologies. ohi LinkML helps you write, check, and convert [LinkML](https://linkml.ohi.dev/) schemas.**
+It's a single native command-line tool for Linux, macOS and Windows, with libraries for Python, JavaScript/TypeScript, C/C++/Rust, and the JVM.
 
-**ohi LinkML** is a robust, cross-platform implementation of LinkML. It works in the [JVM](#scala-library), [in your browser](https://linkml.ohi.dev/playground/) or [Node.js](#javascript--typescript-library), [Python](https://pypi.org/project/neverblink-linkml/), and even [compiles to native binaries](#-natively-compiled-binaries-for-linux-macos-and-windows). We have a command-line interface (CLI), a library for programmatic access, and a [GitHub Action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+| | What it does | |
+|---|---|---|
+| **ohi** | Search ontologies, download their files and manage ontology projects locally | [Docs](https://ohi.dev/docs/) · [Browse](https://ohi.dev) |
+| **ohi LinkML** | Validate LinkML schemas and turn them into JSON Schema, SHACL, OWL, Pydantic and more | [Docs](https://linkml.ohi.dev/docs/) · [Playground](https://linkml.ohi.dev/playground/) |
 
 > [!NOTE]
-> ⭐ If you like ohi LinkML, consider giving it a star – it helps others find the project!
+> ⭐ If you like ohi, consider giving it a star – it helps others find the project!
 
-## Why ohi LinkML?
+## Install
 
-### 🌐 Works in the browser, Node.js, JVM, Python, and C/C++/Rust
-
-ohi LinkML compiles to pure JavaScript (zero dependencies, no Wasm), so you can use it in your browser or Node.js environment. Try it out in our **[online playground](https://linkml.ohi.dev/playground/)**, or **[get it from npm](https://www.npmjs.com/package/@neverblink/linkml)**.
-
-For Java, Scala, Kotlin and other JVM languages, ohi LinkML is available on **[Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml)**.
-
-[![Web playground screenshot](./website/src/assets/playground.png)](https://linkml.ohi.dev/playground)
-
-We also have [Python and native bindings](https://linkml.ohi.dev/docs/python-bindings/), so you can use ohi LinkML from Python (`pip install neverblink-linkml`), C, C++, or Rust.
-
-### ⚡ Natively compiled binaries for Linux, macOS, and Windows
-
-`ohi` is a self-contained binary that runs natively on Linux, macOS, and Windows. You don't need Python, Java, or anything else installed.
-
-It starts up immediately and runs fast, even on extra-large LinkML models. **[See the installation instructions.](#cli-tool-installation)**
-
-### 🛡️ Consistent, reliable, and with great error reporting
-
-ohi LinkML will tell you exactly what is wrong with your model, and where:
-
-![LinkML schema validation in the CLI](./website/src/assets/validate.gif)
-
-The validator can also return a machine-readable JSON report ([schema](model/validation-report.yaml)), useful for UIs and scripts.
-
-We engineered ohi LinkML to be as consistent as possible. We test each generator across the same extensive [suite of LinkML models](https://github.com/NeverBlink-OSS/ohi/tree/main/tests/resources/models).
-
-In some cases, ohi LinkML diverges from the Python implementation. You can find the list of implementation differences [here](https://linkml.ohi.dev/docs/implementation-differences/).
-
-### 🚀 It's really fast!
-
-ohi LinkML was built to work great with large schemas. In our benchmarks it's **[22.9–38.5x faster](https://linkml.ohi.dev/docs/benchmarks/) than the Python implementation**:
-
-![ohi LinkML vs LinkML-Python: generating a SHACL file](./website/src/assets/generate-race.gif)
-
-[**📊 See the benchmarks.**](https://linkml.ohi.dev/docs/benchmarks/)
-
-## CLI tool installation
-
-The CLI is called `ohi`. It runs every LinkML command under `ohi linkml`, and it also searches
-ontology publications, downloads their files and tracks the ones a project depends on. See
-[the ohi CLI README](cli/ohi/README.md) for the catalog and project commands.
-
-### Method 1: Install script (recommended)
-
-On Linux, macOS, or any bash on Windows - Git Bash, MSYS2, Cygwin, WSL:
+On Linux, macOS, or Windows with Git Bash, MSYS2, Cygwin or WSL:
 
 ```shell
 . <(curl -sSfL https://ohi.dev/install.sh)
@@ -85,182 +36,82 @@ irm https://ohi.dev/install.ps1 | iex
 ohi version
 ```
 
-Read the script before running it: [install.sh](cli/install.sh), [install.ps1](cli/install.ps1).
+Read the scripts before running them: [install.sh](cli/install.sh), [install.ps1](cli/install.ps1).
+For other ways to install (mise, manual download, the JAR) and how to verify a download, see
+**[the install guide](https://ohi.dev/docs/getting-started/install/)**.
 
-### Method 2: Using [mise](https://mise.jdx.dev/getting-started.html) (cross-platform)
+## Ontologies
 
-You can install `ohi` on any platform (including Windows) using the [mise](https://mise.jdx.dev/getting-started.html) environment manager:
-
-```shell
-mise use 'ubi:NeverBlink-OSS/ohi[matching=ohi,exe=ohi]'
-ohi version
-```
-
-### Method 3: Manual download
-
-Head over to [Releases](https://github.com/NeverBlink-OSS/ohi/releases/latest) and download the `ohi` binary for your specific OS and architecture.
-
-*For macOS and Linux:*
-Rename the downloaded file, make it executable, and run it:
+Find an ontology on [ohi.dev](https://ohi.dev) and download it:
 
 ```shell
-mv ohi-<os>-<arch> ohi
-chmod +x ohi
-./ohi
+ohi search foaf
+ohi get foaf/foaf@2014-01-14 --format owl-turtle
 ```
 
-*For Windows:*
-Simply rename the downloaded executable, and run it:
+Or record the ontologies your project depends on, so anyone can download the same files later:
 
 ```shell
-ren ohi-windows-x86_64.exe ohi.exe
-ohi.exe
+ohi init
+ohi add w3c/prov-o@2013 --format owl-turtle
+ohi sync   # on another machine, after cloning
 ```
 
-Releases ship a `SHA256SUMS` manifest and a signed build provenance attestation, so you can confirm a download came from our release workflow. **[See how to verify it.](https://linkml.ohi.dev/docs/verifying-downloads/)**
+`ohi.yaml` lists what you asked for, and `ohi.lock.json` lists the exact files and their checksums.
+Commit both. See **[the ohi docs](https://ohi.dev/docs/)** for the
+[first-ontology walkthrough](https://ohi.dev/docs/getting-started/first-ontology/),
+[projects](https://ohi.dev/docs/guides/projects/) and the [full CLI reference](https://ohi.dev/docs/reference/cli/).
 
-### CLI – getting started
+## LinkML
 
-#### LinkML schema validation
-
-The `validate` command (also available as `lint`) inspects your LinkML schemas for structural and logical issues:
+[LinkML](https://linkml.ohi.dev/) lets you describe your data once, in a simple YAML schema.
+ohi LinkML checks the schema and generates other formats from it:
 
 ```shell
-ohi linkml validate <input-file> ...
+ohi linkml validate model.yaml
+ohi linkml to json-schema model.yaml
+ohi linkml to shacl model.yaml
+ohi linkml from owl ontology.ttl   # turn an OWL ontology into LinkML
 ```
 
-The CLI outputs issues directly to your terminal, categorized into three severity levels:
-- Fatal: critical blockers (unknown references, invalid range types, used undefined default range, invalid URIs or CURIEs)
-- Errors: structural violations (multiple keys or ID slots, multiple tree roots, ID collisions)
-- Warnings: non-critical issues (invalid slot usage, undefined default range, missing tree root, undeclared CURIE prefixes, missing recommended slots such as `description`)
+It tells you exactly what is wrong with your schema, and where:
 
-All generators require that there are no *fatal* issues in the schema.
+![LinkML schema validation in the CLI](./website/src/assets/validate.gif)
 
-#### Generators
+- **Runs everywhere.** Native binaries, the JVM, Node.js, the browser (no install – try the [playground](https://linkml.ohi.dev/playground/)), Python, and C, C++ or Rust.
+- **Fast.** [22.9–38.5x faster](https://linkml.ohi.dev/docs/benchmarks/) than LinkML-Python, even on very large schemas.
+- **Consistent.** Every generator is rigorously tested against the same [set of LinkML models](https://github.com/NeverBlink-OSS/ohi/tree/main/tests/resources/models).
 
-Generate a standard JSON Schema, [Apache Ossie](https://github.com/apache/ossie) ontology, OWL ontology, or SHACL from your model:
+Run `ohi linkml --help` for the full list of generators and importers, or read
+**[the LinkML docs](https://linkml.ohi.dev/docs/)**.
 
-```shell
-ohi linkml to json-schema <input-file>
-ohi linkml to ossie <input-file>
-ohi linkml to owl <input-file>
-ohi linkml to shacl <input-file>
-```
+## Libraries
 
-**There's more!** Run `ohi linkml --help` to see the full list of supported generators. You can also run `ohi linkml to shacl --help` to see the options for any specific generator. More documentation, including guides for the generators, is at **[linkml.ohi.dev/docs](https://linkml.ohi.dev/docs/)**.
+| Language | ohi LinkML | ohi |
+|---|---|---|
+| Python | [`neverblink-linkml`](https://linkml.ohi.dev/docs/python-bindings/) | [`ohi-sdk`](https://ohi.dev/docs/reference/sdks/) |
+| JavaScript / TypeScript | [`@neverblink/linkml`](generator/npm/README.md) | [`@neverblink/ohi`](https://ohi.dev/docs/reference/sdks/) |
+| JVM (Scala, Java, Kotlin) | [Maven Central](https://central.sonatype.com/namespace/eu.neverblink.linkml), [Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html) | – |
+| C, C++, Rust | [Shared library](https://linkml.ohi.dev/docs/python-bindings/#how-it-works) from [Releases](https://github.com/NeverBlink-OSS/ohi/releases/latest) | – |
 
-#### LinkML schema derivation and pruning 
+## Also available
 
-Generate a LinkML model that:
-- Has all imports resolved
-- Has all class slots materialized into attributes (opt out by passing `--skip-class-derivation`)
-- Has all unused elements removed (controlled by `--pruning-mode`)
-
-```shell
-ohi linkml to linkml --to <output-path> <input-file>
-```
-
-#### Loading imports from other locations
-
-Load an import from another place without changing the schema, for example a local copy of a
-schema that is imported by URI or CURIE. Write an import map as a JSON file:
-
-```json
-{"https://example.org/units/": "deps/units/"}
-```
-
-```shell
-ohi linkml validate --import-map imports.json <input-file>
-```
-
-The option works with `ohi linkml to` too. The Python, JavaScript and C libraries take the same map as
-`import_map` / `importMap`. See [Import maps](https://linkml.ohi.dev/docs/import-maps/).
-
-## JavaScript / TypeScript library
-
-The generator is also published to npm as [`@neverblink/linkml`](https://www.npmjs.com/package/@neverblink/linkml) – a single ES module with TypeScript declarations, with no runtime dependencies.
-
-```shell
-npm install @neverblink/linkml
-```
-
-```js
-import { LinkML } from "@neverblink/linkml";
-
-// Parse once into a reusable SchemaView handle. The second argument maps
-// file names to YAML for `imports:`.
-const { view } = LinkML.loadFromString(mySchemaYaml, {});
-const jsonSchema = view?.jsonSchema();
-```
-
-Load a schema with `loadFromString` (from YAML text) or `loadFromPath` (from a path in the
-map of schema texts, immune to cyclic imports involving the root), then run `jsonSchema`, `shacl`,
-`rdfs`, `owl`, `linkml`, `scala`, `frictionless`, `graphQl`, `typeScript`, `pydantic`, `erDiagram`, `docs`, `ossie`, `stats`, or `lint`
-against the returned handle.
-See [generator/npm/README.md](generator/npm/README.md) for details.
-
-## Python library
-
-Install it:
-
-```shell
-pip install neverblink-linkml
-```
-
-```python
-import ohi_linkml
-
-with ohi_linkml.load_file("model.yaml") as schema:
-    print(schema.json_schema())
-    print(schema.shacl())
-```
-
-See [the Python bindings guide](https://linkml.ohi.dev/docs/python-bindings/) for the whole API, and for the ABI for C, C++ and Rust.
-
-## Scala library
-
-The LinkML library modules are published to Maven Central under the `eu.neverblink.linkml` group ID, cross-built for the JVM, Scala.js and Scala Native. Best way to get started is to either **[browse the Javadoc](https://javadoc.io/doc/eu.neverblink.linkml/generator_3/latest/index.html)** or [read the CLI's source code](https://github.com/NeverBlink-OSS/ohi/tree/main/cli/src/eu/neverblink/linkml/cli). ohi's Scala modules ship inside its CLI and are not published to Maven Central.
-
-## GitHub Action (CI)
-
-We have a pre-packaged GitHub Action that can do schema validation and generation in your CI pipelines. See **[NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action)** for details.
-
-## Agent skills (Claude Code, Codex, …)
-
-Choose **LinkML** for schema authoring and engine operations, or **ohi + LinkML** for catalog acquisition, project selections and schema work. Both plugins contain instructions and references. The CLI is installed separately.
-
-**Claude Code**
-
-```
-/plugin marketplace add NeverBlink-OSS/ohi
-/plugin install linkml@linkml-scala
-```
-
-Choose `/plugin install ohi@linkml-scala` instead for ohi with LinkML.
-
-**Codex**
-
-```shell
-codex plugin marketplace add NeverBlink-OSS/ohi
-```
-
-Install either **linkml** or **ohi** from `/plugins`. If the marketplace is already installed, refresh it with `codex plugin marketplace upgrade linkml-scala`.
-
-The [skill guide](.agents/README.md) covers installing from a checkout, switching plugins and direct copying for other applications. Install one plugin to avoid loading LinkML guidance twice.
+- **GitHub Action** for validating and generating LinkML schemas in CI: [NeverBlink-OSS/linkml-scala-action](https://github.com/NeverBlink-OSS/linkml-scala-action).
+- **Agent plugins** for Claude Code, Codex and other coding agents. See [the plugin guide](.agents/README.md).
 
 ## Contributing
 
-This project is governed by our [Code of Conduct](CODE_OF_CONDUCT.md), adapted from the Mozilla Community Participation Guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to build the project and send changes. Contributors need to sign
+our [Contributor License Agreement](CLA.md). The project follows our [Code of Conduct](CODE_OF_CONDUCT.md).
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for build instructions, common mill tasks, and how to contribute. Contributors need to sign our [Contributor License Agreement](CLA.md).
-
-Have a question, an idea, or just want to say hi? **[Join our Discord](https://discord.gg/HGksVAJ6ss)** – we're happy to help.
+Have a question or an idea? **[Join our Discord](https://discord.gg/HGksVAJ6ss)** – we're happy to help.
 
 ## License and maintainers
 
-ohi LinkML is licensed under the Apache License 2.0. See the LICENSE file for details.
+ohi is licensed under the Apache License 2.0. See [LICENSE](LICENSE) for details.
 
-This project is being developed and maintained by [NeverBlink](https://neverblink.eu). For any inquiries, please reach out to us via [email](mailto:contact@neverblink.eu).
+ohi is developed and maintained by [NeverBlink](https://neverblink.eu). For any inquiries, please
+[email us](mailto:contact@neverblink.eu).
 
 ----
 
