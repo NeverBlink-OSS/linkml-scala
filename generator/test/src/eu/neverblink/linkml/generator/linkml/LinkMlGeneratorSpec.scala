@@ -181,6 +181,74 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
       lintProblemsExceptMissingRecommendedSlots(reloaded) shouldBe empty
     }
 
+    "keep the elements used only in boolean and nested slot expressions when pruning" in {
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString("""
+          |id: https://example.org/boolean-ranges
+          |name: boolean_ranges
+          |imports:
+          |  - linkml:types
+          |default_range: string
+          |classes:
+          |  Record:
+          |    tree_root: true
+          |    attributes:
+          |      pet:
+          |        exactly_one_of:
+          |          - range: Cat
+          |          - range: Dog
+          |      nested:
+          |        any_of:
+          |          - any_of:
+          |              - range: Leaf
+          |      excluded:
+          |        none_of:
+          |          - range: Banned
+          |      expression:
+          |        range_expression:
+          |          is_a: Base
+          |      color:
+          |        enum_range:
+          |          inherits:
+          |            - Color
+          |    rules:
+          |      - preconditions:
+          |          slot_conditions:
+          |            pet:
+          |              range: Cat
+          |        postconditions:
+          |          slot_conditions:
+          |            nested:
+          |              range: Note
+          |  Cat:
+          |  Dog:
+          |  Leaf:
+          |  Banned:
+          |  Base:
+          |  Note:
+          |  Unused:
+          |enums:
+          |  Color:
+          |    permissible_values:
+          |      red:
+          |  UnusedEnum:
+          |    permissible_values:
+          |      blue:
+          |""".stripMargin))
+      val generator = LinkMlGenerator(using sv)
+      Seq(false, true).foreach { skipClassDerivation =>
+        val options = LinkMlGeneratorOptions(
+          pruningMode = PruningMode.TreeRoot,
+          skipClassDerivation = skipClassDerivation,
+        )
+        val generated = generator.generate(options)
+        generated.classes.keys should contain theSameElementsAs
+          Seq("Record", "Cat", "Dog", "Leaf", "Banned", "Base", "Note")
+        generated.enums.keys should contain theSameElementsAs Seq("Color")
+        // Reloading fails if the output references an element that was pruned
+        SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(generator.serialize(options)))
+      }
+    }
+
     "inline imports into the schema" in {
       val sv = ModelCatalogue.pruning.model
       val schema =
