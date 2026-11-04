@@ -1,5 +1,4 @@
 @prefix : <https://neverblink.eu/linkml/tests/typeDesignator/> .
 
 # A bare Thing: the designator names the tree root class itself, which is allowed.
-# In RDF, `rdf:type` holds the type designator.
 _:b a :Thing .

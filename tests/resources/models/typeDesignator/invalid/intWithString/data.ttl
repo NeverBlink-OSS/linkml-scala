@@ -1,5 +1,4 @@
 @prefix : <https://neverblink.eu/linkml/tests/typeDesignator/> .
 
-# In RDF, `rdf:type` holds the type designator.
 _:b a :IntThing;
   :value "some value" .

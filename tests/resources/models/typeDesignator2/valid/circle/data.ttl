@@ -1,6 +1,5 @@
 @prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
 
-# In RDF, `rdf:type` holds the type designator.
 _:c a :Container;
   :name "one circle";
   :shapes [
