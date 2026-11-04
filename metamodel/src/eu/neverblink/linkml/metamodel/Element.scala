@@ -39,8 +39,8 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     */
   def conformsTo: Option[String]
 
-  /** The native URI of the element. This is always within the namespace of the containing schema.
-    * Contrast with the assigned URI, via class_uri or slot_uri
+  /** The native IRI (URI) of the element. This is always within the namespace of the containing
+    * schema. Contrast with the assigned IRI, via class_uri or slot_uri
     *
     * @see
     *   https://w3id.org/linkml/class_uri
@@ -48,6 +48,8 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     *   https://w3id.org/linkml/slot_uri
     * @see
     *   From schema: https://w3id.org/linkml/meta
+    * @note
+    *   IRIs are allowed, name is kept for backwards compatibility.
     * @note
     *   Formed by combining the default_prefix with the normalized element name
     */

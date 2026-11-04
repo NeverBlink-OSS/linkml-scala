@@ -64,8 +64,8 @@ import eu.neverblink.linkml.runtime.*
   * @param createdOn
   *   Time at which the element was created
   * @param definitionUri
-  *   The native URI of the element. This is always within the namespace of the containing schema.
-  *   Contrast with the assigned URI, via class_uri or slot_uri
+  *   The native IRI (URI) of the element. This is always within the namespace of the containing
+  *   schema. Contrast with the assigned IRI, via class_uri or slot_uri
   * @param deprecated
   *   Description of why and when this element will no longer be used
   * @param deprecatedElementHasExactReplacement
@@ -121,8 +121,8 @@ import eu.neverblink.linkml.runtime.*
   * @param annotations
   *   A collection of tag/text tuples with the semantics of OWL Annotation
   * @param enumUri
-  *   URI of the enum that provides a semantic interpretation of the element in a linked data
-  *   context. The URI may come from any namespace and may be shared between schemas
+  *   IRI (URI) of the enum that provides a semantic interpretation of the element in a linked data
+  *   context. The IRI may come from any namespace and may be shared between schemas
   * @param extensions
   *   A tag/text tuple attached to an arbitrary element
   * @param idPrefixes
