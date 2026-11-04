@@ -1,6 +1,5 @@
 @prefix : <https://neverblink.eu/linkml/tests/typeDesignator/> .
 
-# In RDF, `rdf:type` holds the type designator, so the designator slot is not a property.
 _:b a :IntThing;
   :type "IntThing";
   :value 123 .
