@@ -40,7 +40,8 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
       results: mutable.ArrayBuffer[TaggedReference],
   ): Unit = {
     slotRefs.collect(slot.slot, results)
-    slot.derivedRange.resolve.foreachFast { resolvedRange =>
+    // `range` is read above, so only the default range is left
+    if (slot.slot.range eq None) slot.derivedRange.resolve.foreachFast { resolvedRange =>
       val el = resolvedRange.inner
       results.addOne((ElementTypeTag(el), el.name))
     }
