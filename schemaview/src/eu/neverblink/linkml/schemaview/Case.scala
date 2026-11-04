@@ -37,7 +37,8 @@ object Case {
     val sb = lang.StringBuilder(input.length * 2)
     // whether the last character we pushed was a separator
     var separated = true
-    for i <- 0 until input.length do {
+    var i = 0
+    while (i < input.length) {
       val c = input.charAt(i)
       if isAlphaUpper(c) then {
         // A-Z
@@ -94,6 +95,7 @@ object Case {
         sb.append('_')
         separated = true
       }
+      i += 1
     }
     if sb.length() != 0 && separated then sb.substring(0, sb.length() - 1)
     else sb.toString

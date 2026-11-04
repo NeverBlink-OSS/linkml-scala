@@ -45,6 +45,7 @@ final case class ValidatorResult private (
   /** Merge the [[ValidatorResult]]s */
   def +(other: ValidatorResult): ValidatorResult =
     if other.isEmpty then this
+    else if isEmpty then other
     else
       ValidatorResult(
         unknownReferences ++ other.unknownReferences,
@@ -226,7 +227,7 @@ final class ValidatorContext private (
     val isImport: Boolean,
 ):
   /** Mark continue validating this slot as a range. SHOULD NOT BE USED OUTSIDE THE MACRO */
-  def asRange: ValidatorContext =
+  lazy val asRange: ValidatorContext =
     new ValidatorContext(
       defaultRangeAllowed,
       true,
@@ -241,7 +242,7 @@ final class ValidatorContext private (
   /** Mark this slot as a range that may be omitted, such as `returns`. SHOULD NOT BE USED OUTSIDE
     * THE MACRO
     */
-  def asOptionalRange: ValidatorContext =
+  lazy val asOptionalRange: ValidatorContext =
     new ValidatorContext(
       defaultRangeAllowed,
       true,
@@ -269,7 +270,7 @@ final class ValidatorContext private (
   /** Allow this slot reference to reference a slot (attribute) local to the enclosing class. SHOULD
     * NOT BE USED OUTSIDE THE MACRO
     */
-  def asLocalSlotRef: ValidatorContext =
+  lazy val asLocalSlotRef: ValidatorContext =
     new ValidatorContext(
       defaultRangeAllowed,
       isRange,
@@ -282,7 +283,7 @@ final class ValidatorContext private (
     )
 
   /** Mark this value as one in `imports`. SHOULD NOT BE USED OUTSIDE THE MACRO */
-  def asImport: ValidatorContext =
+  lazy val asImport: ValidatorContext =
     new ValidatorContext(
       defaultRangeAllowed,
       isRange,
@@ -490,13 +491,21 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
       tpe1.asType match {
         case '[t1] =>
           val seq = x.asInstanceOf[Expr[Seq[t1]]]
+          // A loop rather than a fold with a captured index, and the path of an element is made only
+          // for an element with a problem. Most lists are empty, and then nothing is made.
           '{
-            $seq.foldLeft(ValidatorResult.ok) {
+            if ($seq.isEmpty) ValidatorResult.ok
+            else {
+              val it = $seq.iterator
+              var acc = ValidatorResult.ok
               var idx = 0
-              (acc, e) =>
-                val res = ${ genValidator[t1](tpe1, 'e, sv, vc) }.prependedPath(s"$idx/")
+              while (it.hasNext) {
+                val e = it.next()
+                val res = ${ genValidator[t1](tpe1, 'e, sv, vc) }
+                if (!res.isEmpty) acc = acc + res.prependedPath(idx.toString.concat("/"))
                 idx += 1
-                acc + res
+              }
+              acc
             }
           }
       }
@@ -507,9 +516,17 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
       ((tpe1.asType, tpe2.asType): @nowarn) match {
         case ('[t1], '[t2]) =>
           val map = x.asInstanceOf[Expr[Map[t1, t2]]]
+          // The path of an entry is made only for an entry with a problem. Most maps are empty, and
+          // then nothing is made.
           '{
-            $map.foldLeft(ValidatorResult.ok) { case (acc, (k, v)) =>
-              acc + ${ genValidator[t2](tpe2, 'v, sv, vc) }.prependedPath(s"$k/")
+            if ($map.isEmpty) ValidatorResult.ok
+            else {
+              var acc = ValidatorResult.ok
+              $map.foreachEntry { (k, v) =>
+                val res = ${ genValidator[t2](tpe2, 'v, sv, vc) }
+                if (!res.isEmpty) acc = acc + res.prependedPath(k.toString.concat("/"))
+              }
+              acc
             }
           }
       }
@@ -530,51 +547,55 @@ private class ReferenceValidatorImpl(using Quotes) extends MacroUtils {
     val classInfo = getClassInfo(tpe)
     val fields = classInfo.fields
 
-    def genValidateFields(
-        kvs: Expr[mutable.Growable[ValidatorResult]],
-        vc: Expr[ValidatorContext],
-    )(using Quotes): Expr[Unit] = {
-      Block(
-        fields.map { fieldInfo =>
-          val fTpe = fieldInfo.resolvedTpe
-          val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
-          val name = Expr(fieldInfo.mappedName)
-          (fTpe.asType match {
-            case '[ft] =>
-              val encodeVal = genValidator[ft](
-                fTpe,
-                getter.asInstanceOf[Expr[ft]],
-                sv,
-                fieldInfo.mappedName match {
-                  case "range" => '{ $vc.asRange }
-                  case "returns" => '{ $vc.asOptionalRange }
-                  case "imports" => '{ $vc.asImport }
-                  // LinkML scopes these to the enclosing class, they may reference its attributes.
-                  case "unique_key_slots" | "defining_slots" | "slot_group" =>
-                    '{ $vc.asLocalSlotRef }
-                  case _ => vc
-                },
-              )
-              '{
-                // Skip ok results to save on array expansion and folding
-                if $encodeVal ne ValidatorResult.ok then
-                  $kvs.addOne($encodeVal.prependedPath(s"${$name}/"))
-              }
-          }).asTerm
-        },
-        '{}.asTerm,
-      ).asExpr.asInstanceOf[Expr[Unit]]
+    // The validation of the field `fieldInfo` of `x`, in the context `vc`
+    def genValidateField(fieldInfo: FieldInfo, vc: Expr[ValidatorContext])(using
+        Quotes,
+    ): Expr[ValidatorResult] = {
+      val fTpe = fieldInfo.resolvedTpe
+      val getter = Select(x.asTerm, fieldInfo.getterOrField).asExpr
+      fTpe.asType match {
+        case '[ft] =>
+          genValidator[ft](
+            fTpe,
+            getter.asInstanceOf[Expr[ft]],
+            sv,
+            fieldInfo.mappedName match {
+              case "range" => '{ $vc.asRange }
+              case "returns" => '{ $vc.asOptionalRange }
+              case "imports" => '{ $vc.asImport }
+              // LinkML scopes these to the enclosing class, they may reference its attributes.
+              case "unique_key_slots" | "defining_slots" | "slot_group" =>
+                '{ $vc.asLocalSlotRef }
+              case _ => vc
+            },
+          )
+      }
     }
     // Class-scoped slot references nested anywhere under this class resolve against its attributes
     val enterScope =
       if (tpe <:< classDefinitionTpe)
         '{ $vc.withClassScope(${ x.asInstanceOf[Expr[ClassDefinition]] }.name) }
       else vc
+    // One statement for each field, which adds the result of the field to `acc`. Each result is bound
+    // to a value, so a field is validated once, and its path is added only to a result with a
+    // problem. The statements are not nested, so a class with many fields doesn't make a deep tree
+    // for the compiler.
     '{
-      val kvs = Seq.newBuilder[ValidatorResult]
       val fieldVc = $enterScope
-      ${ genValidateFields('kvs, 'fieldVc) }
-      kvs.result().fold(ValidatorResult.ok)(_ + _)
+      var acc = ValidatorResult.ok
+      ${
+        Block(
+          fields.map { fieldInfo =>
+            val path = Expr(fieldInfo.mappedName + "/")
+            '{
+              val res = ${ genValidateField(fieldInfo, 'fieldVc) }
+              if (!res.isEmpty) acc = acc + res.prependedPath($path)
+            }.asTerm
+          },
+          '{ () }.asTerm,
+        ).asExprOf[Unit]
+      }
+      acc
     }
   }
 

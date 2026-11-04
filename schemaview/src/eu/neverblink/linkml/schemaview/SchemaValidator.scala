@@ -1,16 +1,13 @@
 package eu.neverblink.linkml.schemaview
 
 import eu.neverblink.linkml.metamodel.*
-import eu.neverblink.linkml.runtime.{NcName, PrefixMap, Reference, Uri, UriOrCurie}
+import eu.neverblink.linkml.runtime.{NcName, PlainText, PrefixMap, Reference, Uri, UriOrCurie}
 import eu.neverblink.linkml.runtime.FastUtils.*
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 import eu.neverblink.linkml.validation.*
-import eu.neverblink.linkml.yaml.LinkmlYamlCodec
-import org.virtuslab.yaml.Node
 
 import java.{lang, util}
 import scala.collection.mutable
-import scala.util.matching.Regex
 
 /** Performs validation for a [[SchemaView]], most importantly checking whether all references are
   * correct.
@@ -186,97 +183,91 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val missingRecommendedSlots: Seq[SchemaWarning] = {
     val warnings = Vector.newBuilder[SchemaWarning]
     val schemaId = sv.root.id
+    // For each metamodel class, the recommended slots and the indexes of their fields in its case
+    // class, found from the first element of the class
+    val fieldsOfType = new util.HashMap[String, Array[(slotName: String, index: Int)]]
 
-    def fieldsOf(node: Node): util.HashMap[String, Node] = node match {
-      case m: Node.MappingNode => LinkmlYamlCodec.getFields(m)
-      case _ => new util.HashMap[String, Node]
-    }
-
-    // An empty value, such as `description: ""`, is considered a missing value
-    def hasNoValue(node: Node): Boolean = node match {
-      case null => true
-      case s: Node.ScalarNode => s.value.isEmpty
-      case s: Node.SequenceNode => s.nodes.isEmpty
-      case m: Node.MappingNode => m.mappings.isEmpty
-      case _ => false
+    def recommendedFields(
+        element: Product,
+        elementType: String,
+    ): Array[(slotName: String, index: Int)] = {
+      var fields = fieldsOfType.get(elementType)
+      if (fields eq null) {
+        val found = Array.newBuilder[(slotName: String, index: Int)]
+        val slotNames = SchemaValidator.recommendedSlots.get(elementType)
+        if (slotNames ne null) {
+          slotNames.foreach { slotName =>
+            val index = SchemaValidator.fieldIndex(element, slotName)
+            if (index >= 0) found.addOne((slotName = slotName, index = index))
+          }
+        }
+        fields = found.result()
+        fieldsOfType.put(elementType, fields)
+      }
+      fields
     }
 
     def check(
-        fields: util.HashMap[String, Node],
+        element: Product,
         elementType: String,
         elementName: String,
-        location: IssueLocation,
+        location: => IssueLocation,
     ): Unit = {
-      val slotNames = SchemaValidator.recommendedSlots.get(elementType)
-      if (slotNames ne null) {
-        slotNames.foreach { slotName =>
-          if (hasNoValue(fields.get(slotName))) {
-            warnings.addOne(
-              new MissingRecommendedSlot(
-                location = location,
-                elementName = elementName,
-                elementType = elementType,
-                slotName = slotName,
-              ),
-            )
-          }
+      val fields = recommendedFields(element, elementType)
+      var i = 0
+      while (i < fields.length) {
+        val field = fields(i)
+        if (SchemaValidator.hasNoValue(element.productElement(field.index))) {
+          warnings.addOne(
+            new MissingRecommendedSlot(
+              location = location,
+              elementName = elementName,
+              elementType = elementType,
+              slotName = field.slotName,
+            ),
+          )
         }
+        i += 1
       }
     }
 
-    // Calls `f` with the name and the value of each entry of the mapping at `key`
-    def elements(fields: util.HashMap[String, Node], key: String)(f: (String, Node) => Unit): Unit =
-      fields.get(key) match {
-        case m: Node.MappingNode =>
-          m.mappings.foreachEntry { (k, v) =>
-            k match {
-              case s: Node.ScalarNode => f(s.value, v)
-              case _ =>
-            }
-          }
-        case _ =>
-      }
-
-    // Encoded without prefixes, so the URIs are kept as they are and encoding can't fail on them
-    val root = fieldsOf(eu.neverblink.linkml.metamodel.Codec.codec.encode(sv.root))
-    check(root, "schema_definition", sv.root.name, rootLocation)
-    elements(root, "classes") { (className, node) =>
-      val cls = fieldsOf(node)
-      val pointer = "/classes/" + className
+    val root = sv.root
+    check(root, "schema_definition", root.name, rootLocation)
+    root.classes.foreachEntry { (className, cls) =>
+      val pointer = "/classes/".concat(className)
       check(cls, "class_definition", className, at(pointer, schemaId))
-      elements(cls, "attributes") { (slotName, node) =>
+      cls.attributes.foreachEntry { (slotName, slot) =>
         check(
-          fieldsOf(node),
+          slot,
           "slot_definition",
           className + "." + slotName,
           at(pointer + "/attributes/" + slotName, schemaId),
         )
       }
     }
-    elements(root, "slots") { (name, node) =>
-      check(fieldsOf(node), "slot_definition", name, at("/slots/" + name, schemaId))
+    root.slotDefinitions.foreachEntry { (name, slot) =>
+      check(slot, "slot_definition", name, at("/slots/".concat(name), schemaId))
     }
-    elements(root, "enums") { (enumName, node) =>
-      val en = fieldsOf(node)
-      val pointer = "/enums/" + enumName
+    root.enums.foreachEntry { (enumName, en) =>
+      val pointer = "/enums/".concat(enumName)
       check(en, "enum_definition", enumName, at(pointer, schemaId))
-      elements(en, "permissible_values") { (text, node) =>
+      en.permissibleValues.foreachEntry { (text, pv) =>
         check(
-          fieldsOf(node),
+          pv,
           "permissible_value",
           enumName + "." + text,
           at(pointer + "/permissible_values/" + text, schemaId),
         )
       }
     }
-    elements(root, "types") { (name, node) =>
-      check(fieldsOf(node), "type_definition", name, at("/types/" + name, schemaId))
+    root.types.foreachEntry { (name, tpe) =>
+      check(tpe, "type_definition", name, at("/types/".concat(name), schemaId))
     }
-    elements(root, "subsets") { (name, node) =>
-      check(fieldsOf(node), "subset_definition", name, at("/subsets/" + name, schemaId))
+    root.subsets.foreachEntry { (name, subset) =>
+      check(subset, "subset_definition", name, at("/subsets/".concat(name), schemaId))
     }
-    elements(root, "functions") { (name, node) =>
-      check(fieldsOf(node), "function_definition", name, at("/functions/" + name, schemaId))
+    root.functions.foreachEntry { (name, function) =>
+      check(function, "function_definition", name, at("/functions/".concat(name), schemaId))
     }
     warnings.result()
   }
@@ -351,18 +342,31 @@ final class SchemaValidator(using sv: SchemaView) {
   private lazy val identifierAndKey: Seq[SchemaError] = {
     val errors = Seq.newBuilder[SchemaError]
     sv.classes.values.foreach { derivedCls =>
-      val keyOrId = derivedCls.derivedAttributes.values
-        .collect { case s if s.slot.identifier || s.slot.key => s.slot }
-      if (keyOrId.size > 1) {
+      // The first identifier or key slot, and how many there are, without a collection of them
+      var first: SlotDefinition = null
+      var count = 0
+      val slots = derivedCls.derivedAttributes.valuesIterator
+      while (slots.hasNext) {
+        val s = slots.next().slot
+        if (s.identifier || s.key) {
+          if (first eq null) first = s
+          count += 1
+        }
+      }
+      if (count > 1) {
+        val names = Seq.newBuilder[String]
+        derivedCls.derivedAttributes.valuesIterator.foreach { s =>
+          if (s.slot.identifier || s.slot.key) names.addOne(s.slot.name)
+        }
         errors.addOne(
           new MultipleKeyOrIdSlots(
             location = locationOf(derivedCls),
             className = derivedCls.cls.name,
-            slotNames = keyOrId.toSeq.map(_.name),
+            slotNames = names.result(),
           ),
         )
-      } else if (keyOrId.size == 1) {
-        keyOrId.head.range.flatMapFast(sv.resolve).orElseFast(sv.schemas.collectFirst {
+      } else if (count == 1) {
+        first.range.flatMapFast(sv.resolve).orElseFast(sv.schemas.collectFirst {
           case s if s.defaultRange.isDefined => sv.resolve(s.defaultRange.get)
         }.flatten).orNullFast match {
           case _: TypeDefinition | null =>
@@ -563,30 +567,40 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Ensure that any declared slot usages are refining some applicable slot (top level slot or
     * attribute)
     */
-  private lazy val invalidSlotUsage: Seq[SchemaWarning] =
-    sv.classes.values.foldLeft(Seq.newBuilder[SchemaWarning]) { (acc, cls) =>
-      // Collect all slot names that are applicable to this class definition.
-      val applicableSlotNames = new util.HashSet[String]
-      cls.ancestorsWithSelf.foreach { anc =>
-        val keys = anc.cls.attributes.keysIterator
-        while (keys.hasNext) applicableSlotNames.add(keys.next())
-        val slots = anc.cls.slots.iterator
-        while (slots.hasNext) applicableSlotNames.add(slots.next().value)
+  private lazy val invalidSlotUsage: Seq[SchemaWarning] = {
+    val warnings = Seq.newBuilder[SchemaWarning]
+    sv.classes.values.foreach { cls =>
+      // Most classes have no `slot_usage`, and need no set of the slot names that apply to them.
+      if (cls.cls.slotUsage.nonEmpty) {
+        // Collect all slot names that are applicable to this class definition.
+        val applicableSlotNames = new util.HashSet[String]
+        cls.ancestorsWithSelf.foreach { anc =>
+          val keys = anc.cls.attributes.keysIterator
+          while (keys.hasNext) applicableSlotNames.add(keys.next())
+          val slots = anc.cls.slots.iterator
+          while (slots.hasNext) applicableSlotNames.add(slots.next().value)
+        }
+        // Filter problematic slots for the warning per class
+        val problemSlots = Seq.newBuilder[String]
+        val usages = cls.cls.slotUsage.keysIterator
+        while (usages.hasNext) {
+          val name = usages.next()
+          if (!applicableSlotNames.contains(name)) problemSlots.addOne(name)
+        }
+        val names = problemSlots.result()
+        if (names.nonEmpty) {
+          warnings.addOne(
+            new InvalidSlotUsage(
+              location = locationOf(cls),
+              className = cls.cls.name,
+              slotNames = names,
+            ),
+          )
+        }
       }
-      // Filter problematic slots for the warning per class
-      val problemSlots = cls.cls.slotUsage.keys
-        .filter(x => !applicableSlotNames.contains(x))
-      if (problemSlots.nonEmpty) {
-        acc.addOne(
-          new InvalidSlotUsage(
-            location = locationOf(cls),
-            className = cls.cls.name,
-            slotNames = problemSlots.toSeq,
-          ),
-        )
-      }
-      acc
-    }.result()
+    }
+    warnings.result()
+  }
 
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
     UndefinedPrefix(location = at(position, schemaId), prefix = prefix)
@@ -657,85 +671,85 @@ final class SchemaValidator(using sv: SchemaView) {
       )
   }
 
-  private val repeatedSeparatorRegex: Regex = "[^A-Za-z0-9]{2,}".r.unanchored
-
+  /** Add the issues with the name [[name]] of an element at [[location]] to [[builder]]. The
+    * location is made only for an issue.
+    */
   private def checkNaming(
       builder: mutable.Builder[SchemaIssue, Seq[SchemaIssue]],
       name: String,
-      baseName: String,
-      location: IssueLocation,
-  ): Unit = {
-    if name.isEmpty then
-      builder.addOne(
-        EmptyName(elementName = name, transformedName = baseName, location = location),
-      )
-    else {
+      location: => IssueLocation,
+  ): Unit =
+    if (name.isEmpty) {
+      builder.addOne(EmptyName(elementName = name, transformedName = "", location = location))
+    } else {
+      // What the checks below need, from one pass over the characters of the name
+      var nonAscii = false
+      var alphanumeric = false
+      var repeatedSeparator = false
+      // The characters that are not letters, digits or `_`
+      val separators = Seq.newBuilder[String]
+      var nonStandard = false
+      var previousSeparator = false
+      var i = 0
+      while (i < name.length) {
+        val c = name.charAt(i)
+        if (!Case.isAllowedAscii(c)) nonAscii = true
+        val separator = !Case.isAlphanumeric(c)
+        if (separator) {
+          if (previousSeparator) repeatedSeparator = true
+          if (!Case.isStandard(c)) {
+            nonStandard = true
+            separators.addOne(c.toString)
+          }
+        } else alphanumeric = true
+        previousSeparator = separator
+        i += 1
+      }
       // chain of complaining: complain about non-ASCII first, then about empty transformed name, then about non-standard separators
-      if name.exists(!Case.isAllowedAscii(_)) then
-        builder.addOne(
-          NonAsciiName(
-            elementName = name,
-            location = location,
-          ),
-        )
-      else if baseName.isEmpty then
-        builder.addOne(
-          EmptyName(elementName = name, transformedName = baseName, location = location),
-        )
-      else if name.exists(!Case.isStandard(_)) then
+      if (nonAscii) builder.addOne(NonAsciiName(elementName = name, location = location))
+      // The base name of an element has the letters and digits of its name, so it is empty if the
+      // name has none, and the name doesn't have to be turned into its base name to check that.
+      else if (!alphanumeric) {
+        builder.addOne(EmptyName(elementName = name, transformedName = "", location = location))
+      } else if (nonStandard) {
         builder.addOne(
           NonStandardSeparator(
             elementName = name,
             location = location,
-            separators = name.collect {
-              case c if !Case.isStandard(c) => c.toString
-            },
+            separators = separators.result(),
           ),
         )
-
-      if !Case.isAlphanumeric(name.head) || !Case.isAlphanumeric(name.last) then
-        builder.addOne(
-          FlankingSeparator(
-            elementName = name,
-            location = location,
-          ),
-        )
-
-      if repeatedSeparatorRegex.matches(name) then
-        builder.addOne(
-          RepeatedSeparator(
-            elementName = name,
-            location = location,
-          ),
-        )
+      }
+      if (
+        !Case.isAlphanumeric(name.charAt(0)) || !Case.isAlphanumeric(name.charAt(name.length - 1))
+      ) {
+        builder.addOne(FlankingSeparator(elementName = name, location = location))
+      }
+      if (repeatedSeparator)
+        builder.addOne(RepeatedSeparator(elementName = name, location = location))
     }
-  }
 
   private lazy val namingIssues: Seq[SchemaIssue] = {
     val builder = Seq.newBuilder[SchemaIssue]
-    sv.elements.values.foreach { el =>
-      checkNaming(builder, el.name, el.baseName, locationOf(el))
-    }
+    sv.elements.values.foreach(el => checkNaming(builder, el.name, locationOf(el)))
     sv.classes.values.foreach { cls =>
       cls.cls.attributes.values.foreach { attr =>
-        val classLocation = locationOf(cls)
-        val location =
-          classLocation.copy(jsonPointer = classLocation.jsonPointer.map(_ + "/" + attr.name))
-
-        checkNaming(builder, attr.name, Case.base(attr.name), location)
+        checkNaming(builder, attr.name, withName(locationOf(cls), attr.name))
       }
     }
-
-    sv.enums.values.flatMap(enumView => enumView.derivedValues.map(enumView -> _.pv)).foreach {
-      (enumView, pv) =>
-        val enumLocation = locationOf(enumView)
-        val location =
-          enumLocation.copy(jsonPointer = enumLocation.jsonPointer.map(_ + "/" + pv.text))
-        checkNaming(builder, pv.text, Case.base(pv.text), location)
+    sv.enums.values.foreach { enumView =>
+      enumView.derivedValues.foreach { value =>
+        val text = value.pv.text
+        checkNaming(builder, text, withName(locationOf(enumView), text))
+      }
     }
-
     builder.result()
   }
+
+  /** [[location]] with [[name]] added to its JSON pointer, for an attribute or a permissible value.
+    */
+  private def withName(location: IssueLocation, name: String): IssueLocation =
+    location.copy(jsonPointer = location.jsonPointer.mapFast(_ + "/" + name))
 
   /** Any fatal problems that block further processing / validation, if any. */
   lazy val fatalProblems: Seq[SchemaFatal] = {
@@ -826,8 +840,57 @@ object SchemaValidator {
     slots
   }
 
-  /** Find the loops in a relation between elements with a depth-first search, in O(V log V + E)
-    * time for V elements and E references between them.
+  /** The index of the field of [[element]] for the slot [[slotName]], such as `description` or
+    * `alias_predicate`, or -1 if it has none. Field names are the slot names in camel case, so the
+    * names are compared without case and without `_`.
+    */
+  private def fieldIndex(element: Product, slotName: String): Int = {
+    var i = 0
+    var found = -1
+    while (found < 0 && i < element.productArity) {
+      if (isFieldOf(element.productElementName(i), slotName)) found = i
+      i += 1
+    }
+    found
+  }
+
+  /** Whether [[fieldName]] is the name of the field for the slot [[slotName]], as `aliasPredicate`
+    * is for `alias_predicate`: the same letters and digits, in any case, without the `_`.
+    */
+  private def isFieldOf(fieldName: String, slotName: String): Boolean = {
+    var i = 0
+    var j = 0
+    var same = true
+    while (same && (i < fieldName.length || j < slotName.length)) {
+      if (j < slotName.length && slotName.charAt(j) == '_') j += 1
+      else if (i < fieldName.length && j < slotName.length) {
+        same =
+          Character.toLowerCase(fieldName.charAt(i)) == Character.toLowerCase(slotName.charAt(j))
+        i += 1
+        j += 1
+      } else same = false
+    }
+    same
+  }
+
+  /** Whether [[value]], the value of a field of an element, is missing or empty, as
+    * `description: ""` is.
+    */
+  private def hasNoValue(value: Any): Boolean = value match {
+    case None => true
+    case Some(v) => hasNoValue(v)
+    case s: String => s.isEmpty
+    case t: PlainText => t.value.isEmpty
+    case i: Iterable[?] => i.isEmpty
+    case _ => false
+  }
+
+  /** Find the loops in a relation between elements with a depth-first search, in O(V + E) time for
+    * V elements and E references between them, or O(V log V + E) if there are loops.
+    *
+    * A search from the elements in any order finds a loop if there is one. Only then are they
+    * sorted by their keys, and searched again, so that the same loops are reported from the same
+    * elements whatever the order of the collection.
     *
     * @param elements
     *   Elements to start from. They are visited in the order of their keys, so that the result does
@@ -844,18 +907,23 @@ object SchemaValidator {
       key: E => String,
       next: E => Iterable[E],
   ): List[List[E]] = {
-    val sorted = elements.toArray[AnyRef]
-    util.Arrays.sort(
-      sorted,
-      (x: AnyRef, y: AnyRef) => key(x.asInstanceOf[E]).compareTo(key(y.asInstanceOf[E])),
-    )
-    val finder = new CycleFinder[E](key, next, sorted.length)
-    var i = 0
-    while (i < sorted.length) {
-      finder(sorted(i).asInstanceOf[E])
-      i += 1
+    val unsorted = new CycleFinder[E](key, next, elements.size)
+    elements.foreach(unsorted)
+    if (unsorted.cycles.isEmpty) Nil
+    else {
+      val sorted = elements.toArray[AnyRef]
+      util.Arrays.sort(
+        sorted,
+        (x: AnyRef, y: AnyRef) => key(x.asInstanceOf[E]).compareTo(key(y.asInstanceOf[E])),
+      )
+      val finder = new CycleFinder[E](key, next, sorted.length)
+      var i = 0
+      while (i < sorted.length) {
+        finder(sorted(i).asInstanceOf[E])
+        i += 1
+      }
+      finder.cycles.toList
     }
-    finder.cycles.toList
   }
 
   /** State of [[findCycles]]. It is the function that visits an element, so that it can be passed
