@@ -55,6 +55,15 @@ private class ReferenceCollectorImpl(using Quotes) extends MacroUtils {
       case _ => fail("The names of the skipped fields must be string literals")
     }
     val rootTpe = TypeRepr.of[T].dealias
+    val fieldNames = getClassInfo(rootTpe).fields.map(_.mappedName)
+    skipped.foreach { name =>
+      if (!fieldNames.contains(name)) {
+        fail(
+          s"Can't skip '$name', as ${rootTpe.typeSymbol.name} has no such field. Use the names of " +
+            "the fields as they are written in YAML, such as 'is_a'.",
+        )
+      }
+    }
     val collectorDef = '{
       new ReferenceCollector[T] {
         override def collect(t: T, out: mutable.Growable[TaggedReference])(using
