@@ -21,16 +21,17 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     ("exactlyOneOfMixins", "matchesNoneInMixin") -> "RDF4J does not enforce `sh:xone`",
     ("exactlyOneOfWidening", "matchesBothInBase") -> "RDF4J does not enforce `sh:xone`",
     ("exactlyOneOfWidening", "matchesNoneInSlotUsage") -> "RDF4J does not enforce `sh:xone`",
-    // With the class hierarchy in the data graph, the shape of a parent or mixin also checks
-    // instances of its subclasses. SHACL can't let a subclass loosen the shape of its parent.
+    // The data graph has the class hierarchy, so the shape of a parent class or mixin also checks
+    // the instances of its subclasses. A subclass can't make that check less strict, so data that
+    // is valid for the subclass can still fail the shape of its parent.
     (
       "mixinFacets",
       "full",
-    ) -> "Thing changes the `slot_uri` of the slot that the WithRequired mixin requires",
+    ) -> "Thing stores `value` as `alt:number`, but the WithRequired mixin requires it as `:value`",
     (
       "mixinFacets",
       "minimal",
-    ) -> "Thing changes the `slot_uri` of the slot that the WithRequired mixin requires",
+    ) -> "Thing stores `value` as `alt:number`, but the WithRequired mixin requires it as `:value`",
     (
       "multivaluedOverride",
       "many",
