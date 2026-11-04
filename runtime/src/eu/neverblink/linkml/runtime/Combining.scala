@@ -1,7 +1,6 @@
 package eu.neverblink.linkml.runtime
 
 import scala.annotation.unused
-import eu.neverblink.linkml.runtime.FastUtils.*
 
 /** Combine two optional values into one with a handler for combining them if both are defined and
   * are not identical
@@ -12,17 +11,22 @@ import eu.neverblink.linkml.runtime.FastUtils.*
   *   The combined optional value
   */
 def combineOption[T](o1: Option[T], o2: Option[T], combineSome: (T, T) => T): Option[T] =
-  o1.foldFast(o2) { v1 =>
-    o2.foldFast(o1) { v2 =>
-      if (v1 != v2) new Some(combineSome(v1, v2))
-      else o1
-    }
+  if (o1 eq None) o2
+  else if (o2 eq None) o1
+  else {
+    val v1 = o1.get
+    val v2 = o2.get
+    // Most handlers, such as [[combineFallback]], keep `v1`, and then `o1` is the result as it is,
+    // without comparing the values.
+    val combined = combineSome(v1, v2)
+    if ((combined.asInstanceOf[AnyRef] eq v1.asInstanceOf[AnyRef]) || v1 == v2) o1
+    else new Some(combined)
   }
 
 /** Combine two [[Seq]]s if they're distinct
   */
 def combineSeq[T](v1: Seq[T], v2: Seq[T]): Seq[T] =
-  if v2.isEmpty || v1 == v2 then v1 else v1.appendedAll(v2)
+  if v2.isEmpty || v1 == v2 then v1 else if v1.isEmpty then v2 else v1.appendedAll(v2)
 
 /** Returns the first non-empty list.
   *
@@ -88,6 +92,13 @@ inline def combinePattern(v1: String, @unused v2: String): String = v1
 /** Combine boolean values with an OR operation
   */
 inline def combineBoolean(v1: Boolean, v2: Boolean): Boolean = v1 || v2
+
+/** Whether a combined value is `v`, the value that it was combined from. The combine functions give
+  * back their first value as it is when they don't change it, so the same object means no change.
+  * Generated slot combining methods use it to return the slot as it is when nothing changes.
+  */
+inline def same(combined: Any, v: Any): Boolean =
+  combined.asInstanceOf[AnyRef] eq v.asInstanceOf[AnyRef]
 
 /** Fallback combine function that simply returns the first value
   */

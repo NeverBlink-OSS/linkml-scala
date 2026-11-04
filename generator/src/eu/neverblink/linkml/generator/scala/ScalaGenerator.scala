@@ -871,9 +871,7 @@ object ScalaGenerator {
           |  *   schema view
           |  */
           |def combineWith(other: $caseClassName, $combineRange): $caseClassName =
-          |  copy(
-          |    ${fields.map(_.generateCombiningFunctionPart).mkString(",\n")}
-          |  )
+          |  ${generateCombining(fields)}
           |
           |/** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
           |  * merges INHERITED SlotDefinition slots only.
@@ -884,11 +882,7 @@ object ScalaGenerator {
           |  *   schema view
           |  */
           |def combineInherited(other: $caseClassName, $combineRange): $caseClassName =
-          |  copy(
-          |    ${fields
-              .collect { case f if f.inherited => f.generateCombiningFunctionPart }
-              .mkString(",\n")}
-          |  )
+          |  ${generateCombining(fields.filter(_.inherited))}
           |""".stripMargin
         }
       indent"""
@@ -898,6 +892,27 @@ object ScalaGenerator {
       |}
       |""".stripMargin
     }
+
+  /** The body of a slot combining method that combines [[fields]] of `this` and `other`.
+    *
+    * Each combined value is computed once, into a local value. If all of them are the values that
+    * `this` has, which is the case for most combinations in large schemas, `this` is returned as it
+    * is. Otherwise `this` is copied with the combined values.
+    */
+  private def generateCombining(fields: Seq[ScalaField]): String =
+    if (fields.isEmpty) "this"
+    else
+      indent"""
+      |{
+      |  ${fields.map(f => s"val ${f.combinedName} = ${f.generateCombinedValue}").mkString("\n")}
+      |  if (
+      |    ${fields.map(_.generateUnchangedCheck).mkString(" &&\n")}
+      |  ) this
+      |  else
+      |    copy(
+      |      ${fields.map(f => s"${f.name} = ${f.combinedName}").mkString(",\n")}
+      |    )
+      |}""".stripMargin
 
   /** Scaladoc of the `infer()` method. */
   private val inferDoc: String =
@@ -1083,10 +1098,26 @@ object ScalaGenerator {
     def generateInterfaceField: String =
       s"${doc.print}def $name: $typeName"
 
-    /** Generate code for a combining function part.
+    /** Generate code for the combined value of the field. */
+    def generateCombinedValue: String = combineFunc.generate(name, "this", "other")
+
+    /** The name of the local value that holds the combined value of the field. */
+    def combinedName: String = "combined" + name.stripPrefix("`").stripSuffix("`").capitalize
+
+    /** Generate code that checks whether the combined value of the field is the value that `this`
+      * has. The combining functions return the first value as it is when it does not change, so
+      * `same` (`eq`) is enough, and `==` is used for values of primitive types.
       */
-    def generateCombiningFunctionPart: String =
-      s"""$name = ${combineFunc.generate(name, "this", "other")}"""
+    def generateUnchangedCheck: String =
+      if (ScalaField.primitiveTypes.contains(typeName)) s"$combinedName == this.$name"
+      else s"same($combinedName, this.$name)"
+
+  private object ScalaField {
+
+    /** The Scala types whose values are compared with `==` rather than `eq`. */
+    val primitiveTypes: Set[String] =
+      Set("Boolean", "Byte", "Short", "Int", "Long", "Float", "Double", "Char")
+  }
 
   /** A field whose value can be computed from the slot's `equals_expression`.
     *

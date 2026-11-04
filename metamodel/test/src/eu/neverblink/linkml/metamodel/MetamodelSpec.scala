@@ -1,12 +1,35 @@
 package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.metamodel.Codec.*
+import eu.neverblink.linkml.runtime.Reference
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 import org.virtuslab.yaml.*
 import io.circe.*
 
 class MetamodelSpec extends AnyWordSpec, Matchers {
+  "SlotDefinition.combineWith and combineInherited" should {
+    val keepRange = (v1: Reference[Element], _: Reference[Element]) => v1
+    val slot =
+      SlotDefinition(name = "a", required = true, pattern = Some("p"), mixins = Seq(Reference("m")))
+
+    "return the slot as it is when the other slot adds nothing to it" in {
+      val other = SlotDefinition(name = "b", pattern = Some("q"), mixins = Seq(Reference("m")))
+      slot.combineWith(other, keepRange) should be theSameInstanceAs slot
+      slot.combineWith(SlotDefinition(name = "c"), keepRange) should be theSameInstanceAs slot
+      slot.combineInherited(other, keepRange) should be theSameInstanceAs slot
+    }
+
+    "return a new slot when the other slot adds to it" in {
+      val other = SlotDefinition(name = "b", multivalued = true, alias = Some("B"))
+      val combined = slot.combineWith(other, keepRange)
+      combined should not be theSameInstanceAs(slot)
+      combined shouldBe slot.copy(multivalued = true, alias = Some("B"))
+      // `multivalued` is inherited, `alias` is not.
+      slot.combineInherited(other, keepRange) shouldBe slot.copy(multivalued = true)
+    }
+  }
+
   "Metamodel" should {
     "decode and encode annotations.yaml" in {
       roundTrip("/annotations.yaml")

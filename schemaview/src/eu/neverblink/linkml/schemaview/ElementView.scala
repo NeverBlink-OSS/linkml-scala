@@ -8,6 +8,7 @@ import eu.neverblink.linkml.schemaview
 import eu.neverblink.linkml.schemaview.CollectionForm.{CompactDict, SimpleDict}
 import eu.neverblink.linkml.schemaview.expression.ConstructorExpression
 
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
 /** Element views provide a rich interface for working with schema elements. They require an
@@ -105,6 +106,55 @@ sealed trait ElementView[E <: Element, R](using val sv: SchemaView) {
 private object ClassView:
   // Used to avoid as many allocations as possible when deriving slots.
   val emptySlotDef: SlotDefinition = SlotDefinition(name = "!!! invalid, internal !!!")
+
+  /** Finish a derived slot:
+    *   - merge [[inherited]] and its ancestors into [[start]], if [[inherited]] is given
+    *   - set the name, the URI, `inlined` and `required`
+    *
+    * @param start
+    *   The slot with the `slot_usage` and `attributes` of a class and its ancestors merged in
+    * @param name
+    *   The name of the slot
+    * @param inherited
+    *   The top-level slot to merge, or `None` for an attribute or a slot that is not defined
+    * @param source
+    *   Where the slot is defined, for the prefixes and the default range of its schema
+    */
+  def derived(
+      start: SlotDefinition,
+      name: String,
+      inherited: Option[SlotView],
+      source: ElementView[?, ?],
+  )(using sv: SchemaView): SlotView = {
+    var currentSlot = start
+    inherited.foreachFast { resolved =>
+      val ancestors = resolved.ancestorsWithSelf.iterator
+      // The slot itself, then its ancestors
+      val slotDef = ancestors.next().slot
+      // Merging into the empty start gives the slot itself, but for its name, which is set below.
+      currentSlot =
+        if (currentSlot eq emptySlotDef) slotDef
+        else currentSlot.combineWith(slotDef, sv.combineRangeFunction)
+      while (ancestors.hasNext)
+        currentSlot = currentSlot.combineInherited(ancestors.next().slot, sv.combineRangeFunction)
+    }
+    val finalSlot = currentSlot.copy(
+      name = name,
+      slotUri = new Some(
+        SlotView.uri(
+          currentSlot.slotUri,
+          name,
+          // For prefix resolution use the context of the original slot definition
+          source,
+        ),
+      ),
+      inlined = currentSlot.inlinedAsList || currentSlot.inlined,
+      required = currentSlot.identifier || currentSlot.key || currentSlot.required,
+    )
+    // Apply the original schema as the defining schema, so that default prefix / default range
+    // resolution still works as defined in the original schema file.
+    new SlotView(finalSlot, source.definingSchema)
+  }
 
 final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinition)(using
     sv: SchemaView,
@@ -330,6 +380,34 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     slots.toList
   }
 
+  /** The `slot_usage` and `attributes` entries of this class and its ancestors, keyed by slot name,
+    * in the order they are merged into a slot:
+    *   - this class: its `slot_usage`, then its `attributes`
+    *   - then each class in [[parents]] (mixins in order, then `is_a`), with its own entries
+    *
+    * An ancestor reached by more than one path is listed once for each path.
+    *
+    * A class without entries of its own and with at most one parent shares the map of that parent.
+    *
+    * @see
+    *   `ApplySlotUsage` from
+    *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
+    */
+  private lazy val slotChanges: collection.Map[String, collection.Seq[SlotDefinition]] = {
+    val ps = parents
+    if (cls.slotUsage.isEmpty && cls.attributes.isEmpty && ps.lengthCompare(1) <= 0) {
+      if (ps.isEmpty) Map.empty else ps.head.slotChanges
+    } else {
+      val changes = mutable.HashMap.empty[String, mutable.ArrayBuffer[SlotDefinition]]
+      def changesOf(name: String): mutable.ArrayBuffer[SlotDefinition] =
+        changes.getOrElseUpdate(name, new mutable.ArrayBuffer[SlotDefinition](2))
+      cls.slotUsage.foreach((name, s) => changesOf(name).addOne(s))
+      cls.attributes.foreach((name, s) => changesOf(name).addOne(s))
+      ps.foreach(p => p.slotChanges.foreach((name, slots) => changesOf(name).addAll(slots)))
+      changes
+    }
+  }
+
   /** Test whether the class or its ancestors have this slot defined as an attribute.
     *
     * This is needed so that attribute names can shadow top-level slot definitions.
@@ -340,10 +418,24 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
     *   True if the slot comes from class attributes, false otherwise
     */
   def isSlotFromAttributes(slotRef: Reference[SlotDefinition]): Boolean =
-    ancestorsWithSelf.exists {
-      val name = slotRef.value
-      anc => anc.cls.attributes.contains(name)
+    attributeNames.contains(slotRef.value)
+
+  /** The names of the `attributes` of this class and its ancestors.
+    *
+    * A class without attributes of its own and with at most one parent shares the set of that
+    * parent.
+    */
+  private lazy val attributeNames: collection.Set[String] = {
+    val ps = parents
+    if (cls.attributes.isEmpty && ps.lengthCompare(1) <= 0) {
+      if (ps.isEmpty) Set.empty else ps.head.attributeNames
+    } else {
+      val names = mutable.HashSet.empty[String]
+      names.addAll(cls.attributes.keysIterator)
+      ps.foreach(p => names.addAll(p.attributeNames))
+      names
     }
+  }
 
   /** Derive a slot for a class, taking into account the `slotUsage` and `attributes` for the class
     * and its ancestors, as well as the schema top-level slots and its ancestors.
@@ -368,39 +460,31 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
       slotRef: Reference[SlotDefinition],
       source: ElementView[?, ?],
   ): SlotView = {
-    // Use empty slot base here to avoid an extra allocation
-    var currentSlot = ClassView.emptySlotDef
-    currentSlot = sv.applySlotUsage(currentSlot, slotRef.value, cls)
-    sv.resolve(slotRef.asInstanceOf[Reference[SlotView]]).foreachFast { (resolved: SlotView) =>
-      // Note this is a bit off-spec, but it's a pretty reasonable
-      if (!isSlotFromAttributes(slotRef)) {
-        resolved.ancestorsWithSelf.foreach {
-          var i = 0
-          ancestorSlotView =>
-            currentSlot =
-              val slotDef = ancestorSlotView.slot
-              if (i > 0) currentSlot.combineInherited(slotDef, sv.combineRange)
-              else currentSlot.combineWith(slotDef, sv.combineRange)
-            i += 1
+    val name = slotRef.value
+    val changes = slotChanges.get(name)
+    val resolved = sv.resolve(slotRef.asInstanceOf[Reference[SlotView]])
+    // Without changes from this class or its ancestors, the slot is the same in every class
+    if ((changes eq None) && (resolved ne None) && (resolved.get eq source))
+      resolved.get.unchangedDerived
+    else {
+      // Use empty slot base here to avoid an extra allocation
+      var currentSlot = ClassView.emptySlotDef
+      changes.foreachFast { slots =>
+        slots.foreach { s =>
+          // Merging into the empty start gives `s` itself, but for its name, which is set later.
+          currentSlot =
+            if (currentSlot eq ClassView.emptySlotDef) s
+            else currentSlot.combineWith(s, sv.combineRangeFunction)
         }
       }
+      // Note this is a bit off-spec, but it's a pretty reasonable
+      ClassView.derived(
+        currentSlot,
+        name,
+        if (isSlotFromAttributes(slotRef)) None else resolved,
+        source,
+      )
     }
-    val finalSlot = currentSlot.copy(
-      name = slotRef.value,
-      slotUri = new Some(
-        SlotView.uri(
-          currentSlot.slotUri,
-          slotRef.value,
-          // For prefix resolution use the context of the original slot definition
-          source,
-        ),
-      ),
-      inlined = currentSlot.inlinedAsList || currentSlot.inlined,
-      required = currentSlot.identifier || currentSlot.key || currentSlot.required,
-    )
-    // Apply the original schema as the defining schema, so that default prefix / default range
-    // resolution still works as defined in the original schema file.
-    new SlotView(finalSlot, source.definingSchema)
   }
 
   /** Test whether this class definition has an identifier slot
@@ -525,6 +609,12 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
     */
   lazy val ancestorsWithSelf: Iterable[SlotView] =
     Closure.get(Seq(this), _.parents, true, Vector.newBuilder, true, _.slot.name)
+
+  /** This slot as a class has it when the class and its ancestors have no `slot_usage` or
+    * `attributes` for it. It is the same in all such classes, so it is built once.
+    */
+  private[schemaview] lazy val unchangedDerived: SlotView =
+    ClassView.derived(ClassView.emptySlotDef, name, Some(this), this)
 
   /** Test whether this slot is declared as inlined, or is implicitly inlined as its range is a
     * type, enum, or class without an identifier

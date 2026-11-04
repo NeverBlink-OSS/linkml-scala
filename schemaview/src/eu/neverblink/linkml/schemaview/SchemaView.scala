@@ -330,38 +330,6 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     */
   def elementOrder(el: Element): (Int, String) = (el.rank.getOrElse(Int.MaxValue), el.name)
 
-  /** Apply `slot_usage` and `attributes` for a class and then its ancestors, with mixins having
-    * priority.
-    *
-    * @see
-    *   `ApplySlotUsage` from
-    *   https://linkml.io/linkml-model/latest/docs/specification/04derived-schemas/#algorithm-calculate-derived-slot
-    */
-  private[schemaview] def applySlotUsage(
-      slot: SlotDefinition,
-      slotName: String,
-      cls: ClassDefinition,
-  ): SlotDefinition = {
-    var currentSlot = slot
-    cls.slotUsage.get(slotName).foreachFast { s =>
-      currentSlot = currentSlot.combineWith(s, combineRange)
-    }
-    cls.attributes.get(slotName).foreachFast { s =>
-      currentSlot = currentSlot.combineWith(s, combineRange)
-    }
-    cls.mixins.foreach { r =>
-      resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c)
-      }
-    }
-    cls.isA.foreachFast { r =>
-      resolve(r).foreachFast { c =>
-        currentSlot = applySlotUsage(currentSlot, slotName, c)
-      }
-    }
-    currentSlot
-  }
-
   /** Combine values for the `range` metaslot. The nearest range is used, with no check that it is
     * derived from the inherited one, as the spec requires (LNK-237).
     */
@@ -370,6 +338,11 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
       v1: Reference[Element],
       @unused v2: Reference[Element],
   ): Reference[Element] = v1
+
+  /** [[combineRange]] as a function, made once rather than for each slot that is combined. */
+  private[schemaview] val combineRangeFunction
+      : (Reference[Element], Reference[Element]) => Reference[Element] =
+    combineRange
 
   /** The prefixes of the root schema */
   val rootPrefixes: PrefixMap = SchemaCodec.prefixMap(root)

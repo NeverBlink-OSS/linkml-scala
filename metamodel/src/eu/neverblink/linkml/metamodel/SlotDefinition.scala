@@ -542,158 +542,419 @@ final case class SlotDefinition(
   def combineWith(
       other: SlotDefinition,
       combineRange: (Reference[Element], Reference[Element]) => Reference[Element],
-  ): SlotDefinition =
-    copy(
-      name = combineFallback(this.name, other.name),
-      slotUri = combineOption(this.slotUri, other.slotUri, combineFallback),
-      title = combineOption(this.title, other.title, combineFallback),
-      description = combineOption(this.description, other.description, combineFallback),
-      identifier = combineBoolean(this.identifier, other.identifier),
-      alias = combineOption(this.alias, other.alias, combineFallback),
-      multivalued = combineBoolean(this.multivalued, other.multivalued),
-      required = combineBoolean(this.required, other.required),
-      recommended = combineBoolean(this.recommended, other.recommended),
-      isA = combineOption(this.isA, other.isA, combineFallback),
-      mixins = combineSeq(this.mixins, other.mixins),
-      inlined = combineBoolean(this.inlined, other.inlined),
-      inlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList),
-      pattern = combineOption(this.pattern, other.pattern, combinePattern),
-      minimumLength = combineOption(this.minimumLength, other.minimumLength, combineFallback),
-      maximumLength = combineOption(this.maximumLength, other.maximumLength, combineFallback),
-      rank = combineOption(this.rank, other.rank, combineFallback),
-      aliases = combineSeq(this.aliases, other.aliases),
-      altDescriptions = combineMap(this.altDescriptions, other.altDescriptions),
-      applyTo = combineSeq(this.applyTo, other.applyTo),
-      broadMappings = combineSeq(this.broadMappings, other.broadMappings),
-      categories = combineSeq(this.categories, other.categories),
-      closeMappings = combineSeq(this.closeMappings, other.closeMappings),
-      comments = combineSeq(this.comments, other.comments),
-      conformsTo = combineOption(this.conformsTo, other.conformsTo, combineFallback),
-      contributors = combineSeq(this.contributors, other.contributors),
-      createdBy = combineOption(this.createdBy, other.createdBy, combineFallback),
-      createdOn = combineOption(this.createdOn, other.createdOn, combineFallback),
-      definitionUri = combineOption(this.definitionUri, other.definitionUri, combineFallback),
-      deprecated = combineOption(this.deprecated, other.deprecated, combineFallback),
-      deprecatedElementHasExactReplacement = combineOption(
-        this.deprecatedElementHasExactReplacement,
-        other.deprecatedElementHasExactReplacement,
-        combineFallback,
-      ),
-      deprecatedElementHasPossibleReplacement = combineOption(
-        this.deprecatedElementHasPossibleReplacement,
-        other.deprecatedElementHasPossibleReplacement,
-        combineFallback,
-      ),
-      exactMappings = combineSeq(this.exactMappings, other.exactMappings),
-      examples = combineSeq(this.examples, other.examples),
-      fromSchema = combineOption(this.fromSchema, other.fromSchema, combineFallback),
-      implements = combineSeq(this.implements, other.implements),
-      importedFrom = combineOption(this.importedFrom, other.importedFrom, combineFallback),
-      inLanguage = combineOption(this.inLanguage, other.inLanguage, combineFallback),
-      instantiates = combineSeq(this.instantiates, other.instantiates),
-      keywords = combineSeq(this.keywords, other.keywords),
-      lastUpdatedOn = combineOption(this.lastUpdatedOn, other.lastUpdatedOn, combineFallback),
-      localNames = combineMap(this.localNames, other.localNames),
-      mappings = combineSeq(this.mappings, other.mappings),
-      modifiedBy = combineOption(this.modifiedBy, other.modifiedBy, combineFallback),
-      narrowMappings = combineSeq(this.narrowMappings, other.narrowMappings),
-      notes = combineSeq(this.notes, other.notes),
-      relatedMappings = combineSeq(this.relatedMappings, other.relatedMappings),
-      role = combineOption(this.role, other.role, combineFallback),
-      seeAlso = combineSeq(this.seeAlso, other.seeAlso),
-      singularName = combineOption(this.singularName, other.singularName, combineFallback),
-      slotGroup = combineOption(this.slotGroup, other.slotGroup, combineFallback),
-      source = combineOption(this.source, other.source, combineFallback),
-      status = combineOption(this.status, other.status, combineFallback),
-      structuredAliases = combineSeq(this.structuredAliases, other.structuredAliases),
-      todos = combineSeq(this.todos, other.todos),
-      unit = combineOption(this.unit, other.unit, combineFallback),
-      `abstract` = combineBoolean(this.`abstract`, other.`abstract`),
-      allMembers = combineOption(this.allMembers, other.allMembers, combineFallback),
-      annotations = combineMap(this.annotations, other.annotations),
-      array = combineOption(this.array, other.array, combineFallback),
-      asymmetric = combineBoolean(this.asymmetric, other.asymmetric),
-      bindings = combineSeq(this.bindings, other.bindings),
-      childrenAreMutuallyDisjoint =
-        combineBoolean(this.childrenAreMutuallyDisjoint, other.childrenAreMutuallyDisjoint),
-      designatesType = combineBoolean(this.designatesType, other.designatesType),
-      disjointWith = combineSeq(this.disjointWith, other.disjointWith),
-      domain = combineOption(this.domain, other.domain, combineFallback),
-      domainOf = combineSeq(this.domainOf, other.domainOf),
-      enumRange = combineOption(this.enumRange, other.enumRange, combineFallback),
-      equalsExpression =
-        combineOption(this.equalsExpression, other.equalsExpression, combineFallback),
-      equalsNumber = combineOption(this.equalsNumber, other.equalsNumber, combineFallback),
-      equalsString = combineOption(this.equalsString, other.equalsString, combineFallback),
-      equalsStringIn = combineSeq(this.equalsStringIn, other.equalsStringIn),
-      exactCardinality =
-        combineOption(this.exactCardinality, other.exactCardinality, combineFallback),
-      extensions = combineMap(this.extensions, other.extensions),
-      hasMember = combineOption(this.hasMember, other.hasMember, combineFallback),
-      idPrefixes = combineSeq(this.idPrefixes, other.idPrefixes),
-      idPrefixesAreClosed = combineBoolean(this.idPrefixesAreClosed, other.idPrefixesAreClosed),
-      ifabsent = combineOption(this.ifabsent, other.ifabsent, combineFallback),
-      implicitPrefix = combineOption(this.implicitPrefix, other.implicitPrefix, combineFallback),
-      inSubset = combineSeq(this.inSubset, other.inSubset),
-      inherited = combineBoolean(this.inherited, other.inherited),
-      inverse = combineOption(this.inverse, other.inverse, combineFallback),
-      irreflexive = combineBoolean(this.irreflexive, other.irreflexive),
-      isClassField = combineBoolean(this.isClassField, other.isClassField),
-      isGroupingSlot = combineBoolean(this.isGroupingSlot, other.isGroupingSlot),
-      key = combineBoolean(this.key, other.key),
-      listElementsOrdered = combineBoolean(this.listElementsOrdered, other.listElementsOrdered),
-      listElementsUnique = combineBoolean(this.listElementsUnique, other.listElementsUnique),
-      locallyReflexive = combineBoolean(this.locallyReflexive, other.locallyReflexive),
-      maximumCardinality =
-        combineOption(this.maximumCardinality, other.maximumCardinality, combineFallback),
-      maximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax),
-      minimumCardinality =
-        combineOption(this.minimumCardinality, other.minimumCardinality, combineFallback),
-      minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin),
-      mixin = combineBoolean(this.mixin, other.mixin),
-      pathRule = combineOption(this.pathRule, other.pathRule, combineFallback),
-      range = combineOption(this.range, other.range, combineRange),
-      rangeExpression = combineOption(this.rangeExpression, other.rangeExpression, combineFallback),
-      readonly = combineOption(this.readonly, other.readonly, combineFallback),
-      reflexive = combineBoolean(this.reflexive, other.reflexive),
-      reflexiveTransitiveFormOf = combineOption(
-        this.reflexiveTransitiveFormOf,
-        other.reflexiveTransitiveFormOf,
-        combineFallback,
-      ),
-      relationalRole = combineOption(this.relationalRole, other.relationalRole, combineFallback),
-      shared = combineBoolean(this.shared, other.shared),
-      stringSerialization =
-        combineOption(this.stringSerialization, other.stringSerialization, combineFallback),
-      structuredPattern =
-        combineOption(this.structuredPattern, other.structuredPattern, combineFallback),
-      subpropertyOf = combineOption(this.subpropertyOf, other.subpropertyOf, combineFallback),
-      symmetric = combineBoolean(this.symmetric, other.symmetric),
-      transitive = combineBoolean(this.transitive, other.transitive),
-      transitiveFormOf =
-        combineOption(this.transitiveFormOf, other.transitiveFormOf, combineFallback),
-      typeMappings = combineMap(this.typeMappings, other.typeMappings),
-      unionOf = combineSeq(this.unionOf, other.unionOf),
-      usageSlotName = combineOption(this.usageSlotName, other.usageSlotName, combineFallback),
-      valuePresence = combineOption(this.valuePresence, other.valuePresence, combineFallback),
-      valuesFrom = combineSeq(this.valuesFrom, other.valuesFrom),
-      anyOf = combineNonEmpty(this.anyOf, other.anyOf),
-      exactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf),
-      noneOf = combineDistinct(this.noneOf, other.noneOf),
-      allOf = combineDistinct(
-        combineDistinct(
-          combineDistinct(this.allOf, other.allOf),
-          wrapIfNotSubset(this.anyOf, other.anyOf, v => AnonymousSlotExpression(anyOf = v)),
-        ),
-        wrapIfDifferent(
-          this.exactlyOneOf,
-          other.exactlyOneOf,
-          v => AnonymousSlotExpression(exactlyOneOf = v),
-        ),
-      ),
-      isUsageSlot = combineBoolean(this.isUsageSlot, other.isUsageSlot),
-      owner = combineOption(this.owner, other.owner, combineFallback),
+  ): SlotDefinition = {
+    val combinedName = combineFallback(this.name, other.name)
+    val combinedSlotUri = combineOption(this.slotUri, other.slotUri, combineFallback)
+    val combinedTitle = combineOption(this.title, other.title, combineFallback)
+    val combinedDescription = combineOption(this.description, other.description, combineFallback)
+    val combinedIdentifier = combineBoolean(this.identifier, other.identifier)
+    val combinedAlias = combineOption(this.alias, other.alias, combineFallback)
+    val combinedMultivalued = combineBoolean(this.multivalued, other.multivalued)
+    val combinedRequired = combineBoolean(this.required, other.required)
+    val combinedRecommended = combineBoolean(this.recommended, other.recommended)
+    val combinedIsA = combineOption(this.isA, other.isA, combineFallback)
+    val combinedMixins = combineSeq(this.mixins, other.mixins)
+    val combinedInlined = combineBoolean(this.inlined, other.inlined)
+    val combinedInlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList)
+    val combinedPattern = combineOption(this.pattern, other.pattern, combinePattern)
+    val combinedMinimumLength =
+      combineOption(this.minimumLength, other.minimumLength, combineFallback)
+    val combinedMaximumLength =
+      combineOption(this.maximumLength, other.maximumLength, combineFallback)
+    val combinedRank = combineOption(this.rank, other.rank, combineFallback)
+    val combinedAliases = combineSeq(this.aliases, other.aliases)
+    val combinedAltDescriptions = combineMap(this.altDescriptions, other.altDescriptions)
+    val combinedApplyTo = combineSeq(this.applyTo, other.applyTo)
+    val combinedBroadMappings = combineSeq(this.broadMappings, other.broadMappings)
+    val combinedCategories = combineSeq(this.categories, other.categories)
+    val combinedCloseMappings = combineSeq(this.closeMappings, other.closeMappings)
+    val combinedComments = combineSeq(this.comments, other.comments)
+    val combinedConformsTo = combineOption(this.conformsTo, other.conformsTo, combineFallback)
+    val combinedContributors = combineSeq(this.contributors, other.contributors)
+    val combinedCreatedBy = combineOption(this.createdBy, other.createdBy, combineFallback)
+    val combinedCreatedOn = combineOption(this.createdOn, other.createdOn, combineFallback)
+    val combinedDefinitionUri =
+      combineOption(this.definitionUri, other.definitionUri, combineFallback)
+    val combinedDeprecated = combineOption(this.deprecated, other.deprecated, combineFallback)
+    val combinedDeprecatedElementHasExactReplacement = combineOption(
+      this.deprecatedElementHasExactReplacement,
+      other.deprecatedElementHasExactReplacement,
+      combineFallback,
     )
+    val combinedDeprecatedElementHasPossibleReplacement = combineOption(
+      this.deprecatedElementHasPossibleReplacement,
+      other.deprecatedElementHasPossibleReplacement,
+      combineFallback,
+    )
+    val combinedExactMappings = combineSeq(this.exactMappings, other.exactMappings)
+    val combinedExamples = combineSeq(this.examples, other.examples)
+    val combinedFromSchema = combineOption(this.fromSchema, other.fromSchema, combineFallback)
+    val combinedImplements = combineSeq(this.implements, other.implements)
+    val combinedImportedFrom = combineOption(this.importedFrom, other.importedFrom, combineFallback)
+    val combinedInLanguage = combineOption(this.inLanguage, other.inLanguage, combineFallback)
+    val combinedInstantiates = combineSeq(this.instantiates, other.instantiates)
+    val combinedKeywords = combineSeq(this.keywords, other.keywords)
+    val combinedLastUpdatedOn =
+      combineOption(this.lastUpdatedOn, other.lastUpdatedOn, combineFallback)
+    val combinedLocalNames = combineMap(this.localNames, other.localNames)
+    val combinedMappings = combineSeq(this.mappings, other.mappings)
+    val combinedModifiedBy = combineOption(this.modifiedBy, other.modifiedBy, combineFallback)
+    val combinedNarrowMappings = combineSeq(this.narrowMappings, other.narrowMappings)
+    val combinedNotes = combineSeq(this.notes, other.notes)
+    val combinedRelatedMappings = combineSeq(this.relatedMappings, other.relatedMappings)
+    val combinedRole = combineOption(this.role, other.role, combineFallback)
+    val combinedSeeAlso = combineSeq(this.seeAlso, other.seeAlso)
+    val combinedSingularName = combineOption(this.singularName, other.singularName, combineFallback)
+    val combinedSlotGroup = combineOption(this.slotGroup, other.slotGroup, combineFallback)
+    val combinedSource = combineOption(this.source, other.source, combineFallback)
+    val combinedStatus = combineOption(this.status, other.status, combineFallback)
+    val combinedStructuredAliases = combineSeq(this.structuredAliases, other.structuredAliases)
+    val combinedTodos = combineSeq(this.todos, other.todos)
+    val combinedUnit = combineOption(this.unit, other.unit, combineFallback)
+    val combinedAbstract = combineBoolean(this.`abstract`, other.`abstract`)
+    val combinedAllMembers = combineOption(this.allMembers, other.allMembers, combineFallback)
+    val combinedAnnotations = combineMap(this.annotations, other.annotations)
+    val combinedArray = combineOption(this.array, other.array, combineFallback)
+    val combinedAsymmetric = combineBoolean(this.asymmetric, other.asymmetric)
+    val combinedBindings = combineSeq(this.bindings, other.bindings)
+    val combinedChildrenAreMutuallyDisjoint =
+      combineBoolean(this.childrenAreMutuallyDisjoint, other.childrenAreMutuallyDisjoint)
+    val combinedDesignatesType = combineBoolean(this.designatesType, other.designatesType)
+    val combinedDisjointWith = combineSeq(this.disjointWith, other.disjointWith)
+    val combinedDomain = combineOption(this.domain, other.domain, combineFallback)
+    val combinedDomainOf = combineSeq(this.domainOf, other.domainOf)
+    val combinedEnumRange = combineOption(this.enumRange, other.enumRange, combineFallback)
+    val combinedEqualsExpression =
+      combineOption(this.equalsExpression, other.equalsExpression, combineFallback)
+    val combinedEqualsNumber = combineOption(this.equalsNumber, other.equalsNumber, combineFallback)
+    val combinedEqualsString = combineOption(this.equalsString, other.equalsString, combineFallback)
+    val combinedEqualsStringIn = combineSeq(this.equalsStringIn, other.equalsStringIn)
+    val combinedExactCardinality =
+      combineOption(this.exactCardinality, other.exactCardinality, combineFallback)
+    val combinedExtensions = combineMap(this.extensions, other.extensions)
+    val combinedHasMember = combineOption(this.hasMember, other.hasMember, combineFallback)
+    val combinedIdPrefixes = combineSeq(this.idPrefixes, other.idPrefixes)
+    val combinedIdPrefixesAreClosed =
+      combineBoolean(this.idPrefixesAreClosed, other.idPrefixesAreClosed)
+    val combinedIfabsent = combineOption(this.ifabsent, other.ifabsent, combineFallback)
+    val combinedImplicitPrefix =
+      combineOption(this.implicitPrefix, other.implicitPrefix, combineFallback)
+    val combinedInSubset = combineSeq(this.inSubset, other.inSubset)
+    val combinedInherited = combineBoolean(this.inherited, other.inherited)
+    val combinedInverse = combineOption(this.inverse, other.inverse, combineFallback)
+    val combinedIrreflexive = combineBoolean(this.irreflexive, other.irreflexive)
+    val combinedIsClassField = combineBoolean(this.isClassField, other.isClassField)
+    val combinedIsGroupingSlot = combineBoolean(this.isGroupingSlot, other.isGroupingSlot)
+    val combinedKey = combineBoolean(this.key, other.key)
+    val combinedListElementsOrdered =
+      combineBoolean(this.listElementsOrdered, other.listElementsOrdered)
+    val combinedListElementsUnique =
+      combineBoolean(this.listElementsUnique, other.listElementsUnique)
+    val combinedLocallyReflexive = combineBoolean(this.locallyReflexive, other.locallyReflexive)
+    val combinedMaximumCardinality =
+      combineOption(this.maximumCardinality, other.maximumCardinality, combineFallback)
+    val combinedMaximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax)
+    val combinedMinimumCardinality =
+      combineOption(this.minimumCardinality, other.minimumCardinality, combineFallback)
+    val combinedMinimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)
+    val combinedMixin = combineBoolean(this.mixin, other.mixin)
+    val combinedPathRule = combineOption(this.pathRule, other.pathRule, combineFallback)
+    val combinedRange = combineOption(this.range, other.range, combineRange)
+    val combinedRangeExpression =
+      combineOption(this.rangeExpression, other.rangeExpression, combineFallback)
+    val combinedReadonly = combineOption(this.readonly, other.readonly, combineFallback)
+    val combinedReflexive = combineBoolean(this.reflexive, other.reflexive)
+    val combinedReflexiveTransitiveFormOf = combineOption(
+      this.reflexiveTransitiveFormOf,
+      other.reflexiveTransitiveFormOf,
+      combineFallback,
+    )
+    val combinedRelationalRole =
+      combineOption(this.relationalRole, other.relationalRole, combineFallback)
+    val combinedShared = combineBoolean(this.shared, other.shared)
+    val combinedStringSerialization =
+      combineOption(this.stringSerialization, other.stringSerialization, combineFallback)
+    val combinedStructuredPattern =
+      combineOption(this.structuredPattern, other.structuredPattern, combineFallback)
+    val combinedSubpropertyOf =
+      combineOption(this.subpropertyOf, other.subpropertyOf, combineFallback)
+    val combinedSymmetric = combineBoolean(this.symmetric, other.symmetric)
+    val combinedTransitive = combineBoolean(this.transitive, other.transitive)
+    val combinedTransitiveFormOf =
+      combineOption(this.transitiveFormOf, other.transitiveFormOf, combineFallback)
+    val combinedTypeMappings = combineMap(this.typeMappings, other.typeMappings)
+    val combinedUnionOf = combineSeq(this.unionOf, other.unionOf)
+    val combinedUsageSlotName =
+      combineOption(this.usageSlotName, other.usageSlotName, combineFallback)
+    val combinedValuePresence =
+      combineOption(this.valuePresence, other.valuePresence, combineFallback)
+    val combinedValuesFrom = combineSeq(this.valuesFrom, other.valuesFrom)
+    val combinedAnyOf = combineNonEmpty(this.anyOf, other.anyOf)
+    val combinedExactlyOneOf = combineNonEmpty(this.exactlyOneOf, other.exactlyOneOf)
+    val combinedNoneOf = combineDistinct(this.noneOf, other.noneOf)
+    val combinedAllOf = combineDistinct(
+      combineDistinct(
+        combineDistinct(this.allOf, other.allOf),
+        wrapIfNotSubset(this.anyOf, other.anyOf, v => AnonymousSlotExpression(anyOf = v)),
+      ),
+      wrapIfDifferent(
+        this.exactlyOneOf,
+        other.exactlyOneOf,
+        v => AnonymousSlotExpression(exactlyOneOf = v),
+      ),
+    )
+    val combinedIsUsageSlot = combineBoolean(this.isUsageSlot, other.isUsageSlot)
+    val combinedOwner = combineOption(this.owner, other.owner, combineFallback)
+    if (
+      same(combinedName, this.name) &&
+      same(combinedSlotUri, this.slotUri) &&
+      same(combinedTitle, this.title) &&
+      same(combinedDescription, this.description) &&
+      combinedIdentifier == this.identifier &&
+      same(combinedAlias, this.alias) &&
+      combinedMultivalued == this.multivalued &&
+      combinedRequired == this.required &&
+      combinedRecommended == this.recommended &&
+      same(combinedIsA, this.isA) &&
+      same(combinedMixins, this.mixins) &&
+      combinedInlined == this.inlined &&
+      combinedInlinedAsList == this.inlinedAsList &&
+      same(combinedPattern, this.pattern) &&
+      same(combinedMinimumLength, this.minimumLength) &&
+      same(combinedMaximumLength, this.maximumLength) &&
+      same(combinedRank, this.rank) &&
+      same(combinedAliases, this.aliases) &&
+      same(combinedAltDescriptions, this.altDescriptions) &&
+      same(combinedApplyTo, this.applyTo) &&
+      same(combinedBroadMappings, this.broadMappings) &&
+      same(combinedCategories, this.categories) &&
+      same(combinedCloseMappings, this.closeMappings) &&
+      same(combinedComments, this.comments) &&
+      same(combinedConformsTo, this.conformsTo) &&
+      same(combinedContributors, this.contributors) &&
+      same(combinedCreatedBy, this.createdBy) &&
+      same(combinedCreatedOn, this.createdOn) &&
+      same(combinedDefinitionUri, this.definitionUri) &&
+      same(combinedDeprecated, this.deprecated) &&
+      same(
+        combinedDeprecatedElementHasExactReplacement,
+        this.deprecatedElementHasExactReplacement,
+      ) &&
+      same(
+        combinedDeprecatedElementHasPossibleReplacement,
+        this.deprecatedElementHasPossibleReplacement,
+      ) &&
+      same(combinedExactMappings, this.exactMappings) &&
+      same(combinedExamples, this.examples) &&
+      same(combinedFromSchema, this.fromSchema) &&
+      same(combinedImplements, this.implements) &&
+      same(combinedImportedFrom, this.importedFrom) &&
+      same(combinedInLanguage, this.inLanguage) &&
+      same(combinedInstantiates, this.instantiates) &&
+      same(combinedKeywords, this.keywords) &&
+      same(combinedLastUpdatedOn, this.lastUpdatedOn) &&
+      same(combinedLocalNames, this.localNames) &&
+      same(combinedMappings, this.mappings) &&
+      same(combinedModifiedBy, this.modifiedBy) &&
+      same(combinedNarrowMappings, this.narrowMappings) &&
+      same(combinedNotes, this.notes) &&
+      same(combinedRelatedMappings, this.relatedMappings) &&
+      same(combinedRole, this.role) &&
+      same(combinedSeeAlso, this.seeAlso) &&
+      same(combinedSingularName, this.singularName) &&
+      same(combinedSlotGroup, this.slotGroup) &&
+      same(combinedSource, this.source) &&
+      same(combinedStatus, this.status) &&
+      same(combinedStructuredAliases, this.structuredAliases) &&
+      same(combinedTodos, this.todos) &&
+      same(combinedUnit, this.unit) &&
+      combinedAbstract == this.`abstract` &&
+      same(combinedAllMembers, this.allMembers) &&
+      same(combinedAnnotations, this.annotations) &&
+      same(combinedArray, this.array) &&
+      combinedAsymmetric == this.asymmetric &&
+      same(combinedBindings, this.bindings) &&
+      combinedChildrenAreMutuallyDisjoint == this.childrenAreMutuallyDisjoint &&
+      combinedDesignatesType == this.designatesType &&
+      same(combinedDisjointWith, this.disjointWith) &&
+      same(combinedDomain, this.domain) &&
+      same(combinedDomainOf, this.domainOf) &&
+      same(combinedEnumRange, this.enumRange) &&
+      same(combinedEqualsExpression, this.equalsExpression) &&
+      same(combinedEqualsNumber, this.equalsNumber) &&
+      same(combinedEqualsString, this.equalsString) &&
+      same(combinedEqualsStringIn, this.equalsStringIn) &&
+      same(combinedExactCardinality, this.exactCardinality) &&
+      same(combinedExtensions, this.extensions) &&
+      same(combinedHasMember, this.hasMember) &&
+      same(combinedIdPrefixes, this.idPrefixes) &&
+      combinedIdPrefixesAreClosed == this.idPrefixesAreClosed &&
+      same(combinedIfabsent, this.ifabsent) &&
+      same(combinedImplicitPrefix, this.implicitPrefix) &&
+      same(combinedInSubset, this.inSubset) &&
+      combinedInherited == this.inherited &&
+      same(combinedInverse, this.inverse) &&
+      combinedIrreflexive == this.irreflexive &&
+      combinedIsClassField == this.isClassField &&
+      combinedIsGroupingSlot == this.isGroupingSlot &&
+      combinedKey == this.key &&
+      combinedListElementsOrdered == this.listElementsOrdered &&
+      combinedListElementsUnique == this.listElementsUnique &&
+      combinedLocallyReflexive == this.locallyReflexive &&
+      same(combinedMaximumCardinality, this.maximumCardinality) &&
+      same(combinedMaximumValue, this.maximumValue) &&
+      same(combinedMinimumCardinality, this.minimumCardinality) &&
+      same(combinedMinimumValue, this.minimumValue) &&
+      combinedMixin == this.mixin &&
+      same(combinedPathRule, this.pathRule) &&
+      same(combinedRange, this.range) &&
+      same(combinedRangeExpression, this.rangeExpression) &&
+      same(combinedReadonly, this.readonly) &&
+      combinedReflexive == this.reflexive &&
+      same(combinedReflexiveTransitiveFormOf, this.reflexiveTransitiveFormOf) &&
+      same(combinedRelationalRole, this.relationalRole) &&
+      combinedShared == this.shared &&
+      same(combinedStringSerialization, this.stringSerialization) &&
+      same(combinedStructuredPattern, this.structuredPattern) &&
+      same(combinedSubpropertyOf, this.subpropertyOf) &&
+      combinedSymmetric == this.symmetric &&
+      combinedTransitive == this.transitive &&
+      same(combinedTransitiveFormOf, this.transitiveFormOf) &&
+      same(combinedTypeMappings, this.typeMappings) &&
+      same(combinedUnionOf, this.unionOf) &&
+      same(combinedUsageSlotName, this.usageSlotName) &&
+      same(combinedValuePresence, this.valuePresence) &&
+      same(combinedValuesFrom, this.valuesFrom) &&
+      same(combinedAnyOf, this.anyOf) &&
+      same(combinedExactlyOneOf, this.exactlyOneOf) &&
+      same(combinedNoneOf, this.noneOf) &&
+      same(combinedAllOf, this.allOf) &&
+      combinedIsUsageSlot == this.isUsageSlot &&
+      same(combinedOwner, this.owner)
+    ) this
+    else
+      copy(
+        name = combinedName,
+        slotUri = combinedSlotUri,
+        title = combinedTitle,
+        description = combinedDescription,
+        identifier = combinedIdentifier,
+        alias = combinedAlias,
+        multivalued = combinedMultivalued,
+        required = combinedRequired,
+        recommended = combinedRecommended,
+        isA = combinedIsA,
+        mixins = combinedMixins,
+        inlined = combinedInlined,
+        inlinedAsList = combinedInlinedAsList,
+        pattern = combinedPattern,
+        minimumLength = combinedMinimumLength,
+        maximumLength = combinedMaximumLength,
+        rank = combinedRank,
+        aliases = combinedAliases,
+        altDescriptions = combinedAltDescriptions,
+        applyTo = combinedApplyTo,
+        broadMappings = combinedBroadMappings,
+        categories = combinedCategories,
+        closeMappings = combinedCloseMappings,
+        comments = combinedComments,
+        conformsTo = combinedConformsTo,
+        contributors = combinedContributors,
+        createdBy = combinedCreatedBy,
+        createdOn = combinedCreatedOn,
+        definitionUri = combinedDefinitionUri,
+        deprecated = combinedDeprecated,
+        deprecatedElementHasExactReplacement = combinedDeprecatedElementHasExactReplacement,
+        deprecatedElementHasPossibleReplacement = combinedDeprecatedElementHasPossibleReplacement,
+        exactMappings = combinedExactMappings,
+        examples = combinedExamples,
+        fromSchema = combinedFromSchema,
+        implements = combinedImplements,
+        importedFrom = combinedImportedFrom,
+        inLanguage = combinedInLanguage,
+        instantiates = combinedInstantiates,
+        keywords = combinedKeywords,
+        lastUpdatedOn = combinedLastUpdatedOn,
+        localNames = combinedLocalNames,
+        mappings = combinedMappings,
+        modifiedBy = combinedModifiedBy,
+        narrowMappings = combinedNarrowMappings,
+        notes = combinedNotes,
+        relatedMappings = combinedRelatedMappings,
+        role = combinedRole,
+        seeAlso = combinedSeeAlso,
+        singularName = combinedSingularName,
+        slotGroup = combinedSlotGroup,
+        source = combinedSource,
+        status = combinedStatus,
+        structuredAliases = combinedStructuredAliases,
+        todos = combinedTodos,
+        unit = combinedUnit,
+        `abstract` = combinedAbstract,
+        allMembers = combinedAllMembers,
+        annotations = combinedAnnotations,
+        array = combinedArray,
+        asymmetric = combinedAsymmetric,
+        bindings = combinedBindings,
+        childrenAreMutuallyDisjoint = combinedChildrenAreMutuallyDisjoint,
+        designatesType = combinedDesignatesType,
+        disjointWith = combinedDisjointWith,
+        domain = combinedDomain,
+        domainOf = combinedDomainOf,
+        enumRange = combinedEnumRange,
+        equalsExpression = combinedEqualsExpression,
+        equalsNumber = combinedEqualsNumber,
+        equalsString = combinedEqualsString,
+        equalsStringIn = combinedEqualsStringIn,
+        exactCardinality = combinedExactCardinality,
+        extensions = combinedExtensions,
+        hasMember = combinedHasMember,
+        idPrefixes = combinedIdPrefixes,
+        idPrefixesAreClosed = combinedIdPrefixesAreClosed,
+        ifabsent = combinedIfabsent,
+        implicitPrefix = combinedImplicitPrefix,
+        inSubset = combinedInSubset,
+        inherited = combinedInherited,
+        inverse = combinedInverse,
+        irreflexive = combinedIrreflexive,
+        isClassField = combinedIsClassField,
+        isGroupingSlot = combinedIsGroupingSlot,
+        key = combinedKey,
+        listElementsOrdered = combinedListElementsOrdered,
+        listElementsUnique = combinedListElementsUnique,
+        locallyReflexive = combinedLocallyReflexive,
+        maximumCardinality = combinedMaximumCardinality,
+        maximumValue = combinedMaximumValue,
+        minimumCardinality = combinedMinimumCardinality,
+        minimumValue = combinedMinimumValue,
+        mixin = combinedMixin,
+        pathRule = combinedPathRule,
+        range = combinedRange,
+        rangeExpression = combinedRangeExpression,
+        readonly = combinedReadonly,
+        reflexive = combinedReflexive,
+        reflexiveTransitiveFormOf = combinedReflexiveTransitiveFormOf,
+        relationalRole = combinedRelationalRole,
+        shared = combinedShared,
+        stringSerialization = combinedStringSerialization,
+        structuredPattern = combinedStructuredPattern,
+        subpropertyOf = combinedSubpropertyOf,
+        symmetric = combinedSymmetric,
+        transitive = combinedTransitive,
+        transitiveFormOf = combinedTransitiveFormOf,
+        typeMappings = combinedTypeMappings,
+        unionOf = combinedUnionOf,
+        usageSlotName = combinedUsageSlotName,
+        valuePresence = combinedValuePresence,
+        valuesFrom = combinedValuesFrom,
+        anyOf = combinedAnyOf,
+        exactlyOneOf = combinedExactlyOneOf,
+        noneOf = combinedNoneOf,
+        allOf = combinedAllOf,
+        isUsageSlot = combinedIsUsageSlot,
+        owner = combinedOwner,
+      )
+  }
 
   /** Unfolded slot combining procedure `for metaslot in metaslots` from the spec. This variant
     * merges INHERITED SlotDefinition slots only.
@@ -706,46 +967,118 @@ final case class SlotDefinition(
   def combineInherited(
       other: SlotDefinition,
       combineRange: (Reference[Element], Reference[Element]) => Reference[Element],
-  ): SlotDefinition =
-    copy(
-      identifier = combineBoolean(this.identifier, other.identifier),
-      multivalued = combineBoolean(this.multivalued, other.multivalued),
-      required = combineBoolean(this.required, other.required),
-      recommended = combineBoolean(this.recommended, other.recommended),
-      inlined = combineBoolean(this.inlined, other.inlined),
-      inlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList),
-      pattern = combineOption(this.pattern, other.pattern, combinePattern),
-      rank = combineOption(this.rank, other.rank, combineFallback),
-      role = combineOption(this.role, other.role, combineFallback),
-      array = combineOption(this.array, other.array, combineFallback),
-      designatesType = combineBoolean(this.designatesType, other.designatesType),
-      domain = combineOption(this.domain, other.domain, combineFallback),
-      equalsExpression =
-        combineOption(this.equalsExpression, other.equalsExpression, combineFallback),
-      equalsNumber = combineOption(this.equalsNumber, other.equalsNumber, combineFallback),
-      equalsString = combineOption(this.equalsString, other.equalsString, combineFallback),
-      equalsStringIn = combineSeq(this.equalsStringIn, other.equalsStringIn),
-      exactCardinality =
-        combineOption(this.exactCardinality, other.exactCardinality, combineFallback),
-      ifabsent = combineOption(this.ifabsent, other.ifabsent, combineFallback),
-      inherited = combineBoolean(this.inherited, other.inherited),
-      key = combineBoolean(this.key, other.key),
-      listElementsOrdered = combineBoolean(this.listElementsOrdered, other.listElementsOrdered),
-      listElementsUnique = combineBoolean(this.listElementsUnique, other.listElementsUnique),
-      maximumCardinality =
-        combineOption(this.maximumCardinality, other.maximumCardinality, combineFallback),
-      maximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax),
-      minimumCardinality =
-        combineOption(this.minimumCardinality, other.minimumCardinality, combineFallback),
-      minimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin),
-      range = combineOption(this.range, other.range, combineRange),
-      readonly = combineOption(this.readonly, other.readonly, combineFallback),
-      relationalRole = combineOption(this.relationalRole, other.relationalRole, combineFallback),
-      shared = combineBoolean(this.shared, other.shared),
-      structuredPattern =
-        combineOption(this.structuredPattern, other.structuredPattern, combineFallback),
-      valuePresence = combineOption(this.valuePresence, other.valuePresence, combineFallback),
-    )
+  ): SlotDefinition = {
+    val combinedIdentifier = combineBoolean(this.identifier, other.identifier)
+    val combinedMultivalued = combineBoolean(this.multivalued, other.multivalued)
+    val combinedRequired = combineBoolean(this.required, other.required)
+    val combinedRecommended = combineBoolean(this.recommended, other.recommended)
+    val combinedInlined = combineBoolean(this.inlined, other.inlined)
+    val combinedInlinedAsList = combineBoolean(this.inlinedAsList, other.inlinedAsList)
+    val combinedPattern = combineOption(this.pattern, other.pattern, combinePattern)
+    val combinedRank = combineOption(this.rank, other.rank, combineFallback)
+    val combinedRole = combineOption(this.role, other.role, combineFallback)
+    val combinedArray = combineOption(this.array, other.array, combineFallback)
+    val combinedDesignatesType = combineBoolean(this.designatesType, other.designatesType)
+    val combinedDomain = combineOption(this.domain, other.domain, combineFallback)
+    val combinedEqualsExpression =
+      combineOption(this.equalsExpression, other.equalsExpression, combineFallback)
+    val combinedEqualsNumber = combineOption(this.equalsNumber, other.equalsNumber, combineFallback)
+    val combinedEqualsString = combineOption(this.equalsString, other.equalsString, combineFallback)
+    val combinedEqualsStringIn = combineSeq(this.equalsStringIn, other.equalsStringIn)
+    val combinedExactCardinality =
+      combineOption(this.exactCardinality, other.exactCardinality, combineFallback)
+    val combinedIfabsent = combineOption(this.ifabsent, other.ifabsent, combineFallback)
+    val combinedInherited = combineBoolean(this.inherited, other.inherited)
+    val combinedKey = combineBoolean(this.key, other.key)
+    val combinedListElementsOrdered =
+      combineBoolean(this.listElementsOrdered, other.listElementsOrdered)
+    val combinedListElementsUnique =
+      combineBoolean(this.listElementsUnique, other.listElementsUnique)
+    val combinedMaximumCardinality =
+      combineOption(this.maximumCardinality, other.maximumCardinality, combineFallback)
+    val combinedMaximumValue = combineOption(this.maximumValue, other.maximumValue, combineMax)
+    val combinedMinimumCardinality =
+      combineOption(this.minimumCardinality, other.minimumCardinality, combineFallback)
+    val combinedMinimumValue = combineOption(this.minimumValue, other.minimumValue, combineMin)
+    val combinedRange = combineOption(this.range, other.range, combineRange)
+    val combinedReadonly = combineOption(this.readonly, other.readonly, combineFallback)
+    val combinedRelationalRole =
+      combineOption(this.relationalRole, other.relationalRole, combineFallback)
+    val combinedShared = combineBoolean(this.shared, other.shared)
+    val combinedStructuredPattern =
+      combineOption(this.structuredPattern, other.structuredPattern, combineFallback)
+    val combinedValuePresence =
+      combineOption(this.valuePresence, other.valuePresence, combineFallback)
+    if (
+      combinedIdentifier == this.identifier &&
+      combinedMultivalued == this.multivalued &&
+      combinedRequired == this.required &&
+      combinedRecommended == this.recommended &&
+      combinedInlined == this.inlined &&
+      combinedInlinedAsList == this.inlinedAsList &&
+      same(combinedPattern, this.pattern) &&
+      same(combinedRank, this.rank) &&
+      same(combinedRole, this.role) &&
+      same(combinedArray, this.array) &&
+      combinedDesignatesType == this.designatesType &&
+      same(combinedDomain, this.domain) &&
+      same(combinedEqualsExpression, this.equalsExpression) &&
+      same(combinedEqualsNumber, this.equalsNumber) &&
+      same(combinedEqualsString, this.equalsString) &&
+      same(combinedEqualsStringIn, this.equalsStringIn) &&
+      same(combinedExactCardinality, this.exactCardinality) &&
+      same(combinedIfabsent, this.ifabsent) &&
+      combinedInherited == this.inherited &&
+      combinedKey == this.key &&
+      combinedListElementsOrdered == this.listElementsOrdered &&
+      combinedListElementsUnique == this.listElementsUnique &&
+      same(combinedMaximumCardinality, this.maximumCardinality) &&
+      same(combinedMaximumValue, this.maximumValue) &&
+      same(combinedMinimumCardinality, this.minimumCardinality) &&
+      same(combinedMinimumValue, this.minimumValue) &&
+      same(combinedRange, this.range) &&
+      same(combinedReadonly, this.readonly) &&
+      same(combinedRelationalRole, this.relationalRole) &&
+      combinedShared == this.shared &&
+      same(combinedStructuredPattern, this.structuredPattern) &&
+      same(combinedValuePresence, this.valuePresence)
+    ) this
+    else
+      copy(
+        identifier = combinedIdentifier,
+        multivalued = combinedMultivalued,
+        required = combinedRequired,
+        recommended = combinedRecommended,
+        inlined = combinedInlined,
+        inlinedAsList = combinedInlinedAsList,
+        pattern = combinedPattern,
+        rank = combinedRank,
+        role = combinedRole,
+        array = combinedArray,
+        designatesType = combinedDesignatesType,
+        domain = combinedDomain,
+        equalsExpression = combinedEqualsExpression,
+        equalsNumber = combinedEqualsNumber,
+        equalsString = combinedEqualsString,
+        equalsStringIn = combinedEqualsStringIn,
+        exactCardinality = combinedExactCardinality,
+        ifabsent = combinedIfabsent,
+        inherited = combinedInherited,
+        key = combinedKey,
+        listElementsOrdered = combinedListElementsOrdered,
+        listElementsUnique = combinedListElementsUnique,
+        maximumCardinality = combinedMaximumCardinality,
+        maximumValue = combinedMaximumValue,
+        minimumCardinality = combinedMinimumCardinality,
+        minimumValue = combinedMinimumValue,
+        range = combinedRange,
+        readonly = combinedReadonly,
+        relationalRole = combinedRelationalRole,
+        shared = combinedShared,
+        structuredPattern = combinedStructuredPattern,
+        valuePresence = combinedValuePresence,
+      )
+  }
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that
     * the values already present agree with what their expressions infer.
