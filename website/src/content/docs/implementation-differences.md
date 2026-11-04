@@ -51,7 +51,7 @@ LinkML-Python 1.12.1 requires the designator slot as a property.
 ohi LinkML leaves the shape of a class with subclasses open (`sh:closed false`), so instances of its subclasses with more slots conform when the class hierarchy is in the data graph.
 LinkML-Python closes it, so it rejects these instances.
 
-See [Class hierarchy in SHACL](/docs/shacl-class-hierarchy/).
+See [Class hierarchy in SHACL](/docs/generators/shacl/#class-hierarchy).
 
 ## Inherited boolean expressions
 
