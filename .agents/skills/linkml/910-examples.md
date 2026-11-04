@@ -106,8 +106,8 @@ of what it does and does not accept, and the fastest way to sanity-check a data 
 | `treeRootAs/simpleDict` | 8 | 0 | A document is a dict that maps the `key` of each `SomeClass… |
 | `treeRootless` | 0 | 0 |  |
 | `typeDerivation` | 2 | 8 |  |
-| `typeDesignator` | 10 | 12 |  |
-| `typeDesignator2` | 9 | 7 | Type designators on classes with different attributes. This… |
+| `typeDesignator` | 10 | 14 |  |
+| `typeDesignator2` | 9 | 9 | Type designators on classes with different attributes. This… |
 | `typed` | 8 | 19 |  |
 | `unionOf` | 4 | 6 |  |
 | `unionRange` | 6 | 3 |  |

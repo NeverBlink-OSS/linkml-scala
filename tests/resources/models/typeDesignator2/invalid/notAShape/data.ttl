@@ -1,0 +1,8 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator2/> .
+
+_:c a :Container;
+  :name "outer";
+  :shapes [
+    a :Container;
+    :name "inner"
+  ] .

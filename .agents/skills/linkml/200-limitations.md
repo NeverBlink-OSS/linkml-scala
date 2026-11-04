@@ -16,8 +16,6 @@ The following features are not yet supported or are partially supported in ohi L
   - Only enum, string, integer and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
-- Partial support for type designators (`designates_type`)
-  - Supported in the Scala, TypeScript, Pydantic and JSON Schema generators and in YAML/JSON serialization. Not yet in SHACL.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Rules (`rules`)
 
@@ -33,6 +31,7 @@ These features are supported in ohi LinkML but not in LinkML-Python (or are supp
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 - Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
+- Support for type designators and subclasses in the SHACL generator (see [Class hierarchy in SHACL](https://linkml.ohi.dev/docs/generators/shacl/#class-hierarchy))
 - IRIs with non-ASCII characters are accepted in slots of type `uri` and `uriorcurie`.
 
 These features work differently in ohi LinkML than in the LinkML specification and LinkML-Python:

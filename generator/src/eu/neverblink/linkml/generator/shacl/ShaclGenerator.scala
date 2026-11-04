@@ -51,6 +51,11 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
 
   /** Emit `sh:datatype`, `sh:class` or `sh:in` for a range.
     *
+    * A class range gets `sh:class`, also for a class with a type designator. A value typed with a
+    * subclass, such as `a :Circle` for a `Shape`, conforms only when the data graph has the
+    * `rdfs:subClassOf` triples, such as the output of the RDFS generator. This way, subclasses from
+    * other schemas are accepted too.
+    *
     * A `LocalizedText` range, such as `langstring`, gets `sh:or ( [ sh:datatype xsd:string ] [
     * sh:datatype rdf:langString ] )`: a plain string is an `xsd:string` literal, and a text in a
     * language is an `rdf:langString` literal.
@@ -555,13 +560,19 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       }
       else sv.classes
     val groups = mutable.LinkedHashMap.empty[String, SlotView]
+    // Names of the classes that are parents of other classes, including in imported schemas.
+    val parentNames = new java.util.HashSet[String]
+    sv.classes.values.foreach(_.parents.foreach(p => parentNames.add(p.name)))
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
         langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
-      val closed = !open && c.isConcrete && !c.allowsExtraSlots
+      // `sh:targetClass` also selects instances of subclasses when the data graph has the
+      // `rdfs:subClassOf` triples, and these instances can have more slots. So a class with
+      // subclasses gets an open shape.
+      val closed = !open && c.isConcrete && !c.allowsExtraSlots && !parentNames.contains(c.name)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       sink.list(
         classNameIri,
@@ -573,11 +584,14 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       var order = 0
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
-        if (!slot.identifier) slot.rank.foreachFast(r => if (r >= order) order = r + 1)
+        if (!slot.identifier && !slot.designatesType)
+          slot.rank.foreachFast(r => if (r >= order) order = r + 1)
       }
+      // The type designator gets no PropertyShape: in RDF, the class of an instance is its
+      // `rdf:type`, which is in sh:ignoredProperties.
       c.attributeViews.values.foreach { av =>
         val slot = av.slotView.slot
-        if (!slot.identifier) {
+        if (!slot.identifier && !slot.designatesType) {
           processSlot(sink, av, order, classNameIri, groups)
           if (slot.rank.isEmpty) order += 1
         }

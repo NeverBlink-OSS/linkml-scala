@@ -1,0 +1,5 @@
+@prefix : <https://neverblink.eu/linkml/tests/typeDesignator/> .
+
+_:b a :IntThing;
+  :type "IntThing";
+  :value 123 .

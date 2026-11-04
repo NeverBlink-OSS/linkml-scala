@@ -1,5 +1,6 @@
 package eu.neverblink.linkml.generator.shacl
 
+import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.rdf.RdfUtils
 import eu.neverblink.linkml.tests.{ModelCatalogue, ModelCatalogueSpec}
 import org.eclipse.rdf4j.model.impl.SimpleValueFactory
@@ -20,6 +21,21 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
     ("exactlyOneOfMixins", "matchesNoneInMixin") -> "RDF4J does not enforce `sh:xone`",
     ("exactlyOneOfWidening", "matchesBothInBase") -> "RDF4J does not enforce `sh:xone`",
     ("exactlyOneOfWidening", "matchesNoneInSlotUsage") -> "RDF4J does not enforce `sh:xone`",
+    // The data graph has the class hierarchy, so the shape of a parent class or mixin also checks
+    // the instances of its subclasses. A subclass can't make that check less strict, so data that
+    // is valid for the subclass can still fail the shape of its parent.
+    (
+      "mixinFacets",
+      "full",
+    ) -> "Thing stores `value` as `alt:number`, but the WithRequired mixin requires it as `:value`",
+    (
+      "mixinFacets",
+      "minimal",
+    ) -> "Thing stores `value` as `alt:number`, but the WithRequired mixin requires it as `:value`",
+    (
+      "multivaluedOverride",
+      "many",
+    ) -> "A multivalued slot in a subclass is single-valued in its parent",
   )
   val vf: SimpleValueFactory = SimpleValueFactory.getInstance()
   "ShaclGenerator" should {
@@ -27,13 +43,17 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
       s"generate SHACL for model '${entry.model.root.name}'" when {
 
         lazy val ttl = RdfUtils.toTurtle(ShaclGenerator(using entry.model).generate(_))
+        lazy val rdfs = RdfUtils.toTurtle(RdfsGenerator(using entry.model).generate(_))
         lazy val validator = ShaclValidator.builder().withShapes(ttl, RDFFormat.TURTLE).build()
 
         for valid <- entry.validInstances.filter(_.turtle.isDefined).distinct do
           s"valid instance '${valid.name}'" in {
             processSkip(entry, valid)
             val res =
-              validator.validate(valid.turtle.get + valid.context.getOrElse(""), RDFFormat.TURTLE)
+              validator.validate(
+                rdfs + valid.turtle.get + valid.context.getOrElse(""),
+                RDFFormat.TURTLE,
+              )
             withClue(res.getValidationResult) {
               res.conforms() shouldBe true
             }
@@ -41,7 +61,7 @@ class ShaclIntegrationSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
         for invalid <- entry.invalidInstances.filter(_.turtle.isDefined).distinct do
           s"invalid data '${invalid.name}'" in {
             processSkip(entry, invalid)
-            val res = validator.validate(invalid.turtle.get, RDFFormat.TURTLE)
+            val res = validator.validate(rdfs + invalid.turtle.get, RDFFormat.TURTLE)
             res.conforms() shouldBe false
           }
       }

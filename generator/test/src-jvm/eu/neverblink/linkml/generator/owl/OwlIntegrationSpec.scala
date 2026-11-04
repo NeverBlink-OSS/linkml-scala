@@ -97,9 +97,18 @@ object OwlIntegrationSpec {
     "basic" -> "empty" -> openWorld,
     "anything" -> "missing" -> openWorld,
     "typeDesignator2" -> "wrongSlotForType" -> s"$openWorld, and $unknownProperty",
+    "typeDesignator" -> "designatorTriple" ->
+      ("In RDF, `rdf:type` holds the type, so the data must not also have a `:type` value. The OWL " +
+        "still describes `type` as a property, so it accepts that value (not a bug)"),
+    "typeDesignator2" -> "notAShape" ->
+      ("The `shapes` slot takes a `Shape`, but this value is a `Container`. OWL doesn't reject it: " +
+        "it concludes that the value is also a `Shape`, since the two classes are not disjoint " +
+        "(not a bug)"),
     "aliases" -> "slotNameInsteadOfUri" -> unknownProperty,
     "unionRangeReference" -> "baseOnly" ->
-      "OWL infers that a value is of the range's class rather than rejecting one not said to be",
+      ("The `some_slot` slot takes a `Child1Class` or a `Child2Class`, but the data doesn't say that " +
+        "its value is either. OWL doesn't reject it: it concludes that the value is one of them " +
+        "(not a bug)"),
     "enum" -> "badType" -> noUniqueNames,
     "langString" -> "repeatedLanguage" -> oneTextValue,
     "langString" -> "plainAndLanguage" -> oneTextValue,

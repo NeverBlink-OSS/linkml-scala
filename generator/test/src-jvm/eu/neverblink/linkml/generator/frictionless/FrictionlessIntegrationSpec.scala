@@ -31,8 +31,10 @@ class FrictionlessIntegrationSpec
   )
 
   override val skipInstances: Map[(String, String), String] = Map(
-    ("typeDesignator", "unknownType") ->
-      "LNK-101/LNK-102: not yet implemented, so unknown types get accepted",
+    ("typeDesignator", "unknownType") -> (
+      "Not yet implemented: the Frictionless generator does not limit the type designator to " +
+        "the known classes, so unknown types get accepted"
+    ),
   )
 
   // single table test dirs
