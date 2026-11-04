@@ -27,7 +27,7 @@ These features are supported in ohi LinkML but not in LinkML-Python (or are supp
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 - Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
-- Support for type designators and subclasses in the SHACL generator (see [Class hierarchy in SHACL](#class-hierarchy-in-shacl))
+- Support for type designators and subclasses in the SHACL generator (see [Class hierarchy in SHACL](/docs/generators/shacl/#class-hierarchy))
 - IRIs with non-ASCII characters are accepted in slots of type `uri` and `uriorcurie`.
 
 These features work differently in ohi LinkML than in the LinkML specification and LinkML-Python:
@@ -42,16 +42,6 @@ These features follow the LinkML specification, while LinkML-Python works differ
 
 In boolean expressions, the SHACL generator of LinkML-Python 1.12.1 checks only the `range` of `any_of` members.
 ohi LinkML also checks `all_of`, `exactly_one_of`, `none_of`, and the patterns, value bounds, cardinality and nested boolean expressions of members.
-
-## Class hierarchy in SHACL
-
-In RDF, `rdf:type` holds the type designator, so ohi LinkML emits no property shape for the designator slot.
-LinkML-Python 1.12.1 requires the designator slot as a property.
-
-ohi LinkML leaves the shape of a class with subclasses open (`sh:closed false`), so instances of its subclasses with more slots conform when the class hierarchy is in the data graph.
-LinkML-Python closes it, so it rejects these instances.
-
-See [Class hierarchy in SHACL](/docs/generators/shacl/#class-hierarchy).
 
 ## Inherited boolean expressions
 
