@@ -106,7 +106,8 @@ final class DerivedReachabilityQuery(
       sv.classes.get(name).foreachFast { classView =>
         classView.derivedAttributes.values.foreach {
           // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
-          case sv if !inlinedOnly || sv.derivedInlined => collectSlotRefs(sv, result)
+          case slotView if !inlinedOnly || slotView.derivedInlined =>
+            collectSlotRefs(slotView, result)
           case _ =>
         }
         // Class-level references, such as ranges in rules, are never inlined values
