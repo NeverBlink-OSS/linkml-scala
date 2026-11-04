@@ -653,6 +653,32 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       derived.reachable(sv.slotDefinitions("group")) shouldBe false
     }
 
+    "not reach the default range from a slot usage without a range" in {
+      val schema =
+        """id: https://example.org/slot-usage-range/
+          |name: slot_usage_range
+          |imports:
+          |  - linkml:types
+          |default_range: integer
+          |slots:
+          |  name:
+          |    range: string
+          |classes:
+          |  Root:
+          |    slots:
+          |      - name
+          |    slot_usage:
+          |      name:
+          |        required: true
+          |""".stripMargin
+
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
+
+      val underived = sv.underivedReachabilityQuery(Seq(sv.classes("Root")))
+      underived.reachable(sv.types("string")) shouldBe true
+      underived.reachable(sv.types("integer")) shouldBe false
+    }
+
     "recognize the tree_root inline mode from the extension" in {
       val model =
         """id: http://example.com/c

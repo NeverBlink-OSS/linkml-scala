@@ -149,12 +149,10 @@ final class UnderivedReachabilityQuery(
       sv.classes.get(name).foreachFast { classView =>
         val cls = classView.cls
         underivedClassRefs.collect(cls, result)
-        // Attributes and slot usages get their range from `default_range` of the defining schema
+        // An attribute without a range gets `default_range` of the defining schema. A slot usage
+        // without a range keeps the range of its slot, so it is read with the class.
         val definingSchema = classView.definingSchema
         cls.attributes.foreachEntry((_, sd) =>
-          collectSlotRefs(new SlotView(sd, definingSchema), result),
-        )
-        cls.slotUsage.foreachEntry((_, sd) =>
           collectSlotRefs(new SlotView(sd, definingSchema), result),
         )
       }
@@ -192,9 +190,9 @@ private object SchemaReachabilityQuery {
   val functionRefs: ReferenceCollector[FunctionDefinition] =
     ReferenceCollector.derived[FunctionDefinition]()
 
-  /** For a class as it is written. Attributes and slot usages are read with [[slotRefs]]. */
+  /** For a class as it is written. Attributes are read with [[slotRefs]]. */
   val underivedClassRefs: ReferenceCollector[ClassDefinition] =
-    ReferenceCollector.derived[ClassDefinition]("attributes", "slot_usage")
+    ReferenceCollector.derived[ClassDefinition]("attributes")
 
   /** For a derived class, without the fields that derivation replaces with attributes, and without
     * parents, which are added only if asked for.
