@@ -568,13 +568,19 @@ class ShaclGenerator(using sv: SchemaView) extends RdfGeneratorBase[ShaclGenerat
       }
       else sv.classes
     val groups = mutable.LinkedHashMap.empty[String, SlotView]
+    // Names of the classes that are parents of other classes, including in imported schemas.
+    val parentNames = new java.util.HashSet[String]
+    sv.classes.values.foreach(_.parents.foreach(p => parentNames.add(p.name)))
     classes.values.foreach { c =>
       val classNameIri = new Iri(c.uriStr)
       sink.triple(classNameIri, Rdf.`type`, Shacl.NodeShape)
       c.cls.description.foreachFast { d =>
         langStringProperty(sink, classNameIri, Rdfs.comment, d)
       }
-      val closed = !open && c.isConcrete && !c.allowsExtraSlots
+      // `sh:targetClass` also selects instances of subclasses when the data graph has the
+      // `rdfs:subClassOf` triples, and these instances can have more slots. So a class with
+      // subclasses gets an open shape.
+      val closed = !open && c.isConcrete && !c.allowsExtraSlots && !parentNames.contains(c.name)
       sink.triple(classNameIri, Shacl.closed, Literal(closed.toString, XmlSchema.boolean))
       sink.list(
         classNameIri,

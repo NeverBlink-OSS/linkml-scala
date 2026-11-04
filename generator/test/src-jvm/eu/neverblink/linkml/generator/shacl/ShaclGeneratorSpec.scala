@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.shacl
 
 import eu.neverblink.linkml.generator.options.ShaclGeneratorOptions
+import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.rdf.{CollectingRdfSink, RdfUtils}
 import eu.neverblink.linkml.schemaview.SchemaIssues
 import eu.neverblink.linkml.schemaview.SchemaView
@@ -491,6 +492,53 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       closed("Plain") shouldBe true
     }
 
+    "open shapes of classes with subclasses" in {
+      val input =
+        s"""$schemaShared
+           |classes:
+           |  Container:
+           |    tree_root: true
+           |    attributes:
+           |      vehicles:
+           |        range: Vehicle
+           |        multivalued: true
+           |        inlined: true
+           |  Vehicle:
+           |    attributes:
+           |      name: {}
+           |  Car:
+           |    is_a: Vehicle
+           |    attributes:
+           |      doors:
+           |        range: integer
+           |""".stripMargin
+      val schemaView = loadWithImports(input)
+      val turtle = RdfUtils.toTurtle(ShaclGenerator(using schemaView).generate(_))
+      val model = Rio.parse(StringReader(turtle), RDFFormat.TURTLE)
+      def closed(cls: String): Boolean = Models.objectLiteral(
+        model.filter(
+          vf.createIRI(s"https://neverblink.eu/linkml/shacl/test/$cls"),
+          vf.createIRI("http://www.w3.org/ns/shacl#closed"),
+          null,
+        ),
+      ).get.booleanValue
+
+      closed("Vehicle") shouldBe false
+      closed("Car") shouldBe true
+      // With the class hierarchy in the data graph, the Vehicle shape also checks a Car
+      val rdfs = RdfUtils.toTurtle(RdfsGenerator(using schemaView).generate(_))
+      val validator = ShaclValidator.builder().withShapes(turtle, RDFFormat.TURTLE).build()
+      def conforms(car: String): Boolean = {
+        val data =
+          s"""@prefix t: <https://neverblink.eu/linkml/shacl/test/> .
+             |t:c a t:Container; t:vehicles [ a t:Car; $car ] .
+             |""".stripMargin
+        validator.validate(rdfs + data, RDFFormat.TURTLE).conforms()
+      }
+      conforms("t:name \"car\"; t:doors 4") shouldBe true
+      conforms("t:name \"car\"; t:doors 4; t:wheels 4") shouldBe false
+    }
+
     "enforce open shapes" in {
       val input =
         s"""$schemaShared
@@ -968,7 +1016,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |linkml:Extension a sh:NodeShape;
           |  rdfs:comment "a tag/value pair used to add non-model information to an entry";
-          |  sh:closed true;
+          |  sh:closed false;
           |  sh:ignoredProperties (rdf:type);
           |  sh:property [
           |      sh:description "a tag associated with an extension";
