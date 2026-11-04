@@ -8,10 +8,10 @@ import ElementTypeTag.*
 import scala.collection.mutable
 
 /** Base class for LinkML schema reachability queries. Provides information about whether metamodel
-  * [[Element]]s should are reachable in some way, specified by concrete implementations.
-  * @todo
-  *   Make this search more robust (LNK-110). Currently, this will prune things incorrectly if there
-  *   are any complex boolean slots (like `exactly_one_of`)
+  * [[Element]]s are reachable in some way, specified by concrete implementations.
+  *
+  * References are found at any depth, such as ranges in nested `any_of`, `exactly_one_of`, `all_of`
+  * and `none_of` lists, see [[ReferenceCollector]].
   */
 sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
 
@@ -32,39 +32,34 @@ sealed abstract class SchemaReachabilityQuery(using sv: SchemaView) {
     */
   protected def resolved: Set[TaggedReference]
 
-  /** Shared method for collecting the [[TaggedReference]]s for a slot's range/domains.
+  /** Shared method for collecting the [[TaggedReference]]s of a slot, at any depth, and its range
+    * from `default_range` when it has no range of its own.
     */
   protected def collectSlotRefs(
       slot: SlotView,
       results: mutable.ArrayBuffer[TaggedReference],
   ): Unit = {
-    slot.slot.anyOf.foreach { anyOfNode =>
-      anyOfNode.range.foreachFast { rangeNode =>
-        rangeNode.resolve.foreachFast(el => results.addOne((ElementTypeTag(el), el.name)))
-      }
-    }
-    slot.derivedRange.resolve.foreachFast { resolvedRange =>
+    slotRefs.collect(slot.slot, results)
+    // `range` is read above, so only the default range is left
+    if (slot.slot.range eq None) slot.derivedRange.resolve.foreachFast { resolvedRange =>
       val el = resolvedRange.inner
       results.addOne((ElementTypeTag(el), el.name))
     }
-    slot.slot.domain.foreachFast { domainNode =>
-      domainNode.resolve.foreachFast(el => results.addOne((ElementTypeTag(el), el.name)))
-    }
   }
 
-  /** Shared method for collecting the [[TaggedReference]]s of a function's parameters, return value
-    * and errors.
-    */
-  protected def collectFunctionRefs(
-      function: FunctionView,
+  /** Shared method for collecting the [[TaggedReference]]s of a type, enum or function. */
+  protected def collectOtherRefs(
+      current: TaggedReference,
       results: mutable.ArrayBuffer[TaggedReference],
   ): Unit = {
-    function.parameters.foreachFast(cv => results.addOne((classDef, cv.name)))
-    function.returns.foreachFast { rv =>
-      val el = rv.inner
-      results.addOne((ElementTypeTag(el), el.name))
+    val name = current.value
+    val tag = current.tag
+    if (tag eq typeDef) sv.types.get(name).foreachFast(tv => typeRefs.collect(tv._type, results))
+    else if (tag eq enumDef)
+      sv.enums.get(name).foreachFast(ev => enumRefs.collect(ev._enum, results))
+    else if (tag eq functionDef) {
+      sv.functions.get(name).foreachFast(fv => functionRefs.collect(fv.function, results))
     }
-    function.errors.foreach(cv => results.addOne((classDef, cv.name)))
   }
 }
 
@@ -108,31 +103,22 @@ final class DerivedReachabilityQuery(
     val name = current.value
     val tag = current.tag
     if (tag eq ElementTypeTag.classDef) {
-      val classView = sv.classes(name)
-      classView.derivedAttributes.values.foreach {
-        // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
-        case sv if !inlinedOnly || sv.derivedInlined => collectSlotRefs(sv, result)
-        case _ =>
+      sv.classes.get(name).foreachFast { classView =>
+        classView.derivedAttributes.values.foreach {
+          // if the classes are going to be derived, then we can simply skip to the ranges of derived attributes
+          case slotView if !inlinedOnly || slotView.derivedInlined =>
+            collectSlotRefs(slotView, result)
+          case _ =>
+        }
+        // Class-level references, such as ranges in rules, are never inlined values
+        if (!inlinedOnly) derivedClassRefs.collect(classView.cls, result)
+        if (includeClassAncestors) {
+          classView.parents.foreach(anc => result.addOne((classDef, anc.name)))
+        }
       }
-      if (includeClassAncestors) {
-        classView.parents.foreach(anc => result.addOne((classDef, anc.name)))
-      }
-    } else if (tag eq ElementTypeTag.typeDef) {
-      val type_ = sv.types(name)._type
-      type_.typeof.foreach { tr =>
-        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
-      }
-      type_.unionOf.foreach { tr =>
-        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
-      }
-    } else if (tag eq ElementTypeTag.enumDef) {
-      sv.enums(name)._enum.inherits.foreach { er =>
-        er.resolve.foreachFast(ed => result.addOne((enumDef, ed.name)))
-      }
-    } else if (tag eq ElementTypeTag.functionDef) {
-      collectFunctionRefs(sv.functions(name), result)
-    }
-    result
+    } else collectOtherRefs(current, result)
+    // Derived classes have attributes instead of slots, so top-level slots are not reachable
+    result.filterInPlace(_.tag ne slotDef)
   }
 }
 
@@ -161,47 +147,20 @@ final class UnderivedReachabilityQuery(
     val name = current.value
     val tag = current.tag
     if (tag eq ElementTypeTag.classDef) {
-      val classView = sv.classes(name)
-      classView.ancestorsWithSelf.foreach {
-        var i = 0
-        anc =>
-          if (i > 0) result.addOne((classDef, anc.cls.name))
-          i += 1
-      }
-      val cls = classView.cls
-      cls.slots.foreach(sr => result.addOne((slotDef, sr.value)))
-      // The *ranges* of class-defined slots (attributes, slot_usage)
-      val definingSchema = classView.definingSchema
-      cls.attributes.values.foreach { sd =>
-        collectSlotRefs(new SlotView(sd, definingSchema), result)
-      }
-      cls.slotUsage.values.foreach { sd =>
-        collectSlotRefs(new SlotView(sd, definingSchema), result)
-      }
-    } else if (tag eq ElementTypeTag.typeDef) {
-      val type_ = sv.types(name)._type
-      type_.typeof.foreach { tr =>
-        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
-      }
-      type_.unionOf.foreach { tr =>
-        tr.resolve.foreachFast(td => result.addOne((typeDef, td.name)))
+      sv.classes.get(name).foreachFast { classView =>
+        val cls = classView.cls
+        underivedClassRefs.collect(cls, result)
+        // An attribute without a range gets `default_range` of the defining schema. A slot usage
+        // without a range keeps the range of its slot, so it is read with the class.
+        val definingSchema = classView.definingSchema
+        cls.attributes.foreachEntry((_, sd) =>
+          collectSlotRefs(new SlotView(sd, definingSchema), result),
+        )
       }
     } else if (tag eq ElementTypeTag.slotDef) {
-      val slotView = sv.slotDefinitions(name)
-      slotView.slot.isA.foreach { sr =>
-        sr.resolve.foreachFast(sd => result.addOne((slotDef, sd.name)))
-      }
-      slotView.slot.mixins.foreach { sr =>
-        sr.resolve.foreachFast(sd => result.addOne((slotDef, sd.name)))
-      }
-      collectSlotRefs(slotView, result)
-    } else if (tag eq ElementTypeTag.enumDef) {
-      sv.enums(name)._enum.inherits.foreach { er =>
-        er.resolve.foreachFast(ed => result.addOne((enumDef, ed.name)))
-      }
-    } else if (tag eq ElementTypeTag.functionDef) {
-      collectFunctionRefs(sv.functions(name), result)
-    }
+      // A name in `unique_key_slots` or `slot_group` can be an attribute, not a top-level slot
+      sv.slotDefinitions.get(name).foreachFast(slotView => collectSlotRefs(slotView, result))
+    } else collectOtherRefs(current, result)
     result
 }
 
@@ -224,4 +183,27 @@ private object SchemaReachabilityQuery {
 
   /** [[Element]]'s runtime type tag and name. */
   type TaggedReference = (tag: ElementTypeTag, value: String)
+
+  // Collectors of the references in metamodel values, at any depth
+  val slotRefs: ReferenceCollector[SlotDefinition] = ReferenceCollector.derived[SlotDefinition]()
+  val typeRefs: ReferenceCollector[TypeDefinition] = ReferenceCollector.derived[TypeDefinition]()
+  val enumRefs: ReferenceCollector[EnumDefinition] = ReferenceCollector.derived[EnumDefinition]()
+  val functionRefs: ReferenceCollector[FunctionDefinition] =
+    ReferenceCollector.derived[FunctionDefinition]()
+
+  /** For a class as it is written. Attributes are read with [[slotRefs]]. */
+  val underivedClassRefs: ReferenceCollector[ClassDefinition] =
+    ReferenceCollector.derived[ClassDefinition]("attributes")
+
+  /** For a derived class, without the fields that derivation replaces with attributes, and without
+    * parents, which are added only if asked for.
+    */
+  val derivedClassRefs: ReferenceCollector[ClassDefinition] =
+    ReferenceCollector.derived[ClassDefinition](
+      "is_a",
+      "mixins",
+      "slots",
+      "attributes",
+      "slot_usage",
+    )
 }

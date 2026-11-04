@@ -11,7 +11,7 @@ import eu.neverblink.linkml.runtime.*
   *   The unique name of the element within the context of the schema. Name is combined with the
   *   default prefix to form the globally unique subject of the target class.
   * @param typeUri
-  *   The uri that defines the possible values for the type definition
+  *   The IRI (URI) that defines the possible values for the type definition
   * @param title
   *   A concise human-readable display label for the element. The title should mirror the name, and
   *   should use ordinary textual punctuation.
@@ -56,8 +56,8 @@ import eu.neverblink.linkml.runtime.*
   * @param createdOn
   *   Time at which the element was created
   * @param definitionUri
-  *   The native URI of the element. This is always within the namespace of the containing schema.
-  *   Contrast with the assigned URI, via class_uri or slot_uri
+  *   The native IRI (URI) of the element. This is always within the namespace of the containing
+  *   schema. Contrast with the assigned IRI, via class_uri or slot_uri
   * @param deprecated
   *   Description of why and when this element will no longer be used
   * @param deprecatedElementHasExactReplacement
