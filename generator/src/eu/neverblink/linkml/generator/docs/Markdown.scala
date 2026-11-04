@@ -10,6 +10,10 @@ import eu.neverblink.linkml.rdf.io.CharSink
   *
   * Headings are shifted down by [[headingOffset]] levels, so that the same page can be a file of
   * its own (offset 0) or a section of a single document (offset 1).
+  *
+  * In Markdown from the schema, a zero-width space after `<` or `]` turns tags other than
+  * [[Markdown.safeTags]], and links with a scheme other than `http`, `https` or `mailto`, into
+  * text. So the playground can show the HTML as it is.
   */
 final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends CharSink {
 
@@ -33,11 +37,17 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
 
   def append(s: String): Unit =
     if (inRow) {
+      val len = s.length
+      var n = backslashes
       var i = 0
-      while (i < s.length) {
-        append(s.charAt(i))
+      while (i < len) {
+        val c = s.charAt(i)
+        if (c == '|' && (n & 1) == 0) sink.append('\\')
+        n = if (c == '\\') n + 1 else 0
+        sink.append(c)
         i += 1
       }
+      backslashes = n
     } else sink.append(s)
 
   // Blocks
@@ -62,7 +72,7 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
   /** End a heading, a paragraph or a note. */
   def endBlock(): Unit = sink.append("\n\n")
 
-  /** A paragraph of Markdown, written as it is, without the whitespace around it.
+  /** A paragraph of Markdown from the schema, without the whitespace around it.
     *
     * If the text opens a fenced code block but doesn't close it, it is closed after the text.
     * Otherwise the rest of the page, or of the whole document, would be part of the code block.
@@ -78,8 +88,8 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
   }
 
   /** A block quote that starts with a bold label, such as a deprecation notice. [[text]] is
-    * Markdown, and is written as it is, without the whitespace around it. Each of its lines gets
-    * `>` in front, so all of its paragraphs stay in the quote.
+    * Markdown from the schema, written without the whitespace around it. Each of its lines gets `>`
+    * in front, so all of its paragraphs stay in the quote.
     */
   def note(label: String, text: String): Unit = {
     sink.append("> **")
@@ -107,8 +117,27 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
           prefix.nonEmpty && start + 1 < end && text.charAt(start + 1) != '\n' &&
           text.charAt(start + 1) != '\r'
         ) sink.append(' ')
-      } else if (c != '\r') sink.append(c)
+      } else if (c != '\r') schemaChar(text, start, end)
       start += 1
+    }
+  }
+
+  /** Write the character at [[i]] of [[text]], Markdown from the schema that ends at [[end]], with
+    * a zero-width space after it if it starts a tag, an autolink or a link that is not safe.
+    */
+  private def schemaChar(text: String, i: Int, end: Int): Unit = {
+    val c = text.charAt(i)
+    sink.append(c)
+    if (i + 1 < end) {
+      val next = text.charAt(i + 1)
+      if (c == '<') {
+        if (
+          (Markdown.isAsciiLetter(next) || next == '/' || next == '!' || next == '?') &&
+          !Markdown.isSafeTag(text, i, end)
+        ) sink.append(Markdown.zeroWidthSpace)
+      } else if (c == ']' && (next == '(' || next == ':')) {
+        if (!Markdown.isSafeUrl(text, i + 2, end)) sink.append(Markdown.zeroWidthSpace)
+      }
     }
   }
 
@@ -216,30 +245,38 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     */
   def text(value: String): Unit = {
     val len = value.length
+    // The backslashes in a row at the end of what is written, as [[append]] counts them
+    var n = backslashes
     var i = 0
     while (i < len) {
       val c = value.charAt(i)
       c match {
         case '\\' | '`' | '*' | '[' | ']' | '<' | '>' | '{' | '}' | '#' | '~' | '&' =>
-          append('\\')
-          append(c)
+          sink.append('\\')
+          sink.append(c)
+          n = if (c == '\\') n + 2 else 0
         case '_' =>
           val inWord = i > 0 && i < len - 1 &&
             Character.isLetterOrDigit(value.charAt(i - 1)) &&
             Character.isLetterOrDigit(value.charAt(i + 1))
-          if (!inWord) append('\\')
-          append(c)
+          if (!inWord) sink.append('\\')
+          sink.append(c)
+          n = 0
         case '\n' | '\r' =>
-          append(' ')
+          sink.append(' ')
+          n = 0
         case _ =>
-          append(c)
+          if (c == '|' && inRow && (n & 1) == 0) sink.append('\\')
+          sink.append(c)
+          n = 0
       }
       i += 1
     }
+    backslashes = n
   }
 
-  /** Markdown text from the schema, such as a description, written on one line, as a table cell or
-    * a list item needs.
+  /** Markdown from the schema, such as a description, written on one line, as a table cell or a
+    * list item needs.
     *
     * Only the first paragraph is written, for a summary of a text that is shown in full somewhere
     * else. Each run of whitespace, including line breaks, becomes one space, and whitespace at
@@ -256,6 +293,8 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     var started = false
     var space = false
     var newlines = 0
+    // The backslashes in a row at the end of what is written, as [[append]] counts them
+    var n = backslashes
     var i = 0
     while (i < text.length && (allParagraphs || newlines < 2)) {
       val c = text.charAt(i)
@@ -266,14 +305,20 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
         // A line of spaces between two line breaks still ends the paragraph.
         space = started
       } else {
-        if (space) append(if (newlines >= 2) "<br><br>" else " ")
-        append(c)
+        if (space) {
+          sink.append(if (newlines >= 2) "<br><br>" else " ")
+          n = 0
+        }
+        if (c == '|' && inRow && (n & 1) == 0) sink.append('\\')
+        n = if (c == '\\') n + 1 else 0
+        schemaChar(text, i, text.length)
         started = true
         space = false
         newlines = 0
       }
       i += 1
     }
+    backslashes = n
   }
 
   /** [[text]] as an inline code span, on one line. */
@@ -284,32 +329,44 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     // A space between the fence and a backtick at either end keeps them apart.
     val pad = text.startsWith("`") || text.endsWith("`")
     backticks(longest + 1)
-    if (pad) append(' ')
+    if (pad) sink.append(' ')
+    // The backslashes in a row at the end of what is written, as [[append]] counts them
+    var n = 0
     var i = 0
     while (i < text.length) {
       val c = text.charAt(i)
       // Markdown ends a line at `\n`, `\r` or `\r\n`, so each of them becomes one space.
       if (c == '\r') {
         if (i + 1 < text.length && text.charAt(i + 1) == '\n') i += 1
-        append(' ')
-      } else append(if (c == '\n') ' ' else c)
+        sink.append(' ')
+        n = 0
+      } else if (c == '\n') {
+        sink.append(' ')
+        n = 0
+      } else {
+        if (c == '|' && inRow && (n & 1) == 0) sink.append('\\')
+        n = if (c == '\\') n + 1 else 0
+        sink.append(c)
+      }
       i += 1
     }
-    if (pad) append(' ')
+    if (pad) sink.append(' ')
     backticks(longest + 1)
   }
 
   /** [[n]] in decimal digits. */
-  def number(n: Int): Unit =
+  def number(n: Int): Unit = {
     if (n < 0) {
-      append('-')
+      sink.append('-')
       // Through Long, as -Int.MinValue does not fit in an Int.
       digits(-n.toLong)
     } else digits(n.toLong)
+    backslashes = 0
+  }
 
   private def digits(n: Long): Unit = {
     if (n >= 10) digits(n / 10)
-    append(('0' + (n % 10)).toChar)
+    sink.append(('0' + (n % 10)).toChar)
   }
 
   /** The length of the longest run of backticks in [[text]]. */
@@ -327,16 +384,173 @@ final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends 
     longest
   }
 
+  /** Write [[count]] backticks. */
   private def backticks(count: Int): Unit = {
     var i = count
     while (i > 0) {
-      append('`')
+      sink.append('`')
       i -= 1
     }
+    backslashes = 0
   }
 }
 
 private object Markdown {
+
+  /** Written after a `<` or a `]` to keep it from starting a tag or a link. Readers don't see it.
+    */
+  private val zeroWidthSpace = '\u200b'
+
+  /** The HTML tags that Markdown from the schema can have, for plain formatting. Schemas use them,
+    * for example `<i>` and `<sub>` in names of electrical quantities.
+    */
+  private val safeTags = Array(
+    "b",
+    "i",
+    "em",
+    "strong",
+    "code",
+    "sub",
+    "sup",
+    "s",
+    "del",
+    "u",
+    "small",
+    "mark",
+    "kbd",
+    "br",
+    "p",
+    "ul",
+    "ol",
+    "li",
+  )
+
+  private def isAsciiLetter(c: Char): Boolean = (c | 0x20) >= 'a' && (c | 0x20) <= 'z'
+
+  private def isAsciiLetterOrDigit(c: Char): Boolean = isAsciiLetter(c) || (c >= '0' && c <= '9')
+
+  /** Whether the `<` at [[from]] of [[text]] starts one of [[safeTags]] without attributes, such as
+    * `<b>`, `</b>` or `<br />`, or an autolink with a safe scheme (see [[isSafeScheme]]), such as
+    * `<https://w3id.org/linkml>`. The text ends at [[end]].
+    */
+  private def isSafeTag(text: String, from: Int, end: Int): Boolean = {
+    var i = from + 1
+    val closing = i < end && text.charAt(i) == '/'
+    if (closing) i += 1
+    val nameStart = i
+    while (i < end && isAsciiLetterOrDigit(text.charAt(i))) i += 1
+    val nameEnd = i
+    if (i < end && text.charAt(i) == ':') {
+      // An autolink: a scheme, `:`, and then anything but spaces, control characters, `<` and `>`
+      if (closing || !isSafeScheme(text, nameStart, nameEnd)) return false
+      i += 1
+      while (i < end && text.charAt(i) > ' ' && text.charAt(i) != '<' && text.charAt(i) != '>')
+        i += 1
+      return i < end && text.charAt(i) == '>'
+    }
+    var known = false
+    var t = 0
+    while (!known && t < safeTags.length) {
+      val tag = safeTags(t)
+      known =
+        tag.length == nameEnd - nameStart && text.regionMatches(true, nameStart, tag, 0, tag.length)
+      t += 1
+    }
+    if (!known) return false
+    while (i < end && text.charAt(i) == ' ') i += 1
+    if (!closing && i < end && text.charAt(i) == '/') i += 1
+    i < end && text.charAt(i) == '>'
+  }
+
+  /** Whether the characters from [[from]] to [[to]] of [[text]] are a scheme that a link can have:
+    * `http`, `https` or `mailto`, in any case.
+    */
+  private def isSafeScheme(text: String, from: Int, to: Int): Boolean = {
+    val length = to - from
+    (length == 4 && text.regionMatches(true, from, "http", 0, 4)) ||
+    (length == 5 && text.regionMatches(true, from, "https", 0, 5)) ||
+    (length == 6 && text.regionMatches(true, from, "mailto", 0, 6))
+  }
+
+  /** Like the other [[isSafeScheme]], for the first [[length]] characters of [[scheme]], which
+    * holds at most 6.
+    */
+  private def isSafeScheme(scheme: Array[Char], length: Int): Boolean =
+    is(scheme, length, "http") || is(scheme, length, "https") || is(scheme, length, "mailto")
+
+  /** Whether the first [[length]] characters of [[scheme]] are [[name]], in any case. */
+  private def is(scheme: Array[Char], length: Int, name: String): Boolean = {
+    var same = length == name.length
+    var i = 0
+    while (same && i < length) {
+      same = (scheme(i) | 0x20) == name.charAt(i)
+      i += 1
+    }
+    same
+  }
+
+  /** The value of [[c]] as an ASCII digit in base [[radix]], 10 or 16, or -1 if it is not one. */
+  private def digit(c: Char, radix: Int): Int =
+    if (c >= '0' && c <= '9') c - '0'
+    else if (radix == 16 && (c | 0x20) >= 'a' && (c | 0x20) <= 'f') (c | 0x20) - 'a' + 10
+    else -1
+
+  /** Whether the URL of a link that starts at [[from]] of [[text]] has no scheme, as `#part` or
+    * `spec.md`, or a safe one (see [[isSafeScheme]]). The text ends at [[end]].
+    *
+    * The scheme is read as a browser reads it, after the Markdown renderer has written the URL:
+    *   - Markdown leaves out a backslash before punctuation, as in `javascript\:`.
+    *   - The browser decodes character references, such as `&#106;` for `j`. Any other `&`, as in
+    *     `&colon;`, could stand for a `:`, so the URL is not safe.
+    *   - The browser leaves out spaces, tabs, line breaks and other control characters.
+    *   - The URL can be in `<` and `>`.
+    *   - A scheme starts with a letter, and has only letters, digits, `+`, `-` and `.` before its
+    *     `:`. Any other character, such as `/`, `?` or `#`, means that the URL has no scheme.
+    */
+  private def isSafeUrl(text: String, from: Int, end: Int): Boolean = {
+    // The scheme so far, up to 6 characters, as no safe scheme is longer
+    val scheme = new Array[Char](6)
+    var length = 0
+    var i = from
+    while (i < end) {
+      var c = text.charAt(i)
+      i += 1
+      if (c == '&') {
+        if (i >= end || text.charAt(i) != '#') return false
+        i += 1
+        val hex = i < end && (text.charAt(i) | 0x20) == 'x'
+        if (hex) i += 1
+        var code = 0
+        var digits = 0
+        var done = false
+        while (!done && i < end) {
+          val d = digit(text.charAt(i), if (hex) 16 else 10)
+          if (d < 0) done = true
+          else {
+            // Codes above U+10FFFF stay above it, which is all that matters below.
+            if (code <= 0x10ffff) code = code * (if (hex) 16 else 10) + d
+            digits += 1
+            i += 1
+          }
+        }
+        if (digits == 0) return false
+        if (i < end && text.charAt(i) == ';') i += 1
+        c = if (code > 0 && code < 0x80) code.toChar else '\u00ff'
+      }
+      if (c == '\\' || c <= ' ' || c == '\u007f' || (c == '<' && length == 0)) {
+        // Left out, as the renderer and the browser leave it out
+      } else if (c == ':') {
+        return isSafeScheme(scheme, length)
+      } else if (
+        isAsciiLetter(c) ||
+        (length > 0 && (isAsciiLetterOrDigit(c) || c == '+' || c == '-' || c == '.'))
+      ) {
+        if (length < scheme.length) scheme(length) = c
+        length += 1
+      } else return true
+    }
+    true
+  }
 
   /** The fence that closes the fenced code block that [[text]] opens but doesn't close, or `null`
     * if there is none.

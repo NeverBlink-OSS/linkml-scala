@@ -18,6 +18,7 @@ import {
   type SchemaStats,
   type SchemaValidationReport,
 } from "./targets.js";
+import type { PagePatch } from "./markdown.js";
 import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
 import type { CatalogClient, Format as OhiFormat, SearchHit } from "@neverblink/ohi";
 
@@ -44,9 +45,6 @@ const MERMAID_URL = "./mermaid/mermaid.js";
 // The ohi.dev SDK, bundled into dist/ohi.js by build.mjs. Imported the first time the load dialog
 // opens, for the same reason as Mermaid.
 const OHI_URL = "./ohi.js";
-// The Markdown renderer for the documentation page view, bundled into dist/markdown by build.mjs and
-// imported on first use only, like Mermaid.
-const MARKDOWN_URL = "./markdown/markdown.js";
 
 // ── State ─────────────────────────────────────────────────────────────────
 
@@ -109,6 +107,20 @@ let diagramSource: string | null = null;
 let pageTab: "page" | "code" = "page";
 // The Markdown currently on screen. Non-null exactly while the page view is up.
 let pageSource: string | null = null;
+// The sections that the page view shows, by key, with the revision of each (see `PagePatch`). They
+// are kept while the Code tab is showing, so going back to the Page tab does not render them again.
+let pageSections = new Map<string, { el: HTMLElement; rev: number }>();
+// The newest revision of `pageSections`, which the next request for the Docs target asks with, so
+// that the worker sends only the sections that are newer.
+let pageRev = 0;
+// Where the page view is scrolled to, and where to scroll it when it is shown again. It is kept up
+// to date by the `scroll` listener of the page view, because reading `scrollTop` when the page has
+// changed makes the browser lay out the page first.
+let pageScrollTop = 0;
+// Whether the output editor holds older text than `pageSource`. The editor is updated only when the
+// Code tab is opened: an update makes the editor read the selection, and if the page is showing,
+// the browser then has to lay out the whole page, which takes seconds for a large schema.
+let pageOutputBehind = false;
 // Which half of the statistics target is showing, sticky like `diagramTab`.
 let statsTab: "stats" | "code" = "stats";
 // The statistics currently on screen. Non-null exactly while the statistics view is up.
@@ -842,36 +854,24 @@ async function renderDiagram(text: string): Promise<void> {
 
 // ── Documentation page view ─────────────────────────────────────────────────
 
-/** The module built from markdown.ts. */
-interface MarkdownApi {
-  renderMarkdown(markdown: string): string;
-}
-
-let markdownPromise: Promise<MarkdownApi> | null = null;
-
-function loadMarkdown(): Promise<MarkdownApi> {
-  markdownPromise ??= import(MARKDOWN_URL) as Promise<MarkdownApi>;
-  return markdownPromise;
-}
-
-/** Only the newest page render may reach the DOM, as for diagrams. */
-let pageToken = 0;
-
 function hidePage(): void {
   $pageView.hidden = true;
   $pageView.innerHTML = "";
   pageSource = null;
+  pageSections = new Map();
+  pageRev = 0;
+  pageScrollTop = 0;
+  pageOutputBehind = false;
   $outputEditorHost.hidden = false;
 }
 
-/** Show the Markdown as a page, behind a Page/Code tab pair sharing the file tab bar. */
-function showPage(text: string): void {
+/** Show the Markdown `text` as a page, behind a Page/Code tab pair sharing the file tab bar. `patch`
+ * has the sections of `text` that the page view does not show yet. */
+function showPage(text: string, patch: PagePatch): void {
   hideReport();
   hideDiagram();
   hideStats();
   outputView.dom.classList.remove("cm-output--error");
-  // Keep the editor in sync while it is hidden, so Code is instant and Copy gives the Markdown.
-  setOutput(outputView, text, "text");
 
   $fileTabs.hidden = false;
   $fileTabs.innerHTML = "";
@@ -882,41 +882,102 @@ function showPage(text: string): void {
     btn.addEventListener("click", () => {
       if (pageTab === tab) return;
       pageTab = tab;
-      if (pageSource !== null) showPage(pageSource);
+      for (const other of $fileTabs.children) other.classList.toggle("file-tab--active", other === btn);
+      showPageTab();
     });
     $fileTabs.appendChild(btn);
   }
 
-  // A new schema starts at the top. The same schema regenerated, as while typing, keeps its place.
-  const sameDocument = pageSource !== null && !$pageView.hidden;
+  // A new schema starts at the top, as `hidePage` sets `pageScrollTop` to 0. The same schema
+  // regenerated, as while typing, keeps its place.
   pageSource = text;
+  pageOutputBehind = true;
+  // Also while the Code tab is showing, as the hidden page is not laid out.
+  if (!applyPage(patch)) return;
+  showPageTab();
+}
 
+/** Make the page view show the sections of `patch`, in its order. Each section that is new, or has
+ * a newer revision, gets its HTML from `patch`. Returns false if `patch` lacks the HTML of one of
+ * them, which should not happen: then the page is emptied, and the whole page asked for again. */
+function applyPage(patch: PagePatch): boolean {
+  const next = new Map<string, { el: HTMLElement; rev: number }>();
+  // The section that the next one goes after, or null for the first one
+  let previous: HTMLElement | null = null;
+  for (let i = 0; i < patch.keys.length; i++) {
+    const key = patch.keys[i]!;
+    const rev = patch.revs[i]!;
+    let section = pageSections.get(key);
+    if (section?.rev !== rev) {
+      const html = patch.html.get(key);
+      if (html === undefined) {
+        hidePage();
+        scheduleGenerate(0);
+        return false;
+      }
+      const el = section?.el ?? document.createElement("section");
+      el.className = "md-section";
+      // The height that the section is laid out with until it is shown (see styles.css)
+      el.style.setProperty("--md-lines", String(patch.lines.get(key) ?? 1));
+      // The HTML is safe to show as it is (see markdown.ts).
+      el.innerHTML = html;
+      section = { el, rev };
+    }
+    next.set(key, section);
+    const at: ChildNode | null = previous === null ? $pageView.firstChild : previous.nextSibling;
+    if (section.el !== at) $pageView.insertBefore(section.el, at);
+    previous = section.el;
+  }
+  for (const [key, section] of pageSections) if (!next.has(key)) section.el.remove();
+  pageSections = next;
+  pageRev = patch.rev;
+  return true;
+}
+
+/** Call `then` once the output editor is in view, or after 30 frames if it isn't by then.
+ *
+ * The editor draws only the lines that can be seen. While it is not in view, as after being hidden,
+ * it draws all of them, and for a large schema that takes seconds. It finds out that it is in view
+ * a few frames after being shown. */
+function whenOutputInView(then: () => void): void {
+  let frames = 0;
+  const check = () => {
+    if (outputView.inView || ++frames >= 30) then();
+    else requestAnimationFrame(check);
+  };
+  check();
+}
+
+/** Show the half of the page view that `pageTab` names, for `pageSource`. */
+function showPageTab(): void {
   if (pageTab === "code") {
     $pageView.hidden = true;
     $outputEditorHost.hidden = false;
+    if (pageOutputBehind) {
+      pageOutputBehind = false;
+      setOutput(outputView, "", "text");
+      whenOutputInView(() => {
+        if (pageSource !== null && pageTab === "code") setOutput(outputView, pageSource, "text");
+        else pageOutputBehind = pageSource !== null;
+      });
+    }
     return;
   }
 
   $outputEditorHost.hidden = true;
+  if (!$pageView.hidden) return;
   $pageView.hidden = false;
-  void renderPage(text, sameDocument ? $pageView.scrollTop : 0);
+  // A hidden element loses where it was scrolled to.
+  if (pageScrollTop > 0) $pageView.scrollTop = pageScrollTop;
 }
 
-async function renderPage(text: string, scrollTop: number): Promise<void> {
-  const token = ++pageToken;
-  try {
-    const { renderMarkdown } = await loadMarkdown();
-    if (token !== pageToken || $pageView.hidden) return;
-    // Links that don't go to a section of the page already open in a new tab (see markdown.ts).
-    $pageView.innerHTML = renderMarkdown(text);
-    $pageView.scrollTop = scrollTop;
-  } catch (err) {
-    if (token !== pageToken || $pageView.hidden) return;
-    $pageView.replaceChildren(
-      errorNotice("Could not show this page", err instanceof Error ? err.message : String(err)),
-    );
-  }
-}
+$pageView.addEventListener(
+  "scroll",
+  () => {
+    pageScrollTop = $pageView.scrollTop;
+  },
+  { passive: true },
+);
 
 // Links between sections are anchors. Scroll the panel to them, rather than letting the browser
 // change the playground's own address.
@@ -927,9 +988,41 @@ $pageView.addEventListener("click", (e) => {
   e.preventDefault();
   const id = decodeURIComponent(href.slice(1));
   const target = id ? $pageView.querySelector(`[id="${CSS.escape(id)}"]`) : null;
-  if (target) target.scrollIntoView({ block: "start" });
+  if (target) scrollPageTo(target);
   else $pageView.scrollTop = 0;
 });
+
+/** Scrolls the page view to `target`.
+ *
+ * The browser lays out only the sections near the visible part of the page (see `.md-section` in
+ * styles.css). So once it has scrolled, the sections around `target` are laid out, and those above it
+ * can grow and push it down, which in Chrome happens two or three frames later. Scroll to it again
+ * until it stays in place for five frames, unless the user scrolls first. */
+function scrollPageTo(target: Element): void {
+  target.scrollIntoView({ block: "start" });
+  let top = target.getBoundingClientRect().top;
+  let stillFrames = 0;
+  let frames = 0;
+  let userScrolled = false;
+  const stop = () => {
+    userScrolled = true;
+  };
+  const inputs = ["wheel", "touchstart", "keydown", "pointerdown"];
+  for (const input of inputs) $pageView.addEventListener(input, stop, { once: true, passive: true });
+  const check = () => {
+    if (userScrolled) return;
+    const now = target.getBoundingClientRect().top;
+    if (now === top) stillFrames++;
+    else {
+      stillFrames = 0;
+      target.scrollIntoView({ block: "start" });
+      top = target.getBoundingClientRect().top;
+    }
+    if (stillFrames < 5 && ++frames < 60) requestAnimationFrame(check);
+    else for (const input of inputs) $pageView.removeEventListener(input, stop);
+  };
+  requestAnimationFrame(check);
+}
 
 // ── Statistics view ─────────────────────────────────────────────────────────
 
@@ -1422,7 +1515,14 @@ function runGenerate(): void {
   const id = ++requestId;
   pendingId = id;
   setBusy(true);
-  const request: ConvertRequest = { id, direction, input, stepId: step.id, options: optionValues[activeKey()]! };
+  const request: ConvertRequest = {
+    id,
+    direction,
+    input,
+    stepId: step.id,
+    options: optionValues[activeKey()]!,
+    pageRev,
+  };
   getWorker().postMessage(request);
 }
 
@@ -1449,7 +1549,7 @@ function onResult(res: ConvertResponse): void {
   } else if (res.kind === "diagram") {
     showDiagram(res.result as string);
   } else if (res.kind === "page") {
-    showPage(res.result as string);
+    showPage(res.result as string, res.page!);
   } else if (res.kind === "stats") {
     showStats(res.result as SchemaStats);
   } else {
@@ -1475,6 +1575,7 @@ function breakdown(res: Extract<ConvertResponse, { ok: true }>, displayMs: numbe
   } else {
     parts.push(res.loadMs === null ? "parse cached" : `parse ${res.loadMs}ms`);
     if (!res.fatal) parts.push(`generate ${res.genMs}ms`);
+    if (res.htmlMs !== undefined) parts.push(`HTML ${res.htmlMs}ms`);
   }
   parts.push(`display ${displayMs}ms`);
   return parts.join(" · ");
@@ -1566,7 +1667,8 @@ function wireDialog(dialog: HTMLDialogElement, ...closeSelectors: string[]): voi
 $copyOutput.addEventListener("click", async () => {
   // While the report is shown the output editor is hidden and still holds the previously
   // generated target's text, so copying it would hand back content from another tab.
-  const text = reportText ?? outputView.state.doc.toString();
+  // While the page is showing, the output editor may still hold older text (see `pageOutputBehind`).
+  const text = reportText ?? pageSource ?? outputView.state.doc.toString();
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);

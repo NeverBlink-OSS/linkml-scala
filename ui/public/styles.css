@@ -872,9 +872,19 @@ body { background: var(--bg); }
   font-size: 14px;
   line-height: 1.6;
   overflow-wrap: break-word;
+  /* So that `cqw` in `.md-name` below is a share of the page width. */
+  container-type: inline-size;
 }
 .md-page[hidden] { display: none; }
-.md-page > :first-child { margin-top: 0; }
+.md-section:first-child > :first-child { margin-top: 0; }
+/* The browser lays out only the sections near the visible part of the page. For a large schema the
+   page has hundreds of thousands of elements, and laying them all out takes seconds. A section that
+   has not been laid out yet is as high as its lines of Markdown (`--md-lines`, set by app.ts), or as
+   high as it was when it was last shown. */
+.md-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto calc(var(--md-lines, 1) * 1.6em);
+}
 .md-page h1,
 .md-page h2,
 .md-page h3,
@@ -929,6 +939,15 @@ body { background: var(--bg); }
 .md-page th,
 .md-page td { padding: 5px 12px; border: 1px solid var(--border); }
 .md-page th { font-weight: 600; text-align: left; background: var(--surface-2); }
+/* The content of a first-column cell, which is usually an element name (see markdown.ts).
+   - It is as wide as the name on one line, so the table cannot make the column narrower.
+   - It is at most half the page wide, less the 25px of the cell's padding and borders. A longer
+     name goes onto more lines, between its words, or anywhere in a word that is still too long. */
+.md-page .md-name {
+  display: inline-block;
+  width: max-content;
+  max-width: calc(50cqw - 25px);
+}
 .md-page tr:nth-child(2n) td { background: var(--surface); }
 
 @media (max-width: 900px) {

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node build.mjs",
     "watch": "node build.mjs --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node test/run.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6.7.1",
@@ -18,7 +19,6 @@
     "@codemirror/view": "^6.36.2",
     "@lezer/highlight": "^1.2.1",
     "@neverblink/ohi": "^0.17.1",
-    "dompurify": "^3.4.16",
     "marked": "^18.1.0",
     "mermaid": "^11.16.1"
   },
