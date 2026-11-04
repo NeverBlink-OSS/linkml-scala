@@ -1092,14 +1092,13 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
       turtle should not include "typeDesignator2/shape_type"
     }
 
-    "accept the classes a type designator allows as values of a slot" in {
+    "use sh:class for a range with a type designator" in {
       val turtle =
         RdfUtils.toTurtle(ShaclGenerator(using ModelCatalogue.typeDesignator2.model).generate(_))
       val prefix = "https://neverblink.eu/linkml/tests/typeDesignator2"
-      // Shape is abstract, so only its concrete descendants are members
-      turtle should include regex
-        s"""sh:or \\(\\s*\\[\\s*sh:class <$prefix/Circle>\\s*]\\s*\\[\\s*sh:class <$prefix/Rectangle>\\s*]\\s*\\)"""
-      turtle should not include s"sh:class <$prefix/Shape>"
+      // Subclasses are found by the rdfs:subClassOf triples in the data graph, not listed here
+      turtle should include(s"sh:class <$prefix/Shape>")
+      turtle should not include s"sh:class <$prefix/Circle>"
     }
 
     "generate sh:or for any_of" in {

@@ -16,10 +16,6 @@ The following features are not yet supported or are partially supported in ohi L
   - Only enum, string, integer and boolean defaults are supported, only in the Scala generator
 - Partial support for computed values (e.g., `equals_expression`)
   - Only string interpolation is supported, only in the Scala generator
-- Partial support for type designators (`designates_type`)
-  - Supported in the Scala, TypeScript, Pydantic, JSON Schema and SHACL generators and in YAML/JSON serialization.
-  - In RDF, `rdf:type` holds the type designator, so the SHACL generator emits no property shape for the designator slot.
-    A slot whose range has a type designator accepts any class that the designator allows, without `rdfs:subClassOf` triples in the data.
 - Enum inheritance, dynamic enums (`include`, `minus`, `reachable_from`)
 - Rules (`rules`)
 
@@ -35,6 +31,7 @@ These features are supported in ohi LinkML but not in LinkML-Python (or are supp
 - Better support for [imports](#imports)
   - The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once
 - Support for `all_of`, `exactly_one_of`, `none_of`, nested boolean expressions and cardinality inside them in the SHACL generator (see [Boolean expressions in SHACL](#boolean-expressions-in-shacl))
+- Support for type designators and subclasses in the SHACL generator (see [Class hierarchy in SHACL](#class-hierarchy-in-shacl))
 - IRIs with non-ASCII characters are accepted in slots of type `uri` and `uriorcurie`.
 
 These features work differently in ohi LinkML than in the LinkML specification and LinkML-Python:
@@ -49,6 +46,29 @@ These features follow the LinkML specification, while LinkML-Python works differ
 
 In boolean expressions, the SHACL generator of LinkML-Python 1.12.1 checks only the `range` of `any_of` members.
 ohi LinkML also checks `all_of`, `exactly_one_of`, `none_of`, and the patterns, value bounds, cardinality and nested boolean expressions of members.
+
+## Class hierarchy in SHACL
+
+The SHACL generator gives a slot whose range is a class an `sh:class` constraint with that class.
+SHACL checks `sh:class` and `sh:targetClass` with the `rdfs:subClassOf` triples in the data graph.
+So for a value typed with a subclass to conform, add the class hierarchy to the data graph, for example the output of the RDFS generator:
+
+```sh
+pyshacl -s shapes.ttl -e schema-rdfs.ttl data.ttl
+```
+
+Subclasses from other schemas are accepted this way too.
+
+ohi LinkML differs from LinkML-Python 1.12.1 here:
+
+- In RDF, `rdf:type` holds the type designator, so ohi LinkML emits no property shape for the designator slot.
+  LinkML-Python requires the designator slot as a property.
+- With the class hierarchy in the data graph, the shape of a class also checks the instances of its subclasses, which can have more slots.
+  So ohi LinkML leaves the shape of a class with subclasses open (`sh:closed false`).
+  LinkML-Python closes it, so it rejects these instances.
+
+A subclass still can't accept data that the shape of its parent class or mixin rejects.
+For example, if a subclass makes a slot multivalued, its instances with more than one value fail the shape of the parent, where the slot is single-valued.
 
 ## Inherited boolean expressions
 
