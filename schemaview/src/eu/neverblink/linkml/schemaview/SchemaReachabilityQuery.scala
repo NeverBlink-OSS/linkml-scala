@@ -108,7 +108,8 @@ final class DerivedReachabilityQuery(
           case sv if !inlinedOnly || sv.derivedInlined => collectSlotRefs(sv, result)
           case _ =>
         }
-        derivedClassRefs.collect(classView.cls, result)
+        // Class-level references, such as ranges in rules, are never inlined values
+        if (!inlinedOnly) derivedClassRefs.collect(classView.cls, result)
         if (includeClassAncestors) {
           classView.parents.foreach(anc => result.addOne((classDef, anc.name)))
         }

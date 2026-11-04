@@ -592,6 +592,42 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       sv.withTypeDesignatorMembers(all, true, false) should be theSameInstanceAs all
     }
 
+    "follow the class-level references of a derived class only when not limited to inlined ranges" in {
+      val schema =
+        """id: https://example.org/class-level/
+          |name: class_level
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Root:
+          |    disjoint_with:
+          |      - Other
+          |    attributes:
+          |      ref:
+          |        range: string
+          |    rules:
+          |      - postconditions:
+          |          slot_conditions:
+          |            ref:
+          |              range: Ref
+          |  Other:
+          |  Ref:
+          |    attributes:
+          |      id:
+          |        identifier: true
+          |""".stripMargin
+
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schema))
+
+      val all = sv.derivedReachabilityQuery(Seq(sv.classes("Root")), false, false)
+      all.reachable(sv.classes("Other")) shouldBe true
+      all.reachable(sv.classes("Ref")) shouldBe true
+
+      val inlinedOnly = sv.derivedReachabilityQuery(Seq(sv.classes("Root")), true, false)
+      inlinedOnly.reachable(sv.classes("Other")) shouldBe false
+      inlinedOnly.reachable(sv.classes("Ref")) shouldBe false
+    }
+
     "recognize the tree_root inline mode from the extension" in {
       val model =
         """id: http://example.com/c
