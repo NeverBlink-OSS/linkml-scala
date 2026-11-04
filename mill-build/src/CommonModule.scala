@@ -32,7 +32,7 @@ trait CommonBuildModule
   )
 }
 
-trait CommonModule extends CommonBuildModule, PublishModule {
+trait CommonModule extends CommonBuildModule, PublishModule, ReleaseVersionModule {
   final def pomSettings = PomSettings(
     description =
       "A Scala 3 cross-platform library and CLI for LinkML schema validation and multi-format code generation (Scala, JSON Schema, SHACL, RDFS)",
@@ -51,7 +51,20 @@ trait CommonModule extends CommonBuildModule, PublishModule {
     ),
   )
 
-  final def publishVersion = Task {
+  final def publishVersion = Task { releaseVersion() }
+}
+
+/** The version of a release, without the leading `v` of its tag. Shared by the published modules
+  * and the ohi-index packages of `ohipackages`, which must not be a [[PublishModule]] so the release
+  * does not publish it to Maven Central.
+  */
+trait ReleaseVersionModule extends Module {
+  final def releaseVersion: T[String] = Task { currentReleaseVersion() }
+
+  /** The release version. [[releaseVersion]] is cached until the build changes, so a task
+    * that must see a new tag or commit calls this from a `Task.Input`.
+    */
+  protected final def currentReleaseVersion(): String = {
     // On a tag build, use the tag that triggered the release rather than
     // `git describe`, which is ambiguous when several v* tags point at the same
     // commit and can otherwise publish the wrong version.

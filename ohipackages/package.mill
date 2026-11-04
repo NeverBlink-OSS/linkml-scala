@@ -1,0 +1,42 @@
+package build.ohipackages
+
+import com.goyeau.mill.scalafix.ScalafixModule
+import mill.*
+import mill.scalalib.*
+import mill.javalib.DepSyntax
+import mill.scalalib.scalafmt.ScalafmtModule
+import millbuild.*
+
+/** Builds the ohi-index packages of the schemas in `model/`: one folder per schema file, laid out
+  * as `ontologies/ohi/<name>/<version>/` in ohi-index, with the release version as the version: the
+  * tag without its `v`, the same as the Maven, npm and PyPI releases.
+  *
+  * Run `./mill ohipackages.release` and copy the `ontologies` folder it prints into an ohi-index
+  * checkout. It is not published, so it is a [[ReleaseVersionModule]] and not a [[CommonModule]]:
+  * the release publishes every `PublishModule` to Maven Central.
+  */
+object `package` extends ScalaModule, ScalafmtModule, ScalafixModule, ReleaseVersionModule {
+  def scalaVersion = Version.scala
+
+  def scalacOptions = Seq("-Wunused:all")
+
+  def moduleDeps = Seq(build.schemaview.jvm)
+
+  override def mvnDeps = Seq(mvn"com.lihaoyi::os-lib:0.11.8")
+
+  /** The version of the packages, such as `1.2.3` for the tag `v1.2.3`. An input, so it is worked
+    * out again on every run, unlike [[releaseVersion]].
+    */
+  def packageVersion: T[String] = Task.Input { currentReleaseVersion() }
+
+  /** Write the packages for [[packageVersion]] and return the folder that holds `ontologies/`. */
+  def release() = Task.Command {
+    val root = mill.api.BuildCtx.workspaceRoot
+    val commit = os.proc("git", "rev-parse", "HEAD").call(cwd = root).out.trim()
+    runner().run(Seq(root.toString, Task.dest.toString, packageVersion(), commit))
+    println(s"Wrote the ohi-index packages for ${packageVersion()} to ${Task.dest / "ontologies"}")
+    PathRef(Task.dest)
+  }
+
+  object test extends ScalaTests, CommonTestModule
+}

@@ -154,3 +154,13 @@ The JMH benchmarks are in [`benchmark/`](benchmark/).
 Create a release in the GitHub UI with a new tag like `v0.2.3`, and press "Generate release notes". The tag starts [`release.yml`](.github/workflows/release.yml), which builds and publishes everything. A tag with a `-` in it, like `v0.3.0-rc1`, makes a pre-release and publishes the npm package under the `next` tag.
 
 [Snapshot versions](https://central.sonatype.com/repository/maven-snapshots/eu/neverblink/linkml/generator_3/maven-metadata.xml) are published to Maven Central's snapshot repository.
+
+### Schemas in ohi-index
+
+The schemas in `model/` can be published to the ohi hub as packages of ohi-index, one per schema file, in the `ohi` namespace:
+
+```bash
+./mill ohipackages.release
+```
+
+It writes a folder `ontologies/ohi/<name>/<version>/` per schema to `out/ohipackages/release.dest/`, with the schema, `LICENSE`, a README and an `ohi-package.yaml`. The version is the release version without the `v` of its tag, such as `0.2.3`, the same as the Maven, npm and PyPI releases: on a tag build in GitHub Actions the tag that started it, else `git describe` (a `-SNAPSHOT` version between tags). Imports of other schemas in `model/` become `dependencies` and point to the hub's copy of that schema. Copy the `ontologies` folder into an ohi-index checkout and open a pull request there. This is not part of `release.yml` yet.

@@ -45,7 +45,8 @@ object `package` extends Module {
     def lint: Seq[String] = {
       val platforms =
         Seq("__.jvm.__", "__.js.__") ++ Option.when(NativeOptional.nativeEnabled)("__.native.__")
-      alias((platforms :+ "agents.__").flatMap(p => Seq(s"$p.fix", s"$p.reformat"))*)
+      val others = Seq("agents.__", "ohipackages.__")
+      alias((platforms ++ others).flatMap(p => Seq(s"$p.fix", s"$p.reformat"))*)
     }
 
     /** Regenerate every checked-in source generated from a LinkML model. */
