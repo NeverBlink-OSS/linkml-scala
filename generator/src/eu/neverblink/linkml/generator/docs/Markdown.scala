@@ -11,17 +11,9 @@ import eu.neverblink.linkml.rdf.io.CharSink
   * Headings are shifted down by [[headingOffset]] levels, so that the same page can be a file of
   * its own (offset 0) or a section of a single document (offset 1).
   *
-  * Markdown from the schema, such as a description, is written so that the HTML for it can be shown
-  * as it is, as the playground does. A shared playground link can carry any schema, so a
-  * description could hold a `<script>`, an `onerror` attribute or a `javascript:` link. Each of
-  * these gets a zero-width space, which the reader doesn't see, so that it shows as text:
-  *   - after a `<` that starts a tag, unless it is one of [[Markdown.safeTags]] without attributes,
-  *     or an autolink, unless its scheme is `http`, `https` or `mailto`
-  *   - between the `]` and the `(` of a link or an image, or the `]` and the `:` of a link
-  *     reference definition, unless its URL has no scheme or one of those three
-  *
-  * The space goes where it also keeps the text as it is in a code span or a code block, so there is
-  * no need to find where they are.
+  * In Markdown from the schema, a zero-width space after `<` or `]` turns tags other than
+  * [[Markdown.safeTags]], and links with a scheme other than `http`, `https` or `mailto`, into
+  * text. So the playground can show the HTML as it is.
   */
 final class Markdown private[docs] (sink: CharSink, headingOffset: Int) extends CharSink {
 
