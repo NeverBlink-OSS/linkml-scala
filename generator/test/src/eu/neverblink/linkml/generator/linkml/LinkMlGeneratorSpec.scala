@@ -5,7 +5,6 @@ import eu.neverblink.linkml.generator.options.{
   LinkMlGeneratorOptions,
   PruningMode,
 }
-import eu.neverblink.linkml.generator.linkml.LinkMlGeneratorSpec.skipModels
 import eu.neverblink.linkml.schemaview.{MapImporter, SchemaIssues}
 import eu.neverblink.linkml.schemaview.SchemaView
 import eu.neverblink.linkml.tests.ModelCatalogue
@@ -747,7 +746,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
     }
 
     "generate all catalogue models without errors" when {
-      for entry <- ModelCatalogue.all.filter(m => !skipModels.contains(m.model.root.name)) do
+      for entry <- ModelCatalogue.all do
         s"model '${entry.model.root.name}'" in {
           LinkMlGenerator(using entry.model)
             .serialize() should not be empty
@@ -767,10 +766,4 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
         }
     }
   }
-}
-
-object LinkMlGeneratorSpec {
-  val skipModels: Map[String, String] = Map(
-    "unionRange" -> "Not yet implemented: LNK-110",
-  )
 }
