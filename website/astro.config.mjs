@@ -19,6 +19,7 @@ const sidebar = [
       { label: 'Docs', items: ['generators/docs', 'generators/er-diagram'] },
       { label: 'Schema tools', items: ['generators/linkml', 'generators/stats', 'generators/translation'] },
       'langstring',
+      'shacl-class-hierarchy',
     ],
   },
   { label: 'Importers', items: ['importers', 'importers/owl', 'importers/ossie'] },

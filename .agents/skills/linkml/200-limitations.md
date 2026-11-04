@@ -49,26 +49,13 @@ ohi LinkML also checks `all_of`, `exactly_one_of`, `none_of`, and the patterns, 
 
 ## Class hierarchy in SHACL
 
-The SHACL generator gives a slot whose range is a class an `sh:class` constraint with that class.
-SHACL checks `sh:class` and `sh:targetClass` with the `rdfs:subClassOf` triples in the data graph.
-So for a value typed with a subclass to conform, add the class hierarchy to the data graph, for example the output of the RDFS generator:
+In RDF, `rdf:type` holds the type designator, so ohi LinkML emits no property shape for the designator slot.
+LinkML-Python 1.12.1 requires the designator slot as a property.
 
-```sh
-pyshacl -s shapes.ttl -e schema-rdfs.ttl data.ttl
-```
+ohi LinkML leaves the shape of a class with subclasses open (`sh:closed false`), so instances of its subclasses with more slots conform when the class hierarchy is in the data graph.
+LinkML-Python closes it, so it rejects these instances.
 
-Subclasses from other schemas are accepted this way too.
-
-ohi LinkML differs from LinkML-Python 1.12.1 here:
-
-- In RDF, `rdf:type` holds the type designator, so ohi LinkML emits no property shape for the designator slot.
-  LinkML-Python requires the designator slot as a property.
-- With the class hierarchy in the data graph, the shape of a class also checks the instances of its subclasses, which can have more slots.
-  So ohi LinkML leaves the shape of a class with subclasses open (`sh:closed false`).
-  LinkML-Python closes it, so it rejects these instances.
-
-A subclass still can't accept data that the shape of its parent class or mixin rejects.
-For example, if a subclass makes a slot multivalued, its instances with more than one value fail the shape of the parent, where the slot is single-valued.
+See [Class hierarchy in SHACL](250-shacl-class-hierarchy.md).
 
 ## Inherited boolean expressions
 

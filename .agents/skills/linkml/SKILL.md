@@ -179,6 +179,8 @@ Read these when the task calls for them; do not load them up front.
   compacted when it is written, and which prefixes are used.
 * [Language strings in generators](240-langstring.md) — how each generator writes a `langstring`
   value, a plain string or a mapping from language tag to text.
+* [Class hierarchy in SHACL](250-shacl-class-hierarchy.md) — how to validate data with subclasses
+  and type designators against the SHACL shapes, by adding the RDFS class hierarchy to the data.
 
 ### Workflows
 
