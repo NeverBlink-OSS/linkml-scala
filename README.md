@@ -64,8 +64,8 @@ Commit both. See **[the ohi docs](https://ohi.dev/docs/)** for the
 
 ## LinkML
 
-[LinkML](https://linkml.ohi.dev/) lets you describe your data once, in a simple YAML schema.
-ohi LinkML checks the schema and generates other formats from it:
+[LinkML](https://linkml.ohi.dev/) is a YAML-based language that lets you model your data or domain once.
+ohi LinkML is the engine that turns it into code, ontologies, and schemas your tools already use:
 
 ```shell
 ohi linkml validate model.yaml
