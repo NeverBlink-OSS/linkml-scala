@@ -266,47 +266,54 @@ object Metadata {
       set: (Metadata, Seq[String | LocalizedText | UriOrCurie]) => Metadata,
   )
 
-  private def strings(values: Seq[String | LocalizedText | UriOrCurie]): Seq[String] = values.map {
+  private def stringOf(value: String | LocalizedText | UriOrCurie): String = value match {
     case s: String => s
     case t: LocalizedText => t.plain
     case u: UriOrCurie => u.original
   }
 
-  private def texts(values: Seq[String | LocalizedText | UriOrCurie]): Seq[LocalizedText] =
-    values.map {
-      case t: LocalizedText => t
-      case other => PlainText(strings(Seq(other)).head)
-    }
+  private def textOf(value: String | LocalizedText | UriOrCurie): LocalizedText = value match {
+    case t: LocalizedText => t
+    case other => PlainText(stringOf(other))
+  }
 
-  private def text(values: Seq[String | LocalizedText | UriOrCurie]): Option[LocalizedText] =
-    texts(values).headOption
-
-  private def refs(values: Seq[String | LocalizedText | UriOrCurie]): Seq[UriOrCurie] =
-    values.map {
-      case u: UriOrCurie => u
-      case other => Uri(strings(Seq(other)).head)
-    }
+  private def refOf(value: String | LocalizedText | UriOrCurie): UriOrCurie = value match {
+    case u: UriOrCurie => u
+    case other => Uri(stringOf(other))
+  }
 
   private def textField(
       name: String,
       property: String,
       get: Metadata => Option[LocalizedText],
       set: (Metadata, Option[LocalizedText]) => Metadata,
-  ) = Field(name, property, Kind.Text, m => get(m).toSeq, (m, v) => set(m, text(v)))
+  ) = Field(
+    name,
+    property,
+    Kind.Text,
+    m => get(m).toSeq,
+    (m, v) => set(m, if (v.isEmpty) None else Some(textOf(v.head))),
+  )
 
   private def textsField(
       name: String,
       property: String,
       get: Metadata => Seq[LocalizedText],
       set: (Metadata, Seq[LocalizedText]) => Metadata,
-  ) = Field(name, property, Kind.Text, get, (m, v) => set(m, texts(v)))
+  ) = Field(name, property, Kind.Text, get, (m, v) => set(m, v.map(textOf)))
 
   private def refsField(
       name: String,
       property: String,
       get: Metadata => Seq[UriOrCurie],
       set: (Metadata, Seq[UriOrCurie]) => Metadata,
-  ) = Field(name, property, Kind.Reference, m => get(m).map(_.original), (m, v) => set(m, refs(v)))
+  ) = Field(
+    name,
+    property,
+    Kind.Reference,
+    m => get(m).map(_.original),
+    (m, v) => set(m, v.map(refOf)),
+  )
 
   private def refField(
       name: String,
@@ -318,7 +325,7 @@ object Metadata {
     property,
     Kind.Reference,
     m => get(m).map(_.original).toSeq,
-    (m, v) => set(m, refs(v).headOption),
+    (m, v) => set(m, if (v.isEmpty) None else Some(refOf(v.head))),
   )
 
   private def dateField(
@@ -331,7 +338,7 @@ object Metadata {
     property,
     Kind.DateTime,
     m => get(m).map(_.value).toSeq,
-    (m, v) => set(m, strings(v).headOption.map(LinkmlDateTime(_))),
+    (m, v) => set(m, if (v.isEmpty) None else Some(LinkmlDateTime(stringOf(v.head)))),
   )
 
   private def stringField(
@@ -339,7 +346,13 @@ object Metadata {
       property: String,
       get: Metadata => Option[String],
       set: (Metadata, Option[String]) => Metadata,
-  ) = Field(name, property, Kind.Plain, m => get(m).toSeq, (m, v) => set(m, strings(v).headOption))
+  ) = Field(
+    name,
+    property,
+    Kind.Plain,
+    m => get(m).toSeq,
+    (m, v) => set(m, if (v.isEmpty) None else Some(stringOf(v.head))),
+  )
 
   private val dcterms = "http://purl.org/dc/terms/"
   private val skos = "http://www.w3.org/2004/02/skos/core#"
@@ -361,7 +374,7 @@ object Metadata {
       skos + "example",
       Kind.Plain,
       _.examples.flatMap(_.value),
-      (m, v) => m.copy(examples = strings(v).map(e => Example(value = Some(e)))),
+      (m, v) => m.copy(examples = v.map(e => Example(value = Some(stringOf(e))))),
     ),
     refsField("see_also", rdfs + "seeAlso", _.seeAlso, (m, v) => m.copy(seeAlso = v)),
     refField("source", dcterms + "source", _.source, (m, v) => m.copy(source = v)),
@@ -435,13 +448,13 @@ object Metadata {
       "http://www.w3.org/2002/07/owl#deprecated",
       Kind.Flag,
       _.deprecated.toSeq,
-      (m, v) => m.copy(deprecated = strings(v).headOption.map(PlainText(_))),
+      (m, v) => m.copy(deprecated = if (v.isEmpty) None else Some(PlainText(stringOf(v.head)))),
     ),
     stringField("license", dcterms + "license", _.license, (m, v) => m.copy(license = v)),
     stringField("version", pav + "version", _.version, (m, v) => m.copy(version = v)),
   )
 
-  val byName: Map[String, Field] = fields.map(f => f.name -> f).toMap
+  val byName: Map[String, Field] = fields.iterator.map(f => f.name -> f).toMap
 
   /** @param description
     *   The property used for `description`.
@@ -451,28 +464,26 @@ object Metadata {
       description: String = skos + "definition",
       language: Option[String] = None,
   ): Seq[Annotation] = {
-    val annotations = Seq.newBuilder[Annotation]
+    val annotations = Vector.newBuilder[Annotation]
     fields.foreach { field =>
       val name = field.name
       val property = if (name == "description") description else field.property
       val isHumanText = humanText(name)
       field.get(metadata).foreach { value =>
         foreachNode(field.kind, value) { node =>
-          annotations.addOne(
-            Annotation(
-              property,
-              (if (isHumanText) inLanguage(node, language) else node) match {
-                // Write a license that is an IRI as a link, as most ontologies do.
-                case Literal(v, XmlSchema.string) if name == "license" && isAbsoluteIri(v) =>
-                  Iri(v)
-                case n => n
-              },
-            ),
-          )
+          val value = if (isHumanText) inLanguage(node, language) else node
+          annotations.addOne(Annotation(property, if (name == "license") license(value) else value))
         }
       }
     }
     annotations.result()
+  }
+
+  /** A license that is an IRI is written as a link, as most ontologies do. */
+  private def license(node: Node): Node = node match {
+    case l: Literal =>
+      if (l.datatype == XmlSchema.string && isAbsoluteIri(l.value)) Iri(l.value) else node
+    case _ => node
   }
 
   private def isAbsoluteIri(v: String): Boolean =
@@ -484,11 +495,10 @@ object Metadata {
 
   /** Adds the language tag to a plain string literal, if a language is given. */
   def inLanguage(node: Node, language: Option[String]): Node = node match {
-    case Literal(v, XmlSchema.string) =>
-      language match {
-        case Some(l) => LanguageLiteral(v, l)
-        case _ => node
-      }
+    case l: Literal =>
+      if (language.isDefined && l.datatype == XmlSchema.string)
+        LanguageLiteral(l.value, language.get)
+      else node
     case _ => node
   }
 
@@ -498,9 +508,11 @@ object Metadata {
       value: String | LocalizedText | UriOrCurie,
   )(f: Node => Unit): Unit =
     value match {
-      case PlainText(v) => f(Literal(v))
-      case MultilingualText(mapping) =>
-        mapping.toSeq.sortBy(_._1).foreach(kv => f(LanguageLiteral(kv._2, kv._1)))
+      case t: PlainText => f(Literal(t.value))
+      case t: MultilingualText =>
+        val languages = t.mapping.keysIterator.toArray
+        java.util.Arrays.sort(languages, Ordering.String)
+        languages.foreach(l => f(LanguageLiteral(t.mapping(l), l)))
       case v: UriOrCurie =>
         val uri = v.original
         f(if (kind == Kind.Reference) Iri(uri) else Literal(uri))

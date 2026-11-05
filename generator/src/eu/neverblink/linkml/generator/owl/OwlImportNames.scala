@@ -30,75 +30,125 @@ import scala.collection.mutable
 private[owl] final class OwlImportNames(
     ontology: Ontology,
     config: OwlImportConfig,
-    ownTerms: Seq[String],
-    allTerms: Seq[String],
+    ownTerms: collection.Seq[String],
+    allTerms: collection.Seq[String],
     warn: (String, String) => Unit,
 ) {
   import OwlImportNames.*
 
-  private val ontologyPrefixes: Seq[(String, String)] = ontology.prefixes ++ config.prefixMap
+  private val ontologyPrefixes: mutable.ArrayBuffer[(String, String)] = {
+    val prefixes = mutable.ArrayBuffer.from(ontology.prefixes)
+    config.prefixMap.foreach(prefixes.addOne)
+    prefixes
+  }
 
   /** Expands a CURIE from the config, using the ontology's or well-known prefixes. */
   def expand(curieOrIri: String): String = OwlImportNames.expand(curieOrIri, ontologyPrefixes)
 
-  private def preferred(property: String): Option[String] =
-    ontology.annotations.collectFirst {
-      case Annotation(p, Literal(v, _)) if p == vann + property => v
-      case Annotation(p, Iri(v)) if p == vann + property => v
+  /** The value of a `vann` property of the ontology, or `null` if it has none. */
+  private def preferred(property: String): String = {
+    val iri = vann + property
+    val it = ontology.annotations.iterator
+    while (it.hasNext) {
+      val a = it.next()
+      if (a.property == iri) {
+        a.value match {
+          case l: Literal => return l.value
+          case i: Iri => return i.value
+          case _ =>
+        }
+      }
     }
+    null
+  }
 
   /** The namespace of the ontology's own terms. The default prefix stands for it. */
-  val defaultNamespace: String =
-    config.defaultPrefix
-      .flatMap(p => (ontologyPrefixes ++ wellKnownPrefixes).collectFirst { case (`p`, ns) => ns })
-      .orElse(preferred("preferredNamespaceUri"))
-      .orElse(
-        ownTerms.groupBy(namespaceOf).toSeq.sortBy((ns, iris) => (-iris.size, ns)).headOption
-          .map(_._1),
-      )
-      .orElse(ontology.iri.map(i => if i.endsWith("/") || i.endsWith("#") then i else i + "/"))
-      .getOrElse("https://example.org/ontology/")
+  val defaultNamespace: String = {
+    var ns: String = null
+    if (config.defaultPrefix.isDefined) {
+      val p = config.defaultPrefix.get
+      ns = namespaceOfPrefix(p, ontologyPrefixes)
+      if (ns eq null) ns = namespaceOfPrefix(p, wellKnownPrefixes)
+    }
+    if (ns eq null) ns = preferred("preferredNamespaceUri")
+    if (ns eq null) ns = mostUsedNamespace(ownTerms)
+    if ((ns eq null) && ontology.iri.isDefined) {
+      val i = ontology.iri.get
+      ns = if (i.endsWith("/") || i.endsWith("#")) i else i + "/"
+    }
+    if (ns eq null) "https://example.org/ontology/" else ns
+  }
 
-  /** Prefix by namespace, in declaration order. */
-  private val prefixes: mutable.LinkedHashMap[String, String] = {
-    val out = mutable.LinkedHashMap.empty[String, String]
+  /** Prefix by namespace. */
+  private val prefixes = mutable.HashMap.empty[String, String]
+
+  /** The namespaces in [[prefixes]], in declaration order. */
+  private val namespaces = mutable.ArrayBuffer.empty[String]
+
+  /** The prefixes in [[prefixes]]. */
+  private val prefixNames = mutable.HashSet.empty[String]
+
+  private def addPrefix(ns: String, prefix: String): Unit = {
+    prefixes.update(ns, prefix)
+    namespaces.addOne(ns)
+    prefixNames.addOne(prefix)
+  }
+
+  {
     def add(prefix: String, ns: String): Unit =
-      if !out.contains(ns) && !out.values.exists(_ == prefix) then out(ns) = prefix
-    val defaultName = config.defaultPrefix
-      .orElse(preferred("preferredNamespacePrefix"))
-      .orElse(ontologyPrefixes.collectFirst { case (p, `defaultNamespace`) => p })
-      .orElse(wellKnownPrefixes.collectFirst { case (p, `defaultNamespace`) => p })
-      .getOrElse(prefixFor(defaultNamespace))
+      if (!prefixes.contains(ns) && !prefixNames.contains(prefix)) addPrefix(ns, prefix)
+    var defaultName: String = config.defaultPrefix.orNull
+    if (defaultName eq null) defaultName = preferred("preferredNamespacePrefix")
+    if (defaultName eq null) defaultName = prefixOfNamespace(defaultNamespace, ontologyPrefixes)
+    if (defaultName eq null) defaultName = prefixOfNamespace(defaultNamespace, wellKnownPrefixes)
+    if (defaultName eq null) defaultName = prefixFor(defaultNamespace)
     add(defaultName, defaultNamespace)
     add("linkml", linkmlNs)
-    ontologyPrefixes.foreach((p, ns) => add(p, ns))
-    out
+    ontologyPrefixes.foreach(e => add(e._1, e._2))
   }
 
   def defaultPrefix: String = prefixes(defaultNamespace)
 
   private val usedPrefixes = mutable.HashSet.empty[String]
 
-  def use(prefix: String): Unit = usedPrefixes += prefix
+  def use(prefix: String): Unit = usedPrefixes.addOne(prefix)
 
-  def declared: Seq[(String, String)] =
-    prefixes.toSeq.filter((ns, p) => ns == defaultNamespace || p == "linkml" || usedPrefixes(p))
-      .map((ns, p) => p -> ns)
+  def declared: Seq[(String, String)] = {
+    val out = Vector.newBuilder[(String, String)]
+    namespaces.foreach { ns =>
+      val p = prefixes(ns)
+      if (ns == defaultNamespace || p == "linkml" || usedPrefixes.contains(p)) out.addOne(p -> ns)
+    }
+    out.result()
+  }
 
   def ensurePrefix(iri: String): Unit = {
     val ns = namespaceOf(iri)
-    if ns.nonEmpty && ns != iri && !prefixes.contains(ns) then
-      wellKnownPrefixes.collectFirst { case (p, `ns`) => p } match {
-        case Some(p) if !prefixes.values.exists(_ == p) => prefixes(ns) = p
-        case _ =>
-          val base = prefixFor(ns)
-          val name = (Iterator.single(base) ++ Iterator.from(2).map(base + _))
-            .find(p => !prefixes.values.exists(_ == p)).get
-          prefixes(ns) = name
+    if (ns.nonEmpty && ns != iri && !prefixes.contains(ns)) {
+      val wellKnown = prefixOfNamespace(ns, wellKnownPrefixes)
+      if ((wellKnown ne null) && !prefixNames.contains(wellKnown)) addPrefix(ns, wellKnown)
+      else {
+        val base = prefixFor(ns)
+        var name = base
+        var n = 2
+        while (prefixNames.contains(name)) {
+          name = base + n
+          n += 1
+        }
+        addPrefix(ns, name)
       }
+    }
   }
 
-  allTerms.distinct.sorted.foreach(ensurePrefix)
+  {
+    val terms = allTerms.toArray
+    java.util.Arrays.sort(terms, Ordering.String)
+    var i = 0
+    while (i < terms.length) {
+      if (i == 0 || terms(i) != terms(i - 1)) ensurePrefix(terms(i))
+      i += 1
+    }
+  }
 
   /** Get the longest namespace that the IRI starts with, if the rest of the IRI is a plain local
     * name.
@@ -175,7 +225,7 @@ private[owl] final class OwlImportNames(
           "prefix in the schema, so the IRI would be read back as a CURIE with another meaning",
       )
     val p = prefixOrNull(iri)
-    if (p ne null) usedPrefixes += p
+    if (p ne null) usedPrefixes.addOne(p)
     Uri(iri)
   }
 
@@ -194,68 +244,96 @@ private[owl] final class OwlImportNames(
     val colon = iri.indexOf(':')
     colon > 0 && (namespaceOrNull(iri) eq null) && {
       val p = iri.substring(0, colon)
-      Prefixes.map.contains(p) || prefixes.valuesIterator.contains(p)
+      Prefixes.map.contains(p) || prefixNames.contains(p)
     }
   }
 
   /** All prefixes that the schema can declare, as prefix and namespace. */
   def all: Seq[(String, String)] = {
-    val b = Seq.newBuilder[(String, String)]
-    prefixes.foreach(e => b.addOne((e._2, e._1)))
+    val b = Vector.newBuilder[(String, String)]
+    namespaces.foreach(ns => b.addOne((prefixes(ns), ns)))
     b.result()
   }
 
   /** Element names by IRI. Names are unique across classes, enums, slots and types. */
   private val byIri = mutable.HashMap.empty[String, String]
   private val taken = mutable.HashSet.empty[String] ++= reservedNames
-  private val takenBase = mutable.HashSet.empty[(NameGroup, String)] ++=
-    reservedNames.map(n => (NameGroup.Type, Case.base(n)))
+
+  /** Base names taken by slots, and by classes, enums and types. */
+  private val takenSlotBases = mutable.HashSet.empty[String]
+  private val takenTypeBases = mutable.HashSet.empty[String]
+  reservedNames.foreach(n => takenTypeBases.addOne(Case.base(n)))
+
+  private def takenBases(group: NameGroup): mutable.HashSet[String] =
+    if (group == NameGroup.Slot) takenSlotBases else takenTypeBases
+
+  /** Names from the config's `renames`, by expanded IRI. */
+  private val renames: mutable.HashMap[String, String] = {
+    val renames = mutable.HashMap.empty[String, String]
+    config.renameMap.foreachEntry((k, v) => renames.getOrElseUpdate(expand(k), v))
+    renames
+  }
 
   def names: collection.Map[String, String] = byIri
 
-  lazy val iriOf: Map[String, String] = byIri.toSeq.map(_.swap).toMap
+  lazy val iriOf: Map[String, String] = byIri.iterator.map(_.swap).toMap
 
   /** Gives a term its name from an imported schema. Call this before names are handed out. */
   def reserve(iri: String, name: String, group: NameGroup): Unit = {
-    byIri(iri) = name
-    taken += name
-    takenBase += ((
-      if group == NameGroup.Slot then NameGroup.Slot else NameGroup.Type,
-      Case.base(name),
-    ))
+    byIri.update(iri, name)
+    taken.addOne(name)
+    takenBases(group).addOne(Case.base(name))
   }
 
-  def name(iris: Seq[String], group: NameGroup, style: NameStyle): Unit =
-    iris.sortBy(iri => (namespaceOf(iri) != defaultNamespace, iri))
-      .foreach(iri => nameFor(iri, group, style))
+  /** Names the IRIs, those in the default namespace first, each part in IRI order. */
+  def name(iris: collection.Seq[String], group: NameGroup, style: NameStyle): Unit = {
+    val own = mutable.ArrayBuffer.empty[String]
+    val others = mutable.ArrayBuffer.empty[String]
+    iris.foreach(iri => (if (namespaceOf(iri) == defaultNamespace) own else others).addOne(iri))
+    val sorted = own.toArray
+    java.util.Arrays.sort(sorted, Ordering.String)
+    sorted.foreach(iri => nameFor(iri, group, style))
+    val sortedOthers = others.toArray
+    java.util.Arrays.sort(sortedOthers, Ordering.String)
+    sortedOthers.foreach(iri => nameFor(iri, group, style))
+  }
 
-  private def nameFor(iri: String, group: NameGroup, style: NameStyle): String =
-    byIri.getOrElseUpdate(
-      iri, {
-        val own = config.renameMap.collectFirst { case (k, v) if expand(k) == iri => v }
-          .getOrElse(styled(localName(iri), style))
-        // Terms from other namespaces get their prefix added. Clashes within one namespace get a
-        // number.
-        val qualified =
-          if namespaceOf(iri) == defaultNamespace then own
-          else {
-            ensurePrefix(iri)
-            val p = prefixes.getOrElse(namespaceOf(iri), "ns")
-            if group == NameGroup.Slot || style == NameStyle.Snake then s"${p}_$own"
-            else p.capitalize + own
-          }
-        // Classes, enums and types share one namespace in generated code, so their base names
-        // must differ too.
-        val groupKey = if group == NameGroup.Slot then NameGroup.Slot else NameGroup.Type
-        def free(n: String) = !taken(n) && !takenBase((groupKey, Case.base(n)))
-        val name = (Iterator(own, qualified) ++ Iterator.from(2).map(qualified + "_" + _))
-          .find(free).get
-        if name != own then warn("Renamed to avoid a clash", s"$iri is named '$name'")
-        taken += name
-        takenBase += ((groupKey, Case.base(name)))
-        name
-      },
-    )
+  private def nameFor(iri: String, group: NameGroup, style: NameStyle): String = {
+    val existing = byIri.getOrElse(iri, null)
+    if (existing ne null) existing
+    else {
+      val renamed = renames.getOrElse(iri, null)
+      val own = if (renamed ne null) renamed else styled(localName(iri), style)
+      // Terms from other namespaces get their prefix added. Clashes within one namespace get a
+      // number.
+      val qualified =
+        if (namespaceOf(iri) == defaultNamespace) own
+        else {
+          ensurePrefix(iri)
+          val p = prefixes.getOrElse(namespaceOf(iri), "ns")
+          if (group == NameGroup.Slot || style == NameStyle.Snake) p + '_' + own
+          else p.capitalize.concat(own)
+        }
+      // Classes, enums and types share one namespace in generated code, so their base names
+      // must differ too.
+      val bases = takenBases(group)
+      def free(n: String) = !taken.contains(n) && !bases.contains(Case.base(n))
+      var name = own
+      if (!free(name)) {
+        name = qualified
+        var n = 2
+        while (!free(name)) {
+          name = qualified + '_' + n
+          n += 1
+        }
+      }
+      if (name != own) warn("Renamed to avoid a clash", s"$iri is named '$name'")
+      taken.addOne(name)
+      bases.addOne(Case.base(name))
+      byIri.update(iri, name)
+      name
+    }
+  }
 
   /** The IRI LinkML derives for an element with this name when none is set. */
   def defaultIri(name: String, group: NameGroup): String = group match {
@@ -265,9 +343,10 @@ private[owl] final class OwlImportNames(
 
   /** The IRI to write as `class_uri`, `slot_uri` and so on, or None if LinkML derives it. */
   def explicitIri(iri: String, group: NameGroup): Option[UriOrCurie] =
-    Option.when(iri != defaultIri(byIri(iri), group)) {
+    if (iri == defaultIri(byIri(iri), group)) None
+    else {
       ensurePrefix(iri)
-      uri(iri)
+      Some(uri(iri))
     }
 }
 
@@ -321,46 +400,107 @@ private[owl] object OwlImportNames {
       name = "reserved",
       imports = Seq(Uri(linkmlNs.concat("types")), Uri(linkmlNs.concat("extended_types"))),
     )
-    SchemaView.loadImports(root, "", FileSystemImporter) match {
-      case Right(schemas) =>
-        schemas.flatMap(s =>
-          s.types.keys ++ s.classes.keys ++ s.enums.keys ++ s.slotDefinitions.keys,
-        ).toSet
-      case Left(error) => throw IllegalStateException(s"Cannot read linkml:types: $error")
-    }
+    SchemaView.loadImports(root, "", FileSystemImporter).fold(
+      error => throw IllegalStateException(s"Cannot read linkml:types: $error"),
+      schemas => {
+        val names = Set.newBuilder[String]
+        schemas.foreach { s =>
+          names.addAll(s.types.keys)
+          names.addAll(s.classes.keys)
+          names.addAll(s.enums.keys)
+          names.addAll(s.slotDefinitions.keys)
+        }
+        names.result()
+      },
+    )
   }
 
   /** Expands a CURIE using the given or well-known prefixes. Anything else is returned as is. */
-  def expand(curieOrIri: String, prefixes: Seq[(String, String)]): String =
-    if curieOrIri.contains("://") || curieOrIri.startsWith("urn:") then curieOrIri
+  def expand(curieOrIri: String, prefixes: collection.Seq[(String, String)]): String =
+    if (curieOrIri.contains("://") || curieOrIri.startsWith("urn:")) curieOrIri
     else {
       val colon = curieOrIri.indexOf(':')
-      if colon < 0 then curieOrIri
+      if (colon < 0) curieOrIri
       else {
         val p = curieOrIri.substring(0, colon)
-        (prefixes ++ wellKnownPrefixes).collectFirst { case (`p`, ns) => ns }
-          .fold(curieOrIri)(_ + curieOrIri.substring(colon + 1))
+        var ns = namespaceOfPrefix(p, prefixes)
+        if (ns eq null) ns = namespaceOfPrefix(p, wellKnownPrefixes)
+        if (ns eq null) curieOrIri else ns.concat(curieOrIri.substring(colon + 1))
       }
     }
 
+  /** The namespace of the first entry with the prefix, or `null` if there is none. */
+  private def namespaceOfPrefix(
+      prefix: String,
+      prefixes: collection.Seq[(String, String)],
+  ): String = {
+    val it = prefixes.iterator
+    while (it.hasNext) {
+      val e = it.next()
+      if (e._1 == prefix) return e._2
+    }
+    null
+  }
+
+  /** The prefix of the first entry with the namespace, or `null` if there is none. */
+  private def prefixOfNamespace(ns: String, prefixes: collection.Seq[(String, String)]): String = {
+    val it = prefixes.iterator
+    while (it.hasNext) {
+      val e = it.next()
+      if (e._2 == ns) return e._1
+    }
+    null
+  }
+
+  /** The namespace with the most terms, the first in order of IRIs if several have as many, or
+    * `null` if there are no terms.
+    */
+  private def mostUsedNamespace(terms: collection.Seq[String]): String = {
+    val counts = mutable.HashMap.empty[String, Int]
+    terms.foreach { t =>
+      val ns = namespaceOf(t)
+      counts.update(ns, counts.getOrElse(ns, 0) + 1)
+    }
+    var best: String = null
+    var bestCount = 0
+    counts.foreachEntry { (ns, n) =>
+      if (n > bestCount || (n == bestCount && ns.compareTo(best) < 0)) {
+        best = ns
+        bestCount = n
+      }
+    }
+    best
+  }
+
   /** The part after the last `#`, `/` or `:`, URL-decoded. Trailing `/` and `#` are ignored. */
   def localName(iri: String): String = {
-    val trimmed = iri.reverse.dropWhile(c => c == '/' || c == '#').reverse
-    val i = Seq('#', '/', ':').map(trimmed.lastIndexOf(_)).max
-    val local = trimmed.substring(i + 1)
-    scala.util.Try(URLDecoder.decode(local, UTF_8.name)).getOrElse(local)
+    var end = iri.length
+    while (end > 0 && { val c = iri.charAt(end - 1); c == '/' || c == '#' }) end -= 1
+    var start = end
+    while (start > 0 && { val c = iri.charAt(start - 1); c != '#' && c != '/' && c != ':' }) {
+      start -= 1
+    }
+    val local = iri.substring(start, end)
+    try URLDecoder.decode(local, UTF_8.name)
+    catch { case _: IllegalArgumentException => local }
   }
 
   def namespaceOf(iri: String): String = {
     val i = math.max(iri.lastIndexOf('#'), iri.lastIndexOf('/'))
-    if i < 0 then iri else iri.substring(0, i + 1)
+    if (i < 0) iri else iri.substring(0, i + 1)
   }
 
   /** Applies a name style. Characters that some generator can't handle become underscores. */
   def styled(raw: String, style: NameStyle): String = {
-    val cleaned = raw.map(c => if Case.isStandard(c) then c else '_')
-      .replaceAll("_+", "_").stripPrefix("_").stripSuffix("_")
-    val base = if cleaned.isEmpty then "unnamed" else cleaned
+    val sb = new java.lang.StringBuilder(raw.length)
+    var i = 0
+    while (i < raw.length) {
+      val c = raw.charAt(i)
+      appendUnderscored(sb, if (Case.isStandard(c)) c else '_')
+      i += 1
+    }
+    val cleaned = withoutTrailingUnderscore(sb)
+    val base = if (cleaned.isEmpty) "unnamed" else cleaned
     style match {
       case NameStyle.Keep => base
       case NameStyle.Snake => snake(base)
@@ -373,27 +513,64 @@ private[owl] object OwlImportNames {
     * stay with their word, so `sha1sum` and `d3fend` don't change.
     */
   def snake(name: String): String = {
-    val out = StringBuilder()
-    for i <- name.indices do {
-      val c = name(i)
-      val prev = if i > 0 then name(i - 1) else '_'
-      val next = if i + 1 < name.length then name(i + 1) else '_'
+    val sb = new java.lang.StringBuilder(name.length + 4)
+    var i = 0
+    while (i < name.length) {
+      val c = name.charAt(i)
+      val prev = if (i > 0) name.charAt(i - 1) else '_'
+      val next = if (i + 1 < name.length) name.charAt(i + 1) else '_'
       val boundary = Case.isAlphaUpper(c) && (
         Case.isAlphaLower(prev) || Case.isNumeric(prev) ||
           (Case.isAlphaUpper(prev) && Case.isAlphaLower(next))
       )
-      if boundary && out.nonEmpty && out.last != '_' then out += '_'
-      out += (if Case.isAlphanumeric(c) then c.toLower else '_')
+      if (boundary) appendUnderscored(sb, '_')
+      appendUnderscored(sb, if (Case.isAlphanumeric(c)) c.toLower else '_')
+      i += 1
     }
-    out.toString.replaceAll("_+", "_").stripPrefix("_").stripSuffix("_")
+    withoutTrailingUnderscore(sb)
+  }
+
+  /** Appends a character, but no `_` at the start or right after another `_`. */
+  private def appendUnderscored(sb: java.lang.StringBuilder, c: Char): Unit =
+    if (c != '_' || (sb.length > 0 && sb.charAt(sb.length - 1) != '_')) sb.append(c)
+
+  private def withoutTrailingUnderscore(sb: java.lang.StringBuilder): String = {
+    val n = sb.length
+    if (n > 0 && sb.charAt(n - 1) == '_') sb.substring(0, n - 1) else sb.toString
   }
 
   /** A short lowercase prefix from a namespace's last segment, skipping version numbers. */
   private def prefixFor(namespace: String): String = {
-    val segments = namespace.split("[/#]").filter(_.nonEmpty)
-      .filterNot(s => s.matches("v?[0-9.]+") || s.contains(":"))
-    val candidate = segments.lastOption.getOrElse("ns").takeWhile(_ != '.')
-      .filter(c => Case.isAlphanumeric(c)).toLowerCase
-    if candidate.isEmpty || !Case.isAlphaLower(candidate.head) then "ns" else candidate
+    // The last segment between `/` and `#` that is not empty, a version, or has a `:`.
+    var end = namespace.length
+    var segment: String = null
+    while ((segment eq null) && end > 0) {
+      var start = end
+      while (start > 0 && { val c = namespace.charAt(start - 1); c != '/' && c != '#' }) start -= 1
+      if (start < end) {
+        val s = namespace.substring(start, end)
+        if (!isVersion(s) && s.indexOf(':') < 0) segment = s
+      }
+      end = start - 1
+    }
+    if (segment eq null) segment = "ns"
+    val sb = new java.lang.StringBuilder(segment.length)
+    var i = 0
+    while (i < segment.length && segment.charAt(i) != '.') {
+      val c = segment.charAt(i)
+      if (Case.isAlphanumeric(c)) sb.append(Character.toLowerCase(c))
+      i += 1
+    }
+    if (sb.length == 0 || !Case.isAlphaLower(sb.charAt(0))) "ns" else sb.toString
+  }
+
+  /** Whether a segment is like `v1.2` or `2024`: an optional `v`, then digits and dots. */
+  private def isVersion(s: String): Boolean = {
+    var i = if (s.startsWith("v")) 1 else 0
+    if (i >= s.length) false
+    else {
+      while (i < s.length && { val c = s.charAt(i); (c >= '0' && c <= '9') || c == '.' }) i += 1
+      i == s.length
+    }
   }
 }

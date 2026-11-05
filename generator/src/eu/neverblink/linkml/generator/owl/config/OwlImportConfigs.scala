@@ -14,10 +14,10 @@ object OwlImportConfigs {
 
   /** Read a config from YAML (or JSON). */
   def parse(yaml: String): OwlImportConfig =
-    parseYaml(yaml) match {
-      case Right(node) => codec.decode(node)
-      case Left(error) => throw IllegalArgumentException(s"Not a readable config: ${error.msg}")
-    }
+    parseYaml(yaml).fold(
+      error => throw IllegalArgumentException(s"Not a readable config: ${error.msg}"),
+      node => codec.decode(node),
+    )
 
   /** Default properties for each metaslot, in order of preference. Each list starts with the
     * metaslot's property in the LinkML metamodel, which the OWL generator writes. The exceptions
@@ -68,16 +68,29 @@ object OwlImportConfigs {
     "version" -> Seq("pav:version", "owl:versionInfo"),
   )
 
+  private val defaultSlots: Set[String] = defaultMetadata.iterator.map(_._1).toSet
+
   extension (c: OwlImportConfig) {
 
     /** The default metadata sources, with this config's overrides applied. */
     def metadataSources: Seq[(String, Seq[String])] = {
-      val overrides = c.metadata.view.mapValues(_.properties).toMap
-      // Expand the defaults with the well-known prefixes only, not the ontology's: FRBR, for
-      // example, binds `skos` to an old SKOS namespace.
-      defaultMetadata.map((slot, properties) =>
-        slot -> overrides.getOrElse(slot, properties.map(OwlImportNames.expand(_, Nil))),
-      ) ++ overrides.filterNot((slot, _) => defaultMetadata.exists(_._1 == slot))
+      val sources = Vector.newBuilder[(String, Seq[String])]
+      defaultMetadata.foreach { default =>
+        val slot = default._1
+        val overridden = c.metadata.getOrElse(slot, null)
+        // Expand the defaults with the well-known prefixes only, not the ontology's: FRBR, for
+        // example, binds `skos` to an old SKOS namespace.
+        sources.addOne(
+          slot -> (
+            if (overridden ne null) overridden.properties
+            else default._2.map(OwlImportNames.expand(_, Nil))
+          ),
+        )
+      }
+      c.metadata.foreachEntry { (slot, overridden) =>
+        if (!defaultSlots.contains(slot)) sources.addOne(slot -> overridden.properties)
+      }
+      sources.result()
     }
 
     def prefixMap: Map[String, String] = c.prefixes.view.mapValues(_.namespace).toMap
