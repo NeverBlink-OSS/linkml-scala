@@ -304,11 +304,6 @@ object OwlImporter {
 
   private val byKey: java.util.Comparator[KeyedMapping] = (a, b) => a.key.compareTo(b.key)
 
-  /** Whether a property is used as a data property somewhere. */
-  private final class PropertyUse {
-    var data: Boolean = false
-  }
-
   /** A property's kind, and its place in the order of properties. */
   private final class PropertyInfo(var kind: EntityKind) {
     var order: Int = Int.MaxValue
@@ -422,10 +417,13 @@ object OwlImporter {
           }
         case _ =>
       }
-      // Whether each used property is used as a data property somewhere.
-      val used = mutable.HashMap.empty[String, PropertyUse]
-      def use(p: String, data: Boolean): Unit =
-        used.getOrElseUpdate(p, new PropertyUse).data |= data
+      // The used properties, and those used as a data property somewhere.
+      val used = mutable.HashSet.empty[String]
+      val usedAsData = mutable.HashSet.empty[String]
+      def use(p: String, data: Boolean): Unit = {
+        used.addOne(p)
+        if (data) usedAsData.addOne(p)
+      }
       expressions.foreach(e => foreachPropertyIn(e)(use))
       axioms.foreach {
         case a: Range => use(a.property, a.range.isInstanceOf[DataRange])
@@ -437,17 +435,20 @@ object OwlImporter {
           use(a.sub, kindOf(a.sup) == EntityKind.DataProperty)
         case _ =>
       }
-      // Undeclared properties are added in the iteration order of an immutable map built from
-      // `used`, as `groupMap` builds it. That order doesn't depend on the order of the axioms, so
-      // the OWL generated from the schema gives the same schema.
-      var byUse = Map.empty[String, PropertyUse]
-      used.foreachEntry((p, u) => byUse = byUse.updated(p, u))
+      // Undeclared properties are added in order of their IRIs. That order doesn't depend on the
+      // order of the axioms, so the OWL generated from the schema gives the same schema.
       // Hydra gives its datatype `Rfc6570Template` a range, which doesn't make it a property.
-      byUse.foreachEntry { (p, u) =>
+      val undeclared = mutable.ArrayBuffer.empty[String]
+      used.foreach { p =>
         if (
           !propertyKinds.contains(p) && !isDeclared(p, EntityKind.AnnotationProperty) &&
           !isDeclared(p, EntityKind.Datatype)
-        ) put(p, if (u.data) EntityKind.DataProperty else EntityKind.ObjectProperty)
+        ) undeclared.addOne(p)
+      }
+      val sorted = undeclared.toArray
+      java.util.Arrays.sort(sorted, Ordering.String)
+      sorted.foreach { p =>
+        put(p, if (usedAsData(p)) EntityKind.DataProperty else EntityKind.ObjectProperty)
       }
       // An undeclared parent property gets its child's kind, so the child can keep it as a parent.
       // Skip parents used as annotations, or they would end up with two kinds.
