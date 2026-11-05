@@ -142,15 +142,19 @@ object Python {
     stageJars(linkerJars, dest / "_native" / "linker")
   }
 
+  /** Copies the jars into `into`, numbered so that sorting their names gives the classpath order
+    * back. The order matters: when two jars have the same class, the linker takes the first one.
+    * For example, the Scala 3 `scalalib` has to come before the older Scala 2.13 one.
+    */
   private def stageJars(jars: Seq[os.Path], into: os.Path): Unit = {
     os.makeDir.all(into)
-    jars.foreach { jar =>
+    jars.zipWithIndex.foreach { (jar, i) =>
       // Dependency jars are uniquely named; ours are all `out.jar`, so name those by module.
       val name =
         if jar.last == "out.jar" then
           jar.segments.toSeq.dropRight(2).takeRight(2).mkString("-") + ".jar"
         else jar.last
-      os.copy.over(jar, into / name)
+      os.copy.over(jar, into / f"$i%03d-$name")
     }
   }
 
