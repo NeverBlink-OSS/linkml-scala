@@ -81,7 +81,8 @@ object OwlRdfReader {
     /** Annotations on axioms, keyed by the axiom's main triple. */
     private val axiomAnnotations = mutable.HashMap.empty[Triple, Seq[Annotation]]
 
-    /** The annotated axioms whose object is a blank node, by subject. See [[annotationsOfCopy]].
+    /** The annotated axioms whose object is a blank node, by subject, in input order. See
+      * [[annotationsOfCopy]].
       */
     private val blankTargets = mutable.HashMap.empty[
       Resource,
@@ -207,27 +208,14 @@ object OwlRdfReader {
 
     /** Collects `owl:Axiom` nodes, keyed by the triple they annotate. */
     private def readAxiomAnnotations(): Unit = {
-      // The annotations keyed by the parts of the triple, only for the order of the copies in
-      // `blankTargets`: earlier versions searched them in the iteration order of this map, so the
-      // same copy is taken when several match.
-      val byParts = mutable.HashMap.empty[(Resource, Iri, Node), Seq[Annotation]]
       var k = 0
       while (k < graph.subjectCount) {
         val indices = graph.subjectAt(k)
         indices.subject match {
-          case _: AnyBlankNode =>
-            if (indices.exists(isAxiomType)) readAxiomAnnotation(indices, byParts)
+          case _: AnyBlankNode => if (indices.exists(isAxiomType)) readAxiomAnnotation(indices)
           case _ =>
         }
         k += 1
-      }
-      byParts.foreachEntry { (parts, annotations) =>
-        parts._3 match {
-          case b: AnyBlankNode =>
-            blankTargets.getOrElseUpdate(parts._1, mutable.ArrayBuffer.empty)
-              .addOne((predicate = parts._2, target = b, annotations = annotations))
-          case _ =>
-        }
       }
     }
 
@@ -236,10 +224,7 @@ object OwlRdfReader {
       t.pred == Rdf.`type` && t.obj == Owl.Axiom
     }
 
-    private def readAxiomAnnotation(
-        indices: Graph.Indices,
-        byParts: mutable.HashMap[(Resource, Iri, Node), Seq[Annotation]],
-    ): Unit = {
+    private def readAxiomAnnotation(indices: Graph.Indices): Unit = {
       var source: Resource = null
       var property: Iri = null
       var target: Node = null
@@ -271,7 +256,12 @@ object OwlRdfReader {
         graph.useAll(indices)
         val result = annotations.result()
         axiomAnnotations.update(Triple(source, property, target), result)
-        byParts.update((source, property, target), result)
+        target match {
+          case b: AnyBlankNode =>
+            blankTargets.getOrElseUpdate(source, mutable.ArrayBuffer.empty)
+              .addOne((predicate = property, target = b, annotations = result))
+          case _ =>
+        }
       }
     }
 
@@ -289,7 +279,7 @@ object OwlRdfReader {
 
     /** The `owl:Axiom` may point at a copy of the expression at `node`, not the same node, as the
       * OWL API writes it. So a copy with the same structure matches too. If several copies match,
-      * the first one in [[blankTargets]] is taken.
+      * the first one in input order is taken.
       */
     private def annotationsOfCopy(t: Triple, node: AnyBlankNode): Seq[Annotation] = {
       val copies = blankTargets.getOrElse(t.subj, null)
