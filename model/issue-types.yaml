@@ -501,6 +501,48 @@ classes:
           Class '{class_name}' has declared 'slot_usage' for slots that are not defined for its ancestors.
           These slots will not be included: {slot_names}
 
+  UnrelatedSlotRange:
+    is_a: SchemaWarning
+    description: >-
+      A class gives an inherited slot a range that is not derived from the range of a parent. The
+      LinkML specification only allows a class to narrow an inherited range: to a subclass of it,
+      or to a type with it as a `typeof` ancestor. A member of a `union_of` type, any range in
+      place of `linkml:Any`, `ncname` in place of `string`, and `uri` or `curie` in place of
+      `uriorcurie` narrow it too.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      slot_range:
+        range: string
+        required: true
+        title: slot range
+        description: The ranges that the class allows, joined with " or ".
+      parent_name:
+        range: string
+        required: true
+        title: parent name
+      parent_range:
+        range: string
+        required: true
+        title: parent range
+        description: The ranges that the parent allows, joined with " or ".
+    slot_usage:
+      message:
+        equals_expression: >-
+          Class '{class_name}' gives slot '{slot_name}' the range {slot_range}, which is not
+          derived from the range {parent_range} of its parent '{parent_name}'
+      details:
+        equals_expression: >-
+          Class '{class_name}' gives slot '{slot_name}' the range {slot_range}, which is not
+          derived from the range {parent_range} of its parent '{parent_name}'. A class can only
+          narrow an inherited range: to a subclass of it, or to a type with it as a 'typeof'
+          ancestor. Generators whose classes inherit fields, like those for GraphQL, Scala and
+          OWL, don't describe the slot or its range in the parents.
+
   NonStandardSeparator:
     is_a: SchemaWarning
     description: |

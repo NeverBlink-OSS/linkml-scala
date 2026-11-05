@@ -15,6 +15,7 @@ import org.scalatest.wordspec.AnyWordSpec
 import eu.neverblink.linkml.validation.{
   EmptyName,
   FlankingSeparator,
+  IssueLocation,
   MissingRecommendedSlot,
   NonAsciiName,
   NonStandardSeparator,
@@ -23,6 +24,7 @@ import eu.neverblink.linkml.validation.{
   SchemaFatal,
   UndeclaredCuriePrefix,
   UnquotedStringDefault,
+  UnrelatedSlotRange,
   UnwritableUri,
 }
 
@@ -1237,6 +1239,140 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         "/subsets/Basic: subset_definition 'Basic' has no value for the recommended slot " +
           "'description'",
       )
+    }
+
+    "warn about a class that gives an inherited slot an unrelated range" in {
+      val schemaYaml =
+        """id: https://example.org/vehicles/
+          |name: vehicles
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |  vehicles: https://example.org/vehicles/
+          |default_prefix: vehicles
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Part:
+          |    attributes:
+          |      label:
+          |  CarPart:
+          |    is_a: Part
+          |  Vehicle:
+          |    slots:
+          |      - status
+          |      - code
+          |      - part
+          |      - level
+          |      - handle
+          |      - link
+          |      - amount
+          |  Car:
+          |    tree_root: true
+          |    is_a: Vehicle
+          |    slot_usage:
+          |      status:
+          |        range: Status
+          |      code:
+          |        range: short_code
+          |      part:
+          |        range: CarPart
+          |      level:
+          |        range: integer
+          |      handle:
+          |        range: ncname
+          |      link:
+          |        range: uri
+          |      amount:
+          |        range: integer
+          |slots:
+          |  status:
+          |    range: string
+          |  code:
+          |    range: string
+          |  part:
+          |    range: Part
+          |    inlined: true
+          |  handle:
+          |    range: string
+          |  link:
+          |    range: uriorcurie
+          |  amount:
+          |    range: int_or_string
+          |  level:
+          |    any_of:
+          |      - range: integer
+          |      - range: string
+          |types:
+          |  int_or_string:
+          |    union_of:
+          |      - integer
+          |      - string
+          |  short_code:
+          |    typeof: string
+          |    maximum_length: 4
+          |enums:
+          |  Status:
+          |    permissible_values:
+          |      NEW:
+          |      USED:
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // A subclass, a type with `typeof`, one of the `any_of` ranges, a member of a `union_of`
+      // type, and the built-in types `ncname` for `string` and `uri` for `uriorcurie` narrow it
+      sv.lintProblems.collect { case p: UnrelatedSlotRange => p.infer() } shouldBe Seq(
+        UnrelatedSlotRange(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/vehicles/")),
+            jsonPointer = Some("/classes/Car/slot_usage/status"),
+          ),
+          className = "Car",
+          slotName = "status",
+          slotRange = "'Status'",
+          parentName = "Vehicle",
+          parentRange = "'string'",
+        ).infer(),
+      )
+      // Warnings aren't validation problems
+      sv.validationProblems shouldBe empty
+    }
+
+    "warn once about an unrelated range that several parents give" in {
+      val schemaYaml =
+        """id: https://example.org/once/
+          |name: once
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: once
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Vehicle:
+          |    slots:
+          |      - status
+          |  Tracked:
+          |    mixin: true
+          |    slots:
+          |      - status
+          |  Car:
+          |    tree_root: true
+          |    is_a: Vehicle
+          |    mixins:
+          |      - Tracked
+          |    slot_usage:
+          |      status:
+          |        range: Status
+          |slots:
+          |  status:
+          |    range: string
+          |enums:
+          |  Status:
+          |    permissible_values:
+          |      NEW:
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+      sv.lintProblems.collect { case p: UnrelatedSlotRange => (p.className, p.slotName) } shouldBe
+        Seq(("Car", "status"))
     }
 
     "warn about a string ifabsent without quotes in the root schema" in {
