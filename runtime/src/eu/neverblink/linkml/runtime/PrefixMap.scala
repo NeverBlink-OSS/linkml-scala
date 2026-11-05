@@ -21,42 +21,15 @@ import eu.neverblink.linkml.runtime.FastUtils.*
   *   https://github.com/linkml/linkml/issues/3906
   */
 final class PrefixMap private (
-    overrides: Iterable[(String, String)],
-    defaults: Iterable[(String, String)],
+    // Namespace of each prefix, after precedence is applied
+    namespaces: java.util.HashMap[String, String],
+    // Pairs of namespace and prefix used for compaction, longest namespace first. Each namespace
+    // appears once, with the prefix from the place with the highest precedence, and the first one
+    // declared there. Empty for a map made with `withoutCompaction`.
+    compactEntries: Array[java.util.Map.Entry[String, String]],
     // Namespace for values without a colon, or null if there is none
     defaultNamespace: String,
-    // False for a map made with `withoutCompaction`
-    compacts: Boolean,
 ) {
-  // Namespace of each prefix, after precedence is applied. Filled together with `compactEntries`
-  private val namespaces: java.util.HashMap[String, String] = new java.util.HashMap[String, String](
-    (overrides.size + defaults.size) << 1,
-    0.5f,
-  )
-
-  // Pairs of namespace and prefix used for compaction, longest namespace first. Each namespace
-  // appears once, with the prefix from the place with the highest precedence, and the first one
-  // declared there. Empty for a map made with `withoutCompaction`.
-  private val compactEntries: Array[java.util.Map.Entry[String, String]] = {
-    // The namespaces that have a prefix, and their entries in the order they were found
-    val seenNamespaces = new java.util.HashSet[String]
-    val entries = new java.util.ArrayList[java.util.Map.Entry[String, String]]
-    // The places are read in the order of precedence, so the first namespace of a prefix is used
-    def addAll(ps: Iterable[(String, String)]): Unit = ps.foreach { e =>
-      val p = e._1
-      val ns = e._2
-      if ((namespaces.putIfAbsent(p, ns) eq null) && compacts && seenNamespaces.add(ns)) {
-        entries.add(new java.util.AbstractMap.SimpleImmutableEntry(ns, p))
-      }
-    }
-    addAll(overrides)
-    addAll(defaults)
-    val sorted = new Array[java.util.Map.Entry[String, String]](entries.size)
-    entries.toArray(sorted)
-    // Stable, so namespaces of the same length keep the order of precedence
-    java.util.Arrays.sort(sorted, (a, b) => b.getKey.length - a.getKey.length)
-    sorted
-  }
 
   /** Get the namespace of a prefix.
     *
@@ -125,16 +98,19 @@ final class PrefixMap private (
   /** A copy of this map that expands CURIEs as this one does, but compacts no URIs, so they are
     * written in full.
     */
-  def withoutCompaction: PrefixMap = new PrefixMap(overrides, defaults, defaultNamespace, false)
+  def withoutCompaction: PrefixMap =
+    new PrefixMap(namespaces, PrefixMap.noEntries, defaultNamespace)
 
   override def toString: String =
-    s"PrefixMap(overrides = $overrides, defaults = $defaults, defaultNamespace = $defaultNamespace, compacts = $compacts)"
+    s"PrefixMap(namespaces = $namespaces, defaultNamespace = $defaultNamespace)"
 }
 
 object PrefixMap {
+  private val noEntries: Array[java.util.Map.Entry[String, String]] =
+    new Array[java.util.Map.Entry[String, String]](0)
 
   /** A map with no prefixes. Decoding and encoding with it keep values as they are written. */
-  val empty: PrefixMap = new PrefixMap(Nil, Nil, null, true)
+  val empty: PrefixMap = new PrefixMap(new java.util.HashMap[String, String], noEntries, null)
 
   /** Create a map with overrides and defaults.
     *
@@ -149,5 +125,26 @@ object PrefixMap {
       overrides: Iterable[(String, String)] = Nil,
       defaults: Iterable[(String, String)] = Nil,
       defaultNamespace: Option[String] = None,
-  ): PrefixMap = new PrefixMap(overrides, defaults, defaultNamespace.orNullFast, true)
+  ): PrefixMap = {
+    // The prefixes are read once here, so later changes to the given collections don't matter
+    val namespaces = new java.util.HashMap[String, String]
+    // The namespaces that have a prefix, and their entries in the order they were found
+    val seenNamespaces = new java.util.HashSet[String]
+    val entries = new java.util.ArrayList[java.util.Map.Entry[String, String]]
+    // The places are read in the order of precedence, so the first namespace of a prefix is used
+    def addAll(ps: Iterable[(String, String)]): Unit = ps.foreach { e =>
+      val p = e._1
+      val ns = e._2
+      if ((namespaces.putIfAbsent(p, ns) eq null) && seenNamespaces.add(ns)) {
+        entries.add(new java.util.AbstractMap.SimpleImmutableEntry(ns, p))
+      }
+    }
+    addAll(overrides)
+    addAll(defaults)
+    val sorted = new Array[java.util.Map.Entry[String, String]](entries.size)
+    entries.toArray(sorted)
+    // Stable, so namespaces of the same length keep the order of precedence
+    java.util.Arrays.sort(sorted, (a, b) => b.getKey.length - a.getKey.length)
+    new PrefixMap(namespaces, sorted, defaultNamespace.orNullFast)
+  }
 }

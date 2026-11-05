@@ -97,6 +97,24 @@ class PrefixMapSpec extends AnyWordSpec, Matchers {
       pm.expandOrNull("ex:x") shouldBe "http://example.org/x"
       pm.compactOrNull("http://example.org/x") shouldBe null
     }
+    "expand CURIEs as the original map does, even if the given prefixes change later" in {
+      val prefixes = scala.collection.mutable.ArrayBuffer(ex)
+      val pm = PrefixMap(defaults = prefixes)
+      prefixes(0) = "ex" -> "http://other.org/"
+      pm.withoutCompaction.expandOrNull("ex:x") shouldBe "http://example.org/x"
+    }
+  }
+
+  "PrefixMap" should {
+    "read the given prefixes once" in {
+      var reads = 0
+      val pm = PrefixMap(defaults = Seq(ex).view.map { e =>
+        reads += 1
+        e
+      })
+      pm.withoutCompaction.expandOrNull("ex:x") shouldBe "http://example.org/x"
+      reads shouldBe 1
+    }
   }
 
   "PrefixMap.empty" should {
