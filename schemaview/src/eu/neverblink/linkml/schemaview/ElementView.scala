@@ -374,10 +374,10 @@ final case class ClassView(cls: ClassDefinition, definingSchema: SchemaDefinitio
   def directSlots: Seq[Reference[SlotDefinition]] = getDirectSlots(cls)
 
   private def getDirectSlots(cls: ClassDefinition): Seq[Reference[SlotDefinition]] = {
-    val slots = new ListBuffer[Reference[SlotDefinition]]
+    val slots = Vector.newBuilder[Reference[SlotDefinition]]
     slots.addAll(cls.slots)
-    cls.attributes.keys.foreach(a => slots.addOne(Reference[SlotDefinition](a)))
-    slots.toList
+    cls.attributes.keysIterator.foreach(a => slots.addOne(Reference[SlotDefinition](a)))
+    slots.result()
   }
 
   /** The `slot_usage` and `attributes` entries of this class and its ancestors, keyed by slot name,
@@ -693,11 +693,13 @@ final case class EnumView(_enum: EnumDefinition, definingSchema: SchemaDefinitio
     )
 
   /** Permissible values of this enum and their (possibly synthetic) meanings */
-  lazy val derivedValues: Seq[PermissibleValueView] =
-    _enum.permissibleValues.values
-      .foldLeft(new ListBuffer[PermissibleValueView]) { (acc, pv) =>
-        acc.addOne(PermissibleValueView(pv, this))
-      }.toList
+  lazy val derivedValues: Seq[PermissibleValueView] = {
+    val values = Vector.newBuilder[PermissibleValueView]
+    _enum.permissibleValues.valuesIterator.foreach(pv =>
+      values.addOne(PermissibleValueView(pv, this)),
+    )
+    values.result()
+  }
 
   /** The aliased names (non-RDF serialization form) of the permissible values of this enum.
     */

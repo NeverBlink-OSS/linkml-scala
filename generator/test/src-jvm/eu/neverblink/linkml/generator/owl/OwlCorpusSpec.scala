@@ -212,7 +212,7 @@ object OwlCorpusSpec {
     finally in.close()
   }
 
-  def triples(source: String): Seq[Triple] = {
+  def triples(source: String): IndexedSeq[Triple] = {
     val sink = CollectingRdfSink()
     NTriplesParser.parse(source, sink)
     sink.triples

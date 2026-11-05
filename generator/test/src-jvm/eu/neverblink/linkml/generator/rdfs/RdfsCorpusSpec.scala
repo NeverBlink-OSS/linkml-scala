@@ -32,7 +32,7 @@ class RdfsCorpusSpec extends AnyWordSpec, Matchers {
       "imported and written back as RDFS" should {
         "give the same RDFS when that RDFS is imported and written back" in {
           unstable.get(name).foreach(reason => assume(false, reason))
-          val again = rdfsOf(OwlImporter().importTriples(rdfs.toSeq, configOf(name)).schema)
+          val again = rdfsOf(OwlImporter().importTriples(rdfs.toIndexedSeq, configOf(name)).schema)
           val (missing, added) = (rdfs.diff(again), again.diff(rdfs))
           if missing.nonEmpty || added.nonEmpty then
             fail(

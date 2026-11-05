@@ -258,7 +258,16 @@ trait StringImporter extends Importer {
 
 /** A basic importer implementation which delegates the read operation to a mapping
   */
-final class MapImporter(content: (String, String)*) extends StringImporter {
-  val mapping: Map[String, String] = Importer.normalizedMap(content)
+final class MapImporter private (val mapping: Map[String, String]) extends StringImporter {
   def read(path: String): String = mapping(path)
+}
+
+object MapImporter {
+
+  /** An importer of the documents given as path and content. */
+  def apply(content: (String, String)*): MapImporter = from(content)
+
+  /** An importer of the documents given as path and content, read once. */
+  def from(content: IterableOnce[(String, String)]): MapImporter =
+    new MapImporter(Importer.normalizedMap(content))
 }

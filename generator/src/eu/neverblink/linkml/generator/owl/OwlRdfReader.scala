@@ -24,7 +24,7 @@ object OwlRdfReader {
   final case class Result(ontology: Ontology, unparsed: Seq[Triple])
 
   /** A graph is a set, so a repeated triple counts once. */
-  def read(triples: Seq[Triple]): Result = new Reader(Graph(triples.toIndexedSeq)).read()
+  def read(triples: IndexedSeq[Triple]): Result = new Reader(Graph(triples)).read()
 
   /** True for built-in datatypes, which need no declaration. */
   def isBuiltInDatatype(iri: String): Boolean =

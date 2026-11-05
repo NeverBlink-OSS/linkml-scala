@@ -21,8 +21,8 @@ import eu.neverblink.linkml.runtime.FastUtils.*
   *   https://github.com/linkml/linkml/issues/3906
   */
 final class PrefixMap private (
-    overrides: Seq[(String, String)],
-    defaults: Seq[(String, String)],
+    overrides: Iterable[(String, String)],
+    defaults: Iterable[(String, String)],
     // Namespace for values without a colon, or null if there is none
     defaultNamespace: String,
     // False for a map made with `withoutCompaction`
@@ -38,15 +38,21 @@ final class PrefixMap private (
   // appears once, with the prefix from the place with the highest precedence, and the first one
   // declared there. Empty for a map made with `withoutCompaction`.
   private val compactEntries: Array[java.util.Map.Entry[String, String]] = {
-    val prefixOfNamespace = new java.util.LinkedHashMap[String, String]
+    // The namespaces that have a prefix, and their entries in the order they were found
+    val seenNamespaces = new java.util.HashSet[String]
+    val entries = new java.util.ArrayList[java.util.Map.Entry[String, String]]
     // The places are read in the order of precedence, so the first namespace of a prefix is used
-    def addAll(ps: Seq[(String, String)]): Unit = ps.foreach { (p, ns) =>
-      if ((namespaces.putIfAbsent(p, ns) eq null) && compacts) prefixOfNamespace.putIfAbsent(ns, p)
+    def addAll(ps: Iterable[(String, String)]): Unit = ps.foreach { e =>
+      val p = e._1
+      val ns = e._2
+      if ((namespaces.putIfAbsent(p, ns) eq null) && compacts && seenNamespaces.add(ns)) {
+        entries.add(new java.util.AbstractMap.SimpleImmutableEntry(ns, p))
+      }
     }
     addAll(overrides)
     addAll(defaults)
-    val sorted = new Array[java.util.Map.Entry[String, String]](prefixOfNamespace.size)
-    prefixOfNamespace.entrySet.toArray(sorted)
+    val sorted = new Array[java.util.Map.Entry[String, String]](entries.size)
+    entries.toArray(sorted)
     // Stable, so namespaces of the same length keep the order of precedence
     java.util.Arrays.sort(sorted, (a, b) => b.getKey.length - a.getKey.length)
     sorted
@@ -143,5 +149,5 @@ object PrefixMap {
       overrides: Iterable[(String, String)] = Nil,
       defaults: Iterable[(String, String)] = Nil,
       defaultNamespace: Option[String] = None,
-  ): PrefixMap = new PrefixMap(overrides.toSeq, defaults.toSeq, defaultNamespace.orNullFast, true)
+  ): PrefixMap = new PrefixMap(overrides, defaults, defaultNamespace.orNullFast, true)
 }

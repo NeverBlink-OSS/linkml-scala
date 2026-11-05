@@ -104,12 +104,12 @@ class OwlImporter(schemas: Importer = FileSystemImporter, base: String = "")
   }
 
   def importTriples(
-      triples: Seq[Triple],
+      triples: IndexedSeq[Triple],
       config: OwlImportConfig = OwlImportConfig(),
   ): Result =
     importTriples(triples, OwlImporterOptions(config = Some(config)))
 
-  def importTriples(triples: Seq[Triple], options: OwlImporterOptions): Result = {
+  def importTriples(triples: IndexedSeq[Triple], options: OwlImporterOptions): Result = {
     val read = OwlRdfReader.read(triples)
     importOntology(read.ontology, options, read.unparsed)
   }
@@ -127,7 +127,7 @@ class OwlImporter(schemas: Importer = FileSystemImporter, base: String = "")
   ): Result = {
     val importer =
       if (options.schemas.isEmpty) schemas
-      else MapImporter(options.schemas.valuesIterator.map(f => f.path -> f.content).toSeq*)
+      else MapImporter.from(options.schemas.valuesIterator.map(f => f.path -> f.content))
     Conversion(ontology, options, importer, base, unparsed).result
   }
 }

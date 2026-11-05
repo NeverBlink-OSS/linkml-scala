@@ -40,7 +40,7 @@ class OwlRdfSpec extends AnyWordSpec, Matchers {
 
     "read rdfs:Class and rdf:Property, picking the property kind from the range" in {
       val back = OwlRdfReader.read(
-        Seq(
+        Vector(
           Triple(ex("C"), Rdf.`type`, Rdfs.Class),
           Triple(ex("p"), Rdf.`type`, Rdf.Property),
           Triple(ex("p"), Rdfs.range, XmlSchema.string),
@@ -62,7 +62,7 @@ class OwlRdfSpec extends AnyWordSpec, Matchers {
       val list = BlankNode("l")
       val rest = BlankNode("r")
       val back = OwlRdfReader.read(
-        Seq(
+        Vector(
           Triple(ex("E"), Rdf.`type`, Owl.Class),
           Triple(ex("E"), Owl.oneOf, list),
           Triple(list, Rdf.first, ex("a")),
@@ -79,7 +79,7 @@ class OwlRdfSpec extends AnyWordSpec, Matchers {
 
     "keep the triples it does not understand" in {
       val odd = Triple(BlankNode("x"), ex("p"), Literal("1"))
-      OwlRdfReader.read(Seq(odd)).unparsed shouldBe Seq(odd)
+      OwlRdfReader.read(Vector(odd)).unparsed shouldBe Seq(odd)
     }
   }
 }
