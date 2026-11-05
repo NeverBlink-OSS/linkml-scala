@@ -99,33 +99,35 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     *   Tuples of form (file name, file content) for all LinkML classes
     */
   private def generateClasses(options: ScalaGeneratorOptions): Iterable[(String, String)] = {
+    // A field overrides the `def` of a parent only if its type conforms to the `def`'s. So a
+    // parent declares the `def` only if the fields of all its descendants do.
+    val sharedFields = new SharedSlots((own, their) => overrides(own, their, options))
     sv.classes.values.flatMap { classView =>
       // Let's treat linkml:Any as a built-in: no type aliasing
       if classView.isAny then None
       else {
         val cls = classView.cls
         val collectionForm = CollectionForm.of(classView)
+        val interfaceFields = Set.newBuilder[String]
         val scalaFields = for attribute <- classView.sortedAttributeViews yield {
-          makeScalaField(attribute, collectionForm, classView, options)
+          val field = makeScalaField(attribute, collectionForm, classView, options)
+          if (sharedFields.describes(classView, attribute.slotView.name)) {
+            interfaceFields.addOne(field.name)
+          }
+          field
         }
         val caseClassOnly = isCaseClassOnly(classView, options)
         val shouldBeTrait =
           cls.mixin || classView.uriStr == "https://w3id.org/linkml/EnumExpression"
         val isSlotDefinitionClass = classView.uriStr == "https://w3id.org/linkml/SlotDefinition"
         val name = className(classView)
-        // A field changed by a `slot_usage` is declared again here, with a type that may not
-        // match the parent's, so the code does not compile (LNK-232).
-        val interfaceFields =
-          (cls.slots.map(_.value) ++ cls.attributes.keys ++ cls.slotUsage.keys).map(name =>
-            scalaCamel(Case.base(name)),
-          ).toSet
         Some(
           name.concat(".scala") -> ScalaClassInfo(
             name,
             options.`package`,
             scalaFields,
             (cls.isA ++ cls.mixins).map(ref => scalaPascal(ref.value)).toSeq,
-            interfaceFields,
+            interfaceFields.result(),
             !classView.isConcrete,
             caseClassOnly,
             shouldBeTrait,
@@ -140,6 +142,27 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       }
     }
   }
+
+  /** Whether the field of a descendant (`their`) can override the `def` of an ancestor (`own`): it
+    * has the same type, or the same wrapper (`Option`, `Seq` or `Map`) around a subtype. That is a
+    * type derived from the ancestor's, such as `ncname` for `string`, or a subclass, unless the
+    * ancestor's field is the case class of a concrete class.
+    */
+  private def overrides(
+      own: AttributeView,
+      their: AttributeView,
+      options: ScalaGeneratorOptions,
+  ): Boolean =
+    makeTypedDefault(own, options).typeName == makeTypedDefault(their, options).typeName ||
+      InlineType(own.slotView) == InlineType(their.slotView) &&
+      their.slotView.hasRangeDerivedFrom(own.slotView) && (own match {
+        case _: TypeAttributeView => their.isInstanceOf[TypeAttributeView]
+        case _: ClassReferenceAttributeView => their.isInstanceOf[ClassReferenceAttributeView]
+        case c: ClassInlineAttributeView =>
+          their.isInstanceOf[ClassInlineAttributeView] &&
+          baseRange(own, options).scalaType == className(c.classView)
+        case _ => false
+      })
 
   /** Generate Scala counterparts of regular (static) LinkML enums.
     * @return
@@ -363,8 +386,8 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case ClassInlineAttributeView(_, _, classView, _) =>
         // Abstract classes and mixins have no case class, so the slot uses the interface type.
         // A type designator union also uses the interface type, so that the slot can hold any
-        // implementation. A concrete class uses its case class, so a subclass can't narrow the
-        // range to a subclass of it (LNK-232).
+        // implementation. A concrete class uses its case class. A subclass that narrows the range
+        // gives the field another type, so the parent does not declare the field.
         (
           if (classView.isConcrete && !classView.isTypeDesignatorUnion) implName(classView, options)
           else className(classView),
@@ -717,8 +740,8 @@ object ScalaGenerator {
     *   List of fields this class/trait should inherit from. Note: single inheritance (is_a /
     *   abstract class) must be first in the list.
     * @param interfaceFields
-    *   Fields to include in the interface. Should be a subset of [[fields]] that are
-    *   defined/modified directly in this class.
+    *   Names of the [[fields]] that the interface declares: those that the class lists or changes
+    *   itself, or that a parent leaves out, and that all descendants give the same type.
     * @param skipImpl
     *   Whether to skip the case class implementation for instantiable classes.
     * @param caseClassOnly

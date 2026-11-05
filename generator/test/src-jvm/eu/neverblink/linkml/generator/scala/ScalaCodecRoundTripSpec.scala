@@ -17,7 +17,7 @@ import java.net.URLClassLoader
   */
 class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec {
   override val skipModels: Map[String, String] =
-    ScalaGeneratorCompileSpec.skipModels ++ Map(
+    Map(
       "typed" -> noCodecForType("decimal", "date"),
       "constraints" -> noCodecForType("float"),
       "constraintsOnTypes" -> noCodecForType("float"),
