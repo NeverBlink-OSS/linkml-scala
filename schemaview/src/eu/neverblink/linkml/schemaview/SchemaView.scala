@@ -96,14 +96,56 @@ final case class SchemaView(schemas: Seq[SchemaDefinition]) extends ReferenceRes
     immutable.ArraySeq.unsafeWrapArray(sorted)
   }
 
-  /** Names of the classes that another class names in its `is_a` or `mixins`. */
-  private[schemaview] lazy val classesWithDescendants: Set[String] = {
-    val names = Set.newBuilder[String]
-    classes.foreachEntry((_, classView) =>
-      classView.parents.foreach(parent => names.addOne(parent.name)),
-    )
-    names.result()
+  /** The classes that name a class in their `is_a` or `mixins`, keyed by the name of that class, in
+    * the common order. Classes without children are not in the map.
+    */
+  private[schemaview] lazy val childrenByName: collection.Map[String, collection.Seq[ClassView]] = {
+    val children = mutable.HashMap.empty[String, mutable.ArrayBuffer[ClassView]]
+    sortedClasses.foreach { child =>
+      child.parents.foreach { parent =>
+        children.getOrElseUpdate(parent.name, new mutable.ArrayBuffer[ClassView](2)).addOne(child)
+      }
+    }
+    children
   }
+
+  /** Whether the element named `name` is the element named `ancestor`, or is derived from it: a
+    * class with it among its ancestors, or a type with it among its `typeof` ancestors.
+    *
+    * Some built-in types hold only values of another built-in type, without a `typeof` between
+    * them. A type based on one of them is derived from the other too: `ncname` from `string`, and
+    * `uri` and `curie` from `uriorcurie`. That is when the other type has no `typeof` and no
+    * constraints, so it holds all values of its base, as the built-in types do.
+    *
+    * A type derived from a member of a `union_of` type is derived from the union too.
+    */
+  def isDerivedFrom(name: String, ancestor: String): Boolean =
+    name == ancestor ||
+      classes.get(name).exists(_.ancestorsWithSelf.exists(_.name == ancestor)) ||
+      types.get(name).exists { t =>
+        t.ancestorsWithSelf.exists(_.name == ancestor) || {
+          val a = types.getOrElse(ancestor, null)
+          (a ne null) && (
+            isUnconstrainedBase(a._type) && holdsValuesOf(t.runtimeType, a.runtimeType) ||
+              a.unionAlternatives.exists(m => isDerivedFrom(name, m.name))
+          )
+        }
+      }
+
+  /** Whether the type has no `typeof` and no constraints on its values. */
+  private def isUnconstrainedBase(t: TypeDefinition): Boolean =
+    t.typeof.isEmpty && t.unionOf.isEmpty && t.pattern.isEmpty && t.structuredPattern.isEmpty &&
+      t.minimumValue.isEmpty && t.maximumValue.isEmpty && t.minimumLength.isEmpty &&
+      t.maximumLength.isEmpty && t.equalsString.isEmpty && t.equalsStringIn.isEmpty &&
+      t.equalsNumber.isEmpty
+
+  /** Whether all values of the first built-in type are values of the second. */
+  private def holdsValuesOf(runtimeType: RuntimeType, other: RuntimeType): Boolean =
+    other match {
+      case _: StringType.type => runtimeType eq NcNameType
+      case _: UriOrCurieType.type => (runtimeType eq UriType) || (runtimeType eq CurieType)
+      case _ => false
+    }
 
   /** All enums defined in the loaded schemas, as views.
     */
