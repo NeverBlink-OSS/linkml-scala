@@ -352,13 +352,13 @@ object OwlImporter {
     private def isDatatype(iri: String): Boolean =
       isDeclared(iri, EntityKind.Datatype) || OwlRdfReader.isBuiltInDatatype(iri)
 
-    /** Entries of an index, or an empty buffer if there are none. */
+    /** Entries of an index, or a shared empty sequence if there are none. */
     private def entriesOf[A](
         index: mutable.HashMap[String, mutable.ArrayBuffer[A]],
         key: String,
-    ): mutable.ArrayBuffer[A] = {
+    ): collection.IndexedSeq[A] = {
       val entries = index.getOrElse(key, null)
-      if (entries ne null) entries else mutable.ArrayBuffer.empty
+      if (entries ne null) entries else Vector.empty
     }
 
     /** Classes that are declared or used. Declarations of RDF, RDFS and OWL terms are ignored
