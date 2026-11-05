@@ -11,6 +11,8 @@ This page shows how ohi LinkML combines two kinds of them, where the LinkML spec
 - [Boolean expressions](#boolean-expressions): `any_of`, `all_of`, `exactly_one_of` and `none_of`, which are lists of conditions.
   ohi LinkML works differently from both the specification and LinkML-Python here.
 
+It also shows what the generators do with [slots that a class changes](#slots-that-a-class-changes) in ways that a parent class can't pass down in their output.
+
 ## Boolean metaslots
 
 The LinkML specification combines boolean metaslots, like `required` and `multivalued`, with OR when it derives a slot.
@@ -107,3 +109,44 @@ all_of:
 The SHACL generator emits all of it.
 The OWL generator gives each class its own `any_of` ranges; OWL subclassing requires the ranges of the parent classes too.
 The JSON Schema and Pydantic generators do not support boolean expressions yet.
+
+## Slots that a class changes
+
+In some outputs a subclass inherits what its parent class says about a field: the fields of a GraphQL interface, the `def`s of a Scala abstract class, the restrictions of an OWL class, and the fields of a Pydantic class.
+A `slot_usage` can change a slot in ways that these outputs can't pass down.
+
+```yaml
+classes:
+  Base:
+    slots:
+      - labels
+  Child:
+    is_a: Base
+    slot_usage:
+      labels:
+        multivalued: true
+
+slots:
+  labels:
+    range: string
+```
+
+In GraphQL, `Child` can't implement the `labels: String` field of `Base`'s interface with a list.
+In OWL, `Child` can't drop the `owl:maxCardinality 1` that it inherits from `Base`.
+
+So these generators describe a slot in a class only when every descendant has a version of it that fits.
+Otherwise the descendants describe their own versions:
+
+| Generator | A class leaves out a slot when a descendant changes its | Then |
+|-----------|---------------------------------------------------------|------|
+| GraphQL   | name (`alias`), `multivalued`, or range to one that is not a subtype | The interface leaves out the field. Each type still has it. |
+| Scala     | Scala type, for example with `required`, `multivalued` or a narrower class range | The abstract class or trait leaves out the `def`. A subclass whose descendants all give the field the same type declares it. |
+| OWL       | `multivalued`, or range to one that is not derived from it | The class leaves out the `owl:maxCardinality 1` or the `owl:allValuesFrom`. Only the subclasses that keep it state it. |
+| Pydantic  | JSON key (`alias`) | The subclass removes the inherited field, so loading rejects the old key. |
+
+In OWL, a subclass that gives the slot another `slot_uri` uses another property.
+It states all the restrictions of the slot for that property, with the `slot_usage` of its parent classes and mixins, and the property is declared.
+
+The LinkML specification only lets a class narrow an inherited range: to a subclass of it, or to a type with it as a `typeof` ancestor.
+ohi LinkML also accepts a member of a `union_of` type, and the built-in types that hold only values of another one: `ncname` for `string`, and `uri` or `curie` for `uriorcurie`.
+`validate` warns about a class that gives an inherited slot any other range, such as an enum in place of `string`.
