@@ -304,6 +304,16 @@ object OwlImporter {
 
   private val byKey: java.util.Comparator[KeyedMapping] = (a, b) => a.key.compareTo(b.key)
 
+  /** Whether a property is used as a data property somewhere. */
+  private final class PropertyUse {
+    var data: Boolean = false
+  }
+
+  /** A property's kind, and its place in the order of properties. */
+  private final class PropertyInfo(var kind: EntityKind) {
+    var order: Int = Int.MaxValue
+  }
+
   /** The members of an enum by its class IRI, and whether the members are classes. */
   private type EnumMembers = (members: collection.Seq[String], classes: Boolean)
 
@@ -381,8 +391,16 @@ object OwlImporter {
     private def isOntologyNamespace(namespace: String): Boolean =
       (ontologyNamespace ne null) && withoutSeparator(namespace) == ontologyNamespace
 
-    /** Each property's kind, taken from its declaration or else from how it is used. */
-    private val propertyKinds = mutable.HashMap.empty[String, EntityKind]
+    /** Each property's kind, taken from its declaration or else from how it is used, and its place
+      * in [[properties]].
+      */
+    private val propertyKinds = mutable.HashMap.empty[String, PropertyInfo]
+
+    /** The kind of a property, or `null` if it is not one. */
+    private def kindOf(p: String): EntityKind = {
+      val info = propertyKinds.getOrElse(p, null)
+      if (info ne null) info.kind else null
+    }
 
     /** The properties in [[propertyKinds]], in order. */
     private val properties = mutable.ArrayBuffer.empty[String]
@@ -390,8 +408,12 @@ object OwlImporter {
     {
       val order = mutable.ArrayBuffer.empty[String]
       def put(p: String, kind: EntityKind): Unit = {
-        if (!propertyKinds.contains(p)) order.addOne(p)
-        propertyKinds.update(p, kind)
+        val info = propertyKinds.getOrElse(p, null)
+        if (info ne null) info.kind = kind
+        else {
+          propertyKinds.update(p, new PropertyInfo(kind))
+          order.addOne(p)
+        }
       }
       axioms.foreach {
         case d: Declaration =>
@@ -401,8 +423,9 @@ object OwlImporter {
         case _ =>
       }
       // Whether each used property is used as a data property somewhere.
-      val used = mutable.HashMap.empty[String, Boolean]
-      def use(p: String, data: Boolean): Unit = used.update(p, data || used.getOrElse(p, false))
+      val used = mutable.HashMap.empty[String, PropertyUse]
+      def use(p: String, data: Boolean): Unit =
+        used.getOrElseUpdate(p, new PropertyUse).data |= data
       expressions.foreach(e => foreachPropertyIn(e)(use))
       axioms.foreach {
         case a: Range => use(a.property, a.range.isInstanceOf[DataRange])
@@ -411,20 +434,20 @@ object OwlImporter {
         case a: InverseProperties => use(a.first, false)
         // An undeclared subproperty, like Hydra's `writeable`, has its parent's kind.
         case a: SubPropertyOf =>
-          use(a.sub, propertyKinds.getOrElse(a.sup, null) == EntityKind.DataProperty)
+          use(a.sub, kindOf(a.sup) == EntityKind.DataProperty)
         case _ =>
       }
       // Undeclared properties are added in the iteration order of an immutable map built from
       // `used`, as `groupMap` builds it. That order doesn't depend on the order of the axioms, so
       // the OWL generated from the schema gives the same schema.
-      var byUse = Map.empty[String, Boolean]
-      used.foreachEntry((p, data) => byUse = byUse.updated(p, data))
+      var byUse = Map.empty[String, PropertyUse]
+      used.foreachEntry((p, u) => byUse = byUse.updated(p, u))
       // Hydra gives its datatype `Rfc6570Template` a range, which doesn't make it a property.
-      byUse.foreachEntry { (p, data) =>
+      byUse.foreachEntry { (p, u) =>
         if (
           !propertyKinds.contains(p) && !isDeclared(p, EntityKind.AnnotationProperty) &&
           !isDeclared(p, EntityKind.Datatype)
-        ) put(p, if (data) EntityKind.DataProperty else EntityKind.ObjectProperty)
+        ) put(p, if (u.data) EntityKind.DataProperty else EntityKind.ObjectProperty)
       }
       // An undeclared parent property gets its child's kind, so the child can keep it as a parent.
       // Skip parents used as annotations, or they would end up with two kinds.
@@ -438,7 +461,7 @@ object OwlImporter {
           case a: SubPropertyOf =>
             val sup = a.sup
             if (!propertyKinds.contains(sup)) {
-              val kind = propertyKinds.getOrElse(a.sub, null)
+              val kind = kindOf(a.sub)
               if (
                 (kind ne null) && kind != EntityKind.AnnotationProperty &&
                 !isDeclared(sup, EntityKind.AnnotationProperty) && !annotationProperties(sup)
@@ -474,7 +497,11 @@ object OwlImporter {
       }
       // RDF, RDFS and OWL properties are defined by their specs, so they never become slots.
       order.foreach { p =>
-        if (isStandardVocabulary(p)) propertyKinds.remove(p) else properties.addOne(p)
+        if (isStandardVocabulary(p)) propertyKinds.remove(p)
+        else {
+          propertyKinds(p).order = properties.length
+          properties.addOne(p)
+        }
       }
     }
 
@@ -1048,7 +1075,7 @@ object OwlImporter {
           take(stated.head.axiom)
           range = slotRange(stated.head.range)
         }
-        val data = propertyKinds(p) == EntityKind.DataProperty
+        val data = propertyKinds(p).kind == EntityKind.DataProperty
         out.update(
           p,
           if (range ne null) range
@@ -1132,7 +1159,7 @@ object OwlImporter {
     }
 
     private def slotOf(p: String): SlotDefinition = {
-      val kind = propertyKinds(p)
+      val kind = propertyKinds(p).kind
       val name = names(p)
       val doc = documentation(p)
       var characteristics = 0
@@ -1431,14 +1458,13 @@ object OwlImporter {
         } else null
       }
 
-    private lazy val propertyOrder: mutable.HashMap[String, Int] = {
-      val out = mutable.HashMap.empty[String, Int]
-      var i = 0
-      properties.foreach { p =>
-        out.update(p, i)
-        i += 1
-      }
-      out
+    /** Compares properties by their place in [[properties]]. Others come last. */
+    private val byPropertyOrder: java.util.Comparator[String] = (a, b) =>
+      Integer.compare(orderOf(a), orderOf(b))
+
+    private def orderOf(p: String): Int = {
+      val info = propertyKinds.getOrElse(p, null)
+      if (info ne null) info.order else Int.MaxValue
     }
 
     /** Slots attached to a class through `rdfs:domain`. */
@@ -1647,34 +1673,23 @@ object OwlImporter {
       entriesOf(disjointByClass, c).foreach { a =>
         val ops = a.operands
         if (ops.length == 2) {
-          (ops(0), ops(1)) match {
-            case (first: ClassExpr.Named, second: ClassExpr.Named) =>
-              if (first.iri == c && classParents.contains(second.iri)) {
-                take(a)
-                disjoint.addOne(names(second.iri))
+          ops(0) match {
+            case first: ClassExpr.Named =>
+              ops(1) match {
+                case second: ClassExpr.Named =>
+                  if (first.iri == c && classParents.contains(second.iri)) {
+                    take(a)
+                    disjoint.addOne(names(second.iri))
+                  }
+                case _ =>
               }
             case _ =>
           }
-        } else if (ops.length > 2 && ops.forall(_.isInstanceOf[ClassExpr.Named])) {
-          val members = mutable.ArrayBuffer.empty[String]
-          ops.foreach(o => members.addOne(o.asInstanceOf[ClassExpr.Named].iri))
-
-          // That case is handled below, with `children_are_mutually_disjoint` on the parent.
-          // Members that became enums have no parents, so they are checked first.
-          def allChildren = {
-            val p = commonParent(members)
-            (p ne null) && {
-              val siblings = mutable.HashSet.empty[String]
-              siblings.addAll(entriesOf(childrenOf, p))
-              val memberSet = mutable.HashSet.empty[String]
-              memberSet.addAll(members)
-              siblings == memberSet
-            }
-          }
-
-          if (members.forall(classParents.contains) && !allChildren) {
-            take(a)
-            members.foreach(m => if (m != c) disjoint.addOne(names(m)))
+        } else if (ops.length > 2 && isOnEachMember(a)) {
+          take(a)
+          ops.foreach { o =>
+            val m = o.asInstanceOf[ClassExpr.Named].iri
+            if (m != c) disjoint.addOne(names(m))
           }
         }
       }
@@ -1711,23 +1726,27 @@ object OwlImporter {
       }
 
       // List only slots that no ancestor already has, here or in an imported schema.
-      val inherited = mutable.HashSet.empty[String]
       val ancestors = mutable.HashSet.empty[String]
+      val importedAncestorSlots = mutable.ArrayBuffer.empty[mutable.HashSet[String]]
       val stack = mutable.ArrayBuffer.from(entriesOf(classParents, c))
       while (stack.nonEmpty) {
         val a = stack.remove(stack.length - 1)
         if (ancestors.add(a)) {
-          inherited.addAll(entriesOf(slotsByDomain, a))
           val slots = importedSlots.getOrElse(a, null)
-          if (slots ne null) inherited.addAll(slots)
+          if (slots ne null) importedAncestorSlots.addOne(slots)
           stack.addAll(entriesOf(classParents, a))
         }
       }
+      def isInherited(p: String): Boolean =
+        entriesOf(domainClassesOf, p).exists(ancestors.contains) ||
+          importedAncestorSlots.exists(_.contains(p))
       // In declaration order, which the generator keeps: a slot can come from `rdfs:domain` here
       // and from a restriction in the generated OWL.
       val own = mutable.ArrayBuffer.empty[String]
-      attached.foreach(p => if (!inherited.contains(p)) own.addOne(p))
-      val ordered = own.sortBy(p => propertyOrder.getOrElse(p, Int.MaxValue))
+      attached.foreach(p => if (!isInherited(p)) own.addOne(p))
+      val ordered = own.toArray
+      // A stable sort, so slots that are not properties keep their order.
+      java.util.Arrays.sort(ordered, byPropertyOrder)
       val slotRefs = Vector.newBuilder[Reference[SlotDefinition]]
       ordered.foreach(p => slotRefs.addOne(Reference(names(p))))
       val slotUsage = VectorMap.newBuilder[String, SlotDefinition]
@@ -1763,6 +1782,47 @@ object OwlImporter {
         exactMappings = sorted(doc.metadata.exactMappings, exact),
         notes = classNotes.result(),
       )
+    }
+
+    /** Whether a disjointness group of more than two named classes goes on each member: all members
+      * are classes and the group is not exactly the children of their parent. That case is handled
+      * with `children_are_mutually_disjoint` on the parent. Each member has the same axiom, so the
+      * answer is computed once.
+      */
+    private def isOnEachMember(a: DisjointClasses): Boolean = {
+      val known = onEachMember.get(a)
+      if (known ne null) known.booleanValue
+      else {
+        val ops = a.operands
+        val result = ops.forall(_.isInstanceOf[ClassExpr.Named]) && {
+          val members = mutable.ArrayBuffer.empty[String]
+          ops.foreach(o => members.addOne(o.asInstanceOf[ClassExpr.Named].iri))
+          // Members that became enums have no parents, so they are checked first.
+          members.forall(classParents.contains) && {
+            val p = commonParent(members)
+            (p eq null) || {
+              val siblings = mutable.HashSet.empty[String]
+              siblings.addAll(entriesOf(childrenOf, p))
+              val memberSet = mutable.HashSet.empty[String]
+              memberSet.addAll(members)
+              siblings != memberSet
+            }
+          }
+        }
+        onEachMember.put(a, java.lang.Boolean.valueOf(result))
+        result
+      }
+    }
+
+    private val onEachMember = new java.util.IdentityHashMap[DisjointClasses, java.lang.Boolean]
+
+    /** The classes each property is attached to through `rdfs:domain`. */
+    private lazy val domainClassesOf: mutable.HashMap[String, mutable.ArrayBuffer[String]] = {
+      val out = mutable.HashMap.empty[String, mutable.ArrayBuffer[String]]
+      slotsByDomain.foreachEntry { (c, properties) =>
+        properties.foreach(p => out.getOrElseUpdate(p, mutable.ArrayBuffer.empty).addOne(c))
+      }
+      out
     }
 
     /** Adds "at least one value is a `range`" to a slot. Uses `has_member`, or an `all_of` entry if
@@ -1805,13 +1865,28 @@ object OwlImporter {
       val range = slotRanges.getOrElse(p, null)
       if ((range eq null) || range.range.isEmpty) null
       else {
-        val r = range.range.get
-        val e = enumClasses.find(e => names.get(e).contains(r))
-        if (e.isDefined && enumMembers(e.get).members.contains(individual)) {
-          permissibleValueText(e.get, individual)
-        } else null
+        val e = enumByName.getOrElse(range.range.get, null)
+        if ((e ne null) && enumMemberSet(e).contains(individual))
+          permissibleValueText(e, individual)
+        else null
       }
     }
+
+    /** Enums by name. */
+    private lazy val enumByName: mutable.HashMap[String, String] = {
+      val out = mutable.HashMap.empty[String, String]
+      enumClasses.foreach { e =>
+        val name = names.getOrElse(e, null)
+        if (name ne null) out.getOrElseUpdate(name, e)
+      }
+      out
+    }
+
+    /** The members of each enum, as a set. */
+    private val enumMemberSets = mutable.HashMap.empty[String, mutable.HashSet[String]]
+
+    private def enumMemberSet(e: String): mutable.HashSet[String] =
+      enumMemberSets.getOrElseUpdate(e, mutable.HashSet.from(enumMembers(e).members))
 
     // Enums
 

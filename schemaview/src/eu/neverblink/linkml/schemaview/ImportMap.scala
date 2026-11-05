@@ -359,7 +359,11 @@ object ImportMap {
   /** @param chain
     *   The keys followed so far, the last one first.
     */
-  private def chainError(lookupKey: String, chain: List[String], what: String): SchemaImportError = {
+  private def chainError(
+      lookupKey: String,
+      chain: List[String],
+      what: String,
+  ): SchemaImportError = {
     val sb = new java.lang.StringBuilder
     var rest = chain
     while (rest.nonEmpty) {

@@ -157,26 +157,27 @@ private class ReferenceCollectorImpl(using Quotes) extends MacroUtils {
     *   The classes whose fields are being checked, to stop at recursive types
     */
   private def mayHoldReferences(tpe: TypeRepr, visiting: List[TypeRepr]): Boolean =
-    holdsReferences.getOrElse(
-      tpe, {
-        val result =
-          if (tpe <:< referenceOfWildcardTpe) {
-            val target = typeArg1(tpe)
-            tagOf(target).isDefined ||
-            target =:= TypeRepr.of[Element] ||
-            target =:= TypeRepr.of[eu.neverblink.linkml.metamodel.Definition]
-          } else if (tpe <:< optionOfWildcardTpe || tpe <:< seqOfWildcardTpe)
-            mayHoldReferences(typeArg1(tpe), visiting)
-          else if (tpe <:< mapOfWildcardsTpe) mayHoldReferences(typeArg2(tpe), visiting)
-          else if (isMetamodelClass(tpe) && !visiting.exists(_ =:= tpe)) {
-            fieldsToRead(tpe).exists(f => mayHoldReferences(f.resolvedTpe, tpe :: visiting))
-          } else false
-        // A `false` found while other classes are being checked can be wrong, as one of them may
-        // still turn out to hold references, so only those found at the top are kept.
-        if (result || visiting.isEmpty) holdsReferences.update(tpe, result)
-        result
-      },
-    )
+    if (holdsReferences.contains(tpe)) true
+    else if (holdsNoReferences.contains(tpe)) false
+    else {
+      val result =
+        if (tpe <:< referenceOfWildcardTpe) {
+          val target = typeArg1(tpe)
+          tagOf(target).isDefined ||
+          target =:= TypeRepr.of[Element] ||
+          target =:= TypeRepr.of[eu.neverblink.linkml.metamodel.Definition]
+        } else if (tpe <:< optionOfWildcardTpe || tpe <:< seqOfWildcardTpe)
+          mayHoldReferences(typeArg1(tpe), visiting)
+        else if (tpe <:< mapOfWildcardsTpe) mayHoldReferences(typeArg2(tpe), visiting)
+        else if (isMetamodelClass(tpe) && !visiting.exists(_ =:= tpe)) {
+          fieldsToRead(tpe).exists(f => mayHoldReferences(f.resolvedTpe, tpe :: visiting))
+        } else false
+      // A `false` found while other classes are being checked can be wrong, as one of them may
+      // still turn out to hold references, so only those found at the top are kept.
+      if (result) holdsReferences.addOne(tpe)
+      else if (visiting.isEmpty) holdsNoReferences.addOne(tpe)
+      result
+    }
 
   /** Only the classes of the metamodel hold references, the classes of the runtime don't. */
   private def isMetamodelClass(tpe: TypeRepr): Boolean =
@@ -224,7 +225,9 @@ private class ReferenceCollectorImpl(using Quotes) extends MacroUtils {
       List(x.asTerm, out.asTerm, sv.asTerm),
     ).asExprOf[Unit]
 
-  private val holdsReferences = new mutable.HashMap[TypeRepr, Boolean]
+  /** The types known to hold references, and those known not to. */
+  private val holdsReferences = new mutable.HashSet[TypeRepr]
+  private val holdsNoReferences = new mutable.HashSet[TypeRepr]
   private val collectRefs = new mutable.HashMap[TypeRepr, Ref]
   private val defs = new mutable.ListBuffer[Definition]
   private val referenceOfWildcardTpe: TypeRepr =

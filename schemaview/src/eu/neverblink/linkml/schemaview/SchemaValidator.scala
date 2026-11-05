@@ -634,11 +634,15 @@ final class SchemaValidator(using sv: SchemaView) {
   }
 
   private lazy val unknownPrefixes: Seq[SchemaError] = {
-    sv.root.emitPrefixes.zipWithIndex.flatMap((prefix, idx) =>
-      if sv.rootPrefixes.namespaceOrNull(prefix) eq null
-      then new Some(undefinedPrefix(prefix, s"/emit_prefixes/$idx", sv.root.id))
-      else None,
-    ) ++
+    val undefinedEmitPrefixes = Vector.newBuilder[SchemaError]
+    var idx = 0
+    sv.root.emitPrefixes.foreach { prefix =>
+      if (sv.rootPrefixes.namespaceOrNull(prefix) eq null) {
+        undefinedEmitPrefixes.addOne(undefinedPrefix(prefix, s"/emit_prefixes/$idx", sv.root.id))
+      }
+      idx += 1
+    }
+    undefinedEmitPrefixes.result() ++
       sv.types.values.flatMap(tv => {
         tv._type.implicitPrefix match {
           case Some(prefix) if tv.definingPrefixes.namespaceOrNull(prefix) eq null =>

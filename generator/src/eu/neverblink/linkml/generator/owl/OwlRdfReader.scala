@@ -1,6 +1,7 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.Axiom.*
+import eu.neverblink.linkml.generator.util.IntBox
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.FastUtils.*
 
@@ -23,7 +24,7 @@ object OwlRdfReader {
   final case class Result(ontology: Ontology, unparsed: Seq[Triple])
 
   /** A graph is a set, so a repeated triple counts once. */
-  def read(triples: Seq[Triple]): Result = new Reader(Graph(triples)).read()
+  def read(triples: Seq[Triple]): Result = new Reader(Graph(triples.toIndexedSeq)).read()
 
   /** True for built-in datatypes, which need no declaration. */
   def isBuiltInDatatype(iri: String): Boolean =
@@ -67,23 +68,15 @@ object OwlRdfReader {
 
   private val terminologyBits: Int = ~bit(EntityKind.NamedIndividual)
 
-  private val noIndices: collection.IndexedSeq[Int] = IndexedSeq.empty
-
   /** Stands for a missing or unreadable cardinality. */
   private val noCount: Int = Int.MinValue
-
-  /** Takes the indices of triples that nobody needs to mark as used. */
-  private object Discard extends mutable.Growable[Int] {
-    override def addOne(elem: Int): this.type = this
-    override def clear(): Unit = ()
-  }
 
   private final class Reader(graph: Graph) {
 
     private val triples = graph.triples
 
     /** The kinds each IRI is declared as, one [[bit]] per kind. */
-    private val kinds = mutable.HashMap.empty[String, Int]
+    private val kinds = mutable.HashMap.empty[String, IntBox]
 
     /** Annotations on axioms, keyed by the axiom's main triple. */
     private val axiomAnnotations = mutable.HashMap.empty[Triple, Seq[Annotation]]
@@ -98,27 +91,33 @@ object OwlRdfReader {
     private val axioms = Vector.newBuilder[Axiom]
 
     /** The triples read for the axiom being built. They are marked as used once it is complete. */
-    private val touched = mutable.ArrayBuffer.empty[Int]
+    private val touched = new IntBuffer
 
     def read(): Result = {
       // Read axiom annotations first, because declarations can have them too.
       readAxiomAnnotations()
       val header = readDeclarations()
       val ontology = if (header ne null) readHeader(header) else Ontology()
-      graph.subjects.foreach { entry =>
-        entry._1 match {
-          case subject: Iri => readEntity(subject, entry._2)
+      var k = 0
+      while (k < graph.subjectCount) {
+        val indices = graph.subjectAt(k)
+        indices.subject match {
+          case subject: Iri => readEntity(subject, indices)
           case subject: AnyBlankNode =>
-            if (!graph.isObject(subject)) readAnonymous(subject, entry._2)
+            if (!graph.isObject(subject)) readAnonymous(subject, indices)
         }
+        k += 1
       }
       Result(ontology.copy(axioms = axioms.result()), graph.unused)
     }
 
-    private def kindsOf(iri: String): Int = kinds.getOrElse(iri, 0)
+    private def kindsOf(iri: String): Int = {
+      val k = kinds.getOrElse(iri, null)
+      if (k ne null) k.value else 0
+    }
 
     private def declare(iri: String, kind: EntityKind): Unit =
-      kinds.update(iri, kindsOf(iri) | bit(kind))
+      kinds.getOrElseUpdate(iri, new IntBox).value |= bit(kind)
 
     private def isKind(iri: String, kind: EntityKind): Boolean = (kindsOf(iri) & bit(kind)) != 0
 
@@ -140,12 +139,14 @@ object OwlRdfReader {
       var header: Iri = null
       val untypedProperties = mutable.ArrayBuffer.empty[Iri]
       val seenUntyped = mutable.HashSet.empty[Iri]
-      val declarations = mutable.ArrayBuffer.empty[(index: Int, iri: String, kind: EntityKind)]
+      // The indices of the declaring triples.
+      val declarations = new IntBuffer
       val deprecated = mutable.ArrayBuffer.empty[String]
       var i = 0
       while (i < triples.length) {
         val t = triples(i)
-        if (t.pred == Rdf.`type`) {
+        // A repeated triple is used from the start, so it is read once.
+        if (t.pred == Rdf.`type` && !graph.isUsed(i)) {
           t.subj match {
             case subject: Iri =>
               t.obj match {
@@ -154,7 +155,7 @@ object OwlRdfReader {
                   val kind = kindOf(o)
                   if (kind ne null) {
                     declare(s, kind)
-                    declarations.addOne((index = i, iri = s, kind = kind))
+                    declarations.add(i)
                   }
                   if (o == Rdf.Property || o == Owl.DeprecatedProperty) {
                     if (seenUntyped.add(subject)) untypedProperties.addOne(subject)
@@ -180,9 +181,16 @@ object OwlRdfReader {
           axioms.addOne(Declaration(kind, iri))
         }
       }
-      declarations.foreach { d =>
-        graph.use(d.index)
-        axioms.addOne(Declaration(d.kind, d.iri, annotationsFor(triples(d.index))))
+      declarations.foreach { i =>
+        val t = triples(i)
+        graph.use(i)
+        axioms.addOne(
+          Declaration(
+            kindOf(t.obj.asInstanceOf[Iri]),
+            t.subj.asInstanceOf[Iri].value,
+            annotationsFor(t),
+          ),
+        )
       }
       // `owl:DeprecatedClass` and `owl:DeprecatedProperty` also mean `owl:deprecated true`.
       deprecated.foreach(s => axioms.addOne(AnnotationAssertion(s, deprecatedTrue)))
@@ -203,13 +211,15 @@ object OwlRdfReader {
       // `blankTargets`: earlier versions searched them in the iteration order of this map, so the
       // same copy is taken when several match.
       val byParts = mutable.HashMap.empty[(Resource, Iri, Node), Seq[Annotation]]
-      graph.subjects.foreach { entry =>
-        entry._1 match {
+      var k = 0
+      while (k < graph.subjectCount) {
+        val indices = graph.subjectAt(k)
+        indices.subject match {
           case _: AnyBlankNode =>
-            val indices = entry._2
             if (indices.exists(isAxiomType)) readAxiomAnnotation(indices, byParts)
           case _ =>
         }
+        k += 1
       }
       byParts.foreachEntry { (parts, annotations) =>
         parts._3 match {
@@ -227,7 +237,7 @@ object OwlRdfReader {
     }
 
     private def readAxiomAnnotation(
-        indices: collection.IndexedSeq[Int],
+        indices: Graph.Indices,
         byParts: mutable.HashMap[(Resource, Iri, Node), Seq[Annotation]],
     ): Unit = {
       var source: Resource = null
@@ -258,7 +268,7 @@ object OwlRdfReader {
         }
       }
       if ((source ne null) && (property ne null) && (target ne null)) {
-        indices.foreach(graph.use)
+        graph.useAll(indices)
         val result = annotations.result()
         axiomAnnotations.update(Triple(source, property, target), result)
         byParts.update((source, property, target), result)
@@ -292,13 +302,13 @@ object OwlRdfReader {
           val copy = copies(j)
           if (copy.predicate == t.pred) {
             if (!exprRead) {
-              expr = filler(node, mutable.ArrayBuffer.empty, dataProperty = false)
+              expr = filler(node, new IntBuffer, dataProperty = false)
               exprRead = true
             }
-            val read = mutable.ArrayBuffer.empty[Int]
+            val read = new IntBuffer
             val parsed = filler(copy.target, read, dataProperty = false)
             if ((parsed ne null) && parsed == expr) {
-              read.foreach(graph.use)
+              graph.useAll(read)
               return copy.annotations
             }
           }
@@ -377,12 +387,12 @@ object OwlRdfReader {
       }
       if ((prefix eq null) || (namespace eq null)) null
       else {
-        indices.foreach(graph.use)
+        graph.useAll(indices)
         (prefix, namespace)
       }
     }
 
-    private def readEntity(subject: Iri, indices: collection.IndexedSeq[Int]): Unit = {
+    private def readEntity(subject: Iri, indices: Graph.Indices): Unit = {
       val s = subject.value
       val named = ClassExpr.Named(s)
       val isDatatypeSubject = isDatatype(s)
@@ -393,7 +403,7 @@ object OwlRdfReader {
           if (axiom ne null) {
             axioms.addOne(axiom)
             graph.use(i)
-            touched.foreach(graph.use)
+            graph.useAll(touched)
           }
         }
       }
@@ -513,7 +523,7 @@ object OwlRdfReader {
       case _ => null
     }
 
-    private def readAnonymous(node: AnyBlankNode, indices: collection.IndexedSeq[Int]): Unit =
+    private def readAnonymous(node: AnyBlankNode, indices: Graph.Indices): Unit =
       if (hasType(indices, Owl.AllDisjointClasses)) {
         touched.clear()
         val es = all(members(indices, Owl.members, null))(classExpr(_, touched))
@@ -541,7 +551,7 @@ object OwlRdfReader {
                   else EquivalentClasses(Seq(sub, sup), annotationsFor(t)),
                 )
                 graph.use(i)
-                touched.foreach(graph.use)
+                graph.useAll(touched)
               }
             }
           }
@@ -549,13 +559,13 @@ object OwlRdfReader {
       }
 
     /** Adds the axiom of an anonymous node and marks its triples as used. */
-    private def commit(indices: collection.IndexedSeq[Int], axiom: Axiom): Unit = {
+    private def commit(indices: Graph.Indices, axiom: Axiom): Unit = {
       axioms.addOne(axiom)
-      indices.foreach(graph.use)
-      touched.foreach(graph.use)
+      graph.useAll(indices)
+      graph.useAll(touched)
     }
 
-    private def hasType(indices: collection.IndexedSeq[Int], kind: Iri): Boolean =
+    private def hasType(indices: Graph.Indices, kind: Iri): Boolean =
       indices.exists { i =>
         val t = triples(i)
         t.pred == Rdf.`type` && t.obj == kind
@@ -565,7 +575,7 @@ object OwlRdfReader {
       * `null` if there is no such triple or the list is malformed.
       */
     private def members(
-        indices: collection.IndexedSeq[Int],
+        indices: Graph.Indices,
         predicate: Iri,
         alternative: Iri,
     ): Seq[Node] = {
@@ -585,7 +595,7 @@ object OwlRdfReader {
     /** The members of the RDF list at `node`, or `null` if there is no node or the list is
       * malformed.
       */
-    private def listOf(node: Node, touched: mutable.Growable[Int]): Seq[Node] =
+    private def listOf(node: Node, touched: IntBuffer): Seq[Node] =
       if (node eq null) null
       else graph.list(node, touched).orNullFast
 
@@ -622,21 +632,21 @@ object OwlRdfReader {
       }
 
     /** Triples about a node. IRIs are included for OWL 1 style expressions on named classes. */
-    private def indicesOf(node: Node): collection.IndexedSeq[Int] = node match {
+    private def indicesOf(node: Node): Graph.Indices = node match {
       case r: Resource => graph.about(r)
-      case _ => noIndices
+      case _ => Graph.Indices.empty
     }
 
     /** The object of the first triple about `node` with the predicate, or `null` if there is none.
       */
-    private def objectOf(node: Node, predicate: Iri, touched: mutable.ArrayBuffer[Int]): Node = {
+    private def objectOf(node: Node, predicate: Iri, touched: IntBuffer): Node = {
       val indices = indicesOf(node)
       var j = 0
       while (j < indices.length) {
         val i = indices(j)
         val t = triples(i)
         if (t.pred == predicate) {
-          touched.addOne(i)
+          touched.add(i)
           return t.obj
         }
         j += 1
@@ -648,10 +658,10 @@ object OwlRdfReader {
       indicesOf(node).exists(i => triples(i).pred == predicate)
 
     /** Removes what a failed parser added to `touched` after `mark`. */
-    private def undo(touched: mutable.ArrayBuffer[Int], mark: Int): Unit =
-      touched.dropRightInPlace(touched.length - mark)
+    private def undo(touched: IntBuffer, mark: Int): Unit =
+      touched.truncate(mark)
 
-    private def propertyRef(node: Node, touched: mutable.ArrayBuffer[Int]): PropertyRef =
+    private def propertyRef(node: Node, touched: IntBuffer): PropertyRef =
       node match {
         case i: Iri => PropertyRef(i.value)
         case b: AnyBlankNode =>
@@ -667,7 +677,7 @@ object OwlRdfReader {
       */
     private def filler(
         node: Node,
-        touched: mutable.ArrayBuffer[Int],
+        touched: IntBuffer,
         dataProperty: Boolean,
     ): Filler =
       if (dataProperty || isDataRange(node)) dataRange(node, touched)
@@ -684,17 +694,17 @@ object OwlRdfReader {
       case Rdf.`type` => t.obj == Rdfs.Datatype
       case Owl.onDatatype | Owl.datatypeComplementOf => true
       case Owl.oneOf =>
-        val members = listOf(t.obj, Discard)
+        val members = listOf(t.obj, null)
         (members ne null) && members.exists(isLiteral)
       case Owl.unionOf | Owl.intersectionOf =>
-        val members = listOf(t.obj, Discard)
+        val members = listOf(t.obj, null)
         (members ne null) && members.nonEmpty && isDataRange(members.head)
       case _ => false
     }
 
     private def classExpr(
         node: Node,
-        touched: mutable.ArrayBuffer[Int],
+        touched: IntBuffer,
         skip: Int = -1,
     ): ClassExpr = node match {
       case i: Iri => ClassExpr.Named(i.value)
@@ -709,7 +719,7 @@ object OwlRdfReader {
             val t = triples(i)
             // `rdf:type owl:Class` and `rdf:type owl:Restriction` add nothing, so just mark them.
             if (t.pred == Rdf.`type`) {
-              if (t.obj == Owl.Class || t.obj == Owl.Restriction) touched.addOne(i)
+              if (t.obj == Owl.Class || t.obj == Owl.Restriction) touched.add(i)
             } else if (t.pred == Owl.onProperty) isRestriction = true
           }
           j += 1
@@ -720,7 +730,7 @@ object OwlRdfReader {
       case _ => null
     }
 
-    private def booleanClassExpr(node: Node, touched: mutable.ArrayBuffer[Int]): ClassExpr =
+    private def booleanClassExpr(node: Node, touched: IntBuffer): ClassExpr =
       if (has(node, Owl.intersectionOf)) {
         val es = all(listOf(objectOf(node, Owl.intersectionOf, touched), touched))(
           classExpr(_, touched),
@@ -737,7 +747,7 @@ object OwlRdfReader {
         if (is ne null) ClassExpr.OneOf(is) else null
       } else null
 
-    private def restriction(node: AnyBlankNode, touched: mutable.ArrayBuffer[Int]): ClassExpr = {
+    private def restriction(node: AnyBlankNode, touched: IntBuffer): ClassExpr = {
       val property = propertyRef(objectOf(node, Owl.onProperty, touched), touched)
       if (property eq null) null
       else {
@@ -776,7 +786,7 @@ object OwlRdfReader {
         bound: ClassExpr.Bound,
         plain: Iri,
         qualified: Iri,
-        touched: mutable.ArrayBuffer[Int],
+        touched: IntBuffer,
     ): ClassExpr =
       if (has(node, plain)) {
         val n = count(node, plain, touched)
@@ -794,20 +804,20 @@ object OwlRdfReader {
       }
 
     /** The integer object of the triple with the predicate, or [[noCount]] if there is none. */
-    private def count(node: Node, predicate: Iri, touched: mutable.ArrayBuffer[Int]): Int =
+    private def count(node: Node, predicate: Iri, touched: IntBuffer): Int =
       objectOf(node, predicate, touched) match {
         case l: Literal => l.value.trim.toIntOption.getOrElseFast(noCount)
         case _ => noCount
       }
 
-    private def dataRange(node: Node, touched: mutable.ArrayBuffer[Int]): DataRange =
+    private def dataRange(node: Node, touched: IntBuffer): DataRange =
       node match {
         case i: Iri => DataRange.Datatype(i.value)
         case b: AnyBlankNode =>
           val mark = touched.length
           graph.about(b).foreach { i =>
             val t = triples(i)
-            if (t.pred == Rdf.`type` && t.obj == Rdfs.Datatype) touched.addOne(i)
+            if (t.pred == Rdf.`type` && t.obj == Rdfs.Datatype) touched.add(i)
           }
           val result =
             if (has(b, Owl.onDatatype)) datatypeRestriction(b, touched)
@@ -823,7 +833,7 @@ object OwlRdfReader {
       }
 
     /** `owl:onDatatype` with its `owl:withRestrictions`. */
-    private def datatypeRestriction(node: Node, touched: mutable.ArrayBuffer[Int]): DataRange =
+    private def datatypeRestriction(node: Node, touched: IntBuffer): DataRange =
       objectOf(node, Owl.onDatatype, touched) match {
         case base: Iri =>
           val facets =
@@ -835,7 +845,7 @@ object OwlRdfReader {
         case _ => null
       }
 
-    private def booleanDataRange(node: Node, touched: mutable.ArrayBuffer[Int]): DataRange =
+    private def booleanDataRange(node: Node, touched: IntBuffer): DataRange =
       if (has(node, Owl.intersectionOf)) {
         val rs = all(listOf(objectOf(node, Owl.intersectionOf, touched), touched))(
           dataRange(_, touched),
@@ -850,7 +860,7 @@ object OwlRdfReader {
       } else null
 
     /** The first facet with a literal value, or `null` if there is none. */
-    private def facet(node: Node, touched: mutable.ArrayBuffer[Int]): (String, Literal) = {
+    private def facet(node: Node, touched: IntBuffer): (String, Literal) = {
       val indices = indicesOf(node)
       var j = 0
       while (j < indices.length) {
@@ -858,7 +868,7 @@ object OwlRdfReader {
         val t = triples(i)
         t.obj match {
           case l: Literal =>
-            touched.addOne(i)
+            touched.add(i)
             return (t.pred.value, l)
           case _ =>
         }

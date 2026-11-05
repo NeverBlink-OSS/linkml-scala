@@ -118,12 +118,14 @@ object RdfSink {
   * benchmarks.
   */
 final class CollectingRdfSink extends RdfSink {
-  private val ns = Seq.newBuilder[Namespace]
-  private val tr = Seq.newBuilder[Triple]
+  private val ns = Vector.newBuilder[Namespace]
+  private val tr = Vector.newBuilder[Triple]
 
   def namespace(prefix: String, name: String): Unit = ns.addOne(Namespace(prefix, name))
   def triple(subj: Resource, pred: Iri, obj: Node): Unit = tr.addOne(Triple(subj, pred, obj))
 
   def namespaces: Seq[Namespace] = ns.result()
-  def triples: Seq[Triple] = tr.result()
+
+  /** The triples in the order they were pushed, repeated ones included. */
+  def triples: IndexedSeq[Triple] = tr.result()
 }

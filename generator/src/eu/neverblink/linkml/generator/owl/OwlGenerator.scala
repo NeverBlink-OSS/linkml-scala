@@ -830,17 +830,28 @@ object OwlGenerator {
       case _ => false
     }
 
-    /** Whether each property is single-valued in every class that uses it. */
-    private lazy val singleValued: collection.Map[String, Boolean] = {
-      val b = mutable.HashMap.empty[String, Boolean]
+    /** The properties some class uses, and those some class uses as multivalued or as text. */
+    private lazy val propertyUses: (
+        used: mutable.HashSet[String],
+        multivalued: mutable.HashSet[String],
+    ) = {
+      val used = mutable.HashSet.empty[String]
+      val multivalued = mutable.HashSet.empty[String]
       sv.classes.foreachEntry { (_, c) =>
         c.derivedAttributes.foreachEntry { (_, a) =>
           val iri = a.uriStr
-          b.update(iri, !a.slot.multivalued && !isText(a) && b.getOrElse(iri, true))
+          used.addOne(iri)
+          if (a.slot.multivalued || isText(a)) multivalued.addOne(iri)
         }
       }
-      b
+      (used = used, multivalued = multivalued)
     }
+
+    /** Whether the property is single-valued in every class that uses it, or `ifUnused` if no class
+      * uses it.
+      */
+    private def isSingleValued(iri: String, ifUnused: Boolean): Boolean =
+      if (propertyUses.used.contains(iri)) !propertyUses.multivalued.contains(iri) else ifUnused
 
     private def kindOf(s: SlotView): EntityKind = {
       val owl = "http://www.w3.org/2002/07/owl#"
@@ -931,7 +942,7 @@ object OwlGenerator {
         if (slot.reflexive) add(Characteristic(iri, PropertyCharacteristic.Reflexive))
         if (slot.irreflexive) add(Characteristic(iri, PropertyCharacteristic.Irreflexive))
         if (
-          !slot.multivalued && !isText(slotView) && singleValued.getOrElse(iri, true) &&
+          !slot.multivalued && !isText(slotView) && isSingleValued(iri, ifUnused = true) &&
           !nonSimple(iri)
         ) {
           add(Characteristic(iri, PropertyCharacteristic.Functional))
@@ -957,7 +968,7 @@ object OwlGenerator {
               val range = uses.head
               if ((range ne null) && uses.forall(_ == range)) add(Range(iri, range))
             }
-            if (singleValued.getOrElse(iri, false) && !nonSimple(iri)) {
+            if (isSingleValued(iri, ifUnused = false) && !nonSimple(iri)) {
               add(Characteristic(iri, PropertyCharacteristic.Functional))
             }
           }
@@ -1035,18 +1046,23 @@ object OwlGenerator {
           )
           add(DatatypeDefinition(iri, restriction))
         }
-      } else if (!Metadata.of(tv._type).isEmpty && typesByUri.getOrElse(iri, 0) == 1) {
+      } else if (
+        !Metadata.of(tv._type).isEmpty && typeUris.once.contains(iri) && !typeUris.more.contains(
+          iri,
+        )
+      ) {
         // No declaration needed, but keep what the schema says about the datatype.
         annotate(iri, tv)
       }
 
-    /** The number of types of the schema, not LinkML's own, with each `uri`. */
-    private lazy val typesByUri: mutable.HashMap[String, Int] = {
-      val counts = mutable.HashMap.empty[String, Int]
+    /** The `uri` of the schema's types, not LinkML's own, and those that several types have. */
+    private lazy val typeUris: (once: mutable.HashSet[String], more: mutable.HashSet[String]) = {
+      val once = mutable.HashSet.empty[String]
+      val more = mutable.HashSet.empty[String]
       sv.types.valuesIterator.foreach { t =>
-        if (!isLinkmlOwn(t)) counts.update(t.uriStr, counts.getOrElse(t.uriStr, 0) + 1)
+        if (!isLinkmlOwn(t) && !once.add(t.uriStr)) more.addOne(t.uriStr)
       }
-      counts
+      (once = once, more = more)
     }
   }
 }

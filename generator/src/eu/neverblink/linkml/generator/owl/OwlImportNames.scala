@@ -10,6 +10,8 @@ import eu.neverblink.linkml.schemaview.{Case, FileSystemImporter, SchemaView}
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets.UTF_8
 
+import eu.neverblink.linkml.generator.util.IntBox
+
 import scala.collection.mutable
 
 /** Prefixes and element names for one import.
@@ -456,14 +458,12 @@ private[owl] object OwlImportNames {
     * `null` if there are no terms.
     */
   private def mostUsedNamespace(terms: collection.Seq[String]): String = {
-    val counts = mutable.HashMap.empty[String, Int]
-    terms.foreach { t =>
-      val ns = namespaceOf(t)
-      counts.update(ns, counts.getOrElse(ns, 0) + 1)
-    }
+    val counts = mutable.HashMap.empty[String, IntBox]
+    terms.foreach(t => counts.getOrElseUpdate(namespaceOf(t), new IntBox).value += 1)
     var best: String = null
     var bestCount = 0
-    counts.foreachEntry { (ns, n) =>
+    counts.foreachEntry { (ns, count) =>
+      val n = count.value
       if (n > bestCount || (n == bestCount && ns.compareTo(best) < 0)) {
         best = ns
         bestCount = n

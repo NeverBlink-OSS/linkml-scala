@@ -3,8 +3,10 @@ package eu.neverblink.linkml.generator.owl
 import eu.neverblink.linkml.generator.options.OwlImportConfig
 import eu.neverblink.linkml.generator.owl.config.OwlImportConfigs.metadataSources
 import eu.neverblink.linkml.metamodel.Annotation as LinkmlAnnotation
-import eu.neverblink.linkml.rdf.{Iri, LanguageLiteral, Literal, Node, XmlSchema}
+import eu.neverblink.linkml.rdf.{Iri, IntBuffer, LanguageLiteral, Literal, Node, XmlSchema}
 import eu.neverblink.linkml.runtime.*
+
+import eu.neverblink.linkml.generator.util.IntBox
 
 import scala.collection.immutable.VectorMap
 import scala.collection.mutable
@@ -50,15 +52,14 @@ private[owl] final class OwlAnnotationReader(
     * no language are not counted.
     */
   val language: Option[String] = {
-    val counts = mutable.HashMap.empty[String, Int]
+    val counts = mutable.HashMap.empty[String, IntBox]
     var texts = 0
     def count(a: Annotation): Unit =
       if (humanTextProperties.contains(a.property)) {
         a.value match {
           case l: LanguageLiteral =>
             texts += 1
-            val tag = l.language.toLowerCase
-            counts.update(tag, counts.getOrElse(tag, 0) + 1)
+            counts.getOrElseUpdate(l.language.toLowerCase, new IntBox).value += 1
           case l: Literal => if (l.datatype == XmlSchema.string) texts += 1
           case _ =>
         }
@@ -67,10 +68,10 @@ private[owl] final class OwlAnnotationReader(
     ontologyAnnotations.foreach(count)
     var best: String = null
     var bestCount = 0
-    counts.foreachEntry { (tag, n) =>
-      if (n > bestCount) {
+    counts.foreachEntry { (tag, count) =>
+      if (count.value > bestCount) {
         best = tag
-        bestCount = n
+        bestCount = count.value
       }
     }
     if ((best ne null) && bestCount >= 0.9 * texts) Some(best) else None
@@ -123,10 +124,14 @@ private[owl] final class OwlAnnotationReader(
       remaining: mutable.ArrayBuffer[Annotation],
   ): Metadata = {
     annotations.foreach(a => remaining.addOne(plainInLanguage(a)))
+    val n = remaining.length
+    // The annotations that were taken, instead of removing them one by one.
+    val used = new java.util.BitSet(n)
     var metadata = Metadata.empty
     val values = mutable.ArrayBuffer.empty[String | LocalizedText | UriOrCurie]
     val texts = mutable.ArrayBuffer.empty[Annotation]
     val chosen = mutable.ArrayBuffer.empty[Annotation]
+    val chosenIndices = new IntBuffer
     sources.foreach { source =>
       val field = source.field
       val properties = source.properties
@@ -138,14 +143,22 @@ private[owl] final class OwlAnnotationReader(
       while (j < properties.length && (!single || values.isEmpty)) {
         val property = properties(j)
         chosen.clear()
-        remaining.foreach { a =>
-          if (a.property == property && (valueOf(field, a.value) ne null)) chosen.addOne(a)
+        chosenIndices.clear()
+        var i = 0
+        while (i < n) {
+          val a = remaining(i)
+          if (!used.get(i) && a.property == property && (valueOf(field, a.value) ne null)) {
+            chosen.addOne(a)
+            chosenIndices.add(i)
+          }
+          i += 1
         }
         // A single-valued metaslot takes one value, or for text, one per language.
         if (single && chosen.length > 1 && (!isText || !oneLanguageEach(chosen))) {
           chosen.dropRightInPlace(chosen.length - 1)
+          chosenIndices.truncate(1)
         }
-        chosen.foreach(remaining.subtractOne)
+        chosenIndices.foreach(used.set)
         if (isText) {
           if (single) {
             if (chosen.nonEmpty) values.addOne(textOf(chosen))
@@ -169,12 +182,27 @@ private[owl] final class OwlAnnotationReader(
           case t: MultilingualText => taken.addAll(t.mapping.valuesIterator)
           case u: UriOrCurie => taken.addOne(u.original)
         }
-        remaining.filterInPlace { a =>
-          val text = textIn(a.value)
-          (text eq null) || !taken.contains(text)
+        var i = 0
+        while (i < n) {
+          if (!used.get(i)) {
+            val text = textIn(remaining(i).value)
+            if ((text ne null) && taken.contains(text)) used.set(i)
+          }
+          i += 1
         }
       }
     }
+    // Keep only the annotations that were not taken, in order.
+    var kept = 0
+    var i = 0
+    while (i < n) {
+      if (!used.get(i)) {
+        remaining(kept) = remaining(i)
+        kept += 1
+      }
+      i += 1
+    }
+    remaining.dropRightInPlace(n - kept)
     metadata
   }
 
