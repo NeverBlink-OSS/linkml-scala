@@ -8,7 +8,7 @@ It validates LinkML schemas and generates JSON Schema, SHACL, OWL, Pydantic, Typ
 It runs as a native command-line tool, on the JVM, in Node.js and the browser, and from Python, C, C++ and Rust.
 
 To try it without installing anything, open the [playground](https://linkml.ohi.dev/playground/).
-To install the CLI or the libraries, see the [README](https://github.com/NeverBlink-OSS/ohi/blob/main/README.md#cli-tool-installation).
+To install the CLI, see the [install guide](https://ohi.dev/docs/getting-started/install/). For the libraries, see the [README](https://github.com/NeverBlink-OSS/ohi/blob/main/README.md#libraries).
 
 ## Generators and importers
 
@@ -20,6 +20,7 @@ To install the CLI or the libraries, see the [README](https://github.com/NeverBl
 
 ## Schemas
 
+- [Validating schemas](/docs/validation/): severity levels, exit codes and the JSON report.
 - [URIs and CURIEs](/docs/curies/): how prefixes and CURIEs are resolved.
 - [Import maps](/docs/import-maps/): loading imported schemas from somewhere else.
 - [Inherited slots and `slot_usage`](/docs/slot-usage-inheritance/): how metaslots from several places are combined.

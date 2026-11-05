@@ -1,6 +1,6 @@
 # neverblink-linkml
 
-Fast and robust [LinkML](https://linkml.io/) schema validation and code generation for Python, backed by [ohi LinkML](https://github.com/NeverBlink-OSS/ohi) compiled to a native shared library.
+Fast and robust [LinkML](https://linkml.ohi.dev/) schema validation and code generation for Python, backed by [ohi LinkML](https://github.com/NeverBlink-OSS/ohi) compiled to a native shared library.
 
 ## Install
 

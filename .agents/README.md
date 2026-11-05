@@ -7,7 +7,7 @@ These skills help agents acquire ontologies and maintain project selections with
 Install **ohi** (`ohi`) for ontology acquisition, project selections and LinkML schema work.
 Choose **LinkML** (`linkml`) for schema work alone. Install one plugin, since ohi already includes LinkML.
 
-Plugins provide instructions. [Install the ohi CLI](../cli/ohi/README.md#install) separately from
+Plugins provide instructions. [Install the ohi CLI](https://ohi.dev/docs/getting-started/install/) separately from
 the same release or checkout. The standalone LinkML skill requires `ohi` 0.17.1 or newer.
 
 ## Install

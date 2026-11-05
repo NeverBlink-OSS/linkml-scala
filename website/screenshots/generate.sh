@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
-# Regenerate the linkml-scala-only documentation GIFs from the .tape files in
-# this directory. Reproducible: builds the native CLI, exposes it as a
-# `linkml-scala` launcher on PATH, then renders each tape with VHS.
+# Regenerate the ohi-only documentation GIFs from the .tape files in this
+# directory. Reproducible: builds the native `ohi` CLI, puts it on PATH, then
+# renders each tape with VHS.
 #
 # The native-vs-Python comparison (generate-race.tape) needs Python + tmux and
 # is handled separately by generate-comparison.sh, so it is skipped here.
@@ -29,14 +29,14 @@ for tool in vhs ttyd ffmpeg; do
 done
 
 echo "==> Building the native image (GraalVM, ~30s)..."
-./mill cli.jvm.nativeImage >/dev/null
-NATIVE="$ROOT/out/cli/jvm/nativeImage.dest/linkml-scala"
+./mill cli.ohi.jvm.nativeImage >/dev/null
+NATIVE="$ROOT/out/cli/ohi/jvm/nativeImage.dest/ohi"
 [ -x "$NATIVE" ] || { echo "Error: native image not found at $NATIVE" >&2; exit 1; }
 
 # Expose the native binary under the name the tapes type.
 BIN_DIR="$(mktemp -d)"
 trap 'rm -rf "$BIN_DIR"' EXIT
-ln -sf "$NATIVE" "$BIN_DIR/linkml-scala"
+ln -sf "$NATIVE" "$BIN_DIR/ohi"
 export PATH="$BIN_DIR:$PATH"
 
 mkdir -p website/src/assets

@@ -6,6 +6,7 @@ description: Install the ohi command-line tool on macOS, Linux or Windows.
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 Install the ohi command-line tool to search and download ontologies from your terminal.
+The same tool also runs the [LinkML commands](https://linkml.ohi.dev/docs/), under `ohi linkml`.
 For Python or TypeScript applications, see [SDK installation](/docs/reference/sdks/#installation).
 
 ## Install
@@ -49,3 +50,58 @@ ohi version
 ```
 
 You should see the installed version. Then [download your first ontology](/docs/getting-started/first-ontology/).
+
+## Installer settings
+
+Both installers take the same environment variables:
+
+| Variable | Effect |
+| --- | --- |
+| `LINKML_SCALA_VERSION` | Install this release tag instead of the latest one. |
+| `LINKML_SCALA_INSTALL_DIR` | Install into this directory instead of `~/.local/bin`. |
+| `LINKML_SCALA_REQUIRE_CHECKSUM=1` | Refuse releases that publish no checksum file. Releases up to and including v0.12.0 have none. |
+
+## Other ways to install
+
+### mise
+
+If you use the [mise](https://mise.jdx.dev/getting-started.html) tool manager, on any platform:
+
+```sh
+mise use 'ubi:NeverBlink-OSS/ohi[matching=ohi,exe=ohi]'
+```
+
+### Manual download
+
+Download the `ohi` binary for your system and architecture from
+[the latest release](https://github.com/NeverBlink-OSS/ohi/releases/latest).
+
+On macOS and Linux, rename it, make it executable and run it:
+
+```sh
+mv ohi-<os>-<arch> ohi
+chmod +x ohi
+./ohi version
+```
+
+On Windows, rename it and run it:
+
+```powershell
+ren ohi-windows-x86_64.exe ohi.exe
+.\ohi.exe version
+```
+
+### Java
+
+On other systems, download `ohi.jar` from the same release and run it with Java 17 or later:
+
+```sh
+java -jar ohi.jar version
+```
+
+## Verify a download
+
+Each release publishes a `SHA256SUMS` file and a signed build provenance attestation, so you can
+check that a download came from our release workflow. The installers check the checksum for you.
+To check a manual download, see
+[Verifying downloads](https://linkml.ohi.dev/docs/verifying-downloads/).
