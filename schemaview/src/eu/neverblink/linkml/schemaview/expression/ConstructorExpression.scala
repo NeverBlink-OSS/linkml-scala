@@ -74,8 +74,8 @@ object ConstructorExpression:
   def parseString(expr: String): Option[StringConstructor] =
     stringExprPattern.findFirstMatchIn(expr).map { m =>
       val inner = m.group(1)
-      val quoted = inner.length >= 2 && (inner.head == '"' || inner.head == '\'') &&
-        inner.last == inner.head
+      val first = if (inner.length >= 2) inner.charAt(0) else ' '
+      val quoted = (first == '"' || first == '\'') && inner.charAt(inner.length - 1) == first
       if quoted then StringConstructor(inner.substring(1, inner.length - 1), quoted = true)
       else StringConstructor(inner, quoted = false)
     }

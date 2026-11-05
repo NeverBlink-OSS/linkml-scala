@@ -110,7 +110,16 @@ final class SchemaValidator(using sv: SchemaView) {
       SchemaValidator.findCycles[E](elements, _.name, next).foreach { cycle =>
         issues.addOne(
           new CyclicReference(
-            cycle = cycle.iterator.map(_.name).mkString(" -> "),
+            cycle = {
+              val sb = new java.lang.StringBuilder
+              var first = true
+              cycle.foreach { e =>
+                if (!first) sb.append(" -> ")
+                first = false
+                sb.append(e.name)
+              }
+              sb.toString
+            },
             location = location(cycle.head),
             relation = relation,
           ),

@@ -55,20 +55,20 @@ object TurtleParser {
   private val False = Literal("false", XmlSchema.boolean)
 
   /** ASCII bytes allowed as themselves in a short string quoted with `'`. */
-  private val SingleQuoteSafe = table((0 until 0x80).filterNot("'\\\n\r".contains(_)))
+  private val SingleQuoteSafe = tableExcept(0, 0x7f, "'\\\n\r")
 
   /** ASCII PN_CHARS, the characters of names after the first. */
-  private val PnChars = table(Letters ++ Digits ++ "_-".map(_.toInt))
+  private val PnChars = table(alphanumeric = true, "_-")
 
   /** ASCII bytes that may start a PN_LOCAL without an escape. */
-  private val LocalStart = table(Letters ++ Digits ++ "_:".map(_.toInt))
+  private val LocalStart = table(alphanumeric = true, "_:")
 
   /** ASCII bytes that may continue a PN_LOCAL without an escape. A trailing `.` is not part of it.
     */
-  private val LocalChars = table(Letters ++ Digits ++ "_-:.".map(_.toInt))
+  private val LocalChars = table(alphanumeric = true, "_-:.")
 
   /** The characters that PN_LOCAL_ESC lets a backslash escape. */
-  private val LocalEscapes = table("_~.-!$&'()*+,;=/?#@%".map(_.toInt))
+  private val LocalEscapes = table(alphanumeric = false, "_~.-!$&'()*+,;=/?#@%")
 }
 
 final class TurtleParser private (
@@ -488,7 +488,7 @@ final class TurtleParser private (
         if (avail(k + 1) && (at(k + 1) == 'u' || at(k + 1) == 'U')) k = ucharAt(k)
         else fail("Only \\u and \\U escapes are allowed in an IRI", k)
       } else if (c >= 0x80) k = utf8At(k)
-      else fail(f"Character U+$c%04X is not allowed in an IRI", k)
+      else fail("Character " + codePoint(c) + " is not allowed in an IRI", k)
     }
     iriEnd = k
     new String(chars, 0, nChars)

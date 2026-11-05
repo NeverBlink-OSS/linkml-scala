@@ -77,7 +77,12 @@ private object NTriplesEscape {
     val a = new Array[Boolean](0x80)
     var c = 0x21 // space (0x20) is not allowed in an IRIREF
     while (c <= 0x7e) { a(c) = true; c += 1 }
-    "<>\"{}|^`\\".foreach(ch => a(ch) = false)
+    val excluded = "<>\"{}|^`\\"
+    var i = 0
+    while (i < excluded.length) {
+      a(excluded.charAt(i)) = false
+      i += 1
+    }
     a
   }
 

@@ -42,8 +42,16 @@ object Stringify:
   given referenceStringify[T]: Stringify[Reference[T]] = _.value
 
   /** A multivalued slot renders as its elements joined with [[separator]], in document order. */
-  given seqStringify[T](using element: Stringify[T]): Stringify[Seq[T]] =
-    _.map(element.stringify).mkString(separator)
+  given seqStringify[T](using element: Stringify[T]): Stringify[Seq[T]] = values => {
+    val sb = new java.lang.StringBuilder
+    var first = true
+    values.foreach { v =>
+      if (!first) sb.append(separator)
+      first = false
+      sb.append(element.stringify(v))
+    }
+    sb.toString
+  }
 
   /** Derive an instance for a LinkML enum, rendering each case as the text it was declared with in
     * the schema. The text is read from the `@named` annotation the Scala generator emits.
