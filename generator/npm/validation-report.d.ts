@@ -486,6 +486,7 @@ export type SchemaIssue =
   | UnknownReference
   | UnknownStringReference
   | UnquotedStringDefault
+  | UnrelatedSlotRange
   | UnwritableUri;
 
 /** The schema text could not be parsed as YAML, or could not be decoded into the LinkML metamodel. Where the underlying parser reported a position, it is carried in `location.code_region`. */
@@ -527,6 +528,7 @@ export type SchemaWarning =
   | UndeclaredCuriePrefix
   | UndefinedDefaultRange
   | UnquotedStringDefault
+  | UnrelatedSlotRange
   | UnwritableUri;
 
 /** A URI or CURIE value looks like a CURIE, but its prefix isn't declared in the schema that has it, so it is read as a URI with the prefix as its scheme, as in LinkML-Python. */
@@ -681,6 +683,33 @@ export interface UnquotedStringDefault {
   severity: IssueSeverity;
   /** value: The `ifabsent` expression as written. */
   value: string;
+}
+
+/** A class gives an inherited slot a range that is not derived from the range of a parent. The LinkML specification only allows a class to narrow an inherited range: to a subclass of it, or to a type with it as a `typeof` ancestor. A member of a `union_of` type, any range in place of `linkml:Any`, `ncname` in place of `string`, and `uri` or `curie` in place of `uriorcurie` narrow it too. */
+export interface UnrelatedSlotRange {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "UnrelatedSlotRange";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** parent name */
+  parent_name: string;
+  /** parent range: The ranges that the parent allows, joined with " or ". */
+  parent_range: string;
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
+  severity: IssueSeverity;
+  /** slot name */
+  slot_name: string;
+  /** slot range: The ranges that the class allows, joined with " or ". */
+  slot_range: string;
 }
 
 /** The text before the first colon of a URI value is a prefix declared in the root schema, such as the URI `ex:Imported` from an imported schema that doesn't declare `ex`, or `http://example.org/a` when the root schema declares `http`. Writing the schema, such as with `generate linkml` or `generate ossie`, fails for it, as it would be read back as a CURIE with another meaning. */

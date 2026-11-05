@@ -602,6 +602,50 @@ final class SchemaValidator(using sv: SchemaView) {
     warnings.result()
   }
 
+  /** Warn about each slot of a class in the root schema whose range is not derived from the range
+    * that a parent gives the slot. The LinkML spec only lets a class narrow an inherited range.
+    */
+  private lazy val unrelatedSlotRanges: Seq[SchemaWarning] = {
+    val warnings = Vector.newBuilder[SchemaWarning]
+    val schemaId = sv.root.id
+    sv.root.classes.foreachEntry { (className, _) =>
+      val cls = sv.classes(className)
+      val parents = cls.parents
+      if (parents.nonEmpty) {
+        val names = cls.derivedAttributes.keysIterator.toArray
+        java.util.Arrays.sort(names, Ordering.String)
+        names.foreach { name =>
+          val own = cls.derivedAttributes(name)
+          // One warning for each slot, with the first parent whose range it doesn't narrow
+          val parent = parents.iterator.find { p =>
+            val inherited = p.derivedAttributes.getOrElse(name, null)
+            (inherited ne null) && (own ne inherited) && !own.hasRangeDerivedFrom(inherited)
+          }.orNullFast
+          if (parent ne null) {
+            val pointer =
+              if (cls.cls.slotUsage.contains(name)) s"/classes/$className/slot_usage/$name"
+              else if (cls.cls.attributes.contains(name)) s"/classes/$className/attributes/$name"
+              else s"/classes/$className"
+            warnings.addOne(
+              new UnrelatedSlotRange(
+                location = at(pointer, schemaId),
+                className = className,
+                slotName = name,
+                slotRange = rangeNames(own),
+                parentName = parent.name,
+                parentRange = rangeNames(parent.derivedAttributes(name)),
+              ),
+            )
+          }
+        }
+      }
+    }
+    warnings.result()
+  }
+
+  private def rangeNames(slot: SlotView): String =
+    slot.allowedRanges.mkString("'", "' or '", "'")
+
   private def undefinedPrefix(prefix: NcName, position: String, schemaId: Uri): SchemaError =
     UndefinedPrefix(location = at(position, schemaId), prefix = prefix)
 
@@ -775,6 +819,7 @@ final class SchemaValidator(using sv: SchemaView) {
   /** Any warnings found in the schema, if any. */
   private lazy val warnings: Seq[SchemaWarning] =
     invalidSlotUsage ++
+      unrelatedSlotRanges ++
       undefinedDefaultRange ++
       noTreeRoot ++
       undeclaredCuriePrefixes ++
