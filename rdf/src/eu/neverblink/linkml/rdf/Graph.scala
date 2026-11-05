@@ -26,24 +26,31 @@ final class Graph(val triples: IndexedSeq[Triple]) {
 
   {
     // Count the triples of each subject, then put their indices in one array, grouped by subject.
+    // A repeated triple is marked as used and left out.
     val n = triples.size
+    // The indices of the subject of each triple, or null for a repeat
+    val subjectOf = new Array[Indices](n)
+    val seen = new mutable.HashSet[Triple](n, mutable.HashSet.defaultLoadFactor)
     var i = 0
     while (i < n) {
       val t = triples(i)
-      var indices = bySubject.getOrElse(t.subj, null)
-      if (indices eq null) {
-        indices = new Indices(t.subj)
-        bySubject.update(t.subj, indices)
-        subjects.addOne(indices)
-      }
-      indices.count += 1
-      t.obj match {
-        case b: AnyBlankNode => objects.addOne(b)
-        case _ =>
-      }
+      if (seen.add(t)) {
+        var indices = bySubject.getOrElse(t.subj, null)
+        if (indices eq null) {
+          indices = new Indices(t.subj)
+          bySubject.update(t.subj, indices)
+          subjects.addOne(indices)
+        }
+        indices.count += 1
+        subjectOf(i) = indices
+        t.obj match {
+          case b: AnyBlankNode => objects.addOne(b)
+          case _ =>
+        }
+      } else used.set(i)
       i += 1
     }
-    val all = new Array[Int](n)
+    val all = new Array[Int](seen.size)
     var start = 0
     subjects.foreach { indices =>
       indices.all = all
@@ -53,50 +60,14 @@ final class Graph(val triples: IndexedSeq[Triple]) {
     }
     i = 0
     while (i < n) {
-      val indices = bySubject(triples(i).subj)
-      all(indices.start + indices.count) = i
-      indices.count += 1
+      val indices = subjectOf(i)
+      if (indices ne null) {
+        all(indices.start + indices.count) = i
+        indices.count += 1
+      }
       i += 1
     }
-    // A repeated triple has the same subject, so repeats are looked for within each subject.
-    subjects.foreach(removeRepeats)
   }
-
-  /** Drops the repeats of a triple from the indices of its subject and marks them as used. */
-  private def removeRepeats(indices: Indices): Unit =
-    if (indices.count > 1) {
-      val all = indices.all
-      val start = indices.start
-      val end = start + indices.count
-      var kept = start
-      var j = start
-      if (indices.count <= 16) {
-        // Few triples: compare each with those kept before it.
-        while (j < end) {
-          val i = all(j)
-          val t = triples(i)
-          var k = start
-          while (k < kept && triples(all(k)) != t) k += 1
-          if (k < kept) used.set(i)
-          else {
-            all(kept) = i
-            kept += 1
-          }
-          j += 1
-        }
-      } else {
-        val seen = mutable.HashSet.empty[Triple]
-        while (j < end) {
-          val i = all(j)
-          if (seen.add(triples(i))) {
-            all(kept) = i
-            kept += 1
-          } else used.set(i)
-          j += 1
-        }
-      }
-      indices.count = kept - start
-    }
 
   /** The number of subjects. */
   def subjectCount: Int = subjects.length
