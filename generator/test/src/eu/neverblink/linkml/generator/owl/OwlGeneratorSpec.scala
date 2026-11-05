@@ -122,6 +122,58 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
       axioms should not contain Characteristic(ns + "friends", PropertyCharacteristic.Functional)
     }
 
+    "move only the restrictions that a descendant changes down to the classes that keep them" in {
+      val axioms = ontologyOf("""
+        |classes:
+        |  Base:
+        |    abstract: true
+        |    slots:
+        |      - labels
+        |      - status
+        |  Mid:
+        |    is_a: Base
+        |  Leaf:
+        |    is_a: Mid
+        |    slot_usage:
+        |      labels:
+        |        multivalued: true
+        |      status:
+        |        range: Status
+        |  Other:
+        |    is_a: Base
+        |slots:
+        |  labels:
+        |    range: string
+        |  status:
+        |    range: string
+        |enums:
+        |  Status:
+        |    permissible_values:
+        |      NEW:
+        |""").axioms
+      val labels = PropertyRef(ns + "labels")
+      val status = PropertyRef(ns + "status")
+      val restrictions = axioms.collect {
+        case s: SubClassOf if (s.sup match {
+              case r: AllValuesFrom => r.property == labels || r.property == status
+              case r: Cardinality => r.property == labels || r.property == status
+              case _ => false
+            }) =>
+          s.sub -> s.sup
+      }
+      restrictions should contain theSameElementsAs Seq(
+        // Leaf makes `labels` multivalued, so only Other has the maximum of one
+        c("Base") -> AllValuesFrom(labels, DataRange.Datatype(xsd + "string")),
+        c("Other") -> Cardinality(Bound.Max, 1, labels),
+        // Leaf gives `status` an unrelated range, so Leaf and Other state their own. Leaf changes
+        // `status` itself, so it also states the maximum, as before.
+        c("Base") -> Cardinality(Bound.Max, 1, status),
+        c("Leaf") -> AllValuesFrom(status, c("Status")),
+        c("Leaf") -> Cardinality(Bound.Max, 1, status),
+        c("Other") -> AllValuesFrom(status, DataRange.Datatype(xsd + "string")),
+      )
+    }
+
     "write lengths as xsd:minLength and xsd:maxLength facets" in {
       val axioms = ontologyOf("""
         |slots:
@@ -311,10 +363,6 @@ class OwlGeneratorSpec extends AnyWordSpec, Matchers, OwlFixtures {
     "use the same IRIs as the RDFS and SHACL generators" when {
       for entry <- ModelCatalogue.all do
         s"model '${entry.name}'" in {
-          assume(
-            entry.name != "importedOverride" && entry.name != "mixinFacets",
-            "LNK-236: OWL: a `slot_uri` or range set by a `slot_usage` is lost",
-          )
           assume(
             entry.name != "anyOfEnums",
             "OWL 2 DL can't have a property that takes both literals and links, so `xsd:integer` " +
