@@ -444,6 +444,26 @@ class PydanticGeneratorSpec extends AnyWordSpec, Matchers {
       py.indexOf("class Thing(") should be < py.indexOf("class Event(")
     }
 
+    "remove an inherited field that an alias renames, in a way type checkers accept" in {
+      val py = generate(
+        """classes:
+          |  Base:
+          |    attributes:
+          |      label: {range: string}
+          |  Item:
+          |    is_a: Base
+          |    slot_usage:
+          |      label:
+          |        alias: display_label
+          |""".stripMargin,
+      )
+      // mypy and pyright don't allow a class variable in place of an inherited field
+      py should include(
+        "class Item(Base):\n    label: ClassVar[None] = None  # type: ignore\n" +
+          "    display_label: str | None = None\n",
+      )
+    }
+
     "fail on mixins that Python can't order" in {
       val ex = intercept[IllegalArgumentException] {
         generate(

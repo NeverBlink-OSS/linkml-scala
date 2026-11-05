@@ -342,13 +342,41 @@ final class PydanticGenerator(using sv: SchemaView)
       if doc.nonEmpty then sink.append('\n')
       sink.append(s"    model_config = ConfigDict(extra=${pyString(value)})\n")
     }
-    // A field renamed by an alias in a `slot_usage` is written under its new name, but the field
-    // under the old name is still inherited from the parent (LNK-235).
     val attributes = cls.sortedAttributeViews
-    if (doc.nonEmpty || extra.isDefined) && attributes.nonEmpty then sink.append('\n')
+    val hidden = hiddenFields(cls, parents, ctx)
+    if ((doc.nonEmpty || extra.isDefined) && (attributes.nonEmpty || hidden.nonEmpty)) {
+      sink.append('\n')
+    }
+    hidden.foreach { name =>
+      ctx.imports.typing("ClassVar")
+      sink.append("    ")
+      sink.append(name)
+      // Type checkers don't allow a class variable in place of an inherited field
+      sink.append(": ClassVar[None] = None  # type: ignore\n")
+    }
     attributes.foreach(a => writeField(sink, a, cls, ctx))
-    if doc.isEmpty && extra.isEmpty && attributes.isEmpty then sink.append("    pass\n")
+    if (doc.isEmpty && extra.isEmpty && attributes.isEmpty && hidden.isEmpty) {
+      sink.append("    pass\n")
+    }
   }
+
+  /** The Python names of the fields that the class inherits from its bases, but does not have
+    * itself, sorted. That is when a `slot_usage` gives an inherited slot another JSON key, with an
+    * `alias`. Declaring such a name as a `ClassVar` removes the field from the class, so pydantic
+    * rejects the old key as it rejects any unknown key.
+    */
+  private def hiddenFields(cls: ClassView, parents: Seq[ClassView], ctx: Context): Seq[String] =
+    if (parents.isEmpty) Nil
+    else {
+      val own = mutable.HashSet.from(fieldNames(cls, ctx).valuesIterator)
+      val hidden = mutable.TreeSet.empty[String]
+      parents.foreach { p =>
+        fieldNames(p, ctx).valuesIterator.foreach(name =>
+          if (!own.contains(name)) hidden.addOne(name),
+        )
+      }
+      hidden.toVector
+    }
 
   private def writeUnion(sink: CharSink, cls: ClassView, name: String, ctx: Context): Unit = {
     ctx.imports.typing("Annotated")
