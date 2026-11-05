@@ -1,10 +1,10 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.Axiom.*
-import eu.neverblink.linkml.generator.util.IntBox
 import eu.neverblink.linkml.rdf.Iri
 
 import scala.collection.mutable
+import scala.runtime.IntRef
 
 /** Indexes an ontology's axioms for the importer and tracks which ones it has turned into LinkML.
   * The importer reports the ones left over.
@@ -26,11 +26,11 @@ private[owl] final class OwlAxiomIndex(val axioms: Seq[Axiom]) {
   def foreachUnhandled(f: Axiom => Unit): Unit = axioms.foreach(a => if (!handled.contains(a)) f(a))
 
   /** The kinds each IRI is declared as, one bit per [[EntityKind]]. */
-  val declared = mutable.HashMap.empty[String, IntBox]
+  val declared = mutable.HashMap.empty[String, IntRef]
 
   def isDeclared(iri: String, kind: EntityKind): Boolean = {
     val kinds = declared.getOrElse(iri, null)
-    (kinds ne null) && (kinds.value & (1 << kind.ordinal)) != 0
+    (kinds ne null) && (kinds.elem & (1 << kind.ordinal)) != 0
   }
 
   /** Annotations by subject. All of them are marked as handled here, and the importer reports the
@@ -102,7 +102,7 @@ private[owl] final class OwlAxiomIndex(val axioms: Seq[Axiom]) {
 
   axioms.foreach {
     case a: Declaration =>
-      declared.getOrElseUpdate(a.iri, new IntBox).value |= 1 << a.kind.ordinal
+      declared.getOrElseUpdate(a.iri, IntRef.create(0)).elem |= 1 << a.kind.ordinal
       add(declarationsByIri, a.iri, a)
     case a: AnnotationAssertion => add(annotationsOf, a.subject, take(a).annotation)
     case a: SubClassOf =>

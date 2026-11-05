@@ -1,11 +1,11 @@
 package eu.neverblink.linkml.generator.owl
 
 import eu.neverblink.linkml.generator.owl.Axiom.*
-import eu.neverblink.linkml.generator.util.IntBox
 import eu.neverblink.linkml.rdf.*
 import eu.neverblink.linkml.runtime.FastUtils.*
 
 import scala.collection.mutable
+import scala.runtime.IntRef
 
 /** Reads an [[Ontology]] from RDF triples, following the OWL 2 mapping to RDF graphs
   * ([[https://www.w3.org/TR/owl2-mapping-to-rdf/]]). It also accepts some RDFS and OWL 1 patterns:
@@ -76,7 +76,7 @@ object OwlRdfReader {
     private val triples = graph.triples
 
     /** The kinds each IRI is declared as, one [[bit]] per kind. */
-    private val kinds = mutable.HashMap.empty[String, IntBox]
+    private val kinds = mutable.HashMap.empty[String, IntRef]
 
     /** Annotations on axioms, keyed by the axiom's main triple. */
     private val axiomAnnotations = mutable.HashMap.empty[Triple, Seq[Annotation]]
@@ -114,11 +114,11 @@ object OwlRdfReader {
 
     private def kindsOf(iri: String): Int = {
       val k = kinds.getOrElse(iri, null)
-      if (k ne null) k.value else 0
+      if (k ne null) k.elem else 0
     }
 
     private def declare(iri: String, kind: EntityKind): Unit =
-      kinds.getOrElseUpdate(iri, new IntBox).value |= bit(kind)
+      kinds.getOrElseUpdate(iri, IntRef.create(0)).elem |= bit(kind)
 
     private def isKind(iri: String, kind: EntityKind): Boolean = (kindsOf(iri) & bit(kind)) != 0
 

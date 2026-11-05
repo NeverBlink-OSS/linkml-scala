@@ -6,10 +6,9 @@ import eu.neverblink.linkml.metamodel.Annotation as LinkmlAnnotation
 import eu.neverblink.linkml.rdf.{Iri, IntBuffer, LanguageLiteral, Literal, Node, XmlSchema}
 import eu.neverblink.linkml.runtime.*
 
-import eu.neverblink.linkml.generator.util.IntBox
-
 import scala.collection.immutable.VectorMap
 import scala.collection.mutable
+import scala.runtime.IntRef
 
 /** Turns ontology annotations into LinkML metaslots where a mapping exists, and the rest into
   * `annotations`.
@@ -52,14 +51,14 @@ private[owl] final class OwlAnnotationReader(
     * no language are not counted.
     */
   val language: Option[String] = {
-    val counts = mutable.HashMap.empty[String, IntBox]
+    val counts = mutable.HashMap.empty[String, IntRef]
     var texts = 0
     def count(a: Annotation): Unit =
       if (humanTextProperties.contains(a.property)) {
         a.value match {
           case l: LanguageLiteral =>
             texts += 1
-            counts.getOrElseUpdate(l.language.toLowerCase, new IntBox).value += 1
+            counts.getOrElseUpdate(l.language.toLowerCase, IntRef.create(0)).elem += 1
           case l: Literal => if (l.datatype == XmlSchema.string) texts += 1
           case _ =>
         }
@@ -69,9 +68,9 @@ private[owl] final class OwlAnnotationReader(
     var best: String = null
     var bestCount = 0
     counts.foreachEntry { (tag, count) =>
-      if (count.value > bestCount) {
+      if (count.elem > bestCount) {
         best = tag
-        bestCount = count.value
+        bestCount = count.elem
       }
     }
     if ((best ne null) && bestCount >= 0.9 * texts) Some(best) else None
