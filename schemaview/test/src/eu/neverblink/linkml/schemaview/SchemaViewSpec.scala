@@ -263,6 +263,43 @@ class SchemaViewSpec extends AnyWordSpec, Matchers {
       val withDescendants = sv.classes.values.filter(_.hasDescendants).map(_.name).toSet
       withDescendants shouldBe Set("Base", "Child", "Tagged")
     }
+    "tell which ranges are derived from others" in {
+      val sv = SchemaIssues.orThrow(
+        SchemaView.loadSchemaViewFromString(
+          """id: https://example.org/derived
+            |name: derived
+            |prefixes:
+            |  linkml: https://w3id.org/linkml/
+            |imports:
+            |  - linkml:types
+            |classes:
+            |  Base: {}
+            |  Child:
+            |    is_a: Base
+            |types:
+            |  short_code:
+            |    typeof: string
+            |    maximum_length: 4
+            |  int_or_string:
+            |    union_of:
+            |      - integer
+            |      - short_code
+            |""".stripMargin,
+        ),
+      )
+      sv.isDerivedFrom("Child", "Base") shouldBe true
+      sv.isDerivedFrom("Base", "Child") shouldBe false
+      sv.isDerivedFrom("short_code", "string") shouldBe true
+      sv.isDerivedFrom("ncname", "string") shouldBe true
+      sv.isDerivedFrom("uri", "uriorcurie") shouldBe true
+      sv.isDerivedFrom("ncname", "short_code") shouldBe false
+      sv.isDerivedFrom("string", "ncname") shouldBe false
+      // A member of a union, or a type derived from one, is derived from the union
+      sv.isDerivedFrom("integer", "int_or_string") shouldBe true
+      sv.isDerivedFrom("short_code", "int_or_string") shouldBe true
+      sv.isDerivedFrom("string", "int_or_string") shouldBe false
+      sv.isDerivedFrom("boolean", "int_or_string") shouldBe false
+    }
     "not get caught up in circular imports" in {
       val sv = SchemaIssues.orThrow(
         SchemaView.loadSchemaViewFromUri(

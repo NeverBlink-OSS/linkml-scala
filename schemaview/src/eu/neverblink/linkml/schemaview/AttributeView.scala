@@ -89,9 +89,7 @@ private object AttributeView:
       sv: SchemaView,
   ): Seq[Reference[Element]] = {
     def within(x: Reference[Element], y: Reference[Element]): Boolean =
-      x.value == y.value ||
-        sv.classes.get(x.value).exists(_.ancestorsWithSelf.exists(_.name == y.value)) ||
-        sv.types.get(x.value).exists(_.ancestorsWithSelf.exists(_.name == y.value))
+      sv.isDerivedFrom(x.value, y.value)
     a.filter(x => b.exists(within(x, _))) ++
       b.filter(y => !a.exists(_.value == y.value) && a.exists(within(y, _)))
   }
