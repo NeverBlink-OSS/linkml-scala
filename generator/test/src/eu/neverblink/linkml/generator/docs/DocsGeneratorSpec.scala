@@ -3,6 +3,7 @@ package eu.neverblink.linkml.generator.docs
 import eu.neverblink.linkml.generator.options.{
   DocsGeneratorOptions,
   ErDiagramGeneratorOptions,
+  PydanticGeneratorOptions,
   PruningMode,
 }
 import eu.neverblink.linkml.generator.erdiagram.ErDiagramGenerator
@@ -201,6 +202,35 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
         "| [name](../slots/name.md) | [string](../types/string.md) | 0..1 | The top-level slot |  |\n",
       )
       pages("slots/name.md") should not include "child.md"
+    }
+
+    "show the slot as each class has it, after the slot_usage of the class" in {
+      val sv = schemaOf(
+        """classes:
+          |  Base:
+          |    slots: [size]
+          |  Child:
+          |    is_a: Base
+          |  Strict:
+          |    is_a: Base
+          |    slot_usage:
+          |      size:
+          |        required: true
+          |        description: The size, which must be given
+          |slots:
+          |  size:
+          |    description: The size
+          |""".stripMargin,
+      )
+      val pages = files(sv)
+      val inherited =
+        "| [size](../slots/size.md) | [string](../types/string.md) | 0..1 | The size |"
+      pages("classes/base.md") should include(inherited + "  |\n")
+      pages("classes/child.md") should include(inherited + " [Base](base.md) |\n")
+      pages("classes/strict.md") should include(
+        "| [size](../slots/size.md) | [string](../types/string.md) | 1 | " +
+          "The size, which must be given | [Base](base.md) |\n",
+      )
     }
 
     "list the slots that use a class as their range" in {
@@ -560,6 +590,39 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       )
       // All the names are the same, so there is nothing more to show.
       pages("enums/gender.md") should include("# Enum: Gender\n\n- **URI:**")
+    }
+
+    "know every name of a Python module that a field can't take" in {
+      ModelCatalogue.all.foreach { entry =>
+        val possible = DocsGenerator.possiblePythonNames(entry.model)
+        Seq(PruningMode.TreeRoot, PruningMode.Schema, PruningMode.Skip).foreach { mode =>
+          withClue(s"${entry.name}, $mode: ") {
+            PydanticGenerator(using entry.model)
+              .moduleNames(PydanticGeneratorOptions(pruningMode = mode))
+              .diff(possible) shouldBe empty
+          }
+        }
+      }
+    }
+
+    "keep the Python name of a field that has the name of a pruned class" in {
+      val sv = schemaOf(
+        """classes:
+          |  Container:
+          |    tree_root: true
+          |    slots: [Unused]
+          |  Unused: {}
+          |slots:
+          |  Unused: {}
+          |""".stripMargin,
+      )
+      val page =
+        files(sv, DocsGeneratorOptions(pruningMode = PruningMode.TreeRoot))("slots/unused.md")
+      page should include("- **Names in code:** ")
+      page should not include "Unused_"
+      val pruned =
+        files(sv, DocsGeneratorOptions(pruningMode = PruningMode.Skip))("slots/unused.md")
+      pruned should include("`Unused_` (Python)")
     }
 
     "show only the names that the code generators give" in {
