@@ -72,49 +72,70 @@ class GraphQlGenerator(using sv: SchemaView)
     classDefs ++ anyDef ++ enumDefs ++ typeDefs
   }
 
+  /** The type of a field, without the list and non-null marks. */
+  private def fieldRange(av: AttributeView): String =
+    av match {
+      case _: AnyView => "Any"
+      case cav: ClassAttributeView => getInterfaceName(cav.classView)
+      case tav: TypeAttributeView => remappedType(tav.typeView)
+      case eav: EnumAttributeView => enumName(eav.enumView)
+    }
+
+  /** A class that implements an interface must have each of its fields, with the same name and the
+    * same type or a subtype of it. A field is a subtype when it adds `!`, or when its type is an
+    * object or interface that implements the interface's type. A list is not a subtype of a single
+    * value.
+    */
+  private lazy val sharedFields = new SharedSlots((own, their) =>
+    slotName(own.slotView) == slotName(their.slotView) &&
+      own.slotView.slot.multivalued == their.slotView.slot.multivalued && (
+        fieldRange(own) == fieldRange(their) || (own match {
+          case _: ClassAttributeView =>
+            their.isInstanceOf[ClassAttributeView] &&
+            their.slotView.hasRangeDerivedFrom(own.slotView)
+          case _ => false
+        })
+      ),
+  )
+
   /** Generate a GraphQL definition corresponding to the provided class, or None if the class is
-    * linkml:Any
+    * linkml:Any.
+    *
+    * The interface of a class leaves out the fields that a descendant changes in a way that does
+    * not give a subtype, such as a field that a `slot_usage` makes multivalued. Each class still
+    * has all its fields.
     */
   def generateClass(cls: ClassView)(using GraphQlGeneratorOptions): Iterable[GraphQlDefinition] = {
-    // The fields use the class's derived slots, while the class implements its parents'
-    // interfaces. A field made multivalued by a `slot_usage` is not a subtype of the interface's
-    // field, so the schema is invalid (LNK-234).
-    lazy val fields = cls.attributeViews.values.map(av => {
-      val range: String = av match {
-        case AnyView(_, _) =>
-          "Any"
-        case classAttributeView: ClassAttributeView =>
-          getInterfaceName(classAttributeView.classView)
-        case tav: TypeAttributeView =>
-          remappedType(tav.typeView)
-        case EnumAttributeView(_, _, enumView) => enumName(enumView)
-      }
-      GraphQlField(
-        av,
-        range,
-      )
-    })
+    lazy val fields =
+      cls.attributeViews.values.map(av => GraphQlField(av, fieldRange(av)))
+    lazy val interfaceFields =
+      fields.filter(f => sharedFields.isShared(cls, f.attributeView.slotView.name))
+    // A class must have the `_` field of each interface it implements that has only that field
+    lazy val parentStub = cls.ancestorsWithSelf.iterator.drop(1).exists(hasStubInterface)
     if cls.isAny then Seq.empty
     else if !cls.isConcrete then
       Seq(
         GraphQlInterfaceDefinition(
           cls,
-          fields,
+          interfaceFields,
           cls.parents.map(getInterfaceName),
+          stub = parentStub,
         ),
       )
     else if isSplit(cls) then
       Seq(
         GraphQlInterfaceDefinition(
           cls,
-          fields,
+          interfaceFields,
           cls.parents.map(getInterfaceName),
           Some(splitInterfaceName(cls)),
+          parentStub,
         ),
         GraphQlTypeDefinition(
           cls,
           fields,
           Seq(splitInterfaceName(cls)),
+          parentStub || hasStubInterface(cls),
         ),
       )
     else
@@ -123,9 +144,17 @@ class GraphQlGenerator(using sv: SchemaView)
           cls,
           fields,
           cls.parents.map(getInterfaceName),
+          parentStub,
         ),
       )
   }
+
+  /** Whether the class has an interface without fields of its own. GraphQL requires an interface to
+    * have a field, so it gets the stub field `_`, which its implementations must have too.
+    */
+  private def hasStubInterface(cls: ClassView): Boolean =
+    !cls.isAny && (!cls.isConcrete || isSplit(cls)) &&
+      cls.derivedAttributes.keysIterator.forall(name => !sharedFields.isShared(cls, name))
 
   /** Get the interface name for a class' interface, if it has an interface/implementation split.
     * Otherwise, gets the class' GraphQL name.
@@ -193,6 +222,28 @@ trait GraphQlElement(using GraphQlGeneratorOptions) extends Printable:
 
 trait GraphQlDefinition extends GraphQlElement
 
+object GraphQlDefinition:
+
+  /** The body of a type or interface: its fields, with the stub field `_` first if there are none
+    * or `stub` is set.
+    */
+  def body(fields: Iterable[GraphQlField], stub: Boolean)(using GraphQlGeneratorOptions): String =
+    if (fields.isEmpty) """{
+        |  "Empty class stub"
+        |  _: String
+        |}
+        |""".stripMargin
+    else if (stub) indent"""{
+              |  "Empty class stub"
+              |  _: String
+              |  ${fields.map(_.print.strip()).mkString("\n")}
+              |}
+              |""".stripMargin
+    else indent"""{
+              |  ${fields.map(_.print.strip()).mkString("\n")}
+              |}
+              |""".stripMargin
+
 /** Container for information needed to generate an interface definition
   *
   * @param classView
@@ -209,23 +260,13 @@ case class GraphQlInterfaceDefinition(
     fields: Iterable[GraphQlField],
     inherits: Seq[String],
     nameOverride: Option[String] = None,
+    stub: Boolean = false,
 )(using GraphQlGeneratorOptions)
     extends GraphQlDefinition:
   val inheritsList: String =
     if inherits.isEmpty then "" else "implements " + inherits.mkString(" & ")
 
-  val body: String = {
-    if fields.isEmpty
-    then """{
-        |  "Empty class stub"
-        |  _: String
-        |}
-        |""".stripMargin
-    else indent"""{
-              |  ${fields.map(_.print.strip()).mkString("\n")}
-              |}
-              |""".stripMargin
-  }
+  val body: String = GraphQlDefinition.body(fields, stub)
 
   val name: String = nameOverride.getOrElse(GraphQlRenamer.className(classView))
 
@@ -247,23 +288,13 @@ case class GraphQlTypeDefinition(
     classView: ClassView,
     fields: Iterable[GraphQlField],
     inherits: Seq[String],
+    stub: Boolean = false,
 )(using GraphQlGeneratorOptions)
     extends GraphQlDefinition:
   val inheritsList: String =
     if inherits.isEmpty then "" else "implements " + inherits.mkString(" & ")
 
-  val body: String = {
-    if fields.isEmpty
-    then """{
-        |  "Empty class stub"
-        |  _: String
-        |}
-        |""".stripMargin
-    else indent"""{
-              |  ${fields.map(_.print.strip()).mkString("\n")}
-              |}
-              |""".stripMargin
-  }
+  val body: String = GraphQlDefinition.body(fields, stub)
 
   val name: String = GraphQlRenamer.className(classView)
 
