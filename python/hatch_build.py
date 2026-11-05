@@ -90,6 +90,7 @@ def link(root: Path) -> Path:
     output = root / "ohi_linkml" / "_lib" / library_name()
     output.parent.mkdir(parents=True, exist_ok=True)
 
+    # The jar names start with their place on the classpath, so sorting keeps the classpath order.
     nir = sorted(str(p) for p in (root / NIR_DIR).glob("*.jar"))
     linker = sorted(str(p) for p in (root / LINKER_DIR).glob("*.jar"))
     if not nir or not linker:
