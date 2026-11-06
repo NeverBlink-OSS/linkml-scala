@@ -85,29 +85,29 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       options: ScalaGeneratorOptions = ScalaGeneratorOptions(),
   ): Iterable[(String, String)] = {
     val header = GeneratedHeader("//") + "\n"
-    val root = sv.treeRoot.orNull
-    val document = if root ne null then generateDocument(root, options) else null
-    val documentFile = if document ne null then documentName(root).concat(".scala") else null
+    val root = sv.treeRoot.orNullFast
+    val document = if (root ne null) generateDocument(root, options) else null
+    val documentFile =
+      if (document ne null) TreeRootDocument.name(className(root)).concat(".scala") else null
     val files = Vector.newBuilder[(String, String)]
     def add(file: (String, String)): Unit = {
-      if file._1 == documentFile then
+      val name = file._1
+      if (name == documentFile) {
         throw new IllegalArgumentException(
           s"The document type of tree root '${root.name}' and another type both map to the " +
             s"Scala file '$documentFile'. Rename one of them to generate Scala.",
         )
-      files.addOne((file._1, header.concat(file._2)))
+      }
+      files.addOne((name, header.concat(file._2)))
     }
     generateClasses(options).foreach(add)
     generateEnums(options).foreach(add)
     generateTypeDefinitions(options).foreach(add)
     generateFunctions(options).foreachFast(add)
-    if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`).foreachFast(add)
-    if document ne null then files.addOne((documentFile, header.concat(document)))
+    if (options.generateEmitPrefixes) generateEmitPrefixes(options.`package`).foreachFast(add)
+    if (document ne null) files.addOne((documentFile, header.concat(document)))
     files.result()
   }
-
-  /** Name of the type of a whole document. */
-  private def documentName(root: ClassView): String = className(root).concat("Document")
 
   /** A type for a whole document, if `tree_root_as` makes it other than one object: an `Option`,
     * `Seq` or `Map` by key of the class that holds the tree root's instances, so that
@@ -118,25 +118,21 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     */
   private def generateDocument(root: ClassView, options: ScalaGeneratorOptions): String = {
     val element =
-      if root.isTypeDesignatorUnion then className(root)
-      else if root.isConcrete then implName(root, options)
+      if (root.isTypeDesignatorUnion) className(root)
+      else if (root.isConcrete) implName(root, options)
       else return null
     val inlineType = root.treeRootInlineType(None)
+    val collection = inlineType match {
+      case _: InlineType.plain.type => return null
+      case _: InlineType.optional.type => "Option["
+      case _: InlineType.list.type => "Seq["
+      case _ => "Map[String, "
+    }
     val sb = new java.lang.StringBuilder(128)
-    sb.append("package ").append(options.`package`).append("\n\n/** A whole document: ")
-    inlineType match {
-      case InlineType.plain => return null
-      case InlineType.optional => sb.append("a ").append(root.name).append(" or null")
-      case InlineType.list => sb.append("a list of ").append(root.name)
-      case _ => sb.append("a dict of ").append(root.name).append(" by key")
-    }
-    sb.append(". */\ntype ").append(documentName(root)).append(" = ")
-    inlineType match {
-      case InlineType.optional => sb.append("Option[")
-      case InlineType.list => sb.append("Seq[")
-      case _ => sb.append("Map[String, ")
-    }
-    sb.append(element).append("]\n").toString
+    sb.append("package ").append(options.`package`).append("\n\n/** ")
+      .append(TreeRootDocument.description(root, inlineType)).append(" */\ntype ")
+      .append(TreeRootDocument.name(className(root))).append(" = ").append(collection)
+      .append(element).append("]\n").toString
   }
 
   /** Generate Scala counterparts of LinkML classes: case class implementations for instantiable

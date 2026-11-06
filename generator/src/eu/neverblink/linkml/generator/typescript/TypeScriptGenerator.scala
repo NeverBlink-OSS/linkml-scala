@@ -2,7 +2,7 @@ package eu.neverblink.linkml.generator.typescript
 
 import eu.neverblink.linkml.generator.options.{TypeScriptErrorHandling, TypeScriptGeneratorOptions}
 import eu.neverblink.linkml.generator.CharDocumentGenerator
-import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning}
+import eu.neverblink.linkml.generator.util.{DocLines, GeneratedHeader, Pruning, TreeRootDocument}
 import eu.neverblink.linkml.generator.util.Pruning.pruning
 import eu.neverblink.linkml.generator.util.metadataLanguage
 import eu.neverblink.linkml.rdf.io.CharSink
@@ -73,25 +73,27 @@ final class TypeScriptGenerator(using sv: SchemaView)
     }
   }
 
-  /** TS type of a whole document, if `tree_root_as` makes it other than one object: the tree root
-    * or null, a list of it, or a dict of it by key.
+  /** Writes the type of a whole document, for a tree root whose `tree_root_as` is not one object:
+    * the tree root or null, a list of it, or a dict of it by key.
     */
-  private def documentType(root: ClassView, ctx: Context): Option[String] =
-    root.treeRootInlineType(None) match {
-      case InlineType.plain => None
-      case InlineType.optional => Some(classRef(root).concat(" | null"))
-      case inlineType => Some(inlinedType(root, inlineType, ctx))
+  private def writeDocument(
+      sink: CharSink,
+      root: ClassView,
+      inlineType: InlineType,
+      ctx: Context,
+  ): Unit = {
+    writeDoc(sink, Seq(TreeRootDocument.description(root, inlineType)), "")
+    sink.append("export type ")
+    sink.append(TreeRootDocument.name(className(root)))
+    sink.append(" = ")
+    inlineType match {
+      case _: InlineType.optional.type =>
+        sink.append(classRef(root))
+        sink.append(" | null")
+      case _ => sink.append(inlinedType(root, inlineType, ctx))
     }
-
-  /** Name of the type of a whole document. */
-  private def documentName(root: ClassView): String = className(root).concat("Document")
-
-  private def documentDoc(root: ClassView): String =
-    root.treeRootInlineType(None) match {
-      case InlineType.optional => s"A whole document: a ${root.name} or null."
-      case InlineType.list => s"A whole document: a list of ${root.name}."
-      case _ => s"A whole document: a dict of ${root.name} by key."
-    }
+    sink.append(";\n")
+  }
 
   private def keyOptional(ref: String, cls: ClassView, key: String): String =
     s"KeyOptional<$ref, ${stringLiteral(slotName(cls.derivedAttributes(key)))}>"
@@ -327,8 +329,12 @@ final class TypeScriptGenerator(using sv: SchemaView)
       if !hasInterface(cls) then claim(className(cls), s"the union of abstract class '${cls.name}'")
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
-    if document ne null then
-      claim(documentName(document), s"the document type of tree root '${document.name}'")
+    if (document ne null) {
+      claim(
+        TreeRootDocument.name(className(document)),
+        s"the document type of tree root '${document.name}'",
+      )
+    }
     if hasFunctions then claim(functionsInterfaceName(sv), "the functions of the schema")
     if usesResult then {
       claim("Result", "the Result helper type")
@@ -349,18 +355,17 @@ final class TypeScriptGenerator(using sv: SchemaView)
     val usesResult =
       options.errorHandling == TypeScriptErrorHandling.Result && functions.exists(_.errors.nonEmpty)
     // The tree root gets a document type only if it is generated and is not one object
-    var document: ClassView = null
-    var documentTpe: String = null
     val treeRootOverride = options.pruning match {
-      case Pruning.treeRoot(o) => o
+      case p: Pruning.treeRoot => p._override
       case _ => None
     }
-    sv.treeRootWithOverride(treeRootOverride).get.foreachFast { root =>
-      if query.reachable(root) then
-        documentType(root, ctx).foreachFast { tpe =>
-          document = root
-          documentTpe = tpe
-        }
+    val root = sv.treeRootWithOverride(treeRootOverride).get.orNullFast
+    val inlineType =
+      if ((root ne null) && query.reachable(root)) root.treeRootInlineType(None)
+      else InlineType.plain
+    val document = inlineType match {
+      case _: InlineType.plain.type => null
+      case _ => root
     }
     checkNames(classes, enums, document, functions.nonEmpty, usesResult)
 
@@ -381,14 +386,9 @@ final class TypeScriptGenerator(using sv: SchemaView)
       sink.append('\n')
       writeFunctions(sink, functions, ctx)
     }
-    if document ne null then {
+    if (document ne null) {
       sink.append('\n')
-      writeDoc(sink, Seq(documentDoc(document)), "")
-      sink.append("export type ")
-      sink.append(documentName(document))
-      sink.append(" = ")
-      sink.append(documentTpe)
-      sink.append(";\n")
+      writeDocument(sink, document, inlineType, ctx)
     }
     if usesResult then {
       sink.append('\n')
