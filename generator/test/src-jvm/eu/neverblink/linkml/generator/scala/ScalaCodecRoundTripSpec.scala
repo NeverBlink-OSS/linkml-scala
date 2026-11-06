@@ -21,22 +21,21 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
       "typed" -> noCodecForType("decimal", "date"),
       "constraints" -> noCodecForType("float"),
       "constraintsOnTypes" -> noCodecForType("float"),
-    ) ++ Seq("treeRootAsCompactDict", "treeRootAsList", "treeRootAsSimpleDict").map(
-      _ -> noTreeRootAs,
     )
 
   override val skipInstances: Map[(String, String), String] = Seq(
     "uri",
     "curie",
     "uriOrCurie",
+    "treeRootAsCompactDict",
+    "treeRootAsList",
+    "treeRootAsSimpleDict",
   ).map(model =>
-    (model, "empty") ->
-      "an instance with no slots set encodes to an empty document, which cannot be parsed back",
-  ).toMap + (("treeRootAsOptional", "empty") -> noTreeRootAs)
-
-  private def noTreeRootAs: String =
-    "LNK-242: the Scala generator ignores `tree_root_as`, so the codec of the tree root reads " +
-      "one object, not a list, a dict or null"
+    (model, "empty") -> (
+      "an instance with no slots set, an empty list or an empty dict encodes to an empty " +
+        "document, which cannot be parsed back"
+    ),
+  ).toMap
 
   private def noCodecForType(types: String*): String =
     s"LinkmlYamlCodec cannot be derived for the ${types.mkString(" and ")} " +
@@ -71,10 +70,12 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
     val dir = os.temp.dir(prefix = "linkml-roundtrip-src")
     val generated =
       ScalaGenerator(using entry.model).generate(ScalaGeneratorOptions(`package` = "generated"))
-    // A tree root without children is generated as a single case class, with no `...Impl`.
+    // A tree root without children is generated as a single case class, with no `...Impl`. A
+    // tree root that is not one object has a document type for the whole document.
     val rootName = ScalaRenamer.className(treeRoot)
     val rootImpl =
-      if (viaInterface) rootName
+      if (generated.exists(_._1 == s"${rootName}Document.scala")) s"${rootName}Document"
+      else if (viaInterface) rootName
       else if (generated.exists(_._2.contains(s"case class ${rootName}Impl("))) s"${rootName}Impl"
       else rootName
     val sources = generated

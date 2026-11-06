@@ -124,6 +124,71 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
       files.keys.filter(_.endsWith("Functions.scala")) shouldBe empty
     }
 
+    "generate a document type for a tree root that is not one object" when {
+      def withTreeRootAs(form: String, options: ScalaGeneratorOptions): Map[String, String] = {
+        given SchemaView = decode(
+          s"""${schemaShared}classes:
+             |  Item:
+             |    tree_root: true
+             |    extensions:
+             |      tree_root_as: $form
+             |    attributes:
+             |      key: {key: true}
+             |      value: {required: true}
+             |""".stripMargin,
+        )
+        ScalaGenerator().generate(options).toMap
+      }
+      def document(
+          form: String,
+          options: ScalaGeneratorOptions = ScalaGeneratorOptions(
+            `package` = testPkg,
+          ),
+      ): String = withTreeRootAs(form, options)("ItemDocument.scala")
+
+      "plain: none" in {
+        withTreeRootAs("plain", ScalaGeneratorOptions(`package` = testPkg)).keySet should
+          not contain "ItemDocument.scala"
+      }
+
+      "optional: an Option" in {
+        document("optional") should include(
+          "/** A whole document: a Item or null. */\ntype ItemDocument = Option[Item]\n",
+        )
+      }
+
+      "list: a Seq" in {
+        document("list") should include(
+          "/** A whole document: a list of Item. */\ntype ItemDocument = Seq[Item]\n",
+        )
+      }
+
+      "compact_dict and simple_dict: a Map by key" in {
+        Seq("compact_dict", "simple_dict").foreach { form =>
+          document(form) should include("type ItemDocument = Map[String, Item]\n")
+        }
+      }
+
+      "of the implementation when the class has an interface" in {
+        document("list", splitOptions) should include("type ItemDocument = Seq[ItemImpl]\n")
+      }
+
+      "a class with the same name: an error" in {
+        given SchemaView = decode(
+          s"""${schemaShared}classes:
+             |  Item:
+             |    tree_root: true
+             |    extensions:
+             |      tree_root_as: list
+             |  ItemDocument:
+             |""".stripMargin,
+        )
+        val ex = the[IllegalArgumentException] thrownBy
+          ScalaGenerator().generate(ScalaGeneratorOptions(`package` = testPkg))
+        ex.getMessage should include("'ItemDocument.scala'")
+      }
+    }
+
     "generate abstract interfaces and implementations for plain classes" in {
       given SchemaView = ModelCatalogue.basic.model
       val code =

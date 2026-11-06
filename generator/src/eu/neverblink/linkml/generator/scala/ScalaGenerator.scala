@@ -85,10 +85,58 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       options: ScalaGeneratorOptions = ScalaGeneratorOptions(),
   ): Iterable[(String, String)] = {
     val header = GeneratedHeader("//") + "\n"
-    (generateClasses(options) ++ generateEnums(options) ++ generateTypeDefinitions(options)
-      ++ generateFunctions(options)
-      ++ (if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`) else None))
-      .map((file, code) => file -> header.concat(code))
+    val root = sv.treeRoot.orNull
+    val document = if root ne null then generateDocument(root, options) else null
+    val documentFile = if document ne null then documentName(root).concat(".scala") else null
+    val files = Vector.newBuilder[(String, String)]
+    def add(file: (String, String)): Unit = {
+      if file._1 == documentFile then
+        throw new IllegalArgumentException(
+          s"The document type of tree root '${root.name}' and another type both map to the " +
+            s"Scala file '$documentFile'. Rename one of them to generate Scala.",
+        )
+      files.addOne((file._1, header.concat(file._2)))
+    }
+    generateClasses(options).foreach(add)
+    generateEnums(options).foreach(add)
+    generateTypeDefinitions(options).foreach(add)
+    generateFunctions(options).foreachFast(add)
+    if options.generateEmitPrefixes then generateEmitPrefixes(options.`package`).foreachFast(add)
+    if document ne null then files.addOne((documentFile, header.concat(document)))
+    files.result()
+  }
+
+  /** Name of the type of a whole document. */
+  private def documentName(root: ClassView): String = className(root).concat("Document")
+
+  /** A type for a whole document, if `tree_root_as` makes it other than one object: an `Option`,
+    * `Seq` or `Map` by key of the class that holds the tree root's instances, so that
+    * `LinkmlYamlCodec.derived` can read and write it.
+    *
+    * @return
+    *   The content of the file, or null if the tree root is one object or is abstract
+    */
+  private def generateDocument(root: ClassView, options: ScalaGeneratorOptions): String = {
+    val element =
+      if root.isTypeDesignatorUnion then className(root)
+      else if root.isConcrete then implName(root, options)
+      else return null
+    val inlineType = root.treeRootInlineType(None)
+    val sb = new java.lang.StringBuilder(128)
+    sb.append("package ").append(options.`package`).append("\n\n/** A whole document: ")
+    inlineType match {
+      case InlineType.plain => return null
+      case InlineType.optional => sb.append("a ").append(root.name).append(" or null")
+      case InlineType.list => sb.append("a list of ").append(root.name)
+      case _ => sb.append("a dict of ").append(root.name).append(" by key")
+    }
+    sb.append(". */\ntype ").append(documentName(root)).append(" = ")
+    inlineType match {
+      case InlineType.optional => sb.append("Option[")
+      case InlineType.list => sb.append("Seq[")
+      case _ => sb.append("Map[String, ")
+    }
+    sb.append(element).append("]\n").toString
   }
 
   /** Generate Scala counterparts of LinkML classes: case class implementations for instantiable

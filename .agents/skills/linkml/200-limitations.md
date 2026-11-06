@@ -202,8 +202,7 @@ But rejects:
 * `simple_dict`: dict object mapping the key field to the value field of the object instances
 
 LinkML-Python doesn't know this extension, so its generators always expect one object.
-In ohi LinkML, the JSON Schema, Pydantic and TypeScript generators use it.
-The Scala generator ignores it for now, so its types describe one object.
+In ohi LinkML, the JSON Schema, Pydantic, Scala and TypeScript generators use it.
 
 ## Language strings
 

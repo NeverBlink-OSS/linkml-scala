@@ -14,3 +14,24 @@ import { Description, Options, Usage } from '../../../components/converter';
 ## Options
 
 <Options name="scala" />
+
+## Whole documents
+
+If the tree root has a `tree_root_as` other than `plain`, a document isn't one object. The
+output then also has a type for the whole document, named after the tree root:
+
+| `tree_root_as`                 | Document type                                  |
+|--------------------------------|------------------------------------------------|
+| `optional`                     | `type SomeClassDocument = Option[SomeClass]`   |
+| `list`                         | `type SomeClassDocument = Seq[SomeClass]`      |
+| `compact_dict`, `simple_dict`  | `type SomeClassDocument = Map[String, SomeClass]` |
+
+It uses the class that holds the instances, such as `SomeClassImpl` when the tree root has an
+interface. Read a document with one codec:
+
+```scala
+val codec = LinkmlYamlCodec.derived[SomeClassDocument]
+val document = codec.decode(parseYaml(text).toOption.get)
+```
+
+In the dict forms, the codec takes the `key` of each object from its dict key.
