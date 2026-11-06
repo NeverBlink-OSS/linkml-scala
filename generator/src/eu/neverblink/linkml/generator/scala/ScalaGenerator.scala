@@ -125,8 +125,9 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case _: InlineType.list.type => "Seq["
       case _ => "Map[String, "
     }
+    // The codec reads the interface only if its `@typeDesignator` lists the implementations
     val element =
-      if (root.isTypeDesignatorUnion) className(root)
+      if (typeDesignatorAnnotation(root, options).isDefined) className(root)
       else if (root.isConcrete) implName(root, options)
       else return null
     val sb = new java.lang.StringBuilder(128)
