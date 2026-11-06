@@ -5,7 +5,9 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** @param title
+/** A slot expression that is not a top-level named slot/attribute definition. Used for nesting.
+  *
+  * @param title
   *   A concise human-readable display label for the element. The title should mirror the name, and
   *   should use ordinary textual punctuation.
   * @param description

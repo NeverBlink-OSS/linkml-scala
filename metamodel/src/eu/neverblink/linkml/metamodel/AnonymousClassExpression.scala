@@ -5,7 +5,9 @@ package eu.neverblink.linkml.metamodel
 
 import eu.neverblink.linkml.runtime.*
 
-/** @param title
+/** A class expression that is not a top-level named class definition. Used for nesting.
+  *
+  * @param title
   *   A concise human-readable display label for the element. The title should mirror the name, and
   *   should use ordinary textual punctuation.
   * @param description
