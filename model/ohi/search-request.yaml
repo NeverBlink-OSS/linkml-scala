@@ -43,4 +43,7 @@ classes:
         description: Maximum values returned per facet. Omitted uses the backend default.
         range: integer
         minimum_value: 1
+      all_releases:
+        description: Search every release instead of each ontology's latest version.
+        range: boolean
     tree_root: true

@@ -126,6 +126,15 @@ class SearchOutputSpec extends AnyWordSpec, Matchers {
         "No matching ontologies."
     }
 
+    "count zero matches as releases when every release is searched" in {
+      SearchOutput.render(
+        result.copy(hits = Seq.empty, total = 0),
+        80,
+        colored = false,
+        allReleases = true,
+      ) shouldBe "No matching releases."
+    }
+
     "retain the cutoff warning on an empty page" in {
       val input = result.copy(hits = Seq.empty, total = 7, page = 2, searchCutoff = true)
       SearchOutput.render(input, 80, colored = false) shouldBe

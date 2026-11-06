@@ -17,6 +17,8 @@ import scala.jdk.CollectionConverters.*
 
 class CatalogClientSpec extends AnyWordSpec, Matchers {
   private val binary = Array[Byte](0, -1, 65, -128)
+  private val searchPath = "/search/collections/packages/documents/search"
+  private val latestPath = "/search/collections/packages_latest/documents/search"
 
   private def withServer(
       respond: HttpExchange => Unit,
@@ -69,10 +71,41 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
     exception.error
   }
 
-  private def searchResponse(perPage: Int): Array[Byte] =
-    s"""{"hits":[],"found":0,"page":1,"request_params":{"per_page":$perPage},"search_cutoff":false}""".getBytes(
-      UTF_8,
+  private def searchResponse(perPage: Int, hits: Seq[ujson.Obj] = Seq()): Array[Byte] =
+    ujson.write(
+      ujson.Obj(
+        "hits" -> ujson.Arr.from(hits),
+        "found" -> hits.size,
+        "page" -> 1,
+        "request_params" -> ujson.Obj("per_page" -> perPage),
+        "search_cutoff" -> false,
+      ),
+    ).getBytes(UTF_8)
+
+  private def hit(baseUrl: String, namespace: String, name: String, version: String): ujson.Obj =
+    ujson.Obj(
+      "document" -> ujson.Obj(
+        "base_url" -> baseUrl,
+        "namespace" -> namespace,
+        "name" -> name,
+        "version" -> version,
+        "title" -> "Sensors",
+        "description" -> "Sensor measurements",
+        "formats" -> ujson.Arr("owl-turtle"),
+        "licenses" -> ujson.Arr(),
+        "published_at" -> "2026-10-13T12:30:00Z",
+      ),
     )
+
+  private def packageJson: Array[Byte] = Files.readAllBytes(
+    Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", "sensors-package.json"),
+  )
+
+  private def parameters(target: String): Map[String, String] =
+    target.split("\\?", 2)(1).split("&").map { pair =>
+      val parts = pair.split("=", 2)
+      parts(0) -> URLDecoder.decode(parts(1), UTF_8)
+    }.toMap
 
   private def withSocketResponse(response: String, endBody: Boolean = false)(
       check: String => Unit,
@@ -119,6 +152,9 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
         "search fragment" -> (url =>
           CatalogConfig(searchUrl = Some(Uri(url + "#fragment")), queryBy = Some("name"))
         ),
+        "search_url without the search path" -> (url =>
+          CatalogConfig(searchUrl = Some(Uri(url + "/search")), queryBy = Some("name"))
+        ),
       )
     ) {
       s"reject $label before sending" in {
@@ -164,18 +200,29 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
 
   "CatalogClient.search" should {
     for (size <- Seq(None, Some(1), Some(250))) {
-      s"send default page and accepted page size $size" in {
+      s"send default page and accepted page size $size to the latest endpoint" in {
         val expectedSize = size.getOrElse(10)
         withServer(exchange => reply(exchange, 200, searchResponse(expectedSize))) {
           (url, requests) =>
-            val result = configured(url).search(SearchRequest(q = "*", perPage = size))
+            val result = configured(url + searchPath).search(SearchRequest(q = "*", perPage = size))
             result.page shouldBe 1
             result.perPage shouldBe expectedSize
             result.hits shouldBe empty
             requests.asScala.toSeq shouldBe Seq(
-              s"/?q=*&query_by=name%2Cdescription&page=1&per_page=$expectedSize" -> "identity",
+              "/search/collections/packages_latest/documents/search" +
+                s"?q=*&query_by=name%2Cdescription&page=1&per_page=$expectedSize" -> "identity",
             )
         }
+      }
+    }
+
+    "send an all_releases search to search_url without the option" in {
+      withServer(exchange => reply(exchange, 200, searchResponse(10))) { (url, requests) =>
+        configured(url + searchPath).search(SearchRequest(q = "*", allReleases = true))
+        requests.asScala.toSeq shouldBe Seq(
+          "/search/collections/packages/documents/search" +
+            "?q=*&query_by=name%2Cdescription&page=1&per_page=10" -> "identity",
+        )
       }
     }
 
@@ -183,21 +230,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
       val raw = ujson.write(
         ujson.Obj(
           "hits" -> ujson.Arr.from(
-            Seq("z", "a", "z").map(name =>
-              ujson.Obj(
-                "document" -> ujson.Obj(
-                  "base_url" -> s"urn:ohi:$name",
-                  "namespace" -> "example",
-                  "name" -> name,
-                  "version" -> "1.0",
-                  "title" -> "Sensors",
-                  "description" -> "Sensor measurements",
-                  "formats" -> ujson.Arr("owl-turtle"),
-                  "licenses" -> ujson.Arr(),
-                  "published_at" -> "2026-10-13T12:30:00Z",
-                ),
-              ),
-            ),
+            Seq("z", "a", "z").map(name => hit(s"urn:ohi:$name", "example", name, "1.0")),
           ),
           "found" -> 8,
           "page" -> 2,
@@ -206,7 +239,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
         ),
       )
       withServer(exchange => reply(exchange, 200, raw.getBytes(UTF_8))) { (url, requests) =>
-        val result = configured(url + "/exact/search").search(
+        val result = configured(url + searchPath).search(
           SearchRequest(
             q = "ü + & sensors",
             page = Some(2),
@@ -221,12 +254,8 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
         result.total shouldBe 8
         requests.size() shouldBe 1
         val target = requests.peek()._1
-        target.takeWhile(_ != '?') shouldBe "/exact/search"
-        val parameters = target.split("\\?", 2)(1).split("&").map { pair =>
-          val parts = pair.split("=", 2)
-          parts(0) -> URLDecoder.decode(parts(1), UTF_8)
-        }.toMap
-        parameters shouldBe Map(
+        target.takeWhile(_ != '?') shouldBe "/search/collections/packages_latest/documents/search"
+        parameters(target) shouldBe Map(
           "q" -> "ü + & sensors",
           "query_by" -> "name,description",
           "page" -> "2",
@@ -242,10 +271,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
 
   "CatalogClient.inspect and get" should {
     "inspect the exact opaque path and query without following dependencies" in {
-      val publication = Files.readAllBytes(
-        Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", "sensors-package.json"),
-      )
-      withServer(exchange => reply(exchange, 200, publication)) { (url, requests) =>
+      withServer(exchange => reply(exchange, 200, packageJson)) { (url, requests) =>
         val result = new CatalogClient().inspect(url + "/opaque?signature=a%2Bb#fragment")
         result.title shouldBe "Sensors"
         result.artifacts.head.sizeBytes shouldBe 42
@@ -273,6 +299,103 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
     }
   }
 
+  "CatalogClient.latest and inspect with references" should {
+    "derive the latest endpoint and release URLs from a search_url below a path" in {
+      withServer { exchange =>
+        val body =
+          if (exchange.getRequestURI.getRawPath.startsWith("/hub/search/")) searchResponse(10)
+          else packageJson
+        reply(exchange, 200, body)
+      } { (url, requests) =>
+        val client = configured(url + "/hub/search/collections/packages/documents/search")
+        client.search(SearchRequest(q = "*"))
+        client.inspect("w3c/dcat@2")
+        requests.asScala.toSeq.map(_._1.takeWhile(_ != '?')) shouldBe Seq(
+          "/hub/search/collections/packages_latest/documents/search",
+          "/hub/files/packages/w3c/dcat/2/",
+        )
+      }
+    }
+
+    "inspect a versioned reference with one GET of its percent-encoded release path" in {
+      withServer(exchange => reply(exchange, 200, packageJson)) { (url, requests) =>
+        configured(url + searchPath).inspect("team:a/model%x@v1.0é")
+        requests.asScala.toSeq shouldBe Seq(
+          "/files/packages/team%3Aa/model%25x/v1.0%C3%A9/" -> "identity",
+        )
+      }
+    }
+
+    "inspect the base_url of the latest-version hit with the exact namespace and name, skipping a look-alike" in {
+      withServer { exchange =>
+        val origin = s"http://127.0.0.1:${exchange.getLocalAddress.getPort}"
+        val body =
+          if (exchange.getRequestURI.getRawPath == latestPath)
+            searchResponse(
+              10,
+              Seq(
+                hit(s"$origin/files/packages/w3c/DCAT/9/", "w3c", "DCAT", "9"),
+                hit(s"$origin/files/packages/w3c/dcat/3/", "w3c", "dcat", "3"),
+              ),
+            )
+          else packageJson
+        reply(exchange, 200, body)
+      } { (url, requests) =>
+        configured(url + searchPath).inspect("w3c/dcat")
+        val targets = requests.asScala.toSeq.map(_._1)
+        targets.map(_.takeWhile(_ != '?')) shouldBe Seq(
+          "/search/collections/packages_latest/documents/search",
+          "/files/packages/w3c/dcat/3/",
+        )
+        parameters(targets.head) shouldBe Map(
+          "q" -> "*",
+          "query_by" -> "name,description",
+          "page" -> "1",
+          "per_page" -> "10",
+          "filter_by" -> "namespace:=`w3c` && name:=`dcat`",
+        )
+      }
+    }
+
+    "report an ontology without a latest-version hit of the exact namespace and name as an INSPECT 404 without a GET" in {
+      withServer(exchange => reply(exchange, 200, searchResponse(10))) { (url, requests) =>
+        error(CatalogErrorCode.HttpError, CatalogOperation.Inspect, Some("w3c/nope"), Some(404))(
+          configured(url + searchPath).inspect("w3c/nope"),
+        )
+        requests.asScala.toSeq.map(_._1.takeWhile(_ != '?')) shouldBe Seq(latestPath)
+      }
+    }
+
+    "reject a versioned reference for latest without a request" in {
+      withServer(exchange => reply(exchange, 200, binary)) { (url, requests) =>
+        error(CatalogErrorCode.InvalidInput, CatalogOperation.Search, Some("w3c/dcat@2"), None)(
+          configured(url + searchPath).latest("w3c/dcat@2"),
+        )
+        requests shouldBe empty
+      }
+    }
+
+    for (
+      target <- Seq(
+        "w3c",
+        "w3c/dcat@",
+        "w3c/dcat@1+2",
+        "w3c/`dcat",
+        "w3c/dcat/x",
+        "w3c/dcat@1@2",
+      )
+    ) {
+      s"reject inspect target $target without a request" in {
+        withServer(exchange => reply(exchange, 200, binary)) { (url, requests) =>
+          error(CatalogErrorCode.InvalidInput, CatalogOperation.Inspect, Some(target), None)(
+            configured(url + searchPath).inspect(target),
+          )
+          requests shouldBe empty
+        }
+      }
+    }
+  }
+
   "CatalogClient errors and lifecycle" should {
     for ((status, body) <- Seq(404 -> "missing", 503 -> "{", 503 -> "[null]")) {
       s"retain HTTP $status without inventing response JSON for $body" in {
@@ -284,13 +407,18 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "retain structured 503 details and recovery arguments with the configured search URL" in {
+    "retain structured 503 details and recovery arguments with the search endpoint" in {
       val body =
         """{"code":"UNKNOWN","details":{"items":[null,2]},"recovery":{"args":{"token":null}}}"""
       withServer(exchange => reply(exchange, 503, body.getBytes(UTF_8))) { (url, _) =>
         val failure =
-          error(CatalogErrorCode.HttpError, CatalogOperation.Search, Some(url), Some(503))(
-            configured(url).search(SearchRequest(q = "*")),
+          error(
+            CatalogErrorCode.HttpError,
+            CatalogOperation.Search,
+            Some(url + latestPath),
+            Some(503),
+          )(
+            configured(url + searchPath).search(SearchRequest(q = "*")),
           )
         ujson.read(failure.responseJson.get.value) shouldBe ujson.read(body)
       }
@@ -298,8 +426,13 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
 
     "map malformed search success to INVALID_RESPONSE" in {
       withServer(exchange => reply(exchange, 200, "{}".getBytes(UTF_8))) { (url, _) =>
-        error(CatalogErrorCode.InvalidResponse, CatalogOperation.Search, Some(url), Some(200))(
-          configured(url).search(SearchRequest(q = "*")),
+        error(
+          CatalogErrorCode.InvalidResponse,
+          CatalogOperation.Search,
+          Some(url + latestPath),
+          Some(200),
+        )(
+          configured(url + searchPath).search(SearchRequest(q = "*")),
         )
       }
     }
@@ -313,9 +446,7 @@ class CatalogClientSpec extends AnyWordSpec, Matchers {
     }
 
     "reject invalid UTF-8 before publication JSON decoding" in {
-      val publication = Files.readAllBytes(
-        Path.of(sys.env("MILL_WORKSPACE_ROOT"), "ohi", "examples", "sensors-package.json"),
-      )
+      val publication = packageJson
       val title = "\"title\": \""
       publication(publication.indexOfSlice(title.getBytes(UTF_8)) + title.length) = -1
       withServer(exchange => reply(exchange, 200, publication)) { (url, _) =>

@@ -5,6 +5,9 @@ import type { SearchRequest } from "./generated_search_request.js";
 import type { FacetCount, SearchHit, SearchResult } from "./generated_search.js";
 import { decodePublication } from "./publication.js";
 
+const searchPath = "/search/collections/packages/documents/search";
+const referencePattern = /^([^/@\p{White_Space}`]+)\/([^/@\p{White_Space}`]+)(?:@([^/@\p{White_Space}+`]+))?$/u;
+
 export class CatalogException extends Error {
   constructor(readonly error: CatalogError, options?: ErrorOptions) {
     super(error.message, options);
@@ -68,6 +71,8 @@ function searchResult(bytes: Uint8Array, page: number, perPage: number): SearchR
 export class CatalogClient {
   private readonly config: CatalogConfig;
   private readonly timeoutMs: number;
+  private readonly base: string;
+  private readonly latestUrl: string;
 
   constructor(config: CatalogConfig = {}) {
     const url = config.search_url;
@@ -81,6 +86,10 @@ export class CatalogClient {
         throw new CatalogException({ code: "INVALID_INPUT", operation: "CONFIGURE", url,
           message: "Supply a search_url without a query or fragment." });
       }
+      if (!url.endsWith(searchPath)) {
+        throw new CatalogException({ code: "INVALID_INPUT", operation: "CONFIGURE", url,
+          message: `Supply a search_url that ends with ${searchPath}.` });
+      }
     }
     this.config = {
       ...config,
@@ -88,10 +97,12 @@ export class CatalogClient {
       query_by: config.query_by ?? "title,name,description,namespace",
     };
     this.timeoutMs = config.timeout_ms ?? 30000;
+    this.base = this.config.search_url!.slice(0, -searchPath.length);
+    this.latestUrl = `${this.base}/search/collections/packages_latest/documents/search`;
   }
 
   async search(request: SearchRequest): Promise<SearchResult> {
-    const endpoint = this.config.search_url!;
+    const endpoint = request.all_releases ? this.config.search_url! : this.latestUrl;
     const page = request.page ?? 1;
     const perPage = request.per_page ?? 10;
     const url = new URL(endpoint);
@@ -112,12 +123,50 @@ export class CatalogClient {
     }
   }
 
+  /** Return the search hit for the latest version of `namespace/name`, or undefined when the catalog has no such
+   * ontology.
+   */
+  async latest(reference: string): Promise<SearchHit | undefined> {
+    const parts = referencePattern.exec(reference);
+    if (parts === null || parts[3] !== undefined) {
+      throw new CatalogException({ code: "INVALID_INPUT", operation: "SEARCH", url: reference,
+        message: "Supply an ontology reference namespace/name without a version." });
+    }
+    const [, namespace, name] = parts;
+    const filter = `namespace:=\`${namespace}\` && name:=\`${name}\``;
+    const result = await this.search({ q: "*", filter_by: filter });
+    // The := filter ignores case and separators, so look-alikes such as w3c/DCAT can match.
+    return result.hits.find((hit) => hit.namespace === namespace && hit.name === name);
+  }
+
+  /** Fetch the publication at an absolute HTTP(S) URL, of the release `namespace/name@version`, or of the latest
+   * version of `namespace/name`.
+   */
   async inspect(baseUrl: string): Promise<Publication> {
-    const bytes = await this.request(httpUrl(baseUrl, "INSPECT"), "INSPECT", baseUrl);
+    let url = baseUrl;
+    const parts = referencePattern.exec(baseUrl);
+    if (parts !== null) {
+      const [, namespace, name, version] = parts;
+      if (version !== undefined) {
+        url = `${this.base}/files/packages/${[namespace, name, version].map(encodeURIComponent).join("/")}/`;
+      } else {
+        const hit = await this.latest(baseUrl);
+        if (hit === undefined) {
+          throw new CatalogException({ code: "HTTP_ERROR", operation: "INSPECT", url: baseUrl, status: 404,
+            message: `No ontology matches ${baseUrl}.` });
+        }
+        url = hit.base_url;
+      }
+    } else if (!/^https?:\/\//i.test(baseUrl)) {
+      // new URL repairs "http:/host" and strips tabs, so require the literal prefix before parsing.
+      throw new CatalogException({ code: "INVALID_INPUT", operation: "INSPECT", url: baseUrl,
+        message: "Supply an absolute HTTP(S) URL or an ontology reference namespace/name[@version]." });
+    }
+    const bytes = await this.request(httpUrl(url, "INSPECT"), "INSPECT", url);
     try {
       return decodePublication(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
     } catch (cause) {
-      throw new CatalogException({ code: "INVALID_RESPONSE", operation: "INSPECT", url: baseUrl, status: 200,
+      throw new CatalogException({ code: "INVALID_RESPONSE", operation: "INSPECT", url, status: 200,
         message: "The publication metadata is invalid." }, { cause });
     }
   }

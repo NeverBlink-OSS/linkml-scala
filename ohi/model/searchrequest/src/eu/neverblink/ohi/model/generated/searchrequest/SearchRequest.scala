@@ -7,6 +7,8 @@ import eu.neverblink.linkml.runtime.*
 
 /** Query and options for retrieving one page of ontology publications.
   *
+  * @param allReleases
+  *   Search every release instead of each ontology's latest version.
   * @param facetBy
   *   Typesense facet expression over facetable fields.
   * @param filterBy
@@ -25,6 +27,8 @@ import eu.neverblink.linkml.runtime.*
   *   From schema: https://ohi.neverblink.eu/contracts/search-request
   */
 final case class SearchRequest(
+    @named("all_releases")
+    allReleases: Boolean = false,
     @named("facet_by")
     facetBy: Option[String] = None,
     @named("filter_by")

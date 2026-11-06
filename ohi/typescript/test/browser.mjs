@@ -25,7 +25,7 @@ test("browser package integration", async (t) => {
   });
   const fixture = await server(t, (req, res) => {
     if (req.url !== "/denied") res.setHeader("Access-Control-Allow-Origin", app.url);
-    if (req.url.startsWith("/search?")) {
+    if (req.url.startsWith("/search/collections/packages_latest/documents/search?")) {
       res.end(JSON.stringify({ ...page([`${fixture.url}/metadata?signature=a%2Bb`]),
         facet_counts: [{ field_name: "licenses", counts: [{ value: "MIT", count: 2 }] }],
       }));
@@ -55,7 +55,8 @@ test("browser package integration", async (t) => {
   await t.test("bundled search, inspect and get preserve metadata and decompressed file bytes", async () => {
     const result = await browserPage.evaluate(async (url) => {
       const { CatalogClient } = await import("/bundle.js");
-      const client = new CatalogClient({ search_url: `${url}/search`, query_by: "name,description" });
+      const client = new CatalogClient({ search_url: `${url}/search/collections/packages/documents/search`,
+        query_by: "name,description" });
       const result = await client.search({ q: "*", facet_by: "licenses" });
       const publication = await client.inspect(result.hits[0].base_url);
       const bytes = await client.get(`${url}/file`);
@@ -74,7 +75,8 @@ test("browser package integration", async (t) => {
     assert.equal(result.size, 42);
     assert.deepEqual(result.bytes, [0, 255, 128, 65]);
     assert.deepEqual(fixture.requests.map((req) => req.url), [
-      "/search?q=*&query_by=name%2Cdescription&page=1&per_page=10&facet_by=licenses", "/metadata?signature=a%2Bb", "/file",
+      "/search/collections/packages_latest/documents/search?q=*&query_by=name%2Cdescription&page=1&per_page=10&facet_by=licenses",
+      "/metadata?signature=a%2Bb", "/file",
     ]);
   });
 

@@ -184,7 +184,6 @@ private[cli] class AddCommand extends ProjectCommand[AddOptions] {
       input,
       options.artifact,
       options.format,
-      catalog.search,
       catalog.inspect,
       catalog.get,
     )
@@ -213,7 +212,7 @@ private[cli] class LockCommand extends ProjectCommand[LockOptions] {
       project: Project,
   ): ProjectResult = {
     val catalog = client()
-    project.refresh(catalog.search, catalog.inspect)
+    project.refresh(catalog.inspect)
   }
 
   protected def client(): CatalogClient = new CatalogClient()
@@ -256,7 +255,7 @@ private[cli] class SyncCommand extends ProjectCommand[SyncOptions] {
       project: Project,
   ): ProjectResult = {
     val catalog = client(options)
-    project.sync(catalog.search, catalog.inspect, catalog.get, options.init)
+    project.sync(catalog.inspect, catalog.get, options.init)
   }
 }
 

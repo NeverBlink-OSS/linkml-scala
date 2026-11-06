@@ -6,7 +6,7 @@ import eu.neverblink.linkml.yaml.LinkmlYamlCodec
 import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
 import eu.neverblink.ohi.cli.generated.fileerror.CliFileError
 import eu.neverblink.ohi.model.generated.{ArtifactOrigin, Publication}
-import eu.neverblink.ohi.model.generated.search.SearchResult
+import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
 
 import java.net.URI
 import scala.collection.mutable.ArrayBuffer
@@ -19,12 +19,28 @@ private[cli] object CatalogOutput {
   private val deliveryCodec: LinkmlYamlCodec[DeliveryResult] = LinkmlYamlCodec.derived
   private val fileErrorCodec: LinkmlYamlCodec[CliFileError] = LinkmlYamlCodec.derived
 
-  def search(result: SearchResult, json: Boolean, width: Int, colored: Boolean): String =
+  def search(
+      result: SearchResult,
+      json: Boolean,
+      width: Int,
+      colored: Boolean,
+      allReleases: Boolean,
+  ): String =
     if json then JsonUtil.yamlToJson(searchCodec.encode(result))
-    else SearchOutput.render(result, width, colored)
+    else SearchOutput.render(result, width, colored, allReleases)
 
-  /** Render JSON or normalized human release details with descriptions wrapped at 80 columns. */
-  def publication(result: Publication, json: Boolean, colored: Boolean = false): String =
+  /** The ontology's releases and the base URL of its latest version, if there is one. */
+  final case class Versions(latest: Option[String], releases: Seq[SearchHit])
+
+  /** Render JSON or normalized human release details with descriptions wrapped at 80 columns. Human
+    * output also lists up to 10 `versions`, the latest first.
+    */
+  def publication(
+      result: Publication,
+      json: Boolean,
+      colored: Boolean = false,
+      versions: Option[Versions] = None,
+  ): String =
     if json then JsonUtil.yamlToJson(publicationCodec.encode(result))
     else {
       val output = ArrayBuffer.empty[String]
@@ -45,6 +61,19 @@ private[cli] object CatalogOutput {
           output += styled(line.take(prefix), "2", colored) + line.drop(prefix)
       }
       field("Release URL", result.baseUrl.original, code = "36")
+
+      versions.foreach { case Versions(latest, releases) =>
+        section("Versions")
+        val (latestHits, others) = releases.partition(hit => latest.contains(hit.baseUrl.original))
+        val entries = latestHits ++ others.sortBy(_.version)(using VersionOrder.reverse)
+        if entries.isEmpty then output += "  None"
+        entries.take(10).foreach { hit =>
+          val reference = clean(s"${hit.namespace}/${hit.name}@${hit.version}")
+          val mark = if latest.contains(hit.baseUrl.original) then " (latest)" else ""
+          output += s"  - ${styled(reference, "36", colored)}$mark"
+        }
+        if entries.size > 10 then output += s"  and ${entries.size - 10} more"
+      }
 
       section("Files")
       if result.artifacts.isEmpty then output += "  None"

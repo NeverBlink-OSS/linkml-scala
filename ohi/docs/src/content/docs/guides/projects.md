@@ -27,8 +27,8 @@ You'll find DCAT at `.ohi/w3c/dcat/3/dcat.owl.ttl`. Its dependencies, Dublin Cor
 SKOS and PROV-O, are downloaded into their own folders under `.ohi/`.
 ohi records your choice in `ohi.yaml` and the exact files and checksums in `ohi.lock.json`.
 
-Run `ohi add` again to add more ontologies. Leave out `@3` to choose the most recently published
-release. ohi saves that version in `ohi.yaml`.
+Run `ohi add` again to add more ontologies. Leave out `@3` to choose the latest version.
+ohi saves that version in `ohi.yaml`.
 
 Use `--format linkml-yaml` to choose LinkML YAML for an addition. The
 [CLI reference](/docs/reference/cli/#ontology-references-and-formats) lists the available formats

@@ -16,6 +16,7 @@ Use a CLI from the same checkout or release as this skill. Check `ohi <command> 
 | --- | --- |
 | Find publications from search terms | `ohi search` defaults to ohi.dev when both search settings are omitted. Supply both `--search-url` and `--query-by` to use another catalog |
 | Examine a publication | `ohi inspect namespace/name[@version]` or `ohi inspect <base-url>` |
+| List an ontology's versions | `ohi inspect namespace/name` lists them in terminal output |
 | Download an ontology without project tracking | `ohi get namespace/name[@version] [--format <format>]` or `ohi get <Hub-file-url>`. Uses cwd's configured download directory or `.ohi`. `--to` overrides it |
 | Create an empty project declaration | `ohi init [directory] [--default_format <format>] [--to <project-relative-directory>]` |
 | Record a selection and install all locked files | `ohi add namespace/name[@version] [--format <format>]` or `ohi add <base-url> --artifact <file-url>`. Use `--project` to select the project |

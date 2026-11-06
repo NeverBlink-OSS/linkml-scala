@@ -4,9 +4,7 @@ import eu.neverblink.ohi.cli.generated.projecterror.{ProjectErrorCode, ProjectOp
 import eu.neverblink.ohi.cli.generated.fileerror.CliFileErrorCode
 import eu.neverblink.ohi.model.{LockException, LockFiles}
 import eu.neverblink.ohi.model.generated.{Format, Publication}
-import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
-import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
-import eu.neverblink.linkml.runtime.{LinkmlDateTime, PlainText, Uri}
+import eu.neverblink.linkml.runtime.{PlainText, Uri}
 import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
 import eu.neverblink.ohi.model.generated.lockerror.{LockErrorCode, LockError, LockOperation}
 import org.scalatest.matchers.should.Matchers
@@ -58,10 +56,13 @@ class ProjectSpec extends AnyWordSpec, Matchers {
   }"""
   private val metadata =
     ProjectTestData.publication(base, Seq(url -> Format.OwlTurtle), sha256 = sha)
+  private val direct = metadata.copy(dependencies =
+    Seq(eu.neverblink.ohi.model.generated.Dependency(Uri(dependencyBase))),
+  )
+  // Answers the direct release by URL and by reference, as SDK inspect does.
   private val graph = Map(
-    base -> metadata.copy(dependencies =
-      Seq(eu.neverblink.ohi.model.generated.Dependency(Uri(dependencyBase))),
-    ),
+    base -> direct,
+    "test/example@1" -> direct,
     dependencyBase -> ProjectTestData.publication(
       dependencyBase,
       Seq(dependencyUrl -> Format.OwlTurtle),
@@ -76,28 +77,6 @@ class ProjectSpec extends AnyWordSpec, Matchers {
     finally os.remove.all(directory)
   }
 
-  private val search: SearchRequest => SearchResult = _ =>
-    SearchResult(
-      hits = Seq(
-        SearchHit(
-          baseUrl = Uri(base),
-          description = "Synthetic project fixture",
-          formats = Seq.empty,
-          licenses = Seq.empty,
-          name = "example",
-          namespace = "test",
-          publishedAt = LinkmlDateTime("2026-10-15T00:00:00Z"),
-          title = "Example",
-          version = "1",
-        ),
-      ),
-      page = 1,
-      perPage = 250,
-      searchCutoff = false,
-      total = 1,
-    )
-
-  private def noSearch(request: SearchRequest): SearchResult = fail(s"Unexpected search: $request")
   private def noInspect(url: String): Publication = fail(s"Unexpected inspection: $url")
   private def noFetch(url: String): Array[Byte] = fail(s"Unexpected retrieval: $url")
 
@@ -182,7 +161,6 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             base,
             Some(url),
             None,
-            search,
             value => { requests += value; metadata },
             noFetch,
           )
@@ -191,7 +169,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         data("code").str shouldBe "STORAGE_ERROR"
         data("message").str should include(retry)
         data("files").arr shouldBe empty
-        requests.toSeq shouldBe Seq(base)
+        requests.toSeq shouldBe Seq(base, "test/example@1")
         os.read(directory / "ohi.yaml") shouldBe emptyDeclaration
         os.read(directory / "ohi.lock.json") shouldBe oldLock
         os.exists(directory / ".ohi") shouldBe false
@@ -212,7 +190,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           writeLock = (_, _) => throw new LockException(owned),
         )
         val failure = intercept[LockException] {
-          project.add(base, Some(url), None, search, _ => metadata, noFetch)
+          project.add(base, Some(url), None, _ => metadata, noFetch)
         }
         val data = error(project, failure, declaration = true, lock = false, created = true)
         data("code").str shouldBe "OPERATION_FAILED"
@@ -235,11 +213,10 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             base,
             Some(url),
             None,
-            search,
             value => { resumedRequests += value; metadata },
             value => { resumedRequests += value; bytes },
           )
-        resumedRequests.toSeq shouldBe Seq(base, url)
+        resumedRequests.toSeq shouldBe Seq(base, "test/example@1", url)
         resumed.declarationChanged shouldBe false
         os.read(directory / "ohi.yaml") shouldBe savedDeclaration
         ujson.read(os.read(directory / "ohi.lock.json"))("selections") shouldBe
@@ -267,7 +244,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           writeLock = (_, _) => throw new LockException(owned),
         )
         val failure = intercept[LockException] {
-          project.add(base, Some(url), None, search, _ => metadata, noFetch)
+          project.add(base, Some(url), None, _ => metadata, noFetch)
         }
         val data = error(project, failure, declaration = true, lock = false, created = false)
         data("code").str shouldBe "OPERATION_FAILED"
@@ -289,11 +266,10 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             base,
             Some(url),
             None,
-            search,
             value => { resumedRequests += value; metadata },
             value => { resumedRequests += value; bytes },
           )
-        resumedRequests.toSeq shouldBe Seq(base, url)
+        resumedRequests.toSeq shouldBe Seq(base, "test/example@1", url)
         resumed.declarationChanged shouldBe false
         os.read(directory / "ohi.yaml") shouldBe savedDeclaration
         ujson.read(os.read(directory / "ohi.lock.json"))("selections") shouldBe
@@ -315,7 +291,6 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             base,
             Some(url),
             None,
-            search,
             _ => metadata,
             _ => {
               os.makeDir.all(target / os.up)
@@ -356,7 +331,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           },
         )
         val failure = intercept[CliFileException] {
-          project.add(base, Some(url), None, search, _ => metadata, noFetch)
+          project.add(base, Some(url), None, _ => metadata, noFetch)
         }
         val data = error(project, failure, declaration = true, lock = true, created = true)
         data("file_error")("code").str shouldBe "DESTINATION_EXISTS"
@@ -374,11 +349,10 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             base,
             Some(url),
             None,
-            search,
             value => { requests += value; metadata },
             value => { requests += value; bytes },
           )
-        requests.toSeq shouldBe Seq(base, url)
+        requests.toSeq shouldBe Seq(base, "test/example@1", url)
         resumed.declarationChanged shouldBe false
         resumed.files.map(_.status.toString) shouldBe Seq("Downloaded")
         os.read(directory / "ohi.yaml") shouldBe savedDeclaration
@@ -404,7 +378,6 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             base,
             Some(url),
             None,
-            search,
             graph,
             requested => if requested == url then bytes else throw owned,
           )
@@ -422,7 +395,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val savedDeclaration = os.read(directory / "ohi.yaml")
         val requested = ArrayBuffer.empty[String]
         val result = new Project(directory.toNIO, ProjectOperation.Add)
-          .add(base, Some(url), None, search, graph, value => { requested += value; bytes })
+          .add(base, Some(url), None, graph, value => { requested += value; bytes })
         requested.toSeq shouldBe Seq(dependencyUrl)
         result.declarationChanged shouldBe false
         result.files.map(_.status.toString) shouldBe Seq("Verified", "Downloaded")
@@ -434,24 +407,21 @@ class ProjectSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "preserve declaration and old lock when refresh receives a different publication identity" in {
+    "preserve declaration and old lock when refresh receives a base URL without an artifact path" in {
       withDirectory { directory =>
         os.write(directory / "ohi.yaml", selectedDeclaration)
         os.write(directory / "ohi.lock.json", oldLock)
         val project = new Project(directory.toNIO, ProjectOperation.Lock)
         val requests = ArrayBuffer.empty[String]
         val failure = intercept[ProjectException] {
-          project.refresh(
-            search,
-            requested => {
-              requests += requested
-              metadata.copy(baseUrl = Uri(base + "/"))
-            },
-          )
+          project.refresh(requested => {
+            requests += requested
+            metadata.copy(baseUrl = Uri(base + "/"))
+          })
         }
         failure.code shouldBe ProjectErrorCode.InvalidSelection
-        failure.getMessage should include("Release metadata does not match ontology reference")
-        requests.toSeq shouldBe Seq(base)
+        failure.getMessage should include(s"Cannot derive a Hub artifact path from '$base/'.")
+        requests.toSeq shouldBe Seq("test/example@1")
         val invocation = "ohi lock --project 'selected project'"
         val data =
           error(project, failure, declaration = false, lock = false, invocation = invocation)
@@ -484,13 +454,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           "test/a%41@1",
           None,
           None,
-          request => {
-            val response = search(request)
-            response.copy(hits =
-              response.hits.map(_.copy(baseUrl = Uri(schemaBase), name = "a%41")),
-            )
-          },
-          requested => { requested shouldBe schemaBase; publication },
+          requested => { requested shouldBe "test/a%41@1"; publication },
           requested => { requested shouldBe schemaUrl; schema.getBytes(UTF_8) },
         )
         val installed = directory / ".ohi" / "test" / "a%2541" / "1" / "a%2541.linkml.yaml"
@@ -526,7 +490,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
       withDirectory { directory =>
         os.write(directory / "ohi.yaml", emptyDeclaration)
         val result =
-          new Project(directory.toNIO, ProjectOperation.Lock).refresh(noSearch, noInspect)
+          new Project(directory.toNIO, ProjectOperation.Lock).refresh(noInspect)
         result.declarationChanged shouldBe false
         result.declarationCreated shouldBe false
         result.lockChanged shouldBe true
@@ -557,7 +521,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(directory / "ohi.lock.json", adoptionLock)
         val requests = ArrayBuffer.empty[String]
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, value => { requests += value; bytes })
+          .sync(noInspect, value => { requests += value; bytes })
         result.declarationChanged shouldBe false
         result.declarationCreated shouldBe false
         result.lockChanged shouldBe false
@@ -587,7 +551,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val target = directory / ".ohi" / "test" / "example" / "1" / "example.owl.ttl"
         os.write(target, bytes, createFolders = true)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, noFetch, init = true)
+          .sync(noInspect, noFetch, init = true)
         result.declarationChanged shouldBe false
         result.declarationCreated shouldBe false
         result.lockChanged shouldBe false
@@ -605,7 +569,6 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val requests = ArrayBuffer.empty[String]
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
           .sync(
-            search,
             value => { requests += value; metadata },
             value => { requests += value; bytes },
           )
@@ -613,7 +576,8 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         result.declarationCreated shouldBe false
         result.lockChanged shouldBe true
         result.files.map(_.status.toString) shouldBe Seq("Downloaded")
-        requests.toSeq shouldBe Seq(base, url)
+        // The release is fetched once by reference and reused by its base URL for the lock.
+        requests.toSeq shouldBe Seq("test/example@1", url)
         os.read(directory / "ohi.yaml") shouldBe selectedDeclaration
         ujson.read(os.read(directory / "ohi.lock.json")) shouldBe ujson.read(currentLock)
       }
@@ -623,7 +587,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
       withDirectory { directory =>
         os.write(directory / "ohi.yaml", emptyDeclaration)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, noFetch, init = true)
+          .sync(noInspect, noFetch, init = true)
         result.declarationChanged shouldBe false
         result.declarationCreated shouldBe false
         result.lockChanged shouldBe true
@@ -638,7 +602,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
       withDirectory { directory =>
         os.write(directory / "ohi.lock.json", adoptionLock)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, _ => bytes, init = true)
+          .sync(noInspect, _ => bytes, init = true)
         result.declarationChanged shouldBe true
         result.declarationCreated shouldBe true
         result.lockChanged shouldBe false
@@ -664,7 +628,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
       withDirectory { directory =>
         os.write(directory / "ohi.lock.json", emptyLock)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, noFetch)
+          .sync(noInspect, noFetch)
         result.declarationChanged shouldBe false
         result.declarationCreated shouldBe false
         result.lockChanged shouldBe false
@@ -678,7 +642,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
       withDirectory { directory =>
         os.write(directory / "ohi.lock.json", emptyLock)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, noFetch, init = true)
+          .sync(noInspect, noFetch, init = true)
         result.declarationChanged shouldBe true
         result.declarationCreated shouldBe true
         result.lockChanged shouldBe false
@@ -696,7 +660,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(directory / "ohi.yaml", selectedDeclaration)
         os.write(directory / "ohi.lock.json", emptyLock)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(search, _ => metadata, _ => bytes)
+          .sync(_ => metadata, _ => bytes)
         result.lockChanged shouldBe true
         result.files.map(_.url.original) shouldBe Seq(url)
         os.read(directory / "ohi.yaml") shouldBe selectedDeclaration
@@ -714,13 +678,8 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val previous = directory / ".ohi" / "test" / "example" / "1" / "example.owl.ttl"
         os.write(previous, "retained", createFolders = true)
         val result = new Project(directory.toNIO, ProjectOperation.Sync).sync(
-          request => {
-            request.filterBy shouldBe Some("namespace:=test && name:=example && version:=2")
-            val response = search(request)
-            response.copy(hits = response.hits.map(_.copy(baseUrl = Uri(nextBase), version = "2")))
-          },
           requested => {
-            requested shouldBe nextBase
+            requested shouldBe "test/example@2"
             ProjectTestData.publication(nextBase, Seq(nextUrl -> Format.OwlTurtle), sha256 = sha)
           },
           requested => { requested shouldBe nextUrl; bytes },
@@ -743,7 +702,6 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(directory / "ohi.yaml", selectedDeclaration.replace("owl-turtle", "owl-rdfxml"))
         os.write(directory / "ohi.lock.json", currentLock)
         val result = new Project(directory.toNIO, ProjectOperation.Sync).sync(
-          search,
           _ => ProjectTestData.publication(base, Seq(changedUrl -> Format.OwlRdfxml), sha256 = sha),
           requested => { requested shouldBe changedUrl; bytes },
         )
@@ -764,7 +722,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         val previous = directory / ".ohi" / "test" / "example" / "1" / "example.owl.ttl"
         os.write(previous, "retained", createFolders = true)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(noSearch, noInspect, noFetch)
+          .sync(noInspect, noFetch)
         result.lockChanged shouldBe true
         result.files shouldBe empty
         ujson.read(os.read(directory / "ohi.lock.json")) shouldBe ujson.read(emptyLock)
@@ -789,7 +747,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(directory / "ohi.yaml", selectedDeclaration)
         os.write(directory / "ohi.lock.json", supplied.toString)
         val result = new Project(directory.toNIO, ProjectOperation.Sync)
-          .sync(search, _ => metadata, _ => bytes)
+          .sync(_ => metadata, _ => bytes)
         result.lockChanged shouldBe true
         result.files.map(_.url.original) shouldBe Seq(url)
         ujson.read(os.read(directory / "ohi.lock.json")) shouldBe ujson.read(currentLock)
@@ -801,7 +759,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(directory / "ohi.yaml", "dependencies: [")
         os.write(directory / "ohi.lock.json", currentLock)
         val project = new Project(directory.toNIO, ProjectOperation.Sync)
-        val failure = intercept[ProjectException](project.sync(noSearch, noInspect, noFetch))
+        val failure = intercept[ProjectException](project.sync(noInspect, noFetch))
         failure.code shouldBe ProjectErrorCode.InvalidDeclaration
         error(project, failure, declaration = false, lock = false)("files").arr shouldBe empty
         os.read(directory / "ohi.yaml") shouldBe "dependencies: ["
@@ -816,7 +774,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(directory / "ohi.lock.json", supplied)
         val project = new Project(directory.toNIO, ProjectOperation.Sync)
         val failure = intercept[ProjectException](
-          project.sync(noSearch, noInspect, noFetch, init = true),
+          project.sync(noInspect, noFetch, init = true),
         )
         failure.code shouldBe ProjectErrorCode.InvalidDeclaration
         error(project, failure, declaration = false, lock = false)("files").arr shouldBe empty
@@ -835,7 +793,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
             throw new ProjectException(ProjectErrorCode.StorageError, "injected create failure"),
         )
         val failure = intercept[ProjectException](
-          project.sync(noSearch, noInspect, noFetch, init = true),
+          project.sync(noInspect, noFetch, init = true),
         )
         val invocation = s"ohi sync --init --project '$directory'"
         error(project, failure, declaration = false, lock = false, invocation = invocation)(
@@ -858,7 +816,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           (directory / ".ohi").toString,
         )
         val failure = intercept[LockDownload.InstallationException](
-          project.sync(noSearch, noInspect, _ => throw cause, init = true),
+          project.sync(noInspect, _ => throw cause, init = true),
         )
         val data = error(project, failure, declaration = true, lock = false, created = true)
         data("files").arr shouldBe empty
@@ -882,7 +840,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(target, "different bytes", createFolders = true)
         val project = new Project(directory.toNIO, ProjectOperation.Add)
         val failure = intercept[CliFileException] {
-          project.add(base, Some(url), None, search, graph, noFetch)
+          project.add(base, Some(url), None, graph, noFetch)
         }
         val data = error(project, failure, declaration = false, lock = false)
         data("file_error")("code").str shouldBe "HASH_MISMATCH"
@@ -903,7 +861,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(target, "different bytes", createFolders = true)
         val project = new Project(directory.toNIO, ProjectOperation.Sync)
         val failure = intercept[CliFileException] {
-          project.sync(noSearch, noInspect, noFetch)
+          project.sync(noInspect, noFetch)
         }
         val data = error(project, failure, declaration = false, lock = false)
         data("file_error")("code").str shouldBe "HASH_MISMATCH"
@@ -923,7 +881,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
         os.write(target, "different bytes", createFolders = true)
         val project = new Project(directory.toNIO, ProjectOperation.Sync)
         val failure = intercept[CliFileException](
-          project.sync(noSearch, noInspect, noFetch, init = true),
+          project.sync(noInspect, noFetch, init = true),
         )
         error(project, failure, declaration = false, lock = false)("file_error")(
           "code",
@@ -945,7 +903,7 @@ class ProjectSpec extends AnyWordSpec, Matchers {
           (directory / "referent").toNIO,
         )
         val project = new Project(directory.toNIO, ProjectOperation.Lock)
-        val failure = intercept[ProjectException](project.refresh(noSearch, noInspect))
+        val failure = intercept[ProjectException](project.refresh(noInspect))
         error(project, failure, declaration = false, lock = false)(
           "code",
         ).str shouldBe "INVALID_PROJECT"

@@ -3,7 +3,7 @@ package eu.neverblink.ohi.cli
 import caseapp.*
 import eu.neverblink.linkml.generator.util.JsonUtil
 import eu.neverblink.linkml.runtime.{Uri, stringify}
-import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException}
+import eu.neverblink.ohi.catalog.{CatalogClient, CatalogException, Reference}
 import eu.neverblink.ohi.cli.generated.delivery.DeliveryResult
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.{CatalogError, CatalogErrorCode, CatalogOperation}
@@ -142,6 +142,8 @@ final case class SearchOptions(
     @HelpMessage("Maximum values per facet, at least 1\nOmit to use the search service default")
     @ValueDescription("<count>")
     maxFacetValues: Option[Int] = None,
+    @HelpMessage("Search every release instead of each ontology's latest version")
+    allReleases: Boolean = false,
 ) extends HasCatalogOptions
 
 object Search extends CatalogCommand[SearchOptions] {
@@ -192,11 +194,13 @@ object Search extends CatalogCommand[SearchOptions] {
           sortBy = options.sortBy,
           facetBy = options.facetBy,
           maxFacetValues = options.maxFacetValues,
+          allReleases = options.allReleases,
         ),
       ),
       options.common.json,
       SearchOutput.width(environment.get("COLUMNS")),
       colored,
+      options.allReleases,
     )
   }
 }
@@ -212,18 +216,43 @@ private[cli] class InspectCommand extends CatalogCommand[InspectOptions] {
   override protected def commandName: String = "inspect"
   override protected def argumentName: String = "ontology reference or release URL"
 
+  // The search server's largest page. No current ontology has more releases than that. The most
+  // is 100, as of November 2026.
+  private val releasesPerPage = 250
+
   override protected def execute(
       options: InspectOptions,
       input: String,
       client: CatalogClient,
-  ): String = {
-    val publication = if OntologyReference.isUrl(input) || input.contains("://") then
-      client.inspect(input)
-    else
-      OntologyReference.resolvePublication(input, client.search, client.inspect)
-        .fold(problem => correction(problem.message), identity)
-    CatalogOutput.publication(publication, options.common.json, colored)
-  }
+  ): String =
+    if OntologyReference.isUrl(input) || input.contains("://") then
+      CatalogOutput.publication(client.inspect(input), options.common.json, colored)
+    else {
+      val (namespace, name, version) =
+        OntologyReference.parse(input).fold(problem => correction(problem.message), identity)
+      val publication = client.inspect(input)
+      if options.common.json then CatalogOutput.publication(publication, json = true)
+      else {
+        // Without a version, inspect already returned the latest version.
+        val latest =
+          if version.isEmpty then Some(publication.baseUrl.original)
+          else client.latest(s"$namespace/$name").map(_.baseUrl.original)
+        val releases = client.search(
+          SearchRequest(
+            q = "*",
+            perPage = Some(releasesPerPage),
+            filterBy = Some(Reference.filter(namespace, name)),
+            allReleases = true,
+          ),
+        ).hits.filter(hit => hit.namespace == namespace && hit.name == name)
+        CatalogOutput.publication(
+          publication,
+          json = false,
+          colored,
+          Some(CatalogOutput.Versions(latest, releases)),
+        )
+      }
+    }
 }
 
 object Inspect extends InspectCommand
@@ -285,7 +314,6 @@ private[cli] class GetCommand extends CatalogCommand[GetOptions] {
         reference(
           input,
           options.format,
-          client,
           metadata,
           declaration.map(value => ProjectFormat.toModel(value.defaultFormat)),
         )

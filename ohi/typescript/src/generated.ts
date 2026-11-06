@@ -39,7 +39,7 @@ export interface Publication {
   keywords: string[];
   /** Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics. */
   licenses: string[];
-  /** Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases. URLs must not be derived from this identifier. */
+  /** Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases. */
   name: string;
   /** Namespace qualifying the ontology name, such as w3c in w3c/prov-o. */
   namespace: string;

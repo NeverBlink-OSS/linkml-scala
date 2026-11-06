@@ -6,7 +6,7 @@ import eu.neverblink.ohi.model.{ModelJson, PublicationJson}
 import eu.neverblink.ohi.model.generated.Publication
 import eu.neverblink.ohi.model.generated.config.CatalogConfig
 import eu.neverblink.ohi.model.generated.error.*
-import eu.neverblink.ohi.model.generated.search.SearchResult
+import eu.neverblink.ohi.model.generated.search.{SearchHit, SearchResult}
 import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import java.io.{EOFException, IOException, InputStream}
 import java.net.{HttpURLConnection, SocketTimeoutException, URI, URISyntaxException, URLEncoder}
@@ -29,6 +29,10 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
           uri.getRawQuery == null && uri.getRawFragment == null,
           "search_url must not contain a query or fragment",
         )
+        require(
+          value.original.endsWith(CatalogClient.SearchPath),
+          s"search_url must end with ${CatalogClient.SearchPath}",
+        )
       }
       config.copy(
         searchUrl = config.searchUrl.orElse(
@@ -38,7 +42,9 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
         timeoutMs = Some(config.timeoutMs.getOrElse(30000)),
       )
     }
-  private val searchUrl = settings.searchUrl.map(_.original)
+  private val searchUrl = settings.searchUrl.get.original
+  private val base = searchUrl.stripSuffix(CatalogClient.SearchPath)
+  private val latestUrl = s"$base/search/collections/packages_latest/documents/search"
   private val timeoutMs = settings.timeoutMs.get
 
   def search(request: SearchRequest): SearchResult = {
@@ -46,7 +52,7 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
       page = Some(request.page.getOrElse(1)),
       perPage = Some(request.perPage.getOrElse(10)),
     )
-    val endpoint = searchUrl.get
+    val endpoint = if (request.allReleases) searchUrl else latestUrl
     val page = effective.page.get
     val perPage = effective.perPage.get
     val parameters = Seq(
@@ -66,9 +72,46 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
     }
   }
 
+  /** Returns the search hit for the latest version of `namespace/name`, or None when the catalog
+    * has no such ontology.
+    */
+  def latest(reference: String): Option[SearchHit] = {
+    val (namespace, name) = input(CatalogOperation.Search, Some(reference)) {
+      Reference.parse(reference) match {
+        case Some((namespace, name, None)) => (namespace, name)
+        case _ =>
+          throw new IllegalArgumentException("use a reference namespace/name without a version")
+      }
+    }
+    val result = search(SearchRequest(q = "*", filterBy = Some(Reference.filter(namespace, name))))
+    // Filter matching ignores case and separators, so look-alikes such as w3c/DCAT can come back.
+    result.hits.find(hit => hit.namespace == namespace && hit.name == name)
+  }
+
+  /** Fetches the publication at an absolute HTTP(S) URL, of the release `namespace/name@version`,
+    * or of the latest version of `namespace/name`.
+    */
   def inspect(baseUrl: String): Publication = {
-    val bytes = retrieve(baseUrl, CatalogOperation.Inspect, baseUrl)
-    decode(CatalogOperation.Inspect, baseUrl, CatalogErrorCode.InvalidResponse) {
+    val url = Reference.parse(baseUrl) match {
+      // References contain no whitespace, so form encoding is a valid path encoding here.
+      case Some((namespace, name, Some(version))) =>
+        Seq(namespace, name, version)
+          .map(URLEncoder.encode(_, StandardCharsets.UTF_8))
+          .mkString(s"$base/files/packages/", "/", "/")
+      case Some(_) =>
+        latest(baseUrl).getOrElse(
+          throw failure(
+            CatalogErrorCode.HttpError,
+            CatalogOperation.Inspect,
+            Some(baseUrl),
+            s"no ontology matches $baseUrl",
+            Some(404),
+          ),
+        ).baseUrl.original
+      case None => baseUrl
+    }
+    val bytes = retrieve(url, CatalogOperation.Inspect, url)
+    decode(CatalogOperation.Inspect, url, CatalogErrorCode.InvalidResponse) {
       PublicationJson.decode(utf8(bytes))
     }
   }
@@ -225,6 +268,7 @@ final class CatalogClient(config: CatalogConfig = CatalogConfig()) {
 
 private[catalog] object CatalogClient {
   private val searchCodec: LinkmlYamlCodec[TypesenseResponse] = LinkmlYamlCodec.derived
+  private val SearchPath = "/search/collections/packages/documents/search"
 
   def decodeSearch(text: String, page: Int, perPage: Int): SearchResult = {
     val response = ModelJson.decode(searchCodec, text)

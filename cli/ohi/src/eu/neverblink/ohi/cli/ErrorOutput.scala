@@ -41,7 +41,8 @@ private[cli] object ErrorOutput {
       case "HTTP_ERROR" =>
         status match {
           case Some(404) if operation == "INSPECT" =>
-            "Release not found." -> "Check the URL or find the release with 'ohi search'."
+            "Release not found." ->
+              "Check the reference or URL, or find the release with 'ohi search'."
           case Some(404) if operation == "GET" =>
             "File not found." -> "Check the file URL or inspect the release to choose an available file."
           case Some(404) =>
@@ -89,7 +90,12 @@ private[cli] object ErrorOutput {
     else if code == "TIMEOUT" then None
     else Some(message)
     val lines = Seq(heading(summaryOverride.getOrElse(summary), colored)) ++
-      url.map(field("URL", _, colored)) ++ summaryOverride.map(_ => s"Cause: $summary") ++
+      url.map { value =>
+        val label =
+          if operation == "INSPECT" && OntologyReference.parse(value).isRight then "Reference"
+          else "URL"
+        field(label, value, colored)
+      } ++ summaryOverride.map(_ => s"Cause: $summary") ++
       detail.map(value => s"Details: ${CliFormatting.clean(value)}")
     lines.mkString("\n") -> recovery
   }

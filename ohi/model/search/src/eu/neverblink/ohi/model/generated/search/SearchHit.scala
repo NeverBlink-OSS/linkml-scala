@@ -22,7 +22,7 @@ import eu.neverblink.linkml.runtime.*
   *   supplied. The list specifies neither AND nor OR combination semantics.
   * @param name
   *   Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same
-  *   ontology across releases. URLs must not be derived from this identifier.
+  *   ontology across releases.
   * @param namespace
   *   Namespace qualifying the ontology name, such as w3c in w3c/prov-o.
   * @param publishedAt
