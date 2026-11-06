@@ -14,22 +14,30 @@ sealed abstract class AliasPredicateEnum derives Stringify
 
 object AliasPredicateEnum {
 
-  /** @see
+  /** The element and the alias have identical meaning.
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("EXACT_SYNONYM") case object ExactSynonym extends AliasPredicateEnum
 
-  /** @see
+  /** The element and the alias have related meanings.
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("RELATED_SYNONYM") case object RelatedSynonym extends AliasPredicateEnum
 
-  /** @see
+  /** The element has a broader meaning than the alias.
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("BROAD_SYNONYM") case object BroadSynonym extends AliasPredicateEnum
 
-  /** @see
+  /** The element has a narrower meaning than the alias.
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("NARROW_SYNONYM") case object NarrowSynonym extends AliasPredicateEnum

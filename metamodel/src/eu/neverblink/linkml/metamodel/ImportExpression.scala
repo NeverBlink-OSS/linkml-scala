@@ -83,6 +83,12 @@ import eu.neverblink.linkml.runtime.*
   * @param inSubset
   *   Used to indicate membership of a term in a defined subset of terms used for a particular
   *   domain or application.
+  * @param importAs
+  *   Alias to use for this import
+  * @param importFrom
+  *   Source of the import expression
+  * @param importMap
+  *   Settings to use for this import
   * @see
   *   From schema: https://w3id.org/linkml/meta
   */

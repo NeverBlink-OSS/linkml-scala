@@ -108,13 +108,13 @@ id_prefixes	element	ncname	multi	spec,basic	An allowed list of prefixes for whic
 id_prefixes_are_closed	element	boolean	single	-	If true, then the id_prefixes slot is treated as being closed, and any use of an id that…
 identifier	slot_definition	boolean	single	spec,min,basic,rel	True means that the slot is the identifier slot of its class. Such a slot uniquely identi…
 identifier_pattern	match_query	string	single	spec	A regular expression that is used to obtain a set of identifiers from a source_ontology t…
-iec61360code	UnitOfMeasure	string	single	-	
+iec61360code	UnitOfMeasure	string	single	-	Associates a unit with its IEC 61360 code
 ifabsent	slot_definition	string	single	spec	function that provides a default value for the slot. * [Tt]rue -- boolean True * [Ff]alse…
 implements	element,permissible_value	uriorcurie	multi	-	An element in another schema which this element conforms to. The referenced element is no…
 implicit_prefix	type_expression,slot_expression	string	single	spec	Causes the slot value to be interpreted as a uriorcurie after prefixing with this string
-import_as	import_expression	ncname	single	-	
-import_from	import_expression	uriorcurie	single,required	-	
-import_map	import_expression	setting	multi	-	
+import_as	import_expression	ncname	single	-	Alias to use for this import
+import_from	import_expression	uriorcurie	single,required	-	Source of the import expression
+import_map	import_expression	setting	multi	-	Settings to use for this import
 imported_from	common_metadata	string	single	-	the imports entry that this element was derived from. Empty means primary source
 imports	schema_definition	uriorcurie	multi	spec,basic	A list of schemas that are to be included in this schema
 in_language	common_metadata	string	single	-	the primary language used in the sources
@@ -146,7 +146,7 @@ list_value_specification_constant	-	string	single	-	Grouping for metamodel slots
 literal_form	structured_alias	string	single,required	-	The literal lexical form of a structured alias; i.e the actual alias value.
 local_name_source	local_name	ncname	single	-	the ncname of the source of the name
 local_name_value	local_name	langstring	single,required	-	a name assigned to an element in a given ontology
-local_names	element	local_name	multi	-	
+local_names	element	local_name	multi	-	Attributed labels of an element
 locally_reflexive	slot_definition	string	single	spec	If s is locally_reflexive, then i.s=i for all instances i where s is a class slot for the…
 mapped_type	type_mapping	type_definition	single	-	type to coerce to
 mappings	common_metadata	uriorcurie	multi	-	A list of terms from different schemas or terminology systems that have comparable meanin…

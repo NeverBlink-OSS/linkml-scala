@@ -22,6 +22,8 @@ import eu.neverblink.linkml.runtime.*
   * @param hasQuantityKind
   *   Concept in a vocabulary or ontology that denotes the kind of quantity being measured, e.g.
   *   length
+  * @param iec61360Code
+  *   Associates a unit with its IEC 61360 code
   * @param symbol
   *   Name of the unit encoded as a symbol
   * @param ucumCode

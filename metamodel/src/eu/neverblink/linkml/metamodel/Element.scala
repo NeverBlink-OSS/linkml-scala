@@ -71,7 +71,9 @@ abstract class Element extends Extensible, Annotatable, CommonMetadata {
     */
   def instantiates: Seq[UriOrCurie]
 
-  /** @see
+  /** Attributed labels of an element
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   def localNames: Map[String, LocalName]

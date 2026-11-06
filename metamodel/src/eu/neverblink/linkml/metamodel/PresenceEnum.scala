@@ -8,23 +8,31 @@ import eu.neverblink.linkml.runtime.*
 /** Enumeration of conditions by which a slot value should be set
   *
   * @see
+  *   https://github.com/orgs/linkml/discussions/3813
+  * @see
   *   From schema: https://w3id.org/linkml/meta
   */
 sealed abstract class PresenceEnum derives Stringify
 
 object PresenceEnum {
 
-  /** @see
+  /** Slot value may or may not be present
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("UNCOMMITTED") case object Uncommitted extends PresenceEnum
 
-  /** @see
+  /** Slot value is present
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("PRESENT") case object Present extends PresenceEnum
 
-  /** @see
+  /** Slot value is absent
+    *
+    * @see
     *   From schema: https://w3id.org/linkml/meta
     */
   @named("ABSENT") case object Absent extends PresenceEnum

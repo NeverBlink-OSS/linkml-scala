@@ -68,6 +68,8 @@ import eu.neverblink.linkml.runtime.*
   *   Keywords or tags used to describe the element
   * @param lastUpdatedOn
   *   Time at which the element was last updated
+  * @param localNames
+  *   Attributed labels of an element
   * @param mappings
   *   A list of terms from different schemas or terminology systems that have comparable meaning.
   *   These may include terms that are precisely equivalent, broader or narrower in meaning, or
