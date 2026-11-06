@@ -1010,6 +1010,7 @@ class ShaclGeneratorSpec extends AnyWordSpec, Matchers {
           |  sh:targetClass linkml:Annotation .
           |
           |linkml:Any a sh:NodeShape;
+          |  rdfs:comment "An unconstrained type or object";
           |  sh:closed true;
           |  sh:ignoredProperties (rdf:type);
           |  sh:targetClass linkml:Any .
