@@ -117,10 +117,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     *   The content of the file, or null if the tree root is one object or is abstract
     */
   private def generateDocument(root: ClassView, options: ScalaGeneratorOptions): String = {
-    val element =
-      if (root.isTypeDesignatorUnion) className(root)
-      else if (root.isConcrete) implName(root, options)
-      else return null
+    // Checks `tree_root_as` first, so that a bad value is an error for any tree root
     val inlineType = root.treeRootInlineType(None)
     val collection = inlineType match {
       case _: InlineType.plain.type => return null
@@ -128,6 +125,10 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case _: InlineType.list.type => "Seq["
       case _ => "Map[String, "
     }
+    val element =
+      if (root.isTypeDesignatorUnion) className(root)
+      else if (root.isConcrete) implName(root, options)
+      else return null
     val sb = new java.lang.StringBuilder(128)
     sb.append("package ").append(options.`package`).append("\n\n/** ")
       .append(TreeRootDocument.description(root, inlineType)).append(" */\ntype ")

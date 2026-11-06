@@ -173,6 +173,23 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
         document("list", splitOptions) should include("type ItemDocument = Seq[ItemImpl]\n")
       }
 
+      "an unknown tree_root_as on an abstract tree root: an error" in {
+        given SchemaView = decode(
+          s"""${schemaShared}classes:
+             |  Shape:
+             |    abstract: true
+             |    tree_root: true
+             |    extensions:
+             |      tree_root_as: lists
+             |  Circle:
+             |    is_a: Shape
+             |""".stripMargin,
+        )
+        val ex = the[IllegalArgumentException] thrownBy
+          ScalaGenerator().generate(ScalaGeneratorOptions(`package` = testPkg))
+        ex.getMessage should include("'tree_root_as' extension value: 'lists'")
+      }
+
       "a class with the same name: an error" in {
         given SchemaView = decode(
           s"""${schemaShared}classes:
