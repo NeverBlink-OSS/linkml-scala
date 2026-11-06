@@ -12,8 +12,8 @@ object TreeRootDocument {
 
   /** Doc comment of the document type. */
   def description(root: ClassView, inlineType: InlineType): String = inlineType match {
-    case _: InlineType.plain.type => "A whole document: a " + root.name + "."
-    case _: InlineType.optional.type => "A whole document: a " + root.name + " or null."
+    case _: InlineType.plain.type => "A whole document: one " + root.name + "."
+    case _: InlineType.optional.type => "A whole document: one " + root.name + " or null."
     case _: InlineType.list.type => "A whole document: a list of " + root.name + "."
     case _ => "A whole document: a dict of " + root.name + " by key."
   }

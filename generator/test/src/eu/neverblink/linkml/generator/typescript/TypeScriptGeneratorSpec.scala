@@ -429,7 +429,7 @@ class TypeScriptGeneratorSpec extends AnyWordSpec, Matchers {
 
       "optional: the object or null" in {
         withTreeRootAs("optional") should include(
-          "/** A whole document: a Item or null. */\nexport type ItemDocument = Item | null;\n",
+          "/** A whole document: one Item or null. */\nexport type ItemDocument = Item | null;\n",
         )
       }
 

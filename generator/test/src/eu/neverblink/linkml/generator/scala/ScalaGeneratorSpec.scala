@@ -153,7 +153,7 @@ class ScalaGeneratorSpec extends AnyWordSpec, Matchers {
 
       "optional: an Option" in {
         document("optional") should include(
-          "/** A whole document: a Item or null. */\ntype ItemDocument = Option[Item]\n",
+          "/** A whole document: one Item or null. */\ntype ItemDocument = Option[Item]\n",
         )
       }
 
