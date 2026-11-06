@@ -26,12 +26,20 @@ output then also has a type for the whole document, named after the tree root:
 | `list`                         | `type SomeClassDocument = Seq[SomeClass]`      |
 | `compact_dict`, `simple_dict`  | `type SomeClassDocument = Map[String, SomeClass]` |
 
-It uses the class that holds the instances, such as `SomeClassImpl` when the tree root has an
-interface. Read a document with one codec:
+It uses the class that holds the instances: `SomeClassImpl` when the tree root has an
+interface, or the interface itself when its type designator picks the implementation. An
+abstract tree root that has no type designator gets no document type, as no codec can tell
+which class to read.
+
+Read and write a document with one codec:
 
 ```scala
 val codec = LinkmlYamlCodec.derived[SomeClassDocument]
 val document = codec.decode(parseYaml(text).toOption.get)
+val text2 = codec.encode(document).asYaml
 ```
 
-In the dict forms, the codec takes the `key` of each object from its dict key.
+In the dict forms, the codec takes the `key` of each object from its dict key. When writing,
+use `encode` without `skipId`: each object then keeps its key, which every dict form accepts.
+With `skipId = true`, a class with a key and one other slot is written as a bare value, which
+`compact_dict` doesn't accept.
