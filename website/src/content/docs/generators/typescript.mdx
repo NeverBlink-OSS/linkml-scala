@@ -209,3 +209,7 @@ permissible values (e.g. a dynamic enum) becomes `string`.
 
 Classes and enums get `PascalCase` names. A name that starts with a digit or is reserved in
 TypeScript gets a `_` prefix (e.g. a class `Record` becomes `_Record`).
+
+The type of a whole document is named after the tree root with `Document` at the end, such as
+`ZooDocument`. If two generated types get the same name, such as a class that is also named
+`ZooDocument`, the generator stops with an error that names both, so that you can rename one.
