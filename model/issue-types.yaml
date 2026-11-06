@@ -543,6 +543,53 @@ classes:
           ancestor. Generators whose classes inherit fields, like those for GraphQL, Scala and
           OWL, don't describe the slot or its range in the parents.
 
+  LooserSlotConstraint:
+    is_a: SchemaWarning
+    description: >-
+      An inherited slot of a class has a metaslot value that allows more values than a parent
+      has, so some data that is valid for the class is not valid for the parent. The value can
+      come from the class or from another parent, like a mixin. It is reported for `multivalued`
+      set to true when a parent has it false, and for a lower minimum or a higher maximum number
+      of values. When a slot has both `exact_cardinality` and `minimum_cardinality` or
+      `maximum_cardinality`, generators don't agree on which one counts, so both are checked.
+    slots:
+      - class_name
+    attributes:
+      slot_name:
+        range: string
+        required: true
+        title: slot name
+      metaslot:
+        range: string
+        required: true
+        title: metaslot
+        description: The name of the metaslot, like `multivalued`.
+      value:
+        range: string
+        required: true
+        title: value
+        description: The value of the metaslot in the class.
+      parent_name:
+        range: string
+        required: true
+        title: parent name
+      parent_value:
+        range: string
+        required: true
+        title: parent value
+        description: The value of the metaslot in the parent.
+    slot_usage:
+      message:
+        equals_expression: >-
+          Slot '{slot_name}' of class '{class_name}' has '{metaslot}' {value}, which allows more
+          values than {parent_value} in its parent '{parent_name}'
+      details:
+        equals_expression: >-
+          Slot '{slot_name}' of class '{class_name}' has '{metaslot}' {value}, which allows more
+          values than {parent_value} in its parent '{parent_name}'. So some data that is valid
+          for '{class_name}' is not valid for '{parent_name}'. The value can come from the class
+          or from another parent, like a mixin. A class can only narrow what it inherits.
+
   NonStandardSeparator:
     is_a: SchemaWarning
     description: |

@@ -16,6 +16,7 @@ import eu.neverblink.linkml.validation.{
   EmptyName,
   FlankingSeparator,
   IssueLocation,
+  LooserSlotConstraint,
   MissingRecommendedSlot,
   NonAsciiName,
   NonStandardSeparator,
@@ -1373,6 +1374,218 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
       sv.lintProblems.collect { case p: UnrelatedSlotRange => (p.className, p.slotName) } shouldBe
         Seq(("Car", "status"))
+    }
+
+    "warn about a class that makes an inherited single-valued slot multivalued" in {
+      val schemaYaml =
+        """id: https://example.org/labels/
+          |name: labels
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: labels
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - label
+          |      - tags
+          |      - note
+          |  Tracked:
+          |    mixin: true
+          |    slots:
+          |      - label
+          |  Child:
+          |    tree_root: true
+          |    is_a: Base
+          |    mixins:
+          |      - Tracked
+          |    slot_usage:
+          |      label:
+          |        multivalued: true
+          |      tags:
+          |        multivalued: true
+          |      note:
+          |        required: true
+          |  GrandChild:
+          |    is_a: Child
+          |slots:
+          |  label:
+          |    range: string
+          |  tags:
+          |    range: string
+          |    multivalued: true
+          |  note:
+          |    range: string
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // `tags` is multivalued in `Base` too, a required `note` narrows it, and `GrandChild`
+      // keeps what `Child` sets. Two parents with a single-valued `label` give one warning, for
+      // the first parent: mixins come before `is_a`.
+      sv.lintProblems.collect { case p: LooserSlotConstraint => p.infer() } shouldBe Seq(
+        LooserSlotConstraint(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/labels/")),
+            jsonPointer = Some("/classes/Child/slot_usage/label"),
+          ),
+          className = "Child",
+          slotName = "label",
+          metaslot = "multivalued",
+          value = "true",
+          parentName = "Tracked",
+          parentValue = "false",
+        ).infer(),
+      )
+      sv.lintProblems.collect { case p: LooserSlotConstraint => p.infer().message } shouldBe Seq(
+        Some(
+          "Slot 'label' of class 'Child' has 'multivalued' true, which allows more values than " +
+            "false in its parent 'Tracked'",
+        ),
+      )
+      // Warnings aren't validation problems
+      sv.validationProblems shouldBe empty
+    }
+
+    "warn about a class that allows fewer or more values than an inherited cardinality" in {
+      val schemaYaml =
+        """id: https://example.org/items/
+          |name: items
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: items
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - items
+          |  FewerItems:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        minimum_cardinality: 0
+          |  MoreItems:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        maximum_cardinality: 5
+          |  ExactlyTwo:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        exact_cardinality: 2
+          |  ExactlyFour:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        exact_cardinality: 4
+          |  TwoOrThree:
+          |    is_a: Base
+          |    slot_usage:
+          |      items:
+          |        minimum_cardinality: 2
+          |  Redefined:
+          |    is_a: Base
+          |    attributes:
+          |      items:
+          |        range: string
+          |        multivalued: true
+          |  Pair:
+          |    slots:
+          |      - pair
+          |    slot_usage:
+          |      pair:
+          |        exact_cardinality: 2
+          |  AtLeastOne:
+          |    is_a: Pair
+          |    slot_usage:
+          |      pair:
+          |        minimum_cardinality: 1
+          |  ExactlyOne:
+          |    is_a: ExactlyTwo
+          |    slot_usage:
+          |      items:
+          |        exact_cardinality: 1
+          |slots:
+          |  items:
+          |    range: string
+          |    multivalued: true
+          |    minimum_cardinality: 1
+          |    maximum_cardinality: 3
+          |  pair:
+          |    range: string
+          |    multivalued: true
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // `ExactlyTwo` and `TwoOrThree` stay between 1 and 3. `ExactlyFour` keeps the inherited
+      // `maximum_cardinality` of 3, which the OWL generator reads after `exact_cardinality`.
+      // `AtLeastOne` keeps the inherited `exact_cardinality` of 2 of `pair`, which the JSON
+      // Schema, SHACL and Pydantic generators read after `minimum_cardinality`.
+      sv.lintProblems.collect { case p: LooserSlotConstraint =>
+        (p.className, p.metaslot, p.value, p.parentValue)
+      } should contain theSameElementsAs Seq(
+        ("FewerItems", "minimum_cardinality", "0", "1"),
+        ("MoreItems", "maximum_cardinality", "5", "3"),
+        ("ExactlyFour", "exact_cardinality", "4", "3"),
+        ("AtLeastOne", "minimum_cardinality", "1", "2"),
+        ("ExactlyOne", "exact_cardinality", "1", "2"),
+        // An attribute replaces the slot with its limits
+        ("Redefined", "minimum_cardinality", "0", "1"),
+        ("Redefined", "maximum_cardinality", "unlimited", "3"),
+      )
+    }
+
+    "warn about a class whose parents give a slot different cardinalities" in {
+      val schemaYaml =
+        """id: https://example.org/parents/
+          |name: parents
+          |prefixes:
+          |  linkml: https://w3id.org/linkml/
+          |default_prefix: parents
+          |imports:
+          |  - linkml:types
+          |classes:
+          |  Base:
+          |    slots:
+          |      - items
+          |    slot_usage:
+          |      items:
+          |        maximum_cardinality: 2
+          |  Many:
+          |    mixin: true
+          |    slots:
+          |      - items
+          |    slot_usage:
+          |      items:
+          |        maximum_cardinality: 5
+          |  Child:
+          |    is_a: Base
+          |    mixins:
+          |      - Many
+          |slots:
+          |  items:
+          |    range: string
+          |    multivalued: true
+          |""".stripMargin
+      val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
+
+      // `Child` gets the maximum of the mixin, which allows more values than `Base`
+      sv.lintProblems.collect { case p: LooserSlotConstraint => p.infer() } shouldBe Seq(
+        LooserSlotConstraint(
+          location = IssueLocation(
+            schemaId = Some(Uri("https://example.org/parents/")),
+            jsonPointer = Some("/classes/Child"),
+          ),
+          className = "Child",
+          slotName = "items",
+          metaslot = "maximum_cardinality",
+          value = "5",
+          parentName = "Base",
+          parentValue = "2",
+        ).infer(),
+      )
     }
 
     "warn about a string ifabsent without quotes in the root schema" in {

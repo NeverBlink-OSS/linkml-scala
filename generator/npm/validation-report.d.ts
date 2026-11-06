@@ -212,6 +212,35 @@ export interface IssueLocation {
   schema_id?: string;
 }
 
+/** An inherited slot of a class has a metaslot value that allows more values than a parent has, so some data that is valid for the class is not valid for the parent. The value can come from the class or from another parent, like a mixin. It is reported for `multivalued` set to true when a parent has it false, and for a lower minimum or a higher maximum number of values. When a slot has both `exact_cardinality` and `minimum_cardinality` or `maximum_cardinality`, generators don't agree on which one counts, so both are checked. */
+export interface LooserSlotConstraint {
+  /** class name: Name of the class the issue was found in. */
+  class_name: string;
+  /** details: Longer, human-readable message describing the issue in more detail. */
+  details?: string;
+  /** issue type: The type of the issue: name of the concrete issue class (e.g. `InvalidRange`). Filled automatically with the class name on serialization, and used to recover the concrete issue type when reading a report back. */
+  issue_type: "LooserSlotConstraint";
+  /** location: The location in the schema where the issue was found. */
+  location: IssueLocation;
+  /** message: Short, human-readable message describing the issue. */
+  message?: string;
+  /** metaslot: The name of the metaslot, like `multivalued`. */
+  metaslot: string;
+  /** parent name */
+  parent_name: string;
+  /** parent value: The value of the metaslot in the parent. */
+  parent_value: string;
+  /**
+   * severity: The severity of the issue.
+   * @defaultValue "WARNING"
+   */
+  severity: IssueSeverity;
+  /** slot name */
+  slot_name: string;
+  /** value: The value of the metaslot in the class. */
+  value: string;
+}
+
 /** An element of the root schema, or the root schema itself, has no value for a slot that the LinkML metamodel marks as `recommended`, such as `description`. */
 export interface MissingRecommendedSlot {
   /** details: Longer, human-readable message describing the issue in more detail. */
@@ -466,6 +495,7 @@ export type SchemaIssue =
   | InvalidRange
   | InvalidSlotUsage
   | InvalidUriOrCurie
+  | LooserSlotConstraint
   | MissingRecommendedSlot
   | MultipleKeyOrIdSlots
   | MultipleTreeRoots
@@ -521,6 +551,7 @@ export interface SchemaValidationReport {
 export type SchemaWarning =
   | FlankingSeparator
   | InvalidSlotUsage
+  | LooserSlotConstraint
   | MissingRecommendedSlot
   | NoTreeRootClass
   | NonStandardSeparator
