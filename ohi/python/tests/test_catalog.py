@@ -15,6 +15,10 @@ from ohi.catalog import _decode_search
 from test_publication import EXAMPLES
 
 
+SEARCH_PATH = "/search/collections/packages/documents/search"
+LATEST_PATH = "/search/collections/packages_latest/documents/search"
+
+
 def search_body(urls=(), page=1, per_page=2, total=3, cutoff=False):
     return {
         "hits": [{"document": {
@@ -244,7 +248,7 @@ class CatalogTests(unittest.TestCase):
         return client
 
     def search_client(self):
-        return self.client(CatalogConfig(search_url=self.base + "/search", query_by="name,description"))
+        return self.client(CatalogConfig(search_url=self.base + SEARCH_PATH, query_by="name,description"))
 
     def assert_failure(self, action, code, operation, url, status=None):
         with self.assertRaises(CatalogException) as caught:
@@ -266,7 +270,7 @@ class CatalogTests(unittest.TestCase):
             result = client.search(SearchRequest(q="*"))
         request = opened.call_args.args[0]
         self.assertEqual(urlsplit(request.full_url)._replace(query="").geturl(),
-                         "https://api.ohi.dev/search/collections/packages/documents/search")
+                         "https://api.ohi.dev/search/collections/packages_latest/documents/search")
         self.assertEqual(parse_qs(urlsplit(request.full_url).query),
                          {"q": ["*"], "query_by": ["title,name,description,namespace"],
                           "page": ["1"], "per_page": ["10"]})
@@ -279,7 +283,8 @@ class CatalogTests(unittest.TestCase):
         for settings in ({"search_url": self.base}, {"query_by": "name"}, {"timeout_ms": 0},
                          {"timeout_ms": 2147483648},
                          {"search_url": self.base + "?q=x", "query_by": "name"},
-                         {"search_url": self.base + "#x", "query_by": "name"}):
+                         {"search_url": self.base + "#x", "query_by": "name"},
+                         {"search_url": self.base + "/search", "query_by": "name"}):
             with self.subTest(settings=settings):
                 config = CatalogConfig.model_construct(**settings)
                 self.assert_failure(lambda: CatalogClient(config), "INVALID_INPUT", "CONFIGURE",
@@ -287,15 +292,15 @@ class CatalogTests(unittest.TestCase):
                 self.assertEqual(self.server.requests, [])
 
     def test_constructor_copies_configuration_and_search_uses_defaults(self):
-        self.route("/search", json.dumps(search_body(per_page=10)).encode())
-        config = CatalogConfig(search_url=self.base + "/search", query_by="name")
+        self.route(LATEST_PATH, json.dumps(search_body(per_page=10)).encode())
+        config = CatalogConfig(search_url=self.base + SEARCH_PATH, query_by="name")
         client = self.client(config)
         config.search_url = self.base + "/changed"
         config.query_by = "changed"
         result = client.search(SearchRequest(q="*"))
         self.assertEqual((result.page, result.per_page), (1, 10))
         path, encoding = self.server.requests[0]
-        self.assertEqual(urlsplit(path).path, "/search")
+        self.assertEqual(urlsplit(path).path, LATEST_PATH)
         self.assertEqual(parse_qs(urlsplit(path).query),
                          {"q": ["*"], "query_by": ["name"], "page": ["1"], "per_page": ["10"]})
         self.assertEqual(encoding, "identity")
@@ -310,26 +315,49 @@ class CatalogTests(unittest.TestCase):
                          {"q": "*", "max_facet_values": "30"}, {"q": "*", "max_facet_values": True}):
             with self.subTest(settings=settings):
                 self.assert_failure(lambda: client.search(SearchRequest.model_construct(**settings)),
-                                    "INVALID_INPUT", "SEARCH", self.base + "/search")
+                                    "INVALID_INPUT", "SEARCH", self.base + LATEST_PATH)
                 self.assertEqual(self.server.requests, [])
+
+    def test_search_uses_latest_endpoint_unless_all_releases_and_never_sends_the_option(self):
+        self.route(LATEST_PATH, json.dumps(search_body(per_page=10)).encode())
+        self.route(SEARCH_PATH, json.dumps(search_body(per_page=10)).encode())
+        client = self.search_client()
+        client.search(SearchRequest(q="*"))
+        client.search(SearchRequest(q="*", all_releases=False))
+        client.search(SearchRequest(q="*", all_releases=True))
+        self.assertEqual([urlsplit(path).path for path, _ in self.server.requests],
+                         [LATEST_PATH, LATEST_PATH, SEARCH_PATH])
+        for path, _ in self.server.requests:
+            self.assertEqual(parse_qs(urlsplit(path).query),
+                             {"q": ["*"], "query_by": ["name,description"], "page": ["1"], "per_page": ["10"]})
+
+    def test_prefixed_search_url_derives_latest_search_and_release_urls(self):
+        self.route("/hub" + LATEST_PATH, json.dumps(search_body(per_page=10)).encode())
+        self.route("/hub/files/packages/w3c/dcat/2/", (EXAMPLES / "sensors-package.json").read_bytes())
+        client = self.client(CatalogConfig(search_url=self.base + "/hub" + SEARCH_PATH, query_by="name"))
+        client.search(SearchRequest(q="*"))
+        client.inspect("w3c/dcat@2")
+        self.assertEqual([urlsplit(path).path for path, _ in self.server.requests],
+                         ["/hub/search/collections/packages_latest/documents/search",
+                          "/hub/files/packages/w3c/dcat/2/"])
 
     def test_accepts_page_size_limits(self):
         for size in (1, 250):
             with self.subTest(size=size):
-                self.route("/search", json.dumps(search_body(per_page=size)).encode())
+                self.route(LATEST_PATH, json.dumps(search_body(per_page=size)).encode())
                 result = self.search_client().search(SearchRequest(q="*", per_page=size))
                 self.assertEqual(result.per_page, size)
                 self.assertEqual(parse_qs(urlsplit(self.server.requests[-1][0]).query)["per_page"], [str(size)])
 
     def test_search_forwards_facet_limits(self):
-        self.route("/search", json.dumps(search_body(per_page=10)).encode())
+        self.route(LATEST_PATH, json.dumps(search_body(per_page=10)).encode())
         self.search_client().search(SearchRequest.model_construct(q="*", max_facet_values=30))
         self.assertEqual(parse_qs(urlsplit(self.server.requests[-1][0]).query)["max_facet_values"], ["30"])
 
     def test_search_encodes_parameters_once_and_preserves_order_and_duplicates(self):
         data = search_body(["urn:b", "urn:a", "urn:b"], page=2, per_page=3)
         data["facet_counts"] = [{"field_name": "formats", "counts": [{"value": "owl-turtle", "count": 2}]}]
-        self.route("/search", json.dumps(data).encode())
+        self.route(LATEST_PATH, json.dumps(data).encode())
         result = self.search_client().search(SearchRequest(
             q="温度 + & sensors", page=2, per_page=3,
             filter_by="namespace:=[`a+b`,`c&d`]", sort_by="published_at:desc,name:asc",
@@ -356,6 +384,41 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual((result.name, result.title, result.publisher), ("sensors", "Sensors", "Example Project"))
         self.assertEqual([d.base_url for d in result.dependencies], ["https://example.org/packages/units/2.0.0/"])
         self.assertEqual(self.server.requests, [("/opaque?token=a%2Bb", "identity")])
+
+    def test_inspect_with_version_gets_the_encoded_release_path_without_search(self):
+        path = "/files/packages/team%3Aa/model%25x/v1.0%C3%A9/"
+        self.route(path, (EXAMPLES / "sensors-package.json").read_bytes())
+        self.search_client().inspect("team:a/model%x@v1.0é")
+        self.assertEqual(self.server.requests, [(path, "identity")])
+
+    def test_inspect_without_version_gets_the_latest_version_hit_with_the_exact_namespace_and_name(self):
+        data = search_body([self.base + "/a/", self.base + "/b/"], per_page=10, total=2)
+        data["hits"][0]["document"]["name"] = "SENSORS"
+        self.route(LATEST_PATH, json.dumps(data).encode())
+        self.route("/b/", (EXAMPLES / "sensors-package.json").read_bytes())
+        self.search_client().inspect("example/sensors")
+        (search, _), release = self.server.requests
+        self.assertEqual(urlsplit(search).path, LATEST_PATH)
+        self.assertEqual(parse_qs(urlsplit(search).query), {
+            "q": ["*"], "query_by": ["name,description"], "page": ["1"], "per_page": ["10"],
+            "filter_by": ["namespace:=`example` && name:=`sensors`"],
+        })
+        self.assertEqual(release, ("/b/", "identity"))
+
+    def test_inspect_without_a_latest_version_hit_of_the_exact_namespace_and_name_is_http_404(self):
+        self.route(LATEST_PATH, json.dumps(search_body(per_page=10, total=0)).encode())
+        self.assert_failure(lambda: self.search_client().inspect("w3c/nope"),
+                            "HTTP_ERROR", "INSPECT", "w3c/nope", 404)
+        self.assertEqual([urlsplit(path).path for path, _ in self.server.requests], [LATEST_PATH])
+
+    def test_inspect_rejects_a_target_that_is_neither_a_url_nor_a_reference_without_a_request(self):
+        self.assert_failure(lambda: self.search_client().inspect("w3c"), "INVALID_INPUT", "INSPECT", "w3c")
+        self.assertEqual(self.server.requests, [])
+
+    def test_latest_rejects_a_version_without_a_request(self):
+        self.assert_failure(lambda: self.search_client().latest("w3c/dcat@2"),
+                            "INVALID_INPUT", "SEARCH", "w3c/dcat@2")
+        self.assertEqual(self.server.requests, [])
 
     def test_get_returns_original_binary_bytes_without_sdk_caching(self):
         url = self.route("/file", b"\x00\xff\x80\n")
@@ -393,9 +456,9 @@ class CatalogTests(unittest.TestCase):
                 self.assertNotIn("response_json", error.model_dump())
 
     def test_malformed_search_body_is_invalid_response(self):
-        self.route("/search", b"{")
+        self.route(LATEST_PATH, b"{")
         self.assert_failure(lambda: self.search_client().search(SearchRequest(q="*")),
-                            "INVALID_RESPONSE", "SEARCH", self.base + "/search", 200)
+                            "INVALID_RESPONSE", "SEARCH", self.base + LATEST_PATH, 200)
 
     def test_invalid_publication_is_invalid_response(self):
         url = self.route("/publication", b"{}")

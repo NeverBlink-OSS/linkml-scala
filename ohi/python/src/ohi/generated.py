@@ -114,7 +114,7 @@ class Publication(LinkMLModel):
     licenses: list[Annotated[str, Field(pattern=r"^[\s\S]*\S")]]
     """Reported license names or standard identifiers such as Apache-2.0. Empty means no information supplied. The list specifies neither AND nor OR combination semantics."""
     name: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
-    """Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases. URLs must not be derived from this identifier."""
+    """Short catalog identifier, qualified by namespace. The namespace/name pair identifies the same ontology across releases."""
     namespace: Annotated[str, Field(pattern=r"^[\s\S]*\S")]
     """Namespace qualifying the ontology name, such as w3c in w3c/prov-o."""
     namespace_iri: str | None = None

@@ -2,11 +2,11 @@
 
 ## Search results
 
-Search defaults to ohi.dev. To use another catalog, supply both its search endpoint and indexed fields. Supplying only one is an error. Each search returns one page in backend order. Request further pages explicitly. `search_cutoff: true` means hits or the total may be incomplete. An empty successful page differs from a failed request. `ohi search` does not rerank results or traverse pages automatically.
+Search defaults to ohi.dev and returns one hit per ontology, at its latest version. `--all-releases` searches every release. To use another catalog, supply both its search endpoint and indexed fields. Supplying only one is an error. Each search returns one page in backend order. Request further pages explicitly. `search_cutoff: true` means hits or the total may be incomplete. An empty successful page differs from a failed request. `ohi search` does not rerank results or traverse pages automatically.
 
 ## Publication metadata
 
-`inspect` accepts a publication URL or an ohi.dev reference, `namespace/name[@version]`. Without `@version`, it selects the most recently published release. For URL input, check that the returned `base_url` equals it before choosing an artifact. Retrieve an advertised artifact to read its definitions. Check the artifact's format, origin, roots and reuse terms before selecting its URL. A format combines language and syntax, such as `owl-turtle`.
+`inspect` accepts a publication URL or an ohi.dev reference, `namespace/name[@version]`. Without `@version`, it selects the latest version. For URL input, check that the returned `base_url` equals it before choosing an artifact. Retrieve an advertised artifact to read its definitions. Check the artifact's format, origin, roots and reuse terms before selecting its URL. A format combines language and syntax, such as `owl-turtle`.
 
 Retrieval supplies a prepared published file. To convert local edits, use supported local engine tools. A conversion can omit constraints that its target format cannot express.
 
@@ -14,8 +14,7 @@ Retrieval supplies a prepared published file. To convert local edits, use suppor
 
 `get` and `add` resolve `namespace/name[@version]` through ohi.dev with an optional `--format`.
 Use exact namespace, name and version values from search.
-Omitting the version selects the release most recently
-published to the Hub. Supported formats are
+Omitting the version selects the latest version. Supported formats are
 `owl-turtle`, `owl-rdfxml`, `rdfs-turtle`, `linkml-yaml` and `ossie-yaml`.
 
 Without `--format`, ohi reads `default_format` from `ohi.yaml`, or uses `linkml-yaml` without a declaration.
@@ -24,8 +23,8 @@ An explicit `--format` requires that format without changing the project default
 
 Exact URL forms are `get <Hub-file-url>` and `add <base-url> --artifact <file-url>`, without
 `--format`. URL-based `add` requires the catalog to resolve the publication's complete reference
-and file format to the supplied exact URL pair. Use standalone `get` for unindexed publications or
-files that cannot be selected uniquely by reference and format.
+and file format to the supplied exact URL pair. Use standalone `get` for files that cannot be
+selected uniquely by reference and format.
 
 A Hub file URL is checked against its owning publication's metadata. The CLI verifies the advertised
 SHA-256 before saving. Matching existing regular files are verified and reused without downloading.

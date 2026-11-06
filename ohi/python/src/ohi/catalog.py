@@ -1,17 +1,21 @@
 """Retrieve one catalog page, publication or file through native HTTP."""
 
 import json
+import re
 from http.client import HTTPException
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import quote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from .generated import Publication
 from .generated_config import CatalogConfig
 from .generated_error import CatalogError
-from .generated_search import SearchResult
+from .generated_search import SearchHit, SearchResult
 from .generated_search_request import SearchRequest
 from .publication import decode_publication
+
+_SEARCH_PATH = "/search/collections/packages/documents/search"
+_REFERENCE = re.compile(r"([^/@\s`]+)/([^/@\s`]+)(?:@([^/@\s+`]+))?")
 
 
 class CatalogException(Exception):
@@ -39,6 +43,8 @@ def _validate_url(url: str, operation, search=False):
         parsed.port
         if search and ("?" in url or "#" in url):
             raise ValueError("search_url must not contain a query or fragment")
+        if search and not url.endswith(_SEARCH_PATH):
+            raise ValueError(f"search_url must end with {_SEARCH_PATH}")
     except ValueError as error:
         raise _failure("INVALID_INPUT", operation, str(error), url) from error
 
@@ -89,16 +95,20 @@ class CatalogClient:
             _validate_url(url, "CONFIGURE", search=True)
         self._search_url = (url if url is not None else
                             "https://api.ohi.dev/search/collections/packages/documents/search")
+        base = self._search_url.removesuffix(_SEARCH_PATH)
+        self._latest_url = base + "/search/collections/packages_latest/documents/search"
+        self._files_url = base + "/files/packages/"
         self._query_by = data.get("query_by", "title,name,description,namespace")
         self._timeout = data.get("timeout_ms", 30000) / 1000
         self._opener = build_opener(_NoRedirect())
 
     def search(self, request: SearchRequest) -> SearchResult:
-        url = self._search_url
+        url = self._search_url if request.all_releases else self._latest_url
         try:
             params = SearchRequest.model_validate(request.model_dump(warnings=False)).model_dump()
         except ValueError as error:
             raise _failure("INVALID_INPUT", "SEARCH", str(error), url) from error
+        params.pop("all_releases", None)
         params.setdefault("page", 1)
         params.setdefault("per_page", 10)
         params["query_by"] = self._query_by
@@ -108,13 +118,41 @@ class CatalogClient:
         except ValueError as error:
             raise _failure("INVALID_RESPONSE", "SEARCH", str(error), url, 200) from error
 
+    def latest(self, reference: str) -> SearchHit | None:
+        """Return the search hit for the latest version of namespace/name, or None when the catalog
+        has no such ontology.
+        """
+        match = _REFERENCE.fullmatch(reference)
+        if match is None or match[3] is not None:
+            raise _failure("INVALID_INPUT", "SEARCH",
+                           "reference must be namespace/name without a version", reference)
+        namespace, name, _ = match.groups()
+        filter_by = f"namespace:=`{namespace}` && name:=`{name}`"
+        result = self.search(SearchRequest(q="*", filter_by=filter_by))
+        # The := filter ignores case and separators, so look-alikes such as w3c/DCAT can match.
+        return next((hit for hit in result.hits
+                     if (hit.namespace, hit.name) == (namespace, name)), None)
+
     def inspect(self, base_url: str) -> Publication:
-        _validate_url(base_url, "INSPECT")
-        body = self._get(base_url, "INSPECT", base_url)
+        """Return the publication at an absolute HTTP(S) URL, of the release namespace/name@version,
+        or of the latest version of namespace/name.
+        """
+        url = base_url
+        if (match := _REFERENCE.fullmatch(base_url)) is not None:
+            if match[3] is not None:
+                path = "/".join(quote(part, safe="") for part in match.groups())
+                url = self._files_url + path + "/"
+            elif (hit := self.latest(base_url)) is not None:
+                url = hit.base_url
+            else:
+                raise _failure("HTTP_ERROR", "INSPECT", f"no ontology matches {base_url}",
+                               base_url, 404)
+        _validate_url(url, "INSPECT")
+        body = self._get(url, "INSPECT", url)
         try:
             return decode_publication(body.decode("utf-8"))
         except ValueError as error:
-            raise _failure("INVALID_RESPONSE", "INSPECT", str(error), base_url, 200) from error
+            raise _failure("INVALID_RESPONSE", "INSPECT", str(error), url, 200) from error
 
     def get(self, url: str) -> bytes:
         _validate_url(url, "GET")

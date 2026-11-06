@@ -3,6 +3,8 @@
 
 /** Query and options for retrieving one page of ontology publications. */
 export interface SearchRequest {
+  /** Search every release instead of each ontology's latest version. */
+  all_releases?: boolean;
   /** Typesense facet expression over facetable fields. */
   facet_by?: string;
   /** Typesense filter expression over filterable fields. */

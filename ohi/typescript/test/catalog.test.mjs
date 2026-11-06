@@ -5,6 +5,9 @@ import { once } from "node:events";
 import { CatalogClient, CatalogException } from "@neverblink/ohi";
 import { binary, page, publication, server } from "./server.mjs";
 
+const searchPath = "/search/collections/packages/documents/search";
+const latestPath = "/search/collections/packages_latest/documents/search";
+
 function failure(code, operation, url, status) {
   return (error) => {
     assert.ok(error instanceof CatalogException);
@@ -19,6 +22,8 @@ function failure(code, operation, url, status) {
   };
 }
 
+const catalog = (fixture) => new CatalogClient({ search_url: `${fixture.url}${searchPath}`, query_by: "name" });
+
 test("omitted search settings use production catalog and preserve timeout", async (t) => {
   const fetched = t.mock.method(globalThis, "fetch", async () =>
     new Response(JSON.stringify(page([], 1, 10, 0))));
@@ -26,7 +31,7 @@ test("omitted search settings use production catalog and preserve timeout", asyn
   const result = await new CatalogClient({ timeout_ms: 275 }).search({ q: "*" });
   assert.equal(fetched.mock.calls.length, 1);
   const url = fetched.mock.calls[0].arguments[0];
-  assert.equal(`${url.origin}${url.pathname}`, "https://api.ohi.dev/search/collections/packages/documents/search");
+  assert.equal(`${url.origin}${url.pathname}`, "https://api.ohi.dev/search/collections/packages_latest/documents/search");
   assert.deepEqual(Object.fromEntries(url.searchParams), {
     q: "*", query_by: "title,name,description,namespace", page: "1", per_page: "10",
   });
@@ -40,6 +45,7 @@ for (const [name, config] of Object.entries({
   "endpoint query": { search_url: "http://localhost/search?q=a", query_by: "name" },
   "endpoint fragment": { search_url: "http://localhost/search#x", query_by: "name" },
   "empty endpoint query": { search_url: "http://localhost/search?", query_by: "name" },
+  "endpoint without the packages path": { search_url: "http://localhost/search", query_by: "name" },
 })) {
   test(`configuration rejects ${name}`, () => {
     assert.throws(() => new CatalogClient(config), failure("INVALID_INPUT", "CONFIGURE", config.search_url));
@@ -58,7 +64,7 @@ test("search encodes original values once and preserves complete summaries in ba
   wire.hits[0].document.keywords = ["sensors", "observations"];
   wire.hits[1].document.keywords = [];
   const fixture = await server(t, (_, res) => res.end(JSON.stringify(wire)));
-  const config = { search_url: `${fixture.url}/collections/packages/search`, query_by: "name,description" };
+  const config = { search_url: `${fixture.url}${searchPath}`, query_by: "name,description" };
   const client = new CatalogClient(config);
   config.search_url = "http://invalid.invalid/";
   config.query_by = "mutated";
@@ -77,7 +83,7 @@ test("search encodes original values once and preserves complete summaries in ba
   });
   assert.equal(fixture.requests.length, 1);
   const sent = new URL(fixture.requests[0].url, fixture.url);
-  assert.equal(sent.pathname, "/collections/packages/search");
+  assert.equal(sent.pathname, latestPath);
   assert.deepEqual(Object.fromEntries(sent.searchParams), { q: " µ+& sensors ", query_by: "name,description",
     page: "2", per_page: "3", filter_by: " namespace:=`a+b&c` ", sort_by: "published_at:desc,name:asc",
     facet_by: " licenses,µ+&formats ", max_facet_values: "30" });
@@ -93,7 +99,7 @@ for (const [name, request, expectedPage, expectedSize, hits] of [
 ]) {
   test(`search accepts ${name}`, async (t) => {
     const fixture = await server(t, (_, res) => res.end(JSON.stringify(page(hits, expectedPage, expectedSize))));
-    const result = await new CatalogClient({ search_url: fixture.url, query_by: "name" }).search(request);
+    const result = await catalog(fixture).search(request);
     assert.deepEqual(result.hits.map((hit) => hit.base_url), hits);
     assert.equal(result.total, 3);
     assert.equal(result.page, expectedPage);
@@ -108,7 +114,7 @@ for (const [name, request, expectedPage, expectedSize, hits] of [
 
 test("search accepts an early cutoff with a short capped page", async (t) => {
   const fixture = await server(t, (_, res) => res.end(JSON.stringify({ ...page([], 1, 10, 100), search_cutoff: true })));
-  const result = await new CatalogClient({ search_url: fixture.url, query_by: "name" }).search({ q: "*" });
+  const result = await catalog(fixture).search({ q: "*" });
   assert.deepEqual(result, { hits: [], page: 1, per_page: 10, total: 100, search_cutoff: true });
   assert.equal(fixture.requests.length, 1);
 });
@@ -122,7 +128,7 @@ test("search preserves ordered facet values and safe counts while discarding nes
     { field_name: "formats", counts: [], stats: {} },
   ] };
   const fixture = await server(t, (_, res) => res.end(JSON.stringify(wire)));
-  const result = await new CatalogClient({ search_url: fixture.url, query_by: "name" }).search({ q: "*" });
+  const result = await catalog(fixture).search({ q: "*" });
   assert.deepEqual(result.facet_counts, [
     { field_name: "licenses", counts: [{ value: "MIT", count: 0 }, { value: "Apache-2.0", count: 9007199254740991 }] },
     { field_name: "formats", counts: [] },
@@ -131,7 +137,7 @@ test("search preserves ordered facet values and safe counts while discarding nes
 
 test("search preserves an explicitly empty facet list", async (t) => {
   const fixture = await server(t, (_, res) => res.end(JSON.stringify({ ...page(), facet_counts: [] })));
-  const result = await new CatalogClient({ search_url: fixture.url, query_by: "name" }).search({ q: "*" });
+  const result = await catalog(fixture).search({ q: "*" });
   assert.deepEqual(result.facet_counts, []);
 });
 
@@ -151,10 +157,33 @@ for (const [name, mutate] of Object.entries({
     const wire = page(["https://example.org/a"], 1, 1);
     mutate(wire);
     const fixture = await server(t, (_, res) => res.end(JSON.stringify(wire)));
-    await assert.rejects(new CatalogClient({ search_url: fixture.url, query_by: "name" }).search({ q: "*", per_page: 1 }),
-      failure("INVALID_RESPONSE", "SEARCH", fixture.url, 200));
+    await assert.rejects(catalog(fixture).search({ q: "*", per_page: 1 }),
+      failure("INVALID_RESPONSE", "SEARCH", `${fixture.url}${latestPath}`, 200));
   });
 }
+
+test("search sends all_releases true to search_url and otherwise to the latest endpoint, never as a parameter", async (t) => {
+  const fixture = await server(t, (_, res) => res.end(JSON.stringify(page())));
+  const client = catalog(fixture);
+  await client.search({ q: "*" });
+  await client.search({ q: "*", all_releases: false });
+  await client.search({ q: "*", all_releases: true });
+  const sent = fixture.requests.map((req) => new URL(req.url, fixture.url));
+  assert.deepEqual(sent.map((url) => url.pathname), [latestPath, latestPath, searchPath]);
+  for (const url of sent) {
+    assert.deepEqual(Object.fromEntries(url.searchParams), { q: "*", query_by: "name", page: "1", per_page: "10" });
+  }
+});
+
+test("a search_url under a path prefix keeps the prefix for the latest endpoint and release URLs", async (t) => {
+  const fixture = await server(t, (req, res) =>
+    res.end(req.url.startsWith("/hub/search/") ? JSON.stringify(page()) : publication));
+  const client = new CatalogClient({ search_url: `${fixture.url}/hub/search/collections/packages/documents/search`, query_by: "name" });
+  await client.search({ q: "*" });
+  await client.inspect("w3c/dcat@2");
+  assert.deepEqual(fixture.requests.map((req) => new URL(req.url, fixture.url).pathname),
+    ["/hub/search/collections/packages_latest/documents/search", "/hub/files/packages/w3c/dcat/2/"]);
+});
 
 test("inspect fetches the exact supplied path and query without following metadata references", async (t) => {
   const fixture = await server(t, (_, res) => res.end(publication));
@@ -163,6 +192,52 @@ test("inspect fetches the exact supplied path and query without following metada
   assert.equal(result.artifacts[0].size_bytes, 42);
   assert.deepEqual(result.dependencies, [{ base_url: "https://example.org/packages/units/2.0.0/" }]);
   assert.deepEqual(fixture.requests.map((req) => req.url), ["/opaque?signature=a%2Bb"]);
+});
+
+test("inspect of a versioned reference sends one GET of the percent-encoded release URL", async (t) => {
+  const fixture = await server(t, (_, res) => res.end(publication));
+  await catalog(fixture).inspect("team:a/model%x@v1.0é");
+  assert.deepEqual(fixture.requests.map((req) => req.url), ["/files/packages/team%3Aa/model%25x/v1.0%C3%A9/"]);
+});
+
+test("inspect of an unversioned reference fetches the latest-version hit with the exact namespace and name, skipping look-alikes", async (t) => {
+  const fixture = await server(t, (req, res) => {
+    if (!req.url.startsWith(latestPath)) return res.end(publication);
+    const wire = page([`${fixture.url}/a/`, `${fixture.url}/b/`], 1, 10, 2);
+    wire.hits[0].document.name = "SENSORS";
+    res.end(JSON.stringify(wire));
+  });
+  await catalog(fixture).inspect("example/sensors");
+  const [search, ...gets] = fixture.requests.map((req) => new URL(req.url, fixture.url));
+  assert.equal(search.pathname, latestPath);
+  assert.deepEqual(Object.fromEntries(search.searchParams),
+    { q: "*", query_by: "name", page: "1", per_page: "10", filter_by: "namespace:=`example` && name:=`sensors`" });
+  assert.deepEqual(gets.map((url) => url.pathname), ["/b/"]);
+});
+
+test("inspect of an unversioned reference without a latest-version hit of the exact namespace and name reports HTTP 404 without a GET", async (t) => {
+  const fixture = await server(t, (_, res) => res.end(JSON.stringify(page([], 1, 10, 0))));
+  await assert.rejects(catalog(fixture).inspect("w3c/nope"), failure("HTTP_ERROR", "INSPECT", "w3c/nope", 404));
+  assert.deepEqual(fixture.requests.map((req) => new URL(req.url, fixture.url).pathname), [latestPath]);
+});
+
+test("inspect rejects a target that is neither a URL nor a reference without a request", async (t) => {
+  const fetched = t.mock.method(globalThis, "fetch", async () => new Response("{}"));
+  await assert.rejects(new CatalogClient().inspect("w3c"), failure("INVALID_INPUT", "INSPECT", "w3c"));
+  assert.equal(fetched.mock.calls.length, 0);
+});
+
+test("inspect rejects http:/host with a trailing tab, which the reference grammar refuses and the URL parser would repair, without a request", async (t) => {
+  const fixture = await server(t, (_, res) => res.end(publication));
+  const target = `${fixture.url.replace("http://", "http:/")}\t`;
+  await assert.rejects(new CatalogClient().inspect(target), failure("INVALID_INPUT", "INSPECT", target));
+  assert.deepEqual(fixture.requests, []);
+});
+
+test("latest rejects a versioned reference without a request", async (t) => {
+  const fetched = t.mock.method(globalThis, "fetch", async () => new Response("{}"));
+  await assert.rejects(new CatalogClient().latest("w3c/dcat@2"), failure("INVALID_INPUT", "SEARCH", "w3c/dcat@2"));
+  assert.equal(fetched.mock.calls.length, 0);
 });
 
 test("get returns complete binary bytes and repeats an explicit request", async (t) => {
@@ -213,18 +288,24 @@ for (const body of ["{", "[]"]) {
   });
 }
 
-for (const operation of ["SEARCH", "INSPECT"]) {
-  const wire = operation === "SEARCH" ? JSON.stringify(page(["https://example.org/a"])) : publication;
-  const invalidUtf8 = Buffer.from(wire);
-  invalidUtf8[invalidUtf8.indexOf("Sensors", invalidUtf8.indexOf('"title"'))] = 0xff;
-  for (const [name, bytes] of [["malformed JSON", Buffer.from("{")], ["invalid UTF-8", invalidUtf8]]) {
-    test(`${operation} categorizes ${name}`, async (t) => {
-      const fixture = await server(t, (_, res) => res.end(bytes));
-      const client = new CatalogClient({ search_url: fixture.url, query_by: "name" });
-      await assert.rejects(operation === "SEARCH" ? client.search({ q: "*" }) : client.inspect(fixture.url),
-        failure("INVALID_RESPONSE", operation, fixture.url, 200));
-    });
-  }
+function invalidUtf8(wire) {
+  const bytes = Buffer.from(wire);
+  bytes[bytes.indexOf("Sensors", bytes.indexOf('"title"'))] = 0xff;
+  return bytes;
+}
+
+for (const [name, bytes] of [["malformed JSON", Buffer.from("{")], ["invalid UTF-8", invalidUtf8(JSON.stringify(page(["https://example.org/a"])))]]) {
+  test(`SEARCH categorizes ${name}`, async (t) => {
+    const fixture = await server(t, (_, res) => res.end(bytes));
+    await assert.rejects(catalog(fixture).search({ q: "*" }), failure("INVALID_RESPONSE", "SEARCH", `${fixture.url}${latestPath}`, 200));
+  });
+}
+
+for (const [name, bytes] of [["malformed JSON", Buffer.from("{")], ["invalid UTF-8", invalidUtf8(publication)]]) {
+  test(`INSPECT categorizes ${name}`, async (t) => {
+    const fixture = await server(t, (_, res) => res.end(bytes));
+    await assert.rejects(catalog(fixture).inspect(fixture.url), failure("INVALID_RESPONSE", "INSPECT", fixture.url, 200));
+  });
 }
 
 test("inspect rejects metadata the publication decoder rejects", async (t) => {

@@ -30,7 +30,7 @@ slots:
     pattern: ^[\s\S]*\S
   name:
     description: Short catalog identifier, qualified by namespace. The namespace/name pair identifies
-      the same ontology across releases. URLs must not be derived from this identifier.
+      the same ontology across releases.
     range: string
     required: true
     pattern: ^[\s\S]*\S

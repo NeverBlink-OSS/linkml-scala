@@ -4,7 +4,6 @@ import caseapp.*
 import caseapp.core.Error
 import eu.neverblink.linkml.cli.BaseCommand
 import eu.neverblink.linkml.runtime.stringify
-import eu.neverblink.ohi.catalog.CatalogClient
 import eu.neverblink.ohi.model.generated.{Artifact, Format, Publication}
 
 /** ohi help and focused corrections, without changing engine commands or their diagnostics. */
@@ -93,11 +92,10 @@ abstract class OhiCommand[T: {Parser, Help}] extends BaseCommand[T] {
   protected def reference(
       input: String,
       format: Option[String],
-      client: CatalogClient,
       inspect: String => Publication,
       preferredFormat: => Option[Format],
   ): (Publication, Artifact) = {
-    OntologyReference.resolve(input, format, client.search, inspect, preferredFormat).fold(
+    OntologyReference.resolve(input, format, inspect, preferredFormat).fold(
       {
         case _: OntologyReference.Problem.InvalidFormat =>
           formatCorrection(format.get)

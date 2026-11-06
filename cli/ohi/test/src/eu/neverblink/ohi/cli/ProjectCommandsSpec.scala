@@ -15,6 +15,8 @@ import org.virtuslab.yaml.parseYaml
 import scala.jdk.CollectionConverters.*
 
 class ProjectCommandsSpec extends AnyWordSpec, Matchers {
+  private val searchPath = "/search/collections/packages/documents/search"
+  private val latestPath = "/search/collections/packages_latest/documents/search"
 
   private def json(text: String): ujson.Value = ujson.read(text)
 
@@ -79,24 +81,17 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
     }"""
   }
 
-  private def searchResponse(
-      baseUrl: String,
-      name: String = "example",
-      others: Seq[(String, String)] = Seq.empty,
-  ): String = {
-    val hits = ((baseUrl -> name) +: others).map { (url, ontology) =>
-      s"""{"document":{
-      "base_url":"$url","namespace":"test","name":"$ontology","version":"1",
-      "title":"Example ontology","description":"Synthetic command metadata",
-      "published_at":"2026-10-15T00:00:00Z","licenses":[],"formats":["owl-turtle"]
-    }}"""
-    }.mkString(",")
-    s"""{"found":${others.size + 1},"page":1,"request_params":{"per_page":250},
-      "search_cutoff":false,"hits":[$hits]}"""
-  }
+  // The latest search answers test/example@1 at `baseUrl`.
+  private def searchResponse(baseUrl: String): String =
+    s"""{"found":1,"page":1,"request_params":{"per_page":10},"search_cutoff":false,"hits":[
+      {"document":{
+        "base_url":"$baseUrl","namespace":"test","name":"example","version":"1",
+        "title":"Example ontology","description":"Synthetic command metadata",
+        "published_at":"2026-10-15T00:00:00Z","licenses":[],"formats":["owl-turtle"]
+      }}]}"""
 
   private def catalog(base: String): CatalogClient = new CatalogClient(
-    CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name")),
+    CatalogConfig(searchUrl = Some(Uri(base + searchPath)), queryBy = Some("name")),
   )
 
   private def runAdd(base: String, args: String*): (String, String, Int) = {
@@ -264,7 +259,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.makeDir(project)
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
+            latestPath -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/original.ttl"),
@@ -309,7 +304,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           os.read(dependency) shouldBe "one\n"
           os.read(project / ".ohi" / ".gitignore") shouldBe "*\n"
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
+            s"GET $latestPath",
             "GET /files/packages/test/example/1/",
             "GET /files/packages/test/dependency/1/",
             "GET /files/packages/test/example/1/original.ttl",
@@ -332,7 +327,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           )
           os.read(project / "ohi.yaml") shouldBe original
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
+            s"GET $latestPath",
             "GET /files/packages/test/example/1/",
             "GET /files/packages/test/dependency/1/",
           )
@@ -348,7 +343,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.write(project / "ohi.yaml", original)
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
+            latestPath -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source"),
@@ -372,7 +367,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           saved("download_dir").str shouldBe "ontologies"
           saved("dependencies")(0)("format").str shouldBe "owl-turtle"
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
+            s"GET $latestPath",
             "GET /files/packages/test/example/1/",
             "GET /files/packages/test/example/1/source",
           )
@@ -388,7 +383,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.write(project / "ohi.yaml", original)
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
+            latestPath -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source"),
@@ -412,7 +407,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           saved("download_dir").str shouldBe "ontologies"
           saved("dependencies")(0)("format").str shouldBe "linkml-yaml"
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
+            s"GET $latestPath",
             "GET /files/packages/test/example/1/",
             "GET /files/packages/test/example/1/source",
           )
@@ -444,7 +439,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.write.over(project / "ohi.yaml", edited)
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source.ttl"),
@@ -479,8 +473,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           lock("files").arr.map(_("url").str).toSeq shouldBe Seq(
             base + "/files/packages/test/example/1/source.ttl",
           )
-          requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
+          requests.asScala.toSeq shouldBe Seq(
             "GET /files/packages/test/example/1/",
             "GET /files/packages/test/example/1/source.ttl",
           )
@@ -498,7 +491,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.write(project / "ohi.lock.json", """{"format_version":1,"selections":[],"files":[]}""")
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source.ttl"),
@@ -515,7 +507,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           os.read(project / "ohi.yaml") shouldBe original
           os.exists(project / ".ohi") shouldBe false
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
             "GET /files/packages/test/example/1/",
           )
         }
@@ -596,7 +587,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       withDirectory { project =>
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
+            latestPath -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source.ttl"),
@@ -682,7 +673,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
         os.write(project / "ohi.yaml", emptyDeclaration)
         withServer(base =>
           Map(
-            "/search" -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
+            latestPath -> (200 -> searchResponse(base + "/files/packages/test/example/1/")),
             "/files/packages/test/example/1/" -> (200 -> publication(
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source.ttl"),
@@ -709,7 +700,7 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
           os.read(project / "ohi.yaml") shouldBe emptyDeclaration
           os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
           requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /search",
+            s"GET $latestPath",
             "GET /files/packages/test/example/1/",
           )
         }
@@ -870,46 +861,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
       }
     }
 
-    "refuse an unindexed URL addition before writes and point to standalone get" in {
-      withDirectory { project =>
-        os.write(project / "ohi.yaml", emptyDeclaration)
-        withServer(base =>
-          Map(
-            "/files/packages/test/example/1/" -> (200 -> publication(
-              base + "/files/packages/test/example/1/",
-              Seq(base + "/files/packages/test/example/1/source.ttl"),
-              name = "example",
-            )),
-            "/search" -> (200 -> """{"found":0,"page":1,"request_params":{"per_page":250},"search_cutoff":false,"hits":[]}"""),
-          ),
-        ) { (base, requests) =>
-          val error = unchangedError(
-            failed(
-              runAdd(
-                base,
-                base + "/files/packages/test/example/1/",
-                "--artifact",
-                base + "/files/packages/test/example/1/source.ttl",
-                "--project",
-                project.toString,
-                "--json",
-              ),
-            ),
-            "ADD",
-            project,
-            "INVALID_SELECTION",
-          )
-          error("message").str should include("ohi get")
-          requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
-            "GET /files/packages/test/example/1/",
-            "GET /search",
-          )
-          os.read(project / "ohi.yaml") shouldBe emptyDeclaration
-          os.list(project).map(_.last) shouldBe Seq("ohi.yaml")
-        }
-      }
-    }
-
     "refuse an unrepresentable URL addition before writes and point to standalone get" in {
       withDirectory { project =>
         os.write(project / "ohi.yaml", emptyDeclaration)
@@ -919,10 +870,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
               base + "/files/packages/test/example/1/",
               Seq(base + "/files/packages/test/example/1/source.ttl"),
               name = "bad/name",
-            )),
-            "/search" -> (200 -> searchResponse(
-              base + "/files/packages/test/example/1/",
-              "bad/name",
             )),
           ),
         ) { (base, requests) =>
@@ -965,10 +912,6 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
               ),
               name = "example",
             )),
-            "/search" -> (200 -> searchResponse(
-              base + "/files/packages/test/example/1/",
-              "example",
-            )),
           ),
         ) { (base, requests) =>
           val error = unchangedError(
@@ -988,9 +931,10 @@ class ProjectCommandsSpec extends AnyWordSpec, Matchers {
             "INVALID_SELECTION",
           )
           error("message").str should include("ohi get")
-          requests.asScala.toSeq.map(_.takeWhile(_ != '?')) shouldBe Seq(
+          // The URL, then the reference test/example@1, which resolves to the same release path.
+          requests.asScala.toSeq shouldBe Seq(
             "GET /files/packages/test/example/1/",
-            "GET /search",
+            "GET /files/packages/test/example/1/",
           )
           os.read(project / "ohi.yaml") shouldBe emptyDeclaration
           os.list(project).map(_.last) shouldBe Seq("ohi.yaml")

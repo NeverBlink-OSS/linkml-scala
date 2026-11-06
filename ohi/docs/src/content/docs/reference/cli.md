@@ -28,7 +28,7 @@ Run `ohi --help` for the command overview, or `ohi <command> --help` for a comma
 ## Ontology references and formats
 
 `inspect`, `get` and `add` accept `namespace/name[@version]` from ohi.dev, such as
-`w3c/prov-o@2013`. Without `@version`, they select the most recently published release.
+`w3c/prov-o@2013`. Without `@version`, they select the latest version.
 
 `get` and `add` use `default_format` from `ohi.yaml`, or `linkml-yaml` if there is no project.
 If the preferred format is unavailable, they try `linkml-yaml`. Use `--format` to require a
@@ -49,7 +49,8 @@ releases when a format is unavailable.
 
 `ohi search <query> [options]`
 
-Returns one page of matches from ohi.dev. Quote multiword queries. Use `'*'` to browse.
+Returns one page of matches from ohi.dev, one per ontology at its latest version. Quote multiword
+queries. Use `'*'` to browse.
 
 ```sh
 ohi search 'energy' --filter-by 'namespace:=saref' --per-page 5
@@ -63,7 +64,8 @@ ohi search 'energy' --filter-by 'namespace:=saref' --per-page 5
 | `--sort-by <expression>` | Order matches, for example `published_at:desc`. |
 | `--facet-by <fields>` | Count values for comma-separated fields, such as `namespace`. |
 | `--max-facet-values <number>` | Maximum values per facet, at least `1`. Omit to use the search service's default. |
-| `--search-url <url>` | Complete search endpoint for another catalog. Requires `--query-by`. |
+| `--all-releases` | Search every release instead of each ontology's latest version. |
+| `--search-url <url>` | Complete search endpoint for another catalog, ending in `/search/collections/packages/documents/search`. Requires `--query-by`. |
 | `--query-by <fields>` | Comma-separated search fields for that catalog. Requires `--search-url`. |
 | `--color <auto\|never>` | Color terminal output. Default `auto`. |
 
@@ -77,7 +79,8 @@ ohi inspect <namespace/name[@version]> [options]
 ohi inspect <release-url> [options]
 ```
 
-Shows a release's metadata, all files, formats and dependency URLs.
+Shows a release's metadata, all files, formats and dependency URLs. For a reference, terminal
+output also lists the ontology's versions, latest first.
 
 ```sh
 ohi inspect w3c/prov-o@2013

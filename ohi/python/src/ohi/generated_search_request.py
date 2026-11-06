@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, model_serializer
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt, model_serializer
 
 
 class LinkMLModel(BaseModel):
@@ -29,6 +29,8 @@ class LinkMLModel(BaseModel):
 class SearchRequest(LinkMLModel):
     """Query and options for retrieving one page of ontology publications."""
 
+    all_releases: StrictBool | None = None
+    """Search every release instead of each ontology's latest version."""
     facet_by: Annotated[str, Field(pattern=r"^[\s\S]*\S")] | None = None
     """Typesense facet expression over facetable fields."""
     filter_by: Annotated[str, Field(pattern=r"^[\s\S]*\S")] | None = None

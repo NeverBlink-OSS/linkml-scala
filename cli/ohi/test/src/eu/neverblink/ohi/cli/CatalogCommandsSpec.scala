@@ -15,6 +15,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 import scala.jdk.CollectionConverters.*
 
 class CatalogCommandsSpec extends AnyWordSpec, Matchers {
+  private val searchPath = "/search/collections/packages/documents/search"
+  private val latestPath = "/search/collections/packages_latest/documents/search"
 
   // Synthetic metadata exercises output fields and ordering without claiming real catalog data.
   private val hits = """[
@@ -110,7 +112,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       "-cp",
       System.getProperty("java.class.path"),
       s"eu.neverblink.ohi.cli.$entryPoint",
-      base + "/search",
+      base + searchPath,
       args,
     ).call(cwd = cwd, check = false, stderr = os.Pipe, timeout = 10000)
     (result.out.text(), result.err.text(), result.exitCode)
@@ -141,7 +143,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
 
   private def inspectionPublication(base: String): ujson.Value = {
     val metadata = json(publication)
-    metadata("base_url") = base + "/publication"
+    metadata("base_url") = base + hub
     val files = metadata("artifacts").arr
     files(0)("url") = base + "/first.ttl"
     files += ujson.copy(files(0))
@@ -149,24 +151,62 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
     metadata
   }
 
+  // Both search endpoints return example/z@2.0, whose base URL is `hub`, and example/a.
   private def withInspection(check: (String, ConcurrentLinkedQueue[String]) => Unit): Unit =
     withServerResponses { base =>
-      val selectedHits = hits.replace("https://example.org/z?revision=2", base + "/publication")
-      val search = s"""{"hits":$selectedHits,"found":2,"page":1,
-        "request_params":{"per_page":250},"search_cutoff":false}"""
+      val selectedHits = hits.replace("https://example.org/z?revision=2", base + hub)
+      def search(perPage: Int) = s"""{"hits":$selectedHits,"found":2,"page":1,
+        "request_params":{"per_page":$perPage},"search_cutoff":false}"""
       val metadata = inspectionPublication(base).toString
       request =>
         new URI(request).getPath match {
-          case "/search" => 200 -> search.getBytes(UTF_8)
-          case "/publication" => 200 -> metadata.getBytes(UTF_8)
+          case `latestPath` => 200 -> search(10).getBytes(UTF_8)
+          case `searchPath` => 200 -> search(250).getBytes(UTF_8)
+          case `hub` => 200 -> metadata.getBytes(UTF_8)
           case _ => 404 -> Array.emptyByteArray
         }
     }(check)
 
   private def inspectReference(base: String, args: String*): (String, String, Int) = {
-    val command = ConfiguredInspect.command(base + "/search")
+    val command = ConfiguredInspect.command(base + searchPath)
     command.runTestCommandWithExitCode(args.toList, args => command.main("ohi inspect", args))
   }
+
+  private def page(hits: Seq[String], found: Int, perPage: Int): String =
+    s"""{"hits":[${hits.mkString(",")}],"found":$found,"page":1,
+      "request_params":{"per_page":$perPage},"search_cutoff":false}"""
+
+  // A search hit for an example/z release, or a look-alike with another name.
+  private def zHit(base: String, version: String, name: String = "z"): String =
+    s"""{"document":{"base_url":"$base/files/packages/example/$name/$version/",
+      "namespace":"example","name":"$name","version":"$version","title":"Z sensors",
+      "description":"Sensor measurements","formats":["owl-turtle"],"licenses":[],
+      "published_at":"2026-10-01T00:00:00Z"}}"""
+
+  // The latest search returns example/z@3. The release search returns example/z@2.0 at `hub`, a
+  // look-alike example/Z@5, then example/z@1, @10 and @3. The hits share one date. Their order
+  // stands for the server's order.
+  private def withVersions(check: (String, ConcurrentLinkedQueue[String]) => Unit): Unit =
+    withServerResponses { base =>
+      val latest = inspectionPublication(base)
+      latest("base_url") = s"$base/files/packages/example/z/3/"
+      latest("version") = "3"
+      val releases = Seq(
+        zHit(base, "2.0"),
+        zHit(base, "5", name = "Z"),
+        zHit(base, "1"),
+        zHit(base, "10"),
+        zHit(base, "3"),
+      )
+      request =>
+        new URI(request).getPath match {
+          case `hub` => 200 -> inspectionPublication(base).toString.getBytes(UTF_8)
+          case "/files/packages/example/z/3/" => 200 -> latest.toString.getBytes(UTF_8)
+          case `latestPath` => 200 -> page(Seq(zHit(base, "3")), 1, 10).getBytes(UTF_8)
+          case `searchPath` => 200 -> page(releases, 5, 250).getBytes(UTF_8)
+          case _ => 404 -> Array.emptyByteArray
+        }
+    }(check)
 
   private def withDirectory(check: os.Path => Unit): Unit = {
     val directory = os.temp.dir(prefix = "ohi lock download ")
@@ -211,10 +251,10 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
   ): Unit = withServerResponses { base =>
     val selectedHits = hits.replace("https://example.org/z?revision=2", base + hub)
     val search = s"""{"hits":$selectedHits,"found":2,"page":1,
-      "request_params":{"per_page":250},"search_cutoff":false}"""
+      "request_params":{"per_page":10},"search_cutoff":false}"""
     request =>
       new URI(request).getPath match {
-        case "/search" => 200 -> search.getBytes(UTF_8)
+        case `latestPath` => 200 -> search.getBytes(UTF_8)
         case `hub` => 200 -> acquisitionPublication(base, format).getBytes(UTF_8)
         case path if path == hub + "original" => 200 -> binary
         case _ => 404 -> "Unexpected request".getBytes(UTF_8)
@@ -235,7 +275,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "search",
           "ü + & sensors",
           "--search-url",
-          url + "/exact/search",
+          url + "/exact" + searchPath,
           "--query-by",
           "title,description",
           "--page",
@@ -256,7 +296,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "--color=never",
         )
         requests should have size 1
-        new URI(requests.peek()).getPath shouldBe "/exact/search"
+        new URI(requests.peek()).getPath shouldBe "/exact" + latestPath
         query(requests.peek()) shouldBe Map(
           "q" -> "ü + & sensors",
           "query_by" -> "title,description",
@@ -290,7 +330,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "search",
           "*",
           "--search-url",
-          url,
+          url + searchPath,
           "--query-by",
           "title",
           "--color=never",
@@ -335,6 +375,25 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
       }
     }
 
+    "send --all-releases to search_url and count the hits as releases" in {
+      withServer(
+        s"""{"hits":$hits,"found":2,"page":1,"request_params":{"per_page":10},"search_cutoff":false}""",
+      ) { (url, requests) =>
+        val out = successful(
+          Search,
+          "search",
+          "*",
+          "--search-url",
+          url + searchPath,
+          "--query-by",
+          "title",
+          "--all-releases",
+        )
+        out.linesIterator.next() shouldBe "2 matching releases"
+        requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(searchPath)
+      }
+    }
+
     "report an empty page as successful human output with effective paging" in {
       withServer(
         """{"hits":[],"found":7,"page":2,"request_params":{"per_page":10},"search_cutoff":false}""",
@@ -344,7 +403,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "search",
           "*",
           "--search-url",
-          url,
+          url + searchPath,
           "--query-by",
           "title",
           "--page",
@@ -361,7 +420,16 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         """{"hits":[],"found":0,"page":1,"request_params":{"per_page":10},"search_cutoff":false}""",
       ) { (url, _) =>
         val out =
-          successful(Search, "search", "*", "--search-url", url, "--query-by", "title", "--json")
+          successful(
+            Search,
+            "search",
+            "*",
+            "--search-url",
+            url + searchPath,
+            "--query-by",
+            "title",
+            "--json",
+          )
         json(out) shouldBe json(
           """{"hits":[],"total":0,"page":1,"per_page":10,"search_cutoff":false}""",
         )
@@ -375,7 +443,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           "search",
           "*",
           "--search-url",
-          url,
+          url + searchPath,
           "--query-by",
           "title",
           "--color=always",
@@ -414,40 +482,78 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         Seq(
           "Ontology: example/z",
           "Version: 2.0",
-          base + "/publication",
+          base + hub,
           base + "/first.ttl",
           base + "/second.ttl",
           "https://example.org/dependency/",
         ).foreach(out should include(_))
-        val recorded = requests.asScala.toSeq
-        recorded.map(value => new URI(value).getPath) shouldBe Seq("/search", "/publication")
-        query(recorded.head)("filter_by") shouldBe
-          "namespace:=example && name:=z && version:=2.0"
+        requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe
+          Seq(hub, latestPath, searchPath)
       }
     }
 
-    "resolve a versioned reference and preserve every publication field in JSON output" in {
+    "resolve a versioned reference by one GET and preserve every publication field in JSON output" in {
       withInspection { (base, requests) =>
         val (out, err, code) = inspectReference(base, "example/z@2.0", "--json")
         code shouldBe 0
         err shouldBe empty
         json(out) shouldBe inspectionPublication(base)
-        val recorded = requests.asScala.toSeq
-        recorded.map(value => new URI(value).getPath) shouldBe Seq("/search", "/publication")
-        query(recorded.head)("filter_by") shouldBe
-          "namespace:=example && name:=z && version:=2.0"
+        requests.asScala.toSeq shouldBe Seq(hub)
       }
     }
 
-    "report a missing reference as text even when JSON is requested" in {
+    "report a missing reference as catalog error JSON" in {
       withServer("""{"hits":[],"found":0,"page":1,
-        "request_params":{"per_page":250},"search_cutoff":false}""") { (base, requests) =>
+        "request_params":{"per_page":10},"search_cutoff":false}""") { (base, requests) =>
         val (out, err, code) = inspectReference(base, "example/missing", "--json")
         code shouldBe 1
         out shouldBe empty
-        err should startWith("Error: No matching release for ontology reference 'example/missing'.")
-        err should include("ohi inspect --help")
-        requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq("/search")
+        json(err) shouldBe json("""{"code":"HTTP_ERROR","operation":"INSPECT","status":404,
+          "url":"example/missing","message":"no ontology matches example/missing"}""")
+        requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(latestPath)
+      }
+    }
+
+    "list versions with the latest version first, then the other releases of the ontology by descending version" in {
+      withVersions { (base, requests) =>
+        val (out, err, code) = inspectReference(base, "example/z@2.0")
+        withClue(err) { code shouldBe 0 }
+        out should include(
+          s"  Release URL: $base$hub\n\n" +
+            "Versions\n" +
+            "  - example/z@3 (latest)\n" +
+            "  - example/z@10\n" +
+            "  - example/z@2.0\n" +
+            "  - example/z@1\n\n" +
+            "Files\n",
+        )
+        val recorded = requests.asScala.toSeq
+        recorded.map(value => new URI(value).getPath) shouldBe Seq(hub, latestPath, searchPath)
+        query(recorded.last) shouldBe Map(
+          "q" -> "*",
+          "query_by" -> "name",
+          "page" -> "1",
+          "per_page" -> "250",
+          "filter_by" -> "namespace:=`example` && name:=`z`",
+        )
+      }
+    }
+
+    "list versions with the latest version first for a reference without a version" in {
+      withVersions { (base, requests) =>
+        val (out, err, code) = inspectReference(base, "example/z")
+        withClue(err) { code shouldBe 0 }
+        out should include(
+          s"  Release URL: $base/files/packages/example/z/3/\n\n" +
+            "Versions\n" +
+            "  - example/z@3 (latest)\n" +
+            "  - example/z@10\n" +
+            "  - example/z@2.0\n" +
+            "  - example/z@1\n\n" +
+            "Files\n",
+        )
+        requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe
+          Seq(latestPath, "/files/packages/example/z/3/", searchPath)
       }
     }
 
@@ -477,7 +583,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           os.read(directory / "ohi.lock.json") shouldBe lock
           os.list(directory).map(_.last).toSet shouldBe Set("ohi.yaml", "ohi.lock.json")
           requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe
-            Seq("/search", "/publication")
+            Seq(latestPath, hub)
         }
       }
     }
@@ -556,7 +662,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         withInspection { (base, requests) =>
           val command = new GetCommand {
             override protected def config(options: GetOptions): CatalogConfig =
-              CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
+              CatalogConfig(searchUrl = Some(Uri(base + searchPath)), queryBy = Some("name"))
           }
           val (out, err, code) = command.runTestCommandWithExitCode(
             List("example/z@2.0", "--format", "owl-turtle", "--to", destination.toString),
@@ -568,10 +674,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           err should include(s"Files\n  $base/first.ttl\n  $base/second.ttl")
           err should include(s"ohi get $base/first.ttl --to '$destination'")
           err should not include "Error:"
-          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
-            "/search",
-            "/publication",
-          )
+          requests.asScala.toSeq shouldBe Seq(hub)
           os.exists(destination) shouldBe false
           os.list(directory) shouldBe empty
         }
@@ -583,7 +686,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
         val destination = directory / "files here"
         withInspection { (base, requests) =>
           val config =
-            CatalogConfig(searchUrl = Some(Uri(base + "/search")), queryBy = Some("name"))
+            CatalogConfig(searchUrl = Some(Uri(base + searchPath)), queryBy = Some("name"))
           val command = new AddCommand {
             override protected def client() =
               new eu.neverblink.ohi.catalog.CatalogClient(config)
@@ -597,10 +700,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           err should startWith("Error: Could not update the project.")
           err should include("example/z@2.0 has more than one file in owl-turtle format.")
           err should include("standalone ohi get for an exact file URL")
-          requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
-            "/search",
-            "/publication",
-          )
+          requests.asScala.toSeq shouldBe Seq(hub)
           os.exists(destination) shouldBe false
           os.list(directory) shouldBe empty
         }
@@ -624,9 +724,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           ).toSeq shouldBe binary.toSeq
           os.read(cwd / ".ohi" / ".gitignore") shouldBe "*\n"
           os.list(cwd).map(_.last) shouldBe Seq(".ohi")
-          val calls = requests.asScala.toSeq
-          calls.map(value => new URI(value).getPath) shouldBe Seq("/search", hub, hub + "original")
-          query(calls.head)("filter_by") shouldBe "namespace:=example && name:=z && version:=2.0"
+          requests.asScala.toSeq shouldBe Seq(hub, hub + "original")
         }
       }
     }
@@ -645,7 +743,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           os.read(cwd / "ontologies" / ".gitignore") shouldBe "*\n"
           os.read(cwd / "ohi.yaml") shouldBe configuredDeclaration
           requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
-            "/search",
+            latestPath,
             hub,
             hub + "original",
           )
@@ -671,7 +769,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           os.read(cwd / "ohi.yaml") shouldBe configuredDeclaration
           os.read(cwd / "ohi.lock.json") shouldBe "stale lock bytes"
           requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
-            "/search",
+            latestPath,
             hub,
             hub + "original",
           )
@@ -703,7 +801,7 @@ class CatalogCommandsSpec extends AnyWordSpec, Matchers {
           os.exists(cwd / ".ohi" / ".gitignore") shouldBe false
           os.read(cwd / "ohi.yaml") shouldBe "invalid declaration"
           requests.asScala.toSeq.map(value => new URI(value).getPath) shouldBe Seq(
-            "/search",
+            latestPath,
             hub,
             hub + "original",
           )

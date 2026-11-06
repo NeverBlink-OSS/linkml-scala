@@ -14,7 +14,12 @@ private[cli] object SearchOutput {
     columns.flatMap(_.trim.toIntOption).filter(_ > 0).map(_.max(20)).getOrElse(80)
 
   /** Render normalized human text at a width of at least 20 Unicode code points. */
-  def render(result: SearchResult, width: Int, colored: Boolean): String = {
+  def render(
+      result: SearchResult,
+      width: Int,
+      colored: Boolean,
+      allReleases: Boolean = false,
+  ): String = {
     val output = ArrayBuffer.empty[String]
 
     def text(value: String, code: String, first: String = "", next: String = ""): Unit =
@@ -29,12 +34,13 @@ private[cli] object SearchOutput {
 
     val count = result.hits.size
     val start = (result.page.toLong - 1) * result.perPage + 1
+    val (one, many) = if allReleases then ("release", "releases") else ("ontology", "ontologies")
     val summary =
-      if result.total == 0 then "No matching ontologies."
+      if result.total == 0 then s"No matching $many."
       else if count == 0 then
         s"No results on page ${result.page}. ${result.total} matches in total."
       else if count == result.total then
-        s"${result.total} matching ${if count == 1 then "ontology" else "ontologies"}"
+        s"${result.total} matching ${if count == 1 then one else many}"
       else s"${result.total} matches · Showing $start–${start + count - 1} · Page ${result.page}"
     text(summary, "1")
     if result.searchCutoff then

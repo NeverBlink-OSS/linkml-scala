@@ -93,7 +93,15 @@ private[cli] object ProjectLock {
     /** Returns cached metadata without checking its identity, leaving reference diagnostics to the
       * caller.
       */
-    override def apply(url: String): Publication = publications.getOrElseUpdate(url, inspect(url))
+    override def apply(url: String): Publication = publications.getOrElse(
+      url, {
+        val result = inspect(url)
+        publications(url) = result
+        // A reference resolves to a base URL that lock construction inspects again.
+        publications(result.baseUrl.original) = result
+        result
+      },
+    )
 
     /** Requires the response's exact base URL to match the request or throws [[ProjectException]].
       */

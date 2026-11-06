@@ -14,8 +14,6 @@ import eu.neverblink.ohi.cli.generated.projecterror.{
 import eu.neverblink.ohi.cli.generated.projectresult
 import eu.neverblink.ohi.model.{LockException, LockFiles, LockJson}
 import eu.neverblink.ohi.model.generated.{Artifact, Publication}
-import eu.neverblink.ohi.model.generated.search.SearchResult
-import eu.neverblink.ohi.model.generated.searchrequest.SearchRequest
 import eu.neverblink.ohi.model.generated.lock
 import eu.neverblink.ohi.model.generated.lockerror.{LockError, LockErrorCode, LockOperation}
 import eu.neverblink.linkml.runtime.stringify
@@ -85,7 +83,6 @@ private[cli] final class Project(
       input: String,
       artifact: Option[String],
       format: Option[String],
-      search: SearchRequest => SearchResult,
       inspect: String => Publication,
       fetch: String => Array[Byte],
   ): projectresult.ProjectResult = {
@@ -99,8 +96,7 @@ private[cli] final class Project(
           invalidSelection(s"Publication '$input' does not advertise artifact '$url'.")
         }
         val requirement = dependency(publication, selected)
-        val resolved =
-          resolve(requirement.ontology, Some(stringify(selected.format)), search, metadata)
+        val resolved = resolve(requirement.ontology, Some(stringify(selected.format)), metadata)
         if resolved._1.baseUrl.original != input || resolved._2.url.original != url then
           invalidSelection(
             s"Requirement '${requirement.ontology}' in ${stringify(selected.format)} does not select the supplied publication and file URLs.",
@@ -110,7 +106,6 @@ private[cli] final class Project(
         val resolved = resolve(
           input,
           format,
-          search,
           metadata,
           Some(ProjectFormat.toModel(previous.defaultFormat)),
         )
@@ -122,7 +117,7 @@ private[cli] final class Project(
       if changed then previous.copy(dependencies = previous.dependencies :+ requirement)
       else previous
     val pair = lock.ArtifactSelectionImpl(publication.baseUrl, selected.url)
-    val complete = build(declaration, search, metadata, Some(requirement -> pair))
+    val complete = build(declaration, metadata, Some(requirement -> pair))
     val plan = prepare(DownloadDestination.fromProject(directory, declaration), complete)
     if changed then {
       writeDeclaration(declarationPath, declaration)
@@ -138,12 +133,9 @@ private[cli] final class Project(
   /** Resolves the recorded formats strictly and replaces the lock without editing the declaration
     * or downloading files. Invalid existing records fail before catalog requests.
     */
-  def refresh(
-      search: SearchRequest => SearchResult,
-      inspect: String => Publication,
-  ): projectresult.ProjectResult = {
+  def refresh(inspect: String => Publication): projectresult.ProjectResult = {
     val declaration = read(allowMissing = false)
-    val complete = build(declaration, search, new ProjectLock.Inspection(inspect))
+    val complete = build(declaration, new ProjectLock.Inspection(inspect))
     writeLock(lockPath, complete)
     lockChanged = true
     result()
@@ -155,7 +147,6 @@ private[cli] final class Project(
     * [[failure]].
     */
   def sync(
-      search: SearchRequest => SearchResult,
       inspect: String => Publication,
       fetch: String => Array[Byte],
       init: Boolean = false,
@@ -191,7 +182,7 @@ private[cli] final class Project(
           s"Project '$directory' has neither ohi.yaml nor ohi.lock.json. Run ohi init or ohi add to start a project.",
         )
       }
-      build(requirements, search, new ProjectLock.Inspection(inspect))
+      build(requirements, new ProjectLock.Inspection(inspect))
     }
     val selected = declaration
       .map(DownloadDestination.fromProject(directory, _))
@@ -241,11 +232,10 @@ private[cli] final class Project(
   private def resolve(
       reference: String,
       format: Option[String],
-      search: SearchRequest => SearchResult,
       inspect: String => Publication,
       preferredFormat: Option[eu.neverblink.ohi.model.generated.Format] = None,
   ): (Publication, Artifact) =
-    OntologyReference.resolve(reference, format, search, inspect, preferredFormat)
+    OntologyReference.resolve(reference, format, inspect, preferredFormat)
       .fold(problem => invalidSelection(problem.message), identity)
 
   private def invalidSelection(message: String): Nothing =
@@ -314,7 +304,6 @@ private[cli] final class Project(
 
   private def build(
       declaration: Declaration,
-      search: SearchRequest => SearchResult,
       metadata: ProjectLock.Inspection,
       requested: Option[(ProjectDependency, lock.ArtifactSelectionImpl)] = None,
   ): lock.Lock = {
@@ -323,7 +312,6 @@ private[cli] final class Project(
         val (publication, artifact) = resolve(
           requirement.ontology,
           Some(stringify(requirement.format)),
-          search,
           metadata,
         )
         lock.ArtifactSelectionImpl(publication.baseUrl, artifact.url)

@@ -1,7 +1,8 @@
 package eu.neverblink.ohi.cli
 
-import eu.neverblink.linkml.runtime.Uri
+import eu.neverblink.linkml.runtime.{LinkmlDateTime, Uri}
 import eu.neverblink.ohi.model.generated.{ArtifactOrigin, Format}
+import eu.neverblink.ohi.model.generated.search.SearchHit
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.wordspec.AnyWordSpec
 
@@ -61,6 +62,19 @@ class CatalogOutputSpec extends AnyWordSpec, Matchers {
     |  License: MIT
     |  Tags: sensors""".stripMargin
 
+  private def release(version: String): SearchHit =
+    SearchHit(
+      baseUrl = Uri(s"https://example.org/release/$version/"),
+      description = "Synthetic release",
+      formats = Seq.empty,
+      licenses = Seq.empty,
+      name = "example",
+      namespace = "test",
+      publishedAt = LinkmlDateTime("2026-10-15T00:00:00Z"),
+      title = "Example ontology",
+      version = version,
+    )
+
   "CatalogOutput.publication" should {
     "show release fields in order and omit only entry points equal to the download URL" in {
       CatalogOutput.publication(publication, json = false) shouldBe expected
@@ -102,6 +116,34 @@ class CatalogOutputSpec extends AnyWordSpec, Matchers {
           "    humidity sensors in rooms.\n",
       )
       output should include(s"  Release URL: $url\n")
+    }
+
+    "list 10 versions after the release URL, then the count of the rest" in {
+      val releases = (1 to 12).map(version => release(version.toString))
+      val output = CatalogOutput.publication(
+        base,
+        json = false,
+        versions = Some(CatalogOutput.Versions(None, releases)),
+      )
+      output should include(
+        """  Release URL: https://example.org/release/1/
+          |
+          |Versions
+          |  - test/example@12
+          |  - test/example@11
+          |  - test/example@10
+          |  - test/example@9
+          |  - test/example@8
+          |  - test/example@7
+          |  - test/example@6
+          |  - test/example@5
+          |  - test/example@4
+          |  - test/example@3
+          |  and 2 more
+          |
+          |Files
+          |""".stripMargin,
+      )
     }
 
     for url <- Seq("https://example.org/files/", "urn:example:artifact", "https://example.org/%") do

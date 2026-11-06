@@ -79,7 +79,7 @@ class ErrorOutputSpec extends AnyWordSpec, Matchers {
         "INSPECT",
         404,
         "Release not found.",
-        "Check the URL or find the release with 'ohi search'.",
+        "Check the reference or URL, or find the release with 'ohi search'.",
       ),
       ("GET", 404, "File not found.", "Check the file URL"),
       ("INSPECT", 403, "Access denied.", "Check that you can access this URL"),

@@ -95,13 +95,13 @@ private[cli] object HelpOutput {
       case "inspect" if full =>
         section(
           "Input",
-          "  References use ohi.dev. Without @version, selects the most recently published release.\n" +
+          "  References use ohi.dev. Without @version, selects the latest version.\n" +
             "  A release URL is the metadata URL shown by search. No format is needed.",
           colored,
         )
       case "inspect" => "A release URL is the metadata URL shown by search."
       case "get" | "add" if full =>
-        "Without @version, selects the most recently published release.\n" +
+        "Without @version, selects the latest version.\n" +
           "Without --format, tries default_format from ohi.yaml, then linkml-yaml.\n" +
           (if name == "get" then
              "Uses download_dir in the current directory's ohi.yaml, otherwise .ohi.\n" +
@@ -184,6 +184,7 @@ private[cli] object HelpOutput {
           "sortBy",
           "facetBy",
           "maxFacetValues",
+          "allReleases",
           "searchUrl",
           "queryBy",
           "timeoutMs",
