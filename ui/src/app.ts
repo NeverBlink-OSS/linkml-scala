@@ -20,7 +20,7 @@ import {
 } from "./targets.js";
 import type { PagePatch } from "./markdown.js";
 import type { ConvertRequest, ConvertResponse, Direction, WorkerMessage } from "./worker.js";
-import type { CatalogClient, Format as OhiFormat, SearchHit } from "@neverblink/ohi";
+import type { CatalogClient, Format as OhiFormat, Publication, SearchHit } from "@neverblink/ohi";
 
 // The LinkML schema lives here; each importer's own input document gets this plus a suffix.
 const INPUT_STORAGE_KEY = "linkml-ui-input";
@@ -1993,8 +1993,9 @@ async function searchOhi(): Promise<void> {
   $ohiError.hidden = true;
   try {
     const client = await ohiClient();
-    // `*` lists everything, which is what an empty box should show.
-    const page = await client.search({ q: query || "*", per_page: OHI_PAGE });
+    // `*` lists everything, which is what an empty box should show. Every release, not just each
+    // ontology's latest version, so the cards can offer the other versions.
+    const page = await client.search({ q: query || "*", per_page: OHI_PAGE, all_releases: true });
     if (id !== ohiSearchId) return;
     ohiResult = { query, hits: page.hits, total: page.total };
     renderOhiResults();
@@ -2052,7 +2053,7 @@ function groupHits(hits: SearchHit[]): OhiGroup[] {
   }
   return [...groups].map(([key, versions]) => ({
     key,
-    versions: versions.sort((a, b) => b.version.localeCompare(a.version, undefined, { numeric: true })),
+    versions: versions.sort((a, b) => b.version.localeCompare(a.version, "en", { numeric: true })),
   }));
 }
 
@@ -2131,45 +2132,45 @@ async function loadOhiFile(
   current: () => boolean = startDownload(),
 ): Promise<DownloadResult> {
   try {
-    const publication = await (await ohiClient()).inspect(baseUrl);
-    const files = publication.artifacts.filter((a) => a.format === ref.format);
-    // Prefer the file as its publisher wrote it over one ohi.dev generated from it.
-    const file = files.find((a) => a.origin === "UPSTREAM") ?? files[0];
-    const name = ohiChoices().find((c) => c.format === ref.format)?.name ?? ref.format;
-    if (!file) return { ok: false, error: `${title} has no ${name} file on ohi.dev.` };
-    return await loadFromUrl(file.url, ref, current);
+    return await loadOhiPublication(await (await ohiClient()).inspect(baseUrl), ref, current);
   } catch (e) {
     return { ok: false, error: `Could not load ${title}. ${ohiErrorText(e)}` };
   }
 }
 
-/** Load a package named in an incoming `?ohi=` link. The catalog is asked for its publication
- * rather than its address being made up from the name, which ohi.dev does not promise to keep.
- *
- * The version is required. Without one, "the latest" would have to mean the one ohi.dev
- * published last, which is not always the newest release - older ones can be indexed later. */
+/** Download one format of a fetched publication into the input pane. */
+async function loadOhiPublication(publication: Publication, ref: OhiRef, current: () => boolean): Promise<DownloadResult> {
+  const files = publication.artifacts.filter((a) => a.format === ref.format);
+  // Prefer the file as its publisher wrote it over one ohi.dev generated from it.
+  const file = files.find((a) => a.origin === "UPSTREAM") ?? files[0];
+  const name = ohiChoices().find((c) => c.format === ref.format)?.name ?? ref.format;
+  if (!file) return { ok: false, error: `${publication.title} has no ${name} file on ohi.dev.` };
+  return loadFromUrl(file.url, ref, current);
+}
+
+/** Load a package named in an incoming `?ohi=` link, `namespace/name@version`, or
+ * `namespace/name` for its latest version. */
 async function loadOhiPackage(value: string, format: OhiFormat): Promise<DownloadResult> {
   const current = startDownload();
-  // Backticks are left out of the names because they would end the value in the filter below.
-  const m = value.match(/^([^/@`\s]+)\/([^/@`\s]+)@([^`\s]+)$/);
-  if (!m) {
-    return { ok: false, error: `“${value}” does not name an ohi.dev package. It should look like w3c/prov-o@2013.` };
-  }
-  const [, namespace = "", name = "", version = ""] = m;
-  const label = `${namespace}/${name}@${version}`;
-  let hit: SearchHit | undefined;
+  const invalid = { ok: false, error: `“${value}” does not name an ohi.dev package. It should look like w3c/prov-o@2013.` } as const;
+  // inspect would fetch a URL, and the address bar would then name a foreign publication as an
+  // ohi.dev package. Links belong in `?url=`.
+  if (/^https?:\/\//i.test(value)) return invalid;
+  let publication: Publication;
   try {
-    const page = await (await ohiClient()).search({
-      q: "*",
-      filter_by: `namespace:=\`${namespace}\` && name:=\`${name}\` && version:=\`${version}\``,
-      per_page: 1,
-    });
-    hit = page.hits[0];
+    publication = await (await ohiClient()).inspect(value);
   } catch (e) {
-    return { ok: false, error: `Could not look up ${label} on ohi.dev. ${ohiErrorText(e)}` };
+    const error = (e as { error?: { code?: string; operation?: string; status?: number } }).error;
+    if (error?.code === "INVALID_INPUT") return invalid;
+    // A 404 of the latest search means a broken catalog, not a missing package.
+    if (error?.operation === "INSPECT" && error.status === 404) {
+      return { ok: false, error: `There is no ${value} on ohi.dev.` };
+    }
+    return { ok: false, error: `Could not look up ${value} on ohi.dev. ${ohiErrorText(e)}` };
   }
-  if (!hit) return { ok: false, error: `There is no ${label} on ohi.dev.` };
-  return loadOhiFile(hit.base_url, { pkg: `${namespace}/${name}`, version, format }, hit.title, current);
+  // The version comes from the publication, so `?ohi=w3c/dcat` becomes `?ohi=w3c/dcat@3`.
+  const ref = { pkg: `${publication.namespace}/${publication.name}`, version: publication.version, format };
+  return loadOhiPublication(publication, ref, current);
 }
 
 /** Like [[loadOrPrompt]], for a package named in the address. */
