@@ -73,6 +73,26 @@ final class TypeScriptGenerator(using sv: SchemaView)
     }
   }
 
+  /** TS type of a whole document, if `tree_root_as` makes it other than one object: the tree root
+    * or null, a list of it, or a dict of it by key.
+    */
+  private def documentType(root: ClassView, ctx: Context): Option[String] =
+    root.treeRootInlineType(None) match {
+      case InlineType.plain => None
+      case InlineType.optional => Some(classRef(root).concat(" | null"))
+      case inlineType => Some(inlinedType(root, inlineType, ctx))
+    }
+
+  /** Name of the type of a whole document. */
+  private def documentName(root: ClassView): String = className(root).concat("Document")
+
+  private def documentDoc(root: ClassView): String =
+    root.treeRootInlineType(None) match {
+      case InlineType.optional => s"A whole document: a ${root.name} or null."
+      case InlineType.list => s"A whole document: a list of ${root.name}."
+      case _ => s"A whole document: a dict of ${root.name} by key."
+    }
+
   private def keyOptional(ref: String, cls: ClassView, key: String): String =
     s"KeyOptional<$ref, ${stringLiteral(slotName(cls.derivedAttributes(key)))}>"
 
@@ -285,6 +305,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
   private def checkNames(
       classes: Seq[ClassView],
       enums: Seq[EnumView],
+      document: ClassView,
       hasFunctions: Boolean,
       usesResult: Boolean,
   ): Unit = {
@@ -306,6 +327,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
       if !hasInterface(cls) then claim(className(cls), s"the union of abstract class '${cls.name}'")
     }
     enums.foreach(ev => claim(enumName(ev), s"enum '${ev.name}'"))
+    if document ne null then
+      claim(documentName(document), s"the document type of tree root '${document.name}'")
     if hasFunctions then claim(functionsInterfaceName(sv), "the functions of the schema")
     if usesResult then {
       claim("Result", "the Result helper type")
@@ -325,7 +348,21 @@ final class TypeScriptGenerator(using sv: SchemaView)
         .sortBy(fv => sv.elementOrder(fv.function))
     val usesResult =
       options.errorHandling == TypeScriptErrorHandling.Result && functions.exists(_.errors.nonEmpty)
-    checkNames(classes, enums, functions.nonEmpty, usesResult)
+    // The tree root gets a document type only if it is generated and is not one object
+    var document: ClassView = null
+    var documentTpe: String = null
+    val treeRootOverride = options.pruning match {
+      case Pruning.treeRoot(o) => o
+      case _ => None
+    }
+    sv.treeRootWithOverride(treeRootOverride).get.foreachFast { root =>
+      if query.reachable(root) then
+        documentType(root, ctx).foreachFast { tpe =>
+          document = root
+          documentTpe = tpe
+        }
+    }
+    checkNames(classes, enums, document, functions.nonEmpty, usesResult)
 
     sink.append(GeneratedHeader("//"))
     classes.foreach { cls =>
@@ -343,6 +380,15 @@ final class TypeScriptGenerator(using sv: SchemaView)
     if functions.nonEmpty then {
       sink.append('\n')
       writeFunctions(sink, functions, ctx)
+    }
+    if document ne null then {
+      sink.append('\n')
+      writeDoc(sink, Seq(documentDoc(document)), "")
+      sink.append("export type ")
+      sink.append(documentName(document))
+      sink.append(" = ")
+      sink.append(documentTpe)
+      sink.append(";\n")
     }
     if usesResult then {
       sink.append('\n')

@@ -32,6 +32,18 @@ const zoo = JSON.parse(text) as Zoo;          // load
 const text2 = JSON.stringify(zoo, null, 2);   // dump
 ```
 
+If the tree root has a `tree_root_as` other than `plain`, a document isn't one object. The
+file then also has a type for the whole document, named after the tree root:
+
+| `tree_root_as`  | Document type                                              |
+|-----------------|------------------------------------------------------------|
+| `optional`      | `export type ZooDocument = Zoo \| null;`                   |
+| `list`          | `export type ZooDocument = Zoo[];`                         |
+| `compact_dict`  | `export type ZooDocument = Record<string, KeyOptional<Zoo, "id">>;` |
+| `simple_dict`   | `export type ZooDocument = Record<string, V \| KeyOptional<Zoo, "id">>;` |
+
+Load such a document with `JSON.parse(text) as ZooDocument`.
+
 The cast is not checked at runtime. If the JSON doesn't fit the schema, you find out only when
 your code reads a field that isn't what the type says. If the data comes from somewhere you
 don't trust, validate it first with the JSON Schema from `to json-schema`.
