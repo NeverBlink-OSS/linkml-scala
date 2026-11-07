@@ -1,0 +1,26 @@
+name: Bug on ohi.dev
+description: Something on ohi.dev, in the SDKs, ohi CLI, or in its docs is broken or wrong.
+labels: [bug, ohi.dev]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did and what went wrong. Screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: Address of the page where it happened.
+      placeholder: https://ohi.dev/o/w3c/sosa@2017
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      placeholder: Firefox 150 on Linux

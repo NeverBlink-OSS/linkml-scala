@@ -1,6 +1,8 @@
 # Contributing to ohi
 
 Issues and pull requests are welcome. If you plan something big, open an issue or ask on Discord first.
+To report a problem with ohi.dev or its docs, or to suggest a new feature, use the
+[issue templates](https://github.com/NeverBlink-OSS/ohi/issues/new/choose).
 
 Questions and ideas: **[Discord](https://discord.gg/HGksVAJ6ss)**. The project follows our [Code of Conduct](CODE_OF_CONDUCT.md).
 
