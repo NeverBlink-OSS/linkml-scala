@@ -148,9 +148,10 @@ Otherwise the descendants describe their own versions:
 `validate` warns about a class that gives an inherited slot a range that is not derived from the parent's range.
 See [Narrowing inherited ranges](/docs/implementation-differences/#narrowing-inherited-ranges).
 
-`validate` also warns with `LooserSlotConstraint` when a class allows more values of an inherited slot than a parent class does, so that some data that is valid for the class is not valid for the parent class.
-The looser value can come from the class itself, or from another parent class or mixin:
+`validate` also warns with `LooserSlotConstraint` when a class allows more values of an inherited slot than a parent class does:
 
 - `multivalued: true` when a parent class has a single-valued slot, as `Child` above does.
 - A lower minimum or a higher maximum number of values than a parent class has.
-  The JSON Schema, SHACL and Pydantic generators use `minimum_cardinality` and `maximum_cardinality` before `exact_cardinality`, and the OWL generator does it the other way round. So when a slot has both, `validate` checks both ways.
+
+The looser value can come from the class itself, or from another parent class or mixin.
+Generators don't agree on whether `exact_cardinality` comes before `minimum_cardinality` and `maximum_cardinality`, so when a slot has both, `validate` checks both orders.

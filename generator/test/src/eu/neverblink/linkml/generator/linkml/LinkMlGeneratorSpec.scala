@@ -759,7 +759,7 @@ class LinkMlGeneratorSpec extends AnyWordSpec, Matchers {
           lintProblemsExceptMissingRecommendedSlots(
             SchemaView.single(LinkMlGenerator(using entry.model).generate()),
           ) shouldBe empty
-          // Without derivation the schema keeps its inheritance, and so the warnings about it
+          // Without derivation, the output keeps the inheritance of the model, and so its warnings
           lintMessages(
             SchemaView.single(
               LinkMlGenerator(using entry.model).generate(

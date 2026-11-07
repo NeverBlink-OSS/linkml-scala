@@ -1420,9 +1420,9 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
 
-      // `tags` is multivalued in `Base` too, a required `note` narrows it, and `GrandChild`
-      // keeps what `Child` sets. Two parents with a single-valued `label` give one warning, for
-      // the first parent: mixins come before `is_a`.
+      // No warning for `tags`, which is multivalued in `Base` too, for `note`, which `required`
+      // narrows, or for `GrandChild`, which keeps what `Child` sets. `label` is single-valued in
+      // both parents but gets one warning, for the first parent: mixins come before `is_a`.
       sv.lintProblems.collect { case p: LooserSlotConstraint => p.infer() } shouldBe Seq(
         LooserSlotConstraint(
           location = IssueLocation(
@@ -1519,10 +1519,10 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
           |""".stripMargin
       val sv = SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(schemaYaml))
 
-      // `ExactlyTwo` and `TwoOrThree` stay between 1 and 3. `ExactlyFour` keeps the inherited
-      // `maximum_cardinality` of 3, which the OWL generator reads after `exact_cardinality`.
-      // `AtLeastOne` keeps the inherited `exact_cardinality` of 2 of `pair`, which the JSON
-      // Schema, SHACL and Pydantic generators read after `minimum_cardinality`.
+      // No warning for `ExactlyTwo` and `TwoOrThree`, which stay between 1 and 3. `ExactlyFour`
+      // inherits `maximum_cardinality: 3`, but the OWL generator reads `exact_cardinality` first.
+      // `AtLeastOne` inherits `exact_cardinality: 2`, but the JSON Schema, SHACL and Pydantic
+      // generators read `minimum_cardinality` first.
       sv.lintProblems.collect { case p: LooserSlotConstraint =>
         (p.className, p.metaslot, p.value, p.parentValue)
       } should contain theSameElementsAs Seq(
@@ -1531,7 +1531,7 @@ class SchemaValidatorSpec extends AnyWordSpec, Matchers {
         ("ExactlyFour", "exact_cardinality", "4", "3"),
         ("AtLeastOne", "minimum_cardinality", "1", "2"),
         ("ExactlyOne", "exact_cardinality", "1", "2"),
-        // An attribute replaces the slot with its limits
+        // An attribute replaces the slot, so it drops the inherited limits
         ("Redefined", "minimum_cardinality", "0", "1"),
         ("Redefined", "maximum_cardinality", "unlimited", "3"),
       )

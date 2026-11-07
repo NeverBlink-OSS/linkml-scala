@@ -602,14 +602,13 @@ final class SchemaValidator(using sv: SchemaView) {
     warnings.result()
   }
 
-  /** Warn about each slot of a class in the root schema that allows more values than a parent
-    * allows for it, so that some data valid for the class is not valid for the parent. The LinkML
-    * spec only lets a class narrow what it inherits.
+  /** Warnings for each slot of a class in the root schema that allows more values than in a parent
+    * class. The LinkML spec only lets a class narrow what it inherits.
     *
-    * It reports a range that is not derived from the range of a parent with `UnrelatedSlotRange`,
-    * and each metaslot of [[SchemaValidator.slotConstraintChecks]] with `LooserSlotConstraint`.
-    * Each slot gets at most one warning for its range and one for each metaslot, with the first
-    * parent that allows fewer values.
+    * Reports a range that is not derived from the parent's range with `UnrelatedSlotRange`, and a
+    * failed check of [[SchemaValidator.slotConstraintChecks]] with `LooserSlotConstraint`. Reports
+    * each slot at most once for its range and once for each check, with the first parent that
+    * allows fewer values.
     */
   private lazy val looserInheritedSlots: Seq[SchemaWarning] = {
     val warnings = Vector.newBuilder[SchemaWarning]
@@ -622,10 +621,9 @@ final class SchemaValidator(using sv: SchemaView) {
         val derived = cls.derivedAttributes
         var names: Array[String] = null
         var count = 0
-        // With one parent, a slot can differ from the parent only when the class changes it with
-        // `slot_usage` or `attributes`. With two or more parents, it can differ when the class or
-        // any ancestor changes it, as merging the parents can change it. A slot that no class
-        // changes is the same object in all classes.
+        // Collect the slots that can differ from a parent. With one parent, these are the slots
+        // that the class changes with `slot_usage` or `attributes`. With more parents, merging
+        // them can change a slot that the class or any ancestor changes.
         if (parents.lengthCompare(1) == 0) {
           val usage = cls.cls.slotUsage
           val attributes = cls.cls.attributes
@@ -663,7 +661,7 @@ final class SchemaValidator(using sv: SchemaView) {
           var reportedChecks = 0
           parents.foreach { parent =>
             val inherited = parent.derivedAttributes.getOrElse(name, null)
-            // A slot that no class in the chain changes is the same object in all of them
+            // A slot that no class changes is the same object in the class and the parent
             if ((inherited ne null) && (own ne inherited)) {
               if (!rangeReported && !own.hasRangeDerivedFrom(inherited)) {
                 rangeReported = true
@@ -1086,17 +1084,15 @@ object SchemaValidator {
     }
   }
 
-  /** A metaslot of a slot that allows more values than in a parent: its name, as the warning shows
-    * it, and the two values.
+  /** A metaslot that allows more values than in a parent: its name, and its values in the class and
+    * in the parent.
     */
   final private class Loosened(val metaslot: String, val value: String, val parentValue: String)
 
-  /** A check that an inherited slot of a class doesn't have a metaslot value that allows more
-    * values than in a parent.
-    */
+  /** A check that one metaslot of an inherited slot doesn't allow more values than in a parent. */
   abstract private class SlotConstraintCheck {
 
-    /** What `own` allows more of than `parent`, or `null` if nothing. */
+    /** The metaslot of `own` that allows more values than in `parent`, or `null` if none. */
     def loosened(own: SlotDefinition, parent: SlotDefinition): Loosened
   }
 
@@ -1104,8 +1100,8 @@ object SchemaValidator {
     *
     * The JSON Schema, SHACL and Pydantic generators read `minimum_cardinality` or
     * `maximum_cardinality` before `exact_cardinality`, and the OWL generator reads them the other
-    * way round. A slot can have both when a class sets one and inherits the other, so it is checked
-    * in both ways.
+    * way round. A slot has both when a class sets one and inherits the other, so this checks both
+    * orders.
     */
   final private class CardinalityCheck(metaslot: String, isMaximum: Boolean)
       extends SlotConstraintCheck {
@@ -1131,7 +1127,7 @@ object SchemaValidator {
     private def limit(slot: SlotDefinition): Option[Int] =
       if (isMaximum) slot.maximumCardinality else slot.minimumCardinality
 
-    // No limit is no values at least, and any number of values at most
+    // Without a limit, the minimum is 0 and the maximum is unlimited
     private def count(limit: Option[Int]): Int =
       limit.getOrElseFast(if (isMaximum) Int.MaxValue else 0)
 
@@ -1142,8 +1138,8 @@ object SchemaValidator {
       if (count == Int.MaxValue) "unlimited" else String.valueOf(count)
   }
 
-  /** The checks for `LooserSlotConstraint`. To check one more metaslot, add it here. At most 32
-    * checks, as the validator keeps one bit for each.
+  /** The checks for `LooserSlotConstraint`. Holds at most 32 checks, as
+    * [[SchemaValidator.looserInheritedSlots]] keeps one bit for each.
     */
   private val slotConstraintChecks: Array[SlotConstraintCheck] = Array(
     new SlotConstraintCheck {

@@ -654,8 +654,8 @@ final case class SlotView(slot: SlotDefinition, definingSchema: SchemaDefinition
       allowedRanges.forall(r => ancestors.exists(sv.isDerivedFrom(r, _)))
     }
 
-  /** Whether this slot and `other` allow the same ranges because they set them in the same way. A
-    * slot without a `range` gets the default range of the schema that defines it.
+  /** Whether this slot and `other` set their ranges in the same way. Two slots without a `range`
+    * match only when one schema defines both, as each gets the default range of its schema.
     */
   private def hasSameRangesAs(other: SlotView): Boolean = {
     val s = slot

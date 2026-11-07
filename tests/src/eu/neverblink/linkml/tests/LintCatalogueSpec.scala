@@ -5,9 +5,7 @@ import org.scalatest.wordspec.AnyWordSpec
 
 class LintCatalogueSpec extends AnyWordSpec, Matchers {
 
-  /** Models that show on purpose something that `validate` warns about, with the type of the one
-    * warning that each gets.
-    */
+  /** Models that show a warning on purpose, with the type of their only warning. */
   private val expectedWarnings: Map[String, String] = Map(
     // A class makes an inherited single-valued slot multivalued
     "multivaluedOverride" -> "LooserSlotConstraint",

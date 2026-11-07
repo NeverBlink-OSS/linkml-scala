@@ -129,8 +129,8 @@ class SkillSpec extends AnyWordSpec, Matchers {
 
 object SkillSpec {
 
-  /** Examples that show on purpose something that `validate` warns about, by file and block number,
-    * with the type of the one warning that each gets.
+  /** Examples that show a warning on purpose, by file and block number, with the type of their only
+    * warning.
     */
   private val expectedWarnings: Map[(file: String, block: Int), String] = Map(
     // A class makes an inherited single-valued slot multivalued
