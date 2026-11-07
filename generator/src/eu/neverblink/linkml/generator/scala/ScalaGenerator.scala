@@ -109,15 +109,15 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     files.result()
   }
 
-  /** A type for a whole document, if `tree_root_as` makes it other than one object: an `Option`,
-    * `Seq` or `Map` by key of the class that holds the tree root's instances, so that
-    * `LinkmlYamlCodec.derived` can read and write it.
+  /** Generates the file with the type of a whole document: an `Option`, `Seq` or `Map` of the class
+    * that holds the tree root's instances. `LinkmlYamlCodec.derived` reads and writes it.
     *
     * @return
-    *   The content of the file, or null if the tree root is one object or is abstract
+    *   the content of the file, or null if `tree_root_as` is `plain`, or if the tree root is
+    *   abstract or a mixin and has no type designator
     */
   private def generateDocument(root: ClassView, options: ScalaGeneratorOptions): String = {
-    // Checks `tree_root_as` first, so that a bad value is an error for any tree root
+    // Read `tree_root_as` first, so that a bad value is an error for an abstract tree root too
     val inlineType = root.treeRootInlineType(None)
     val collection = inlineType match {
       case _: InlineType.plain.type => return null
@@ -125,7 +125,7 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
       case _: InlineType.list.type => "Seq["
       case _ => "Map[String, "
     }
-    // The codec reads the interface only if its `@typeDesignator` lists the implementations
+    // The codec can read the interface only if it has `@typeDesignator`
     val element =
       if (typeDesignatorAnnotation(root, options).isDefined) className(root)
       else if (root.isConcrete) implName(root, options)

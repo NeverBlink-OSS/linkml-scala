@@ -73,8 +73,8 @@ final class TypeScriptGenerator(using sv: SchemaView)
     }
   }
 
-  /** Writes the type of a whole document, for a tree root whose `tree_root_as` is not one object:
-    * the tree root or null, a list of it, or a dict of it by key.
+  /** Writes the type of a whole document: the tree root or null, a list of it, or a dict of it by
+    * key.
     */
   private def writeDocument(
       sink: CharSink,
@@ -354,7 +354,7 @@ final class TypeScriptGenerator(using sv: SchemaView)
         .sortBy(fv => sv.elementOrder(fv.function))
     val usesResult =
       options.errorHandling == TypeScriptErrorHandling.Result && functions.exists(_.errors.nonEmpty)
-    // The tree root gets a document type only if it is generated and is not one object
+    // The tree root gets a document type only if pruning keeps it and `tree_root_as` isn't `plain`
     val treeRootOverride = options.pruning match {
       case p: Pruning.treeRoot => p._override
       case _ => None

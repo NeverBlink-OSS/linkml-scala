@@ -22,14 +22,19 @@ output then also has a type for the whole document, named after the tree root:
 
 | `tree_root_as`                 | Document type                                  |
 |--------------------------------|------------------------------------------------|
-| `optional`                     | `type SomeClassDocument = Option[SomeClass]`   |
-| `list`                         | `type SomeClassDocument = Seq[SomeClass]`      |
-| `compact_dict`, `simple_dict`  | `type SomeClassDocument = Map[String, SomeClass]` |
+| `optional`                     | `type SomeClassDocument = Option[X]`           |
+| `list`                         | `type SomeClassDocument = Seq[X]`              |
+| `compact_dict`, `simple_dict`  | `type SomeClassDocument = Map[String, X]`      |
 
-It uses the class that holds the instances: `SomeClassImpl` when the tree root has an
-interface, or the interface itself when its type designator picks the implementation. An
-abstract tree root that has no type designator gets no document type, as no codec can tell
-which class to read.
+`X` is the class that holds the instances:
+
+- the interface `SomeClass`, if a type designator picks the implementation of each object
+- otherwise `SomeClassImpl`, if the tree root has an interface
+- otherwise the case class `SomeClass`
+
+An abstract or mixin tree root without a type designator gets no document type, because no codec
+can tell which class to read. If another generated type has the same name as the document type,
+the generator stops with an error that names both, so that you can rename one.
 
 Read and write a document with one codec:
 
@@ -39,7 +44,6 @@ val document = codec.decode(parseYaml(text).toOption.get)
 val text2 = codec.encode(document).asYaml
 ```
 
-In the dict forms, the codec takes the `key` of each object from its dict key. When writing,
-use `encode` without `skipId`: each object then keeps its key, which every dict form accepts.
-With `skipId = true`, a class with a key and one other slot is written as a bare value, which
-`compact_dict` doesn't accept.
+In the dict forms, the codec reads the key of each object from its dict key. Write documents
+with `encode` without `skipId`. With `skipId = true`, an object with a key and one other slot
+is written as a bare value, which `compact_dict` doesn't accept.

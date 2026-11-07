@@ -71,7 +71,7 @@ class ScalaCodecRoundTripSpec extends AnyWordSpec, Matchers, ModelCatalogueSpec 
     val generated =
       ScalaGenerator(using entry.model).generate(ScalaGeneratorOptions(`package` = "generated"))
     // A tree root without children is generated as a single case class, with no `...Impl`. A
-    // tree root that is not one object has a document type for the whole document.
+    // tree root whose `tree_root_as` isn't `plain` is read with its document type.
     val rootName = ScalaRenamer.className(treeRoot)
     val rootImpl =
       if (generated.exists(_._1 == s"${rootName}Document.scala")) s"${rootName}Document"

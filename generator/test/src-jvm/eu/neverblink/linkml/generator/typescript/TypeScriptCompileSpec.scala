@@ -239,8 +239,8 @@ object TypeScriptCompileSpec {
     case _ => None
   }
 
-  /** TS type of a whole JSON document: the document type that the model has for a tree root in
-    * another form than one object, otherwise the tree root.
+  /** TS type of a whole JSON document: the `XDocument` type if the model has one, otherwise the
+    * tree root.
     */
   def documentType(root: ClassView, source: String)(using SchemaView): String = {
     val gen = TypeScriptGenerator()
