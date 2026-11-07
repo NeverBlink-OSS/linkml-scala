@@ -113,8 +113,8 @@ class Schema(Generators):
     def report(self) -> Report:
         """The report from loading the schema.
 
-        Loading checks only for fatal problems, and fails on them, so the report of a schema that
-        loaded has no issues. Use :meth:`lint` or :meth:`issues` for its errors and warnings.
+        Loading fails on fatal problems and checks for nothing else, so this report has no issues.
+        Use :meth:`lint` or :meth:`issues` to find errors and warnings.
         """
         return self._report
 
@@ -211,7 +211,8 @@ def load_file(
     importing schema's directory, and ``linkml:`` ones against the metamodel built into the library.
 
     :param path: path to the schema file.
-    :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param infer_messages: fill in the human-readable ``message`` and ``details`` of the fatal
+        problems in ``SchemaLoadError.report``. Pass it to ``Schema.lint`` for errors and warnings.
     :param import_map: import to the location to load it from, as a mapping such as
         ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
         object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
@@ -244,7 +245,8 @@ def load_string(
 
     :param schema: the schema, as YAML.
     :param imports: filename to YAML text, covering everything the schema imports.
-    :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param infer_messages: fill in the human-readable ``message`` and ``details`` of the fatal
+        problems in ``SchemaLoadError.report``. Pass it to ``Schema.lint`` for errors and warnings.
     :param import_map: import to the location to load it from, as a mapping such as
         ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
         object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``
@@ -281,7 +283,8 @@ def load_path(
 
     :param path: the root schema's key in ``imports``.
     :param imports: path to YAML text, including the root schema itself.
-    :param infer_messages: fill in each issue's human-readable ``message`` and ``details``.
+    :param infer_messages: fill in the human-readable ``message`` and ``details`` of the fatal
+        problems in ``SchemaLoadError.report``. Pass it to ``Schema.lint`` for errors and warnings.
     :param import_map: import to the location to load it from, as a mapping such as
         ``{"https://example.org/units/": "deps/units/"}``, or the path of a JSON file with such an
         object. Keys are full URIs or paths, not CURIEs. A key that ends with ``/`` or ``#``

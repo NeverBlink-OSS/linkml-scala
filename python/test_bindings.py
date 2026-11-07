@@ -694,7 +694,7 @@ class LintTest(unittest.TestCase):
             """,
         )
         with ohi_linkml.load_string(rootless) as loaded:
-            # Loading checks only for fatal problems, so its report has no issues.
+            # Loading checks only for fatal problems, so the warning is not in its report.
             self.assertEqual([], loaded.report["issues"])
             warnings = loaded.issues(ohi_linkml.WARNING)
             self.assertTrue(warnings, "expected a warning about the missing tree root")

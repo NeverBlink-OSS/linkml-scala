@@ -267,7 +267,6 @@ object LinkMlNativeApi {
     val sv = view(handle)
     JsonUtil.writeJson(
       reportNode(
-        // The linter of the schema view reuses the fatal checks that loading ran.
         sv.lintProblems,
         None,
         Options.load(optionsJson).inferMessages,
@@ -321,8 +320,8 @@ object LinkMlNativeApi {
       case Right(sv) =>
         val handle = handleSeq.incrementAndGet()
         schemas.put(handle, sv)
-        // Loading checks only for fatal problems, so the report has no issues. Linting for errors
-        // and warnings is left to `lint`.
+        // Loading checks only for fatal problems, so the report is empty. `lint` finds the errors
+        // and warnings.
         new Loaded(handle, report(Nil, runId, options.inferMessages))
       case Left(fatals) =>
         new Loaded(0L, report(fatals, runId, options.inferMessages))

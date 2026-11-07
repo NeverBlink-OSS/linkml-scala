@@ -52,16 +52,17 @@ extensions are optional and interchangeable, and each imported schema is loaded 
 when it is reached through different relative paths or, with `load_file`, through symbolic or hard
 links.
 
-All three take `infer_messages=True`, which fills in each issue's human-readable `message` and
-`details`. Turn it off for only the structured fields.
+All three take `infer_messages=True`, which fills in the human-readable `message` and `details`
+of the fatal problems in `SchemaLoadError.report`. Turn it off for only the structured fields.
+`lint()` takes the same option for errors and warnings.
 
 All three also take `import_map=`, which maps an import to the location to load it from, such as
 `{"https://example.org/units/": "deps/units/"}`, or is the path of a JSON file with such an object.
 For `load_file` a location is a path, and for `load_string` and `load_path` it is a key of the
 `imports` map. See [Import maps](/docs/import-maps/).
 
-Fatal problems raise `SchemaLoadError`, which carries the report as `.report`. Errors and warnings do
-not: a schema can load and still have things to say about it.
+Fatal problems raise `SchemaLoadError`, which carries the report as `.report`. Errors and warnings
+don't stop loading. Call `schema.lint()` to find them.
 
 A generator or importer that can't convert a schema or ontology, for a reason you can fix, raises
 `SchemaConversionError`. Its `.issue` is a `SchemaConversionError` issue, in the same shape as the
@@ -118,10 +119,13 @@ By default those are read from the file system. See [the OWL importer](/docs/imp
 
 ### Validating
 
-`schema.report` is the report from loading. Loading checks only for fatal problems, so for a schema
-that loaded it has no issues. `schema.lint()` checks the schema for errors and warnings too, and
-`schema.issues(severity)` gives the issues it finds, only those of `ohi_linkml.FATAL`, `ERROR` or
-`WARNING` if given. Both follow the
+- `schema.report` is the report from loading. Loading checks only for fatal problems, so the report
+  of a loaded schema is empty.
+- `schema.lint()` checks the schema for errors and warnings, and returns a new report.
+- `schema.issues(severity)` returns the issues that `lint()` finds, only those of
+  `ohi_linkml.FATAL`, `ERROR` or `WARNING` if `severity` is given.
+
+Both reports follow the
 [`validation-report.yaml`](https://github.com/NeverBlink-OSS/ohi/blob/main/model/validation-report.yaml) model, the same JSON the CLI's
 `validate --format json` produces.
 

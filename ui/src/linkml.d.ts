@@ -35,8 +35,9 @@ export interface SchemaView extends GeneratorFunctions {
 }
 
 /**
- * What loading a schema produced. There is always a report - loading is validating - and a
- * `view` unless the schema had fatal problems.
+ * What loading a schema produced: a `view` unless the schema has fatal problems, and a
+ * report of those fatal problems, which is empty when `view` is set. Use `lint` to find
+ * errors and warnings.
  */
 export interface LoadResult {
   readonly view?: SchemaView;
@@ -61,7 +62,7 @@ export interface LinkMLApi extends Importers<ImporterFunctions> {
    * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from the schema's YAML text.  The main schema is parsed directly from `mainSchema`, so it has no path of its own. If one of its imports (transitively) imports the main schema back by filename, that import cannot be matched against the root and the main schema will be loaded a second time. Use [[loadFromPath]] instead when the root schema takes part in an import cycle.  See [[loadFromPath]] for the correct key format.
    * @param mainSchema Main LinkML model in YAML format. It may import other models using LinkML `imports`, but all imports must be made available in the [[imports]].
    * @param imports JS dictionary (object) containing a mapping from filename to LinkML models (in YAML format)
-   * @param inferMessages Whether to fill in each issue's human-readable `message` and `details`.
+   * @param inferMessages Whether to fill in the human-readable `message` and `details` of the fatal problems in the report. Pass it to [[lint]] for errors and warnings.
    * @param importMap Optional JS dictionary from an import to the location to load it from, which is a key of the [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it. CURIE imports are expanded with the prefixes of the schema that contains them before they are matched.
    * @returns The validation report, and a handle with the generators unless the schema had fatal problems.
    */
@@ -71,7 +72,7 @@ export interface LinkMLApi extends Importers<ImporterFunctions> {
    * Load and resolve a LinkML schema into a reusable [[SchemaView]] handle, starting from a path into the [[imports]].  Unlike [[loadFromString]], the main schema is read through the imports by its own path, so it is tracked from the start of import resolution. This makes it immune to cyclic imports involving the root schema: an import that (transitively) references the root back by path resolves to the already-loaded root instead of loading it again.  Keys in the [[imports]] are import paths as seen from the root schema. The `.yaml` and `.yml` extensions are optional and interchangeable, and each imported schema is loaded only once, even when it is reached through different relative paths.
    * @param path Path of the main LinkML model within the [[imports]] (e.g. `"model.yaml"`).
    * @param imports JS dictionary (object) containing a mapping from path to LinkML models (in YAML format), including the main schema itself under [[path]].
-   * @param inferMessages Whether to fill in each issue's human-readable `message` and `details`.
+   * @param inferMessages Whether to fill in the human-readable `message` and `details` of the fatal problems in the report. Pass it to [[lint]] for errors and warnings.
    * @param importMap Optional JS dictionary from an import to the location to load it from, which is a key of the [[imports]], such as `{"https://example.org/units/": "deps/units/"}`. Keys are full URIs or paths, not CURIEs. A key that ends with `/` or `#` matches every import that starts with it. CURIE imports are expanded with the prefixes of the schema that contains them before they are matched.
    * @returns The validation report, and a handle with the generators unless the schema had fatal problems.
    */

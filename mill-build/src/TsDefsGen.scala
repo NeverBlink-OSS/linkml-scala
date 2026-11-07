@@ -130,8 +130,9 @@ object TsDefsGen {
        |}
        |
        |/**
-       | * What loading a schema produced. There is always a report - loading is validating - and a
-       | * `view` unless the schema had fatal problems.
+       | * What loading a schema produced: a `view` unless the schema has fatal problems, and a
+       | * report of those fatal problems, which is empty when `view` is set. Use `lint` to find
+       | * errors and warnings.
        | */
        |export interface LoadResult {
        |  readonly view?: SchemaView;

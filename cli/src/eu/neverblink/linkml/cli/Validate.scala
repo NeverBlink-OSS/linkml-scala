@@ -63,7 +63,7 @@ object Validate extends BaseCommand[ValidateOptions] {
     *
     * Fatal problems can't be recovered into a [[SchemaView]] (its constructor refuses to build a
     * schema with fatal problems), so loading returns them as a Left. Errors and warnings come from
-    * the linter of the view, which reuses the fatal checks that loading ran.
+    * the linter of the view.
     */
   private def collectIssues(inputName: String, importer: Importer): Seq[SchemaIssue] =
     try
