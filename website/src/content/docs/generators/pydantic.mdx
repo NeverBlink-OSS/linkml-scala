@@ -163,7 +163,7 @@ Loading `{"name": "Z", "animals": [{"kind": "Lion", "name": "Leo"}]}` gives a `Z
 
 Every class becomes a class. It inherits from its `is_a` parent and its mixins, in that order.
 A class without parents inherits from `LinkMLModel`, the base class at the top of the file.
-When a `slot_usage` gives an inherited slot another JSON key with an `alias`, the class removes the field it inherits under the old key, with a `ClassVar` of the same name. So loading rejects the old key, as the JSON Schema does. With the `--open` option, the old key is kept as extra data, like any other unknown key.
+When a `slot_usage` gives an inherited slot another JSON key with an `alias`, the class removes the inherited field with a `ClassVar` of the same name. So loading rejects the old key, as the JSON Schema does. With the `--open` option, the old key is kept as extra data, like any other unknown key.
 
 ### Names
 

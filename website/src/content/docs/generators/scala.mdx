@@ -17,4 +17,4 @@ import { Description, Options, Usage } from '../../../components/converter';
 
 ## Inherited fields
 
-A class extends the abstract classes and traits of its parent classes and mixins, which declare its fields as `def`s. A parent leaves out the `def` when a descendant gives the field another type, such as a `slot_usage` that makes it required or multivalued. See [Slots that a class changes](/docs/slot-usage-inheritance/#slots-that-a-class-changes).
+A class extends the abstract classes and traits of its parent classes and mixins, which declare its fields as `def`s. A parent leaves out the `def` when a descendant gives the field a type that can't override it, such as with a `slot_usage` that makes it required or multivalued. See [Slots that a class changes](/docs/slot-usage-inheritance/#slots-that-a-class-changes).

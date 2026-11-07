@@ -143,10 +143,13 @@ final class ScalaGenerator(using sv: SchemaView) extends ScalaRenamer {
     }
   }
 
-  /** Whether the field of a descendant (`their`) can override the `def` of an ancestor (`own`): it
-    * has the same type, or the same wrapper (`Option`, `Seq` or `Map`) around a subtype. That is a
-    * type derived from the ancestor's, such as `ncname` for `string`, or a subclass, unless the
-    * ancestor's field is the case class of a concrete class.
+  /** Whether the field of a descendant (`their`) can override the `def` of an ancestor (`own`). It
+    * can when it has:
+    *   - the same Scala type, or
+    *   - the same wrapper (`Option`, `Seq` or `Map`) around a subtype.
+    *
+    * A subtype is a type derived from the ancestor's type (such as `ncname` for `string`), or a
+    * subclass when the ancestor's field uses the class's trait, not its case class.
     */
   private def overrides(
       own: AttributeView,
@@ -741,7 +744,7 @@ object ScalaGenerator {
     *   abstract class) must be first in the list.
     * @param interfaceFields
     *   Names of the [[fields]] that the interface declares: those that the class lists or changes
-    *   itself, or that a parent leaves out, and that all descendants give the same type.
+    *   itself, or that a parent leaves out, and that the fields of all descendants can override.
     * @param skipImpl
     *   Whether to skip the case class implementation for instantiable classes.
     * @param caseClassOnly
