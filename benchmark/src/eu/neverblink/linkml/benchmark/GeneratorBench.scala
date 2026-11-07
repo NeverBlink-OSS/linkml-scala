@@ -12,6 +12,7 @@ import eu.neverblink.linkml.generator.linkml.LinkMlGenerator
 import eu.neverblink.linkml.generator.ossie.OssieGenerator
 import eu.neverblink.linkml.generator.owl.OwlGenerator
 import eu.neverblink.linkml.generator.pydantic.PydanticGenerator
+import eu.neverblink.linkml.generator.javagen.JavaGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
@@ -158,6 +159,21 @@ class GeneratorBench extends CommonParams {
   @Benchmark
   def pydanticFromSchemaView(bh: Blackhole): Unit =
     write(bh, PydanticGenerator(using schemaView))
+
+  @Benchmark
+  def javaFromYaml(bh: Blackhole): Unit =
+    bh.consume(
+      JavaGenerator(using SchemaIssues.orThrow(SchemaView.loadSchemaViewFromString(yaml)))
+        .generate(),
+    )
+
+  @Benchmark
+  def javaFromSchemas(bh: Blackhole): Unit =
+    bh.consume(JavaGenerator(using SchemaView(schemaView.schemas)).generate())
+
+  @Benchmark
+  def javaFromSchemaView(bh: Blackhole): Unit =
+    bh.consume(JavaGenerator(using schemaView).generate())
 
   @Benchmark
   def ossieFromYaml(bh: Blackhole): Unit =

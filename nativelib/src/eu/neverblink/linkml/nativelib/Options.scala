@@ -76,6 +76,9 @@ private object Options {
   def scala(json: String): ScalaGeneratorOptions =
     model(json, ScalaGeneratorOptions())(using LinkmlYamlCodec.derived)
 
+  def java(json: String): JavaGeneratorOptions =
+    model(json, JavaGeneratorOptions())(using LinkmlYamlCodec.derived)
+
   def translation(json: String): TranslationGeneratorOptions =
     model(json, TranslationGeneratorOptions())(using LinkmlYamlCodec.derived)
 

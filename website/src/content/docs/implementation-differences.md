@@ -21,7 +21,7 @@ These features are supported in ohi LinkML but not in LinkML-Python (or are supp
   - A `range_expression` allows any extra data, which is not checked against it (see below)
   - Extra data is only validated, not kept: decoding drops it, so it is lost on a round trip (see below)
 - Support for `union_of`
-  - JSON Schema, Scala, TypeScript, and Pydantic generators support type unions.
+  - JSON Schema, Scala, TypeScript, Pydantic and Java generators support type unions.
   - Some constraints on unioned types may be lost, depending on the expressiveness of the target language.
 - Support for [language strings](#language-strings)
 - Better support for [imports](#imports)
@@ -142,7 +142,7 @@ classes:
       name: {}
 ```
 
-ohi LinkML honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`), TypeScript (`[key: string]: unknown`) and Pydantic (`extra="allow"`) generators.
+ohi LinkML honors `extra_slots` when decoding with generated Scala classes, as well as in the JSON Schema (`additionalProperties`), SHACL (`sh:closed`), TypeScript (`[key: string]: unknown`), Pydantic (`extra="allow"`) and Java (`getExtraProperties()`) generators.
 LinkML-Python 1.12.1 honors `extra_slots` in its JSON Schema, Java and Go generators.
 
 - `allowed: true` allows any extra data.
@@ -150,7 +150,7 @@ LinkML-Python 1.12.1 honors `extra_slots` in its JSON Schema, Java and Go genera
 - A `range_expression` alone allows extra data matching it. ohi LinkML allows any extra data then, without checking it against the expression, while the JSON Schema of LinkML-Python checks extra data against it.
 - `extra_slots` is not inherited: a subclass of a class allowing extra data forbids it, unless its own `extra_slots` allows it too.
 
-The `--open` option of the JSON Schema, SHACL, TypeScript and Pydantic generators allows extra data in all classes.
+The `--open` option of the JSON Schema, SHACL, TypeScript, Pydantic and Java generators allows extra data in all classes.
 
 In ohi LinkML, `extra_slots` only controls validation. When decoding, allowed extra data is accepted and then discarded: generated Scala classes have a fixed set of fields, so there is nowhere to store it, and encoding the object again will not write it back. LinkML-Python can attach unknown attributes to an object at runtime, which Scala classes cannot do.
 
@@ -198,7 +198,7 @@ But rejects:
 * `simple_dict`: dict object mapping the key field to the value field of the object instances
 
 LinkML-Python doesn't know this extension, so its generators always expect one object.
-In ohi LinkML, the JSON Schema and Pydantic generators use it.
+In ohi LinkML, the JSON Schema, Pydantic and Java generators use it.
 The Scala and TypeScript generators ignore it for now, so their types describe one object.
 
 ## Language strings
@@ -224,7 +224,7 @@ classes:
     description: You can also still use the plain string syntax!
 ```
 
-Generators that write documentation in one language, such as the JSON Schema, GraphQL, TypeScript, Pydantic, Scala, Ossie and Frictionless generators, take the language from their `metadataLanguage` option (`en` by default).
+Generators that write documentation in one language, such as the JSON Schema, GraphQL, TypeScript, Pydantic, Java, Scala, Ossie and Frictionless generators, take the language from their `metadataLanguage` option (`en` by default).
 When a text has no entry for that language, they use the `en` entry, or if there is none, the entry of the alphabetically first language tag.
 A plain string is used as is, whatever language is requested.
 In multivalued slots, such as `keywords`, this is done for each value separately, so one list can mix languages.

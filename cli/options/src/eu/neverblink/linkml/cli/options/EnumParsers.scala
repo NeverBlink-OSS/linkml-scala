@@ -12,6 +12,13 @@ import eu.neverblink.linkml.generator.options.*
   */
 object EnumParsers {
 
+  given ArgParser[JavaStyle] = parser(
+    "java style",
+    Seq(
+      JavaStyle.Jackson -> Seq("jackson"),
+    ),
+  )
+
   given ArgParser[JsonOutputFormat] = parser(
     "json output format",
     Seq(

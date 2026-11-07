@@ -39,6 +39,9 @@ object `package` extends Module, NativeOptional {
         mvn"net.sourceforge.owlapi:org.semanticweb.hermit:1.4.5.519",
         mvn"com.softwaremill.sttp.apispec::jsonschema-circe::0.12.1",
         mvn"com.networknt:json-schema-validator:3.0.8",
+        // JavaRoundTripSpec loads the generated Java with both major versions of Jackson
+        mvn"com.fasterxml.jackson.core:jackson-databind:2.16.1",
+        mvn"tools.jackson.core:jackson-databind:3.2.1",
         mvn"org.sangria-graphql::sangria:4.2.20",
         mvn"org.scala-lang::scala3-compiler:${v.scala}",
         mvn"io.github.edadma::markdown:${v.markdown}",

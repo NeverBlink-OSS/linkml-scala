@@ -219,7 +219,7 @@ export const TARGETS: Target[] = [
     docs: "generators/translation/",
     lang: "json",
     options: [
-      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", "docs"], default: "base" },
+      { key: "target", "type": "select", label: "Target name form", choices: ["base", "uri", "scala", "graphql", "frictionless", "ossie", "erdiagram", "json", "typescript", "pydantic", "java", "docs"], default: "base" },
       {
         key: "derived_attributes",
         type: "checkbox",
@@ -277,6 +277,20 @@ export const TARGETS: Target[] = [
       { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
     ],
     call: (_, v, o) => v.pydantic(converterOptions(o)),
+  },
+  {
+    id: "java",
+    label: "Java",
+    docs: "generators/java/",
+    lang: "java",
+    options: [
+      { key: "package", type: "text", label: "Package", title: "Without it, the schema's name" },
+      { key: "pruning_mode", type: "select", label: "Pruning", choices: ["tree_root", "schema", "skip"], default: "skip" },
+      TREE_ROOT,
+      { key: "open", type: "checkbox", label: "Open", title: "Allow additional properties" },
+      { key: "strict", type: "checkbox", label: "Strict", title: "Check the JSON types and the constraints of the schema while loading" },
+    ],
+    call: (_, v, o) => v.java(converterOptions(o)),
   },
   {
     id: "rdfs",

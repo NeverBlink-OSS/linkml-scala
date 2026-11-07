@@ -140,6 +140,24 @@ class DocSnippetsSpec extends AnyWordSpec {
     }
   }
 
+  "the java examples" should {
+    "run on the command line" in {
+      ohiLinkml("to java --package org.example.prov prov-o.linkml.yaml")
+    }
+    "run in Scala" in {
+      import eu.neverblink.linkml.generator.options.JavaGeneratorOptions
+      import eu.neverblink.linkml.generator.javagen.JavaGenerator
+      import eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}
+
+      val loaded = SchemaView.loadSchemaViewFromUri("prov-o.linkml.yaml")
+      given SchemaView = SchemaIssues.orThrow(loaded)
+      val files = JavaGenerator().generate(
+        JavaGeneratorOptions(`package` = Some("org.example.prov")),
+      )
+      assert(files.nonEmpty)
+    }
+  }
+
   "the json_schema examples" should {
     "run on the command line" in {
       ohiLinkml("to json-schema --tree-root Entity --to prov-o.schema.json prov-o.linkml.yaml")

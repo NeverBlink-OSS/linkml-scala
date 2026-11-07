@@ -80,6 +80,7 @@ schema.frictionless(pruning_mode="skip", tree_root=None, skip_classes_without_id
 schema.graphql(pruning_mode="schema", tree_root=None)
 schema.typescript(pruning_mode="skip", tree_root=None, include_null=False, open=False)
 schema.pydantic(pruning_mode="skip", tree_root=None, include_null=False, open=False)
+schema.java(package=None, pruning_mode="skip", tree_root=None, open=False, strict=False, style="jackson")
 schema.er_diagram(pruning_mode="schema", tree_root=None, optional_marker=True)
 schema.docs(pruning_mode="schema", tree_root=None, metadata_language="en", single_file=False)
 schema.ossie(pruning_mode="skip", tree_root=None, format="yaml")
@@ -90,7 +91,7 @@ schema.translation(target="base")
 ```
 
 All arguments are keyword-only. Their names, values and defaults are the ones in
-[`model/converter`](https://github.com/NeverBlink-OSS/ohi/tree/main/model/converter). Every method returns a string, except `scala()`, `frictionless()` and
+[`model/converter`](https://github.com/NeverBlink-OSS/ohi/tree/main/model/converter). Every method returns a string, except `scala()`, `java()`, `frictionless()` and
 `docs()`, which return a filename-to-content dict, and `stats()`, which returns the
 schema statistics as a dict.
 
@@ -159,7 +160,7 @@ The library is compiled with [Scala Native](https://scala-native.org/), and expo
 ```c
 char* linkml_shacl      (long long handle, const char* opts, char** err);
 char* linkml_json_schema(long long handle, const char* opts, char** err);
-/* rdfs, owl, linkml, frictionless, graphql, typescript, pydantic, er_diagram, docs, scala, stats, lint - same shape */
+/* rdfs, owl, linkml, frictionless, graphql, typescript, pydantic, java, er_diagram, docs, scala, stats, lint - same shape */
 
 long long linkml_load_file(const char* path, const char* opts, char** report, char** err);
 void      linkml_close    (long long handle);

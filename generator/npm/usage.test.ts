@@ -51,6 +51,7 @@ const rdfsFull: string = view.rdfs({ format: "ttl" });
 const linkml: string = view.linkml();
 const linkmlFull: string = view.linkml({ pruning_mode: "skip", skip_class_derivation: true, format: "json" });
 const scala: Record<string, string> = view.scala({ package: "com.example" });
+const java: Record<string, string> = view.java({ package: "com.example", open: true, strict: true, style: "jackson" });
 const frictionless: Record<string, string> = view.frictionless();
 const frictionlessRoot: Record<string, string> = view.frictionless({
   pruning_mode: "tree_root",
@@ -115,6 +116,7 @@ void [
   linkml,
   linkmlFull,
   scala,
+  java,
   frictionless,
   frictionlessRoot,
   erDiagram,

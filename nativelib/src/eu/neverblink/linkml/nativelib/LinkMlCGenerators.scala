@@ -62,6 +62,15 @@ object LinkMlCGenerators {
   def graphql(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
     LinkMlCApi.document(handle, options, error, LinkMlNativeApi.graphql)
 
+  /** Generate Java classes for the schema's JSON data, one file per class and enum. The classes
+    * only need the Jackson annotations. Load data with `mapper.readValue(text, X.class)` and dump
+    * it with `mapper.writeValueAsString(x)`. Returns JSON. Options: `metadata_language`, `open`,
+    * `package`, `pruning_mode`, `strict`, `style`, `tree_root`.
+    */
+  @exported("linkml_java")
+  def java(handle: CLongLong, options: CString, error: Ptr[CString]): CString =
+    LinkMlCApi.document(handle, options, error, LinkMlNativeApi.java)
+
   /** Generate a JSON Schema. Options: `include_null`, `indentation_step`, `metadata_language`,
     * `open`, `tree_root`, `tree_root_inline_type`.
     */

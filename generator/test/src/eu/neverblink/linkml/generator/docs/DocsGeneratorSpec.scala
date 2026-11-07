@@ -570,7 +570,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |- **Title:** Natural person
           |- **Canonical name:** `NaturalPerson`
           |- **Other names:** human, individual
-          |- **Names in code:** `NaturalPerson` (Scala, TypeScript, Python, GraphQL)
+          |- **Names in code:** `NaturalPerson` (Scala, TypeScript, Python, Java, GraphQL)
           |- **URI:**""".stripMargin,
       )
       pages("classes/natural_person.md") should include(
@@ -582,7 +582,7 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
           |
           |- **Canonical name:** `birth_date`
           |- **Name in data:** `birthDate`
-          |- **Names in code:** `birthDate` (Scala, TypeScript, Python), `birth_date` (GraphQL)
+          |- **Names in code:** `birthDate` (Scala, TypeScript, Python, Java), `birth_date` (GraphQL)
           |""".stripMargin,
       )
       pages("enums/gender.md") should include(
@@ -642,12 +642,12 @@ class DocsGeneratorSpec extends AnyWordSpec, Matchers {
       // The Python generator names the document type of the tree root `ContainerDocument`, so it
       // renames the field
       pages("slots/container_document.md") should include(
-        "- **Names in code:** `containerDocument` (Scala), `ContainerDocument` (TypeScript), " +
-          "`ContainerDocument_` (Python), `container_document` (GraphQL)\n",
+        "- **Names in code:** `containerDocument` (Scala, Java), `ContainerDocument` " +
+          "(TypeScript), `ContainerDocument_` (Python), `container_document` (GraphQL)\n",
       )
       PydanticGenerator(using sv).serialize() should include("    ContainerDocument_: ")
-      // An enum without values is a string in Scala and Python, so only TypeScript and GraphQL
-      // have a type with its name
+      // An enum without values is a string in Scala, Python and Java, so only TypeScript and
+      // GraphQL have a type with its name
       pages("enums/status_kind.md") should include(
         "- **Names in code:** `StatusKind` (TypeScript, GraphQL)\n",
       )

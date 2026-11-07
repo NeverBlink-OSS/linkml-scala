@@ -100,6 +100,7 @@ generators, their options and the defaults are the functions of
 | `graphql(options?)` | `string` | GraphQL |
 | `typescript(options?)` | `string` | TypeScript types for the JSON data (no runtime code) |
 | `pydantic(options?)` | `string` | Python classes (pydantic) that load and dump the JSON data |
+| `java(options?)` | `Files` | filename → Java classes (Jackson) that load and dump the JSON data |
 | `erDiagram(options?)` | `string` | Mermaid entity relationship diagram |
 | `docs(options?)` | `Files` | filename → Markdown documentation (`index.md` and a page per element) |
 | `ossie(options?)` | `string` | Apache Ossie ontology, `yaml` (default) or `json` |
@@ -124,8 +125,9 @@ return `{ schema, warnings }`: the schema, and what could not be imported.
 See [`index.d.ts`](./index.d.ts) for full type signatures. The validation report that `lint` and
 `loadFromString`/`loadFromPath` return is fully typed: each issue's `issue_type` names its kind
 (e.g. `"UnknownReference"`), and checking it narrows the issue to that kind's fields. For how to use the generated TypeScript,
-see [the TypeScript guide](https://linkml.ohi.dev/docs/generators/typescript/), and for `pydantic`
-[the Pydantic guide](https://linkml.ohi.dev/docs/generators/pydantic/). For `owl` and `fromOwl`, see
+see [the TypeScript guide](https://linkml.ohi.dev/docs/generators/typescript/), for `pydantic`
+[the Pydantic guide](https://linkml.ohi.dev/docs/generators/pydantic/), and for `java`
+[the Java guide](https://linkml.ohi.dev/docs/generators/java/). For `owl` and `fromOwl`, see
 [the OWL generator](https://linkml.ohi.dev/docs/generators/owl/) and [the OWL importer](https://linkml.ohi.dev/docs/importers/owl/).
 
 ### Errors

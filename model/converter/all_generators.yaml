@@ -16,6 +16,7 @@ imports:
   - generator/graphql
   - generator/typescript
   - generator/pydantic
+  - generator/java
   - generator/er-diagram
   - generator/docs
   - generator/ossie

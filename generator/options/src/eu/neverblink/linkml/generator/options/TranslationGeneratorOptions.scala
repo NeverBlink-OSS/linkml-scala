@@ -14,7 +14,7 @@ import eu.neverblink.linkml.runtime.*
   *   The number of spaces for each level of indentation in the output.
   * @param target
   *   The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`,
-  *   `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic` or `docs`.
+  *   `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic`, `java` or `docs`.
   * @see
   *   From schema: https://linkml.ohi.dev/model/converter/generator/translation
   */

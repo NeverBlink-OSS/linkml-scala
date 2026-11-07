@@ -561,6 +561,139 @@
       "classes": []
     },
     {
+      "name": "java",
+      "kind": "generator",
+      "page": "generators/java",
+      "playground": "https://linkml.ohi.dev/playground/?ohi=w3c/prov-o@2013&target=java",
+      "description": "Generate Java classes for the schema's JSON data, one file per class and enum. The classes only need the Jackson annotations. Load data with `mapper.readValue(text, X.class)` and dump it with `mapper.writeValueAsString(x)`.",
+      "snippets": [
+        {
+          "sdk": "Cli",
+          "label": "CLI",
+          "lang": "shell",
+          "code": "ohi get w3c/prov-o\nohi linkml to java --package org.example.prov prov-o.linkml.yaml"
+        },
+        {
+          "sdk": "Python",
+          "label": "Python",
+          "lang": "python",
+          "code": "import ohi_linkml\n\nwith ohi_linkml.load_file(\"prov-o.linkml.yaml\") as schema:\n    files = schema.java(package=\"org.example.prov\")"
+        },
+        {
+          "sdk": "JavaScript",
+          "label": "JavaScript",
+          "lang": "js",
+          "code": "import { readFileSync } from \"node:fs\";\nimport { LinkML } from \"@neverblink/linkml\";\n\nconst yaml = readFileSync(\"prov-o.linkml.yaml\", \"utf8\");\nconst { view, report } = LinkML.loadFromString(yaml, {});\nif (!view) throw new Error(JSON.stringify(report));\nconst files = view.java({ package: \"org.example.prov\" });"
+        },
+        {
+          "sdk": "Scala",
+          "label": "Scala",
+          "lang": "scala",
+          "code": "import eu.neverblink.linkml.generator.options.JavaGeneratorOptions\nimport eu.neverblink.linkml.generator.javagen.JavaGenerator\nimport eu.neverblink.linkml.schemaview.{SchemaIssues, SchemaView}\n\nval loaded = SchemaView.loadSchemaViewFromUri(\"prov-o.linkml.yaml\")\ngiven SchemaView = SchemaIssues.orThrow(loaded)\nval files = JavaGenerator().generate(\n  JavaGeneratorOptions(`package` = Some(\"org.example.prov\")),\n)"
+        },
+        {
+          "sdk": "C",
+          "label": "C",
+          "lang": "c",
+          "code": "#include <stddef.h>\n#include \"ohi_linkml.h\"\n\nlinkml_init_threads();\nchar *report = NULL, *error = NULL;\nlong long schema =\n    linkml_load_file(\"prov-o.linkml.yaml\", NULL, &report, &error);\nchar *files = linkml_java(\n    schema,\n    \"{\\\"package\\\": \\\"org.example.prov\\\"}\",\n    &error\n);\nlinkml_free(files);\nlinkml_free(report);\nlinkml_free(error);\nlinkml_close(schema);"
+        }
+      ],
+      "options": [
+        {
+          "name": "metadata_language",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": "en",
+          "description": "The language of the titles and descriptions in the output, for schemas with text in more than one language.",
+          "cli": "--metadata-language",
+          "scala": "metadataLanguage"
+        },
+        {
+          "name": "open",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether the classes accept and keep properties beyond the ones in the schema.",
+          "cli": "--open",
+          "scala": "open"
+        },
+        {
+          "name": "package",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The package of the generated classes. If unset, the schema's name in lower case is used.",
+          "cli": "--package",
+          "scala": "`package`"
+        },
+        {
+          "name": "pruning_mode",
+          "type": {
+            "kind": "enum",
+            "name": "PruningMode",
+            "collection": null
+          },
+          "required": false,
+          "default": "skip",
+          "description": "The classes and enums in the output. Each class always comes with its ancestors, and a designated union with its members.",
+          "cli": "--pruning-mode",
+          "scala": "pruningMode"
+        },
+        {
+          "name": "strict",
+          "type": {
+            "kind": "type",
+            "name": "boolean",
+            "collection": null
+          },
+          "required": false,
+          "default": "false",
+          "description": "Whether loading should check the data like the JSON Schema does: the JSON type of every value, patterns, minimum and maximum values, lengths and cardinality. Without it, values are coerced into their types, such as `\"2\"` to `2`, and only the required slots, enums, type designators and unknown keys are checked.",
+          "cli": "--strict",
+          "scala": "strict"
+        },
+        {
+          "name": "style",
+          "type": {
+            "kind": "enum",
+            "name": "JavaStyle",
+            "collection": null
+          },
+          "required": false,
+          "default": "jackson",
+          "description": "The kind of Java classes to generate.",
+          "cli": "--style",
+          "scala": "style"
+        },
+        {
+          "name": "tree_root",
+          "type": {
+            "kind": "type",
+            "name": "string",
+            "collection": null
+          },
+          "required": false,
+          "default": null,
+          "description": "The class to use as the tree root, instead of the class with `tree_root: true` in the schema. Only for the `tree_root` pruning mode.",
+          "cli": "--tree-root",
+          "scala": "treeRoot"
+        }
+      ],
+      "classes": []
+    },
+    {
       "name": "json_schema",
       "kind": "generator",
       "page": "generators/json-schema",
@@ -1480,7 +1613,7 @@
           },
           "required": false,
           "default": "base",
-          "description": "The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic` or `docs`.",
+          "description": "The framework of the names in the dictionaries. One of `base`, `uri`, `scala`, `graphql`, `frictionless`, `ossie`, `erdiagram`, `json`, `typescript`, `pydantic`, `java` or `docs`.",
           "cli": "--target",
           "scala": "target"
         }
@@ -1972,6 +2105,15 @@
     }
   },
   "enums": {
+    "JavaStyle": {
+      "description": "The kind of Java classes to generate.",
+      "values": [
+        {
+          "name": "jackson",
+          "description": "Classes with Jackson annotations, for Jackson 2.12 or later and Jackson 3. They import only the `com.fasterxml.jackson.annotation` package, used by both Jackson versions."
+        }
+      ]
+    },
     "JsonOutputFormat": {
       "description": "A serialization for output that can be YAML or JSON.",
       "values": [

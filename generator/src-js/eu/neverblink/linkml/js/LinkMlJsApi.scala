@@ -9,6 +9,7 @@ import eu.neverblink.linkml.generator.typescript.TypeScriptGenerator
 import eu.neverblink.linkml.generator.ossie.{OssieGenerator, OssieImporter}
 import eu.neverblink.linkml.generator.owl.{OwlGenerator, OwlImporter}
 import eu.neverblink.linkml.generator.scala.ScalaGenerator
+import eu.neverblink.linkml.generator.javagen.JavaGenerator
 import eu.neverblink.linkml.generator.shacl.ShaclGenerator
 import eu.neverblink.linkml.generator.stats.StatsGenerator
 import eu.neverblink.linkml.generator.rdfs.RdfsGenerator
@@ -93,6 +94,9 @@ final class SchemaViewJs private[js] (private[js] val underlying: SchemaView) {
   def scala(params: Params = js.undefined): js.Dictionary[String] =
     ScalaGenerator().generate(decode[ScalaGeneratorOptions](params)).toMap.toJSDictionary
 
+  def java(params: Params = js.undefined): js.Dictionary[String] =
+    JavaGenerator().generate(decode[JavaGeneratorOptions](params)).toMap.toJSDictionary
+
   def stats(params: Params = js.undefined): js.Any = {
     val stats = StatsGenerator().generate(decode[StatsGeneratorOptions](params))
     js.JSON.parse(JsonUtil.yamlToJson(StatsGenerator.codec.encode(stats)))
@@ -126,6 +130,7 @@ private[js] object SchemaViewJs {
   given LinkmlYamlCodec[GraphQlGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[TypeScriptGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[PydanticGeneratorOptions] = LinkmlYamlCodec.derived
+  given LinkmlYamlCodec[JavaGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[ErDiagramGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[StatsGeneratorOptions] = LinkmlYamlCodec.derived
   given LinkmlYamlCodec[DocsGeneratorOptions] = LinkmlYamlCodec.derived
