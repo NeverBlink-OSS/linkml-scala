@@ -1,12 +1,12 @@
 ---
 title: SDKs
-description: Search ohi.dev, inspect publications and download their files from Scala, Python and TypeScript.
+description: Search ohi.dev, inspect publications and download their files from Java, Scala, Python and TypeScript.
 ---
 
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 import { PackageManagers } from 'starlight-package-managers';
 
-The ohi SDKs let Scala/JVM, Python and TypeScript applications search publications on
+The ohi SDKs let Java, Scala, Python and TypeScript applications search publications on
 [ohi.dev](https://ohi.dev), inspect their metadata, download selected files and save file selections.
 
 ## Installation
@@ -25,6 +25,20 @@ The ohi SDKs let Scala/JVM, Python and TypeScript applications search publicatio
     python -m pip install ohi-sdk
     ```
   </TabItem>
+  <TabItem label="Java">
+    Java 17 or later. The only dependency is Jackson 2, version 2.12 or later. It works with Jackson 3 as well.
+
+    ```xml
+    <dependency>
+      <groupId>eu.neverblink.ohi</groupId>
+      <artifactId>ohi-sdk</artifactId>
+      <version>VERSION</version>
+    </dependency>
+    ```
+
+    Or with Gradle: `implementation("eu.neverblink.ohi:ohi-sdk:VERSION")`. Replace `VERSION` with
+    the release version.
+  </TabItem>
   <TabItem label="Scala">
     The Scala modules are built from source and included in the
     [ohi CLI](https://github.com/NeverBlink-OSS/ohi/blob/main/cli/ohi/README.md). They are not published
@@ -32,7 +46,7 @@ The ohi SDKs let Scala/JVM, Python and TypeScript applications search publicatio
   </TabItem>
 </Tabs>
 
-The CLI, the Python package and the TypeScript package share the ohi LinkML release version.
+The CLI, the Java, Python and TypeScript packages share the ohi LinkML release version.
 
 ## Quick start
 
@@ -68,6 +82,22 @@ The CLI, the Python package and the TypeScript package share the ohi LinkML rele
     }
     ```
   </TabItem>
+  <TabItem label="Java">
+    ```java
+    import eu.neverblink.ohi.sdk.*;
+
+    CatalogClient client = new CatalogClient();
+    SearchRequest request = new SearchRequest();
+    request.setQ("sensors");
+    request.setPerPage(10L);
+    SearchResult page = client.search(request);
+    if (!page.getHits().isEmpty()) {
+        Publication publication = client.inspect(page.getHits().get(0).getBaseUrl());
+        Artifact artifact = publication.getArtifacts().get(0);
+        byte[] content = client.get(artifact.getUrl());
+    }
+    ```
+  </TabItem>
 </Tabs>
 
 ## Language bindings
@@ -81,6 +111,12 @@ The CLI, the Python package and the TypeScript package share the ohi LinkML rele
     Import `CatalogClient` from `@neverblink/ohi`. `search`, `inspect`, `latest` and `get` return
     promises of `SearchResult`, `Publication`, `SearchHit | undefined` and `Uint8Array`,
     respectively.
+  </TabItem>
+  <TabItem label="Java">
+    `eu.neverblink.ohi.sdk.CatalogClient` is synchronous, and one client can be shared between
+    threads. `search`, `inspect`, `latest` and `get` return `SearchResult`, `Publication`,
+    `Optional<SearchHit>` and `byte[]`, respectively. The classes of the data have a getter and a
+    setter for each field, named after its JSON key in camel case, such as `getBaseUrl()`.
   </TabItem>
   <TabItem label="Scala">
     Use `eu.neverblink.ohi.catalog.CatalogClient` in `ohi.catalog.jvm`.
@@ -132,6 +168,13 @@ To link a search hit or a publication to its release page on ohi.dev, such as
     const pageUrl = ohiReleasePage(page.hits[0]);
     ```
   </TabItem>
+  <TabItem label="Java">
+    ```java
+    String pageUrl = Pages.ohiReleasePage(page.getHits().get(0));
+    ```
+
+    It also takes a `Publication`, or a namespace, name and version.
+  </TabItem>
   <TabItem label="Scala">
     Use `OhiPages.releasePage` in `eu.neverblink.ohi.catalog`. It takes a `SearchHit`, a
     `Publication`, or a namespace, name and version.
@@ -155,6 +198,13 @@ Set `timeout_ms` to change the default 30000 ms timeout.
     import { CatalogClient } from "@neverblink/ohi";
 
     const client = new CatalogClient({ timeout_ms: 60000 });
+    ```
+  </TabItem>
+  <TabItem label="Java">
+    ```java
+    CatalogConfig config = new CatalogConfig();
+    config.setTimeoutMs(60000L);
+    CatalogClient client = new CatalogClient(config);
     ```
   </TabItem>
 </Tabs>
@@ -215,6 +265,26 @@ The URLs and hash below are illustrative.
     Use `encodeLock` and `decodeLock` from `@neverblink/ohi` for JSON text.
     Browser applications supply their own storage.
   </TabItem>
+  <TabItem label="Java">
+    ```java
+    LockedFile selected = new LockedFile();
+    selected.setBaseUrl("https://hub.example/releases/energy/2/");
+    selected.setUrl("https://files.example/energy.ttl");
+    selected.setFormat(Format.OWL_TURTLE);
+    selected.setSha256("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    ArtifactSelection selection = new ArtifactSelection();
+    selection.setBaseUrl(selected.getBaseUrl());
+    selection.setUrl(selected.getUrl());
+    Lock lock = new Lock();
+    lock.setFormatVersion(2L);
+    lock.setSelections(List.of(selection));
+    lock.setFiles(List.of(selected));
+    Locks.write(Path.of("ohi.lock.json"), lock);
+    Lock saved = Locks.read(Path.of("ohi.lock.json"));
+    ```
+
+    Use `Locks.decode` and `Locks.encode` for JSON text.
+  </TabItem>
   <TabItem label="Scala">
     Use `LockJson.decode` and `LockJson.encode` for JSON text.
     `LockFiles.read` and `LockFiles.write` take a `java.nio.file.Path`.
@@ -241,7 +311,8 @@ bytes against its `size_bytes` and `sha256` if needed. `get` does not perform th
 ## Failures
 
 Catalog failures raise `CatalogException`. Lock validation and file failures raise `LockException`.
-Both expose an `.error` record with a `code` and explanatory `message`. See the
+Both expose an `.error` record with a `code` and explanatory `message`. In Java, they are unchecked
+exceptions, and the record is `getError()`. See the
 [error schemas](https://github.com/NeverBlink-OSS/ohi/tree/main/model/ohi) for
 additional fields.
 

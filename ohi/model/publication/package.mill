@@ -14,6 +14,12 @@ object `package` extends Module, LinkMlModelModule {
   override def otherModelOutputs = Seq(
     ModelOutput("pydantic", build.ohi.moduleDir / "python" / "src" / "ohi" / "generated.py"),
     ModelOutput("typescript", build.ohi.moduleDir / "typescript" / "src" / "generated.ts"),
+    // The Java SDK has all models in one package, so they come from one schema that imports all
+    ModelOutput(
+      "java --clean --package eu.neverblink.ohi.sdk",
+      build.ohi.moduleDir / "java" / "src" / "eu" / "neverblink" / "ohi" / "sdk",
+      Some("model/ohi/sdk.yaml"),
+    ),
   )
 
   object jvm extends CommonBuildModule {

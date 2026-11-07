@@ -13,7 +13,7 @@ import eu.neverblink.linkml.runtime.*
   *   Incomplete file retained after cleanup failed.
   * @param path
   *   Absolute normalized local target path.
-  * @param url
+  * @param targetUrl
   *   Original target supplied by the caller, when available.
   * @see
   *   From schema: https://ohi.neverblink.eu/contracts/cli-file-error
@@ -25,7 +25,8 @@ final case class CliFileError(
     @named("partial_path")
     partialPath: Option[String] = None,
     path: Option[String] = None,
-    url: String,
+    @named("url")
+    targetUrl: String,
 ) {
 
   /** Fill in the slots that have an `equals_expression` with their computed values, and check that

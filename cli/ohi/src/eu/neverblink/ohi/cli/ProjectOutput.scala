@@ -121,7 +121,7 @@ private[cli] object ProjectOutput {
           stringify(cause.code),
           stringify(cause.operation),
           cause.message,
-          cause.url,
+          cause.targetUrl,
           cause.status,
           cause.responseJson,
           timeoutOption = error.operation == ProjectOperation.Sync,
@@ -132,7 +132,7 @@ private[cli] object ProjectOutput {
         ErrorOutput.file(
           stringify(cause.code),
           cause.message,
-          cause.url,
+          cause.targetUrl,
           cause.directory,
           cause.path,
           cause.partialPath,

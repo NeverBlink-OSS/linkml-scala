@@ -105,7 +105,7 @@ class LockDownloadSpec extends AnyWordSpec, Matchers, Inside {
         )
       }.error
       error.code shouldBe CliFileErrorCode.OutputConflict
-      error.url shouldBe "https://other.example/files/packages/test/z/1/source.ttl"
+      error.targetUrl shouldBe "https://other.example/files/packages/test/z/1/source.ttl"
       error.path shouldBe None
     }
 
@@ -144,7 +144,7 @@ class LockDownloadSpec extends AnyWordSpec, Matchers, Inside {
                   CatalogErrorCode.HttpError,
                   "Unavailable",
                   CatalogOperation.Get,
-                  url = Some(url),
+                  targetUrl = Some(url),
                   status = Some(404),
                 ),
               )
@@ -154,7 +154,7 @@ class LockDownloadSpec extends AnyWordSpec, Matchers, Inside {
         requests shouldBe Vector(zUrl)
         error.files shouldBe empty
         inside(error.cause) { case cause: CatalogException =>
-          cause.error.url shouldBe Some(zUrl)
+          cause.error.targetUrl shouldBe Some(zUrl)
           cause.error.status shouldBe Some(404)
         }
         os.list(os.Path(root)) shouldBe empty
@@ -362,7 +362,7 @@ class LockDownloadSpec extends AnyWordSpec, Matchers, Inside {
                     CatalogErrorCode.HttpError,
                     "Unavailable",
                     CatalogOperation.Get,
-                    url = Some(url),
+                    targetUrl = Some(url),
                     status = Some(404),
                   ),
                 )
@@ -374,7 +374,7 @@ class LockDownloadSpec extends AnyWordSpec, Matchers, Inside {
           (zUrl, root.resolve("test/z/1/z.owl.ttl").toString, LockFileStatus.Downloaded),
         )
         inside(error.cause) { case cause: CatalogException =>
-          cause.error.url shouldBe Some(aUrl)
+          cause.error.targetUrl shouldBe Some(aUrl)
         }
         Files.readAllBytes(root.resolve("test/z/1/z.owl.ttl")).toSeq shouldBe Seq[Byte](0, -1, 13,
           10, -128, 42)
